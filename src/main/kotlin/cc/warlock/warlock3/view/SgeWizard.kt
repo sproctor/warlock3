@@ -7,6 +7,7 @@ class SgeWizard : Wizard("Connect character", "Provide account details to connec
 
     init {
         add(AccountInput::class)
+        add(GameSelector::class)
     }
 }
 
@@ -28,5 +29,15 @@ class AccountInput : View("Account") {
         // TODO lookup account/save account here
 
 
+    }
+}
+
+class GameSelector : View("Game") {
+    val games : List<Game> = mutableListOf()
+
+    override val root = form {
+        field("Game") {
+            tableview(games)
+        }
     }
 }

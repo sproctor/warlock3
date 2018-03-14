@@ -13,6 +13,10 @@ class WarlockWorkspace : Workspace("Editor") {
     init {
         menubar {
             menu("File") {
+                item("Connect").action {
+                    log.info("Opening SGE wizard")
+                    workspace.dock(SgeWizard(), true)
+                }
                 item("New").action {
                     //workspace.dock(mainView, true)
                     log.info("Opening text file")
