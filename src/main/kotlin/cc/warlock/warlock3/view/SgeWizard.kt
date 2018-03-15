@@ -1,6 +1,8 @@
 package cc.warlock.warlock3.view
 
+import cc.warlock.warlock3.controller.WarlockClientController
 import cc.warlock.warlock3.model.AccountModel
+import cc.warlock.warlock3.model.Game
 import tornadofx.*
 
 class SgeWizard : Wizard("Connect character", "Provide account details to connect using SGE"){
@@ -33,11 +35,15 @@ class AccountInput : View("Account") {
 }
 
 class GameSelector : View("Game") {
-    val games : List<Game> = mutableListOf()
-
+    val controller: WarlockClientController by inject()
     override val root = form {
-        field("Game") {
-            tableview(games)
+        fieldset(title) {
+            field("Game") {
+                tableview<Game> {
+                    readonlyColumn("title", Game::title)
+                    bindSelected(controller.gameModel)
+                }
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 package cc.warlock.warlock3.controller
 
 import cc.warlock.warlock3.model.DocumentViewModel
+import cc.warlock.warlock3.model.Game
+import cc.warlock.warlock3.model.GameModel
 import cc.warlock.warlock3.view.TextEditorFragment
 import tornadofx.*
 import java.io.File
@@ -34,5 +36,7 @@ class WarlockClientController : Controller() {
      */
     fun quote(): String = quotes[(Math.random() * quotes.size).toInt()]
 
+    val gameModel = GameModel()
+    var games = listOf<Game>()
 
 }

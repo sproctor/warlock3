@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.2.21'
+    ext.kotlin_version = '1.2.30'
     ext.warlock_version = '1.0-SNAPSHOT'
 
     repositories {
@@ -25,7 +25,7 @@ repositories {
 dependencies {
     compile 'org.slf4j:slf4j-api:1.7.7'
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile 'no.tornado:tornadofx:1.7.14'
+    compile 'no.tornado:tornadofx:1.7.15'
     compile project(':core')
     compile project(':stormfront')
     testCompile group: 'junit', name: 'junit', version: '4.12'
