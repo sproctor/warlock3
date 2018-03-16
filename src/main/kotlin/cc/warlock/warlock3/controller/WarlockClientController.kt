@@ -38,7 +38,7 @@ class WarlockClientController : Controller() {
     fun quote(): String = quotes[(Math.random() * quotes.size).toInt()]
 
     val gameModel = SgeGameModel()
-    var games = listOf<SgeGame>()
+    var games : Collection<SgeGame>? = null
 
     val connection = SgeConnection()
 

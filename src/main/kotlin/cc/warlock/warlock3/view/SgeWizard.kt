@@ -2,7 +2,7 @@ package cc.warlock.warlock3.view
 
 import cc.warlock.warlock3.controller.WarlockClientController
 import cc.warlock.warlock3.model.AccountModel
-import cc.warlock.warlock3.stormfront.SgeGame
+import cc.warlock.warlock3.stormfront.*
 import tornadofx.*
 
 class SgeWizard : Wizard("Connect character", "Provide account details to connect using SGE"){
@@ -17,6 +17,17 @@ class AccountInput : View("Account") {
     val account : AccountModel by inject()
     val controller: WarlockClientController by inject()
 
+    inner class AccountSgeListener : SgeConnectionListener {
+        override fun event(event: SgeEvent) {
+            when (event) {
+                is SgeLoginReadyEvent -> controller.connection.login(account.name.get(), account.password.get())
+                is SgeGamesReadyEvent -> {
+                    controller.games = event.games
+                    isComplete = true
+                }
+            }
+        }
+    }
 
     override val root = form {
         fieldset(title) {
@@ -29,11 +40,15 @@ class AccountInput : View("Account") {
         }
     }
 
+    init {
+        controller.connection.addListener(AccountSgeListener())
+    }
+
     override fun onSave() {
         println("onsave")
         // TODO lookup account/save account here
         controller.connection.connect()
-
+        isComplete = false
     }
 }
 

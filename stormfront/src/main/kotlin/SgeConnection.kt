@@ -2,8 +2,10 @@ package cc.warlock.warlock3.stormfront
 
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.PrintWriter
+import java.lang.Integer.max
+import java.lang.Integer.min
 import java.net.Socket
+import java.nio.charset.Charset
 import kotlin.concurrent.thread
 
 class SgeConnection {
@@ -35,8 +37,7 @@ class SgeConnection {
     }
 
     private fun handleData(line: String) {
-        println("SGE: $line")
-        System.out.flush()
+        println("SGE receive: $line")
 
         if (passwordHash == null) {
             passwordHash = line
@@ -46,13 +47,33 @@ class SgeConnection {
 
         when (line[0]) {
             'A' -> {
-
+                if (line.startsWith("A\t")) {
+                    val errorCode = when {
+                        line.startsWith("A\tPASSWORD") -> SgeError.INVALID_PASSWORD
+                        line.startsWith("A\tREJECT") -> SgeError.ACCOUNT_REJECTED
+                        line.startsWith("A\tNORECORD") -> SgeError.INVALID_ACCOUNT
+                        else -> SgeError.UNKNOWN_ERROR
+                    }
+                    notifyListeners(SgeErrorEvent(errorCode))
+                } else {
+                    send("M\n")
+                    notifyListeners(SgeLoginSucceededEvent())
+                }
             }
         }
     }
 
     private fun send(string: String) {
+        println("SGE send: $string")
         socket.getOutputStream().write(string.toByteArray(Charsets.US_ASCII))
+    }
+
+    private fun send(bytes: ByteArray) {
+        println("SGE send: " + bytes.toString())
+        socket.getOutputStream().write(bytes)
+    }
+    fun addListener(listener: SgeConnectionListener) {
+        listeners.add(listener)
     }
 
     private fun notifyListeners(event: SgeEvent) {
@@ -64,10 +85,21 @@ class SgeConnection {
     private fun isSocketActive(): Boolean {
         return socket.isConnected() || !socket.isClosed() || !socket.isInputShutdown() || !socket.isOutputShutdown()
     }
+
+    fun login(username: String, password: String) {
+        val encryptedPassword = encryptPassword(password)
+        val output = "A\t$username\t".toByteArray(Charsets.US_ASCII) + encryptedPassword + '\n'.toByte()
+        send(output)
+    }
+
+    private fun encryptPassword(password: String): ByteArray {
+        val length = min(password.length, passwordHash!!.length)
+        return ByteArray(length, { n -> ((passwordHash!![n].toInt() xor (password[n].toInt() - 32)) + 32).toByte() })
+    }
 }
 
 enum class SgeError {
-    INVALID_PASSWORD, INVALID_ACCOUNT, ACCOUNT_REJECTED, ACCOUNT_EXPIRED
+    INVALID_PASSWORD, INVALID_ACCOUNT, ACCOUNT_REJECTED, ACCOUNT_EXPIRED, UNKNOWN_ERROR
 }
 
 interface SgeConnectionListener {
