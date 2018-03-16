@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.model
 
 import cc.warlock.warlock3.stormfront.SgeConnection
+import cc.warlock.warlock3.stormfront.SgeGame
 import javafx.beans.property.SimpleStringProperty
 import javafx.beans.property.StringProperty
 import tornadofx.*
@@ -18,9 +19,7 @@ class AccountModel : ItemViewModel<Account>(Account()) {
     val password: StringProperty = bind { item?.passwordProperty() }
 }
 
-data class Game(val title: String, val code: String, val status: String)
-
-class GameModel() : ItemViewModel<Game>() {
+class SgeGameModel() : ItemViewModel<SgeGame>() {
     val title = bind { SimpleStringProperty(item?.title ?: "") }
     val status = bind { SimpleStringProperty(item?.status ?: "") }
 }

@@ -46,13 +46,6 @@ class EmptyView : View() {
     override val root = label(controller.quote())
 }
 
-class SgeConnectView : View() {
-    val controller: WarlockClientController by inject()
-    override val root = vbox {
-        SgeWizard()
-
-    }
-}
 /**
  * TextAreaOutputStream
  *
