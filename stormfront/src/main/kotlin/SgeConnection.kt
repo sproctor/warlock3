@@ -24,6 +24,7 @@ class SgeConnection {
         socket = Socket(host, port)
         val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
 
+        // request password hash
         send("K\n")
 
         thread(start = true) {
@@ -47,6 +48,7 @@ class SgeConnection {
 
         when (line[0]) {
             'A' -> {
+                // response from login attempt
                 if (line.startsWith("A\t")) {
                     val errorCode = when {
                         line.startsWith("A\tPASSWORD") -> SgeError.INVALID_PASSWORD
@@ -56,9 +58,19 @@ class SgeConnection {
                     }
                     notifyListeners(SgeErrorEvent(errorCode))
                 } else {
+                    // request game list
                     send("M\n")
                     notifyListeners(SgeLoginSucceededEvent())
                 }
+            }
+            // response for request for games
+            'M' -> {
+                val games = ArrayList<SgeGame>()
+                // tab delineated list of games
+                val tokens = line.split("\t")
+                // drop the M
+                tokens.drop(1)
+                for (i in 0..)
             }
         }
     }
