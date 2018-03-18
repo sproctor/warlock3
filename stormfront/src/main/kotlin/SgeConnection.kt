@@ -70,9 +70,17 @@ class SgeConnection {
                 val tokens = line.split("\t")
                 // drop the M
                 tokens.drop(1)
-                for (i in 0..)
+                for (i in 1..tokens.size step 2) {
+                    val gameCode = tokens[i - 1]
+                    val gameName = tokens[i]
+                    games.add(SgeGame(gameName, gameCode))
+                }
             }
         }
+    }
+
+    private fun parseServerResponse(ling: String): SgeResponse {
+
     }
 
     private fun send(string: String) {
@@ -110,6 +118,8 @@ class SgeConnection {
     }
 }
 
+interface SgeResponse
+
 enum class SgeError {
     INVALID_PASSWORD, INVALID_ACCOUNT, ACCOUNT_REJECTED, ACCOUNT_EXPIRED, UNKNOWN_ERROR
 }
@@ -118,16 +128,16 @@ interface SgeConnectionListener {
     fun event(event: SgeEvent)
 }
 
-open class SgeEvent
+interface SgeEvent
 
-class SgeLoginReadyEvent : SgeEvent()
+class SgeLoginReadyEvent : SgeEvent
 
-class SgeLoginSucceededEvent : SgeEvent()
+class SgeLoginSucceededEvent : SgeEvent
 
-data class SgeGamesReadyEvent(val games: Collection<SgeGame>) : SgeEvent()
+data class SgeGamesReadyEvent(val games: Collection<SgeGame>) : SgeEvent
 
-data class SgeCharactersReadyEvent(val characters: Map<String, String>) : SgeEvent()
+data class SgeCharactersReadyEvent(val characters: Map<String, String>) : SgeEvent
 
-data class SgeReadyToPlayEvent(val properties: Map<String, String>) : SgeEvent()
+data class SgeReadyToPlayEvent(val properties: Map<String, String>) : SgeEvent
 
-data class SgeErrorEvent(val errorCode: SgeError) : SgeEvent()
+data class SgeErrorEvent(val errorCode: SgeError) : SgeEvent
