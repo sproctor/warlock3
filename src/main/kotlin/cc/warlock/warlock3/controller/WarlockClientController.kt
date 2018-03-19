@@ -1,9 +1,9 @@
 package cc.warlock.warlock3.controller
 
+import cc.warlock.warlock3.core.WarlockClient
 import cc.warlock.warlock3.model.DocumentViewModel
-import cc.warlock.warlock3.model.SgeGameModel
-import cc.warlock.warlock3.stormfront.SgeConnection
-import cc.warlock.warlock3.stormfront.SgeGame
+import cc.warlock.warlock3.stormfront.network.SgeClient
+import cc.warlock.warlock3.view.GameView
 import cc.warlock.warlock3.view.TextEditorFragment
 import tornadofx.*
 import java.io.File
@@ -37,9 +37,13 @@ class WarlockClientController : Controller() {
      */
     fun quote(): String = quotes[(Math.random() * quotes.size).toInt()]
 
-    val gameModel = SgeGameModel()
-    var games : Collection<SgeGame>? = null
+    val connection = SgeClient()
 
-    val connection = SgeConnection()
+    val gameViewList = mutableListOf<GameView>().observable()
+    fun newGameView(client: WarlockClient): GameView {
+        val gameView = GameView(client)
+        gameViewList.add(gameView)
+        return gameView
+    }
 
 }

@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.view
 
 import cc.warlock.warlock3.controller.WarlockClientController
+import cc.warlock.warlock3.core.WarlockClient
 import javafx.application.Platform
 import javafx.scene.control.Menu
 import javafx.scene.control.MenuItem
@@ -15,7 +16,7 @@ class WarlockWorkspace : Workspace("Editor") {
             menu("File") {
                 item("Connect").action {
                     log.info("Opening SGE wizard")
-                    SgeWizard().openModal()
+                    find(SgeWizard::class).openModal()
                 }
                 item("New").action {
                     //workspace.dock(mainView, true)
@@ -54,6 +55,10 @@ class WarlockWorkspace : Workspace("Editor") {
 
             }
         }
+    }
+
+    fun openGameView(client: WarlockClient) {
+        workspace.dock(clientController.newGameView(client), true)
     }
 
     /**
