@@ -36,6 +36,8 @@ generateGrammarSource {
     arguments += ['-visitor', '-package', 'cc.warlock.warlock3.stormfront.parser']
     outputDirectory = new File(buildDir.toString() + "/generated-src/antlr/main/cc/warlock/warlock3/stormfront/parser/")
 }
+compileJava.dependsOn generateGrammarSource
+compileKotlin.dependsOn generateGrammarSource
 
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
