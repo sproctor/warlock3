@@ -32,7 +32,7 @@ class GameView(val client: WarlockClient) : Fragment() {
                         output.appendText(event.data)
                     }
                     is WarlockClient.ClientDataSentEvent -> {
-                        output.appendText(event.data)
+                        output.appendText(event.data + "\n")
                     }
                 }
             }

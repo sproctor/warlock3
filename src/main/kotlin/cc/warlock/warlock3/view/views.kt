@@ -66,10 +66,13 @@ class TextAreaOutputStream(val textArea: TextArea): OutputStream() {
      */
     @Throws(IOException::class)
     override fun write(b: ByteArray, off: Int, len: Int) {
-        // redirects data to the text area
-        textArea.appendText(String(Arrays.copyOf(b, len), Charset.defaultCharset()))
-        // scrolls the text area to the end of data
-        textArea.scrollTop = java.lang.Double.MAX_VALUE
+        val text = String(Arrays.copyOf(b, len), Charset.defaultCharset())
+        runLater {
+            // redirects data to the text area
+            textArea.appendText(text)
+            // scrolls the text area to the end of data
+            textArea.scrollTop = java.lang.Double.MAX_VALUE
+        }
     }
 
 }

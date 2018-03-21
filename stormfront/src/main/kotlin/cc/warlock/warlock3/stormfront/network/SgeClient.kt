@@ -28,7 +28,7 @@ class SgeClient {
         send("K\n")
 
         thread(start = true) {
-            while (isSocketActive()) {
+            while (socket.isConnected && !socket.isClosed) {
                 try {
                     val line = reader.readLine()
                     if (line != null) {
@@ -140,10 +140,6 @@ class SgeClient {
 
     private fun notifyListeners(event: SgeEvent) {
         listeners.forEach { it.event(event) }
-    }
-
-    private fun isSocketActive(): Boolean {
-        return socket.isConnected || !socket.isClosed || !socket.isInputShutdown || !socket.isOutputShutdown
     }
 
     fun login(username: String, password: String) {

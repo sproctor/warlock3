@@ -123,6 +123,7 @@ class CharacterSelector : View("Character Select") {
                         val client = StormfrontClient(properties["GAMEHOST"]!!, properties["GAMEPORT"]!!.toInt(),
                                 properties["KEY"]!!)
                         workspace.openGameView(client)
+                        client.connect()
                     }
                 }
             }

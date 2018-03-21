@@ -1,5 +1,6 @@
 buildscript {
     ext.kotlin_version = '1.2.30'
+    ext.antlr_version = '4.7.1'
 
     repositories {
         mavenCentral()
@@ -14,6 +15,7 @@ version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'kotlin'
+apply plugin: 'antlr'
 
 sourceCompatibility = 1.8
 
@@ -25,6 +27,14 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compile project(':core')
     testCompile group: 'junit', name: 'junit', version: '4.12'
+    antlr "org.antlr:antlr4:$antlr_version"
+    compile "org.apache.commons:commons-lang3:3.7"
+}
+
+generateGrammarSource {
+    maxHeapSize = "64m"
+    arguments += ['-visitor', '-package', 'cc.warlock.warlock3.stormfront.parser']
+    outputDirectory = new File(buildDir.toString() + "/generated-src/antlr/main/cc/warlock/warlock3/stormfront/parser/")
 }
 
 compileKotlin {
