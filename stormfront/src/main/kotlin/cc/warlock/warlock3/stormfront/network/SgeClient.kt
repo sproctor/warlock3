@@ -5,6 +5,7 @@ import java.io.InputStreamReader
 import java.lang.Integer.min
 import java.net.Socket
 import java.net.SocketException
+import java.net.SocketTimeoutException
 import kotlin.concurrent.thread
 
 class SgeClient {
@@ -28,14 +29,20 @@ class SgeClient {
         send("K\n")
 
         thread(start = true) {
-            while (socket.isConnected && !socket.isClosed) {
+            while (!socket.isClosed) {
                 try {
                     val line = reader.readLine()
                     if (line != null) {
                         handleData(line)
+                    } else {
+                        // connection closed by server
+                        socket.close()
                     }
                 } catch (e: SocketException) {
-                    // socket closed
+                    // not sure why, but let's retry!
+                    println("SGE socket exception: " + e.message)
+                } catch (_: SocketTimeoutException) {
+                    // Timeout, let's retry!
                 }
             }
         }
