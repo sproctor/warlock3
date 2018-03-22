@@ -1,38 +1,42 @@
 package cc.warlock.warlock3.view
 
-import cc.warlock.warlock3.core.ClientListener
-import cc.warlock.warlock3.core.WarlockClient
+import cc.warlock.warlock3.core.*
+import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.scene.text.Text
 import tornadofx.*
+import java.util.*
 
-class GameView(val client: WarlockClient) : Fragment() {
-    val output = textarea {
-        isEditable = false
-        isWrapText = true
-    }
-    val input = textfield {
+// GameView is a bit of a misnomer. It consists of the text view and the text entry
+class GameView(client: WarlockClient) : Fragment() {
+    private val listeners = LinkedList<WarlockClient.ClientViewListener>()
+    private val output = textflow { }
+    private val input = textfield {
         setOnAction {
-            client.send(text)
+            listeners.forEach { it.commandEntered(text) }
             text = ""
         }
     }
     override val root = borderpane {
         title = "Game View"
-        center = output
-        output.prefWidthProperty().bind(this@borderpane.widthProperty());
+        center = scrollpane {
+            add(output)
+            setFitToWidth(true)
+            prefWidthProperty().bind(this@borderpane.widthProperty())
+        }
         bottom = input
-        input.prefWidthProperty().bind(this@borderpane.widthProperty());
+        input.prefWidthProperty().bind(this@borderpane.widthProperty())
     }
 
-    private inner class GameClientListener() : ClientListener {
+    private inner class GameClientListener : ClientListener {
         override fun event(event: WarlockClient.ClientEvent) {
             runLater {
                 when (event) {
                     is WarlockClient.ClientDataReceivedEvent -> {
-                        output.appendText(event.data)
+                        event.text.toText().forEach { output.children.add(it) }
                     }
                     is WarlockClient.ClientDataSentEvent -> {
-                        output.appendText(event.data + "\n")
+                        output.children.add(Text(event.text))
                     }
                 }
             }
@@ -42,4 +46,27 @@ class GameView(val client: WarlockClient) : Fragment() {
     init {
         client.addListener(GameClientListener())
     }
+
+    fun addListener(listener: WarlockClient.ClientViewListener) {
+        listeners.add(listener)
+    }
+}
+
+fun StyledString.toText(): List<Text> {
+    return substrings.map {
+        val text = Text(it.text)
+        if (it.style != null)
+            text.applyStyle(it.style!!)
+        text
+    }
+}
+
+fun Text.applyStyle(style: WarlockStyle) {
+    //fill = style.
+    if (style.monospace)
+        font = Font.font("Monospaced")
+}
+
+fun WarlockColor.toColor(): Color {
+    return Color.rgb(red, green, blue)
 }

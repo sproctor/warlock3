@@ -42,6 +42,7 @@ class WarlockClientController : Controller() {
     val gameViewList = mutableListOf<GameView>().observable()
     fun newGameView(client: WarlockClient): GameView {
         val gameView = GameView(client)
+        gameView.addListener(client.getClientViewListener())
         gameViewList.add(gameView)
         return gameView
     }

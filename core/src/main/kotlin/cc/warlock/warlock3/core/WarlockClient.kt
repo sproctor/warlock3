@@ -11,7 +11,7 @@ interface WarlockClient {
         notifyListeners(ClientDisconnectedEvent())
     }
     fun send(toSend: String) {
-        socket.getOutputStream().write(("<c>$toSend\n").toByteArray(Charsets.US_ASCII))
+        socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
         notifyListeners(ClientDataSentEvent(toSend))
     }
     fun addListener(listener: ClientListener) {
@@ -20,8 +20,16 @@ interface WarlockClient {
     fun notifyListeners(event: ClientEvent) {
         listeners.forEach { it.event(event) }
     }
+
+    fun getClientViewListener(): ClientViewListener
+
     interface ClientEvent
     class ClientDisconnectedEvent : ClientEvent
-    class ClientDataSentEvent(val data: String) : ClientEvent
-    class ClientDataReceivedEvent(val data: String) : ClientEvent
+    class ClientDataSentEvent(val text: String) : ClientEvent
+    class ClientDataReceivedEvent(val text: StyledString) : ClientEvent
+
+    interface ClientViewListener {
+        fun commandEntered(command: String)
+    }
 }
+
