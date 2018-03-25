@@ -2,6 +2,7 @@ package cc.warlock.warlock3.app
 
 import cc.warlock.warlock3.view.WarlockWorkspace
 import javafx.application.Application
+import javafx.application.Platform
 import tornadofx.*
 
 class WarlockApp : App() {
@@ -9,5 +10,11 @@ class WarlockApp : App() {
 
     init {
         importStylesheet(Styles::class)
+    }
+
+    override fun stop() {
+        super.stop()
+        Platform.exit()
+        System.exit(0)
     }
 }
