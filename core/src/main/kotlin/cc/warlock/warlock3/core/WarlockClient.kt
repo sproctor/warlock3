@@ -11,7 +11,9 @@ interface WarlockClient {
         notifyListeners(ClientDisconnectedEvent())
     }
     fun send(toSend: String) {
-        socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
+        if (!socket.isClosed) {
+            socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
+        }
         notifyListeners(ClientDataSentEvent(toSend))
     }
     fun addListener(listener: ClientListener) {

@@ -16,7 +16,8 @@ class WarlockWorkspace : Workspace("Editor") {
             menu("File") {
                 item("Connect").action {
                     log.info("Opening SGE wizard")
-                    find(SgeWizard::class).openModal()
+                    val wizard = SgeWizard()
+                    wizard.openModal()
                 }
                 item("New").action {
                     //workspace.dock(mainView, true)

@@ -107,8 +107,9 @@ class StormfrontClient(val host: String, val port: Int, val key: String) : Warlo
 
     private fun connectionClosed() {
         // TODO Make this error message a little more sensible
-        notifyListeners(WarlockClient.ClientDataReceivedEvent(StyledString("Connection closed by server.", WarlockStyle.monospaced)))
-        socket.close()
+        notifyListeners(WarlockClient.ClientDataReceivedEvent(StyledString("Connection closed by server.",
+                WarlockStyle.monospaced)))
+        disconnect()
     }
 
     fun sendCommand(line: String) {

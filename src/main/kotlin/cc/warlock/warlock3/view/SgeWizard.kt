@@ -1,36 +1,34 @@
 package cc.warlock.warlock3.view
 
-import cc.warlock.warlock3.controller.WarlockClientController
 import cc.warlock.warlock3.model.AccountModel
 import cc.warlock.warlock3.stormfront.network.*
 import javafx.collections.FXCollections
 import javafx.scene.control.Alert
+import javafx.scene.control.TableView
 import tornadofx.*
 import java.net.ConnectException
 
-class SgeWizard : Wizard("Connect character", "Provide account details to connect using SGE"){
-    override val canFinish = allPagesComplete
-    override val canGoNext = currentPageComplete
+class SgeWizard : WarlockWizard("Connect character", "Provide account details to connect using SGE"){
 
     init {
-        add(AccountInput::class)
-        add(GameSelector::class)
-        add(CharacterSelector::class)
+        val client = SgeClient()
+        pages.add(AccountInput(client))
+        pages.add(GameSelector(client))
+        pages.add(CharacterSelector(client))
     }
 }
 
-class AccountInput : View("Account") {
-    private val account : AccountModel by inject()
-    private val controller: WarlockClientController by inject()
+class AccountInput(val client: SgeClient) : Page("Account") {
+    private var account = AccountModel()
 
-    override val complete = account.valid(account.name, account.password)
+    override val canGoNext = account.valid(account.name, account.password)
 
     inner class AccountSgeListener : SgeConnectionListener {
         override fun event(event: SgeEvent) {
             when (event) {
                 is SgeLoginReadyEvent ->
                     try {
-                        controller.connection.login(account.name.get(), account.password.get())
+                        client.login(account.name.get(), account.password.get())
                     } catch (e: ConnectException) {
                         alert(
                                 type = Alert.AlertType.ERROR,
@@ -38,10 +36,15 @@ class AccountInput : View("Account") {
                                 content = e.message
                         )
                     }
+                is SgeGamesReadyEvent -> isComplete = true
             }
         }
     }
 
+    init {
+        isComplete = false
+        client.addListener(AccountSgeListener())
+    }
     override val root = form {
         fieldset(title) {
             field("Name") {
@@ -53,14 +56,10 @@ class AccountInput : View("Account") {
         }
     }
 
-    init {
-        controller.connection.addListener(AccountSgeListener())
-    }
-
     override fun onSave() {
         // TODO lookup account/save account here
         try {
-            controller.connection.connect()
+            client.connect()
         } catch (e: ConnectException) {
             // TODO fail the click on "next" here
             alert(
@@ -72,9 +71,7 @@ class AccountInput : View("Account") {
     }
 }
 
-class GameSelector : View("Game Select") {
-    private val controller: WarlockClientController by inject()
-
+class GameSelector(val client: SgeClient) : Page("Game Select") {
     inner class GameSgeListener : SgeConnectionListener {
         override fun event(event: SgeEvent) {
             when (event) {
@@ -84,7 +81,8 @@ class GameSelector : View("Game Select") {
     }
 
     override val root = tableview<SgeGame> {
-        readonlyColumn("title", SgeGame::title).pctWidth(100.0)
+        columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+        readonlyColumn("title", SgeGame::title)
         onSelectionChange {
             println("element selected")
             isComplete = true
@@ -93,12 +91,12 @@ class GameSelector : View("Game Select") {
 
     init {
         isComplete = false
-        controller.connection.addListener(GameSgeListener())
+        client.addListener(GameSgeListener())
     }
 
     override fun onSave() {
         try {
-            controller.connection.selectGame(root.selectedItem!!)
+            client.selectGame(root.selectedItem!!)
         } catch (e: ConnectException) {
             alert(
                     type = Alert.AlertType.ERROR,
@@ -109,9 +107,7 @@ class GameSelector : View("Game Select") {
     }
 }
 
-class CharacterSelector : View("Character Select") {
-    private val controller: WarlockClientController by inject()
-
+class CharacterSelector(val client: SgeClient) : Page("Character Select") {
     inner class CharacterSgeListener : SgeConnectionListener {
         override fun event(event: SgeEvent) {
             runLater {
@@ -131,18 +127,19 @@ class CharacterSelector : View("Character Select") {
     }
 
     override val root = tableview<SgeCharacter> {
-        readonlyColumn("Name", SgeCharacter::name).pctWidth(100.0)
+        columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+        readonlyColumn("Name", SgeCharacter::name)
         onSelectionChange { isComplete = true }
     }
 
     init {
         isComplete = false
-        controller.connection.addListener(CharacterSgeListener())
+        client.addListener(CharacterSgeListener())
     }
 
     override fun onSave() {
         try {
-            controller.connection.selectCharacter(root.selectedItem!!)
+            client.selectCharacter(root.selectedItem!!)
         } catch (e: ConnectException) {
             alert(
                     type = Alert.AlertType.ERROR,

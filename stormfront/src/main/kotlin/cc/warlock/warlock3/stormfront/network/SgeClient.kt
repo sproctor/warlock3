@@ -14,29 +14,29 @@ class SgeClient {
         const val port: Int = 7900
     }
 
-    var socket: Socket = Socket()
-    val listeners = ArrayList<SgeConnectionListener>()
-    var passwordHash: String? = null
-    var username: String? = null
+    private var socket: Socket? = null
+    private val listeners = ArrayList<SgeConnectionListener>()
+    private var passwordHash: String? = null
+    private var username: String? = null
 
     fun connect() {
         println("connecting...")
 
         socket = Socket(host, port)
-        val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+        val reader = BufferedReader(InputStreamReader(socket?.getInputStream()))
 
         // request password hash
         send("K\n")
 
         thread(start = true) {
-            while (!socket.isClosed) {
+            while (socket?.isClosed == false) {
                 try {
                     val line = reader.readLine()
                     if (line != null) {
                         handleData(line)
                     } else {
                         // connection closed by server
-                        socket.close()
+                        socket?.close()
                     }
                 } catch (e: SocketException) {
                     // not sure why, but let's retry!
@@ -60,7 +60,7 @@ class SgeClient {
         val response = parseServerResponse(line)
         when (response) {
             is SgeError -> {
-                socket.close()
+                socket?.close()
                 notifyListeners(SgeErrorEvent(response))
             }
             is SgeLoginSucceededResponse -> {
@@ -72,7 +72,7 @@ class SgeClient {
             is SgeGameDetailsResponse -> send("C\n") // Ask for character list
             is SgeCharacterListResponse -> notifyListeners(SgeCharactersReadyEvent(response.characters))
             is SgeReadyToPlayResponse -> {
-                socket.close()
+                socket?.close()
                 notifyListeners(SgeReadyToPlayEvent(response.properties))
             }
         }
@@ -134,12 +134,12 @@ class SgeClient {
 
     private fun send(string: String) {
         println("SGE send: $string")
-        socket.getOutputStream().write(string.toByteArray(Charsets.US_ASCII))
+        socket?.getOutputStream()?.write(string.toByteArray(Charsets.US_ASCII))
     }
 
     private fun send(bytes: ByteArray) {
         println("SGE send: " + bytes.toString())
-        socket.getOutputStream().write(bytes)
+        socket?.getOutputStream()?.write(bytes)
     }
     fun addListener(listener: SgeConnectionListener) {
         listeners.add(listener)
