@@ -24,23 +24,28 @@ class GameView(client: WarlockClient) : Fragment() {
         title = "Game View"
         center = output
         output.prefWidthProperty().bind(this@borderpane.widthProperty())
-        output.engine.loadContent("""
-            <!doctype html>
+        output.engine.loadContent("""<!doctype html>
             <html>
             <head>
             <script>
-                window.load = function() {
+                var atBottom = true;
+                window.onload = function() {
                     var observer = new MutationObserver(function(mutations, o) {
-                        if (mutations[0].addedNodes.length > 0)
+                        if (mutations[0].addedNodes.length > 0 && atBottom)
                             scrollToBottom();
                     });
                     observer.observe(document.body, {childList: true, subtree: true });
-                });
+                    window.onscroll = function(e) {
+                        atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight
+                    }
+                }
                 function scrollToBottom() {
                     window.scrollTo(0, document.body.scrollHeight);
                 }
             </script>
-            </head><body></body></html>
+            </head>
+            <body></body>
+            </html>
             """)
         bottom = input
         input.prefWidthProperty().bind(this@borderpane.widthProperty())
@@ -51,10 +56,10 @@ class GameView(client: WarlockClient) : Fragment() {
             runLater {
                 when (event) {
                     is WarlockClient.ClientDataReceivedEvent -> {
-                        event.text.toText().forEach { displayText(it) }
+                        displayString(event.text)
                     }
                     is WarlockClient.ClientDataSentEvent -> {
-                        displayText(Text(event.text))
+                        displayString(StyledString(event.text))
                     }
                 }
             }
@@ -69,29 +74,25 @@ class GameView(client: WarlockClient) : Fragment() {
         listeners.add(listener)
     }
 
-    private fun displayText(text: Text) {
+    private fun displayString(str: StyledString) {
         runLater {
-            //val container = root.center as ScrollPane
-            //val atBottom = container.vvalue > 0.999
-
             val engine = output.engine
 
             if (engine.loadWorker.state == Worker.State.SUCCEEDED) {
                 val doc = engine.document
                 val body = doc.getElementsByTagName("body").item(0)
                 val elementNode = doc.createElement("div")
-                val textNode = doc.createTextNode(text.text)
-                elementNode.appendChild(textNode)
+                for (substr in str.substrings) {
+                    val spanNode = doc.createElement("span")
+                    if (substr.style?.monospace == true) {
+                        spanNode.setAttribute("style", "font-family: monospace")
+                    }
+                    val textNode = doc.createTextNode(substr.text)
+                    spanNode.appendChild(textNode)
+                    elementNode.appendChild(spanNode)
+                }
                 body.appendChild(elementNode)
-
             }
-
-            /*if (atBottom) {
-                output.layout()
-                container.layout()
-                container.vvalue = 1.0
-
-            }*/
         }
     }
 }

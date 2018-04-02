@@ -113,6 +113,7 @@ class StormfrontClient(val host: String, val port: Int, val key: String) : Warlo
     }
 
     fun sendCommand(line: String) {
+        println("<c>$line");
         send("<c>$line\n")
     }
 

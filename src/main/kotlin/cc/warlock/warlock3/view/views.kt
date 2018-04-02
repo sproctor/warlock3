@@ -21,7 +21,7 @@ class TextEditorFragment(val documentViewModel: DocumentViewModel) : Fragment(){
     }
 
     init {
-        documentViewModel.title.addListener { w, o, n ->
+        documentViewModel.title.addListener { _, _, n ->
             this.title = n
         }
     }

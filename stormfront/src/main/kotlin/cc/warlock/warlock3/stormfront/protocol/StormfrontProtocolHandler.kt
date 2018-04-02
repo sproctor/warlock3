@@ -40,6 +40,9 @@ class StormfrontProtocolHandler {
             }
             override fun endElement(element: EndElement) {
                 promptListeners.forEach { it.prompt(prompt.toString()) }
+                if (elementStack.isNotEmpty()) {
+                    println("PARSE ERROR elements on stack during prompt!!!!")
+                }
             }
         })
 

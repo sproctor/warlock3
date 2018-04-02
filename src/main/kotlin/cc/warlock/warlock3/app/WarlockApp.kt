@@ -1,7 +1,6 @@
 package cc.warlock.warlock3.app
 
 import cc.warlock.warlock3.view.WarlockWorkspace
-import javafx.application.Application
 import javafx.application.Platform
 import tornadofx.*
 
