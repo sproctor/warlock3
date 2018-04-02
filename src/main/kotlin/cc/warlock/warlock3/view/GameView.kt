@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.view
 
 import cc.warlock.warlock3.core.*
+import javafx.scene.control.ScrollPane
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.scene.text.Text
@@ -33,10 +34,10 @@ class GameView(client: WarlockClient) : Fragment() {
             runLater {
                 when (event) {
                     is WarlockClient.ClientDataReceivedEvent -> {
-                        event.text.toText().forEach { output.children.add(it) }
+                        event.text.toText().forEach { displayText(it) }
                     }
                     is WarlockClient.ClientDataSentEvent -> {
-                        output.children.add(Text(event.text))
+                        displayText(Text(event.text))
                     }
                 }
             }
@@ -49,6 +50,20 @@ class GameView(client: WarlockClient) : Fragment() {
 
     fun addListener(listener: WarlockClient.ClientViewListener) {
         listeners.add(listener)
+    }
+
+    private fun displayText(text: Text) {
+        val container = root.center as ScrollPane
+        val atBottom = container.vvalue > 0.999
+
+        output.children.add(text)
+
+        if (atBottom) {
+            output.layout()
+            container.layout()
+            container.vvalue = 1.0
+
+        }
     }
 }
 
