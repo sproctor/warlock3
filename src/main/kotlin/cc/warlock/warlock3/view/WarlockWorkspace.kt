@@ -87,5 +87,4 @@ class WarlockWorkspace : Workspace("Editor") {
             }
         }
     }
-
 }

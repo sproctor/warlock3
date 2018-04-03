@@ -11,7 +11,7 @@ interface WarlockClient {
         notifyListeners(ClientDisconnectedEvent())
     }
     fun send(toSend: String) {
-        if (!socket.isClosed) {
+        if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
         }
         notifyListeners(ClientDataSentEvent(toSend))

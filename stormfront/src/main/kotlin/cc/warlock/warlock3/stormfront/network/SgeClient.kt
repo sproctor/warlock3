@@ -1,6 +1,8 @@
 package cc.warlock.warlock3.stormfront.network
 
+import org.apache.commons.configuration2.builder.fluent.Configurations
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.lang.Integer.min
 import java.net.Socket
@@ -9,15 +11,25 @@ import java.net.SocketTimeoutException
 import kotlin.concurrent.thread
 
 class SgeClient {
-    companion object {
-        const val host: String = "eaccess.play.net"
-        const val port: Int = 7900
-    }
 
+    private var host: String = ""
+    private var port: Int = 7900
     private var socket: Socket? = null
     private val listeners = ArrayList<SgeConnectionListener>()
     private var passwordHash: String? = null
     private var username: String? = null
+
+    init {
+        try {
+            val configs = Configurations()
+            val config = configs.properties(File("sge.properties"))
+
+            host = config.getString("sge.host", "eaccess.play.net")
+            port = config.getInt("sge.port", 7900)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     fun connect() {
         println("connecting...")

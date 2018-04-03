@@ -37,8 +37,6 @@ class WarlockClientController : Controller() {
      */
     fun quote(): String = quotes[(Math.random() * quotes.size).toInt()]
 
-    var sgeClient = SgeClient()
-
     val gameViewList = mutableListOf<GameView>().observable()
     fun newGameView(client: WarlockClient): GameView {
         val gameView = GameView(client)
