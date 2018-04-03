@@ -94,10 +94,10 @@ class StormfrontProtocolHandler {
         }
         // If a line has just tags, don't send the newline, otherwise do.
         if (lineHasText || !lineHasTags) {
-            val string = StyledString("\n", outputStyle)
-            dataListeners.forEach { it.characters(string) }
+            //val string = StyledString("\n", outputStyle)
+            //dataListeners.forEach { it.characters(string) }
+            dataListeners.forEach { it.done() }
         }
-        dataListeners.forEach { it.done() }
         lineHasTags = false
         lineHasText = false
     }

@@ -91,27 +91,10 @@ class GameView(client: WarlockClient) : Fragment() {
                     spanNode.appendChild(textNode)
                     elementNode.appendChild(spanNode)
                 }
+                elementNode.setAttribute("class", "line")
+                elementNode.setAttribute("style", "min-height: 1em; white-space: pre-wrap")
                 body.appendChild(elementNode)
             }
         }
     }
-}
-
-fun StyledString.toText(): List<Text> {
-    return substrings.map {
-        val text = Text(it.text)
-        if (it.style != null)
-            text.applyStyle(it.style!!)
-        text
-    }
-}
-
-fun Text.applyStyle(style: WarlockStyle) {
-    //fill = style.
-    if (style.monospace)
-        font = Font.font("Monospaced")
-}
-
-fun WarlockColor.toColor(): Color {
-    return Color.rgb(red, green, blue)
 }
