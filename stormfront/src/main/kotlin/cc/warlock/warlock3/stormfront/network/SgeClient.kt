@@ -1,6 +1,9 @@
 package cc.warlock.warlock3.stormfront.network
 
+import org.apache.commons.configuration2.PropertiesConfiguration
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder
 import org.apache.commons.configuration2.builder.fluent.Configurations
+import org.apache.commons.configuration2.ex.ConfigurationException
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -12,7 +15,7 @@ import kotlin.concurrent.thread
 
 class SgeClient {
 
-    private var host: String = ""
+    private var host: String = "eaccess.play.net"
     private var port: Int = 7900
     private var socket: Socket? = null
     private val listeners = ArrayList<SgeConnectionListener>()
@@ -20,14 +23,15 @@ class SgeClient {
     private var username: String? = null
 
     init {
+        val configs = Configurations()
+        val builder = configs.propertiesBuilder(System.getProperty("user.home") + "/.warlock3/sge.properties")
         try {
-            val configs = Configurations()
-            val config = configs.properties(File("sge.properties"))
+            val config = builder.configuration
 
-            host = config.getString("sge.host", "eaccess.play.net")
-            port = config.getInt("sge.port", 7900)
-        } catch (e: Exception) {
-            e.printStackTrace()
+            host = config.getString("sge.host", host)
+            port = config.getInt("sge.port", port)
+        } catch (e: ConfigurationException) {
+            // no config
         }
     }
 

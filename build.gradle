@@ -33,6 +33,8 @@ dependencies {
     compile project(':stormfront')
     testCompile group: 'junit', name: 'junit', version: '4.12'
     antlr "org.antlr:antlr4:$antlr_version"
+    compile group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.3'
+    compile group: 'org.apache.commons', name: 'commons-configuration2', version: '2.2'
 }
 
 compileKotlin {
