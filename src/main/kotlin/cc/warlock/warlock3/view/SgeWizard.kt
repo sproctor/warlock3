@@ -59,6 +59,9 @@ class AccountInput(val client: SgeClient) : Page("Account") {
     override fun onSave() {
         // TODO lookup account/save account here
         try {
+            confirm("Save Account", "Save account information?") {
+                
+            }
             client.connect()
         } catch (e: ConnectException) {
             // TODO fail the click on "next" here

@@ -5,6 +5,7 @@ import cc.warlock.warlock3.model.DocumentViewModel
 import cc.warlock.warlock3.stormfront.network.SgeClient
 import cc.warlock.warlock3.view.GameView
 import cc.warlock.warlock3.view.TextEditorFragment
+import org.apache.commons.configuration2.builder.fluent.Configurations
 import tornadofx.*
 import java.io.File
 import java.nio.charset.Charset
@@ -45,4 +46,8 @@ class WarlockClientController : Controller() {
         return gameView
     }
 
+    val configs = Configurations()
+    val acountConfigBuilder = configs.propertiesBuilder(System.getProperty("user.home")
+            + "/.warlock3/account.properties")
+    val accountsConfig = acountConfigBuilder.configuration
 }
