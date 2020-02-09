@@ -12,12 +12,6 @@
       <entry name="!?*.java" />
     </wildcardResourcePatterns>
     <bytecodeTargetLevel target="1.6">
-      <module name="cc.warlock.warlock3.warlock3.app.main" target="1.8" />
-      <module name="cc.warlock.warlock3.warlock3.app.test" target="1.8" />
-      <module name="cc.warlock.warlock3.warlock3.core.main" target="1.8" />
-      <module name="cc.warlock.warlock3.warlock3.core.test" target="1.8" />
-      <module name="cc.warlock.warlock3.warlock3.stormfront.main" target="1.8" />
-      <module name="cc.warlock.warlock3.warlock3.stormfront.test" target="1.8" />
       <module name="warlock3.app.main" target="1.8" />
       <module name="warlock3.app.test" target="1.8" />
       <module name="warlock3.core.main" target="1.8" />
@@ -26,12 +20,13 @@
       <module name="warlock3.stormfront.test" target="1.8" />
     </bytecodeTargetLevel>
   </component>
-  <component name="CopyrightManager" default="" />
+  <component name="CopyrightManager" default="">
+    <module2copyright />
+  </component>
   <component name="DependencyValidationManager">
     <option name="SKIP_IMPORT_STATEMENTS" value="false" />
   </component>
   <component name="ExternalStorageConfigurationManager" enabled="true" />
-  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -65,20 +60,24 @@
     <version value="1.0" />
   </component>
   <component name="JavadocGenerationManager">
+    <option name="OUTPUT_DIRECTORY" />
+    <option name="OPTION_SCOPE" value="protected" />
+    <option name="OPTION_HIERARCHY" value="true" />
+    <option name="OPTION_NAVIGATOR" value="true" />
+    <option name="OPTION_INDEX" value="true" />
+    <option name="OPTION_SEPARATE_INDEX" value="true" />
+    <option name="OPTION_DOCUMENT_TAG_USE" value="false" />
+    <option name="OPTION_DOCUMENT_TAG_AUTHOR" value="false" />
+    <option name="OPTION_DOCUMENT_TAG_VERSION" value="false" />
+    <option name="OPTION_DOCUMENT_TAG_DEPRECATED" value="true" />
+    <option name="OPTION_DEPRECATED_LIST" value="true" />
     <option name="OTHER_OPTIONS" value="" />
+    <option name="HEAP_SIZE" />
+    <option name="LOCALE" />
+    <option name="OPEN_IN_BROWSER" value="true" />
   </component>
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Code.warlock3.iml" filepath="$PROJECT_DIR$/Code.warlock3.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/cc.warlock.warlock3.warlock3.app.iml" filepath="$PROJECT_DIR$/app/cc.warlock.warlock3.warlock3.app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/cc.warlock.warlock3.warlock3.app.main.iml" filepath="$PROJECT_DIR$/app/cc.warlock.warlock3.warlock3.app.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/cc.warlock.warlock3.warlock3.app.test.iml" filepath="$PROJECT_DIR$/app/cc.warlock.warlock3.warlock3.app.test.iml" />
-      <module fileurl="file://$PROJECT_DIR$/core/cc.warlock.warlock3.warlock3.core.iml" filepath="$PROJECT_DIR$/core/cc.warlock.warlock3.warlock3.core.iml" />
-      <module fileurl="file://$PROJECT_DIR$/core/cc.warlock.warlock3.warlock3.core.main.iml" filepath="$PROJECT_DIR$/core/cc.warlock.warlock3.warlock3.core.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/core/cc.warlock.warlock3.warlock3.core.test.iml" filepath="$PROJECT_DIR$/core/cc.warlock.warlock3.warlock3.core.test.iml" />
-      <module fileurl="file://$PROJECT_DIR$/stormfront/cc.warlock.warlock3.warlock3.stormfront.iml" filepath="$PROJECT_DIR$/stormfront/cc.warlock.warlock3.warlock3.stormfront.iml" />
-      <module fileurl="file://$PROJECT_DIR$/stormfront/cc.warlock.warlock3.warlock3.stormfront.main.iml" filepath="$PROJECT_DIR$/stormfront/cc.warlock.warlock3.warlock3.stormfront.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/stormfront/cc.warlock.warlock3.warlock3.stormfront.test.iml" filepath="$PROJECT_DIR$/stormfront/cc.warlock.warlock3.warlock3.stormfront.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/warlock3.iml" filepath="$PROJECT_DIR$/warlock3.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/warlock3.app.iml" filepath="$PROJECT_DIR$/app/warlock3.app.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/warlock3.app.main.iml" filepath="$PROJECT_DIR$/app/warlock3.app.main.iml" />
@@ -91,7 +90,7 @@
       <module fileurl="file://$PROJECT_DIR$/stormfront/warlock3.stormfront.test.iml" filepath="$PROJECT_DIR$/stormfront/warlock3.stormfront.test.iml" />
     </modules>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="false" project-jdk-name="11" project-jdk-type="JavaSDK">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" project-jdk-name="13" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
   <component name="RemoteRepositoriesConfiguration">
@@ -115,7 +114,7 @@
     <option name="mySupportsUserInfoFilter" value="true" />
   </component>
   <component name="VcsDirectoryMappings">
-    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
   </component>
   <component name="libraryTable">
     <library name="Gradle: com.ibm.icu:icu4j:58.2">
@@ -127,13 +126,13 @@
         <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.ibm.icu/icu4j/58.2/51044f805e9d7383fdc9f6f5b4c16846e43a499c/icu4j-58.2-sources.jar!/" />
       </SOURCES>
     </library>
-    <library name="Gradle: commons-beanutils:commons-beanutils:1.9.3">
+    <library name="Gradle: commons-beanutils:commons-beanutils:1.9.4">
       <CLASSES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils/1.9.3/c845703de334ddc6b4b3cd26835458cb1cba1f3d/commons-beanutils-1.9.3.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils/1.9.4/d52b9abcd97f38c81342bb7e7ae1eee9b73cba51/commons-beanutils-1.9.4.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils/1.9.3/9d70af7c5982bd09c33efa97ac98cee6363ba0f0/commons-beanutils-1.9.3-sources.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/commons-beanutils/commons-beanutils/1.9.4/f00e0ba867d1810f255876631ab440e0725a9af0/commons-beanutils-1.9.4-sources.jar!/" />
       </SOURCES>
     </library>
     <library name="Gradle: commons-collections:commons-collections:3.2.2">
@@ -163,24 +162,24 @@
         <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/javax.json/javax.json-api/1.1.2/6917aa6e9512830fc1fee51be213756df9dacec/javax.json-api-1.1.2-sources.jar!/" />
       </SOURCES>
     </library>
-    <library name="Gradle: junit:junit:4.12">
+    <library name="Gradle: junit:junit:4.13">
       <CLASSES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/junit/junit/4.12/2973d150c0dc1fefe998f834810d68f278ea58ec/junit-4.12.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/junit/junit/4.13/e49ccba652b735c93bd6e6f59760d8254cf597dd/junit-4.13.jar!/" />
       </CLASSES>
       <JAVADOC>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/junit/junit/4.12/941a8be4506c65f0a9001c08812fb7da1e505e21/junit-4.12-javadoc.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/junit/junit/4.13/17ed6c7dd587f52c9e7894964eff6a880f0658a/junit-4.13-javadoc.jar!/" />
       </JAVADOC>
       <SOURCES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/junit/junit/4.12/a6c32b40bf3d76eca54e3c601e5d1470c86fcdfa/junit-4.12-sources.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/junit/junit/4.13/d10a9c3acc6c07a5700e37697b5a6b4dcfb8abf9/junit-4.13-sources.jar!/" />
       </SOURCES>
     </library>
-    <library name="Gradle: no.tornado:tornadofx:1.7.15">
+    <library name="Gradle: no.tornado:tornadofx:1.7.20">
       <CLASSES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/no.tornado/tornadofx/1.7.15/141e1ef7985de98182cd9d3206027d19bfada0aa/tornadofx-1.7.15.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/no.tornado/tornadofx/1.7.20/6987fca136c08884e12a43e55eeb3cdf404d1177/tornadofx-1.7.20.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/no.tornado/tornadofx/1.7.15/7a1a9c0e64471e83ca0943aec716dfe2dd1a9754/tornadofx-1.7.15-sources.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/no.tornado/tornadofx/1.7.20/e0ca94a914fbb8409ed917dae97ae3715c54867e/tornadofx-1.7.20-sources.jar!/" />
       </SOURCES>
     </library>
     <library name="Gradle: org.abego.treelayout:org.abego.treelayout.core:1.0.3">
@@ -228,22 +227,13 @@
         <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.antlr/ST4/4.0.8/6f23134f1c98dfce77f85defda31bfbce3e2a4ac/ST4-4.0.8-sources.jar!/" />
       </SOURCES>
     </library>
-    <library name="Gradle: org.apache.commons:commons-configuration2:2.2">
+    <library name="Gradle: org.apache.commons:commons-configuration2:2.6">
       <CLASSES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-configuration2/2.2/5ee9a0c14ac47e8c78d7f573bea1867f0d3b2894/commons-configuration2-2.2.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-configuration2/2.6/d2641f980c21cbe67e54c127d8ae8f4e7e037464/commons-configuration2-2.6.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-configuration2/2.2/52d1290fde738ee0feb6fb8e1c12f9ea854c92b4/commons-configuration2-2.2-sources.jar!/" />
-      </SOURCES>
-    </library>
-    <library name="Gradle: org.apache.commons:commons-lang3:3.6">
-      <CLASSES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.6/9d28a6b23650e8a7e9063c04588ace6cf7012c17/commons-lang3-3.6.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.6/4765e418c9084c4e01233cb5f09bdd6b5f311ccc/commons-lang3-3.6-sources.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-configuration2/2.6/9fa75ed24ee85514f63046a39697509c78f425cd/commons-configuration2-2.6-sources.jar!/" />
       </SOURCES>
     </library>
     <library name="Gradle: org.apache.commons:commons-lang3:3.9">
@@ -440,13 +430,13 @@
         <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openjfx/javafx-web/13/877cd09b7e4158e95bc0feafaee8fd6d0480a654/javafx-web-13-sources.jar!/" />
       </SOURCES>
     </library>
-    <library name="Gradle: org.slf4j:slf4j-api:1.7.7">
+    <library name="Gradle: org.slf4j:slf4j-api:1.7.30">
       <CLASSES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.7/2b8019b6249bb05d81d3a3094e468753e2b21311/slf4j-api-1.7.7.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.30/b5a4b6d16ab13e34a88fae84c35cd5d68cac922c/slf4j-api-1.7.30.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.7/acd62e31cc314266e73eebed0b6dd7ea974a0ed/slf4j-api-1.7.7-sources.jar!/" />
+        <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.30/71a1fdefa224da50f1db6306ce609981e20186c9/slf4j-api-1.7.30-sources.jar!/" />
       </SOURCES>
     </library>
   </component>

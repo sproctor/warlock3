@@ -4,10 +4,10 @@ apply plugin: 'org.openjfx.javafxplugin'
 mainClassName = 'cc.warlock.warlock3.app.WarlockApp'
 
 dependencies {
-    implementation 'org.slf4j:slf4j-api:1.7.7'
-    implementation 'no.tornado:tornadofx:1.7.15'
-    implementation 'commons-beanutils:commons-beanutils:1.9.3'
-    implementation 'org.apache.commons:commons-configuration2:2.2'
+    implementation 'org.slf4j:slf4j-api:1.7.30'
+    implementation 'no.tornado:tornadofx:1.7.20'
+    implementation "commons-beanutils:commons-beanutils:$beanutils_version"
+    implementation "org.apache.commons:commons-configuration2:$apacheconf_version"
     implementation project(':core')
     implementation project(':stormfront')
 }

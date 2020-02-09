@@ -5,6 +5,7 @@ import cc.warlock.warlock3.app.model.DocumentViewModel
 import cc.warlock.warlock3.app.view.GameView
 import cc.warlock.warlock3.app.view.TextEditorFragment
 import tornadofx.Controller
+import tornadofx.asObservable
 import tornadofx.observable
 
 class WarlockClientController : Controller() {
@@ -12,9 +13,9 @@ class WarlockClientController : Controller() {
     /**
      * the list of open text editors
      */
-    val editorModelList = mutableListOf<TextEditorFragment>().observable()
+    val editorModelList = mutableListOf<TextEditorFragment>().asObservable()
 
-    val gameViewList = mutableListOf<GameView>().observable()
+    val gameViewList = mutableListOf<GameView>().asObservable()
 
     fun newEditor(): TextEditorFragment {
         val newFile = DocumentViewModel()
