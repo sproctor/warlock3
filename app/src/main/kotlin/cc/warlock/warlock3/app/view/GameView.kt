@@ -1,14 +1,9 @@
-package cc.warlock.warlock3.view
+package cc.warlock.warlock3.app.view
 
 import cc.warlock.warlock3.core.*
 import javafx.concurrent.Worker
-import javafx.scene.control.ScrollPane
-import javafx.scene.paint.Color
-import javafx.scene.text.Font
-import javafx.scene.text.Text
 import tornadofx.*
 import java.util.*
-import kotlin.concurrent.thread
 
 // GameView is a bit of a misnomer. It consists of the text view and the text entry
 class GameView(client: WarlockClient) : Fragment() {

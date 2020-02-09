@@ -1,7 +1,7 @@
-package cc.warlock.warlock3.view
+package cc.warlock.warlock3.app.view
 
-import cc.warlock.warlock3.controller.WarlockClientController
-import cc.warlock.warlock3.model.DocumentViewModel
+import cc.warlock.warlock3.app.controller.WarlockClientController
+import cc.warlock.warlock3.app.model.DocumentViewModel
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.scene.control.TextArea
 import tornadofx.*
@@ -43,7 +43,7 @@ class TextEditorFragment(val documentViewModel: DocumentViewModel) : Fragment(){
 
 class EmptyView : View() {
     val controller: WarlockClientController by inject()
-    override val root = label(controller.quote())
+    override val root = label("Empty view")
 }
 
 /**

@@ -1,8 +1,9 @@
 package cc.warlock.warlock3.app
 
-import cc.warlock.warlock3.view.WarlockWorkspace
+import cc.warlock.warlock3.app.view.WarlockWorkspace
 import javafx.application.Platform
 import tornadofx.*
+import kotlin.system.exitProcess
 
 class WarlockApp : App() {
     override val primaryView = WarlockWorkspace::class
@@ -14,6 +15,6 @@ class WarlockApp : App() {
     override fun stop() {
         super.stop()
         Platform.exit()
-        System.exit(0)
+        exitProcess(0)
     }
 }

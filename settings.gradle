@@ -1,3 +1,4 @@
-rootProject.name = 'application'
-include ':core', ':stormfront'
-
+rootProject.name = 'warlock3'
+include 'core'
+include 'stormfront'
+include 'app'

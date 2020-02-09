@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.model
+package cc.warlock.warlock3.app.model
 
 import tornadofx.*
 

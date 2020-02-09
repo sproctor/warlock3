@@ -1,6 +1,6 @@
-package cc.warlock.warlock3.view
+package cc.warlock.warlock3.app.view
 
-import cc.warlock.warlock3.model.AccountModel
+import cc.warlock.warlock3.app.model.AccountModel
 import cc.warlock.warlock3.stormfront.network.*
 import javafx.collections.FXCollections
 import javafx.scene.control.Alert

@@ -1,6 +1,6 @@
-package cc.warlock.warlock3.view
+package cc.warlock.warlock3.app.view
 
-import cc.warlock.warlock3.controller.WarlockClientController
+import cc.warlock.warlock3.app.controller.WarlockClientController
 import cc.warlock.warlock3.core.WarlockClient
 import javafx.application.Platform
 import javafx.scene.control.Menu
@@ -36,7 +36,7 @@ class WarlockWorkspace : Workspace("Editor") {
                     workspace.dock(EmptyView(),true)
                 }
                 separator()
-                openWindowMenuItemsAtfer()
+                openWindowMenuItemsAfter()
             }
             menu("Help") {
                 item("About...")
@@ -65,7 +65,7 @@ class WarlockWorkspace : Workspace("Editor") {
     /**
      * this extension method allows binding the open document's fragment to menu
      */
-    private fun Menu.openWindowMenuItemsAtfer() {
+    private fun Menu.openWindowMenuItemsAfter() {
         clientController.editorModelList.onChange { dvm ->
             dvm.next()
             if (dvm.wasAdded()) {
@@ -81,7 +81,7 @@ class WarlockWorkspace : Workspace("Editor") {
                     workspace.viewStack.remove(x)
                     x.close()
                     println(workspace.dockedComponent)
-                    val morituri = items.takeLast(items.size - 2).filter { item -> item.text.equals(x.title) }
+                    val morituri = items.takeLast(items.size - 2).filter { item -> item.text == x.title }
                     items.removeAll(morituri)
                 }
             }

@@ -1,11 +1,8 @@
 package cc.warlock.warlock3.stormfront.network
 
-import org.apache.commons.configuration2.PropertiesConfiguration
-import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder
 import org.apache.commons.configuration2.builder.fluent.Configurations
 import org.apache.commons.configuration2.ex.ConfigurationException
 import java.io.BufferedReader
-import java.io.File
 import java.io.InputStreamReader
 import java.lang.Integer.min
 import java.net.Socket
@@ -17,7 +14,7 @@ class SgeClient {
 
     private var host: String = "eaccess.play.net"
     private var port: Int = 7900
-    private var socket: Socket? = null
+    private lateinit var socket: Socket
     private val listeners = ArrayList<SgeConnectionListener>()
     private var passwordHash: String? = null
     private var username: String? = null
@@ -39,20 +36,20 @@ class SgeClient {
         println("connecting...")
 
         socket = Socket(host, port)
-        val reader = BufferedReader(InputStreamReader(socket?.getInputStream()))
+        val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
 
         // request password hash
         send("K\n")
 
         thread(start = true) {
-            while (socket?.isClosed == false) {
+            while (!socket.isClosed) {
                 try {
                     val line = reader.readLine()
                     if (line != null) {
                         handleData(line)
                     } else {
                         // connection closed by server
-                        socket?.close()
+                        socket.close()
                     }
                 } catch (e: SocketException) {
                     // not sure why, but let's retry!
@@ -73,10 +70,9 @@ class SgeClient {
             return
         }
 
-        val response = parseServerResponse(line)
-        when (response) {
+        when (val response = parseServerResponse(line)) {
             is SgeError -> {
-                socket?.close()
+                socket.close()
                 notifyListeners(SgeErrorEvent(response))
             }
             is SgeLoginSucceededResponse -> {
@@ -88,7 +84,7 @@ class SgeClient {
             is SgeGameDetailsResponse -> send("C\n") // Ask for character list
             is SgeCharacterListResponse -> notifyListeners(SgeCharactersReadyEvent(response.characters))
             is SgeReadyToPlayResponse -> {
-                socket?.close()
+                socket.close()
                 notifyListeners(SgeReadyToPlayEvent(response.properties))
             }
         }
@@ -150,12 +146,12 @@ class SgeClient {
 
     private fun send(string: String) {
         println("SGE send: $string")
-        socket?.getOutputStream()?.write(string.toByteArray(Charsets.US_ASCII))
+        socket.getOutputStream()?.write(string.toByteArray(Charsets.US_ASCII))
     }
 
     private fun send(bytes: ByteArray) {
-        println("SGE send: " + bytes.toString())
-        socket?.getOutputStream()?.write(bytes)
+        println("SGE send: $bytes")
+        socket.getOutputStream().write(bytes)
     }
     fun addListener(listener: SgeConnectionListener) {
         listeners.add(listener)
@@ -173,15 +169,18 @@ class SgeClient {
 
     private fun encryptPassword(password: String): ByteArray {
         val length = min(password.length, passwordHash!!.length)
-        return ByteArray(length, { n -> ((passwordHash!![n].toInt() xor (password[n].toInt() - 32)) + 32).toByte() })
+        return ByteArray(length) {
+            n ->
+            ((passwordHash!![n].toInt() xor (password[n].toInt() - 32)) + 32).toByte()
+        }
     }
 
     fun selectGame(game: SgeGame) {
-        send("G\t" + game.code + "\n")
+        send("G\t${game.code}\n")
     }
 
     fun selectCharacter(character: SgeCharacter) {
-        send("L\t" + character.code + "\tSTORM\n")
+        send("L\t${character.code}\tSTORM\n")
     }
 }
 
@@ -191,7 +190,7 @@ data class SgeCharacter(val name: String, val code: String)
 interface SgeResponse
 class SgeLoginSucceededResponse : SgeResponse
 class SgeGameListResponse(val games: List<SgeGame>) : SgeResponse
-class SgeGameDetailsResponse() : SgeResponse
+class SgeGameDetailsResponse : SgeResponse
 class SgeCharacterListResponse(val characters: List<SgeCharacter>) : SgeResponse
 class SgeReadyToPlayResponse(val properties: Map<String, String>) : SgeResponse
 class SgeUnrecognizedResponse : SgeResponse

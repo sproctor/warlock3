@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.view
+package cc.warlock.warlock3.app.view
 
 import javafx.application.Platform
 import javafx.beans.binding.BooleanExpression
@@ -131,7 +131,15 @@ abstract class WarlockWizard(title: String? = null, heading: String? = null) : F
                         val isPageActive = currentPageProperty.isEqualTo(page)
 
                         hyperlink("") {
-                            textProperty().bind(stringBinding(numberedStepsProperty) { "${if (numberedSteps) (pages.indexOf(page) + 1).toString() + ". " else ""}${page.title}" })
+                            val pageLabel = stringBinding(numberedStepsProperty) {
+                                if (numberedSteps) {
+                                    val pageNumber = pages.indexOf(page) + 1
+                                    "$pageNumber. ${page.title}"
+                                } else {
+                                    page.title
+                                }
+                            }
+                            textProperty().bind(pageLabel)
                             toggleClass(WizardStyles.bold, isPageActive)
                             action {
                                 if (stepLinksCommits && pages.indexOf(page) > pages.indexOf(currentPage)) {
@@ -192,7 +200,7 @@ abstract class WarlockWizard(title: String? = null, heading: String? = null) : F
     }
 
     fun onComplete(resultListener: Runnable) {
-        completeListeners.add({ resultListener.run() })
+        completeListeners.add { resultListener.run() }
     }
 
     override fun onSave() {

@@ -2,7 +2,7 @@ package cc.warlock.warlock3.stormfront.protocol
 
 import cc.warlock.warlock3.stormfront.parser.StormfrontParser
 import cc.warlock.warlock3.stormfront.parser.StormfrontParserBaseVisitor
-import org.apache.commons.lang3.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils
 import java.util.*
 
 object StormfrontNodeVisitor : StormfrontParserBaseVisitor<List<Content>>() {
@@ -11,7 +11,7 @@ object StormfrontNodeVisitor : StormfrontParserBaseVisitor<List<Content>>() {
     }
 
     override fun visitContent(ctx: StormfrontParser.ContentContext?): List<Content> {
-        if (ctx == null || ctx.children == null) {
+        if (ctx?.children == null) {
             return emptyList()
         }
         val result = LinkedList<Content>()
