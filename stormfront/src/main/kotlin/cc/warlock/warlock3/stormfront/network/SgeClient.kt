@@ -1,91 +1,97 @@
 package cc.warlock.warlock3.stormfront.network
 
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import okio.*
 import org.apache.commons.configuration2.builder.fluent.Configurations
 import org.apache.commons.configuration2.ex.ConfigurationException
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.lang.Integer.min
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
-import kotlin.concurrent.thread
 
 class SgeClient {
-
-    private var host: String = "eaccess.play.net"
-    private var port: Int = 7900
-    private lateinit var socket: Socket
-    private val listeners = ArrayList<SgeConnectionListener>()
-    private var passwordHash: String? = null
+    private var sink: BufferedSink? = null
+    private var stopped = false
+    private val _eventFlow = MutableSharedFlow<SgeEvent>()
+    val eventFlow = _eventFlow.asSharedFlow()
+    private var passwordHash: ByteArray? = null
     private var username: String? = null
+    private val host: String
+    private val port: Int
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     init {
-        val configs = Configurations()
-        val builder = configs.propertiesBuilder(System.getProperty("user.home") + "/.warlock3/sge.properties")
-        try {
-            val config = builder.configuration
-
-            host = config.getString("sge.host", host)
-            port = config.getInt("sge.port", port)
+        val config = try {
+            Configurations()
+                .propertiesBuilder(System.getProperty("user.home") + "/.warlock3/sge.properties")
+                .configuration
         } catch (e: ConfigurationException) {
             // no config
+            null
         }
+        host = config?.getString("sge.host") ?: "eaccess.play.net"
+        port = config?.getInt("sge.port") ?: 7900
     }
 
-    fun connect() {
-        println("connecting...")
+    suspend fun connect() = withContext(Dispatchers.IO) {
+        runCatching {
+            println("connecting...")
 
-        socket = Socket(host, port)
-        val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+            val socket = Socket(host, port)
+            sink = socket.sink().buffer()
+            val source = socket.source().buffer()
 
-        // request password hash
-        send("K\n")
+            // request password hash
+            send("K\n")
+            passwordHash = source.readUtf8Line()?.toByteArray(Charsets.US_ASCII)
+                ?: throw IOException("Error getting password hash")
 
-        thread(start = true) {
-            while (!socket.isClosed) {
-                try {
-                    val line = reader.readLine()
-                    if (line != null) {
-                        handleData(line)
-                    } else {
-                        // connection closed by server
+            scope.launch {
+                runCatching {
+                    try {
+                        while (!stopped) {
+                            try {
+                                val line = source.readUtf8Line()
+                                if (line != null) {
+                                    handleData(line)
+                                } else {
+                                    // connection closed by server
+                                    stopped = true
+                                }
+                            } catch (e: SocketException) {
+                                // not sure why, but let's retry!
+                                println("SGE socket exception: " + e.message)
+                            } catch (_: SocketTimeoutException) {
+                                // Timeout, let's retry!
+                            }
+                        }
+                    } finally {
+                        println("Closing socket")
+                        source.close()
+                        sink?.close()
                         socket.close()
                     }
-                } catch (e: SocketException) {
-                    // not sure why, but let's retry!
-                    println("SGE socket exception: " + e.message)
-                } catch (_: SocketTimeoutException) {
-                    // Timeout, let's retry!
                 }
             }
         }
     }
 
-    private fun handleData(line: String) {
+    private suspend fun handleData(line: String) {
         println("SGE receive: $line")
 
-        if (passwordHash == null) {
-            passwordHash = line
-            notifyListeners(SgeLoginReadyEvent())
-            return
-        }
-
         when (val response = parseServerResponse(line)) {
-            is SgeError -> {
-                socket.close()
-                notifyListeners(SgeErrorEvent(response))
+            is SgeResponse.SgeErrorResponse -> {
+                _eventFlow.emit(SgeEvent.SgeErrorEvent(response.error))
             }
-            is SgeLoginSucceededResponse -> {
-                // request game list
-                send("M\n")
-                notifyListeners(SgeLoginSucceededEvent())
-            }
-            is SgeGameListResponse -> notifyListeners(SgeGamesReadyEvent(response.games))
-            is SgeGameDetailsResponse -> send("C\n") // Ask for character list
-            is SgeCharacterListResponse -> notifyListeners(SgeCharactersReadyEvent(response.characters))
-            is SgeReadyToPlayResponse -> {
-                socket.close()
-                notifyListeners(SgeReadyToPlayEvent(response.properties))
+            SgeResponse.SgeLoginSucceededResponse -> _eventFlow.emit(SgeEvent.SgeLoginSucceededEvent)
+            is SgeResponse.SgeGameListResponse -> _eventFlow.emit(SgeEvent.SgeGamesReadyEvent(response.games))
+            SgeResponse.SgeGameDetailsResponse -> _eventFlow.emit(SgeEvent.SgeGameSelectedEvent)
+            is SgeResponse.SgeCharacterListResponse -> _eventFlow.emit(SgeEvent.SgeCharactersReadyEvent(response.characters))
+            is SgeResponse.SgeReadyToPlayResponse -> {
+                stopped = true
+                _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(response.properties))
             }
         }
     }
@@ -94,12 +100,16 @@ class SgeClient {
         return when (line[0]) {
             'A' -> {
                 // response from login attempt
+                println("A line ($line)")
+                println("as bytes: ${line.toByteArray().map { it.toInt().toString(radix = 16).padStart(2, '0') }}")
+                val tokens = line.split('\t')
                 when {
-                    line.startsWith("A\tPASSWORD") -> SgeError.INVALID_PASSWORD
-                    line.startsWith("A\tREJECT") -> SgeError.ACCOUNT_REJECTED
-                    line.startsWith("A\tNORECORD") -> SgeError.INVALID_ACCOUNT
-                    line.startsWith("A\t$username", true) -> SgeLoginSucceededResponse()
-                    else -> SgeError.UNKNOWN_ERROR
+                    tokens.size < 3 -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+                    tokens[2] == "PASSWORD" -> SgeResponse.SgeErrorResponse(SgeError.INVALID_PASSWORD)
+                    tokens[2] == "REJECT" -> SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_REJECTED)
+                    tokens[2] == "NORECORD" -> SgeResponse.SgeErrorResponse(SgeError.INVALID_ACCOUNT)
+                    tokens[1].equals(username, true) -> SgeResponse.SgeLoginSucceededResponse
+                    else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
                 }
             }
             // response for request for games
@@ -112,67 +122,72 @@ class SgeClient {
                     val gameName = tokens[i]
                     games.add(SgeGame(gameName, gameCode, null))
                 }
-                SgeGameListResponse(games)
+                SgeResponse.SgeGameListResponse(games)
             }
             // We're ignoring the details. Some might be interesting if your account is deactivated
-            'G' -> SgeGameDetailsResponse()
+            'G' -> SgeResponse.SgeGameDetailsResponse
             'C' -> {
                 val characters = ArrayList<SgeCharacter>()
                 val tokens = line.split("\t").drop(5)
                 for (i in 1 until tokens.size step 2) {
                     characters.add(SgeCharacter(tokens[i], tokens[i - 1]))
                 }
-                SgeCharacterListResponse(characters)
+                SgeResponse.SgeCharacterListResponse(characters)
             }
             'L' -> {
+                // status\tproperties
                 val tokens = line.split("\t")
-                val status = tokens[1]
-                when (status) {
+                when (tokens[1]) {
                     "OK" -> {
-                        val properties = HashMap<String, String>()
+                        val properties = mutableMapOf<String, String>()
                         for (element in tokens.drop(2)) {
                             val property = element.split("=")
                             properties[property[0]] = property[1]
                         }
-                        SgeReadyToPlayResponse(properties)
+                        SgeResponse.SgeReadyToPlayResponse(properties)
                     }
-                    "PROBLEM" -> SgeError.ACCOUNT_EXPIRED
-                    else -> SgeError.UNKNOWN_ERROR
+                    "PROBLEM" -> SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_EXPIRED)
+                    else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
                 }
             }
-            else -> SgeUnrecognizedResponse()
+            else -> SgeResponse.SgeUnrecognizedResponse
         }
     }
 
     private fun send(string: String) {
         println("SGE send: $string")
-        socket.getOutputStream()?.write(string.toByteArray(Charsets.US_ASCII))
+        sink?.writeUtf8(string)
+        sink?.flush()
     }
 
     private fun send(bytes: ByteArray) {
         println("SGE send: $bytes")
-        socket.getOutputStream().write(bytes)
-    }
-    fun addListener(listener: SgeConnectionListener) {
-        listeners.add(listener)
-    }
-
-    private fun notifyListeners(event: SgeEvent) {
-        listeners.forEach { it.event(event) }
+        sink?.write(bytes)
+        sink?.flush()
     }
 
     fun login(username: String, password: String) {
         this.username = username
-        val output = "A\t$username\t".toByteArray(Charsets.US_ASCII) + encryptPassword(password) + '\n'.toByte()
+        val encryptedPassword = encryptPassword(password.toByteArray(Charsets.US_ASCII))
+        val output = "A\t$username\t".toByteArray(Charsets.US_ASCII) + encryptedPassword + '\n'.code.toByte()
         send(output)
     }
 
-    private fun encryptPassword(password: String): ByteArray {
-        val length = min(password.length, passwordHash!!.length)
-        return ByteArray(length) {
-            n ->
-            ((passwordHash!![n].toInt() xor (password[n].toInt() - 32)) + 32).toByte()
+    private fun encryptPassword(password: ByteArray): ByteArray {
+        val hash = passwordHash!!
+        val length = min(password.size, hash.size)
+        return ByteArray(length) { n ->
+            ((hash[n].toInt() xor (password[n].toInt() - 32)) + 32).toByte()
         }
+    }
+
+    fun requestGameList() {
+        // request game list
+        send("M\n")
+    }
+
+    fun requestCharacterList() {
+        send("C\n")
     }
 
     fun selectGame(game: SgeGame) {
@@ -182,31 +197,35 @@ class SgeClient {
     fun selectCharacter(character: SgeCharacter) {
         send("L\t${character.code}\tSTORM\n")
     }
+
+    fun close() {
+        stopped = true
+        scope.cancel()
+    }
 }
 
 data class SgeGame(val title: String, val code: String, val status: String?)
 data class SgeCharacter(val name: String, val code: String)
 
-interface SgeResponse
-class SgeLoginSucceededResponse : SgeResponse
-class SgeGameListResponse(val games: List<SgeGame>) : SgeResponse
-class SgeGameDetailsResponse : SgeResponse
-class SgeCharacterListResponse(val characters: List<SgeCharacter>) : SgeResponse
-class SgeReadyToPlayResponse(val properties: Map<String, String>) : SgeResponse
-class SgeUnrecognizedResponse : SgeResponse
+sealed class SgeResponse {
+    object SgeLoginSucceededResponse : SgeResponse()
+    data class SgeGameListResponse(val games: List<SgeGame>) : SgeResponse()
+    object SgeGameDetailsResponse : SgeResponse()
+    data class SgeCharacterListResponse(val characters: List<SgeCharacter>) : SgeResponse()
+    data class SgeReadyToPlayResponse(val properties: Map<String, String>) : SgeResponse()
+    object SgeUnrecognizedResponse : SgeResponse()
+    data class SgeErrorResponse(val error: SgeError) : SgeResponse()
+}
 
-enum class SgeError : SgeResponse {
+enum class SgeError {
     INVALID_PASSWORD, INVALID_ACCOUNT, ACCOUNT_REJECTED, ACCOUNT_EXPIRED, UNKNOWN_ERROR
 }
 
-interface SgeConnectionListener {
-    fun event(event: SgeEvent)
+sealed class SgeEvent {
+    object SgeLoginSucceededEvent : SgeEvent()
+    data class SgeGamesReadyEvent(val games: List<SgeGame>) : SgeEvent()
+    object SgeGameSelectedEvent : SgeEvent()
+    data class SgeCharactersReadyEvent(val characters: List<SgeCharacter>) : SgeEvent()
+    data class SgeReadyToPlayEvent(val loginProperties: Map<String, String>) : SgeEvent()
+    data class SgeErrorEvent(val errorCode: SgeError) : SgeEvent()
 }
-
-interface SgeEvent
-class SgeLoginReadyEvent : SgeEvent
-class SgeLoginSucceededEvent : SgeEvent
-data class SgeGamesReadyEvent(val games: List<SgeGame>) : SgeEvent
-data class SgeCharactersReadyEvent(val characters: List<SgeCharacter>) : SgeEvent
-data class SgeReadyToPlayEvent(val loginProperties: Map<String, String>) : SgeEvent
-data class SgeErrorEvent(val errorCode: SgeError) : SgeEvent

@@ -29,7 +29,7 @@ class StormfrontProtocolHandler {
             override fun startElement(element: StartElement) {
                 prompt.setLength(0)
 
-                val time = element.attributes.get("time")?.toLong()
+                val time = element.attributes["time"]?.toLong()
                 if (time != null) {
                     timeListeners.forEach { it.syncTime(time) }
                 }
@@ -41,14 +41,14 @@ class StormfrontProtocolHandler {
             override fun endElement(element: EndElement) {
                 promptListeners.forEach { it.prompt(prompt.toString()) }
                 if (elementStack.isNotEmpty()) {
-                    println("PARSE ERROR elements on stack during prompt!!!!")
+                    println("PARSE ERROR elements on stack during prompt!!!")
                 }
             }
         })
 
         addElementListener("output", object : BaseElementListener() {
             override fun startElement(element: StartElement) {
-                val className = element.attributes.get("class")
+                val className = element.attributes["class"]
                 outputStyle = getStyleByClass(className)
             }
         })
@@ -63,28 +63,29 @@ class StormfrontProtocolHandler {
         handleContent(contents)
     }
 
-    fun handleContent(contents: List<Content>) {
+    private fun handleContent(contents: List<Content>) {
         for (content in contents) {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
                     elementStack.push(content)
-                    elementListeners.get(content.name)?.forEach { it.startElement(content) }
+                    elementListeners[content.name]?.forEach { it.startElement(content) }
                 }
                 is EndElement -> {
                     lineHasTags = true
                     if (elementStack.pop().name != content.name) {
                         println("ERROR: Received end element does not match element on the top of the stack!")
                     }
-                    elementListeners.get(content.name)?.forEach { it.endElement(content) }
+                    elementListeners[content.name]?.forEach { it.endElement(content) }
                 }
                 is CharData -> {
                     val name = elementStack.peek()?.name
 
                     // call the character handlers on the CharData
                     // if none returned true (handled) then call the global handlers
-                    if (!(elementListeners.get(name)?.map { it.characters(content.data) }
-                                    ?.reduce { a, b -> a or b } ?: false)) {
+                    if (elementListeners[name]
+                            ?.map { it.characters(content.data) }
+                            ?.reduce { a, b -> a or b } != true) {
                         val string = StyledString(content.data, outputStyle)
                         lineHasText = true
                         dataListeners.forEach { it.characters(string) }
@@ -96,7 +97,7 @@ class StormfrontProtocolHandler {
         if (lineHasText || !lineHasTags) {
             //val string = StyledString("\n", outputStyle)
             //dataListeners.forEach { it.characters(string) }
-            dataListeners.forEach { it.done() }
+            dataListeners.forEach { it.eol() }
         }
         lineHasTags = false
         lineHasText = false
@@ -107,17 +108,17 @@ class StormfrontProtocolHandler {
     }
 
     fun addElementListener(name: String, listener: ElementListener) {
-        elementListeners.getOrPut(name, { LinkedList() }).add(listener)
+        elementListeners
+            .getOrPut(name) { LinkedList() }
+            .add(listener)
     }
 
     fun getStyleByClass(name: String?): WarlockStyle? {
-        when (name) {
+        return when (name) {
             "mono" -> {
-                val style = WarlockStyle()
-                style.monospace = true
-                return style
+                WarlockStyle(monospace = true)
             }
-            else -> return null
+            else -> null
         }
     }
 }
@@ -138,7 +139,7 @@ interface DataListener {
     // got come CharData or entity reference that were not handled by an element listener
     fun characters(text: StyledString)
     // finished current line
-    fun done()
+    fun eol()
 }
 
 interface TimeListener {

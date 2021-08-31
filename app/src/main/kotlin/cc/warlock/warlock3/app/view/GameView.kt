@@ -1,95 +1,90 @@
 package cc.warlock.warlock3.app.view
 
-import cc.warlock.warlock3.core.*
-import javafx.concurrent.Worker
-import tornadofx.*
-import java.util.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Button
+import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import cc.warlock.warlock3.app.viewmodel.GameViewModel
+import cc.warlock.warlock3.core.StyledString
+import cc.warlock.warlock3.core.StyledStringLeaf
+import cc.warlock.warlock3.core.WarlockColor
 
-// GameView is a bit of a misnomer. It consists of the text view and the text entry
-class GameView(client: WarlockClient) : Fragment() {
-    private val listeners = LinkedList<WarlockClient.ClientViewListener>()
-    private val output = webview { }
-    private val input = textfield {
-        setOnAction {
-            listeners.forEach { it.commandEntered(text) }
-            text = ""
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun GameView(viewModel: GameViewModel) {
+    val lines by viewModel.lines.collectAsState()
+    Column(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f)
+        ) {
+            items(lines) { line ->
+                DisplayStyledString(line)
+            }
         }
-    }
-    override val root = borderpane {
-        title = "Game View"
-        center = output
-        output.prefWidthProperty().bind(this@borderpane.widthProperty())
-        output.engine.loadContent("""<!doctype html>
-            <html>
-            <head>
-            <script>
-                var atBottom = true;
-                window.onload = function() {
-                    var observer = new MutationObserver(function(mutations, o) {
-                        if (mutations[0].addedNodes.length > 0 && atBottom)
-                            scrollToBottom();
-                    });
-                    observer.observe(document.body, {childList: true, subtree: true });
-                    window.onscroll = function(e) {
-                        atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight
-                    }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            val textState = remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = textState.value,
+                modifier = Modifier
+                    .weight(1f)
+                    .onKeyEvent { event ->
+                        if (event.key.keyCode == Key.Enter.keyCode) {
+                            viewModel.send(textState.value)
+                            textState.value = ""
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                onValueChange = { textState.value = it },
+            )
+            Button(
+                onClick = {
+                    viewModel.send(textState.value)
+                    textState.value = ""
                 }
-                function scrollToBottom() {
-                    window.scrollTo(0, document.body.scrollHeight);
-                }
-            </script>
-            </head>
-            <body></body>
-            </html>
-            """)
-        bottom = input
-        input.prefWidthProperty().bind(this@borderpane.widthProperty())
-    }
-
-    private inner class GameClientListener : ClientListener {
-        override fun event(event: WarlockClient.ClientEvent) {
-            runLater {
-                when (event) {
-                    is WarlockClient.ClientDataReceivedEvent -> {
-                        displayString(event.text)
-                    }
-                    is WarlockClient.ClientDataSentEvent -> {
-                        displayString(StyledString(event.text))
-                    }
-                }
+            ) {
+                Text("SEND")
             }
         }
     }
+}
 
-    init {
-        client.addListener(GameClientListener())
+@Composable
+fun DisplayStyledString(value: StyledString) {
+    Row {
+        value.substrings.forEach { DisplayStyledStringLeaf(it) }
     }
+}
 
-    fun addListener(listener: WarlockClient.ClientViewListener) {
-        listeners.add(listener)
+@Composable
+fun DisplayStyledStringLeaf(value: StyledStringLeaf) {
+    Text(
+        modifier = Modifier,
+        color = value.style?.textColor?.toColor() ?: Color.Unspecified,
+        text = value.text,
+        fontFamily = if (value.style?.monospace == true) FontFamily.Monospace else null
+    )
+}
+
+fun WarlockColor.toColor(): Color {
+    if (this == WarlockColor.default) {
+        return Color.Unspecified
     }
-
-    private fun displayString(str: StyledString) {
-        runLater {
-            val engine = output.engine
-
-            if (engine.loadWorker.state == Worker.State.SUCCEEDED) {
-                val doc = engine.document
-                val body = doc.getElementsByTagName("body").item(0)
-                val elementNode = doc.createElement("div")
-                for (substr in str.substrings) {
-                    val spanNode = doc.createElement("span")
-                    if (substr.style?.monospace == true) {
-                        spanNode.setAttribute("style", "font-family: monospace")
-                    }
-                    val textNode = doc.createTextNode(substr.text)
-                    spanNode.appendChild(textNode)
-                    elementNode.appendChild(spanNode)
-                }
-                elementNode.setAttribute("class", "line")
-                elementNode.setAttribute("style", "min-height: 1em; white-space: pre-wrap")
-                body.appendChild(elementNode)
-            }
-        }
-    }
+    return Color(red = red, green = green, blue = blue)
 }

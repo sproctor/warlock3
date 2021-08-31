@@ -1,29 +1,23 @@
 package cc.warlock.warlock3.core
 
-import java.util.*
+data class StyledString(val substrings: List<StyledStringLeaf>) {
+    constructor(text: String, style: WarlockStyle? = null)
+            : this(listOf(StyledStringLeaf(text, style)))
 
-class StyledString(text: String? = null, style: WarlockStyle? = null) {
-    val substrings = LinkedList<StyledStringLeaf>()
-
-    init {
-        if (text != null)
-            substrings.add(StyledStringLeaf(text, style))
-    }
-
-    fun append(string: StyledString) {
-        substrings.addAll(string.substrings)
+    fun append(string: StyledString): StyledString {
+        return StyledString(substrings + string.substrings)
     }
 }
 
-class StyledStringLeaf(val text: String, val style: WarlockStyle? = null)
+data class StyledStringLeaf(val text: String, val style: WarlockStyle? = null)
 
 class WarlockStyle(
-        var textColor: WarlockColor = WarlockColor.default,
-        var backgroundColor: WarlockColor = WarlockColor.default,
-        var bold: Boolean = false,
-        var italic: Boolean = false,
-        var underline: Boolean = false,
-        var monospace: Boolean = false
+        val textColor: WarlockColor = WarlockColor.default,
+        val backgroundColor: WarlockColor = WarlockColor.default,
+        val bold: Boolean = false,
+        val italic: Boolean = false,
+        val underline: Boolean = false,
+        val monospace: Boolean = false
 ) {
     companion object {
         val monospaced: WarlockStyle = WarlockStyle(WarlockColor.default, WarlockColor.default,

@@ -1,45 +1,49 @@
 package cc.warlock.warlock3.stormfront.network
 
-import cc.warlock.warlock3.core.ClientListener
-import cc.warlock.warlock3.core.StyledString
-import cc.warlock.warlock3.core.WarlockClient
-import cc.warlock.warlock3.core.WarlockStyle
-import cc.warlock.warlock3.stormfront.protocol.*
+import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.stormfront.protocol.BaseElementListener
+import cc.warlock.warlock3.stormfront.protocol.DataListener
+import cc.warlock.warlock3.stormfront.protocol.StartElement
+import cc.warlock.warlock3.stormfront.protocol.StormfrontProtocolHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
-import java.util.*
-import kotlin.concurrent.thread
 
-class StormfrontClient(val host: String, val port: Int, val key: String) : WarlockClient {
-    override var socket = Socket(host, port)
-    override val listeners = LinkedList<ClientListener>()
+class StormfrontClient(host: String, port: Int) : WarlockClient {
+    private val socket = Socket(host, port)
+    private val eventChannel = MutableSharedFlow<ClientEvent>()
+    override val eventFlow: SharedFlow<ClientEvent> = eventChannel.asSharedFlow()
     private var parseText = true
+    private val scope = CoroutineScope(Dispatchers.Default)
 
-    private val gameViewListener = object : WarlockClient.ClientViewListener {
-        override fun commandEntered(command: String) {
-            sendCommand(command)
-        }
-    }
-
-    inner class ClientDataListener : DataListener {
-        var buffer = StyledString()
+    private inner class ClientDataListener : DataListener {
+        var buffer = StyledString(emptyList())
         override fun characters(text: StyledString) {
-            buffer.append(text)
+            buffer = buffer.append(text)
         }
-        override fun done() {
-            notifyListeners(WarlockClient.ClientDataReceivedEvent(buffer))
-            buffer = StyledString()
+
+        override fun eol() {
+            val line = buffer
+            buffer = StyledString(emptyList())
+            scope.launch {
+                eventChannel.emit(ClientEvent.ClientDataReceivedEvent(line))
+            }
         }
     }
 
-    fun connect() {
-        sendCommand(key)
-        sendCommand("/FE:STORMFRONT /VERSION:1.0.1.22 /XML")
+    fun connect(key: String) {
+        scope.launch(Dispatchers.IO) {
+            sendCommand(key)
+            sendCommand("/FE:WARLOCK /XML")
 
-        thread(start = true) {
             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
             val protocolHandler = StormfrontProtocolHandler()
             protocolHandler.addDataListener(ClientDataListener())
@@ -83,21 +87,35 @@ class StormfrontClient(val host: String, val port: Int, val key: String) : Warlo
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    notifyListeners(WarlockClient.ClientDataReceivedEvent(StyledString(line, WarlockStyle.monospaced)))
+                                    eventChannel.emit(
+                                        ClientEvent.ClientDataReceivedEvent(
+                                            StyledString(
+                                                line,
+                                                WarlockStyle.monospaced
+                                            )
+                                        )
+                                    )
                                 }
                             } else {
                                 while (reader.ready()) {
                                     buffer.append(reader.read().toChar())
                                 }
                                 print(buffer.toString())
-                                notifyListeners(WarlockClient.ClientDataReceivedEvent(StyledString(buffer.toString(), WarlockStyle.monospaced)))
+                                eventChannel.emit(
+                                    ClientEvent.ClientDataReceivedEvent(
+                                        StyledString(
+                                            buffer.toString(),
+                                            WarlockStyle.monospaced
+                                        )
+                                    )
+                                )
                             }
                         }
                     }
                 } catch (e: SocketException) {
                     // who knows! let's retry, we can check the result of read/readLine to be sure
                     println("Socket exception: " + e.message)
-                }  catch (e: SocketTimeoutException) {
+                } catch (e: SocketTimeoutException) {
                     // Timeout, let's retry here too!
                     println("Socket timeout: " + e.message)
                 }
@@ -105,10 +123,16 @@ class StormfrontClient(val host: String, val port: Int, val key: String) : Warlo
         }
     }
 
-    private fun connectionClosed() {
+    private suspend fun connectionClosed() {
         // TODO Make this error message a little more sensible
-        notifyListeners(WarlockClient.ClientDataReceivedEvent(StyledString("Connection closed by server.",
-                WarlockStyle.monospaced)))
+        eventChannel.emit(
+            ClientEvent.ClientDataReceivedEvent(
+                StyledString(
+                    "Connection closed by server.",
+                    WarlockStyle.monospaced
+                )
+            )
+        )
         disconnect()
     }
 
@@ -117,7 +141,19 @@ class StormfrontClient(val host: String, val port: Int, val key: String) : Warlo
         send("<c>$line\n")
     }
 
-    override fun getClientViewListener(): WarlockClient.ClientViewListener {
-        return gameViewListener
+    override fun disconnect() {
+        socket.close()
+        scope.launch {
+            eventChannel.emit(ClientEvent.ClientDisconnectedEvent())
+        }
+    }
+
+    override fun send(toSend: String) {
+        if (!socket.isOutputShutdown) {
+            socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
+        }
+        scope.launch {
+            eventChannel.emit(ClientEvent.ClientDataSentEvent(toSend))
+        }
     }
 }

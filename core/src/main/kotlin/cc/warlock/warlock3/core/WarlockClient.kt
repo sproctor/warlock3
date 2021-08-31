@@ -1,37 +1,15 @@
 package cc.warlock.warlock3.core
 
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import java.net.Socket
 
 interface WarlockClient {
-    var socket: Socket
-    val listeners: MutableCollection<ClientListener>
+    val eventFlow: SharedFlow<ClientEvent>
 
-    fun disconnect() {
-        socket.close()
-        notifyListeners(ClientDisconnectedEvent())
-    }
-    fun send(toSend: String) {
-        if (!socket.isOutputShutdown) {
-            socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
-        }
-        notifyListeners(ClientDataSentEvent(toSend))
-    }
-    fun addListener(listener: ClientListener) {
-        listeners.add(listener)
-    }
-    fun notifyListeners(event: ClientEvent) {
-        listeners.forEach { it.event(event) }
-    }
+    fun disconnect()
 
-    fun getClientViewListener(): ClientViewListener
+    fun send(toSend: String)
 
-    interface ClientEvent
-    class ClientDisconnectedEvent : ClientEvent
-    class ClientDataSentEvent(val text: String) : ClientEvent
-    class ClientDataReceivedEvent(val text: StyledString) : ClientEvent
-
-    interface ClientViewListener {
-        fun commandEntered(command: String)
-    }
 }
-
