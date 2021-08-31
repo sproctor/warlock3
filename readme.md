@@ -1,2 +1,1 @@
-To open project in intellij: ./gradlew openIdea
-To run application: ./graldew run
+To run application: ./gradlew run
