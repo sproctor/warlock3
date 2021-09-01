@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.slf4j:slf4j-api:1.7.32")
+    implementation("org.slf4j:slf4j-api:_")
     implementation("commons-beanutils:commons-beanutils:_")
     implementation("org.apache.commons:commons-configuration2:_")
     implementation(KotlinX.coroutines.core)

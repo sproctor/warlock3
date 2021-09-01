@@ -1,7 +1,6 @@
 package cc.warlock.warlock3.app.view
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
@@ -10,23 +9,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.model.Account
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AccountsView(
-    accountSelected: (Account) -> Unit
+    initialUsername: String?,
+    initialPassword: String?,
+    onAccountSelect: (Account) -> Unit
 ) {
-    // TODO: Add saved account select list here
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var username by remember(initialUsername) { mutableStateOf(initialUsername ?: "") }
+    var password by remember(initialPassword) { mutableStateOf(initialPassword ?: "") }
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -41,9 +38,11 @@ fun AccountsView(
                 val focusManager = LocalFocusManager.current
                 TextField(
                     modifier = Modifier.padding(8.dp)
-                        .onKeyEvent {
+                        .onPreviewKeyEvent {
                             if (it.key.keyCode == Key.Tab.keyCode) {
-                                focusManager.moveFocus(FocusDirection.Next)
+                                if (it.type == KeyEventType.KeyDown) {
+                                    focusManager.moveFocus(FocusDirection.Next)
+                                }
                                 true
                             } else {
                                 false
@@ -51,17 +50,17 @@ fun AccountsView(
                         },
                     value = username,
                     onValueChange = {
-                        if (!it.contains('\t')) { // work around bug in compose 1.0.0-alpha3 that passes a tab through although it should be interecepted
-                            username = it
-                        }
+                        username = it
                     },
                     label = { Text("Username") },
                 )
                 TextField(
                     modifier = Modifier.padding(8.dp)
-                        .onKeyEvent {
+                        .onPreviewKeyEvent {
                             if (it.key.keyCode == Key.Tab.keyCode) {
-                                focusManager.moveFocus(FocusDirection.Next)
+                                if (it.type == KeyEventType.KeyDown) {
+                                    focusManager.moveFocus(FocusDirection.Next)
+                                }
                                 true
                             } else {
                                 false
@@ -69,9 +68,7 @@ fun AccountsView(
                         },
                     value = password,
                     onValueChange = {
-                        if (!it.contains('\t')) { // work around bug in compose 1.0.0-alpha3 that passes a tab through although it should be interecepted
-                            password = it
-                        }
+                        password = it
                     },
                     label = { Text("Password") },
                     visualTransformation = PasswordVisualTransformation('*')
@@ -85,7 +82,7 @@ fun AccountsView(
             horizontalArrangement = Arrangement.End
         ) {
             Button(
-                onClick = { accountSelected(Account(username, password)) }
+                onClick = { onAccountSelect(Account(username, password)) }
             ) {
                 Text("Next")
             }

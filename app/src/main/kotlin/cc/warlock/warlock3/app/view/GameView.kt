@@ -1,40 +1,56 @@
 package cc.warlock.warlock3.app.view
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Button
+import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
+import cc.warlock.warlock3.app.viewmodel.toColor
 import cc.warlock.warlock3.core.StyledString
 import cc.warlock.warlock3.core.StyledStringLeaf
 import cc.warlock.warlock3.core.WarlockColor
+import cc.warlock.warlock3.core.WarlockStyle
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun GameView(viewModel: GameViewModel) {
     val lines by viewModel.lines.collectAsState()
+    val backgroundColor by viewModel.backgroundColor.collectAsState()
     Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f)
-        ) {
-            items(lines) { line ->
-                DisplayStyledString(line)
+        val scrollState = rememberLazyListState()
+        CompositionLocalProvider(LocalTextStyle provides TextStyle(color = viewModel.textColor.collectAsState().value)) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(backgroundColor),
+                state = scrollState
+            ) {
+                items(lines) { line ->
+                    Text(line)
+                }
             }
+        }
+        LaunchedEffect(lines) {
+            scrollState.scrollToItem(lines.lastIndex)
         }
         Row(modifier = Modifier.fillMaxWidth()) {
             val textState = remember { mutableStateOf("") }
@@ -42,8 +58,8 @@ fun GameView(viewModel: GameViewModel) {
                 value = textState.value,
                 modifier = Modifier
                     .weight(1f)
-                    .onKeyEvent { event ->
-                        if (event.key.keyCode == Key.Enter.keyCode) {
+                    .onPreviewKeyEvent { event ->
+                        if (event.key.keyCode == Key.Enter.keyCode && event.type == KeyEventType.KeyDown) {
                             viewModel.send(textState.value)
                             textState.value = ""
                             true
@@ -52,6 +68,7 @@ fun GameView(viewModel: GameViewModel) {
                         }
                     },
                 onValueChange = { textState.value = it },
+                maxLines = 1,
             )
             Button(
                 onClick = {
@@ -63,28 +80,4 @@ fun GameView(viewModel: GameViewModel) {
             }
         }
     }
-}
-
-@Composable
-fun DisplayStyledString(value: StyledString) {
-    Row {
-        value.substrings.forEach { DisplayStyledStringLeaf(it) }
-    }
-}
-
-@Composable
-fun DisplayStyledStringLeaf(value: StyledStringLeaf) {
-    Text(
-        modifier = Modifier,
-        color = value.style?.textColor?.toColor() ?: Color.Unspecified,
-        text = value.text,
-        fontFamily = if (value.style?.monospace == true) FontFamily.Monospace else null
-    )
-}
-
-fun WarlockColor.toColor(): Color {
-    if (this == WarlockColor.default) {
-        return Color.Unspecified
-    }
-    return Color(red = red, green = green, blue = blue)
 }

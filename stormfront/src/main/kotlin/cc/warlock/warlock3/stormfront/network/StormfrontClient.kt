@@ -1,9 +1,6 @@
 package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.*
-import cc.warlock.warlock3.stormfront.protocol.BaseElementListener
-import cc.warlock.warlock3.stormfront.protocol.DataListener
-import cc.warlock.warlock3.stormfront.protocol.StartElement
 import cc.warlock.warlock3.stormfront.protocol.StormfrontProtocolHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,36 +21,13 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private var parseText = true
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    private inner class ClientDataListener : DataListener {
-        var buffer = StyledString(emptyList())
-        override fun characters(text: StyledString) {
-            buffer = buffer.append(text)
-        }
-
-        override fun eol() {
-            val line = buffer
-            buffer = StyledString(emptyList())
-            scope.launch {
-                eventChannel.emit(ClientEvent.ClientDataReceivedEvent(line))
-            }
-        }
-    }
-
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
             sendCommand(key)
-            sendCommand("/FE:WARLOCK /XML")
+            sendCommand("/FE:STORMFRONT /XML")
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
             val protocolHandler = StormfrontProtocolHandler()
-            protocolHandler.addDataListener(ClientDataListener())
-            protocolHandler.addElementListener("mode", object : BaseElementListener() {
-                override fun startElement(element: StartElement) {
-                    if (element.attributes["id"] == "CMGR") {
-                        parseText = false
-                    }
-                }
-            })
 
             while (!socket.isClosed) {
                 try {
@@ -62,7 +36,16 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                         val line: String? = reader.readLine()
                         if (line != null) {
                             println(line)
-                            protocolHandler.parseLine(line)
+                            val events = protocolHandler.parseLine(line)
+                            events.forEach { event ->
+                                if (event is ClientPropertyChangedEvent
+                                    && event.name == "mode"
+                                    && event.value.equals("cmgr", true)
+                                ) {
+                                    parseText = false
+                                }
+                                eventChannel.emit(event)
+                            }
                         } else {
                             // connection was closed by server
                             connectionClosed()
@@ -88,10 +71,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     protocolHandler.parseLine(line)
                                 } else {
                                     eventChannel.emit(
-                                        ClientEvent.ClientDataReceivedEvent(
+                                        ClientOutputEvent(
                                             StyledString(
                                                 line,
-                                                WarlockStyle.monospaced
+                                                WarlockStyle(monospace = true)
                                             )
                                         )
                                     )
@@ -102,10 +85,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                 }
                                 print(buffer.toString())
                                 eventChannel.emit(
-                                    ClientEvent.ClientDataReceivedEvent(
+                                    ClientOutputEvent(
                                         StyledString(
                                             buffer.toString(),
-                                            WarlockStyle.monospaced
+                                            WarlockStyle(monospace = true)
                                         )
                                     )
                                 )
@@ -126,10 +109,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private suspend fun connectionClosed() {
         // TODO Make this error message a little more sensible
         eventChannel.emit(
-            ClientEvent.ClientDataReceivedEvent(
+            ClientOutputEvent(
                 StyledString(
                     "Connection closed by server.",
-                    WarlockStyle.monospaced
+                    WarlockStyle(monospace = true)
                 )
             )
         )
@@ -144,7 +127,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     override fun disconnect() {
         socket.close()
         scope.launch {
-            eventChannel.emit(ClientEvent.ClientDisconnectedEvent())
+            eventChannel.emit(ClientDisconnectedEvent)
         }
     }
 
@@ -153,7 +136,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
             socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
         }
         scope.launch {
-            eventChannel.emit(ClientEvent.ClientDataSentEvent(toSend))
+            eventChannel.emit(ClientDataSentEvent(toSend))
         }
     }
 }

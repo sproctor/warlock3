@@ -1,10 +1,12 @@
 package cc.warlock.warlock3.app.view
 
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewState
+import org.apache.commons.configuration2.Configuration
+import org.apache.commons.configuration2.builder.fluent.Configurations
+import org.apache.commons.configuration2.ex.ConfigurationException
 
 @Composable
 fun SgeWizard(
@@ -12,7 +14,16 @@ fun SgeWizard(
 ) {
     val state = viewModel.state.collectAsState()
     when (val currentState = state.value) {
-        SgeViewState.SgeAccountSelector -> AccountsView { viewModel.accountSelected(it) }
+        SgeViewState.SgeAccountSelector -> AccountsView(
+            initialUsername = viewModel.config?.getString("sge.username"),
+            initialPassword = viewModel.config?.getString("sge.password"),
+            onAccountSelect = {
+                println("saving username/password")
+                viewModel.config?.setProperty("sge.username", it.name)
+                viewModel.config?.setProperty("sge.password", it.password)
+                viewModel.accountSelected(it)
+            }
+        )
         is SgeViewState.SgeGameSelector -> SgeGameView(
             games = currentState.games,
             onBackPressed = { viewModel.goBack() },

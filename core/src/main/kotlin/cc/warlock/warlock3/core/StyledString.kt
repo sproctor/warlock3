@@ -11,22 +11,30 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
 
 data class StyledStringLeaf(val text: String, val style: WarlockStyle? = null)
 
-class WarlockStyle(
-        val textColor: WarlockColor = WarlockColor.default,
-        val backgroundColor: WarlockColor = WarlockColor.default,
-        val bold: Boolean = false,
-        val italic: Boolean = false,
-        val underline: Boolean = false,
-        val monospace: Boolean = false
+data class WarlockStyle(
+    val name: String? = null,
+    val textColor: WarlockColor? = null,
+    val backgroundColor: WarlockColor? = null,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val monospace: Boolean = false
 ) {
-    companion object {
-        val monospaced: WarlockStyle = WarlockStyle(WarlockColor.default, WarlockColor.default,
-                false, false, false, true)
+    fun mergeWith(other: WarlockStyle): WarlockStyle {
+        return WarlockStyle(
+            name = name ?: other.name,
+            textColor = textColor ?: other.textColor,
+            backgroundColor = backgroundColor ?: other.backgroundColor,
+            bold = bold || other.bold,
+            italic = italic || other.italic,
+            underline = underline || other.underline,
+            monospace = monospace || other.monospace,
+        )
     }
 }
 
 data class WarlockColor(val red: Int, val green: Int, val blue: Int) {
-    companion object {
-        val default = WarlockColor(-1, -1, -1)
-    }
+//    companion object {
+//        val default = WarlockColor(-1, -1, -1)
+//    }
 }

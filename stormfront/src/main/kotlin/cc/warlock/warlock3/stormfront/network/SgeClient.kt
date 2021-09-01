@@ -4,6 +4,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import okio.*
+import org.apache.commons.configuration2.Configuration
 import org.apache.commons.configuration2.builder.fluent.Configurations
 import org.apache.commons.configuration2.ex.ConfigurationException
 import java.lang.Integer.min
@@ -11,7 +12,7 @@ import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 
-class SgeClient {
+class SgeClient(configuration: Configuration?) {
     private var sink: BufferedSink? = null
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
@@ -23,16 +24,8 @@ class SgeClient {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     init {
-        val config = try {
-            Configurations()
-                .propertiesBuilder(System.getProperty("user.home") + "/.warlock3/sge.properties")
-                .configuration
-        } catch (e: ConfigurationException) {
-            // no config
-            null
-        }
-        host = config?.getString("sge.host") ?: "eaccess.play.net"
-        port = config?.getInt("sge.port") ?: 7900
+        host = configuration?.getString("sge.host", null) ?: "eaccess.play.net"
+        port = configuration?.getInteger("sge.port", null) ?: 7900
     }
 
     suspend fun connect() = withContext(Dispatchers.IO) {
