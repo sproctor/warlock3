@@ -10,32 +10,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.apache.commons.configuration2.Configuration
-import org.apache.commons.configuration2.builder.fluent.Configurations
-import org.apache.commons.configuration2.ex.ConfigurationException
 
 class SgeViewModel(
+    val config: Configuration?,
     readyToPlay: (Map<String, String>) -> Unit
 ) {
     private val _state = MutableStateFlow<SgeViewState>(SgeViewState.SgeLoading("Connecting to SGE"))
     private val backStack = MutableStateFlow<List<SgeViewState>>(emptyList())
     val state = _state.asStateFlow()
-    private val configBuilder = Configurations()
-        .propertiesBuilder(System.getProperty("user.home") + "/.warlock3/sge.properties")
-    val config: Configuration?
-    private val client: SgeClient
+
+    private val client = SgeClient(config)
     private val scope = CoroutineScope(Dispatchers.IO)
     private val job: Job
 
     init {
-        configBuilder.isAutoSave = true
-        config =
-            try {
-                configBuilder.configuration
-            } catch (e: ConfigurationException) {
-                // no config
-                null
-            }
-        client = SgeClient(config)
+
         job = scope.launch {
             client.connect()
             navigate(SgeViewState.SgeAccountSelector)
