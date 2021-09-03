@@ -13,8 +13,10 @@ Label
     : Identifier ':'
     ;
 
-CommandIdentifier
+TEXT
     : Identifier -> pushMode(COMMAND);
+
+NL: ('\n' | '\r' '\n'?) ;
 
 PERCENT
     : '%' -> pushMode(COMMAND), pushMode(VARIABLE);
@@ -32,8 +34,6 @@ fragment NameStartChar:  [a-zA-Z_] ;
 fragment Identifier
     : NameStartChar NameChar*
     ;
-
-fragment WS: [ \t\r\n];
 
 fragment EscapedIdentifier
     : '\\' ('t' | 'b' | 'r' | 'n' | '\'' | '"' | '\\' | '$')
@@ -71,20 +71,25 @@ ADD: '+';
 SUB: '-';
 MULT: '*';
 DIV: '/';
+EXPRESSION_PERCENT: '%' -> type(PERCENT), pushMode(EXP_VARIABLE);
 
 mode COMMAND;
 
-CommandText: ~('\\' | '%' | '\n' | '\r') | '\\' | '%';
-CommandRef: '%' Identifier '%'?;
-NL: ('\n' | '\r' '\n'?) -> popMode;
+COMMAND_DOLLAR: '%' -> type(PERCENT), pushMode(VARIABLE);
+COMMAND_TEXT: (~('\\' | '%' | '\n' | '\r') | '\\' | '%' | '%%') -> type(TEXT);
+COMMAND_NL: ('\n' | '\r' '\n'?) -> type(NL), popMode;
 
 mode QuotedString;
 
 QUOTE_CLOSE: '"' -> popMode;
-StringRef: '%' Identifier '%'?;
-StringText: ~('\\' | '"' | '%')+ | '%';
+STRING_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
+StringText: ~('\\' | '"' | '%')+ | '%' | '%%';
 StringEscapedChar: EscapedIdentifier;
 
 mode VARIABLE;
 
-VARIABLE_NAME: Identifier -> popMode;
+VARIABLE_NAME: Identifier '%'? -> popMode;
+
+mode EXP_VARIABLE;
+
+EXP_VARIABLE_NAME: Identifier -> type(VARIABLE_NAME), popMode;

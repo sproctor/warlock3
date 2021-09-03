@@ -15,12 +15,12 @@ statement
     ;
 
 command
-    : commandContent* NL
+    : commandContent*
     ;
 
 commandContent
-    : CommandText
-    | CommandRef
+    : TEXT
+    | PERCENT VARIABLE_NAME
     ;
 
 expression
@@ -82,7 +82,7 @@ stringLiteral
 
 stringContent
     : StringText
-    | StringRef
+    | PERCENT VARIABLE_NAME
     | StringEscapedChar
     ;
 

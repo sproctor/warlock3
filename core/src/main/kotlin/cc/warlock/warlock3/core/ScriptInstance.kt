@@ -1,10 +1,10 @@
 package cc.warlock.warlock3.core
 
-interface Script {
+interface ScriptInstance {
     val name: String
     val isRunning: Boolean
 
-    fun start(arguments: List<String>)
+    fun start(client: WarlockClient, arguments: List<String>)
 
     fun stop()
 

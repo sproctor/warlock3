@@ -6,14 +6,16 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.core.wsl.WslScript
+import cc.warlock.warlock3.core.wsl.WslScriptInstance
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import cc.warlock.warlock3.stormfront.protocol.StormfrontNodeVisitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.*
 
 class GameViewModel {
@@ -23,9 +25,10 @@ class GameViewModel {
     private val scope = CoroutineScope(Dispatchers.IO)
     val backgroundColor = MutableStateFlow(Color.DarkGray)
     val textColor = MutableStateFlow(Color.White)
-    val styleColors = MutableStateFlow(
+    private val styleColors = MutableStateFlow(
         mapOf(
-            "bold" to WarlockColor(red = 0xFF, green = 0xFF, blue = 0x00)
+            "bold" to WarlockColor(red = 0xFF, green = 0xFF, blue = 0x00),
+            "error" to WarlockColor(red = 0xFF, green = 0, blue = 0),
         )
     )
     val styleBackgroundColors = MutableStateFlow(
@@ -33,6 +36,7 @@ class GameViewModel {
     )
     private val styleStack = Stack<WarlockStyle>()
     private var outputStyle: WarlockStyle? = null
+    private val scriptInstances = MutableStateFlow<List<ScriptInstance>>(emptyList())
 
     fun connect(host: String, port: Int, key: String) {
         client = StormfrontClient(host, port)
@@ -80,7 +84,21 @@ class GameViewModel {
     }
 
     fun send(line: String) {
-        client.sendCommand(line)
+        if (line.startsWith(".")) {
+            val scriptName = line.drop(1)
+            val scriptDir = System.getProperty("user.home") + "/.warlock3/scripts"
+            val file = File("$scriptDir/$scriptName.wsl")
+            if (file.exists()) {
+                client.print(StyledString("File exists"))
+                val script = WslScript(name = scriptName, file = file)
+                val scriptInstance = WslScriptInstance(name = scriptName, script = script)
+                scriptInstance.start(client, emptyList())
+            } else {
+                client.print(StyledString("Could not find a script with that name"))
+            }
+        } else {
+            client.sendCommand(line)
+        }
     }
 
     private fun getCurrentStyle(): WarlockStyle? {

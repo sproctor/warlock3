@@ -1,9 +1,7 @@
 package cc.warlock.warlock3.core.wsl
 
-import cc.warlock.warlock3.core.Script
 import cc.warlock.warlock3.core.parser.WslLexer
 import cc.warlock.warlock3.core.parser.WslParser
-import cc.warlock.warlock3.core.parser.WslParser.EQ
 import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
@@ -12,32 +10,17 @@ import java.io.FileReader
 import java.math.BigDecimal
 
 class WslScript(
-    override val name: String,
+    val name: String,
     private val file: File,
-) : Script {
-    private var _isRunning = false
-    override val isRunning: Boolean
-        get() = _isRunning
+) {
 
-    override fun start(arguments: List<String>) {
+    fun parse(): List<WslLine> {
         val reader = FileReader(file)
         val input: CharStream = CaseChangingCharStream(CharStreams.fromReader(reader))
         val lexer = WslLexer(input)
         val parser = WslParser(CommonTokenStream(lexer))
         val script = parser.script()
-        val lines = script.line().map { parseLine(it) }
-    }
-
-    override fun stop() {
-        TODO("Not yet implemented")
-    }
-
-    override fun suspend() {
-        TODO("Not yet implemented")
-    }
-
-    override fun resume() {
-        TODO("Not yet implemented")
+        return script.line().map { parseLine(it) }
     }
 
     private fun parseLine(line: WslParser.LineContext): WslLine {
@@ -69,8 +52,8 @@ class WslScript(
     }
 
     private fun parseCommandContent(commandContent: WslParser.CommandContentContext): WslCommandContent {
-        commandContent.CommandText()?.let { return WslCommandContent.Text(it.text) }
-        commandContent.CommandRef()?.let { return WslCommandContent.Variable(it.text) }
+        commandContent.TEXT()?.let { return WslCommandContent.Text(it.text) }
+        commandContent.VARIABLE_NAME()?.let { return WslCommandContent.Variable(it.text) }
         throw WslParseException("Unhandled command content alternative")
     }
 
@@ -215,23 +198,13 @@ class WslScript(
     private fun parseStringContent(stringLiteral: WslParser.StringContentContext): WslStringContent {
         val text = stringLiteral.StringText()
         val escapedChar = stringLiteral.StringEscapedChar()
-        val ref = stringLiteral.StringRef()
+        val ref = stringLiteral.VARIABLE_NAME()
         return when {
             text != null -> WslStringContent.Text(text.text)
             escapedChar != null -> WslStringContent.EscapedChar(escapedChar.text)
             ref != null -> WslStringContent.Variable(ref.text)
             else -> throw WslParseException("Unhandled string content alternative")
         }
-    }
-}
-
-class WslContext {
-    fun lookupVariable(name: String): WslValue {
-        return WslValue.WslString("")
-    }
-
-    fun hasVariable(name: String): Boolean {
-        return false
     }
 }
 
@@ -347,8 +320,31 @@ open class WslParseException(val reason: String) : Exception(reason)
 
 data class WslLine(val label: String?, val statement: WslStatement)
 sealed class WslStatement {
-    data class WithCondition(val condition: WslExpression, val statement: WslStatement) : WslStatement()
-    data class WslCommand(val contents: List<WslCommandContent>) : WslStatement()
+    data class WithCondition(val condition: WslExpression, val statement: WslStatement) : WslStatement() {
+        override suspend fun execute(context: WslContext) {
+            statement.execute(context)
+        }
+    }
+
+    data class WslCommand(val contents: List<WslCommandContent>) : WslStatement() {
+        override suspend fun execute(context: WslContext) {
+            val commandLine = contents.map { it.getValue(context) }.reduceOrNull { acc, n -> acc + n }
+            if (commandLine == null || commandLine.isBlank()) {
+                return
+            }
+            val match = commandRegex.find(commandLine) ?: throw WslRuntimeException("Invalid line: $commandLine")
+            val commandName = match.groups[1]?.value
+            val args = match.groups[3]?.value ?: ""
+            val command = wslCommands[commandName] ?: throw WslRuntimeException("Invalid command")
+            command(context, args)
+        }
+
+        companion object {
+            val commandRegex = Regex("^([\\w]+)(\\s+(.*))?")
+        }
+    }
+
+    abstract suspend fun execute(context: WslContext)
 }
 
 sealed class WslCommandContent {

@@ -119,8 +119,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
         disconnect()
     }
 
-    fun sendCommand(line: String) {
-        println("<c>$line");
+    override fun sendCommand(line: String) {
+        scope.launch {
+            eventChannel.emit(ClientDataSentEvent(line))
+        }
         send("<c>$line\n")
     }
 
@@ -132,11 +134,18 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     }
 
     override fun send(toSend: String) {
+        println(toSend)
         if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
         }
         scope.launch {
             eventChannel.emit(ClientDataSentEvent(toSend))
+        }
+    }
+
+    override fun print(message: StyledString) {
+        scope.launch {
+            eventChannel.emit(ClientOutputEvent(message))
         }
     }
 }

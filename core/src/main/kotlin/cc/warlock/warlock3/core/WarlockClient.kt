@@ -7,6 +7,9 @@ interface WarlockClient {
 
     fun disconnect()
 
+    fun sendCommand(line: String)
+
     fun send(toSend: String)
 
+    fun print(message: StyledString)
 }
