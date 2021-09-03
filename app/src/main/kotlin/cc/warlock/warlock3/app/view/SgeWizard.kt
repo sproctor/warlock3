@@ -1,12 +1,10 @@
 package cc.warlock.warlock3.app.view
 
 import androidx.compose.material.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewState
-import org.apache.commons.configuration2.Configuration
-import org.apache.commons.configuration2.builder.fluent.Configurations
-import org.apache.commons.configuration2.ex.ConfigurationException
 
 @Composable
 fun SgeWizard(
