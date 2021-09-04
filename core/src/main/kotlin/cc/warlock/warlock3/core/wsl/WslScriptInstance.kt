@@ -23,23 +23,24 @@ class WslScriptInstance(
         scope.launch {
             try {
                 lines = script.parse()
-                val context = WslContext(client)
+                val context = WslContext(client, lines, this@WslScriptInstance)
                 arguments.forEachIndexed { index, arg ->
                     context.setVariable((index + 1).toString(), WslValue.WslString(arg))
                 }
                 while (isRunning) {
-                    val lineNumber = context.getCurrentLine()
-                    if (lineNumber >= lines.size) {
+                    val line = context.getNextLine()
+                    if (line == null) {
                         _isRunning = false
                         client.print(StyledString("Script \"$name\" ended"))
                         break
                     }
-                    val line = lines[lineNumber]
                     line.statement.execute(context)
-                    context.incrementLine()
                 }
             } catch (e: WslParseException) {
                 client.print(StyledString(e.reason, WarlockStyle(name = "error")))
+            } catch (e: WslRuntimeException) {
+                _isRunning = false
+                client.print(StyledString("Script error: ${e.reason}", WarlockStyle(name = "error")))
             }
         }
     }

@@ -24,7 +24,7 @@ class WslScript(
     }
 
     private fun parseLine(line: WslParser.LineContext): WslLine {
-        val label = line.Label()?.text
+        val label = line.Label()?.text?.dropLast(1) // drop ending :
         val statement = parseStatement(line.statement())
         return WslLine(label, statement)
     }
@@ -335,7 +335,7 @@ sealed class WslStatement {
             val match = commandRegex.find(commandLine) ?: throw WslRuntimeException("Invalid line: $commandLine")
             val commandName = match.groups[1]?.value
             val args = match.groups[3]?.value ?: ""
-            val command = wslCommands[commandName] ?: throw WslRuntimeException("Invalid command")
+            val command = wslCommands[commandName] ?: throw WslRuntimeException("Invalid command \"$commandName\" on line ${context.lineNumber}")
             command(context, args)
         }
 
