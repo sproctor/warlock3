@@ -34,8 +34,6 @@ class GameViewModel {
     val styleBackgroundColors = MutableStateFlow(
         mapOf("roomName" to WarlockColor(red = 0, green = 0, blue = 0xFF))
     )
-    private val styleStack = Stack<WarlockStyle>()
-    private var outputStyle: WarlockStyle? = null
     private val scriptInstances = MutableStateFlow<List<ScriptInstance>>(emptyList())
 
     fun connect(host: String, port: Int, key: String) {
@@ -43,14 +41,13 @@ class GameViewModel {
         scope.launch {
             client.connect(key)
             var buffer: AnnotatedString? = null
-            var currentStream: String? = null
             client.eventFlow.collect { event ->
                 when (event) {
                     is ClientDataReceivedEvent -> {
-                        if (currentStream == null) {
+                        if (event.stream == null) {
                             val newString = AnnotatedString(
                                 text = event.text,
-                                spanStyle = getCurrentStyle()?.toSpanStyle() ?: SpanStyle()
+                                spanStyle = flattenStyles(event.styles)?.toSpanStyle() ?: SpanStyle()
                             )
                             buffer = buffer?.plus(newString) ?: newString
                         }
@@ -60,24 +57,15 @@ class GameViewModel {
                         _lines.value = _lines.value + listOf(AnnotatedString(event.text))
                     is ClientDisconnectedEvent ->
                         _lines.value = _lines.value + listOf(AnnotatedString("disconnected"))
-                    ClientEolEvent -> {
-                        if (currentStream == null) {
+                    is ClientEolEvent -> {
+                        if (event.stream == null) {
                             _lines.value = _lines.value + listOf(buffer ?: AnnotatedString(""))
                             buffer = null
                         }
                     }
-                    is ClientStreamChangedEvent -> currentStream = event.stream
                     is ClientPromptEvent -> {
-                        styleStack.clear()
+                        // styleStack.clear()
                     }
-                    is ClientAddStyleEvent -> styleStack.push(event.style)
-                    is ClientRemoveStyleEvent -> {
-                        if (styleStack.isNotEmpty() && styleStack.peek() == event.style) {
-                            styleStack.pop()
-                        }
-                    }
-                    ClientClearStyleEvent -> styleStack.clear()
-                    is ClientOutputStyleEvent -> outputStyle = event.style
                 }
             }
         }
@@ -101,13 +89,12 @@ class GameViewModel {
         }
     }
 
-    private fun getCurrentStyle(): WarlockStyle? {
-        val style = styleStack
+    private fun flattenStyles(styles: List<WarlockStyle>): WarlockStyle? {
+        return styles
             .map { completeStyle(it) }
             .reduceOrNull { acc, warlockStyle ->
                 acc.mergeWith(warlockStyle)
-            } ?: return outputStyle
-        return outputStyle?.mergeWith(style) ?: style
+            }
     }
 
     private fun completeStyle(style: WarlockStyle): WarlockStyle {
@@ -129,13 +116,12 @@ fun StyledString.toAnnotatedString(): AnnotatedString {
 }
 
 fun WarlockStyle.toSpanStyle(): SpanStyle {
-    val style = SpanStyle(
+    return SpanStyle(
         color = textColor?.toColor() ?: Color.Unspecified,
         background = backgroundColor?.toColor() ?: Color.Unspecified,
         fontFamily = if (monospace) FontFamily.Monospace else null,
         textDecoration = if (underline) TextDecoration.Underline else null,
     )
-    return style
 }
 
 fun StyledStringLeaf.toAnnotatedString(): AnnotatedString {

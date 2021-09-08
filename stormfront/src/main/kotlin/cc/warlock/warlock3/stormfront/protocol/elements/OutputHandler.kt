@@ -1,15 +1,14 @@
 package cc.warlock.warlock3.stormfront.protocol.elements
 
-import cc.warlock.warlock3.core.ClientEvent
-import cc.warlock.warlock3.core.ClientOutputStyleEvent
 import cc.warlock.warlock3.core.WarlockStyle
 import cc.warlock.warlock3.stormfront.protocol.BaseElementListener
 import cc.warlock.warlock3.stormfront.protocol.StartElement
+import cc.warlock.warlock3.stormfront.protocol.StormfrontOutputEvent
 
 class OutputHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): List<ClientEvent> {
+    override fun startElement(element: StartElement): StormfrontOutputEvent {
         val className = element.attributes["class"]
-        return listOf(ClientOutputStyleEvent(getStyleByClass(className)))
+        return StormfrontOutputEvent(style = getStyleByClass(className))
     }
 }
 

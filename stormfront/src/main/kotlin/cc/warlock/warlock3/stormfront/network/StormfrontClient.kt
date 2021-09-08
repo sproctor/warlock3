@@ -1,7 +1,7 @@
 package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.*
-import cc.warlock.warlock3.stormfront.protocol.StormfrontProtocolHandler
+import cc.warlock.warlock3.stormfront.protocol.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -13,6 +13,7 @@ import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
+import java.util.*
 
 class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val socket = Socket(host, port)
@@ -20,6 +21,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     override val eventFlow: SharedFlow<ClientEvent> = eventChannel.asSharedFlow()
     private var parseText = true
     private val scope = CoroutineScope(Dispatchers.Default)
+
+    private var currentStream: String? = null
+    private val styleStack = Stack<WarlockStyle>()
+    private var outputStyle: WarlockStyle? = null
 
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
@@ -38,13 +43,57 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                             println(line)
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
-                                if (event is ClientPropertyChangedEvent
-                                    && event.name == "mode"
-                                    && event.value.equals("cmgr", true)
-                                ) {
-                                    parseText = false
+                                when (event) {
+                                    is StormfrontModeEvent ->
+                                        if (event.id.equals("cmgr", true)) {
+                                            parseText = false
+                                        }
+                                    is StormfrontStreamEvent -> currentStream = event.id
+                                    is StormfrontDataReceivedEvent -> {
+                                        val styles = outputStyle?.let {
+                                            styleStack + listOf(it)
+                                        }
+                                            ?: styleStack
+                                        eventChannel.emit(
+                                            ClientDataReceivedEvent(
+                                                text = event.text,
+                                                styles = styles,
+                                                stream = currentStream
+                                            )
+                                        )
+                                    }
+                                    is StormfrontEolEvent ->
+                                        eventChannel.emit(ClientEolEvent(currentStream))
+                                    is StormfrontAppEvent -> {
+                                        eventChannel.emit(
+                                            ClientPropertyChangedEvent(
+                                                name = "character",
+                                                value = event.character
+                                            )
+                                        )
+                                        eventChannel.emit(ClientPropertyChangedEvent(name = "game", value = event.game))
+                                    }
+                                    is StormfrontOutputEvent ->
+                                        outputStyle = event.style
+                                    is StormfrontPushStyleEvent ->
+                                        styleStack.push(event.style)
+                                    StormfrontPopStyleEvent ->
+                                        styleStack.pop()
+                                    is StormfrontPromptEvent -> {
+                                        styleStack.clear()
+                                        outputStyle = null
+                                        eventChannel.emit(ClientPromptEvent(event.text))
+                                    }
+                                    is StormfrontTimeEvent ->
+                                        eventChannel.emit(ClientPropertyChangedEvent(name = "time", value = event.time))
+                                    is StormfrontRoundtimeEvent ->
+                                        eventChannel.emit(
+                                            ClientPropertyChangedEvent(
+                                                name = "roundtime",
+                                                value = event.time
+                                            )
+                                        )
                                 }
-                                eventChannel.emit(event)
                             }
                         } else {
                             // connection was closed by server

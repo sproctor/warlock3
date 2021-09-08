@@ -1,15 +1,14 @@
 package cc.warlock.warlock3.stormfront.protocol.elements
 
-import cc.warlock.warlock3.core.ClientEvent
-import cc.warlock.warlock3.core.ClientPropertyChangedEvent
 import cc.warlock.warlock3.stormfront.protocol.BaseElementListener
 import cc.warlock.warlock3.stormfront.protocol.StartElement
+import cc.warlock.warlock3.stormfront.protocol.StormfrontEvent
+import cc.warlock.warlock3.stormfront.protocol.StormfrontRoundtimeEvent
 
 class RoundTimeHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): List<ClientEvent> {
-        element.attributes["value"]?.let {
-            return listOf(ClientPropertyChangedEvent("roundtime", it))
+    override fun startElement(element: StartElement): StormfrontEvent? {
+        return element.attributes["value"]?.let {
+            StormfrontRoundtimeEvent(time = it)
         }
-        return emptyList()
     }
 }

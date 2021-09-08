@@ -1,13 +1,16 @@
 package cc.warlock.warlock3.stormfront.protocol.elements
 
-import cc.warlock.warlock3.core.WarlockStyle
 import cc.warlock.warlock3.stormfront.protocol.BaseElementListener
 import cc.warlock.warlock3.stormfront.protocol.StartElement
+import cc.warlock.warlock3.stormfront.protocol.StormfrontAppEvent
 import cc.warlock.warlock3.stormfront.protocol.StormfrontEvent
-import cc.warlock.warlock3.stormfront.protocol.StormfrontPushStyleEvent
 
-class PushBoldHandler : BaseElementListener() {
+class AppHandler : BaseElementListener() {
     override fun startElement(element: StartElement): StormfrontEvent {
-        return StormfrontPushStyleEvent(WarlockStyle(name = "bold"))
+        return StormfrontAppEvent(
+            character = element.attributes["char"],
+            game = element.attributes["game"],
+            // title = element.attributes["title"]
+        )
     }
 }

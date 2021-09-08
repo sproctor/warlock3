@@ -1,8 +1,6 @@
 package cc.warlock.warlock3.stormfront.protocol
 
-import cc.warlock.warlock3.core.ClientDataReceivedEvent
-import cc.warlock.warlock3.core.ClientEolEvent
-import cc.warlock.warlock3.core.ClientEvent
+import cc.warlock.warlock3.core.WarlockStyle
 import cc.warlock.warlock3.stormfront.parser.StormfrontLexer
 import cc.warlock.warlock3.stormfront.parser.StormfrontParser
 import cc.warlock.warlock3.stormfront.protocol.elements.*
@@ -13,6 +11,7 @@ import java.util.*
 class StormfrontProtocolHandler {
     private val elementStack = LinkedList<StartElement>()
     private val elementListeners: Map<String, ElementListener> = mapOf(
+        "app" to AppHandler(),
         "mode" to ModeHandler(),
         "output" to OutputHandler(),
         "popBold" to PopBoldHandler(),
@@ -20,8 +19,10 @@ class StormfrontProtocolHandler {
         "pushBold" to PushBoldHandler(),
         "roundTime" to RoundTimeHandler(),
     )
+    private val styleStack = Stack<WarlockStyle>()
+    private var outputStyle: WarlockStyle? = null
 
-    fun parseLine(line: String): List<ClientEvent> {
+    fun parseLine(line: String): List<StormfrontEvent> {
         return try {
             val inputStream = CharStreams.fromString(line)
             val lexer = StormfrontLexer(inputStream)
@@ -35,18 +36,18 @@ class StormfrontProtocolHandler {
         }
     }
 
-    private fun handleContent(contents: List<Content>): List<ClientEvent> {
+    private fun handleContent(contents: List<Content>): List<StormfrontEvent> {
         // FIXME: this is kind of hacky
         var lineHasTags = false
         var lineHasText = false
-        val events = LinkedList<ClientEvent>()
+        val events = LinkedList<StormfrontEvent>()
         for (content in contents) {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
                     elementStack.push(content)
                     elementListeners[content.name]?.startElement(content)?.let {
-                        events.addAll(it)
+                        events.add(it)
                     }
                 }
                 is EndElement -> {
@@ -55,7 +56,7 @@ class StormfrontProtocolHandler {
                         println("ERROR: Received end element does not match element on the top of the stack!")
                     }
                     elementListeners[content.name]?.endElement(content)?.let {
-                        events.addAll(it)
+                        events.add(it)
                     }
                 }
                 is CharData -> {
@@ -65,16 +66,16 @@ class StormfrontProtocolHandler {
                     // call the character handlers on the CharData
                     // if none returned true (handled) then call the global handlers
                     if (listener != null) {
-                        events.addAll(listener.characters(content.data))
+                        listener.characters(content.data)?.let { events.add(it) }
                     } else {
-                        events.add(ClientDataReceivedEvent(content.data))
+                        events.add(StormfrontDataReceivedEvent(content.data))
                     }
                 }
             }
         }
         // If a line has just tags, don't send the newline, otherwise do.
         if ((lineHasText || !lineHasTags) && elementStack.isEmpty() ) {
-            events.add(ClientEolEvent)
+            events.add(StormfrontEolEvent)
         }
 
         return events
@@ -82,13 +83,13 @@ class StormfrontProtocolHandler {
 }
 
 interface ElementListener {
-    fun startElement(element: StartElement): List<ClientEvent>
-    fun characters(data: String): List<ClientEvent>
-    fun endElement(element: EndElement): List<ClientEvent>
+    fun startElement(element: StartElement): StormfrontEvent?
+    fun characters(data: String): StormfrontEvent?
+    fun endElement(element: EndElement): StormfrontEvent?
 }
 
 abstract class BaseElementListener : ElementListener{
-    override fun startElement(element: StartElement): List<ClientEvent> = emptyList()
-    override fun characters(data: String): List<ClientEvent> = emptyList()
-    override fun endElement(element: EndElement): List<ClientEvent> = emptyList()
+    override fun startElement(element: StartElement): StormfrontEvent? = null
+    override fun characters(data: String): StormfrontEvent? = null
+    override fun endElement(element: EndElement): StormfrontEvent? = null
 }
