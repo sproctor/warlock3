@@ -1,6 +1,5 @@
 package cc.warlock.warlock3.stormfront.protocol
 
-import cc.warlock.warlock3.core.WarlockStyle
 import cc.warlock.warlock3.stormfront.parser.StormfrontLexer
 import cc.warlock.warlock3.stormfront.parser.StormfrontParser
 import cc.warlock.warlock3.stormfront.protocol.elements.*
@@ -9,18 +8,18 @@ import org.antlr.v4.runtime.CommonTokenStream
 import java.util.*
 
 class StormfrontProtocolHandler {
-    private val elementStack = LinkedList<StartElement>()
+    private val elementStack = LinkedList<String>()
     private val elementListeners: Map<String, ElementListener> = mapOf(
+        // all keys must be lowercase
         "app" to AppHandler(),
         "mode" to ModeHandler(),
         "output" to OutputHandler(),
-        "popBold" to PopBoldHandler(),
+        "popbold" to PopBoldHandler(),
         "prompt" to PromptHandler(),
-        "pushBold" to PushBoldHandler(),
-        "roundTime" to RoundTimeHandler(),
+        "pushbold" to PushBoldHandler(),
+        "roundtime" to RoundTimeHandler(),
+        "settingsinfo" to SettingsInfoHandler(),
     )
-    private val styleStack = Stack<WarlockStyle>()
-    private var outputStyle: WarlockStyle? = null
 
     fun parseLine(line: String): List<StormfrontEvent> {
         return try {
@@ -45,23 +44,24 @@ class StormfrontProtocolHandler {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
-                    elementStack.push(content)
-                    elementListeners[content.name]?.startElement(content)?.let {
+                    elementStack.push(content.name)
+                    elementListeners[content.name.lowercase()]?.startElement(content)?.let {
                         events.add(it)
                     }
                 }
                 is EndElement -> {
                     lineHasTags = true
-                    if (elementStack.pop().name != content.name) {
-                        println("ERROR: Received end element does not match element on the top of the stack!")
+                    val topOfStack = elementStack.pop()
+                    if (!topOfStack.equals(content.name, true)) {
+                        println("ERROR: Received end element (${content.name}) does not match element on the top of the stack ($topOfStack)!")
                     }
-                    elementListeners[content.name]?.endElement(content)?.let {
+                    elementListeners[content.name.lowercase()]?.endElement(content)?.let {
                         events.add(it)
                     }
                 }
                 is CharData -> {
                     lineHasText = true
-                    val listener = elementStack.peek()?.name?.let { elementListeners[it] }
+                    val listener = elementStack.peek()?.let { elementListeners[it.lowercase()] }
 
                     // call the character handlers on the CharData
                     // if none returned true (handled) then call the global handlers

@@ -93,6 +93,14 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                                 value = event.time
                                             )
                                         )
+                                    is StormfrontSettingsInfoEvent -> {
+                                        // We don't actually handle server settings
+
+                                        // Not 100% where this belongs. connections hang until and empty command is sent
+                                        // This must be in response to either mode, playerId, or settingsInfo, so
+                                        // we put it here until someone discovers something else
+                                        sendCommand("")
+                                    }
                                 }
                             }
                         } else {
