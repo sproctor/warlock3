@@ -15,8 +15,10 @@ class StormfrontProtocolHandler {
         "mode" to ModeHandler(),
         "output" to OutputHandler(),
         "popbold" to PopBoldHandler(),
+        "popstream" to PopStreamHandler(),
         "prompt" to PromptHandler(),
         "pushbold" to PushBoldHandler(),
+        "pushstream" to PushStreamHandler(),
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
     )
