@@ -6,7 +6,7 @@ import cc.warlock.warlock3.stormfront.protocol.StormfrontEvent
 import cc.warlock.warlock3.stormfront.protocol.StormfrontStreamEvent
 
 class PopStreamHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): StormfrontEvent? {
+    override fun startElement(element: StartElement): StormfrontEvent {
         return StormfrontStreamEvent(id = null)
     }
 }

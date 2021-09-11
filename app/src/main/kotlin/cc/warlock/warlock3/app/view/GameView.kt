@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.Button
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.OutlinedTextField
@@ -37,15 +38,22 @@ fun GameView(viewModel: GameViewModel) {
     Column(modifier = Modifier.fillMaxSize()) {
         val scrollState = rememberLazyListState()
         CompositionLocalProvider(LocalTextStyle provides TextStyle(color = viewModel.textColor.collectAsState().value)) {
-            LazyColumn(
+            SelectionContainer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .background(backgroundColor),
-                state = scrollState
             ) {
-                items(lines) { line ->
-                    Text(line)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .background(backgroundColor),
+                    state = scrollState
+                ) {
+                    items(lines) { line ->
+                        Text(line)
+                    }
                 }
             }
         }
