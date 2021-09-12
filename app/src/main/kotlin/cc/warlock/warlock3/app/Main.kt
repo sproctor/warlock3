@@ -11,18 +11,23 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.apache.commons.configuration2.builder.fluent.Configurations
 import org.apache.commons.configuration2.ex.ConfigurationException
+import java.io.File
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
     val config = remember {
+        val configFile = File(System.getProperty("user.home") + "/.warlock3/sge.properties")
+        configFile.parentFile.mkdirs()
+        configFile.createNewFile()
         val configBuilder = Configurations()
-            .propertiesBuilder(System.getProperty("user.home") + "/.warlock3/sge.properties")
+            .propertiesBuilder(configFile.absolutePath)
         configBuilder.isAutoSave = true
         try {
             configBuilder.configuration
         } catch (e: ConfigurationException) {
             // no config
+            println("No config found")
             null
         }
     }
