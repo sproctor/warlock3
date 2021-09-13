@@ -24,7 +24,6 @@ class SgeViewModel(
     private val job: Job
 
     init {
-
         job = scope.launch {
             client.connect()
             navigate(SgeViewState.SgeAccountSelector)
@@ -48,6 +47,7 @@ class SgeViewModel(
                     is SgeEvent.SgeReadyToPlayEvent -> {
                         _state.value = SgeViewState.SgeLoading("Loading game")
                         readyToPlay(event.loginProperties)
+                        close()
                     }
                 }
             }

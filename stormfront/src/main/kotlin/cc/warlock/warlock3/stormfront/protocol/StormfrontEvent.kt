@@ -1,5 +1,6 @@
 package cc.warlock.warlock3.stormfront.protocol
 
+import cc.warlock.warlock3.core.Percentage
 import cc.warlock.warlock3.core.WarlockStyle
 
 sealed class StormfrontEvent
@@ -13,5 +14,13 @@ data class StormfrontPushStyleEvent(val style: WarlockStyle) : StormfrontEvent()
 object StormfrontPopStyleEvent : StormfrontEvent()
 data class StormfrontPromptEvent(val text: String) : StormfrontEvent()
 data class StormfrontTimeEvent(val time: String) : StormfrontEvent()
-data class StormfrontRoundtimeEvent(val time: String): StormfrontEvent()
+data class StormfrontRoundtimeEvent(val time: String) : StormfrontEvent()
 data class StormfrontSettingsInfoEvent(val crc: String?, val instance: String?) : StormfrontEvent()
+data class StormfrontProgressBarEvent(
+    val id: String,
+    val value: Percentage,
+    val text: String,
+    val left: Percentage,
+    val width: Percentage
+) : StormfrontEvent()
+data class StormfrontDialogDataEvent(val id: String?) : StormfrontEvent()

@@ -8,14 +8,16 @@ import org.antlr.v4.runtime.CommonTokenStream
 import java.util.*
 
 class StormfrontProtocolHandler {
-    private val elementStack = LinkedList<String>()
+    private val elementStack = LinkedList<StartElement>()
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
         "app" to AppHandler(),
+        "dialogdata" to DialogDataHandler(),
         "mode" to ModeHandler(),
         "output" to OutputHandler(),
         "popbold" to PopBoldHandler(),
         "popstream" to PopStreamHandler(),
+        "progressbar" to ProgressBarHandler(),
         "prompt" to PromptHandler(),
         "pushbold" to PushBoldHandler(),
         "pushstream" to PushStreamHandler(),
@@ -46,7 +48,7 @@ class StormfrontProtocolHandler {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
-                    elementStack.push(content.name)
+                    elementStack.push(content)
                     elementListeners[content.name.lowercase()]?.startElement(content)?.let {
                         events.add(it)
                     }
@@ -54,7 +56,7 @@ class StormfrontProtocolHandler {
                 is EndElement -> {
                     lineHasTags = true
                     val topOfStack = elementStack.pop()
-                    if (!topOfStack.equals(content.name, true)) {
+                    if (!topOfStack.name.equals(content.name, true)) {
                         println("ERROR: Received end element (${content.name}) does not match element on the top of the stack ($topOfStack)!")
                     }
                     elementListeners[content.name.lowercase()]?.endElement(content)?.let {
@@ -63,7 +65,7 @@ class StormfrontProtocolHandler {
                 }
                 is CharData -> {
                     lineHasText = true
-                    val listener = elementStack.peek()?.let { elementListeners[it.lowercase()] }
+                    val listener = elementStack.peek()?.let { elementListeners[it.name.lowercase()] }
 
                     // call the character handlers on the CharData
                     // if none returned true (handled) then call the global handlers

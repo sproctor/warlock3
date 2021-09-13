@@ -25,6 +25,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private var currentStream: String? = null
     private val styleStack = Stack<WarlockStyle>()
     private var outputStyle: WarlockStyle? = null
+    private var dialogDataId: String? = null
 
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
@@ -100,6 +101,21 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         // This must be in response to either mode, playerId, or settingsInfo, so
                                         // we put it here until someone discovers something else
                                         sendCommand("")
+                                    }
+                                    is StormfrontDialogDataEvent -> dialogDataId = event.id
+                                    is StormfrontProgressBarEvent -> {
+                                        eventChannel.emit(
+                                            ClientProgressBarEvent(
+                                                ProgressBarData(
+                                                    id = event.id,
+                                                    groupId = dialogDataId ?: "",
+                                                    left = event.left,
+                                                    width = event.width,
+                                                    text = event.text,
+                                                    value = event.value,
+                                                )
+                                            )
+                                        )
                                     }
                                 }
                             }

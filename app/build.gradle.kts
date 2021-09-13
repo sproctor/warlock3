@@ -12,8 +12,10 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":core"))
+    implementation(project(":stormfront"))
+
     implementation("org.slf4j:slf4j-api:_")
-    implementation("commons-beanutils:commons-beanutils:_")
     implementation("org.apache.commons:commons-configuration2:_")
     implementation(KotlinX.coroutines.core)
     implementation(Kotlin.stdlib.jdk8)
@@ -21,8 +23,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material)
     implementation(compose.materialIconsExtended)
-    implementation(project(":core"))
-    implementation(project(":stormfront"))
+    implementation(compose.uiTooling)
 }
 
 val compileKotlin: org.jetbrains.kotlin.gradle.tasks.KotlinCompile by tasks
