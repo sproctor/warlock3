@@ -126,6 +126,9 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontDirectionEvent -> {
                                         directions = directions + event.direction
                                     }
+                                    is StormfrontPropertyEvent -> {
+                                        eventChannel.emit(ClientPropertyChangedEvent(event.key, event.value))
+                                    }
                                 }
                             }
                         } else {

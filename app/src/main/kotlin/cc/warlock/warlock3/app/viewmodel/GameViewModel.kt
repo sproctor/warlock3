@@ -24,6 +24,9 @@ class GameViewModel {
     private val _lines = MutableStateFlow<List<AnnotatedString>>(emptyList())
     val lines = _lines.asStateFlow()
 
+    private val _properties = MutableStateFlow<Map<String, String?>>(emptyMap())
+    val properties = _properties.asStateFlow()
+
     private val scope = CoroutineScope(Dispatchers.IO)
     val backgroundColor = MutableStateFlow(Color.DarkGray)
     val textColor = MutableStateFlow(Color.White)
@@ -72,7 +75,7 @@ class GameViewModel {
                         // don't care
                     }
                     is ClientPropertyChangedEvent -> {
-                        // TODO: implement me
+                        _properties.value = _properties.value + mapOf(event.name to event.value)
                     }
                     is ClientCompassEvent -> {
                         // don't care

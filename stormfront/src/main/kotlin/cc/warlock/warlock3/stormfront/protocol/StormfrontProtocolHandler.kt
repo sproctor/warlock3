@@ -15,6 +15,7 @@ class StormfrontProtocolHandler {
         "compass" to CompassHandler(),
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),
+        "left" to LeftHandler(),
         "mode" to ModeHandler(),
         "output" to OutputHandler(),
         "popbold" to PopBoldHandler(),
@@ -23,8 +24,10 @@ class StormfrontProtocolHandler {
         "prompt" to PromptHandler(),
         "pushbold" to PushBoldHandler(),
         "pushstream" to PushStreamHandler(),
+        "right" to RightHandler(),
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
+        "spell" to SpellHandler(),
     )
 
     fun parseLine(line: String): List<StormfrontEvent> {

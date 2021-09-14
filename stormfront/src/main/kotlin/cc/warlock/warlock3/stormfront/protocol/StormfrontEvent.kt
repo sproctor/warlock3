@@ -27,3 +27,4 @@ data class StormfrontProgressBarEvent(
 data class StormfrontDialogDataEvent(val id: String?) : StormfrontEvent()
 object StormfrontCompassEndEvent : StormfrontEvent()
 data class StormfrontDirectionEvent(val direction: DirectionType) : StormfrontEvent()
+data class StormfrontPropertyEvent(val key: String, val value: String) : StormfrontEvent()

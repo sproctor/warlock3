@@ -1,6 +1,5 @@
 package cc.warlock.warlock3.app.viewmodel
 
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import cc.warlock.warlock3.core.ClientCompassEvent

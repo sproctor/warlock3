@@ -30,6 +30,7 @@ fun GameView(viewModel: GameViewModel) {
                 WarlockEntry(viewModel)
                 val vitalBars by vitalsViewModel.vitalBars.collectAsState()
                 VitalBars(vitalBars)
+                HandsView(viewModel)
             }
             val compassViewModel = remember(viewModel.client) { CompassViewModel(viewModel.client) }
             val compassState by compassViewModel.compassState.collectAsState()
@@ -71,37 +72,5 @@ fun ColumnScope.MainGameView(viewModel: GameViewModel) {
     }
     LaunchedEffect(lines) {
         scrollState.scrollToItem(lines.lastIndex)
-    }
-}
-
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-fun WarlockEntry(viewModel: GameViewModel) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        val textState = remember { mutableStateOf("") }
-        OutlinedTextField(
-            value = textState.value,
-            modifier = Modifier
-                .weight(1f)
-                .onPreviewKeyEvent { event ->
-                    if (event.key.keyCode == Key.Enter.keyCode && event.type == KeyEventType.KeyDown) {
-                        viewModel.send(textState.value)
-                        textState.value = ""
-                        true
-                    } else {
-                        false
-                    }
-                },
-            onValueChange = { textState.value = it },
-            maxLines = 1,
-        )
-        Button(
-            onClick = {
-                viewModel.send(textState.value)
-                textState.value = ""
-            }
-        ) {
-            Text("SEND")
-        }
     }
 }
