@@ -12,7 +12,9 @@ class StormfrontProtocolHandler {
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
         "app" to AppHandler(),
+        "compass" to CompassHandler(),
         "dialogdata" to DialogDataHandler(),
+        "dir" to DirHandler(),
         "mode" to ModeHandler(),
         "output" to OutputHandler(),
         "popbold" to PopBoldHandler(),

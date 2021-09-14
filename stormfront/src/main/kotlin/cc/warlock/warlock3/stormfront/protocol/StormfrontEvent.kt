@@ -2,6 +2,7 @@ package cc.warlock.warlock3.stormfront.protocol
 
 import cc.warlock.warlock3.core.Percentage
 import cc.warlock.warlock3.core.WarlockStyle
+import cc.warlock.warlock3.core.compass.DirectionType
 
 sealed class StormfrontEvent
 object StormfrontEolEvent : StormfrontEvent()
@@ -24,3 +25,5 @@ data class StormfrontProgressBarEvent(
     val width: Percentage
 ) : StormfrontEvent()
 data class StormfrontDialogDataEvent(val id: String?) : StormfrontEvent()
+object StormfrontCompassEndEvent : StormfrontEvent()
+data class StormfrontDirectionEvent(val direction: DirectionType) : StormfrontEvent()

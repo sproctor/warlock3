@@ -18,12 +18,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class GameViewModel {
-    private lateinit var client: StormfrontClient
+    lateinit var client: StormfrontClient
+        private set
 
     private val _lines = MutableStateFlow<List<AnnotatedString>>(emptyList())
     val lines = _lines.asStateFlow()
-    private val _progressBars = MutableStateFlow<Map<String, ProgressBarData>>(emptyMap())
-    val progressBars = _progressBars.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.IO)
     val backgroundColor = MutableStateFlow(Color.DarkGray)
@@ -70,8 +69,13 @@ class GameViewModel {
                         // styleStack.clear()
                     }
                     is ClientProgressBarEvent -> {
-                        _progressBars.value = _progressBars.value +
-                                mapOf(event.progressBarData.id to event.progressBarData)
+                        // don't care
+                    }
+                    is ClientPropertyChangedEvent -> {
+                        // TODO: implement me
+                    }
+                    is ClientCompassEvent -> {
+                        // don't care
                     }
                 }
             }

@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.protocol.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val styleStack = Stack<WarlockStyle>()
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
+    private var directions: List<DirectionType> = emptyList()
 
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
@@ -116,6 +118,13 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                                 )
                                             )
                                         )
+                                    }
+                                    is StormfrontCompassEndEvent -> {
+                                        eventChannel.emit(ClientCompassEvent(directions))
+                                        directions = emptyList()
+                                    }
+                                    is StormfrontDirectionEvent -> {
+                                        directions = directions + event.direction
                                     }
                                 }
                             }
