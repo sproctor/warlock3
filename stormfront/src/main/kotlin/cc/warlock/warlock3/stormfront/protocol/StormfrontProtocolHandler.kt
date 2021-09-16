@@ -15,6 +15,7 @@ class StormfrontProtocolHandler {
         "compass" to CompassHandler(),
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),
+        "indicator" to IndicatorHandler(),
         "left" to LeftHandler(),
         "mode" to ModeHandler(),
         "output" to OutputHandler(),

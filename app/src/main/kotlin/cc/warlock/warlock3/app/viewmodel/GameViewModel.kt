@@ -24,7 +24,7 @@ class GameViewModel {
     private val _lines = MutableStateFlow<List<AnnotatedString>>(emptyList())
     val lines = _lines.asStateFlow()
 
-    private val _properties = MutableStateFlow<Map<String, String?>>(emptyMap())
+    private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
     val properties = _properties.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -75,7 +75,12 @@ class GameViewModel {
                         // don't care
                     }
                     is ClientPropertyChangedEvent -> {
-                        _properties.value = _properties.value + mapOf(event.name to event.value)
+                        val value = event.value
+                        if (value != null) {
+                            _properties.value = _properties.value + mapOf(event.name to value)
+                        } else {
+                            _properties.value = _properties.value.filter { it.key != event.name }
+                        }
                     }
                     is ClientCompassEvent -> {
                         // don't care

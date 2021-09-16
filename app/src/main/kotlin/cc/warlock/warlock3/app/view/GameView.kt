@@ -11,6 +11,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.viewmodel.CompassViewModel
@@ -25,7 +26,16 @@ fun GameView(viewModel: GameViewModel) {
         MainGameView(viewModel)
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                WarlockEntry(modifier = Modifier.fillMaxWidth().padding(2.dp), viewModel = viewModel)
+                Row(modifier = Modifier.fillMaxWidth().padding(2.dp)) {
+                    WarlockEntry(modifier = Modifier.height(32.dp).weight(1f), viewModel = viewModel)
+                    IndicatorView(
+                        modifier = Modifier
+                            .padding(start = 2.dp)
+                            .height(32.dp)
+                            .background(Color(25, 25, 50)),
+                        viewModel = viewModel,
+                    )
+                }
                 val vitalBars by vitalsViewModel.vitalBars.collectAsState()
                 VitalBars(vitalBars)
                 HandsView(viewModel)
@@ -63,12 +73,12 @@ fun ColumnScope.MainGameView(viewModel: GameViewModel) {
                 ) {
                     items(lines) { line ->
                         Text(line)
+                        LaunchedEffect(lines) {
+                            scrollState.scrollToItem(lines.lastIndex)
+                        }
                     }
                 }
             }
         }
-    }
-    LaunchedEffect(lines) {
-        scrollState.scrollToItem(lines.lastIndex)
     }
 }
