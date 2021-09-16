@@ -223,9 +223,6 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
         if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
         }
-        scope.launch {
-            eventChannel.emit(ClientDataSentEvent(toSend))
-        }
     }
 
     override fun print(message: StyledString) {

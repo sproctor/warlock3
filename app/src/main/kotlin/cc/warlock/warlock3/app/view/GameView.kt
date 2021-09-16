@@ -6,15 +6,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.Button
 import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.viewmodel.CompassViewModel
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.VitalsViewModel
@@ -27,7 +25,7 @@ fun GameView(viewModel: GameViewModel) {
         MainGameView(viewModel)
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                WarlockEntry(viewModel)
+                WarlockEntry(modifier = Modifier.fillMaxWidth().padding(2.dp), viewModel = viewModel)
                 val vitalBars by vitalsViewModel.vitalBars.collectAsState()
                 VitalBars(vitalBars)
                 HandsView(viewModel)

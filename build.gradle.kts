@@ -1,8 +1,8 @@
 buildscript {
     repositories {
         mavenCentral()
-        gradlePluginPortal()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        google()
     }
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:_")

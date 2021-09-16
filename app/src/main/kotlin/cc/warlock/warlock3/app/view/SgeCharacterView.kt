@@ -4,10 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Button
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.ListItem
-import androidx.compose.material.Text
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -21,8 +19,10 @@ fun SgeCharacterView(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            items(characters) { character ->
+            itemsIndexed(characters) { index, character ->
                 CharacterListItem(character = character, onClick = { onCharacterSelected(character) })
+                if (index < characters.size - 1)
+                    Divider()
             }
         }
         Row(
