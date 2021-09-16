@@ -33,19 +33,19 @@ fun HandsViewContent(left: String, right: String, spell: String) {
     Row(modifier = Modifier.fillMaxWidth()) {
         val leftImage = remember {
             object {}.javaClass.getResourceAsStream("/images/left_hand_small.gif").use {
-                org.jetbrains.skija.Image.makeFromEncoded(it!!.readBytes()).asImageBitmap()
+                org.jetbrains.skia.Image.makeFromEncoded(it!!.readBytes()).asImageBitmap()
             }
         }
         HandBox(leftImage, left)
         val rightImage = remember {
             object {}.javaClass.getResourceAsStream("/images/right_hand_small.gif").use {
-                org.jetbrains.skija.Image.makeFromEncoded(it!!.readBytes()).asImageBitmap()
+                org.jetbrains.skia.Image.makeFromEncoded(it!!.readBytes()).asImageBitmap()
             }
         }
         HandBox(rightImage, right)
         val spellImage = remember {
             object {}.javaClass.getResourceAsStream("/images/spell_hand_small.gif").use {
-                org.jetbrains.skija.Image.makeFromEncoded(it!!.readBytes()).asImageBitmap()
+                org.jetbrains.skia.Image.makeFromEncoded(it!!.readBytes()).asImageBitmap()
             }
         }
         HandBox(spellImage, spell)

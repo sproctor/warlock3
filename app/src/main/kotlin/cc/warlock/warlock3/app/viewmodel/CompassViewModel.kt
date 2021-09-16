@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.jetbrains.skija.Image
+import org.jetbrains.skia.Image
 import java.util.*
 
 class CompassViewModel(
