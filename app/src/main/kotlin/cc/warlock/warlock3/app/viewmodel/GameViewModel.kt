@@ -5,6 +5,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
+import cc.warlock.warlock3.app.model.ViewLine
 import cc.warlock.warlock3.core.*
 import cc.warlock.warlock3.core.wsl.WslScript
 import cc.warlock.warlock3.core.wsl.WslScriptInstance
@@ -21,11 +22,14 @@ class GameViewModel {
     lateinit var client: StormfrontClient
         private set
 
-    private val _lines = MutableStateFlow<List<AnnotatedString>>(emptyList())
+    private val _lines = MutableStateFlow<List<ViewLine>>(emptyList())
     val lines = _lines.asStateFlow()
 
     private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
     val properties = _properties.asStateFlow()
+
+    private val _components = MutableStateFlow<Map<String, String>>(emptyMap())
+    val components = _components.asStateFlow()
 
     private val _sendHistory = MutableStateFlow<List<String>>(emptyList())
     val sendHistory = _sendHistory.asStateFlow()
@@ -37,6 +41,7 @@ class GameViewModel {
         mapOf(
             "bold" to WarlockColor(red = 0xFF, green = 0xFF, blue = 0x00),
             "error" to WarlockColor(red = 0xFF, green = 0, blue = 0),
+            "command" to WarlockColor(red = 0xFF, green = 0xFF, blue = 0x00)
         )
     )
     val styleBackgroundColors = MutableStateFlow(
@@ -60,14 +65,21 @@ class GameViewModel {
                             buffer = buffer?.plus(newString) ?: newString
                         }
                     }
-                    is ClientOutputEvent -> _lines.value = _lines.value + listOf(event.text.toAnnotatedString())
+                    is ClientOutputEvent -> _lines.value = _lines.value + ViewLine(backgroundColor = null, stringFactory = { event.text.toAnnotatedString() })
                     is ClientDataSentEvent ->
-                        _lines.value = _lines.value + listOf(AnnotatedString(event.text))
+                        _lines.value = _lines.value + ViewLine(backgroundColor = null, stringFactory = { AnnotatedString(event.text) })
                     is ClientDisconnectedEvent ->
-                        _lines.value = _lines.value + listOf(AnnotatedString("disconnected"))
+                        _lines.value = _lines.value + ViewLine(
+                            backgroundColor = null,
+                            stringFactory = { AnnotatedString("Connection was closed by the server.") }
+                        )
                     is ClientEolEvent -> {
                         if (event.stream == null) {
-                            _lines.value = _lines.value + listOf(buffer ?: AnnotatedString(""))
+                            val text = buffer ?: AnnotatedString("")
+                            _lines.value = _lines.value + ViewLine(
+                                backgroundColor = null,
+                                stringFactory = { text }
+                            )
                             buffer = null
                         }
                     }

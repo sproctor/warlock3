@@ -56,6 +56,8 @@ fun ColumnScope.MainGameView(viewModel: GameViewModel) {
     val lines by viewModel.lines.collectAsState()
     val backgroundColor by viewModel.backgroundColor.collectAsState()
     val scrollState = rememberLazyListState()
+    val components = viewModel.components.collectAsState()
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
@@ -74,7 +76,7 @@ fun ColumnScope.MainGameView(viewModel: GameViewModel) {
                         state = scrollState
                     ) {
                         items(lines) { line ->
-                            Text(line)
+                            Text(modifier = Modifier.background(line.backgroundColor ?: Color), text = line.stringFactory(components.value))
                         }
                     }
                     if (scrollState.isScrolledToEnd()) {

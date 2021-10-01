@@ -133,7 +133,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                             }
                         } else {
                             // connection was closed by server
-                            connectionClosed()
+                            disconnect()
                         }
                     } else {
                         // This is the strange mode to read books and create characters
@@ -141,7 +141,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                         val c = reader.read()
                         if (c == -1) {
                             // connection was closed by server
-                            connectionClosed()
+                            disconnect()
                         } else {
                             val char = c.toChar()
                             buffer.append(char)
@@ -189,19 +189,6 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                 }
             }
         }
-    }
-
-    private suspend fun connectionClosed() {
-        // TODO Make this error message a little more sensible
-        eventChannel.emit(
-            ClientOutputEvent(
-                StyledString(
-                    "Connection closed by server.",
-                    WarlockStyle(monospace = true)
-                )
-            )
-        )
-        disconnect()
     }
 
     override fun sendCommand(line: String) {
