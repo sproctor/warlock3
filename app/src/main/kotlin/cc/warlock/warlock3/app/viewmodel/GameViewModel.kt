@@ -27,6 +27,9 @@ class GameViewModel {
     private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
     val properties = _properties.asStateFlow()
 
+    private val _sendHistory = MutableStateFlow<List<String>>(emptyList())
+    val sendHistory = _sendHistory.asStateFlow()
+
     private val scope = CoroutineScope(Dispatchers.IO)
     val backgroundColor = MutableStateFlow(Color.DarkGray)
     val textColor = MutableStateFlow(Color.White)
@@ -91,6 +94,7 @@ class GameViewModel {
     }
 
     fun send(line: String) {
+        _sendHistory.value = listOf(line) + _sendHistory.value
         if (line.startsWith(".")) {
             val scriptName = line.drop(1)
             val scriptDir = System.getProperty("user.home") + "/.warlock3/scripts"
