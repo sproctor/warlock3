@@ -1,8 +1,9 @@
 package cc.warlock.warlock3.app.view
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -65,20 +66,29 @@ fun ColumnScope.MainGameView(viewModel: GameViewModel) {
         SelectionContainer {
             val textColor by viewModel.textColor.collectAsState()
             CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(height),
-                    state = scrollState
-                ) {
-                    items(lines) { line ->
-                        Text(line)
+                Row(modifier = Modifier.matchParentSize()) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(height),
+                        state = scrollState
+                    ) {
+                        items(lines) { line ->
+                            Text(line)
+                        }
+                    }
+                    if (scrollState.isScrolledToEnd()) {
                         LaunchedEffect(lines) {
                             scrollState.scrollToItem(lines.lastIndex)
                         }
                     }
+                    VerticalScrollbar(
+                        adapter = rememberScrollbarAdapter(scrollState),
+                    )
                 }
             }
         }
     }
 }
+
+fun LazyListState.isScrolledToEnd() = layoutInfo.visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
