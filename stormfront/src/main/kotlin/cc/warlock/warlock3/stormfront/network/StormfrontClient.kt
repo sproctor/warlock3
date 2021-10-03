@@ -27,6 +27,8 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
     private var directions: List<DirectionType> = emptyList()
+    private var componentId: String? = null
+    private var componentText: StyledString? = null
 
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
@@ -83,7 +85,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     }
                                     is StormfrontTimeEvent ->
                                         eventChannel.emit(ClientPropertyChangedEvent(name = "time", value = event.time))
-                                    is StormfrontRoundtimeEvent ->
+                                    is StormfrontRoundTimeEvent ->
                                         eventChannel.emit(
                                             ClientPropertyChangedEvent(
                                                 name = "roundtime",
@@ -122,6 +124,27 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     }
                                     is StormfrontPropertyEvent -> {
                                         eventChannel.emit(ClientPropertyChangedEvent(event.key, event.value))
+                                    }
+                                    is StormfrontComponentStartEvent -> {
+                                        componentId = event.id
+                                        componentText = null
+                                    }
+                                    is StormfrontComponentTextEvent -> {
+                                        val string = StyledString(
+                                            text = event.text,
+                                            style = flattenStyles(listOfNotNull(currentStyle, outputStyle))
+                                        )
+                                        componentText = componentText?.append(string) ?: string
+                                    }
+                                    StormfrontComponentEndEvent -> {
+                                        if (componentId != null && componentText != null) {
+                                            eventChannel.emit(
+                                                ClientComponentUpdateEvent(
+                                                    id = componentId!!,
+                                                    text = componentText!!
+                                                )
+                                            )
+                                        }
                                     }
                                 }
                             }

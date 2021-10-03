@@ -12,3 +12,4 @@ data class ClientPropertyChangedEvent(val name: String, val value: String?) : Cl
 data class ClientPromptEvent(val prompt: String) : ClientEvent()
 data class ClientProgressBarEvent(val progressBarData: ProgressBarData) : ClientEvent()
 data class ClientCompassEvent(val directions: List<DirectionType>) : ClientEvent()
+data class ClientComponentUpdateEvent(val id: String, val text: StyledString) : ClientEvent()

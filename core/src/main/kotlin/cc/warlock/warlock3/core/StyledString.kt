@@ -33,8 +33,11 @@ data class WarlockStyle(
     }
 }
 
-data class WarlockColor(val red: Int, val green: Int, val blue: Int) {
-//    companion object {
-//        val default = WarlockColor(-1, -1, -1)
-//    }
+data class WarlockColor(val red: Int, val green: Int, val blue: Int)
+
+fun flattenStyles(styles: List<WarlockStyle>): WarlockStyle? {
+    return styles
+        .reduceOrNull { acc, warlockStyle ->
+            acc.mergeWith(warlockStyle)
+        }
 }

@@ -130,13 +130,6 @@ class GameViewModel {
             client.sendCommand(line)
         }
     }
-
-    private fun flattenStyles(styles: List<WarlockStyle>): WarlockStyle? {
-        return styles
-            .reduceOrNull { acc, warlockStyle ->
-                acc.mergeWith(warlockStyle)
-            }
-    }
 }
 
 fun WarlockColor.toColor(): Color {
