@@ -9,6 +9,7 @@ import cc.warlock.warlock3.app.model.ViewLine
 import cc.warlock.warlock3.core.*
 import cc.warlock.warlock3.core.wsl.WslScript
 import cc.warlock.warlock3.core.wsl.WslScriptInstance
+import cc.warlock.warlock3.stormfront.StyleProvider
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,16 +38,6 @@ class GameViewModel {
     private val scope = CoroutineScope(Dispatchers.IO)
     val backgroundColor = MutableStateFlow(Color.DarkGray)
     val textColor = MutableStateFlow(Color.White)
-    private val styleColors = MutableStateFlow(
-        mapOf(
-            "bold" to WarlockColor(red = 0xFF, green = 0xFF, blue = 0x00),
-            "error" to WarlockColor(red = 0xFF, green = 0, blue = 0),
-            "command" to WarlockColor(red = 0xFF, green = 0xFF, blue = 0x00)
-        )
-    )
-    val styleBackgroundColors = MutableStateFlow(
-        mapOf("roomName" to WarlockColor(red = 0, green = 0, blue = 0xFF))
-    )
     private val scriptInstances = MutableStateFlow<List<ScriptInstance>>(emptyList())
 
     fun connect(host: String, port: Int, key: String) {
@@ -54,10 +45,15 @@ class GameViewModel {
         scope.launch {
             client.connect(key)
             var buffer: AnnotatedString? = null
+            var lineBackgroundColor: Color? = null
             client.eventFlow.collect { event ->
                 when (event) {
                     is ClientDataReceivedEvent -> {
                         if (event.stream == null) {
+                            event.styles.forEach {
+                                if (it.isEntireLineBackground)
+                                    lineBackgroundColor = it.backgroundColor?.toColor()
+                            }
                             val newString = AnnotatedString(
                                 text = event.text,
                                 spanStyle = flattenStyles(event.styles)?.toSpanStyle() ?: SpanStyle()
@@ -65,9 +61,19 @@ class GameViewModel {
                             buffer = buffer?.plus(newString) ?: newString
                         }
                     }
-                    is ClientOutputEvent -> _lines.value = _lines.value + ViewLine(backgroundColor = null, stringFactory = { event.text.toAnnotatedString() })
+                    is ClientOutputEvent -> _lines.value = _lines.value +
+                            ViewLine(backgroundColor = null, stringFactory = { event.text.toAnnotatedString() })
                     is ClientDataSentEvent ->
-                        _lines.value = _lines.value + ViewLine(backgroundColor = null, stringFactory = { AnnotatedString(event.text) })
+                        _lines.value = _lines.value +
+                                ViewLine(
+                                    backgroundColor = null,
+                                    stringFactory = {
+                                        AnnotatedString(
+                                            text = event.text,
+                                            spanStyle = StyleProvider.commandStyle.toSpanStyle(),
+                                        )
+                                    }
+                                )
                     is ClientDisconnectedEvent ->
                         _lines.value = _lines.value + ViewLine(
                             backgroundColor = null,
@@ -77,9 +83,10 @@ class GameViewModel {
                         if (event.stream == null) {
                             val text = buffer ?: AnnotatedString("")
                             _lines.value = _lines.value + ViewLine(
-                                backgroundColor = null,
+                                backgroundColor = lineBackgroundColor,
                                 stringFactory = { text }
                             )
+                            lineBackgroundColor = null
                             buffer = null
                         }
                     }
@@ -126,17 +133,9 @@ class GameViewModel {
 
     private fun flattenStyles(styles: List<WarlockStyle>): WarlockStyle? {
         return styles
-            .map { completeStyle(it) }
             .reduceOrNull { acc, warlockStyle ->
                 acc.mergeWith(warlockStyle)
             }
-    }
-
-    private fun completeStyle(style: WarlockStyle): WarlockStyle {
-        val name = style.name ?: return style
-        return style.copy(
-            textColor = style.textColor ?: styleColors.value[name]
-        )
     }
 }
 

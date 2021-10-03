@@ -4,6 +4,7 @@ import cc.warlock.warlock3.core.ScriptInstance
 import cc.warlock.warlock3.core.StyledString
 import cc.warlock.warlock3.core.WarlockClient
 import cc.warlock.warlock3.core.WarlockStyle
+import cc.warlock.warlock3.stormfront.StyleProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,10 +38,10 @@ class WslScriptInstance(
                     line.statement.execute(context)
                 }
             } catch (e: WslParseException) {
-                client.print(StyledString(e.reason, WarlockStyle(name = "error")))
+                client.print(StyledString(e.reason, style = StyleProvider.errorStyle))
             } catch (e: WslRuntimeException) {
                 _isRunning = false
-                client.print(StyledString("Script error: ${e.reason}", WarlockStyle(name = "error")))
+                client.print(StyledString("Script error: ${e.reason}", StyleProvider.errorStyle))
             }
         }
     }

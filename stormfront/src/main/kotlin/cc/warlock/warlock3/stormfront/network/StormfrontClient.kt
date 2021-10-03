@@ -14,7 +14,6 @@ import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
-import java.util.*
 
 class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val socket = Socket(host, port)
@@ -24,7 +23,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private var currentStream: String? = null
-    private val styleStack = Stack<WarlockStyle>()
+    private var currentStyle: WarlockStyle? = null
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
     private var directions: List<DirectionType> = emptyList()
@@ -53,10 +52,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         }
                                     is StormfrontStreamEvent -> currentStream = event.id
                                     is StormfrontDataReceivedEvent -> {
-                                        val styles = outputStyle?.let {
-                                            styleStack + listOf(it)
-                                        }
-                                            ?: styleStack
+                                        val styles = listOfNotNull(currentStyle, outputStyle)
                                         eventChannel.emit(
                                             ClientDataReceivedEvent(
                                                 text = event.text,
@@ -78,12 +74,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     }
                                     is StormfrontOutputEvent ->
                                         outputStyle = event.style
-                                    is StormfrontPushStyleEvent ->
-                                        styleStack.push(event.style)
-                                    StormfrontPopStyleEvent ->
-                                        styleStack.pop()
+                                    is StormfrontStyleEvent ->
+                                        currentStyle = event.style
                                     is StormfrontPromptEvent -> {
-                                        styleStack.clear()
+                                        currentStyle = null
                                         outputStyle = null
                                         eventChannel.emit(ClientPromptEvent(event.text))
                                     }

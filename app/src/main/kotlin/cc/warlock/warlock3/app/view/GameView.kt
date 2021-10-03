@@ -76,7 +76,10 @@ fun ColumnScope.MainGameView(viewModel: GameViewModel) {
                         state = scrollState
                     ) {
                         items(lines) { line ->
-                            Text(modifier = Modifier.background(line.backgroundColor ?: Color), text = line.stringFactory(components.value))
+                            Box(modifier = Modifier.fillParentMaxWidth()
+                                .background(line.backgroundColor ?: Color.Unspecified)) {
+                                Text(text = line.stringFactory(components.value))
+                            }
                         }
                     }
                     if (scrollState.isScrolledToEnd()) {

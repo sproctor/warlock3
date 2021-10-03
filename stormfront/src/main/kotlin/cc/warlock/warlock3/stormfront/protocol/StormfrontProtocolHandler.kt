@@ -29,6 +29,7 @@ class StormfrontProtocolHandler {
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
         "spell" to SpellHandler(),
+        "style" to StyleHandler(),
     )
 
     fun parseLine(line: String): List<StormfrontEvent> {

@@ -12,9 +12,9 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
 data class StyledStringLeaf(val text: String, val style: WarlockStyle? = null)
 
 data class WarlockStyle(
-    val name: String? = null,
     val textColor: WarlockColor? = null,
     val backgroundColor: WarlockColor? = null,
+    val isEntireLineBackground: Boolean = false,
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
@@ -22,9 +22,9 @@ data class WarlockStyle(
 ) {
     fun mergeWith(other: WarlockStyle): WarlockStyle {
         return WarlockStyle(
-            name = name ?: other.name,
             textColor = textColor ?: other.textColor,
             backgroundColor = backgroundColor ?: other.backgroundColor,
+            isEntireLineBackground = isEntireLineBackground || other.isEntireLineBackground,
             bold = bold || other.bold,
             italic = italic || other.italic,
             underline = underline || other.underline,
