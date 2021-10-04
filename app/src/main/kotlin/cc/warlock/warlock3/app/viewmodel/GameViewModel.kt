@@ -6,6 +6,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import cc.warlock.warlock3.app.model.ViewLine
+import cc.warlock.warlock3.core.Window
 import cc.warlock.warlock3.core.*
 import cc.warlock.warlock3.core.wsl.WslScript
 import cc.warlock.warlock3.core.wsl.WslScriptInstance
@@ -40,6 +41,12 @@ class GameViewModel {
     val textColor = MutableStateFlow(Color.White)
     private val scriptInstances = MutableStateFlow<List<ScriptInstance>>(emptyList())
 
+    private val _windows: MutableStateFlow<Map<String, Window>> = MutableStateFlow(emptyMap())
+    val windows = _windows.asStateFlow()
+
+    private val _windowContents: MutableStateFlow<List<WindowViewModel>> = MutableStateFlow(emptyList())
+    val windowContents = _windowContents.asStateFlow()
+
     fun connect(host: String, port: Int, key: String) {
         client = StormfrontClient(host, port)
         scope.launch {
@@ -62,6 +69,12 @@ class GameViewModel {
                             )
                             buffer = buffer?.plus(newString) ?: newString
                             isPrompting = false
+                        } else {
+                            _windowContents.value.firstOrNull { it.name == event.stream }?.let { windowViewModel ->
+                                if (windowViewModel.)
+                                windowViewModel.append(event.text)
+                            }
+
                         }
                     }
                     is ClientOutputEvent -> _lines.value = _lines.value +
