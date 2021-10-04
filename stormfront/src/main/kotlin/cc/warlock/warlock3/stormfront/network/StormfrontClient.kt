@@ -92,6 +92,13 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                                 value = event.time
                                             )
                                         )
+                                    is StormfrontCastTimeEvent ->
+                                        eventChannel.emit(
+                                            ClientPropertyChangedEvent(
+                                                name = "casttime",
+                                                value = event.time
+                                            )
+                                        )
                                     is StormfrontSettingsInfoEvent -> {
                                         // We don't actually handle server settings
 
@@ -146,6 +153,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                             )
                                         }
                                     }
+                                    StormfrontHandledEvent -> Unit // do nothing
                                 }
                             }
                         } else {

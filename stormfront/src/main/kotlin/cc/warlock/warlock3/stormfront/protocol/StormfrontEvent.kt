@@ -31,3 +31,4 @@ data class StormfrontPropertyEvent(val key: String, val value: String?) : Stormf
 data class StormfrontComponentStartEvent(val id: String) : StormfrontEvent()
 data class StormfrontComponentTextEvent(val text: String) : StormfrontEvent()
 object StormfrontComponentEndEvent : StormfrontEvent()
+object StormfrontHandledEvent : StormfrontEvent()

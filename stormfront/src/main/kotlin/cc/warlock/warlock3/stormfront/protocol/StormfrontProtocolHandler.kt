@@ -74,12 +74,14 @@ class StormfrontProtocolHandler {
                     }
                 }
                 is CharData -> {
-                    val listener = elementStack.peek()?.let { elementListeners[it.name.lowercase()] }
+                    val charEvents = elementStack.mapNotNull {
+                        elementListeners[it.name.lowercase()]?.characters(content.data)
+                    }
 
                     // call the character handlers on the CharData
                     // if none returned true (handled) then call the global handlers
-                    if (listener != null) {
-                        listener.characters(content.data)?.let { events.add(it) }
+                    if (charEvents.isNotEmpty()) {
+                        events.addAll(charEvents)
                     } else {
                         lineHasText = true
                         events.add(StormfrontDataReceivedEvent(content.data))

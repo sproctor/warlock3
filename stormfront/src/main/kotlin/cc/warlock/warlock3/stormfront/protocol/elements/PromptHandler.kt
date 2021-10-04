@@ -12,9 +12,9 @@ class PromptHandler : ElementListener {
             StormfrontTimeEvent(time = time)
         }
     }
-    override fun characters(data: String): StormfrontEvent? {
+    override fun characters(data: String): StormfrontEvent {
         prompt.append(data)
-        return null
+        return StormfrontHandledEvent
     }
     override fun endElement(element: EndElement): StormfrontPromptEvent {
        return StormfrontPromptEvent(prompt.toString())
