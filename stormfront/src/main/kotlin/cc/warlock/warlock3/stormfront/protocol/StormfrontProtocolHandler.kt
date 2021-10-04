@@ -74,7 +74,6 @@ class StormfrontProtocolHandler {
                     }
                 }
                 is CharData -> {
-                    lineHasText = true
                     val listener = elementStack.peek()?.let { elementListeners[it.name.lowercase()] }
 
                     // call the character handlers on the CharData
@@ -82,6 +81,7 @@ class StormfrontProtocolHandler {
                     if (listener != null) {
                         listener.characters(content.data)?.let { events.add(it) }
                     } else {
+                        lineHasText = true
                         events.add(StormfrontDataReceivedEvent(content.data))
                     }
                 }

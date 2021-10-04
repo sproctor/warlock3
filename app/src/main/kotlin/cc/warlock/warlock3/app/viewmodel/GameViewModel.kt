@@ -46,6 +46,8 @@ class GameViewModel {
             client.connect(key)
             var buffer: AnnotatedString? = null
             var lineBackgroundColor: Color? = null
+            var isPrompting = false
+            var waitingCommand: AnnotatedString? = null
             client.eventFlow.collect { event ->
                 when (event) {
                     is ClientDataReceivedEvent -> {
@@ -59,21 +61,28 @@ class GameViewModel {
                                 spanStyle = flattenStyles(event.styles)?.toSpanStyle() ?: SpanStyle()
                             )
                             buffer = buffer?.plus(newString) ?: newString
+                            isPrompting = false
                         }
                     }
                     is ClientOutputEvent -> _lines.value = _lines.value +
                             ViewLine(backgroundColor = null, stringFactory = { event.text.toAnnotatedString() })
-                    is ClientDataSentEvent ->
-                        _lines.value = _lines.value +
-                                ViewLine(
-                                    backgroundColor = null,
-                                    stringFactory = {
-                                        AnnotatedString(
-                                            text = event.text,
-                                            spanStyle = StyleProvider.commandStyle.toSpanStyle(),
-                                        )
-                                    }
-                                )
+                    is ClientCommandEvent -> {
+                        val command = AnnotatedString(
+                            text =  event.text,
+                            spanStyle = StyleProvider.commandStyle.toSpanStyle(),
+                        )
+                        if (isPrompting) {
+                            val lastLine = _lines.value.last().copy()
+                            _lines.value = _lines.value.dropLast(1) +
+                                    lastLine.copy(
+                                        stringFactory = {
+                                            lastLine.stringFactory(it) + AnnotatedString(" ") + command
+                                        }
+                                    )
+                        } else {
+                            waitingCommand = command
+                        }
+                    }
                     is ClientDisconnectedEvent ->
                         _lines.value = _lines.value + ViewLine(
                             backgroundColor = null,
@@ -88,10 +97,19 @@ class GameViewModel {
                             )
                             lineBackgroundColor = null
                             buffer = null
+                            isPrompting = false
                         }
                     }
                     is ClientPromptEvent -> {
-                        // styleStack.clear()
+                        if (!isPrompting || waitingCommand != null) {
+                            isPrompting = true
+                            val text = if (waitingCommand != null) {
+                                AnnotatedString(event.prompt + " ") + waitingCommand!!
+                            } else {
+                                AnnotatedString(event.prompt)
+                            }
+                            _lines.value = _lines.value + ViewLine(backgroundColor = null, stringFactory = { text })
+                        }
                     }
                     is ClientProgressBarEvent -> {
                         // don't care

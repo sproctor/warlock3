@@ -210,7 +210,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     override fun sendCommand(line: String) {
         scope.launch {
-            eventChannel.emit(ClientDataSentEvent(line))
+            eventChannel.emit(ClientCommandEvent(line))
         }
         send("<c>$line\n")
     }

@@ -4,7 +4,7 @@ import cc.warlock.warlock3.core.compass.DirectionType
 
 sealed class ClientEvent
 object ClientDisconnectedEvent : ClientEvent()
-data class ClientDataSentEvent(val text: String) : ClientEvent()
+data class ClientCommandEvent(val text: String) : ClientEvent()
 data class ClientDataReceivedEvent(val text: String, val styles: List<WarlockStyle>, val stream: String?) : ClientEvent()
 data class ClientOutputEvent(val text: StyledString, val stream: String? = null) : ClientEvent()
 data class ClientEolEvent(val stream: String?) : ClientEvent()
