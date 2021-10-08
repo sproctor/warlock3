@@ -5,9 +5,7 @@ import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.protocol.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -17,8 +15,26 @@ import java.net.SocketTimeoutException
 
 class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val socket = Socket(host, port)
-    private val eventChannel = MutableSharedFlow<ClientEvent>()
-    override val eventFlow: SharedFlow<ClientEvent> = eventChannel.asSharedFlow()
+    private val _eventFlow = MutableSharedFlow<ClientEvent>()
+    override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
+
+    private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
+    override val properties: StateFlow<Map<String, String>> = _properties.asStateFlow()
+
+    private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
+    override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
+
+    private val _windows = MutableStateFlow<Map<String, Window>>(
+        mapOf("main" to Window(
+            name = "main",
+            title = "Main",
+            styleIfClosed = null,
+            ifClosed = null,
+            location = WindowLocation.MAIN,
+        ))
+    )
+    val windows = _windows.asStateFlow()
+
     private var parseText = true
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -55,7 +71,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontStreamEvent -> currentStream = event.id
                                     is StormfrontDataReceivedEvent -> {
                                         val styles = listOfNotNull(currentStyle, outputStyle)
-                                        eventChannel.emit(
+                                        _eventFlow.emit(
                                             ClientDataReceivedEvent(
                                                 text = event.text,
                                                 styles = styles,
@@ -64,15 +80,12 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         )
                                     }
                                     is StormfrontEolEvent ->
-                                        eventChannel.emit(ClientEolEvent(currentStream))
+                                        _eventFlow.emit(ClientEolEvent(currentStream))
                                     is StormfrontAppEvent -> {
-                                        eventChannel.emit(
-                                            ClientPropertyChangedEvent(
-                                                name = "character",
-                                                value = event.character
-                                            )
-                                        )
-                                        eventChannel.emit(ClientPropertyChangedEvent(name = "game", value = event.game))
+                                        val newProperties = properties.value
+                                            .plus("character" to (event.character ?: ""))
+                                            .plus("game" to (event.game ?: ""))
+                                        _properties.value = newProperties
                                     }
                                     is StormfrontOutputEvent ->
                                         outputStyle = event.style
@@ -81,24 +94,14 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontPromptEvent -> {
                                         currentStyle = null
                                         outputStyle = null
-                                        eventChannel.emit(ClientPromptEvent(event.text))
+                                        _eventFlow.emit(ClientPromptEvent(event.text))
                                     }
                                     is StormfrontTimeEvent ->
-                                        eventChannel.emit(ClientPropertyChangedEvent(name = "time", value = event.time))
+                                        _properties.value = _properties.value.plus("time" to event.time)
                                     is StormfrontRoundTimeEvent ->
-                                        eventChannel.emit(
-                                            ClientPropertyChangedEvent(
-                                                name = "roundtime",
-                                                value = event.time
-                                            )
-                                        )
+                                        _properties.value = _properties.value.plus("roundtime" to event.time)
                                     is StormfrontCastTimeEvent ->
-                                        eventChannel.emit(
-                                            ClientPropertyChangedEvent(
-                                                name = "casttime",
-                                                value = event.time
-                                            )
-                                        )
+                                        _properties.value = _properties.value.plus("casttime" to event.time)
                                     is StormfrontSettingsInfoEvent -> {
                                         // We don't actually handle server settings
 
@@ -109,7 +112,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     }
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
                                     is StormfrontProgressBarEvent -> {
-                                        eventChannel.emit(
+                                        _eventFlow.emit(
                                             ClientProgressBarEvent(
                                                 ProgressBarData(
                                                     id = event.id,
@@ -123,14 +126,17 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         )
                                     }
                                     is StormfrontCompassEndEvent -> {
-                                        eventChannel.emit(ClientCompassEvent(directions))
+                                        _eventFlow.emit(ClientCompassEvent(directions))
                                         directions = emptyList()
                                     }
                                     is StormfrontDirectionEvent -> {
                                         directions = directions + event.direction
                                     }
                                     is StormfrontPropertyEvent -> {
-                                        eventChannel.emit(ClientPropertyChangedEvent(event.key, event.value))
+                                        if (event.value != null)
+                                            _properties.value = _properties.value.plus(event.key to event.value)
+                                        else
+                                            _properties.value = _properties.value.minus(event.key)
                                     }
                                     is StormfrontComponentStartEvent -> {
                                         componentId = event.id
@@ -145,12 +151,12 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     }
                                     StormfrontComponentEndEvent -> {
                                         if (componentId != null && componentText != null) {
-                                            eventChannel.emit(
-                                                ClientComponentUpdateEvent(
-                                                    id = componentId!!,
-                                                    text = componentText!!
-                                                )
-                                            )
+                                            if (componentText?.substrings.isNullOrEmpty()) {
+                                                _components.value = _components.value - componentId!!
+                                            } else {
+                                                _components.value = _components.value +
+                                                        (componentId!! to componentText!!)
+                                            }
                                         }
                                     }
                                     StormfrontHandledEvent -> Unit // do nothing
@@ -180,7 +186,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    eventChannel.emit(
+                                    _eventFlow.emit(
                                         ClientOutputEvent(
                                             StyledString(
                                                 line,
@@ -194,7 +200,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     buffer.append(reader.read().toChar())
                                 }
                                 print(buffer.toString())
-                                eventChannel.emit(
+                                _eventFlow.emit(
                                     ClientOutputEvent(
                                         StyledString(
                                             buffer.toString(),
@@ -218,7 +224,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     override fun sendCommand(line: String) {
         scope.launch {
-            eventChannel.emit(ClientCommandEvent(line))
+            _eventFlow.emit(ClientCommandEvent(line))
         }
         send("<c>$line\n")
     }
@@ -226,7 +232,8 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     override fun disconnect() {
         socket.close()
         scope.launch {
-            eventChannel.emit(ClientDisconnectedEvent)
+            _eventFlow.emit(ClientOutputEvent(StyledString("Connection closed by server.")))
+            _eventFlow.emit(ClientDisconnectedEvent)
         }
     }
 
@@ -239,7 +246,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     override fun print(message: StyledString) {
         scope.launch {
-            eventChannel.emit(ClientOutputEvent(message))
+            _eventFlow.emit(ClientOutputEvent(message))
         }
     }
 }

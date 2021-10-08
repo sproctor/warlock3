@@ -8,6 +8,7 @@ import cc.warlock.warlock3.app.view.GameView
 import cc.warlock.warlock3.app.view.SgeWizard
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
+import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import org.apache.commons.configuration2.Configuration
 
 @Composable
@@ -28,8 +29,12 @@ fun WarlockApp(state: MutableState<GameState>, config: Configuration?) {
             SgeWizard(viewModel = viewModel)
         }
         is GameState.ConnectedGameState -> {
-            val viewModel = remember(currentState.key) { GameViewModel() }
-            viewModel.connect(currentState.host, currentState.port, currentState.key)
+            val viewModel = remember(currentState.key) {
+                val client = StormfrontClient(currentState.host, currentState.port)
+                GameViewModel(client).also {
+                    client.connect(currentState.key)
+                }
+            }
             GameView(viewModel)
         }
     }

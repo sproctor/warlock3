@@ -5,10 +5,12 @@ data class Window(
     val title: String,
     val styleIfClosed: String?,
     val ifClosed: String?,
+    val location: WindowLocation,
 )
 
 enum class WindowLocation {
     TOP,
     LEFT,
-    RIGHT
+    RIGHT,
+    MAIN,
 }

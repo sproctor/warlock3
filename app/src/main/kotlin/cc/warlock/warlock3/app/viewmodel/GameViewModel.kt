@@ -5,12 +5,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
-import cc.warlock.warlock3.app.model.ViewLine
-import cc.warlock.warlock3.core.Window
 import cc.warlock.warlock3.core.*
 import cc.warlock.warlock3.core.wsl.WslScript
 import cc.warlock.warlock3.core.wsl.WslScriptInstance
-import cc.warlock.warlock3.stormfront.StyleProvider
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,13 +17,9 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.File
 
-class GameViewModel {
-    lateinit var client: StormfrontClient
-        private set
-
-    private val _lines = MutableStateFlow<List<ViewLine>>(emptyList())
-    val lines = _lines.asStateFlow()
-
+class GameViewModel(
+    val client: StormfrontClient
+) {
     private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
     val properties = _properties.asStateFlow()
 
@@ -37,107 +30,27 @@ class GameViewModel {
     val sendHistory = _sendHistory.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    val backgroundColor = MutableStateFlow(Color.DarkGray)
-    val textColor = MutableStateFlow(Color.White)
     private val scriptInstances = MutableStateFlow<List<ScriptInstance>>(emptyList())
 
-    private val _windows: MutableStateFlow<Map<String, Window>> = MutableStateFlow(emptyMap())
-    val windows = _windows.asStateFlow()
+    val windows = client.windows
 
-    private val _windowContents: MutableStateFlow<List<WindowViewModel>> = MutableStateFlow(emptyList())
-    val windowContents = _windowContents.asStateFlow()
+    private val _openWindows = MutableStateFlow<List<String>>(listOf("main"))
+    val openWindows = _openWindows.asStateFlow()
 
-    fun connect(host: String, port: Int, key: String) {
-        client = StormfrontClient(host, port)
+    init {
         scope.launch {
-            client.connect(key)
-            var buffer: AnnotatedString? = null
-            var lineBackgroundColor: Color? = null
-            var isPrompting = false
-            var waitingCommand: AnnotatedString? = null
             client.eventFlow.collect { event ->
                 when (event) {
-                    is ClientDataReceivedEvent -> {
-                        if (event.stream == null) {
-                            event.styles.forEach {
-                                if (it.isEntireLineBackground)
-                                    lineBackgroundColor = it.backgroundColor?.toColor()
-                            }
-                            val newString = AnnotatedString(
-                                text = event.text,
-                                spanStyle = flattenStyles(event.styles)?.toSpanStyle() ?: SpanStyle()
-                            )
-                            buffer = buffer?.plus(newString) ?: newString
-                            isPrompting = false
-                        } else {
-                            _windowContents.value.firstOrNull { it.name == event.stream }?.let { windowViewModel ->
-                                if (windowViewModel.)
-                                windowViewModel.append(event.text)
-                            }
-
-                        }
+                    is ClientDataReceivedEvent -> Unit // don't care
+                    is ClientOutputEvent -> Unit // Don't care
+                    is ClientCommandEvent -> Unit // Don't care
+                    is ClientDisconnectedEvent -> {
+                        // TODO: offer to reconnect
                     }
-                    is ClientOutputEvent -> _lines.value = _lines.value +
-                            ViewLine(backgroundColor = null, stringFactory = { event.text.toAnnotatedString() })
-                    is ClientCommandEvent -> {
-                        val command = AnnotatedString(
-                            text =  event.text,
-                            spanStyle = StyleProvider.commandStyle.toSpanStyle(),
-                        )
-                        if (isPrompting) {
-                            val lastLine = _lines.value.last().copy()
-                            _lines.value = _lines.value.dropLast(1) +
-                                    lastLine.copy(
-                                        stringFactory = {
-                                            lastLine.stringFactory(it) + AnnotatedString(" ") + command
-                                        }
-                                    )
-                        } else {
-                            waitingCommand = command
-                        }
-                    }
-                    is ClientDisconnectedEvent ->
-                        _lines.value = _lines.value + ViewLine(
-                            backgroundColor = null,
-                            stringFactory = { AnnotatedString("Connection was closed by the server.") }
-                        )
-                    is ClientEolEvent -> {
-                        if (event.stream == null) {
-                            val text = buffer ?: AnnotatedString("")
-                            _lines.value = _lines.value + ViewLine(
-                                backgroundColor = lineBackgroundColor,
-                                stringFactory = { text }
-                            )
-                            lineBackgroundColor = null
-                            buffer = null
-                            isPrompting = false
-                        }
-                    }
-                    is ClientPromptEvent -> {
-                        if (!isPrompting || waitingCommand != null) {
-                            isPrompting = true
-                            val text = if (waitingCommand != null) {
-                                AnnotatedString(event.prompt + " ") + waitingCommand!!
-                            } else {
-                                AnnotatedString(event.prompt)
-                            }
-                            _lines.value = _lines.value + ViewLine(backgroundColor = null, stringFactory = { text })
-                        }
-                    }
-                    is ClientProgressBarEvent -> {
-                        // don't care
-                    }
-                    is ClientPropertyChangedEvent -> {
-                        val value = event.value
-                        if (value != null) {
-                            _properties.value = _properties.value + mapOf(event.name to value)
-                        } else {
-                            _properties.value = _properties.value.filter { it.key != event.name }
-                        }
-                    }
-                    is ClientCompassEvent -> {
-                        // don't care
-                    }
+                    is ClientEolEvent -> Unit // Don't care
+                    is ClientPromptEvent -> Unit // Don't care
+                    is ClientProgressBarEvent -> Unit // Don't care?
+                    is ClientCompassEvent -> Unit // Don't care
                 }
             }
         }
