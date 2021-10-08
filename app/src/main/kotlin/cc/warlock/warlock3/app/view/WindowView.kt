@@ -14,13 +14,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import cc.warlock.warlock3.app.viewmodel.WindowViewModel
+import cc.warlock.warlock3.app.viewmodel.GameViewModel
+import cc.warlock.warlock3.app.viewmodel.toAnnotatedString
+import cc.warlock.warlock3.app.viewmodel.toColor
 import kotlinx.coroutines.launch
 
 @Composable
-fun ColumnScope.WindowView(viewModel: WindowViewModel) {
-    val lines by viewModel.lines.collectAsState()
-    val backgroundColor by viewModel.backgroundColor.collectAsState()
+fun ColumnScope.WindowView(name: String, viewModel: GameViewModel) {
+    val lines by viewModel.client.getStream(name).lines.collectAsState()
+    val backgroundColor by viewModel.defaultBackgroundColor.collectAsState()
     val scrollState = rememberLazyListState()
     val components = viewModel.components.collectAsState()
 
@@ -32,7 +34,7 @@ fun ColumnScope.WindowView(viewModel: WindowViewModel) {
     ) {
         val height = this.maxHeight
         SelectionContainer {
-            val textColor by viewModel.textColor.collectAsState()
+            val textColor by viewModel.defaultTextColor.collectAsState()
             CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
                 Row(modifier = Modifier.matchParentSize()) {
                     val shouldScroll = scrollState.isScrolledToEnd()
@@ -45,9 +47,9 @@ fun ColumnScope.WindowView(viewModel: WindowViewModel) {
                         items(lines) { line ->
                             Box(
                                 modifier = Modifier.fillParentMaxWidth()
-                                    .background(line.backgroundColor ?: Color.Unspecified)
+                                    .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
                             ) {
-                                Text(text = line.stringFactory(components.value))
+                                Text(text = line.stringFactory(components.value).toAnnotatedString())
                             }
                         }
                     }

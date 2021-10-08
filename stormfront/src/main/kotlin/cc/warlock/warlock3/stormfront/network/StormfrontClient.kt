@@ -2,6 +2,7 @@ package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.*
 import cc.warlock.warlock3.core.compass.DirectionType
+import cc.warlock.warlock3.stormfront.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +13,8 @@ import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 
 class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val socket = Socket(host, port)
@@ -24,27 +27,38 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
     override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
 
+    private val mainStream = TextStream("main")
+    private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
+
+    private val _openWindows = MutableStateFlow(setOf("main", "room"))
+    val openWindows = _openWindows.asStateFlow()
+
     private val _windows = MutableStateFlow<Map<String, Window>>(
-        mapOf("main" to Window(
-            name = "main",
-            title = "Main",
-            styleIfClosed = null,
-            ifClosed = null,
-            location = WindowLocation.MAIN,
-        ))
+        mapOf(
+            "main" to Window(
+                name = "main",
+                title = "Main",
+                styleIfClosed = null,
+                ifClosed = null,
+                location = WindowLocation.MAIN,
+            )
+        )
     )
     val windows = _windows.asStateFlow()
 
     private var parseText = true
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    private var currentStream: String? = null
+    private var currentStream: TextStream? = mainStream
     private var currentStyle: WarlockStyle? = null
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
     private var directions: List<DirectionType> = emptyList()
     private var componentId: String? = null
     private var componentText: StyledString? = null
+
+    private val _connected = MutableStateFlow(true)
+    val connected = _connected.asStateFlow()
 
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
@@ -68,19 +82,22 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         if (event.id.equals("cmgr", true)) {
                                             parseText = false
                                         }
-                                    is StormfrontStreamEvent -> currentStream = event.id
+                                    is StormfrontStreamEvent ->
+                                        currentStream = if (event.id != null) {
+                                            if (openWindows.value.contains(event.id)) {
+                                                getStream(event.id)
+                                            } else {
+                                                getStream(windows.value[event.id]?.ifClosed ?: "main")
+                                            }
+                                        } else {
+                                            mainStream
+                                        }
                                     is StormfrontDataReceivedEvent -> {
                                         val styles = listOfNotNull(currentStyle, outputStyle)
-                                        _eventFlow.emit(
-                                            ClientDataReceivedEvent(
-                                                text = event.text,
-                                                styles = styles,
-                                                stream = currentStream
-                                            )
-                                        )
+                                        currentStream?.append(event.text, styles = styles)
                                     }
                                     is StormfrontEolEvent ->
-                                        _eventFlow.emit(ClientEolEvent(currentStream))
+                                        currentStream?.appendEol()
                                     is StormfrontAppEvent -> {
                                         val newProperties = properties.value
                                             .plus("character" to (event.character ?: ""))
@@ -94,7 +111,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontPromptEvent -> {
                                         currentStyle = null
                                         outputStyle = null
-                                        _eventFlow.emit(ClientPromptEvent(event.text))
+                                        currentStream?.appendPrompt(event.text)
                                     }
                                     is StormfrontTimeEvent ->
                                         _properties.value = _properties.value.plus("time" to event.time)
@@ -147,7 +164,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                             text = event.text,
                                             style = flattenStyles(listOfNotNull(currentStyle, outputStyle))
                                         )
-                                        componentText = componentText?.append(string) ?: string
+                                        componentText = componentText?.plus(string) ?: string
                                     }
                                     StormfrontComponentEndEvent -> {
                                         if (componentId != null && componentText != null) {
@@ -160,6 +177,8 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         }
                                     }
                                     StormfrontHandledEvent -> Unit // do nothing
+                                    is StormfrontStreamWindowEvent ->
+                                        _windows.value = windows.value + (event.window.name to event.window)
                                 }
                             }
                         } else {
@@ -186,28 +205,14 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    _eventFlow.emit(
-                                        ClientOutputEvent(
-                                            StyledString(
-                                                line,
-                                                WarlockStyle(monospace = true)
-                                            )
-                                        )
-                                    )
+                                    mainStream.append(text = line, styles = listOf(WarlockStyle(monospace = true)))
                                 }
                             } else {
                                 while (reader.ready()) {
                                     buffer.append(reader.read().toChar())
                                 }
                                 print(buffer.toString())
-                                _eventFlow.emit(
-                                    ClientOutputEvent(
-                                        StyledString(
-                                            buffer.toString(),
-                                            WarlockStyle(monospace = true)
-                                        )
-                                    )
-                                )
+                                mainStream.append(text = buffer.toString(), styles = listOf(WarlockStyle(monospace = true)))
                             }
                         }
                     }
@@ -223,18 +228,14 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     }
 
     override fun sendCommand(line: String) {
-        scope.launch {
-            _eventFlow.emit(ClientCommandEvent(line))
-        }
+        mainStream.appendCommand(line)
         send("<c>$line\n")
     }
 
     override fun disconnect() {
         socket.close()
-        scope.launch {
-            _eventFlow.emit(ClientOutputEvent(StyledString("Connection closed by server.")))
-            _eventFlow.emit(ClientDisconnectedEvent)
-        }
+        mainStream.append("Connection closed by server.", styles = emptyList())
+        _connected.value = false
     }
 
     override fun send(toSend: String) {
@@ -245,8 +246,11 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     }
 
     override fun print(message: StyledString) {
-        scope.launch {
-            _eventFlow.emit(ClientOutputEvent(message))
-        }
+        mainStream.appendMessage(message)
+    }
+
+    @Synchronized
+    fun getStream(name: String): TextStream {
+        return streams.getOrPut(name) { TextStream(name) }
     }
 }

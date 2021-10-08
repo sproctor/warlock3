@@ -4,7 +4,7 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
     constructor(text: String, style: WarlockStyle? = null)
             : this(listOf(StyledStringLeaf(text, style)))
 
-    fun append(string: StyledString): StyledString {
+    operator fun plus(string: StyledString): StyledString {
         return StyledString(substrings + string.substrings)
     }
 }

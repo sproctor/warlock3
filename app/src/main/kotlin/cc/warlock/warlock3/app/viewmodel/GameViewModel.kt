@@ -23,8 +23,7 @@ class GameViewModel(
     private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
     val properties = _properties.asStateFlow()
 
-    private val _components = MutableStateFlow<Map<String, String>>(emptyMap())
-    val components = _components.asStateFlow()
+    val components = client.components
 
     private val _sendHistory = MutableStateFlow<List<String>>(emptyList())
     val sendHistory = _sendHistory.asStateFlow()
@@ -34,27 +33,10 @@ class GameViewModel(
 
     val windows = client.windows
 
-    private val _openWindows = MutableStateFlow<List<String>>(listOf("main"))
-    val openWindows = _openWindows.asStateFlow()
+    val openWindows = client.openWindows
 
-    init {
-        scope.launch {
-            client.eventFlow.collect { event ->
-                when (event) {
-                    is ClientDataReceivedEvent -> Unit // don't care
-                    is ClientOutputEvent -> Unit // Don't care
-                    is ClientCommandEvent -> Unit // Don't care
-                    is ClientDisconnectedEvent -> {
-                        // TODO: offer to reconnect
-                    }
-                    is ClientEolEvent -> Unit // Don't care
-                    is ClientPromptEvent -> Unit // Don't care
-                    is ClientProgressBarEvent -> Unit // Don't care?
-                    is ClientCompassEvent -> Unit // Don't care
-                }
-            }
-        }
-    }
+    val defaultBackgroundColor = MutableStateFlow(Color.DarkGray)
+    val defaultTextColor = MutableStateFlow(Color.White)
 
     fun send(line: String) {
         _sendHistory.value = listOf(line) + _sendHistory.value

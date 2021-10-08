@@ -1,9 +1,12 @@
 package cc.warlock.warlock3.app.view
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -11,18 +14,15 @@ import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.viewmodel.CompassViewModel
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.VitalsViewModel
-import cc.warlock.warlock3.app.viewmodel.WindowViewModel
 import cc.warlock.warlock3.core.Window
 import cc.warlock.warlock3.core.WindowLocation
-import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun GameView(viewModel: GameViewModel) {
     val vitalsViewModel = remember(viewModel.client) { VitalsViewModel(viewModel.client) }
-    val windowViewModels = remember { mutableMapOf<String, WindowViewModel>() }
     val windows by viewModel.windows.collectAsState()
+    val openWindows by viewModel.openWindows.collectAsState()
     Column(modifier = Modifier.fillMaxSize()) {
         // Container for all window views
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -30,37 +30,33 @@ fun GameView(viewModel: GameViewModel) {
             Column(modifier = Modifier.width(200.dp)) {
                 WindowViews(
                     location = WindowLocation.LEFT,
-                    client = viewModel.client,
-                    windowViewModels = windowViewModels,
-                    openWindowsState = viewModel.openWindows,
-                    windows = windows
+                    openWindows = openWindows,
+                    windows = windows,
+                    viewModel = viewModel,
                 )
             }
             // Center column
             Column(modifier = Modifier.weight(1f)) {
                 WindowViews(
                     location = WindowLocation.TOP,
-                    client = viewModel.client,
-                    windowViewModels = windowViewModels,
-                    openWindowsState = viewModel.openWindows,
-                    windows = windows
+                    openWindows = openWindows,
+                    windows = windows,
+                    viewModel = viewModel,
                 )
                 WindowViews(
                     location = WindowLocation.MAIN,
-                    client = viewModel.client,
-                    windowViewModels = windowViewModels,
-                    openWindowsState = viewModel.openWindows,
-                    windows = windows
+                    openWindows = openWindows,
+                    windows = windows,
+                    viewModel = viewModel,
                 )
             }
             // Right Column
             Column {
                 WindowViews(
                     location = WindowLocation.RIGHT,
-                    client = viewModel.client,
-                    windowViewModels = windowViewModels,
-                    openWindowsState = viewModel.openWindows,
-                    windows = windows
+                    openWindows = openWindows,
+                    windows = windows,
+                    viewModel = viewModel,
                 )
             }
         }
@@ -95,24 +91,14 @@ fun LazyListState.isScrolledToEnd() = layoutInfo.visibleItemsInfo.lastOrNull()?.
 @Composable
 fun ColumnScope.WindowViews(
     location: WindowLocation,
-    windowViewModels: MutableMap<String, WindowViewModel>,
-    client: StormfrontClient,
     windows: Map<String, Window>,
-    openWindowsState: StateFlow<List<String>>,
+    openWindows: Set<String>,
+    viewModel: GameViewModel,
 ) {
-    val openWindows by openWindowsState.collectAsState()
     windows.forEach { entry ->
         val window = entry.value
         if (openWindows.contains(entry.key) && window.location == location) {
-            val windowViewModel = windowViewModels[entry.key]
-                ?: WindowViewModel(
-                    name = entry.key,
-                    client = client,
-                    showPrompts = entry.key == "main",
-                    openWindows = openWindowsState,
-                )
-            windowViewModels[entry.key] = windowViewModel
-            WindowView(windowViewModel)
+            WindowView(name = entry.key, viewModel = viewModel)
         }
     }
 }

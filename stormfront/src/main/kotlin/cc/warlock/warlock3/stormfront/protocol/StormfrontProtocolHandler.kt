@@ -31,6 +31,7 @@ class StormfrontProtocolHandler {
         "right" to RightHandler(),
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
+        "streamwindow" to StreamWindowHandler(),
         "spell" to SpellHandler(),
         "style" to StyleHandler(),
     )
