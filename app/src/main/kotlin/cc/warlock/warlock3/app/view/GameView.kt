@@ -27,37 +27,40 @@ fun GameView(viewModel: GameViewModel) {
         // Container for all window views
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
             // Left column
-            Column(modifier = Modifier.width(200.dp)) {
-                WindowViews(
-                    location = WindowLocation.LEFT,
-                    openWindows = openWindows,
-                    windows = windows,
-                    viewModel = viewModel,
-                )
+            val leftWindows =
+                windows.filter { openWindows.contains(it.key) && it.value.location == WindowLocation.LEFT }
+            if (leftWindows.isNotEmpty()) {
+                Column(modifier = Modifier.width(200.dp)) {
+                    WindowViews(
+                        windows = leftWindows,
+                        viewModel = viewModel,
+                    )
+                }
             }
             // Center column
+            val topWindows =
+                windows.filter { openWindows.contains(it.key) && it.value.location == WindowLocation.TOP }
             Column(modifier = Modifier.weight(1f)) {
                 WindowViews(
-                    location = WindowLocation.TOP,
-                    openWindows = openWindows,
-                    windows = windows,
+                    windows = topWindows,
                     viewModel = viewModel,
                 )
-                WindowViews(
-                    location = WindowLocation.MAIN,
-                    openWindows = openWindows,
-                    windows = windows,
+                WindowView(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    name = "main",
                     viewModel = viewModel,
                 )
             }
             // Right Column
-            Column {
-                WindowViews(
-                    location = WindowLocation.RIGHT,
-                    openWindows = openWindows,
-                    windows = windows,
-                    viewModel = viewModel,
-                )
+            val rightWindows =
+                windows.filter { openWindows.contains(it.key) && it.value.location == WindowLocation.RIGHT }
+            if (rightWindows.isNotEmpty()) {
+                Column {
+                    WindowViews(
+                        windows = rightWindows,
+                        viewModel = viewModel,
+                    )
+                }
             }
         }
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -89,16 +92,18 @@ fun GameView(viewModel: GameViewModel) {
 fun LazyListState.isScrolledToEnd() = layoutInfo.visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
 
 @Composable
-fun ColumnScope.WindowViews(
-    location: WindowLocation,
+fun WindowViews(
     windows: Map<String, Window>,
-    openWindows: Set<String>,
     viewModel: GameViewModel,
 ) {
     windows.forEach { entry ->
-        val window = entry.value
-        if (openWindows.contains(entry.key) && window.location == location) {
-            WindowView(name = entry.key, viewModel = viewModel)
+        val panelState = remember(entry.key) { ResizablePanelState(200.dp) }
+        ResizablePanel(
+            modifier = Modifier.fillMaxWidth(),
+            isHorizontal = false,
+            state = panelState,
+        ) {
+            WindowView(modifier = Modifier.matchParentSize(), name = entry.key, viewModel = viewModel)
         }
     }
 }

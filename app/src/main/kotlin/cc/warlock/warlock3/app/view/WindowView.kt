@@ -14,24 +14,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.toAnnotatedString
 import cc.warlock.warlock3.app.viewmodel.toColor
 import kotlinx.coroutines.launch
 
 @Composable
-fun ColumnScope.WindowView(name: String, viewModel: GameViewModel) {
+fun WindowView(modifier: Modifier, name: String, viewModel: GameViewModel) {
     val lines by viewModel.client.getStream(name).lines.collectAsState()
     val backgroundColor by viewModel.defaultBackgroundColor.collectAsState()
     val scrollState = rememberLazyListState()
     val components = viewModel.components.collectAsState()
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .weight(1f)
-            .background(backgroundColor),
-    ) {
+    BoxWithConstraints(modifier.background(backgroundColor).padding(2.dp)) {
         val height = this.maxHeight
         SelectionContainer {
             val textColor by viewModel.defaultTextColor.collectAsState()
@@ -49,7 +45,7 @@ fun ColumnScope.WindowView(name: String, viewModel: GameViewModel) {
                                 modifier = Modifier.fillParentMaxWidth()
                                     .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
                             ) {
-                                Text(text = line.stringFactory(components.value).toAnnotatedString())
+                                Text(text = line.stringFactory(components.value).toAnnotatedString(components.value))
                             }
                         }
                     }

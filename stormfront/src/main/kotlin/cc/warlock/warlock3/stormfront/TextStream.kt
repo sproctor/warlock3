@@ -1,9 +1,6 @@
 package cc.warlock.warlock3.stormfront
 
-import cc.warlock.warlock3.core.StyledString
-import cc.warlock.warlock3.core.WarlockColor
-import cc.warlock.warlock3.core.WarlockStyle
-import cc.warlock.warlock3.core.flattenStyles
+import cc.warlock.warlock3.core.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -27,6 +24,23 @@ class TextStream(
         val newString = StyledString(
             text = text,
             style = flattenStyles(styles)
+        )
+        buffer = buffer?.plus(newString) ?: newString
+        isPrompting = false
+    }
+
+    fun appendVariable(name: String, styles: List<WarlockStyle>) {
+        styles.forEach {
+            if (it.isEntireLineBackground)
+                lineBackgroundColor = it.backgroundColor
+        }
+        val newString = StyledString(
+            listOf(
+                StyledStringVariable(
+                    name = name,
+                    style = flattenStyles(styles)
+                )
+            )
         )
         buffer = buffer?.plus(newString) ?: newString
         isPrompting = false

@@ -14,7 +14,8 @@ import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
+
+private val defaultLocations = mapOf("main" to WindowLocation.MAIN)
 
 class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val socket = Socket(host, port)
@@ -155,6 +156,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         else
                                             _properties.value = _properties.value.minus(event.key)
                                     }
+                                    is StormfrontComponentDefinitionEvent -> {
+                                        val styles = listOfNotNull(currentStyle, outputStyle)
+                                        currentStream?.appendVariable(name = event.id, styles = styles)
+                                    }
                                     is StormfrontComponentStartEvent -> {
                                         componentId = event.id
                                         componentText = null
@@ -177,8 +182,12 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         }
                                     }
                                     StormfrontHandledEvent -> Unit // do nothing
-                                    is StormfrontStreamWindowEvent ->
-                                        _windows.value = windows.value + (event.window.name to event.window)
+                                    is StormfrontStreamWindowEvent -> {
+                                        val name = event.window.name
+                                        _windows.value = windows.value +
+                                                (name to event.window
+                                                    .copy(location = defaultLocations[name] ?: event.window.location))
+                                    }
                                 }
                             }
                         } else {
@@ -212,7 +221,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     buffer.append(reader.read().toChar())
                                 }
                                 print(buffer.toString())
-                                mainStream.append(text = buffer.toString(), styles = listOf(WarlockStyle(monospace = true)))
+                                mainStream.append(
+                                    text = buffer.toString(),
+                                    styles = listOf(WarlockStyle(monospace = true))
+                                )
                             }
                         }
                     }

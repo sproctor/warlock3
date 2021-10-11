@@ -15,6 +15,7 @@ class StormfrontProtocolHandler {
         "b" to BHandler(),
         "casttime" to CastTimeHandler(),
         "compass" to CompassHandler(),
+        "compdef" to CompDefHandler(),
         "component" to ComponentHandler(),
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),

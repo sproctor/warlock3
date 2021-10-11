@@ -62,8 +62,8 @@ fun WarlockColor.toColor(): Color {
     return Color(red = red, green = green, blue = blue)
 }
 
-fun StyledString.toAnnotatedString(): AnnotatedString {
-    return substrings.map { it.toAnnotatedString() }.reduceOrNull { acc, annotatedString ->
+fun StyledString.toAnnotatedString(variables: Map<String, StyledString>): AnnotatedString {
+    return substrings.map { it.toAnnotatedString(variables) }.reduceOrNull { acc, annotatedString ->
         acc + annotatedString
     } ?: AnnotatedString("")
 }
@@ -77,6 +77,12 @@ fun WarlockStyle.toSpanStyle(): SpanStyle {
     )
 }
 
-fun StyledStringLeaf.toAnnotatedString(): AnnotatedString {
-    return AnnotatedString(text = text, spanStyle = style?.toSpanStyle() ?: SpanStyle())
+fun StyledStringLeaf.toAnnotatedString(variables: Map<String, StyledString>): AnnotatedString {
+    // FIXME: break circular references
+    return when (this) {
+        is StyledStringSubstring ->
+            AnnotatedString(text = text, spanStyle = style?.toSpanStyle() ?: SpanStyle())
+        is StyledStringVariable ->
+            variables[name]?.toAnnotatedString(variables) ?: AnnotatedString("")
+    }
 }
