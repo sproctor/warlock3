@@ -11,7 +11,6 @@ class TextStream(
     private var buffer: StyledString? = null
     private var isPrompting = false
     private var lineBackgroundColor: WarlockColor? = null
-    private var waitingCommand: StyledString? = null
 
     private val _lines = MutableStateFlow<List<StreamLine>>(emptyList())
     val lines = _lines.asStateFlow()
@@ -63,8 +62,12 @@ class TextStream(
                             lastLine.stringFactory(it) + StyledString(" ") + string
                         }
                     )
+            isPrompting = false
         } else {
-            waitingCommand = string
+            _lines.value += StreamLine(
+                backgroundColor = null,
+                stringFactory = { StyledString(command) },
+            )
         }
     }
 
@@ -80,14 +83,9 @@ class TextStream(
     }
 
     fun appendPrompt(prompt: String) {
-        if (!isPrompting || waitingCommand != null) {
+        if (!isPrompting) {
             isPrompting = true
-            val text = if (waitingCommand != null) {
-                StyledString("$prompt ") + waitingCommand!!
-            } else {
-                StyledString(prompt)
-            }
-            _lines.value = _lines.value + StreamLine(backgroundColor = null, stringFactory = { text })
+            _lines.value += StreamLine(backgroundColor = null, stringFactory = { StyledString(prompt) })
         }
     }
 }
