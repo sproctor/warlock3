@@ -24,32 +24,32 @@ import java.awt.Cursor
 fun ResizablePanel(
     modifier: Modifier,
     isHorizontal: Boolean = true,
-    handleAlignment: ResizablePanelHandleAlignment = ResizablePanelHandleAlignment.AFTER,
+    handleBefore: Boolean = false,
     state: ResizablePanelState,
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (isHorizontal) {
         Row(modifier.width(state.currentSize)) {
-            if (handleAlignment == ResizablePanelHandleAlignment.BEFORE) {
-                ResizablePanelHandle(isHorizontal, state)
+            if (handleBefore) {
+                ResizablePanelHandle(isHorizontal, handleBefore, state)
             }
             Box(Modifier.fillMaxHeight().weight(1f)) {
                 content()
             }
-            if (handleAlignment == ResizablePanelHandleAlignment.AFTER) {
-                ResizablePanelHandle(isHorizontal, state)
+            if (!handleBefore) {
+                ResizablePanelHandle(isHorizontal, handleBefore, state)
             }
         }
     } else {
         Column(modifier.height(state.currentSize)) {
-            if (handleAlignment == ResizablePanelHandleAlignment.BEFORE) {
-                ResizablePanelHandle(isHorizontal, state)
+            if (handleBefore) {
+                ResizablePanelHandle(isHorizontal, handleBefore, state)
             }
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 content()
             }
-            if (handleAlignment == ResizablePanelHandleAlignment.AFTER) {
-                ResizablePanelHandle(isHorizontal, state)
+            if (!handleBefore) {
+                ResizablePanelHandle(isHorizontal, handleBefore, state)
             }
         }
     }
@@ -59,6 +59,7 @@ fun ResizablePanel(
 @Composable
 fun ResizablePanelHandle(
     isHorizontal: Boolean,
+    isBefore: Boolean,
     state: ResizablePanelState,
 ) {
     val modifier = Modifier
@@ -66,8 +67,9 @@ fun ResizablePanelHandle(
         .pointerInput(state) {
             detectDragGestures { change, _ ->
                 change.consumeAllChanges()
+                val delta = if (isHorizontal) change.position.x.toDp() else change.position.y.toDp()
                 state.dispatchRawMovement(
-                    if (isHorizontal) change.position.x.toDp() else change.position.y.toDp()
+                    if (isBefore) -delta else delta
                 )
             }
         }
@@ -91,11 +93,7 @@ class ResizablePanelState(
     var currentSize by mutableStateOf(initialSize)
 
     fun dispatchRawMovement(delta: Dp) {
+        println("resize delta: $delta")
         currentSize = min(max(minSize, currentSize + delta), maxSize)
     }
-}
-
-enum class ResizablePanelHandleAlignment {
-    BEFORE,
-    AFTER
 }

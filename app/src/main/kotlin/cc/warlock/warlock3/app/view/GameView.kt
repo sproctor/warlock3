@@ -70,12 +70,20 @@ fun ColumnScope.GameTextWindows(viewModel: GameViewModel) {
         val rightWindows =
             windows.filter { openWindows.contains(it.key) && it.value.location == WindowLocation.RIGHT }
         if (rightWindows.isNotEmpty()) {
-            Column {
-                WindowViews(
-                    windows = rightWindows,
-                    gameViewModel = viewModel,
-                    windowViewModels = windowViewModels,
-                )
+            val panelState = remember { ResizablePanelState(initialSize = 200.dp, minSize = 8.dp) }
+            ResizablePanel(
+                modifier = Modifier,
+                isHorizontal = true,
+                handleBefore = true,
+                state = panelState,
+            ) {
+                Column {
+                    WindowViews(
+                        windows = rightWindows,
+                        gameViewModel = viewModel,
+                        windowViewModels = windowViewModels,
+                    )
+                }
             }
         }
     }
@@ -145,7 +153,7 @@ fun WindowViews(
     windowViewModels: MutableState<Map<String, WindowViewModel>>,
 ) {
     windows.forEach { entry ->
-        val panelState = remember(entry.key) { ResizablePanelState(200.dp) }
+        val panelState = remember(entry.key) { ResizablePanelState(initialSize = 160.dp, minSize = 16.dp) }
         ResizablePanel(
             modifier = Modifier.fillMaxWidth(),
             isHorizontal = false,
