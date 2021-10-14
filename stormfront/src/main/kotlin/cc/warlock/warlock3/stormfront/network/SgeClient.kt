@@ -4,29 +4,23 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import okio.*
-import org.apache.commons.configuration2.Configuration
-import org.apache.commons.configuration2.builder.fluent.Configurations
-import org.apache.commons.configuration2.ex.ConfigurationException
 import java.lang.Integer.min
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 
-class SgeClient(configuration: Configuration?) {
+class SgeClient(
+    private val host: String,
+    private val port: Int
+) {
     private var sink: BufferedSink? = null
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
     private var passwordHash: ByteArray? = null
     private var username: String? = null
-    private val host: String
-    private val port: Int
-    private val scope = CoroutineScope(Dispatchers.IO)
 
-    init {
-        host = configuration?.getString("sge.host", null) ?: "eaccess.play.net"
-        port = configuration?.getInteger("sge.port", null) ?: 7900
-    }
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     suspend fun connect() = withContext(Dispatchers.IO) {
         runCatching {

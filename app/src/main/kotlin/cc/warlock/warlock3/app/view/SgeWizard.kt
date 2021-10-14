@@ -3,8 +3,11 @@ package cc.warlock.warlock3.app.view
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import cc.warlock.warlock3.app.config.SgeSpec
+import cc.warlock.warlock3.app.preferencesFile
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewState
+import com.uchuhimo.konf.source.hocon.toHocon
 
 @Composable
 fun SgeWizard(
@@ -13,12 +16,13 @@ fun SgeWizard(
     val state = viewModel.state.collectAsState()
     when (val currentState = state.value) {
         SgeViewState.SgeAccountSelector -> AccountsView(
-            initialUsername = viewModel.config?.getString("sge.username"),
-            initialPassword = viewModel.config?.getString("sge.password"),
+            initialUsername = viewModel.config[SgeSpec.username],
+            initialPassword = viewModel.config[SgeSpec.password],
             onAccountSelect = {
                 println("saving username/password")
-                viewModel.config?.setProperty("sge.username", it.name)
-                viewModel.config?.setProperty("sge.password", it.password)
+                viewModel.config[SgeSpec.username] = it.name
+                viewModel.config[SgeSpec.password] = it.password
+                viewModel.config.toHocon.toFile(preferencesFile)
                 viewModel.accountSelected(it)
             }
         )

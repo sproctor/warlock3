@@ -10,9 +10,6 @@ dependencies {
     antlr("org.antlr:antlr4:_")
     implementation(Square.okio)
     implementation("org.apache.commons:commons-text:_")
-    // https://mvnrepository.com/artifact/commons-beanutils/commons-beanutils
-    implementation("commons-beanutils:commons-beanutils:_")
-    implementation("org.apache.commons:commons-configuration2:_")
 }
 
 tasks.generateGrammarSource {

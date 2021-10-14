@@ -10,10 +10,10 @@ import cc.warlock.warlock3.app.view.SgeWizard
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import org.apache.commons.configuration2.Configuration
+import com.uchuhimo.konf.Config
 
 @Composable
-fun FrameWindowScope.WarlockApp(state: MutableState<GameState>, config: Configuration?) {
+fun FrameWindowScope.WarlockApp(state: MutableState<GameState>, config: Config) {
     when (val currentState = state.value) {
         GameState.NewGameState -> {
             val viewModel = remember {

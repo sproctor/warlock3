@@ -1,7 +1,9 @@
 package cc.warlock.warlock3.app.viewmodel
 
+import cc.warlock.warlock3.app.config.SgeSpec
 import cc.warlock.warlock3.app.model.Account
 import cc.warlock.warlock3.stormfront.network.*
+import com.uchuhimo.konf.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -9,17 +11,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.apache.commons.configuration2.Configuration
 
 class SgeViewModel(
-    val config: Configuration?,
+    val config: Config,
     readyToPlay: (Map<String, String>) -> Unit
 ) {
     private val _state = MutableStateFlow<SgeViewState>(SgeViewState.SgeLoading("Connecting to SGE"))
     private val backStack = MutableStateFlow<List<SgeViewState>>(emptyList())
     val state = _state.asStateFlow()
 
-    private val client = SgeClient(config)
+    private val client = SgeClient(
+        host = config[SgeSpec.host],
+        port = config[SgeSpec.port],
+    )
     private val scope = CoroutineScope(Dispatchers.IO)
     private val job: Job
 

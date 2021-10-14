@@ -1,7 +1,7 @@
 package cc.warlock.warlock3.app.viewmodel
 
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import cc.warlock.warlock3.core.ClientCompassEvent
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -46,7 +46,7 @@ fun loadTheme(): CompassTheme {
         val position = Pair(xy[0].toInt(), xy[1].toInt())
         val imageStream = object {}.javaClass.getResourceAsStream("/images/compass/${direction.value}_on.png")
             ?: throw Exception("Could not load compass image")
-        val image = Image.makeFromEncoded(imageStream.readBytes()).asImageBitmap()
+        val image = Image.makeFromEncoded(imageStream.readBytes()).toComposeImageBitmap()
 
         Pair(
             direction,
@@ -59,7 +59,7 @@ fun loadTheme(): CompassTheme {
     }.toMap()
     val mainImageStream = object {}.javaClass.getResourceAsStream("/images/compass/compass_main.png")
         ?: throw Exception("Could not load compass background")
-    val mainImage = Image.makeFromEncoded(mainImageStream.readBytes()).asImageBitmap()
+    val mainImage = Image.makeFromEncoded(mainImageStream.readBytes()).toComposeImageBitmap()
     return CompassTheme(
         background = mainImage,
         description = properties.getProperty("theme.description", ""),

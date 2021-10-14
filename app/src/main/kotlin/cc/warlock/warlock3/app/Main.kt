@@ -11,32 +11,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import cc.warlock.warlock3.app.config.ClientSpec
+import cc.warlock.warlock3.app.config.SgeSpec
+import com.uchuhimo.konf.Config
+import com.uchuhimo.konf.source.hocon
+import com.uchuhimo.konf.source.hocon.toHocon
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import org.apache.commons.configuration2.builder.fluent.Configurations
-import org.apache.commons.configuration2.ex.ConfigurationException
 import java.io.File
 import kotlin.math.roundToInt
+
+val preferencesFile = File(System.getProperty("user.home") + "/.warlock3/preferences.conf")
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
     val config = remember {
-        val configFile = File(System.getProperty("user.home") + "/.warlock3/sge.properties")
-        configFile.parentFile.mkdirs()
-        configFile.createNewFile()
-        val configBuilder = Configurations()
-            .propertiesBuilder(configFile.absolutePath)
-        configBuilder.isAutoSave = true
-        try {
-            configBuilder.configuration
-        } catch (e: ConfigurationException) {
-            // no config
-            println("No config found")
-            null
+        preferencesFile.parentFile.mkdirs()
+        preferencesFile.createNewFile()
+        Config {
+            addSpec(SgeSpec)
+            addSpec(ClientSpec)
         }
+            .from.hocon.file(preferencesFile)
     }
-    val initialWidth = remember { config?.getInt("main.width", 640) ?: 640 }
-    val initialHeight = remember { config?.getInt("main.height", 480) ?: 480 }
+    val initialWidth = remember { config[ClientSpec.width] }
+    val initialHeight = remember { config[ClientSpec.height] }
     val windowState = rememberWindowState(width = initialWidth.dp, height = initialHeight.dp)
     Window(
         onCloseRequest = ::exitApplication,
@@ -52,8 +51,9 @@ fun main() = application {
     LaunchedEffect(windowState) {
         snapshotFlow { windowState.size }
             .onEach { size ->
-                config?.setProperty("main.width", size.width.value.roundToInt())
-                config?.setProperty("main.height", size.height.value.roundToInt())
+                config[ClientSpec.width] = size.width.value.roundToInt()
+                config[ClientSpec.height] = size.height.value.roundToInt()
+                config.toHocon.toFile(preferencesFile)
             }
             .launchIn(this)
     }
