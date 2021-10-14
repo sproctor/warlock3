@@ -7,7 +7,7 @@ class CompDefHandler : BaseElementListener() {
         return element.attributes["id"]?.let { StormfrontComponentDefinitionEvent(it) }
     }
 
-    override fun characters(data: String): StormfrontEvent {
-        return StormfrontHandledEvent
-    }
+//    override fun characters(data: String): StormfrontEvent {
+//        return StormfrontHandledEvent
+//    }
 }

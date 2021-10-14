@@ -54,7 +54,6 @@ class StormfrontProtocolHandler {
     private fun handleContent(contents: List<Content>): List<StormfrontEvent> {
         // FIXME: this is kind of hacky
         var lineHasTags = false
-        var lineHasText = false
         val events = LinkedList<StormfrontEvent>()
         for (content in contents) {
             when (content) {
@@ -85,16 +84,13 @@ class StormfrontProtocolHandler {
                     if (charEvents.isNotEmpty()) {
                         events.addAll(charEvents)
                     } else {
-                        lineHasText = true
                         events.add(StormfrontDataReceivedEvent(content.data))
                     }
                 }
             }
         }
-        // If a line has just tags, don't send the newline, otherwise do.
-        if ((lineHasText || !lineHasTags) && elementStack.isEmpty() ) {
-            events.add(StormfrontEolEvent)
-        }
+        // If a line has tags, ignore it when it has no text
+        events.add(StormfrontEolEvent(ignoreWhenBlank = lineHasTags))
 
         return events
     }

@@ -63,32 +63,3 @@ class GameViewModel(
         client.hideWindow(name)
     }
 }
-
-fun WarlockColor.toColor(): Color {
-    return Color(red = red, green = green, blue = blue)
-}
-
-fun StyledString.toAnnotatedString(variables: Map<String, StyledString>): AnnotatedString {
-    return substrings.map { it.toAnnotatedString(variables) }.reduceOrNull { acc, annotatedString ->
-        acc + annotatedString
-    } ?: AnnotatedString("")
-}
-
-fun WarlockStyle.toSpanStyle(): SpanStyle {
-    return SpanStyle(
-        color = textColor?.toColor() ?: Color.Unspecified,
-        background = backgroundColor?.toColor() ?: Color.Unspecified,
-        fontFamily = if (monospace) FontFamily.Monospace else null,
-        textDecoration = if (underline) TextDecoration.Underline else null,
-    )
-}
-
-fun StyledStringLeaf.toAnnotatedString(variables: Map<String, StyledString>): AnnotatedString {
-    // FIXME: break circular references
-    return when (this) {
-        is StyledStringSubstring ->
-            AnnotatedString(text = text, spanStyle = style?.toSpanStyle() ?: SpanStyle())
-        is StyledStringVariable ->
-            variables[name]?.toAnnotatedString(variables) ?: AnnotatedString("")
-    }
-}

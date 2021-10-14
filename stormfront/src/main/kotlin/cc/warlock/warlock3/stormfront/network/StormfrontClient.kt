@@ -86,10 +86,11 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         }
                                     is StormfrontStreamEvent ->
                                         currentStream = if (event.id != null) {
-                                            if (openWindows.value.contains(event.id)) {
-                                                getStream(event.id)
+                                            val ifClosed = windows.value[event.id]?.ifClosed
+                                            if (ifClosed?.isNotBlank() == true && !openWindows.value.contains(event.id)) {
+                                                getStream(ifClosed)
                                             } else {
-                                                getStream(windows.value[event.id]?.ifClosed ?: "main")
+                                                getStream(event.id)
                                             }
                                         } else {
                                             mainStream
@@ -99,7 +100,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         currentStream?.append(event.text, styles = styles)
                                     }
                                     is StormfrontEolEvent ->
-                                        currentStream?.appendEol()
+                                        currentStream?.appendEol(event.ignoreWhenBlank)
                                     is StormfrontAppEvent -> {
                                         val newProperties = properties.value
                                             .plus("character" to (event.character ?: ""))
@@ -173,14 +174,14 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         componentText = componentText?.plus(string) ?: string
                                     }
                                     StormfrontComponentEndEvent -> {
-                                        if (componentId != null && componentText != null) {
+                                        if (componentId != null) {
                                             if (componentText?.substrings.isNullOrEmpty()) {
-                                                _components.value = _components.value - componentId!!
+                                                _components.value -= componentId!!
                                             } else {
-                                                _components.value = _components.value +
-                                                        (componentId!! to componentText!!)
+                                                _components.value += (componentId!! to componentText!!)
                                             }
                                         }
+                                        componentText = null
                                     }
                                     StormfrontHandledEvent -> Unit // do nothing
                                     is StormfrontStreamWindowEvent -> {

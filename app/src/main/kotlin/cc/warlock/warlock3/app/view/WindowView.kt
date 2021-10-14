@@ -19,9 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import cc.warlock.warlock3.app.util.toAnnotatedString
+import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
-import cc.warlock.warlock3.app.viewmodel.toAnnotatedString
-import cc.warlock.warlock3.app.viewmodel.toColor
 import kotlinx.coroutines.launch
 import java.lang.Integer.max
 
@@ -66,13 +66,15 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                         state = scrollState
                     ) {
                         items(lines) { line ->
-                            Box(
-                                modifier = Modifier.fillParentMaxWidth()
-                                    .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
-                            ) {
-                                Text(
-                                    text = line.stringFactory(components.value).toAnnotatedString(components.value)
-                                )
+                            val annotatedString =
+                                line.stringFactory(components.value).toAnnotatedString(components.value)
+                            if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier.fillParentMaxWidth()
+                                        .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
+                                ) {
+                                    Text(text = annotatedString)
+                                }
                             }
                         }
                     }

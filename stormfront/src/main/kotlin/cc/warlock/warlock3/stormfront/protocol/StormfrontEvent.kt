@@ -6,7 +6,7 @@ import cc.warlock.warlock3.core.Window
 import cc.warlock.warlock3.core.compass.DirectionType
 
 sealed class StormfrontEvent
-object StormfrontEolEvent : StormfrontEvent()
+data class StormfrontEolEvent(val ignoreWhenBlank: Boolean) : StormfrontEvent()
 data class StormfrontDataReceivedEvent(val text: String) : StormfrontEvent()
 data class StormfrontStreamEvent(val id: String?) : StormfrontEvent()
 data class StormfrontModeEvent(val id: String?) : StormfrontEvent()

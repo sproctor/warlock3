@@ -46,7 +46,8 @@ class TextStream(
     }
 
     fun appendMessage(text: StyledString) {
-        _lines.value = _lines.value + StreamLine(backgroundColor = null, stringFactory = { text })
+        _lines.value =
+            _lines.value + StreamLine(ignoreWhenBlank = false, backgroundColor = null, stringFactory = { text })
     }
 
     fun appendCommand(command: String) {
@@ -65,15 +66,19 @@ class TextStream(
             isPrompting = false
         } else {
             _lines.value += StreamLine(
+                ignoreWhenBlank = false,
                 backgroundColor = null,
                 stringFactory = { StyledString(command) },
             )
         }
     }
 
-    fun appendEol() {
+    fun appendEol(ignoreWhenBlank: Boolean) {
+        if (ignoreWhenBlank && buffer == null)
+            return
         val text = buffer ?: StyledString("")
         _lines.value = _lines.value + StreamLine(
+            ignoreWhenBlank = ignoreWhenBlank,
             backgroundColor = lineBackgroundColor,
             stringFactory = { text }
         )
@@ -85,12 +90,16 @@ class TextStream(
     fun appendPrompt(prompt: String) {
         if (!isPrompting) {
             isPrompting = true
-            _lines.value += StreamLine(backgroundColor = null, stringFactory = { StyledString(prompt) })
+            _lines.value += StreamLine(
+                ignoreWhenBlank = false,
+                backgroundColor = null,
+                stringFactory = { StyledString(prompt) })
         }
     }
 }
 
 data class StreamLine(
+    val ignoreWhenBlank: Boolean,
     val backgroundColor: WarlockColor?,
     val stringFactory: (Map<String, StyledString>) -> StyledString,
 )
