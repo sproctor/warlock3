@@ -13,6 +13,7 @@ class StreamWindowHandler : BaseElementListener() {
         return StormfrontStreamWindowEvent(Window(
             name = name,
             title = element.attributes["title"] ?: name,
+            subtitle = element.attributes["subtitle"] ?: "",
             location = when (element.attributes["location"]) {
                 "center" -> WindowLocation.TOP
                 "left" -> WindowLocation.LEFT

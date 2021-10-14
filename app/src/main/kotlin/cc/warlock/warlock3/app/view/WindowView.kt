@@ -1,5 +1,6 @@
 package cc.warlock.warlock3.app.view
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -7,8 +8,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.LocalTextStyle
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -19,15 +23,39 @@ import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.toAnnotatedString
 import cc.warlock.warlock3.app.viewmodel.toColor
 import kotlinx.coroutines.launch
+import java.lang.Integer.max
 
 @Composable
 fun WindowView(modifier: Modifier, name: String, viewModel: GameViewModel) {
+    Box(modifier.padding(2.dp)) {
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            border = BorderStroke(1.dp, Color.Black),
+            elevation = 4.dp
+        ) {
+            Column {
+                val windows by viewModel.windows.collectAsState()
+                val window = windows[name]
+                Box(Modifier.background(MaterialTheme.colors.primary).fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+                    Text(
+                        text = (window?.title ?: "") + (window?.subtitle ?: ""),
+                        color = MaterialTheme.colors.onPrimary,
+                    )
+                }
+                WindowViewContent(name, viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun WindowViewContent(name: String, viewModel: GameViewModel) {
     val lines by viewModel.client.getStream(name).lines.collectAsState()
     val backgroundColor by viewModel.defaultBackgroundColor.collectAsState()
     val scrollState = rememberLazyListState()
     val components = viewModel.components.collectAsState()
 
-    BoxWithConstraints(modifier.background(backgroundColor).padding(2.dp)) {
+    BoxWithConstraints(Modifier.background(backgroundColor).padding(4.dp)) {
         val height = this.maxHeight
         SelectionContainer {
             val textColor by viewModel.defaultTextColor.collectAsState()
@@ -45,7 +73,9 @@ fun WindowView(modifier: Modifier, name: String, viewModel: GameViewModel) {
                                 modifier = Modifier.fillParentMaxWidth()
                                     .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
                             ) {
-                                Text(text = line.stringFactory(components.value).toAnnotatedString(components.value))
+                                Text(
+                                    text = line.stringFactory(components.value).toAnnotatedString(components.value)
+                                )
                             }
                         }
                     }
@@ -56,7 +86,7 @@ fun WindowView(modifier: Modifier, name: String, viewModel: GameViewModel) {
                         val scope = rememberCoroutineScope()
                         SideEffect {
                             scope.launch {
-                                scrollState.scrollToItem(lines.lastIndex)
+                                scrollState.scrollToItem(max(0, lines.lastIndex))
                             }
                         }
                     }

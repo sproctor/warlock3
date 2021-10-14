@@ -56,6 +56,14 @@ class GameViewModel(
             client.sendCommand(line)
         }
     }
+
+    fun showWindow(name: String) {
+        client.showWindow(name)
+    }
+
+    fun hideWindow(name: String) {
+        client.hideWindow(name)
+    }
 }
 
 fun WarlockColor.toColor(): Color {

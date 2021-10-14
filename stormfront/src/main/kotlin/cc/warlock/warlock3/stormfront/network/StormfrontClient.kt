@@ -39,6 +39,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
             "main" to Window(
                 name = "main",
                 title = "Main",
+                subtitle = "",
                 styleIfClosed = null,
                 ifClosed = null,
                 location = WindowLocation.MAIN,
@@ -264,5 +265,13 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     @Synchronized
     fun getStream(name: String): TextStream {
         return streams.getOrPut(name) { TextStream(name) }
+    }
+
+    fun showWindow(name: String) {
+        _openWindows.value += name
+    }
+
+    fun hideWindow(name: String) {
+        _openWindows.value -= name
     }
 }

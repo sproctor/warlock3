@@ -1,8 +1,12 @@
 package cc.warlock.warlock3.app
 
-import androidx.compose.material.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -39,8 +43,10 @@ fun main() = application {
         title = "Warlock 3",
         state = windowState,
     ) {
-        MaterialTheme {
-            WarlockApp(rememberGameState(), config)
+        WarlockTheme {
+            Surface(Modifier.fillMaxSize()) {
+                WarlockApp(rememberGameState(), config)
+            }
         }
     }
     LaunchedEffect(windowState) {
