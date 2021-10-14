@@ -33,9 +33,9 @@ jobs:
           name: distributable-${{ matrix.os }}
           if-no-files-found: ignore
           path: |
-            build/app/build/**/*.dmg
-            build/app/build/**/*.msi
-            build/app/build/**/*.deb
+            app/build/**/*.dmg
+            app/build/**/*.msi
+            app/build/**/*.deb
 
       - name: Release
         uses: marvinpinto/action-automatic-releases@latest
@@ -45,7 +45,7 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            build/app/build/**/*.dmg
-            build/app/build/**/*.msi
-            build/app/build/**/*.deb
+            app/build/**/*.dmg
+            app/build/**/*.msi
+            app/build/**/*.deb
 
