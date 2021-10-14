@@ -19,14 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import cc.warlock.warlock3.app.viewmodel.GameViewModel
+import cc.warlock.warlock3.app.viewmodel.WindowViewModel
 import cc.warlock.warlock3.app.viewmodel.toAnnotatedString
 import cc.warlock.warlock3.app.viewmodel.toColor
 import kotlinx.coroutines.launch
 import java.lang.Integer.max
 
 @Composable
-fun WindowView(modifier: Modifier, name: String, viewModel: GameViewModel) {
+fun WindowView(modifier: Modifier, viewModel: WindowViewModel) {
     Box(modifier.padding(2.dp)) {
         Surface(
             shape = RoundedCornerShape(4.dp),
@@ -34,32 +34,29 @@ fun WindowView(modifier: Modifier, name: String, viewModel: GameViewModel) {
             elevation = 4.dp
         ) {
             Column {
-                val windows by viewModel.windows.collectAsState()
-                val window = windows[name]
+                val window by viewModel.window.collectAsState(null)
                 Box(Modifier.background(MaterialTheme.colors.primary).fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
                     Text(
                         text = (window?.title ?: "") + (window?.subtitle ?: ""),
                         color = MaterialTheme.colors.onPrimary,
                     )
                 }
-                WindowViewContent(name, viewModel)
+                WindowViewContent(viewModel)
             }
         }
     }
 }
 
 @Composable
-private fun WindowViewContent(name: String, viewModel: GameViewModel) {
-    val lines by viewModel.client.getStream(name).lines.collectAsState()
-    val backgroundColor by viewModel.defaultBackgroundColor.collectAsState()
+private fun WindowViewContent(viewModel: WindowViewModel) {
+    val lines by viewModel.lines.collectAsState()
     val scrollState = rememberLazyListState()
     val components = viewModel.components.collectAsState()
 
-    BoxWithConstraints(Modifier.background(backgroundColor).padding(4.dp)) {
+    BoxWithConstraints(Modifier.background(viewModel.backgroundColor.value).padding(4.dp)) {
         val height = this.maxHeight
         SelectionContainer {
-            val textColor by viewModel.defaultTextColor.collectAsState()
-            CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
+            CompositionLocalProvider(LocalTextStyle provides TextStyle(color = viewModel.textColor.value)) {
                 Row(modifier = Modifier.matchParentSize()) {
                     val shouldScroll = scrollState.isScrolledToEnd()
                     LazyColumn(

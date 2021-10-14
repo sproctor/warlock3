@@ -23,7 +23,7 @@ import cc.warlock.warlock3.app.viewmodel.GameViewModel
 
 @Composable
 fun IndicatorView(modifier: Modifier, viewModel: GameViewModel) {
-    val properties by viewModel.properties.collectAsState()
+    val properties by viewModel.properties
     IndicatorViewContent(modifier, properties)
 }
 

@@ -1,5 +1,7 @@
 package cc.warlock.warlock3.app.viewmodel
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import cc.warlock.warlock3.core.ClientCompassEvent
@@ -7,8 +9,6 @@ import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
@@ -17,8 +17,8 @@ import java.util.*
 class CompassViewModel(
     private val client: StormfrontClient
 ) {
-    private val _compassState = MutableStateFlow(CompassState(emptySet()))
-    val compassState = _compassState.asStateFlow()
+    private val _compassState = mutableStateOf(CompassState(emptySet()))
+    val compassState: State<CompassState> = _compassState
     val theme = loadTheme()
 
     private val scope = CoroutineScope(Dispatchers.IO)

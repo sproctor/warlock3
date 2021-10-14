@@ -23,7 +23,7 @@ import cc.warlock.warlock3.app.viewmodel.GameViewModel
 
 @Composable
 fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
-    val history by viewModel.sendHistory.collectAsState()
+    val history by viewModel.sendHistory
     WarlockEntryContent(
         modifier = modifier,
         onSend = {

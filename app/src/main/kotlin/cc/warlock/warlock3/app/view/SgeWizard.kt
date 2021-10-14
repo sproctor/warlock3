@@ -13,7 +13,7 @@ import com.uchuhimo.konf.source.hocon.toHocon
 fun SgeWizard(
     viewModel: SgeViewModel,
 ) {
-    val state = viewModel.state.collectAsState()
+    val state = viewModel.state
     when (val currentState = state.value) {
         SgeViewState.SgeAccountSelector -> AccountsView(
             initialUsername = viewModel.config[SgeSpec.username],

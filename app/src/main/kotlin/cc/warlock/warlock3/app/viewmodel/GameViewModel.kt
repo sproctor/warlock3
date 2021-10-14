@@ -1,5 +1,7 @@
 package cc.warlock.warlock3.app.viewmodel
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -11,32 +13,28 @@ import cc.warlock.warlock3.core.wsl.WslScriptInstance
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import java.io.File
 
 class GameViewModel(
     val client: StormfrontClient
 ) {
-    private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
-    val properties = _properties.asStateFlow()
+    private val _properties = mutableStateOf<Map<String, String>>(emptyMap())
+    val properties: State<Map<String, String>> = _properties
 
     val components = client.components
 
-    private val _sendHistory = MutableStateFlow<List<String>>(emptyList())
-    val sendHistory = _sendHistory.asStateFlow()
+    private val _sendHistory = mutableStateOf<List<String>>(emptyList())
+    val sendHistory: State<List<String>> = _sendHistory
 
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val scriptInstances = MutableStateFlow<List<ScriptInstance>>(emptyList())
+    private val scriptInstances = mutableStateOf<List<ScriptInstance>>(emptyList())
 
     val windows = client.windows
 
     val openWindows = client.openWindows
 
-    val defaultBackgroundColor = MutableStateFlow(Color.DarkGray)
-    val defaultTextColor = MutableStateFlow(Color.White)
+    val defaultBackgroundColor = mutableStateOf(Color.DarkGray)
+    val defaultTextColor = mutableStateOf(Color.White)
 
     fun send(line: String) {
         _sendHistory.value = listOf(line) + _sendHistory.value

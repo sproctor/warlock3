@@ -1,5 +1,8 @@
 package cc.warlock.warlock3.app.viewmodel
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import cc.warlock.warlock3.app.config.SgeSpec
 import cc.warlock.warlock3.app.model.Account
 import cc.warlock.warlock3.stormfront.network.*
@@ -7,8 +10,6 @@ import com.uchuhimo.konf.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -16,9 +17,10 @@ class SgeViewModel(
     val config: Config,
     readyToPlay: (Map<String, String>) -> Unit
 ) {
-    private val _state = MutableStateFlow<SgeViewState>(SgeViewState.SgeLoading("Connecting to SGE"))
-    private val backStack = MutableStateFlow<List<SgeViewState>>(emptyList())
-    val state = _state.asStateFlow()
+    private val _state = mutableStateOf<SgeViewState>(SgeViewState.SgeLoading("Connecting to SGE"))
+    val state: State<SgeViewState> = _state
+    private val backStack = mutableStateListOf<SgeViewState>()
+
 
     private val client = SgeClient(
         host = config[SgeSpec.host],
@@ -75,12 +77,12 @@ class SgeViewModel(
     }
 
     fun goBack() {
-        this.backStack.value = backStack.value.dropLast(1)
-        _state.value = backStack.value.last()
+        backStack.removeLast()
+        _state.value = backStack.last()
     }
 
     private fun navigate(newState: SgeViewState) {
-        backStack.value = backStack.value + listOf(newState)
+        backStack += listOf(newState)
         _state.value = newState
     }
 

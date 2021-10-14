@@ -106,7 +106,7 @@ interface ElementListener {
     fun endElement(element: EndElement): StormfrontEvent?
 }
 
-abstract class BaseElementListener : ElementListener{
+abstract class BaseElementListener : ElementListener {
     override fun startElement(element: StartElement): StormfrontEvent? = null
     override fun characters(data: String): StormfrontEvent? = null
     override fun endElement(element: EndElement): StormfrontEvent? = null

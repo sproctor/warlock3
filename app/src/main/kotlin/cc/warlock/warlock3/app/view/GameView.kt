@@ -3,10 +3,7 @@ package cc.warlock.warlock3.app.view
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,6 +13,7 @@ import androidx.compose.ui.window.MenuBar
 import cc.warlock.warlock3.app.viewmodel.CompassViewModel
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.VitalsViewModel
+import cc.warlock.warlock3.app.viewmodel.WindowViewModel
 import cc.warlock.warlock3.core.Window
 import cc.warlock.warlock3.core.WindowLocation
 
@@ -35,6 +33,7 @@ fun LazyListState.isScrolledToEnd() = layoutInfo.visibleItemsInfo.lastOrNull()?.
 fun ColumnScope.GameTextWindows(viewModel: GameViewModel) {
     val windows by viewModel.windows.collectAsState()
     val openWindows by viewModel.openWindows.collectAsState()
+    val windowViewModels = remember { mutableStateOf(mapOf<String, WindowViewModel>()) }
 
     // Container for all window views
     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -45,7 +44,8 @@ fun ColumnScope.GameTextWindows(viewModel: GameViewModel) {
             Column(modifier = Modifier.width(200.dp)) {
                 WindowViews(
                     windows = leftWindows,
-                    viewModel = viewModel,
+                    gameViewModel = viewModel,
+                    windowViewModels = windowViewModels,
                 )
             }
         }
@@ -55,12 +55,15 @@ fun ColumnScope.GameTextWindows(viewModel: GameViewModel) {
         Column(modifier = Modifier.weight(1f)) {
             WindowViews(
                 windows = topWindows,
-                viewModel = viewModel,
+                gameViewModel = viewModel,
+                windowViewModels = windowViewModels,
             )
+            val mainViewModel = windowViewModels.value["main"] ?: WindowViewModel("main", viewModel.client).also {
+                windowViewModels.value += "main" to it
+            }
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                name = "main",
-                viewModel = viewModel,
+                viewModel = mainViewModel,
             )
         }
         // Right Column
@@ -70,7 +73,8 @@ fun ColumnScope.GameTextWindows(viewModel: GameViewModel) {
             Column {
                 WindowViews(
                     windows = rightWindows,
-                    viewModel = viewModel,
+                    gameViewModel = viewModel,
+                    windowViewModels = windowViewModels,
                 )
             }
         }
@@ -93,14 +97,12 @@ fun GameBottomBar(viewModel: GameViewModel) {
                     viewModel = viewModel,
                 )
             }
-            val vitalBars by vitalsViewModel.vitalBars.collectAsState()
-            VitalBars(vitalBars)
+            VitalBars(vitalsViewModel.vitalBars)
             HandsView(viewModel)
         }
         val compassViewModel = remember(viewModel.client) { CompassViewModel(viewModel.client) }
-        val compassState by compassViewModel.compassState.collectAsState()
         CompassView(
-            state = compassState,
+            state = compassViewModel.compassState.value,
             theme = compassViewModel.theme,
         )
     }
@@ -139,7 +141,8 @@ fun FrameWindowScope.GameMenu(viewModel: GameViewModel) {
 @Composable
 fun WindowViews(
     windows: Map<String, Window>,
-    viewModel: GameViewModel,
+    gameViewModel: GameViewModel,
+    windowViewModels: MutableState<Map<String, WindowViewModel>>,
 ) {
     windows.forEach { entry ->
         val panelState = remember(entry.key) { ResizablePanelState(200.dp) }
@@ -148,7 +151,10 @@ fun WindowViews(
             isHorizontal = false,
             state = panelState,
         ) {
-            WindowView(modifier = Modifier.matchParentSize(), name = entry.key, viewModel = viewModel)
+            val windowViewModel = windowViewModels.value[entry.key] ?: WindowViewModel(entry.key, gameViewModel.client).also {
+                windowViewModels.value += entry.key to it
+            }
+            WindowView(modifier = Modifier.matchParentSize(), viewModel = windowViewModel)
         }
     }
 }
