@@ -48,6 +48,7 @@ class TextStream(
     fun appendMessage(text: StyledString) {
         _lines.value =
             _lines.value + StreamLine(ignoreWhenBlank = false, backgroundColor = null, stringFactory = { text })
+        isPrompting = false
     }
 
     fun appendCommand(command: String) {
