@@ -60,6 +60,7 @@ class WslScript(
         commandContent.TEXT()?.let { return WslCommandContent.Text(it.text) }
         commandContent.VARIABLE_NAME()?.let { return WslCommandContent.Variable(it.text) }
         commandContent.expression()?.let { return WslCommandContent.Expression(parseExpression(it)) }
+        commandContent.DOUBLE_PERCENT()?.let { return WslCommandContent.Text("%") }
         throw WslParseException("Unhandled command content alternative")
     }
 
@@ -202,15 +203,11 @@ class WslScript(
     }
 
     private fun parseStringContent(stringLiteral: WslParser.StringContentContext): WslStringContent {
-        val text = stringLiteral.StringText()
-        val escapedChar = stringLiteral.StringEscapedChar()
-        val ref = stringLiteral.VARIABLE_NAME()
-        return when {
-            text != null -> WslStringContent.Text(text.text)
-            escapedChar != null -> WslStringContent.EscapedChar(escapedChar.text)
-            ref != null -> WslStringContent.Variable(ref.text)
-            else -> throw WslParseException("Unhandled string content alternative")
-        }
+        stringLiteral.StringText()?.let { return WslStringContent.Text(it.text) }
+        stringLiteral.StringEscapedChar()?.let { return WslStringContent.EscapedChar(it.text) }
+        stringLiteral.VARIABLE_NAME()?.let { return WslStringContent.Variable(it.text) }
+        stringLiteral.DOUBLE_PERCENT()?.let { return WslStringContent.Text("%") }
+        throw WslParseException("Unhandled string content alternative")
     }
 }
 

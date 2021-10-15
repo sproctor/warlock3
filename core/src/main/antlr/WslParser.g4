@@ -25,6 +25,7 @@ commandContent
     : TEXT
     | PERCENT VARIABLE_NAME
     | PERCENT_LCURL expression RCURL
+    | DOUBLE_PERCENT
     ;
 
 expression
@@ -84,6 +85,7 @@ stringContent
     : StringText
     | PERCENT VARIABLE_NAME
     | StringEscapedChar
+    | DOUBLE_PERCENT
     ;
 
 equalityOperator

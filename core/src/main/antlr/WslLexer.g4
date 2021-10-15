@@ -82,12 +82,15 @@ SUB: '-';
 MULT: '*';
 DIV: '/';
 IDENTIFIER: Identifier;
+EXP_PERCENT: '%' -> pushMode(VARIABLE);
+ErrorCharacter: . ;
 
 mode COMMAND;
 
 COMMAND_PERCENT_LCURL: '%{' -> type(PERCENT_LCURL), pushMode(EXPRESSION);
 COMMAND_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
-COMMAND_TEXT: (~('\\' | '%' | '\n' | '\r') | '\\' | '%' | '%%') -> type(TEXT);
+COMMAND_TEXT: (~('\\' | '%' | '\n' | '\r')+ | '\\' | '%') -> type(TEXT);
+DOUBLE_PERCENT: '%%';
 COMMAND_NL: ('\n' | '\r' '\n'?) -> type(NL), popMode;
 
 mode QuotedString;
@@ -95,9 +98,11 @@ mode QuotedString;
 QUOTE_CLOSE: '"' -> popMode;
 STRING_PERCENT_LCURL: '%{' -> type(PERCENT_LCURL), pushMode(EXPRESSION);
 STRING_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
-StringText: ~('\\' | '"' | '%')+ | '%' | '%%';
+STRING_DOUBLE_PERCENT: '%%' -> type(DOUBLE_PERCENT);
+StringText: ~('\\' | '"' | '%')+ | '%';
 StringEscapedChar: EscapedIdentifier;
 
 mode VARIABLE;
 
-VARIABLE_NAME: Identifier '%'? -> popMode;
+VARIABLE_NAME: NameChar+ '%'? -> popMode;
+VARIABLE_ErrorCharacter: . ;
