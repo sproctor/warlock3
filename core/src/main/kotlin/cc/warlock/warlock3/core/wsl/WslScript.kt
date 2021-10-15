@@ -284,6 +284,10 @@ sealed class WslValue {
             return value
         }
 
+        override fun toString(): String {
+            return value.toString()
+        }
+
         override fun equals(other: Any?): Boolean {
             return when (other) {
                 is WslBoolean -> toBoolean() == other.value
