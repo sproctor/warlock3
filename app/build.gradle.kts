@@ -43,7 +43,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Warlock3"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.0-alpha01"
 
             windows {
                 menu = true
