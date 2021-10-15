@@ -253,6 +253,10 @@ sealed class WslValue {
             return value.toBigDecimalOrNull() ?: BigDecimal.ZERO
         }
 
+        override fun toString(): String {
+            return value
+        }
+
         override fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
             return when (other) {
                 is WslBoolean -> throw WslBooleanComparisonException()

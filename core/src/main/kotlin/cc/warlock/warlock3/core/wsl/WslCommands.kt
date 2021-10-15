@@ -3,6 +3,7 @@ package cc.warlock.warlock3.core.wsl
 import cc.warlock.warlock3.core.StyledString
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
+import java.util.regex.Pattern
 
 val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     "echo" to { context, args ->
@@ -19,7 +20,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         }
         val label = args[0]
         lines.forEachIndexed { index, line ->
-            if (line.label == label) {
+            if (line.labels.any { it.equals(other = label, ignoreCase = true) }) {
                 context.setNextLine(index)
             }
         }
@@ -32,4 +33,16 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.client.print(StyledString("Sending: $args"))
         context.client.sendCommand(args)
     },
+    "setvariable" to { context, args ->
+        val format = Pattern.compile("^([^\\s]+)(\\s+(.+)?)?$")
+
+        val m = format.matcher(args)
+        if (!m.find()) {
+            throw WslRuntimeException("Invalid arguments to setvariable")
+        }
+        val name = m.group(1)
+        val value = m.group(3) ?: " "
+        //cx.scriptDebug(1, "setVariable: $name=$value")
+        context.setVariable(name, WslValue.WslString(value))
+    }
 )

@@ -15,11 +15,11 @@ class WslContext(
     private var nextLine = 1
 
     fun lookupVariable(name: String): WslValue {
-        return WslValue.WslString("")
+        return globalVariables[name] ?: WslValue.WslString("")
     }
 
     fun hasVariable(name: String): Boolean {
-        return false
+        return globalVariables.containsKey(name)
     }
 
     fun setVariable(name: String, value: WslValue) {
