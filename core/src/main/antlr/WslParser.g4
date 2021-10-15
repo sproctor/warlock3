@@ -7,7 +7,7 @@ script
 	;
 
 line
-	: Label? statement;
+	: Label* statement;
 
 statement
     : ifExpression

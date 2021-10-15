@@ -24,9 +24,9 @@ class WslScript(
     }
 
     private fun parseLine(line: WslParser.LineContext): WslLine {
-        val label = line.Label()?.text?.dropLast(1) // drop ending :
+        val labels = line.Label()?.map { it.text.dropLast(1) } // drop ending :
         val statement = parseStatement(line.statement())
-        return WslLine(label, statement)
+        return WslLine(lineNumber = line.start.line, labels = labels ?: emptyList(), statement = statement)
     }
 
     private fun parseStatement(statement: WslParser.StatementContext): WslStatement {
@@ -328,7 +328,8 @@ class WslBooleanComparisonException : WslRuntimeException("Cannot compare boolea
 open class WslRuntimeException(val reason: String) : Exception(reason)
 open class WslParseException(val reason: String) : Exception(reason)
 
-data class WslLine(val label: String?, val statement: WslStatement)
+data class WslLine(val lineNumber: Int, val labels: List<String>, val statement: WslStatement)
+
 sealed class WslStatement {
     data class ConditionalStatement(
         val condition: WslExpression,
