@@ -30,15 +30,20 @@ class WslScript(
     }
 
     private fun parseStatement(statement: WslParser.StatementContext): WslStatement {
-        val expression = statement.expression()
-        return if (expression != null) {
-            WslStatement.WithCondition(
-                parseExpression(expression),
-                parseStatement(statement.statement())
-            )
+        val ifExpression = statement.ifExpression()
+        return if (ifExpression != null) {
+            parseIfExpression(ifExpression)
         } else {
             parseCommand(statement.command())
         }
+    }
+
+    private fun parseIfExpression(ifExpression: WslParser.IfExpressionContext): WslStatement.ConditionalStatement {
+        return WslStatement.ConditionalStatement(
+            parseExpression(ifExpression.expression()),
+            parseCommand(ifExpression.command(0)),
+            if (ifExpression.ELSE() != null) parseCommand(ifExpression.command(1)) else null
+        )
     }
 
     private fun parseExpression(expression: WslParser.ExpressionContext): WslExpression {
@@ -54,6 +59,7 @@ class WslScript(
     private fun parseCommandContent(commandContent: WslParser.CommandContentContext): WslCommandContent {
         commandContent.TEXT()?.let { return WslCommandContent.Text(it.text) }
         commandContent.VARIABLE_NAME()?.let { return WslCommandContent.Variable(it.text) }
+        commandContent.expression()?.let { return WslCommandContent.Expression(parseExpression(it)) }
         throw WslParseException("Unhandled command content alternative")
     }
 
@@ -176,8 +182,8 @@ class WslScript(
     }
 
     private fun parseValueExpression(valueExpression: WslParser.ValueExpressionContext): WslValueExpression {
-        valueExpression.variable()?.let { variableContext ->
-            return WslValueExpression.WslVariableExpression(variableContext.VARIABLE_NAME().text)
+        valueExpression.IDENTIFIER()?.let { identifier ->
+            return WslValueExpression.WslVariableExpression(identifier.text)
         }
         valueExpression.stringLiteral()?.let { stringLiteralContext ->
             val contents = stringLiteralContext.stringContent().map { parseStringContent(it) }
@@ -320,9 +326,17 @@ open class WslParseException(val reason: String) : Exception(reason)
 
 data class WslLine(val label: String?, val statement: WslStatement)
 sealed class WslStatement {
-    data class WithCondition(val condition: WslExpression, val statement: WslStatement) : WslStatement() {
+    data class ConditionalStatement(
+        val condition: WslExpression,
+        val ifCommand: WslCommand,
+        val elseCommand: WslCommand?,
+    ) : WslStatement() {
         override suspend fun execute(context: WslContext) {
-            statement.execute(context)
+            if (condition.getValue(context).toBoolean()) {
+                ifCommand.execute(context)
+            } else {
+                elseCommand?.execute(context)
+            }
         }
     }
 
@@ -335,7 +349,8 @@ sealed class WslStatement {
             val match = commandRegex.find(commandLine) ?: throw WslRuntimeException("Invalid line: $commandLine")
             val commandName = match.groups[1]?.value
             val args = match.groups[3]?.value ?: ""
-            val command = wslCommands[commandName] ?: throw WslRuntimeException("Invalid command \"$commandName\" on line ${context.lineNumber}")
+            val command = wslCommands[commandName]
+                ?: throw WslRuntimeException("Invalid command \"$commandName\" on line ${context.lineNumber}")
             command(context, args)
         }
 
@@ -360,12 +375,18 @@ sealed class WslCommandContent {
         }
     }
 
+    data class Expression(val expression: WslExpression) : WslCommandContent() {
+        override fun getValue(context: WslContext): String {
+            return expression.getValue(context).toString()
+        }
+    }
+
     abstract fun getValue(context: WslContext): String
 }
 
 data class WslExpression(val disjunction: WslDisjunction) {
-    fun getValue(context: WslContext): Boolean {
-        return disjunction.getValue(context).toBoolean()
+    fun getValue(context: WslContext): WslValue {
+        return disjunction.getValue(context)
     }
 }
 

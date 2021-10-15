@@ -10,9 +10,12 @@ line
 	: Label? statement;
 
 statement
-    : IF expression THEN statement
+    : ifExpression
     | command
     ;
+
+ifExpression
+    : IF expression THEN command (NL* ELSE command)?;
 
 command
     : commandContent*
@@ -21,6 +24,7 @@ command
 commandContent
     : TEXT
     | PERCENT VARIABLE_NAME
+    | PERCENT_LCURL expression RCURL
     ;
 
 expression
@@ -66,15 +70,11 @@ primaryExpression
     ;
 
 valueExpression
-    : variable
+    : IDENTIFIER
     | NUMBER
     | TRUE
     | FALSE
     | stringLiteral
-    ;
-
-variable
-    : PERCENT VARIABLE_NAME
     ;
 
 stringLiteral

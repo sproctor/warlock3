@@ -9,6 +9,8 @@ IF
     : 'if' -> pushMode(EXPRESSION)
     ;
 
+ELSE: 'else' Blank* -> pushMode(COMMAND);
+
 Label
     : Identifier ':'
     ;
@@ -17,6 +19,11 @@ TEXT
     : Identifier -> pushMode(COMMAND);
 
 NL: ('\n' | '\r' '\n'?) ;
+
+PERCENT_LCURL
+    : '%{'
+      -> pushMode(EXPRESSION)
+    ;
 
 PERCENT
     : '%' -> pushMode(COMMAND), pushMode(VARIABLE);
@@ -46,6 +53,7 @@ QUOTE_OPEN: '"' -> pushMode(QuotedString);
 THEN
 	: 'then' -> popMode
 	;
+RCURL: '}' -> popMode;
 OR
 	: ('or' | '||')
 	;
@@ -61,6 +69,8 @@ GTE: '>=';
 NOT: 'not' | '!';
 LPAREN: '(';
 RPAREN: ')';
+LSQUARE: '[';
+RSQUARE: ']';
 EXISTS: 'exists';
 CONTAINS: 'contains' | 'indexof';
 CONTAINSRE: 'containsre';
@@ -71,17 +81,19 @@ ADD: '+';
 SUB: '-';
 MULT: '*';
 DIV: '/';
-EXPRESSION_PERCENT: '%' -> type(PERCENT), pushMode(EXP_VARIABLE);
+IDENTIFIER: Identifier;
 
 mode COMMAND;
 
-COMMAND_DOLLAR: '%' -> type(PERCENT), pushMode(VARIABLE);
+COMMAND_PERCENT_LCURL: '%{' -> type(PERCENT_LCURL), pushMode(EXPRESSION);
+COMMAND_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
 COMMAND_TEXT: (~('\\' | '%' | '\n' | '\r') | '\\' | '%' | '%%') -> type(TEXT);
 COMMAND_NL: ('\n' | '\r' '\n'?) -> type(NL), popMode;
 
 mode QuotedString;
 
 QUOTE_CLOSE: '"' -> popMode;
+STRING_PERCENT_LCURL: '%{' -> type(PERCENT_LCURL), pushMode(EXPRESSION);
 STRING_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
 StringText: ~('\\' | '"' | '%')+ | '%' | '%%';
 StringEscapedChar: EscapedIdentifier;
@@ -89,7 +101,3 @@ StringEscapedChar: EscapedIdentifier;
 mode VARIABLE;
 
 VARIABLE_NAME: Identifier '%'? -> popMode;
-
-mode EXP_VARIABLE;
-
-EXP_VARIABLE_NAME: Identifier -> type(VARIABLE_NAME), popMode;
