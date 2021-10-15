@@ -41,12 +41,19 @@ fun ColumnScope.GameTextWindows(viewModel: GameViewModel) {
         val leftWindows =
             windows.filter { openWindows.contains(it.key) && it.value.location == WindowLocation.LEFT }
         if (leftWindows.isNotEmpty()) {
-            Column(modifier = Modifier.width(200.dp)) {
-                WindowViews(
-                    windows = leftWindows,
-                    gameViewModel = viewModel,
-                    windowViewModels = windowViewModels,
-                )
+            val panelState = remember { ResizablePanelState(initialSize = 200.dp, minSize = 8.dp) }
+            ResizablePanel(
+                modifier = Modifier,
+                isHorizontal = true,
+                state = panelState,
+            ) {
+                Column {
+                    WindowViews(
+                        windows = leftWindows,
+                        gameViewModel = viewModel,
+                        windowViewModels = windowViewModels,
+                    )
+                }
             }
         }
         // Center column
