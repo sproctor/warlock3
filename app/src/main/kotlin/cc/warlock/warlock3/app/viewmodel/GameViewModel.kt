@@ -2,12 +2,8 @@ package cc.warlock.warlock3.app.viewmodel
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextDecoration
-import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.core.ScriptInstance
+import cc.warlock.warlock3.core.StyledString
 import cc.warlock.warlock3.core.wsl.WslScript
 import cc.warlock.warlock3.core.wsl.WslScriptInstance
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -21,8 +17,6 @@ class GameViewModel(
     private val _properties = mutableStateOf<Map<String, String>>(emptyMap())
     val properties: State<Map<String, String>> = _properties
 
-    val components = client.components
-
     private val _sendHistory = mutableStateOf<List<String>>(emptyList())
     val sendHistory: State<List<String>> = _sendHistory
 
@@ -32,9 +26,6 @@ class GameViewModel(
     val windows = client.windows
 
     val openWindows = client.openWindows
-
-    val defaultBackgroundColor = mutableStateOf(Color.DarkGray)
-    val defaultTextColor = mutableStateOf(Color.White)
 
     fun send(line: String) {
         _sendHistory.value = listOf(line) + _sendHistory.value
@@ -47,6 +38,7 @@ class GameViewModel(
                 val script = WslScript(name = scriptName, file = file)
                 val scriptInstance = WslScriptInstance(name = scriptName, script = script)
                 scriptInstance.start(client, emptyList())
+                scriptInstances.value += scriptInstance
             } else {
                 client.print(StyledString("Could not find a script with that name"))
             }
@@ -61,5 +53,14 @@ class GameViewModel(
 
     fun hideWindow(name: String) {
         client.hideWindow(name)
+    }
+
+    fun stopScripts() {
+        val count = scriptInstances.value.size
+        scriptInstances.value.forEach { scriptInstance ->
+            scriptInstance.stop()
+        }
+        scriptInstances.value = emptyList()
+        client.print(StyledString("Stopped $count script(s)"))
     }
 }

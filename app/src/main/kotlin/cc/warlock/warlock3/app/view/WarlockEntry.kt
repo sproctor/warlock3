@@ -29,6 +29,7 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
         onSend = {
             viewModel.send(it)
         },
+        stopScripts = { viewModel.stopScripts() },
         history = history
     )
 }
@@ -38,6 +39,7 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
 fun WarlockEntryContent(
     modifier: Modifier,
     onSend: (String) -> Unit,
+    stopScripts: () -> Unit,
     history: List<String>,
 ) {
     var textField by remember { mutableStateOf(TextFieldValue()) }
@@ -76,6 +78,10 @@ fun WarlockEntryContent(
                                 val text = history[historyPosition]
                                 textField = TextFieldValue(text = text, selection = TextRange(text.length))
                             }
+                            true
+                        }
+                        event.key.keyCode == Key.Escape.keyCode && event.type == KeyEventType.KeyDown -> {
+                            stopScripts()
                             true
                         }
                         else -> false
