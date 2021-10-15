@@ -71,11 +71,16 @@ primaryExpression
     ;
 
 valueExpression
-    : IDENTIFIER
+    : variableExpression
     | NUMBER
     | TRUE
     | FALSE
     | stringLiteral
+    ;
+
+variableExpression
+    : IDENTIFIER
+    | PERCENT VARIABLE_NAME
     ;
 
 stringLiteral

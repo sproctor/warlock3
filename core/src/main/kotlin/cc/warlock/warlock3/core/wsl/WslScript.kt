@@ -183,9 +183,7 @@ class WslScript(
     }
 
     private fun parseValueExpression(valueExpression: WslParser.ValueExpressionContext): WslValueExpression {
-        valueExpression.IDENTIFIER()?.let { identifier ->
-            return WslValueExpression.WslVariableExpression(identifier.text)
-        }
+        valueExpression.variableExpression()?.let { return parseVariableExpression(it) }
         valueExpression.stringLiteral()?.let { stringLiteralContext ->
             val contents = stringLiteralContext.stringContent().map { parseStringContent(it) }
             return WslValueExpression.WslStringExpression(contents)
@@ -200,6 +198,12 @@ class WslScript(
             else -> throw WslParseException("Unhandled alternative in value expression")
         }
         return WslValueExpression.WslLiteralExpression(value)
+    }
+
+    private fun parseVariableExpression(variableExpression: WslParser.VariableExpressionContext): WslValueExpression.WslVariableExpression {
+        variableExpression.IDENTIFIER()?.let { return WslValueExpression.WslVariableExpression(it.text) }
+        variableExpression.VARIABLE_NAME()?.let { return WslValueExpression.WslVariableExpression(it.text) }
+        throw WslParseException("Unhandled alternative in variable expression")
     }
 
     private fun parseStringContent(stringLiteral: WslParser.StringContentContext): WslStringContent {

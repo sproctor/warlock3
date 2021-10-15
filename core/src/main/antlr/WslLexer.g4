@@ -1,7 +1,7 @@
 lexer grammar WslLexer;
 
 LineComment
-    : ('//' | ';' | '#') ~[\r\n]*
+    : '#' ~[\r\n]*
       -> channel(HIDDEN)
     ;
 
@@ -12,7 +12,7 @@ IF
 ELSE: 'else' Blank* -> pushMode(COMMAND);
 
 Label
-    : Identifier ':'
+    : Identifier Blank* ':'
     ;
 
 TEXT
@@ -82,8 +82,7 @@ SUB: '-';
 MULT: '*';
 DIV: '/';
 IDENTIFIER: Identifier;
-EXP_PERCENT: '%' -> pushMode(VARIABLE);
-ErrorCharacter: . ;
+EXP_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
 
 mode COMMAND;
 
@@ -105,4 +104,3 @@ StringEscapedChar: EscapedIdentifier;
 mode VARIABLE;
 
 VARIABLE_NAME: NameChar+ '%'? -> popMode;
-VARIABLE_ErrorCharacter: . ;
