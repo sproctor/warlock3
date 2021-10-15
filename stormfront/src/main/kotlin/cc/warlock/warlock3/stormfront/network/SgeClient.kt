@@ -52,6 +52,7 @@ class SgeClient(
                                 println("SGE socket exception: " + e.message)
                             } catch (_: SocketTimeoutException) {
                                 // Timeout, let's retry!
+                                println("Timed out connecting to server")
                             }
                         }
                     } finally {
