@@ -3,6 +3,7 @@ package cc.warlock.warlock3.core.wsl
 import cc.warlock.warlock3.core.ScriptInstance
 import cc.warlock.warlock3.core.StyledString
 import cc.warlock.warlock3.core.WarlockClient
+import cc.warlock.warlock3.core.util.parseArguments
 import cc.warlock.warlock3.stormfront.StyleProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,12 +19,14 @@ class WslScriptInstance(
     private lateinit var lines: List<WslLine>
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    override fun start(client: WarlockClient, arguments: List<String>) {
+    override fun start(client: WarlockClient, argumentString: String) {
+        val arguments = parseArguments(argumentString)
         _isRunning = true
         scope.launch {
             try {
                 lines = script.parse()
                 val context = WslContext(client, lines, this@WslScriptInstance)
+                context.setVariable("0", WslValue.WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->
                     context.setVariable((index + 1).toString(), WslValue.WslString(arg))
                 }

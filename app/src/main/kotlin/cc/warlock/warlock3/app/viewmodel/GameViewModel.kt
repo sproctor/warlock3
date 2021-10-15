@@ -30,14 +30,16 @@ class GameViewModel(
     fun send(line: String) {
         _sendHistory.value = listOf(line) + _sendHistory.value
         if (line.startsWith(".")) {
-            val scriptName = line.drop(1)
+            val splitCommand = line.drop(1).split(" ", "\t", limit = 2)
+            val scriptName = splitCommand.firstOrNull() ?: ""
+            val args = splitCommand.getOrNull(1) ?: ""
             val scriptDir = System.getProperty("user.home") + "/.warlock3/scripts"
             val file = File("$scriptDir/$scriptName.wsl")
             if (file.exists()) {
                 client.print(StyledString("File exists"))
                 val script = WslScript(name = scriptName, file = file)
                 val scriptInstance = WslScriptInstance(name = scriptName, script = script)
-                scriptInstance.start(client, emptyList())
+                scriptInstance.start(client = client, argumentString = args)
                 scriptInstances.value += scriptInstance
             } else {
                 client.print(StyledString("Could not find a script with that name"))
