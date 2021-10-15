@@ -285,7 +285,7 @@ sealed class WslValue {
         }
 
         override fun toString(): String {
-            return value.toString()
+            return value.toPlainString()
         }
 
         override fun equals(other: Any?): Boolean {
