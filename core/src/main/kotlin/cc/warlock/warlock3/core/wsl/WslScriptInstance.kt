@@ -3,7 +3,6 @@ package cc.warlock.warlock3.core.wsl
 import cc.warlock.warlock3.core.ScriptInstance
 import cc.warlock.warlock3.core.StyledString
 import cc.warlock.warlock3.core.WarlockClient
-import cc.warlock.warlock3.core.WarlockStyle
 import cc.warlock.warlock3.stormfront.StyleProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

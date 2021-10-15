@@ -7,23 +7,23 @@ class WslContext(
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
 ) {
-    private val globalVariables = HashMap<String, WslValue>()
+    private val globalVariables = mutableMapOf<String, WslValue>()
 
-    private var currentLine = 0
+    private var currentLine = -1
     val lineNumber: Int
         get() = currentLine + 1
-    private var nextLine = 1
+    private var nextLine = 0
 
     fun lookupVariable(name: String): WslValue {
-        return globalVariables[name] ?: WslValue.WslString("")
+        return globalVariables[name.lowercase()] ?: WslValue.WslString("")
     }
 
     fun hasVariable(name: String): Boolean {
-        return globalVariables.containsKey(name)
+        return globalVariables.containsKey(name.lowercase())
     }
 
     fun setVariable(name: String, value: WslValue) {
-        globalVariables[name] = value
+        globalVariables[name.lowercase()] = value
     }
 
     fun getNextLine(): WslLine? {
