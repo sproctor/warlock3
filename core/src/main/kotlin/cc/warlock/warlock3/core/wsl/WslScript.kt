@@ -242,6 +242,10 @@ sealed class WslValue {
         override fun hashCode(): Int {
             return value.hashCode()
         }
+
+        override fun isNumeric(): Boolean {
+            return true
+        }
     }
 
     data class WslString(val value: String) : WslValue() {
@@ -276,6 +280,10 @@ sealed class WslValue {
 
         override fun hashCode(): Int {
             return value.hashCode()
+        }
+
+        override fun isNumeric(): Boolean {
+            return value.toBigDecimalOrNull() != null
         }
     }
 
@@ -312,11 +320,16 @@ sealed class WslValue {
                 is WslNumber -> compare(operator, value, other.value)
             }
         }
+
+        override fun isNumeric(): Boolean {
+            return true
+        }
     }
 
     abstract fun toBoolean(): Boolean
     abstract fun toNumber(): BigDecimal
     abstract fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean
+    abstract fun isNumeric(): Boolean
 }
 
 private fun <T> compare(operator: WslComparisonOperator, value1: Comparable<T>, value2: T): Boolean {
@@ -512,10 +525,10 @@ data class WslAdditiveExpression(
 enum class WslAdditiveOperator {
     ADD {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
-            return if (value1 is WslValue.WslString || value2 is WslValue.WslString) {
-                WslValue.WslString(value1.toString() + value2.toString())
-            } else {
+            return if (value1.isNumeric() && value2.isNumeric()) {
                 WslValue.WslNumber(value1.toNumber() + value2.toNumber())
+            } else {
+                WslValue.WslString(value1.toString() + value2.toString())
             }
         }
     },
@@ -544,9 +557,12 @@ data class WslMultiplicativeExpression(
 enum class WslMultiplicativeOperator {
     MULT {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
-            return when (value1) {
-                is WslValue.WslString -> WslValue.WslString(value1.value.repeat(value2.toNumber().toInt()))
-                else -> WslValue.WslNumber(value1.toNumber() * value2.toNumber())
+            if (!value2.isNumeric())
+                throw WslRuntimeException("Second argument to multiplication operator must be numeric")
+            return if (value1.isNumeric()) {
+                WslValue.WslNumber(value1.toNumber() * value2.toNumber())
+            } else {
+                WslValue.WslString(value1.toString().repeat(value2.toNumber().toInt()))
             }
         }
     },
