@@ -1,0 +1,60 @@
+name: "pre-release"
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  pre-release:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: adopt
+          java-version: 17
+
+      - name: Validate gradle wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Checkout Gradle Build Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            !~/.gradle/wrapper/dists/**/gradle*.zip
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Make package
+        run: ./gradlew package
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: distributable-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            app/build/**/*.dmg
+            app/build/**/*.msi
+            app/build/**/*.deb
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: ${{ contains(github.event.inputs.version, '-rc') || contains(github.event.inputs.version, '-b') || contains(github.event.inputs.version, '-a') }}
+          files: |
+            app/build/**/*.dmg
+            app/build/**/*.msi
+            app/build/**/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
