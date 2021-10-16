@@ -183,7 +183,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         }
                                         componentText = null
                                     }
-                                    StormfrontHandledEvent -> Unit // do nothing
+                                    StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
                                     is StormfrontStreamWindowEvent -> {
                                         val name = event.window.name
                                         _windows.value = windows.value +

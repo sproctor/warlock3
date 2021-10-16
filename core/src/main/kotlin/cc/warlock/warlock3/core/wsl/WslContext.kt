@@ -1,6 +1,8 @@
 package cc.warlock.warlock3.core.wsl
 
+import cc.warlock.warlock3.core.ClientNavEvent
 import cc.warlock.warlock3.core.WarlockClient
+import kotlinx.coroutines.flow.first
 
 class WslContext(
     val client: WarlockClient,
@@ -41,5 +43,9 @@ class WslContext(
 
     fun stop() {
         scriptInstance.stop()
+    }
+
+    suspend fun waitForNav() {
+        client.eventFlow.first { it == ClientNavEvent }
     }
 }

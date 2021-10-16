@@ -22,6 +22,7 @@ class StormfrontProtocolHandler {
         "indicator" to IndicatorHandler(),
         "left" to LeftHandler(),
         "mode" to ModeHandler(),
+        "nav" to NavHandler(),
         "output" to OutputHandler(),
         "popbold" to PopBoldHandler(),
         "popstream" to PopStreamHandler(),

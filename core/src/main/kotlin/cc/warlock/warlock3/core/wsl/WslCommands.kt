@@ -32,6 +32,11 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         }
         context.setNextLine(index)
     },
+    "move" to { context, args ->
+        context.client.print(StyledString("Sending: $args"))
+        context.client.sendCommand(args)
+        context.waitForNav()
+    },
     "pause" to { _, args ->
         val duration = args.toBigDecimalOrNull() ?: BigDecimal.ONE
         delay((duration * BigDecimal(1000)).toLong())
