@@ -15,6 +15,9 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val result = when (operator.lowercase()) {
             "set" -> operand
             "add" -> current + operand
+            "subtract" -> current - operand
+            "multiply" -> current * operand
+            "divide" -> current / operand
             else -> throw WslRuntimeException("Unsupported counter operator")
         }
         context.setVariable("c", WslValue.WslNumber(result))
