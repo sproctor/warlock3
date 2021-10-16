@@ -6,6 +6,19 @@ import kotlinx.coroutines.delay
 import java.math.BigDecimal
 
 val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
+    "counter" to { context, args ->
+        val (operator, operandString) = args.splitFirstWord()
+        val operand = operandString?.let {
+            it.toBigDecimalOrNull() ?: throw WslRuntimeException("Counter operand must be a number")
+        } ?: BigDecimal.ONE
+        val current = context.lookupVariable("c").toNumber()
+        val result = when (operator.lowercase()) {
+            "set" -> operand
+            "add" -> current + operand
+            else -> throw WslRuntimeException("Unsupported counter operator")
+        }
+        context.setVariable("c", WslValue.WslNumber(result))
+    },
     "echo" to { context, args ->
         context.client.print(StyledString(args))
     },
@@ -51,6 +64,9 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     "put" to { context, args ->
         context.client.print(StyledString("Sending: $args"))
         context.client.sendCommand(args)
+    },
+    "save" to { context, args ->
+        context.setVariable("s", WslValue.WslString(args))
     },
     "setvariable" to { context, args ->
         val (name, value) = args.splitFirstWord()
@@ -115,6 +131,7 @@ fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit {
 sealed class ScriptMatch(val label: String) {
     abstract fun match(line: String): String?
 }
+
 class TextMatch(label: String, val text: String) : ScriptMatch(label) {
     override fun match(line: String): String? {
         if (line.contains(text)) {
@@ -123,6 +140,7 @@ class TextMatch(label: String, val text: String) : ScriptMatch(label) {
         return null
     }
 }
+
 class RegexMatch(label: String, val regex: Regex) : ScriptMatch(label) {
     override fun match(line: String): String? {
         return regex.find(line)?.value
