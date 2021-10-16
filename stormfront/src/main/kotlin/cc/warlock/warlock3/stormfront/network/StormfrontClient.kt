@@ -112,6 +112,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontStyleEvent ->
                                         currentStyle = event.style
                                     is StormfrontPromptEvent -> {
+                                        _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
                                         outputStyle = null
                                         currentStream?.appendPrompt(event.text)

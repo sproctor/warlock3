@@ -6,3 +6,4 @@ sealed class ClientEvent
 data class ClientProgressBarEvent(val progressBarData: ProgressBarData) : ClientEvent()
 data class ClientCompassEvent(val directions: List<DirectionType>) : ClientEvent()
 object ClientNavEvent : ClientEvent()
+object ClientPromptEvent : ClientEvent()

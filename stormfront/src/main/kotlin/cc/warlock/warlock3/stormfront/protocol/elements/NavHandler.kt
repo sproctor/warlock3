@@ -6,7 +6,7 @@ import cc.warlock.warlock3.stormfront.protocol.StormfrontEvent
 import cc.warlock.warlock3.stormfront.protocol.StormfrontNavEvent
 
 class NavHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): StormfrontEvent? {
+    override fun startElement(element: StartElement): StormfrontEvent {
         return StormfrontNavEvent
     }
 }

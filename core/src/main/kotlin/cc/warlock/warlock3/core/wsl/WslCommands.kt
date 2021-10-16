@@ -37,6 +37,9 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.client.sendCommand(args)
         context.waitForNav()
     },
+    "nextroom" to { context, _ ->
+        context.waitForNav()
+    },
     "pause" to { _, args ->
         val duration = args.toBigDecimalOrNull() ?: BigDecimal.ONE
         delay((duration * BigDecimal(1000)).toLong())
@@ -56,5 +59,8 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val value = m.group(3) ?: " "
         //cx.scriptDebug(1, "setVariable: $name=$value")
         context.setVariable(name, WslValue.WslString(value))
+    },
+    "wait" to { context, _ ->
+        context.waitForPrompt()
     }
 )
