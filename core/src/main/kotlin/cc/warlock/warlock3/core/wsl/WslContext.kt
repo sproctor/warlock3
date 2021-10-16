@@ -2,6 +2,7 @@ package cc.warlock.warlock3.core.wsl
 
 import cc.warlock.warlock3.core.ClientNavEvent
 import cc.warlock.warlock3.core.ClientPromptEvent
+import cc.warlock.warlock3.core.ClientTextEvent
 import cc.warlock.warlock3.core.WarlockClient
 import kotlinx.coroutines.flow.first
 
@@ -11,11 +12,21 @@ class WslContext(
     val scriptInstance: WslScriptInstance,
 ) {
     private val globalVariables = mutableMapOf<String, WslValue>()
+    private val matches = mutableListOf<ScriptMatch>()
 
     private var currentLine = -1
     val lineNumber: Int
         get() = currentLine + 1
     private var nextLine = 0
+
+    suspend fun executeCommand(commandLine: String) {
+        val match = commandRegex.find(commandLine) ?: throw WslRuntimeException("Invalid line: $commandLine")
+        val commandName = match.groups[1]?.value
+        val args = match.groups[3]?.value ?: ""
+        val command = wslCommands[commandName]
+            ?: throw WslRuntimeException("Invalid command \"$commandName\" on line $lineNumber")
+        command(this, args)
+    }
 
     fun lookupVariable(name: String): WslValue {
         return globalVariables[name.lowercase()] ?: WslValue.WslString("")
@@ -38,12 +49,23 @@ class WslContext(
         return lines[currentLine]
     }
 
-    fun setNextLine(index: Int) {
-        nextLine = index
-    }
-
     fun stop() {
         scriptInstance.stop()
+    }
+
+    fun goto(label: String) {
+        var index = lines.indexOfFirst { line ->
+            line.labels.any { it.equals(other = label, ignoreCase = true) }
+        }
+        if (index == -1) {
+            index = lines.indexOfFirst { line ->
+                line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
+            }
+        }
+        if (index == -1) {
+            throw WslRuntimeException("Could not find label \"$label\".")
+        }
+        nextLine = index
     }
 
     suspend fun waitForNav() {
@@ -52,5 +74,44 @@ class WslContext(
 
     suspend fun waitForPrompt() {
         client.eventFlow.first { it == ClientPromptEvent }
+    }
+
+    suspend fun waitForText(text: String) {
+        client.eventFlow.first {
+            it is ClientTextEvent && it.text.contains(text)
+        }
+    }
+
+    suspend fun waitForRegex(regex: Regex) {
+        client.eventFlow.first {
+            it is ClientTextEvent && regex.containsMatchIn(it.text)
+        }
+    }
+
+    fun addMatch(match: ScriptMatch) {
+        matches += match
+    }
+
+    suspend fun matchWait() {
+        if (matches.isEmpty()) {
+            throw WslRuntimeException("matchWait called with no matches")
+        }
+
+        client.eventFlow.first { event ->
+            if (event is ClientTextEvent) {
+                matches.forEach { match ->
+                    match.match(event.text)?.let { text ->
+                        println("got match: $text")
+                        goto(match.label)
+                        return@first true
+                    }
+                }
+            }
+            false
+        }
+    }
+
+    companion object {
+        val commandRegex = Regex("^([\\w]+)(\\s+(.*))?")
     }
 }

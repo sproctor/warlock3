@@ -64,8 +64,8 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
-            sendCommand(key)
-            sendCommand("/FE:STORMFRONT /XML")
+            sendCommand(key, echo = false)
+            sendCommand("/FE:STORMFRONT /XML", echo = false)
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
             val protocolHandler = StormfrontProtocolHandler()
@@ -99,8 +99,11 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         val styles = listOfNotNull(currentStyle, outputStyle)
                                         currentStream?.append(event.text, styles = styles)
                                     }
-                                    is StormfrontEolEvent ->
-                                        currentStream?.appendEol(event.ignoreWhenBlank)
+                                    is StormfrontEolEvent -> {
+                                        currentStream?.appendEol(event.ignoreWhenBlank)?.let { text ->
+                                            _eventFlow.emit(ClientTextEvent(text))
+                                        }
+                                    }
                                     is StormfrontAppEvent -> {
                                         val newProperties = properties.value
                                             .plus("character" to (event.character ?: ""))
@@ -242,8 +245,13 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
         }
     }
 
-    override fun sendCommand(line: String) {
-        mainStream.appendCommand(line)
+    override fun sendCommand(line: String, echo: Boolean) {
+        scope.launch {
+            _eventFlow.emit(ClientTextEvent(line))
+        }
+        if (echo) {
+            mainStream.appendCommand(line)
+        }
         send("<c>$line\n")
     }
 
@@ -253,7 +261,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
         _connected.value = false
     }
 
-    override fun send(toSend: String) {
+    private fun send(toSend: String) {
         println(toSend)
         if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
@@ -261,6 +269,9 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     }
 
     override fun print(message: StyledString) {
+        scope.launch {
+            _eventFlow.emit(ClientTextEvent(message.toPlainString()))
+        }
         mainStream.appendMessage(message)
     }
 

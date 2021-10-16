@@ -7,6 +7,16 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
     operator fun plus(string: StyledString): StyledString {
         return StyledString(substrings + string.substrings)
     }
+
+    fun toPlainString(): String {
+        val builder = StringBuilder()
+        substrings.forEach { substring ->
+            if (substring is StyledStringSubstring) {
+                builder.append(substring.text)
+            }
+        }
+        return builder.toString()
+    }
 }
 
 sealed class StyledStringLeaf

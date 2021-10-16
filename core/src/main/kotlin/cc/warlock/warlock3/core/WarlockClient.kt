@@ -12,9 +12,9 @@ interface WarlockClient {
 
     fun disconnect()
 
-    fun sendCommand(line: String)
+    fun sendCommand(line: String, echo: Boolean = true)
 
-    fun send(toSend: String)
+    // fun send(toSend: String)
 
     fun print(message: StyledString)
 }

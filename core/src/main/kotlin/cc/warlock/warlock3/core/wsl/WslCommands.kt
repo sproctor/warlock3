@@ -3,7 +3,6 @@ package cc.warlock.warlock3.core.wsl
 import cc.warlock.warlock3.core.StyledString
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
-import java.util.regex.Pattern
 
 val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     "echo" to { context, args ->
@@ -14,23 +13,27 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     },
     "goto" to { context, argStr ->
         val lines = context.lines
-        val args = argStr.trim().split("[ \t]+")
-        if (args.isEmpty()) {
+        val (label, _) = argStr.splitFirstWord()
+        if (label.isBlank()) {
             throw WslRuntimeException("GOTO with no label")
         }
-        val label = args[0]
-        var index = lines.indexOfFirst { line ->
-            line.labels.any { it.equals(other = label, ignoreCase = true) }
+        context.goto(label)
+    },
+    "match" to { context, args ->
+        val (label, text) = args.splitFirstWord()
+        if (text?.isBlank() != false) {
+            throw WslRuntimeException("Blank text in match")
         }
-        if (index == -1) {
-            index = lines.indexOfFirst { line ->
-                line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
-            }
-        }
-        if (index == -1) {
-            throw WslRuntimeException("Could not find label \"$label\".")
-        }
-        context.setNextLine(index)
+        context.addMatch(TextMatch(label, text))
+    },
+    "matchre" to { context, args ->
+        val (label, text) = args.splitFirstWord()
+        val regex = text?.let { parseRegex(it) } ?: throw WslRuntimeException("Invalid regex in matchRe")
+        context.addMatch(RegexMatch(label, regex))
+    },
+    "matchwait" to { context, args ->
+        // TODO timeout after $args seconds
+        context.matchWait()
     },
     "move" to { context, args ->
         context.client.print(StyledString("Sending: $args"))
@@ -41,7 +44,8 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.waitForNav()
     },
     "pause" to { _, args ->
-        val duration = args.toBigDecimalOrNull() ?: BigDecimal.ONE
+        val (arg, _) = args.splitFirstWord()
+        val duration = arg.toBigDecimalOrNull() ?: BigDecimal.ONE
         delay((duration * BigDecimal(1000)).toLong())
     },
     "put" to { context, args ->
@@ -49,18 +53,63 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.client.sendCommand(args)
     },
     "setvariable" to { context, args ->
-        val format = Pattern.compile("^([^\\s]+)(\\s+(.+)?)?$")
+        val (name, value) = args.splitFirstWord()
 
-        val m = format.matcher(args)
-        if (!m.find()) {
+        if (name.isBlank()) {
             throw WslRuntimeException("Invalid arguments to setvariable")
         }
-        val name = m.group(1)
-        val value = m.group(3) ?: " "
         //cx.scriptDebug(1, "setVariable: $name=$value")
-        context.setVariable(name, WslValue.WslString(value))
+        context.setVariable(name, WslValue.WslString(value ?: ""))
     },
     "wait" to { context, _ ->
         context.waitForPrompt()
+    },
+    "waitfor" to { context, args ->
+        context.waitForText(args)
+    },
+    "waitforre" to { context, args ->
+        context.waitForRegex(
+            parseRegex(args) ?: throw WslRuntimeException("Invalid regex in waitForRe")
+        )
+    },
+) + (1..9).map { "if_$it" to ifNCommand(it) }
+
+fun parseRegex(text: String): Regex? {
+    val regex = Regex("/(.*)/(i)?")
+    return regex.find(text)?.let { result ->
+        Regex(
+            pattern = result.groups[1]!!.value,
+            options = if (result.groups[2] != null) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+        )
     }
-)
+}
+
+fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit {
+    return { context, args ->
+        if (context.hasVariable(n.toString())) {
+            context.executeCommand(args)
+        }
+    }
+}
+
+sealed class ScriptMatch(val label: String) {
+    abstract fun match(line: String): String?
+}
+class TextMatch(label: String, val text: String) : ScriptMatch(label) {
+    override fun match(line: String): String? {
+        if (line.contains(text)) {
+            return text
+        }
+        return null
+    }
+}
+class RegexMatch(label: String, val regex: Regex) : ScriptMatch(label) {
+    override fun match(line: String): String? {
+        return regex.find(line)?.value
+    }
+}
+
+fun String.splitFirstWord(): Pair<String, String?> {
+    val list = trim().split(Regex("[ \t]+"), limit = 2)
+    return Pair(list[0], list.getOrNull(1))
+}

@@ -74,9 +74,9 @@ class TextStream(
         }
     }
 
-    fun appendEol(ignoreWhenBlank: Boolean) {
+    fun appendEol(ignoreWhenBlank: Boolean): String? {
         if (ignoreWhenBlank && buffer == null)
-            return
+            return null
         val text = buffer ?: StyledString("")
         _lines.value = _lines.value + StreamLine(
             ignoreWhenBlank = ignoreWhenBlank,
@@ -86,6 +86,7 @@ class TextStream(
         lineBackgroundColor = null
         buffer = null
         isPrompting = false
+        return text.toPlainString()
     }
 
     fun appendPrompt(prompt: String) {
