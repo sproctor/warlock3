@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.core.wsl
 
 import cc.warlock.warlock3.core.StyledString
+import cc.warlock.warlock3.core.util.findArgumentBreak
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
 
@@ -12,7 +13,6 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.stop()
     },
     "goto" to { context, argStr ->
-        val lines = context.lines
         val (label, _) = argStr.splitFirstWord()
         if (label.isBlank()) {
             throw WslRuntimeException("GOTO with no label")
@@ -31,7 +31,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val regex = text?.let { parseRegex(it) } ?: throw WslRuntimeException("Invalid regex in matchRe")
         context.addMatch(RegexMatch(label, regex))
     },
-    "matchwait" to { context, args ->
+    "matchwait" to { context, _ ->
         // TODO timeout after $args seconds
         context.matchWait()
     },
@@ -60,6 +60,26 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         }
         //cx.scriptDebug(1, "setVariable: $name=$value")
         context.setVariable(name, WslValue.WslString(value ?: ""))
+    },
+    "shift" to { context, _ ->
+        var i = 1
+        while (true) {
+            val nextName = (i + 1).toString()
+            if (context.hasVariable(nextName)) {
+                context.setVariable(i.toString(), context.lookupVariable(nextName))
+            } else {
+                context.deleteVariable(i.toString())
+                break
+            }
+            i++
+        }
+        val allArgs = context.lookupVariable("0").toString()
+        val breakIndex = findArgumentBreak(allArgs)
+        if (breakIndex >= 0) {
+            context.setVariable("0", WslValue.WslString(allArgs.substring(breakIndex + 1)))
+        } else {
+            context.setVariable("0", WslValue.WslString(""))
+        }
     },
     "wait" to { context, _ ->
         context.waitForPrompt()

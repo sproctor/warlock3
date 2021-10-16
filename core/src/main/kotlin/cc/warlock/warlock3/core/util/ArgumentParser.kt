@@ -1,7 +1,7 @@
 package cc.warlock.warlock3.core.util
 
 /**
- * Parses argumentString into a list of strings
+ * Parses input into a list of strings
  *   an argument can be in quotes to have spaces in the argument
  */
 fun parseArguments(input: String): List<String> {
@@ -32,4 +32,27 @@ fun parseArguments(input: String): List<String> {
         result += current.toString()
     }
     return result
+}
+
+/**
+ * Parses input, returning the position of the first unescaped/unquoted space
+ */
+fun findArgumentBreak(input: String): Int {
+    var inQuotes = false
+    var inEscape = false
+    for (i in input.indices) {
+        // If this character is escaped, skip it
+        if (inEscape) {
+            inEscape = false
+            continue
+        }
+        when (input[i]) {
+            '\\' -> inEscape = true // escape the next character
+            ' ' -> if (!inQuotes) {
+            return i
+            }
+            '"' -> inQuotes = !inQuotes
+        }
+    }
+    return -1
 }

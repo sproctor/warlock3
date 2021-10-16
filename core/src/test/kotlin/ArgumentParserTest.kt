@@ -1,3 +1,4 @@
+import cc.warlock.warlock3.core.util.findArgumentBreak
 import cc.warlock.warlock3.core.util.parseArguments
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -16,5 +17,20 @@ class ArgumentParserTest {
     @Test
     fun parseArguments_escapedQuotesAndSpaces() {
         assertEquals(listOf("foo bar", "baz\" zip", "zoom"), parseArguments("foo\\ bar \"baz\\\" zip\" zoom"))
+    }
+
+    @Test
+    fun argumentBreak_plain() {
+        assertEquals(3, findArgumentBreak("foo bar baz"))
+    }
+
+    @Test
+    fun argumentBreak_quotedStrings() {
+        assertEquals(9, findArgumentBreak("\"foo bar\" baz"))
+    }
+
+    @Test
+    fun argumentBreak_escapedQuotesAndSpaces() {
+        assertEquals(8, findArgumentBreak("foo\\ bar \"baz\\\" zip\" zoom"))
     }
 }

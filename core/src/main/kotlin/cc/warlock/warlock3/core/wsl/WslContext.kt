@@ -20,12 +20,10 @@ class WslContext(
     private var nextLine = 0
 
     suspend fun executeCommand(commandLine: String) {
-        val match = commandRegex.find(commandLine) ?: throw WslRuntimeException("Invalid line: $commandLine")
-        val commandName = match.groups[1]?.value
-        val args = match.groups[3]?.value ?: ""
+        val (commandName, args) = commandLine.splitFirstWord()
         val command = wslCommands[commandName]
             ?: throw WslRuntimeException("Invalid command \"$commandName\" on line $lineNumber")
-        command(this, args)
+        command(this, args ?: "")
     }
 
     fun lookupVariable(name: String): WslValue {
@@ -38,6 +36,10 @@ class WslContext(
 
     fun setVariable(name: String, value: WslValue) {
         globalVariables[name.lowercase()] = value
+    }
+
+    fun deleteVariable(name: String) {
+        globalVariables.remove(name)
     }
 
     fun getNextLine(): WslLine? {
@@ -109,9 +111,5 @@ class WslContext(
             }
             false
         }
-    }
-
-    companion object {
-        val commandRegex = Regex("^([\\w]+)(\\s+(.*))?")
     }
 }
