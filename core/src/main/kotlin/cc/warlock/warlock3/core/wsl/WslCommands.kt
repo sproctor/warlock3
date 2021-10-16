@@ -19,11 +19,18 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             throw WslRuntimeException("GOTO with no label")
         }
         val label = args[0]
-        lines.forEachIndexed { index, line ->
-            if (line.labels.any { it.equals(other = label, ignoreCase = true) }) {
-                context.setNextLine(index)
+        var index = lines.indexOfFirst { line ->
+            line.labels.any { it.equals(other = label, ignoreCase = true) }
+        }
+        if (index == -1) {
+            index = lines.indexOfFirst { line ->
+                line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
             }
         }
+        if (index == -1) {
+            throw WslRuntimeException("Could not find label \"$label\".")
+        }
+        context.setNextLine(index)
     },
     "pause" to { _, args ->
         val duration = args.toBigDecimalOrNull() ?: BigDecimal.ONE
