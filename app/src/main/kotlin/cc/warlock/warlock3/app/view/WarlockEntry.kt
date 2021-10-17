@@ -29,8 +29,8 @@ import kotlin.math.min
 fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
     val history by viewModel.sendHistory
     val roundTime by viewModel.roundTime.collectAsState()
-    // var spellTime by remember { mutableStateOf(0) }
-    println("Roundtime: $roundTime")
+    val castTime by viewModel.castTime.collectAsState()
+
     WarlockEntryContent(
         modifier = modifier,
         onSend = {
@@ -39,7 +39,7 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
         stopScripts = { viewModel.stopScripts() },
         history = history,
         roundTime = roundTime,
-        spellTime = 0,
+        castTime = castTime,
     )
 }
 
@@ -51,7 +51,7 @@ fun WarlockEntryContent(
     stopScripts: () -> Unit,
     history: List<String>,
     roundTime: Int,
-    spellTime: Int,
+    castTime: Int,
 ) {
     var textField by remember { mutableStateOf(TextFieldValue()) }
     var historyPosition by remember(history) { mutableStateOf(-1) }
@@ -103,7 +103,7 @@ fun WarlockEntryContent(
             maxLines = 1,
         )
 
-        RoundTimeBar(roundTime, spellTime)
+        RoundTimeBar(roundTime, castTime)
 
         LaunchedEffect(Unit) {
             focusRequester.requestFocus()
@@ -115,26 +115,26 @@ fun WarlockEntryContent(
 @Composable
 fun BoxScope.RoundTimeBar(
     roundTime: Int,
-    spellTime: Int,
+    castTime: Int,
 ) {
     val rtColor = Color(139, 0, 0, 0xC0)
     val stColor = Color(0, 0, 139, 0xC0)
     Canvas(Modifier.matchParentSize().padding(2.dp)) {
-        for (i in spellTime until min(100, roundTime)) {
+        for (i in castTime until min(100, roundTime)) {
             drawRect(
                 color = rtColor,
                 topLeft = Offset(x = i * 16f, y = 0f),
                 size = Size(width = 12f, height = size.height)
             )
         }
-        for (i in roundTime until min(100, spellTime)) {
+        for (i in roundTime until min(100, castTime)) {
             drawRect(
                 color = stColor,
                 topLeft = Offset(x = i * 16f, y = 0f),
                 size = Size(width = 12f, height = size.height)
             )
         }
-        for (i in 0 until min(min(spellTime, roundTime), 100)) {
+        for (i in 0 until min(min(castTime, roundTime), 100)) {
             drawRect(
                 color = rtColor,
                 topLeft = Offset(x = i * 16f, y = 0f),
@@ -158,7 +158,7 @@ fun WarlockEntryPreview() {
         history = emptyList(),
         stopScripts = {},
         roundTime = 8,
-        spellTime = 4,
+        castTime = 4,
     )
 }
 

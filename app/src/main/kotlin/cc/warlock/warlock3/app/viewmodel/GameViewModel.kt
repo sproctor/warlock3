@@ -36,6 +36,12 @@ class GameViewModel(
     }
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = 0)
 
+    val castTime = combine(currentTime, properties) { currentTime, properties ->
+        val roundEnd = properties["casttime"]?.toIntOrNull() ?: 0
+        max(0, roundEnd - currentTime)
+    }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = 0)
+
     private val _sendHistory = mutableStateOf<List<String>>(emptyList())
     val sendHistory: State<List<String>> = _sendHistory
 
