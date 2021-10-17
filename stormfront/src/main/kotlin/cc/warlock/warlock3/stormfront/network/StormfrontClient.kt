@@ -126,18 +126,21 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     }
                                     is StormfrontTimeEvent -> {
                                         val newTime = event.time.toLong() * 1000L
-                                        if (newTime > time + 1000L) {
+                                        val currentTime = time
+                                        if (newTime > currentTime + 1000L) {
                                             // We're more than 1s slow
                                             delta = newTime - System.currentTimeMillis() - 1000L
-                                        } else if (newTime < time - 1000L) {
+                                            println("adjusted delta ahead to $delta")
+                                        } else if (newTime < currentTime - 1000L) {
                                             // We're more than 1s fast
                                             delta = System.currentTimeMillis() + 1000L - newTime
+                                            println("adjusted delta back to $delta")
                                         }
                                     }
                                     is StormfrontRoundTimeEvent ->
-                                        _properties.value = _properties.value.plus("roundtime" to event.time)
+                                        _properties.value += "roundtime" to event.time
                                     is StormfrontCastTimeEvent ->
-                                        _properties.value = _properties.value.plus("casttime" to event.time)
+                                        _properties.value += "casttime" to event.time
                                     is StormfrontSettingsInfoEvent -> {
                                         // We don't actually handle server settings
 

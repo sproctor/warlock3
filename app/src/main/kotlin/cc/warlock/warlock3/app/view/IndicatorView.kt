@@ -1,10 +1,8 @@
 package cc.warlock.warlock3.app.view
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Divider
 import androidx.compose.runtime.Composable
@@ -13,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.loadImageBitmap
@@ -23,7 +20,7 @@ import cc.warlock.warlock3.app.viewmodel.GameViewModel
 
 @Composable
 fun IndicatorView(modifier: Modifier, viewModel: GameViewModel) {
-    val properties by viewModel.properties
+    val properties by viewModel.properties.collectAsState()
     IndicatorViewContent(modifier, properties)
 }
 

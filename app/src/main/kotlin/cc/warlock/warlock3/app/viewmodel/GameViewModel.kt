@@ -9,18 +9,36 @@ import cc.warlock.warlock3.core.wsl.WslScriptInstance
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 import java.io.File
+import kotlin.math.max
 
 class GameViewModel(
     val client: StormfrontClient
 ) {
-    private val _properties = mutableStateOf<Map<String, String>>(emptyMap())
-    val properties: State<Map<String, String>> = _properties
+    private val scope = CoroutineScope(Dispatchers.IO)
+
+    val properties: StateFlow<Map<String, String>> = client.properties
+
+    private val currentTime: Flow<Int> = flow {
+        while (true) {
+            val time = client.time
+            emit((time / 1000L).toInt())
+            val nextSecond = 1000L - (time % 1000)
+            delay(max(10L, nextSecond))
+        }
+    }
+
+    val roundTime = combine(currentTime, properties) { currentTime, properties ->
+        val roundEnd = properties["roundtime"]?.toIntOrNull() ?: 0
+        max(0, roundEnd - currentTime)
+    }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = 0)
 
     private val _sendHistory = mutableStateOf<List<String>>(emptyList())
     val sendHistory: State<List<String>> = _sendHistory
 
-    private val scope = CoroutineScope(Dispatchers.IO)
     private val scriptInstances = mutableStateOf<List<ScriptInstance>>(emptyList())
 
     val windows = client.windows

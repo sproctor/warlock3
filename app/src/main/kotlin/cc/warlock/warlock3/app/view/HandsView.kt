@@ -23,7 +23,7 @@ import cc.warlock.warlock3.app.viewmodel.GameViewModel
 
 @Composable
 fun HandsView(viewModel: GameViewModel) {
-    val properties by viewModel.properties
+    val properties by viewModel.properties.collectAsState()
     HandsViewContent(
         left = properties["left"] ?: "",
         right = properties["right"] ?: "",
