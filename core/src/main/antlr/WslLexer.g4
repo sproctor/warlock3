@@ -12,7 +12,7 @@ IF
 ELSE: 'else' Blank* -> pushMode(COMMAND);
 
 Label
-    : Identifier Blank* ':'
+    : NameChar+ Blank* ':'
     ;
 
 TEXT
