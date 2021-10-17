@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.lang.Integer.max
 
@@ -91,13 +92,17 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     }
 
     LaunchedEffect(lines) {
-        if (!scrollState.isScrollInProgress) {
-            val lastVisibleIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            if (lastVisibleIndex >= lastIndex) {
-                scope.launch {
-                    scrollState.scrollToItem(max(0, lines.lastIndex))
-                    lastIndex = lines.lastIndex
-                }
+        // Wait for the current scroll to complete
+        while (scrollState.isScrollInProgress) {
+            delay(15)
+        }
+        // If we're at the spot we last scrolled to
+        val lastVisibleIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        if (lastVisibleIndex >= lastIndex) {
+            scope.launch {
+                // scroll to the end, and remember it
+                scrollState.scrollToItem(max(0, lines.lastIndex))
+                lastIndex = lines.lastIndex
             }
         }
     }
