@@ -133,7 +133,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                             println("adjusted delta ahead to $delta")
                                         } else if (newTime < currentTime - 1000L) {
                                             // We're more than 1s fast
-                                            delta = System.currentTimeMillis() + 1000L - newTime
+                                            delta = newTime - System.currentTimeMillis() + 1000L
                                             println("adjusted delta back to $delta")
                                         }
                                     }
