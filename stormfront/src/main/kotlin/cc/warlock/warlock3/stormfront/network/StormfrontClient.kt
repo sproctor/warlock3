@@ -17,7 +17,12 @@ import java.util.concurrent.ConcurrentHashMap
 
 private val defaultLocations = mapOf("main" to WindowLocation.MAIN)
 
-class StormfrontClient(host: String, port: Int) : WarlockClient {
+class StormfrontClient(
+    host: String,
+    port: Int,
+    initialVariables: Map<String, String>,
+    private val saveVariables: (Map<String, String>) -> Unit,
+) : WarlockClient {
     private val socket = Socket(host, port)
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
@@ -27,6 +32,9 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
     override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
+
+    private val _variables = MutableStateFlow<Map<String, String>>(initialVariables)
+    override val variables = _variables.asStateFlow()
 
     private val mainStream = TextStream("main")
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
@@ -299,5 +307,15 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     fun hideWindow(name: String) {
         _openWindows.value -= name
+    }
+
+    override fun setVariable(name: String, value: String) {
+        _variables.value += name to value
+        saveVariables(_variables.value)
+    }
+
+    override fun deleteVariable(name: String) {
+        _variables.value -= name
+        saveVariables(_variables.value)
     }
 }

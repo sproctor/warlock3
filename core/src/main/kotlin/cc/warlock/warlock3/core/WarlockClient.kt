@@ -10,6 +10,8 @@ interface WarlockClient {
 
     val components: StateFlow<Map<String, StyledString>>
 
+    val variables: StateFlow<Map<String, String>>
+
     fun disconnect()
 
     fun sendCommand(line: String, echo: Boolean = true)
@@ -17,4 +19,8 @@ interface WarlockClient {
     // fun send(toSend: String)
 
     fun print(message: StyledString)
+
+    fun setVariable(name: String, value: String)
+
+    fun deleteVariable(name: String)
 }

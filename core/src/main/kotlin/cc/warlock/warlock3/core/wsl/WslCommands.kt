@@ -21,11 +21,11 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             "divide" -> current / operand
             else -> throw WslRuntimeException("Unsupported counter operator")
         }
-        context.setVariable("c", WslNumber(result))
+        context.setScriptVariable("c", WslNumber(result))
     },
     "deletevariable" to { context, args ->
         val (name, _) = args.splitFirstWord()
-        context.deleteVariable(name)
+        context.deleteStoredVariable(name)
     },
     "echo" to { context, args ->
         context.client.print(StyledString(args))
@@ -75,10 +75,10 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val argList = args.split(Regex("[ \t]+"))
         val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
         val max = argList.getOrNull(1)?.toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
-        context.setVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
+        context.setScriptVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
     },
     "save" to { context, args ->
-        context.setVariable("s", WslString(args))
+        context.setScriptVariable("s", WslString(args))
     },
     "setvariable" to { context, args ->
         val (name, value) = args.splitFirstWord()
@@ -87,7 +87,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             throw WslRuntimeException("Invalid arguments to setvariable")
         }
         //cx.scriptDebug(1, "setVariable: $name=$value")
-        context.setVariable(name, WslString(value ?: ""))
+        context.setStoredVariable(name, value ?: "")
     },
     "shift" to { context, _ ->
         var i = 1
@@ -95,37 +95,42 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             val nextName = (i + 1).toString()
             val nextVar = context.lookupVariable(nextName)
             if (nextVar != null) {
-                context.setVariable(i.toString(), nextVar)
+                context.setScriptVariable(i.toString(), nextVar)
             } else {
-                context.deleteVariable(i.toString())
+                context.deleteScriptVariable(i.toString())
                 break
             }
             i++
         }
         val allArgs = context.lookupVariable("0").toString()
         val breakIndex = findArgumentBreak(allArgs)
-        if (breakIndex >= 0) {
-            context.setVariable("0", WslString(allArgs.substring(breakIndex + 1)))
-        } else {
-            context.setVariable("0", WslString(""))
-        }
+        context.setScriptVariable(
+            name = "0",
+            value = WslString(
+                if (breakIndex >= 0) {
+                    allArgs.substring(breakIndex + 1)
+                } else {
+                    ""
+                }
+            ),
+        )
     },
     "timer" to { context, args ->
         val (command, _) = args.splitFirstWord()
         when (command) {
             "start" -> {
-                context.setVariable("t", WslTimer())
+                context.setScriptVariable("t", WslTimer())
             }
             "stop" -> {
                 val timer = context.lookupVariable("t")
                 if (timer is WslTimer) {
-                    context.setVariable("t", WslNumber(timer.toNumber()))
+                    context.setScriptVariable("t", WslNumber(timer.toNumber()))
                 } else {
                     // TODO warn that timer isn't running
                 }
             }
             "clear" -> {
-                context.deleteVariable("t")
+                context.deleteScriptVariable("t")
             }
         }
     },
@@ -189,12 +194,15 @@ class WslTimer : WslValue {
     override fun toBoolean(): Boolean {
         throw WslRuntimeException("Cannot convert timer to boolean")
     }
+
     override fun toNumber(): BigDecimal {
         return ((System.currentTimeMillis() - startTime) / 1000L).toBigDecimal()
     }
+
     override fun isNumeric(): Boolean {
         return true
     }
+
     override fun toString(): String {
         return toNumber().toString()
     }

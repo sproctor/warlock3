@@ -11,7 +11,8 @@ class WslContext(
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
 ) {
-    private val globalVariables = mutableMapOf<String, WslValue>()
+    private val scriptVariables = mutableMapOf<String, WslValue>()
+
     private val matches = mutableListOf<ScriptMatch>()
 
     private var currentLine = -1
@@ -27,19 +28,27 @@ class WslContext(
     }
 
     fun lookupVariable(name: String): WslValue? {
-        return globalVariables[name.lowercase()]
+        return scriptVariables[name.lowercase()] ?: client.variables.value[name.lowercase()]?.let { WslString(it) }
     }
 
     fun hasVariable(name: String): Boolean {
-        return globalVariables.containsKey(name.lowercase())
+        return scriptVariables.containsKey(name.lowercase()) || client.variables.value.containsKey(name.lowercase())
     }
 
-    fun setVariable(name: String, value: WslValue) {
-        globalVariables[name.lowercase()] = value
+    fun setStoredVariable(name: String, value: String) {
+        client.setVariable(name.lowercase(), value)
     }
 
-    fun deleteVariable(name: String) {
-        globalVariables.remove(name)
+    fun deleteStoredVariable(name: String) {
+        client.deleteVariable(name.lowercase())
+    }
+
+    fun setScriptVariable(name: String, value: WslValue) {
+        scriptVariables += name to value
+    }
+
+    fun deleteScriptVariable(name: String) {
+        scriptVariables -= name
     }
 
     fun getNextLine(): WslLine? {

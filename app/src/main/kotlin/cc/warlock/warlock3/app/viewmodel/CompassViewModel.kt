@@ -3,7 +3,7 @@ package cc.warlock.warlock3.app.viewmodel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import cc.warlock.warlock3.core.ClientCompassEvent
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -11,7 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.jetbrains.skia.Image
+import org.jetbrains.skija.Image
 import java.util.*
 
 class CompassViewModel(
@@ -41,25 +41,22 @@ fun loadTheme(): CompassTheme {
     properties.load(stream)
     stream.close()
 
-    val directions = DirectionType.values().map { direction ->
+    val directions = DirectionType.values().associateWith { direction ->
         val xy = properties.getProperty("position.${direction.value}").split(",")
         val position = Pair(xy[0].toInt(), xy[1].toInt())
         val imageStream = object {}.javaClass.getResourceAsStream("/images/compass/${direction.value}_on.png")
             ?: throw Exception("Could not load compass image")
-        val image = Image.makeFromEncoded(imageStream.readBytes()).toComposeImageBitmap()
+        val image = Image.makeFromEncoded(imageStream.readBytes()).asImageBitmap()
 
-        Pair(
-            direction,
-            CompassDirection(
-                direction = direction,
-                position = position,
-                image = image,
-            )
+        CompassDirection(
+            direction = direction,
+            position = position,
+            image = image,
         )
-    }.toMap()
+    }
     val mainImageStream = object {}.javaClass.getResourceAsStream("/images/compass/compass_main.png")
         ?: throw Exception("Could not load compass background")
-    val mainImage = Image.makeFromEncoded(mainImageStream.readBytes()).toComposeImageBitmap()
+    val mainImage = Image.makeFromEncoded(mainImageStream.readBytes()).asImageBitmap()
     return CompassTheme(
         background = mainImage,
         description = properties.getProperty("theme.description", ""),
