@@ -21,7 +21,7 @@ class WslContext(
 
     suspend fun executeCommand(commandLine: String) {
         val (commandName, args) = commandLine.splitFirstWord()
-        val command = wslCommands[commandName]
+        val command = wslCommands[commandName.lowercase()]
             ?: throw WslRuntimeException("Invalid command \"$commandName\" on line $lineNumber")
         command(this, args ?: "")
     }
