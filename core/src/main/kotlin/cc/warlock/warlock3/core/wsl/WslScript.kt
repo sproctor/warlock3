@@ -325,6 +325,28 @@ data class WslNumber(val value: BigDecimal) : WslValue {
     }
 }
 
+object WslNull : WslValue {
+    override fun equals(other: Any?): Boolean {
+        return other == null
+    }
+
+    override fun toString(): String {
+        return ""
+    }
+
+    override fun toBoolean(): Boolean {
+        return false
+    }
+
+    override fun toNumber(): BigDecimal {
+        throw WslRuntimeException("Cannot convert null to number")
+    }
+
+    override fun isNumeric(): Boolean {
+        return false
+    }
+}
+
 private fun <T> compare(operator: WslComparisonOperator, value1: Comparable<T>, value2: T): Boolean {
     return when (operator) {
         WslComparisonOperator.GT -> value1 > value2
@@ -376,7 +398,7 @@ sealed class WslCommandContent {
 
     data class Variable(val name: String) : WslCommandContent() {
         override fun getValue(context: WslContext): String {
-            return context.lookupVariable(name).toString()
+            return context.lookupVariable(name)?.toString() ?: ""
         }
     }
 
@@ -605,7 +627,7 @@ sealed class WslPrimaryExpression {
 sealed class WslValueExpression {
     data class WslVariableExpression(val name: String) : WslValueExpression() {
         override fun getValue(context: WslContext): WslValue {
-            return context.lookupVariable(name)
+            return context.lookupVariable(name) ?: WslNull
         }
     }
 
