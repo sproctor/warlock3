@@ -78,9 +78,9 @@ class WslContext(
         client.eventFlow.first { it == ClientPromptEvent }
     }
 
-    suspend fun waitForText(text: String) {
+    suspend fun waitForText(text: String, ignoreCase: Boolean) {
         client.eventFlow.first {
-            it is ClientTextEvent && it.text.contains(text)
+            it is ClientTextEvent && it.text.contains(other = text, ignoreCase = ignoreCase)
         }
     }
 

@@ -53,6 +53,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     private var currentStream: TextStream? = mainStream
     private var currentStyle: WarlockStyle? = null
+    // Output style is for echo style! Not receieved text
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
     private var directions: List<DirectionType> = emptyList()
@@ -100,7 +101,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                             mainStream
                                         }
                                     is StormfrontDataReceivedEvent -> {
-                                        val styles = listOfNotNull(currentStyle, outputStyle)
+                                        val styles = listOfNotNull(currentStyle)
                                         currentStream?.append(event.text, styles = styles)
                                     }
                                     is StormfrontEolEvent -> {
@@ -121,7 +122,6 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontPromptEvent -> {
                                         _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
-                                        outputStyle = null
                                         currentStream?.appendPrompt(event.text)
                                     }
                                     is StormfrontTimeEvent -> {
@@ -178,7 +178,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                             _properties.value = _properties.value.minus(event.key)
                                     }
                                     is StormfrontComponentDefinitionEvent -> {
-                                        val styles = listOfNotNull(currentStyle, outputStyle)
+                                        val styles = listOfNotNull(currentStyle)
                                         currentStream?.appendVariable(name = event.id, styles = styles)
                                     }
                                     is StormfrontComponentStartEvent -> {
@@ -188,7 +188,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                     is StormfrontComponentTextEvent -> {
                                         val string = StyledString(
                                             text = event.text,
-                                            style = flattenStyles(listOfNotNull(currentStyle, outputStyle))
+                                            style = flattenStyles(listOfNotNull(currentStyle))
                                         )
                                         componentText = componentText?.plus(string) ?: string
                                     }
@@ -261,9 +261,6 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     }
 
     override fun sendCommand(line: String, echo: Boolean) {
-        scope.launch {
-            _eventFlow.emit(ClientTextEvent(line))
-        }
         if (echo) {
             mainStream.appendCommand(line)
         }
@@ -287,7 +284,8 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
         scope.launch {
             _eventFlow.emit(ClientTextEvent(message.toPlainString()))
         }
-        mainStream.appendMessage(message)
+        val style = outputStyle
+        mainStream.appendMessage(if (style != null) message.applyStyle(style) else message)
     }
 
     @Synchronized

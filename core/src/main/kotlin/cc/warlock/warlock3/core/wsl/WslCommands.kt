@@ -57,7 +57,6 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.matchWait()
     },
     "move" to { context, args ->
-        context.client.print(StyledString("Sending: $args"))
         context.client.sendCommand(args)
         context.waitForNav()
     },
@@ -70,7 +69,6 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         delay((duration * BigDecimal(1000)).toLong())
     },
     "put" to { context, args ->
-        context.client.print(StyledString("Sending: $args"))
         context.client.sendCommand(args)
     },
     "random" to { context, args ->
@@ -135,7 +133,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.waitForPrompt()
     },
     "waitfor" to { context, args ->
-        context.waitForText(args)
+        context.waitForText(args, ignoreCase = true)
     },
     "waitforre" to { context, args ->
         context.waitForRegex(

@@ -17,11 +17,22 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
         }
         return builder.toString()
     }
+
+    fun applyStyle(style: WarlockStyle): StyledString {
+        return copy(substrings = substrings.map { it.applyStyle(style) })
+    }
 }
 
 sealed class StyledStringLeaf
 data class StyledStringSubstring(val text: String, val style: WarlockStyle?) : StyledStringLeaf()
 data class StyledStringVariable(val name: String, val style: WarlockStyle?) : StyledStringLeaf()
+
+fun StyledStringLeaf.applyStyle(style: WarlockStyle): StyledStringLeaf {
+    return when (this) {
+        is StyledStringSubstring -> copy(style = flattenStyles(listOfNotNull(style, this.style)))
+        is StyledStringVariable -> copy(style = flattenStyles(listOfNotNull(style, this.style)))
+    }
+}
 
 data class WarlockStyle(
     val textColor: WarlockColor? = null,
