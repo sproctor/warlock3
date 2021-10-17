@@ -54,8 +54,6 @@ fun FrameWindowScope.GameView(viewModel: GameViewModel) {
     }
 }
 
-fun LazyListState.isScrolledToEnd() = layoutInfo.visibleItemsInfo.lastOrNull()?.index == layoutInfo.totalItemsCount - 1
-
 @Composable
 fun ColumnScope.GameTextWindows(
     windows: Map<String, Window>,

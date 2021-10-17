@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.map
 
 class WindowViewModel(
     val name: String,
-    private val client: StormfrontClient
+    client: StormfrontClient
 ) {
     val window = client.windows.map { windows ->
         windows[name]

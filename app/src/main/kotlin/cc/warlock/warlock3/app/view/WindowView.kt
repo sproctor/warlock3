@@ -35,7 +35,10 @@ fun WindowView(modifier: Modifier, viewModel: WindowViewModel) {
         ) {
             Column {
                 val window by viewModel.window.collectAsState(null)
-                Box(Modifier.background(MaterialTheme.colors.primary).fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+                Box(
+                    Modifier.background(MaterialTheme.colors.primary).fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
                     Text(
                         text = (window?.title ?: "") + (window?.subtitle ?: ""),
                         color = MaterialTheme.colors.onPrimary,
@@ -52,13 +55,14 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     val lines by viewModel.lines.collectAsState()
     val scrollState = rememberLazyListState()
     val components = viewModel.components.collectAsState()
+    val scope = rememberCoroutineScope()
+    var lastIndex by remember { mutableStateOf(0) }
 
     BoxWithConstraints(Modifier.background(viewModel.backgroundColor.value).padding(4.dp)) {
         val height = this.maxHeight
         SelectionContainer {
             CompositionLocalProvider(LocalTextStyle provides TextStyle(color = viewModel.textColor.value)) {
                 Row(modifier = Modifier.matchParentSize()) {
-                    val shouldScroll = scrollState.isScrolledToEnd()
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
@@ -81,14 +85,18 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                     VerticalScrollbar(
                         adapter = rememberScrollbarAdapter(scrollState),
                     )
-                    if (shouldScroll) {
-                        val scope = rememberCoroutineScope()
-                        SideEffect {
-                            scope.launch {
-                                scrollState.scrollToItem(max(0, lines.lastIndex))
-                            }
-                        }
-                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(lines) {
+        if (!scrollState.isScrollInProgress) {
+            val lastVisibleIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            if (lastVisibleIndex >= lastIndex) {
+                scope.launch {
+                    scrollState.scrollToItem(max(0, lines.lastIndex))
+                    lastIndex = lines.lastIndex
                 }
             }
         }
