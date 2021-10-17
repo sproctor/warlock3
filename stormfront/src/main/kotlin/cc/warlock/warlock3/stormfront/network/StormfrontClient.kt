@@ -269,7 +269,7 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
 
     override fun disconnect() {
         socket.close()
-        mainStream.append("Connection closed by server.", styles = emptyList())
+        mainStream.appendMessage(StyledString("Connection closed by server."))
         _connected.value = false
     }
 
