@@ -33,6 +33,6 @@ data class StormfrontComponentStartEvent(val id: String) : StormfrontEvent()
 data class StormfrontComponentTextEvent(val text: String) : StormfrontEvent()
 object StormfrontComponentEndEvent : StormfrontEvent()
 data class StormfrontComponentDefinitionEvent(val id: String) : StormfrontEvent()
-
+object StormfrontHandledEvent : StormfrontEvent()
 data class StormfrontStreamWindowEvent(val window: Window) : StormfrontEvent()
 object StormfrontNavEvent : StormfrontEvent()
