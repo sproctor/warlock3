@@ -26,8 +26,8 @@ class WslContext(
         command(this, args ?: "")
     }
 
-    fun lookupVariable(name: String): WslValue {
-        return globalVariables[name.lowercase()] ?: WslValue.WslString("")
+    fun lookupVariable(name: String): WslValue? {
+        return globalVariables[name.lowercase()]
     }
 
     fun hasVariable(name: String): Boolean {

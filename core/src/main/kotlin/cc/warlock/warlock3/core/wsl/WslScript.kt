@@ -190,9 +190,9 @@ class WslScript(
         }
         val numberLiteral = valueExpression.NUMBER()
         val value = when {
-            valueExpression.FALSE() != null -> WslValue.WslBoolean(false)
-            valueExpression.TRUE() != null -> WslValue.WslBoolean(true)
-            numberLiteral != null -> WslValue.WslNumber(
+            valueExpression.FALSE() != null -> WslBoolean(false)
+            valueExpression.TRUE() != null -> WslBoolean(true)
+            numberLiteral != null -> WslNumber(
                 numberLiteral.text.toBigDecimalOrNull() ?: throw WslParseException("Could not parse number")
             )
             else -> throw WslParseException("Unhandled alternative in value expression")
@@ -215,122 +215,114 @@ class WslScript(
     }
 }
 
-sealed class WslValue {
-    data class WslBoolean(val value: Boolean) : WslValue() {
-        override fun toBoolean(): Boolean {
-            return value
-        }
+interface WslValue {
+    fun toBoolean(): Boolean
+    fun toNumber(): BigDecimal
+    fun isNumeric(): Boolean
 
-        override fun toNumber(): BigDecimal {
-            return if (value) BigDecimal.ONE else BigDecimal.ZERO
-        }
+    fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
+        if (isNumeric() && other.isNumeric())
+            return compare(operator, toNumber(), other.toNumber())
+        return compare(operator, toString(), other.toString())
+    }
+}
 
-        override fun toString(): String {
-            return value.toString()
-        }
+data class WslBoolean(val value: Boolean) : WslValue {
+    override fun toBoolean(): Boolean {
+        return value
+    }
 
-        override fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
-            throw WslBooleanComparisonException()
-        }
+    override fun toNumber(): BigDecimal {
+        throw WslRuntimeException("Boolean cannot be used as a number")
+    }
 
-        override fun equals(other: Any?): Boolean {
-            return when (other) {
-                is WslValue -> value == other.toBoolean()
-                else -> false
-            }
-        }
+    override fun toString(): String {
+        return if (value) "true" else "false"
+    }
 
-        override fun hashCode(): Int {
-            return value.hashCode()
-        }
-
-        override fun isNumeric(): Boolean {
-            return true
+    override fun equals(other: Any?): Boolean {
+        return when (other) {
+            is WslBoolean -> value == other.toBoolean()
+            else -> false
         }
     }
 
-    data class WslString(val value: String) : WslValue() {
-        override fun toBoolean(): Boolean {
-            return value.toBoolean()
-        }
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 
-        override fun toNumber(): BigDecimal {
-            return value.toBigDecimalOrNull() ?: BigDecimal.ZERO
-        }
+    override fun isNumeric(): Boolean {
+        return false
+    }
+}
 
-        override fun toString(): String {
-            return value
-        }
-
-        override fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
-            return when (other) {
-                is WslBoolean -> throw WslBooleanComparisonException()
-                is WslString -> compare(operator, value, other.value)
-                is WslNumber -> compare(operator, toNumber(), other.value)
-            }
-        }
-
-        override fun equals(other: Any?): Boolean {
-            return when (other) {
-                is WslBoolean -> value.toBoolean() == other.value
-                is WslString -> value.equals(other = other.value, ignoreCase = true)
-                is WslNumber -> value.toBigDecimal() == other.value
-                else -> false
-            }
-        }
-
-        override fun hashCode(): Int {
-            return value.hashCode()
-        }
-
-        override fun isNumeric(): Boolean {
-            return value.toBigDecimalOrNull() != null
+data class WslString(val value: String) : WslValue {
+    override fun toBoolean(): Boolean {
+        return when (value.lowercase()) {
+            "true" -> true
+            "false" -> false
+            else -> throw WslRuntimeException("String that is not \"true\" or \"false\" cannot be used as a boolean")
         }
     }
 
-    data class WslNumber(val value: BigDecimal) : WslValue() {
-        override fun toBoolean(): Boolean {
-            return false
-        }
+    override fun toNumber(): BigDecimal {
+        if (value.isBlank()) return BigDecimal.ZERO
+        return value.toBigDecimalOrNull() ?: throw WslRuntimeException("String \"$value\" cannot be converted to a number.")
+    }
 
-        override fun toNumber(): BigDecimal {
-            return value
-        }
+    override fun toString(): String {
+        return value
+    }
 
-        override fun toString(): String {
-            return value.toPlainString()
-        }
 
-        override fun equals(other: Any?): Boolean {
-            return when (other) {
-                is WslBoolean -> toBoolean() == other.value
-                is WslString -> value == other.toNumber()
-                is WslNumber -> value == other.value
-                else -> false
-            }
-        }
 
-        override fun hashCode(): Int {
-            return value.hashCode()
-        }
-
-        override fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
-            return when (other) {
-                is WslBoolean -> throw WslBooleanComparisonException()
-                is WslString -> compare(operator, value, other.toNumber())
-                is WslNumber -> compare(operator, value, other.value)
-            }
-        }
-
-        override fun isNumeric(): Boolean {
-            return true
+    override fun equals(other: Any?): Boolean {
+        return when (other) {
+            is WslBoolean -> value.toBoolean() == other.value
+            is WslString -> value.equals(other = other.value, ignoreCase = true)
+            is WslNumber -> value.toBigDecimal() == other.value
+            else -> false
         }
     }
 
-    abstract fun toBoolean(): Boolean
-    abstract fun toNumber(): BigDecimal
-    abstract fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean
-    abstract fun isNumeric(): Boolean
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
+
+    override fun isNumeric(): Boolean {
+        return value.toBigDecimalOrNull() != null
+    }
+}
+
+data class WslNumber(val value: BigDecimal) : WslValue {
+    override fun toBoolean(): Boolean {
+        throw WslRuntimeException("Attempted to use number as a boolean")
+    }
+
+    override fun toNumber(): BigDecimal {
+        return value
+    }
+
+    override fun toString(): String {
+        return value.toPlainString()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return when (other) {
+            is WslBoolean -> toBoolean() == other.value
+            is WslString -> value == other.toNumber()
+            is WslNumber -> value == other.value
+            else -> false
+        }
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
+
+    override fun isNumeric(): Boolean {
+        return true
+    }
 }
 
 private fun <T> compare(operator: WslComparisonOperator, value1: Comparable<T>, value2: T): Boolean {
@@ -342,7 +334,6 @@ private fun <T> compare(operator: WslComparisonOperator, value1: Comparable<T>, 
     }
 }
 
-class WslBooleanComparisonException : WslRuntimeException("Cannot compare boolean expressions")
 open class WslRuntimeException(val reason: String) : Exception(reason)
 open class WslParseException(val reason: String) : Exception(reason)
 
@@ -408,7 +399,7 @@ data class WslDisjunction(val conjunctions: List<WslConjunction>) {
     fun getValue(context: WslContext): WslValue {
         return conjunctions
             .map { it.getValue(context) }
-            .reduce { acc, next -> WslValue.WslBoolean(acc.toBoolean() || next.toBoolean()) }
+            .reduce { acc, next -> WslBoolean(acc.toBoolean() || next.toBoolean()) }
     }
 }
 
@@ -416,7 +407,7 @@ data class WslConjunction(val equalities: List<WslEquality>) {
     fun getValue(context: WslContext): WslValue {
         return equalities
             .map { it.getValue(context) }
-            .reduce { acc, unit -> WslValue.WslBoolean(acc.toBoolean() && unit.toBoolean()) }
+            .reduce { acc, unit -> WslBoolean(acc.toBoolean() && unit.toBoolean()) }
     }
 }
 
@@ -430,8 +421,8 @@ data class WslEquality(
             val operator = it.first
             val other = it.second.getValue(context)
             acc = when (operator) {
-                WslEqualityOperator.EQ -> WslValue.WslBoolean(acc == other)
-                WslEqualityOperator.NEQ -> WslValue.WslBoolean(acc != other)
+                WslEqualityOperator.EQ -> WslBoolean(acc == other)
+                WslEqualityOperator.NEQ -> WslBoolean(acc != other)
             }
         }
         return acc
@@ -452,7 +443,7 @@ data class WslComparison(
         otherInfixExpressions.forEach {
             val op = it.first
             val other = it.second
-            acc = WslValue.WslBoolean(acc.compareWith(op, other.getValue(context)))
+            acc = WslBoolean(acc.compareWith(op, other.getValue(context)))
         }
         return acc
     }
@@ -481,20 +472,12 @@ data class WslInfixExpression(
 enum class WslInfixOperator {
     CONTAINS {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
-            return when (value1) {
-                is WslValue.WslBoolean -> throw WslRuntimeException("Boolean cannot contain")
-                is WslValue.WslString -> WslValue.WslBoolean(value1.value.contains(value2.toString()))
-                is WslValue.WslNumber -> throw WslRuntimeException("Number cannot contain")
-            }
+            return WslBoolean(value1.toString().contains(value2.toString()))
         }
     },
     CONTAINSRE {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
-            return when (value1) {
-                is WslValue.WslBoolean -> throw WslRuntimeException("Boolean cannot contain")
-                is WslValue.WslString -> WslValue.WslBoolean(value1.value.contains(value2.toString().toRegex()))
-                is WslValue.WslNumber -> throw WslRuntimeException("Number cannot contain")
-            }
+            return WslBoolean(value1.toString().contains(value2.toString().toRegex()))
         }
     };
 
@@ -518,15 +501,15 @@ enum class WslAdditiveOperator {
     ADD {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
             return if (value1.isNumeric() && value2.isNumeric()) {
-                WslValue.WslNumber(value1.toNumber() + value2.toNumber())
+                WslNumber(value1.toNumber() + value2.toNumber())
             } else {
-                WslValue.WslString(value1.toString() + value2.toString())
+                WslString(value1.toString() + value2.toString())
             }
         }
     },
     SUB {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
-            return WslValue.WslNumber(value1.toNumber() - value2.toNumber())
+            return WslNumber(value1.toNumber() - value2.toNumber())
         }
     };
 
@@ -552,9 +535,9 @@ enum class WslMultiplicativeOperator {
             if (!value2.isNumeric())
                 throw WslRuntimeException("Second argument to multiplication operator must be numeric")
             return if (value1.isNumeric()) {
-                WslValue.WslNumber(value1.toNumber() * value2.toNumber())
+                WslNumber(value1.toNumber() * value2.toNumber())
             } else {
-                WslValue.WslString(value1.toString().repeat(value2.toNumber().toInt()))
+                WslString(value1.toString().repeat(value2.toNumber().toInt()))
             }
         }
     },
@@ -564,7 +547,7 @@ enum class WslMultiplicativeOperator {
             if (divisor == BigDecimal.ZERO) {
                 throw WslRuntimeException("Cannot divide by 0")
             }
-            return WslValue.WslNumber(value1.toNumber() / value2.toNumber())
+            return WslNumber(value1.toNumber() / value2.toNumber())
         }
     };
 
@@ -591,13 +574,12 @@ sealed class WslUnaryExpression {
 enum class WslUnaryOperator {
     NOT {
         override fun getValue(value: WslValue, context: WslContext): WslValue {
-            return WslValue.WslBoolean(!value.toBoolean())
+            return WslBoolean(!value.toBoolean())
         }
     },
     EXISTS {
         override fun getValue(value: WslValue, context: WslContext): WslValue {
-            val name = value.toString()
-            return WslValue.WslBoolean(context.hasVariable(name))
+            return WslBoolean(context.hasVariable(value.toString()))
         }
     };
 
@@ -632,7 +614,7 @@ sealed class WslValueExpression {
             val value = content
                 .map { it.getValue(context) }
                 .reduce { acc, s -> acc + s }
-            return WslValue.WslString(value)
+            return WslString(value)
         }
     }
 

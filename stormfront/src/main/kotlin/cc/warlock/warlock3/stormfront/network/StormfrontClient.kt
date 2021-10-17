@@ -62,6 +62,10 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
     private val _connected = MutableStateFlow(true)
     val connected = _connected.asStateFlow()
 
+    private var delta = 0L
+    val time: Long
+        get() = System.currentTimeMillis() + delta
+
     fun connect(key: String) {
         scope.launch(Dispatchers.IO) {
             sendCommand(key, echo = false)
@@ -120,8 +124,16 @@ class StormfrontClient(host: String, port: Int) : WarlockClient {
                                         outputStyle = null
                                         currentStream?.appendPrompt(event.text)
                                     }
-                                    is StormfrontTimeEvent ->
-                                        _properties.value = _properties.value.plus("time" to event.time)
+                                    is StormfrontTimeEvent -> {
+                                        val newTime = event.time.toLong() * 1000L
+                                        if (newTime > time + 1000L) {
+                                            // We're more than 1s slow
+                                            delta = newTime - System.currentTimeMillis() - 1000L
+                                        } else if (newTime < time - 1000L) {
+                                            // We're more than 1s fast
+                                            delta = System.currentTimeMillis() + 1000L - newTime
+                                        }
+                                    }
                                     is StormfrontRoundTimeEvent ->
                                         _properties.value = _properties.value.plus("roundtime" to event.time)
                                     is StormfrontCastTimeEvent ->

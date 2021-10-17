@@ -4,6 +4,7 @@ import cc.warlock.warlock3.core.StyledString
 import cc.warlock.warlock3.core.util.findArgumentBreak
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
+import kotlin.random.Random
 
 val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     "counter" to { context, args ->
@@ -11,7 +12,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val operand = operandString?.let {
             it.toBigDecimalOrNull() ?: throw WslRuntimeException("Counter operand must be a number")
         } ?: BigDecimal.ONE
-        val current = context.lookupVariable("c").toNumber()
+        val current = context.lookupVariable("c")?.toNumber() ?: BigDecimal.ZERO
         val result = when (operator.lowercase()) {
             "set" -> operand
             "add" -> current + operand
@@ -20,7 +21,11 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             "divide" -> current / operand
             else -> throw WslRuntimeException("Unsupported counter operator")
         }
-        context.setVariable("c", WslValue.WslNumber(result))
+        context.setVariable("c", WslNumber(result))
+    },
+    "deletevariable" to { context, args ->
+        val (name, _) = args.splitFirstWord()
+        context.deleteVariable(name)
     },
     "echo" to { context, args ->
         context.client.print(StyledString(args))
@@ -68,8 +73,14 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.client.print(StyledString("Sending: $args"))
         context.client.sendCommand(args)
     },
+    "random" to { context, args ->
+        val argList = args.split(Regex("[ \t]+"))
+        val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
+        val max = argList.getOrNull(1)?.toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
+        context.setVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
+    },
     "save" to { context, args ->
-        context.setVariable("s", WslValue.WslString(args))
+        context.setVariable("s", WslString(args))
     },
     "setvariable" to { context, args ->
         val (name, value) = args.splitFirstWord()
@@ -78,14 +89,15 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             throw WslRuntimeException("Invalid arguments to setvariable")
         }
         //cx.scriptDebug(1, "setVariable: $name=$value")
-        context.setVariable(name, WslValue.WslString(value ?: ""))
+        context.setVariable(name, WslString(value ?: ""))
     },
     "shift" to { context, _ ->
         var i = 1
         while (true) {
             val nextName = (i + 1).toString()
-            if (context.hasVariable(nextName)) {
-                context.setVariable(i.toString(), context.lookupVariable(nextName))
+            val nextVar = context.lookupVariable(nextName)
+            if (nextVar != null) {
+                context.setVariable(i.toString(), nextVar)
             } else {
                 context.deleteVariable(i.toString())
                 break
@@ -95,9 +107,28 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val allArgs = context.lookupVariable("0").toString()
         val breakIndex = findArgumentBreak(allArgs)
         if (breakIndex >= 0) {
-            context.setVariable("0", WslValue.WslString(allArgs.substring(breakIndex + 1)))
+            context.setVariable("0", WslString(allArgs.substring(breakIndex + 1)))
         } else {
-            context.setVariable("0", WslValue.WslString(""))
+            context.setVariable("0", WslString(""))
+        }
+    },
+    "timer" to { context, args ->
+        val (command, _) = args.splitFirstWord()
+        when (command) {
+            "start" -> {
+                context.setVariable("t", WslTimer())
+            }
+            "stop" -> {
+                val timer = context.lookupVariable("t")
+                if (timer is WslTimer) {
+                    context.setVariable("t", WslNumber(timer.toNumber()))
+                } else {
+                    // TODO warn that timer isn't running
+                }
+            }
+            "clear" -> {
+                context.deleteVariable("t")
+            }
         }
     },
     "wait" to { context, _ ->
@@ -153,4 +184,20 @@ class RegexMatch(label: String, val regex: Regex) : ScriptMatch(label) {
 fun String.splitFirstWord(): Pair<String, String?> {
     val list = trim().split(Regex("[ \t]+"), limit = 2)
     return Pair(list[0], list.getOrNull(1))
+}
+
+class WslTimer : WslValue {
+    private val startTime = System.currentTimeMillis()
+    override fun toBoolean(): Boolean {
+        throw WslRuntimeException("Cannot convert timer to boolean")
+    }
+    override fun toNumber(): BigDecimal {
+        return ((System.currentTimeMillis() - startTime) / 1000L).toBigDecimal()
+    }
+    override fun isNumeric(): Boolean {
+        return true
+    }
+    override fun toString(): String {
+        return toNumber().toString()
+    }
 }

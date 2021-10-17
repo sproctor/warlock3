@@ -26,9 +26,9 @@ class WslScriptInstance(
             try {
                 lines = script.parse()
                 val context = WslContext(client, lines, this@WslScriptInstance)
-                context.setVariable("0", WslValue.WslString(argumentString))
+                context.setVariable("0", WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->
-                    context.setVariable((index + 1).toString(), WslValue.WslString(arg))
+                    context.setVariable((index + 1).toString(), WslString(arg))
                 }
                 while (isRunning) {
                     val line = context.getNextLine()
