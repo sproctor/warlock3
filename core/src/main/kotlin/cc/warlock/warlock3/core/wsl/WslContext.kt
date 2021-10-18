@@ -4,6 +4,7 @@ import cc.warlock.warlock3.core.ClientNavEvent
 import cc.warlock.warlock3.core.ClientPromptEvent
 import cc.warlock.warlock3.core.ClientTextEvent
 import cc.warlock.warlock3.core.WarlockClient
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 class WslContext(
@@ -119,6 +120,17 @@ class WslContext(
                 }
             }
             false
+        }
+    }
+
+    suspend fun waitForRoundTime() {
+        while(true) {
+            val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: return
+            val currentTime = client.time
+            if (roundEnd < currentTime) {
+                return
+            }
+            delay(roundEnd - currentTime)
         }
     }
 }

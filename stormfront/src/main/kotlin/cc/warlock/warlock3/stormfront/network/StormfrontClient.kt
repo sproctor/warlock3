@@ -72,7 +72,7 @@ class StormfrontClient(
     val connected = _connected.asStateFlow()
 
     private var delta = 0L
-    val time: Long
+    override val time: Long
         get() = System.currentTimeMillis() + delta
 
     fun connect(key: String) {

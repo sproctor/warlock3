@@ -12,6 +12,8 @@ interface WarlockClient {
 
     val variables: StateFlow<Map<String, String>>
 
+    val time: Long
+
     fun disconnect()
 
     fun sendCommand(line: String, echo: Boolean = true)
