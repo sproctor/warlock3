@@ -19,10 +19,7 @@ dependencies {
     implementation("com.uchuhimo:konf-hocon:_")
     implementation(KotlinX.coroutines.core)
     implementation(Kotlin.stdlib.jdk8)
-    implementation(compose.ui)
     implementation(compose.desktop.currentOs)
-    implementation(compose.material)
-    implementation(compose.materialIconsExtended)
     implementation(compose.uiTooling)
 }
 
@@ -43,12 +40,19 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "warlock3"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
 
             windows {
                 menu = true
                 // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
                 upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
+                iconFile.set(project.file("src/main/resources/images/icon.ico"))
+            }
+            linux {
+                iconFile.set(project.file("src/main/resources/images/icon.png"))
+            }
+            macOS {
+                iconFile.set(project.file("src/main/resources/images/icon.icns"))
             }
         }
     }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -37,10 +38,12 @@ fun main() = application {
     val initialWidth = remember { config[ClientSpec.width] }
     val initialHeight = remember { config[ClientSpec.height] }
     val windowState = rememberWindowState(width = initialWidth.dp, height = initialHeight.dp)
+    val windowIcon = painterResource("images/icon.png")
     Window(
         onCloseRequest = ::exitApplication,
         title = "Warlock 3",
         state = windowState,
+        icon = windowIcon,
     ) {
         WarlockTheme {
             Surface(Modifier.fillMaxSize()) {
