@@ -47,14 +47,11 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
 @Composable
 fun WarlockEntryContent(
     modifier: Modifier,
-    onSend: (String) -> Unit,
-    stopScripts: () -> Unit,
-    history: List<String>,
+    textField: TextFieldValue,
+    onKeyPress: (KeyEvent) -> Boolean,
     roundTime: Int,
     castTime: Int,
 ) {
-    var textField by remember { mutableStateOf(TextFieldValue()) }
-    var historyPosition by remember(history) { mutableStateOf(-1) }
     Box(
         modifier = modifier
             .border(width = 1.dp, color = Color.DarkGray, shape = MaterialTheme.shapes.small)
@@ -68,34 +65,10 @@ fun WarlockEntryContent(
                 .focusRequester(focusRequester)
                 .fillMaxWidth()
                 .onPreviewKeyEvent { event ->
-                    when {
-                        event.key.keyCode == Key.Enter.keyCode && event.type == KeyEventType.KeyDown -> {
-                            onSend(textField.text)
-                            textField = TextFieldValue()
-                            historyPosition = -1
-                            true
-                        }
-                        event.key.keyCode == Key.DirectionUp.keyCode && event.type == KeyEventType.KeyDown -> {
-                            if (historyPosition < history.size - 1) {
-                                historyPosition++
-                                val text = history[historyPosition]
-                                textField = TextFieldValue(text = text, selection = TextRange(text.length))
-                            }
-                            true
-                        }
-                        event.key.keyCode == Key.DirectionDown.keyCode && event.type == KeyEventType.KeyDown -> {
-                            if (historyPosition > 0) {
-                                historyPosition--
-                                val text = history[historyPosition]
-                                textField = TextFieldValue(text = text, selection = TextRange(text.length))
-                            }
-                            true
-                        }
-                        event.key.keyCode == Key.Escape.keyCode && event.type == KeyEventType.KeyDown -> {
-                            stopScripts()
-                            true
-                        }
-                        else -> false
+                    if (event.type == KeyEventType.KeyDown) {
+                        onKeyPress(event)
+                    } else {
+                        false
                     }
                 },
             textStyle = TextStyle.Default.copy(fontSize = 16.sp),
@@ -154,11 +127,10 @@ fun BoxScope.RoundTimeBar(
 fun WarlockEntryPreview() {
     WarlockEntryContent(
         modifier = Modifier.fillMaxWidth().padding(2.dp),
-        onSend = {},
-        history = emptyList(),
-        stopScripts = {},
+        textField = TextFieldValue("test"),
         roundTime = 8,
         castTime = 4,
+        onKeyPress = { true }
     )
 }
 
