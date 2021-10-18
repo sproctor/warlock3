@@ -32,7 +32,7 @@ DIGIT       :   [0-9] ;
 
 fragment
 NameChar    :   NameStartChar
-            |   '-' | '.' | DIGIT
+            |   DIGIT
             ;
 fragment
-NameStartChar:  [:a-zA-Z_] ;
+NameStartChar:  [a-zA-Z_] ;
