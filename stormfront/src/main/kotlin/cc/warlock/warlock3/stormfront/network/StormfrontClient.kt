@@ -22,6 +22,7 @@ class StormfrontClient(
     port: Int,
     initialVariables: Map<String, String>,
     private val saveVariables: (Map<String, String>) -> Unit,
+    override val maxTypeAhead: Int,
 ) : WarlockClient {
     private val socket = Socket(host, port)
     private val _eventFlow = MutableSharedFlow<ClientEvent>()

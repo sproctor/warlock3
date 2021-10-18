@@ -62,6 +62,7 @@ class SgeClient(
                         socket.close()
                     }
                 }
+                _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
             }
         }
     }

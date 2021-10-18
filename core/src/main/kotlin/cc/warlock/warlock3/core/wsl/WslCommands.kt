@@ -6,6 +6,15 @@ import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import kotlin.random.Random
 
+// stolen from python
+val loggingLevels = mapOf(
+    "debug" to 10,
+    "info" to 20,
+    "warning" to 30,
+    "error" to 40,
+    "critical" to 50
+)
+
 val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     "counter" to { context, args ->
         val (operator, operandString) = args.splitFirstWord()
@@ -23,12 +32,18 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         }
         context.setScriptVariable("c", WslNumber(result))
     },
+    "debug" to { context, args ->
+        context.log(10, args)
+    },
     "deletevariable" to { context, args ->
         val (name, _) = args.splitFirstWord()
         context.deleteStoredVariable(name)
     },
     "echo" to { context, args ->
-        context.client.print(StyledString(args))
+        context.echo(args)
+    },
+    "error" to { context, args ->
+        context.log(40, args)
     },
     "exit" to { context, _ ->
         context.stop()
@@ -39,6 +54,22 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             throw WslRuntimeException("GOTO with no label")
         }
         context.goto(label)
+    },
+    "info" to { context, args ->
+        context.log(20, args)
+    },
+    "level" to { context, args ->
+        val (level, _) = args.splitFirstWord()
+        level.toIntOrNull()?.let {
+            if (it > 50) {
+                throw WslRuntimeException("maximum logging level is 50")
+            }
+            context.setLoggingLevel(it)
+        } ?:
+        loggingLevels[level]?.let {
+            context.setLoggingLevel(it)
+        } ?:
+        throw WslRuntimeException("Invalid logging level")
     },
     "match" to { context, args ->
         val (label, text) = args.splitFirstWord()
@@ -57,8 +88,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         context.matchWait()
     },
     "move" to { context, args ->
-        context.waitForRoundTime()
-        context.client.sendCommand(args)
+        context.sendCommand(args)
         context.waitForNav()
     },
     "nextroom" to { context, _ ->
@@ -70,8 +100,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         delay((duration * BigDecimal(1000)).toLong())
     },
     "put" to { context, args ->
-        context.waitForRoundTime()
-        context.client.sendCommand(args)
+        context.sendCommand(args)
     },
     "random" to { context, args ->
         val argList = args.split(Regex("[ \t]+"))

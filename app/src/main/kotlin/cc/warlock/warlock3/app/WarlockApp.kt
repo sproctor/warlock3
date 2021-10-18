@@ -40,7 +40,8 @@ fun FrameWindowScope.WarlockApp(state: MutableState<GameState>, config: Config) 
                     saveVariables = {
                         config[ClientSpec.variables] = it
                         config.toHocon.toFile(preferencesFile)
-                    }
+                    },
+                    maxTypeAhead = config[ClientSpec.maxTypeAhead],
                 )
                 GameViewModel(client).also {
                     client.connect(currentState.key)

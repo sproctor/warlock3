@@ -31,7 +31,11 @@ class SgeViewModel(
 
     init {
         job = scope.launch {
-            client.connect()
+            if (client.connect().isFailure) {
+                println("Failed to connect to server")
+                _state.value = SgeViewState.SgeError("Failed to connect to server")
+                return@launch
+            }
             navigate(SgeViewState.SgeAccountSelector)
             client.eventFlow.collect { event ->
                 println("Got event: $event")

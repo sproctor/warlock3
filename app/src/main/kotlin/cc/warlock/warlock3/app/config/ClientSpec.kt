@@ -7,4 +7,6 @@ object ClientSpec : ConfigSpec("client") {
     val height by optional(480)
 
     val variables by optional<Map<String, String>>(emptyMap())
+
+    val maxTypeAhead by optional(1)
 }
