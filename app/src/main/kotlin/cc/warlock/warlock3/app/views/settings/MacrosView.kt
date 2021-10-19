@@ -9,10 +9,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
+import java.awt.event.KeyEvent
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -21,30 +23,40 @@ fun MacrosView(
     saveMacro: (String, String) -> Unit,
     deleteMacro: (String) -> Unit,
 ) {
-    var editingMacro by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
     Column {
         Column(Modifier.fillMaxWidth().weight(1f)) {
             macros.forEach { macro ->
+                val parts = macro.key.split("+")
+                val textBuilder = StringBuilder()
+                for (i in 0..(parts.size - 2)) {
+                    textBuilder.append(parts[i])
+                    textBuilder.append("+")
+                }
+                val key = Key(parts.last().toLongOrNull() ?: 0)
+                textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
                 ListItem(
                     modifier = Modifier.clickable { },
-                    text = { Text(macro.key) },
+                    text = { Text(textBuilder.toString()) },
                     secondaryText = { Text(macro.value) }
                 )
             }
         }
         Row(Modifier.fillMaxWidth()) {
-            Button(onClick = { editingMacro = Pair("", "") }) {
+            Button(onClick = { editingMacro = Pair(null, "") }) {
                 Icon(imageVector = WarlockIcons.Add, contentDescription = null)
             }
         }
     }
     editingMacro?.let { macro ->
+        val (initialKey, modifiers) = macro.first?.let { stringToKey(it) } ?: Pair(null, emptySet())
         EditMacroDialog(
-            key = macro.first,
+            key = initialKey,
+            modifiers = modifiers,
             value = macro.second,
             saveMacro = { key, value ->
                 if (key != macro.first) {
-                    deleteMacro(macro.first)
+                    macro.first?.let { deleteMacro(it) }
                 }
                 saveMacro(key, value)
                 editingMacro = null
@@ -56,15 +68,16 @@ fun MacrosView(
 
 @Composable
 fun EditMacroDialog(
-    key: String,
+    key: Key?,
+    modifiers: Set<String>,
     value: String,
     saveMacro: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
     Dialog(onCloseRequest = onClose) {
         Column {
-            var selectedKey by remember { mutableStateOf<Key?>(null) }
-            var modifierKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+            var selectedKey by remember { mutableStateOf<Key?>(key) }
+            var modifierKeys by remember { mutableStateOf<Set<String>>(modifiers) }
             var newValue by remember(value) { mutableStateOf(value) }
             TextField(value = newValue, label = { Text("Value") }, onValueChange = { newValue = it })
             KeyboardLayout(
@@ -72,7 +85,7 @@ fun EditMacroDialog(
                 modifierKeys = modifierKeys,
                 onClickKey = { selectedKey = it },
                 onClickModifier = {
-                    modifierKeys = if (modifierKeys.contains(it)) modifierKeys + it else modifierKeys - it
+                    modifierKeys = if (!modifierKeys.contains(it)) modifierKeys + it else modifierKeys - it
                 },
             )
             Row {
@@ -116,9 +129,22 @@ fun KeyboardLayout(
             )
             KeyButton(key = "F1", isSelected = selectedKey == Key.F1, onClick = { onClickKey(Key.F1) })
             KeyButton(key = "F2", isSelected = selectedKey == Key.F2, onClick = { onClickKey(Key.F2) })
+            KeyButton(key = "F3", isSelected = selectedKey == Key.F3, onClick = { onClickKey(Key.F3) })
+            KeyButton(key = "F4", isSelected = selectedKey == Key.F4, onClick = { onClickKey(Key.F4) })
+            KeyButton(key = "F5", isSelected = selectedKey == Key.F5, onClick = { onClickKey(Key.F5) })
+            KeyButton(key = "F6", isSelected = selectedKey == Key.F6, onClick = { onClickKey(Key.F6) })
+            KeyButton(key = "F7", isSelected = selectedKey == Key.F7, onClick = { onClickKey(Key.F7) })
+            KeyButton(key = "F8", isSelected = selectedKey == Key.F8, onClick = { onClickKey(Key.F8) })
+            KeyButton(key = "F9", isSelected = selectedKey == Key.F9, onClick = { onClickKey(Key.F9) })
+            KeyButton(key = "F10", isSelected = selectedKey == Key.F10, onClick = { onClickKey(Key.F10) })
+            KeyButton(key = "F11", isSelected = selectedKey == Key.F11, onClick = { onClickKey(Key.F11) })
+            KeyButton(key = "F12", isSelected = selectedKey == Key.F12, onClick = { onClickKey(Key.F12) })
         }
         Row {
             KeyButton(key = "`", isSelected = selectedKey == Key.Grave, onClick = { onClickKey(Key.Grave) })
+            KeyButton(key = "1", isSelected = selectedKey == Key.One, onClick = { onClickKey(Key.One) })
+            KeyButton(key = "2", isSelected = selectedKey == Key.Two, onClick = { onClickKey(Key.Two) })
+            KeyButton(key = "3", isSelected = selectedKey == Key.Three, onClick = { onClickKey(Key.Three) })
         }
         Row {
             KeyButton(
@@ -180,4 +206,14 @@ fun KeyboardLayoutPreview() {
         onClickKey = {},
         onClickModifier = {},
     )
+}
+
+fun stringToKey(value: String): Pair<Key, Set<String>> {
+    val modifiers = mutableSetOf<String>()
+    val parts = value.split("+")
+    for (i in 0..(parts.size - 2)) {
+        modifiers.add(parts[i])
+    }
+    val key = Key(parts.last().toLongOrNull() ?: 0)
+    return key to modifiers
 }
