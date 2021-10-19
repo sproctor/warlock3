@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.views.sge
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button

@@ -1,8 +1,7 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.views.game
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -10,17 +9,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
+import cc.warlock.warlock3.app.components.ResizablePanel
+import cc.warlock.warlock3.app.components.ResizablePanelState
 import cc.warlock.warlock3.app.viewmodel.CompassViewModel
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.VitalsViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
+import cc.warlock.warlock3.app.views.settings.MacroRegistry
+import cc.warlock.warlock3.app.views.settings.SettingsDialog
 import cc.warlock.warlock3.core.Window
 import cc.warlock.warlock3.core.WindowLocation
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun FrameWindowScope.GameView(viewModel: GameViewModel) {
+fun FrameWindowScope.GameView(
+    viewModel: GameViewModel,
+    macroRegistry: MacroRegistry
+) {
     val windows by viewModel.windows.collectAsState()
     val openWindows by viewModel.openWindows.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
@@ -49,7 +55,17 @@ fun FrameWindowScope.GameView(viewModel: GameViewModel) {
             },
             saveVariable = { name, value ->
                 viewModel.client.setVariable(name, value)
-            }
+            },
+            deleteVariable = {
+                viewModel.client.deleteVariable(it)
+            },
+            macros = macroRegistry.macros,
+            saveMacro = { name, value ->
+                macroRegistry.saveMacro(name, value)
+            },
+            deleteMacro = { name ->
+                macroRegistry.deleteMacro(name)
+            },
         )
     }
 }

@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.views.game
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.VerticalScrollbar

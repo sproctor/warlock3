@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures

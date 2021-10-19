@@ -9,4 +9,6 @@ object ClientSpec : ConfigSpec("client") {
     val variables by optional<Map<String, String>>(emptyMap())
 
     val maxTypeAhead by optional(1)
+
+    val macros by optional<Map<String, String>>(emptyMap())
 }

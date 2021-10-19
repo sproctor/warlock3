@@ -1,8 +1,7 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.views.sge
 
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import cc.warlock.warlock3.app.config.SgeSpec
 import cc.warlock.warlock3.app.preferencesFile
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel

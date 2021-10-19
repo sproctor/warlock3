@@ -6,10 +6,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.FrameWindowScope
 import cc.warlock.warlock3.app.config.ClientSpec
-import cc.warlock.warlock3.app.view.GameView
-import cc.warlock.warlock3.app.view.SgeWizard
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
+import cc.warlock.warlock3.app.views.game.GameView
+import cc.warlock.warlock3.app.views.settings.MacroRegistry
+import cc.warlock.warlock3.app.views.sge.SgeWizard
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.uchuhimo.konf.Config
 import com.uchuhimo.konf.source.hocon.toHocon
@@ -43,11 +44,17 @@ fun FrameWindowScope.WarlockApp(state: MutableState<GameState>, config: Config) 
                     },
                     maxTypeAhead = config[ClientSpec.maxTypeAhead],
                 )
-                GameViewModel(client).also {
+                GameViewModel(
+                    client = client,
+                    lookupMacro = { key ->
+                        val macros = config[ClientSpec.macros]
+                        macros[key]
+                    }
+                ).also {
                     client.connect(currentState.key)
                 }
             }
-            GameView(viewModel)
+            GameView(viewModel = viewModel, macroRegistry = MacroRegistry(config))
         }
     }
 }

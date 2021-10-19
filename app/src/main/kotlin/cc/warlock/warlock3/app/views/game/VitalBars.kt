@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.views.game
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background

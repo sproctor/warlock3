@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.view
+package cc.warlock.warlock3.app.views.game
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
@@ -16,8 +16,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -27,17 +29,14 @@ import kotlin.math.min
 
 @Composable
 fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
-    val history by viewModel.sendHistory
     val roundTime by viewModel.roundTime.collectAsState()
     val castTime by viewModel.castTime.collectAsState()
 
     WarlockEntryContent(
         modifier = modifier,
-        onSend = {
-            viewModel.send(it)
-        },
-        stopScripts = { viewModel.stopScripts() },
-        history = history,
+        textField = viewModel.entryText.value,
+        onValueChange = viewModel::setEntryText,
+        onKeyPress = viewModel::handleKeyPress,
         roundTime = roundTime,
         castTime = castTime,
     )
@@ -48,6 +47,7 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
 fun WarlockEntryContent(
     modifier: Modifier,
     textField: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     onKeyPress: (KeyEvent) -> Boolean,
     roundTime: Int,
     castTime: Int,
@@ -72,7 +72,7 @@ fun WarlockEntryContent(
                     }
                 },
             textStyle = TextStyle.Default.copy(fontSize = 16.sp),
-            onValueChange = { textField = it },
+            onValueChange = onValueChange,
             maxLines = 1,
         )
 
@@ -130,7 +130,8 @@ fun WarlockEntryPreview() {
         textField = TextFieldValue("test"),
         roundTime = 8,
         castTime = 4,
-        onKeyPress = { true }
+        onKeyPress = { true },
+        onValueChange = {},
     )
 }
 
