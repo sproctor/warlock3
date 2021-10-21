@@ -5,7 +5,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
-import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.core.text.*
 
 
 fun WarlockColor.toColor(): Color {

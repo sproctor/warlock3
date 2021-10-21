@@ -4,7 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import cc.warlock.warlock3.core.ClientCompassEvent
+import cc.warlock.warlock3.core.client.ClientCompassEvent
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope

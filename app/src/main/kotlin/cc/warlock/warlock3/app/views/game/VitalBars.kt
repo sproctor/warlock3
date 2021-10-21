@@ -10,8 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import cc.warlock.warlock3.core.Percentage
-import cc.warlock.warlock3.core.ProgressBarData
+import cc.warlock.warlock3.core.client.Percentage
+import cc.warlock.warlock3.core.client.ProgressBarData
 import kotlin.math.min
 
 

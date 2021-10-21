@@ -11,16 +11,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.core.script.VariableRegistry
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun VariablesView(
-    variables: Map<String, String>,
-    saveVariable: (String, String) -> Unit,
-    deleteVariable: (String) -> Unit,
+    currentCharacter: String,
+    variableRegistry: VariableRegistry,
 ) {
+    var subject by remember { mutableStateOf(currentCharacter) }
     var editingVariable by remember { mutableStateOf<Pair<String, String>?>(null) }
     Column(Modifier.fillMaxSize()) {
+        // TODO add character selector
+        Text("Showing variables for $subject")
+        val allVariables = variableRegistry.variables.collectAsState()
+        val variables = allVariables.value[subject.lowercase()] ?: emptyMap()
         Column(Modifier.weight(1f).fillMaxHeight()) {
             variables.forEach { entry ->
                 ListItem(
@@ -43,20 +48,20 @@ fun VariablesView(
                 Icon(imageVector = WarlockIcons.Add, contentDescription = "add")
             }
         }
-        editingVariable?.let { variable ->
-            EditVariableDialog(
-                name = variable.first,
-                value = variable.second,
-                saveVariable = { name, value ->
-                    if (name != variable.first) {
-                        deleteVariable(variable.first)
-                    }
-                    saveVariable(name, value)
-                    editingVariable = null
-                },
-                onClose = { editingVariable = null }
-            )
-        }
+    }
+    editingVariable?.let { variable ->
+        EditVariableDialog(
+            name = variable.first,
+            value = variable.second,
+            saveVariable = { name, value ->
+                if (name != variable.first) {
+                    variableRegistry.deleteVariable(subject.lowercase(), variable.first)
+                }
+                variableRegistry.setVariable(subject.lowercase(), name, value)
+                editingVariable = null
+            },
+            onClose = { editingVariable = null }
+        )
     }
 }
 

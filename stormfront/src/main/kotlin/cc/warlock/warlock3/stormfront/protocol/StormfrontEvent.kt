@@ -1,9 +1,9 @@
 package cc.warlock.warlock3.stormfront.protocol
 
-import cc.warlock.warlock3.core.Percentage
-import cc.warlock.warlock3.core.WarlockStyle
-import cc.warlock.warlock3.core.Window
+import cc.warlock.warlock3.core.client.Percentage
 import cc.warlock.warlock3.core.compass.DirectionType
+import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.window.Window
 
 sealed class StormfrontEvent
 data class StormfrontEolEvent(val ignoreWhenBlank: Boolean) : StormfrontEvent()

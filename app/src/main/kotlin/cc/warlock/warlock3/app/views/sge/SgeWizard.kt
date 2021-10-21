@@ -1,12 +1,13 @@
 package cc.warlock.warlock3.app.views.sge
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import cc.warlock.warlock3.app.config.SgeSpec
-import cc.warlock.warlock3.app.preferencesFile
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewState
-import com.uchuhimo.konf.source.hocon.toHocon
 
 @Composable
 fun SgeWizard(
@@ -14,29 +15,44 @@ fun SgeWizard(
 ) {
     val state = viewModel.state
     when (val currentState = state.value) {
-        SgeViewState.SgeAccountSelector -> AccountsView(
-            initialUsername = viewModel.config[SgeSpec.username],
-            initialPassword = viewModel.config[SgeSpec.password],
-            onAccountSelect = {
-                println("saving username/password")
-                viewModel.config[SgeSpec.username] = it.name
-                viewModel.config[SgeSpec.password] = it.password
-                viewModel.config.toHocon.toFile(preferencesFile)
-                viewModel.accountSelected(it)
-            }
-        )
+        SgeViewState.SgeAccountSelector -> {
+            val account =
+                viewModel.lastUsername?.let { lastUsername -> viewModel.accounts.firstOrNull { it.name == lastUsername } }
+            AccountsView(
+                initialUsername = viewModel.lastUsername,
+                initialPassword = account?.password,
+                onAccountSelect = { newAccount ->
+                    println("saving username/password")
+                    viewModel.saveAccount(newAccount)
+                    viewModel.accountSelected(newAccount)
+                }
+            )
+        }
+        SgeViewState.SgeLoadingGameList -> SgeLoadingView("Loading game list")
         is SgeViewState.SgeGameSelector -> SgeGameView(
             games = currentState.games,
             onBackPressed = { viewModel.goBack() },
             onGameSelected = { viewModel.gameSelected(it) },
         )
+        is SgeViewState.SgeLoadingCharacterList -> SgeLoadingView("Loading character list for game: ${currentState.game.code}")
         is SgeViewState.SgeCharacterSelector -> SgeCharacterView(
             characters = currentState.characters,
             onBackPressed = { viewModel.goBack() },
-            onCharacterSelected = { viewModel.characterSelected(it) }
+            onCharacterSelected = { character ->
+                viewModel.characterSelected(currentState.game, character)
+            }
         )
-        is SgeViewState.SgeLoading -> Text("Loading: ${currentState.message}")
+        is SgeViewState.SgeConnecting -> SgeLoadingView("Connecting to SGE server")
         is SgeViewState.SgeError -> SgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
-        else -> Text("Unimplemented")
+    }
+}
+
+@Composable
+fun SgeLoadingView(message: String) {
+    Box(Modifier.fillMaxSize()) {
+        Text(
+            modifier = Modifier.align(Alignment.Center),
+            text = message
+        )
     }
 }

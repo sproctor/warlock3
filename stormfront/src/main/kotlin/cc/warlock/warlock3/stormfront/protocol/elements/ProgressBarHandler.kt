@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.stormfront.protocol.elements
 
-import cc.warlock.warlock3.core.Percentage
+import cc.warlock.warlock3.core.client.Percentage
 import cc.warlock.warlock3.stormfront.protocol.BaseElementListener
 import cc.warlock.warlock3.stormfront.protocol.StartElement
 import cc.warlock.warlock3.stormfront.protocol.StormfrontEvent

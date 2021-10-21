@@ -8,18 +8,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import cc.warlock.warlock3.app.views.settings.MacrosView
-import cc.warlock.warlock3.app.views.settings.VariablesView
+import cc.warlock.warlock3.app.config.ClientSpec
+import cc.warlock.warlock3.app.util.observe
+import cc.warlock.warlock3.core.script.VariableRegistry
+import com.uchuhimo.konf.Config
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsDialog(
-    variables: Map<String, String>,
-    saveVariable: (String, String) -> Unit,
-    deleteVariable: (String) -> Unit,
-    macros: Map<String, String>,
-    saveMacro: (String, String) -> Unit,
-    deleteMacro: (String) -> Unit,
+    currentCharacter: String?,
+    config: Config,
+    updateConfig: ((Config) -> Unit) -> Unit,
+    variableRegistry: VariableRegistry,
     closeDialog: () -> Unit,
 ) {
     Window(
@@ -38,12 +38,44 @@ fun SettingsDialog(
                 }
             }
             when (state) {
-                VariableSettingsState -> VariablesView(
-                    variables = variables,
-                    saveVariable = saveVariable,
-                    deleteVariable = deleteVariable,
+                VariableSettingsState -> {
+                    val initialCharacter = currentCharacter ?: config[ClientSpec.characters].firstOrNull()?.characterName
+                    if (initialCharacter != null) {
+                        VariablesView(
+                            currentCharacter = initialCharacter,
+                            variableRegistry = variableRegistry,
+                        )
+                    } else {
+                        Text("No characters have connected")
+                    }
+                }
+                MacroSettingsState -> MacrosView(
+                    currentCharacter = currentCharacter,
+                    globalMacros = config.observe(ClientSpec.globalMacros).collectAsState(emptyMap()).value,
+                    characterMacros = config.observe(ClientSpec.characterMacros).collectAsState(emptyMap()).value,
+                    saveMacro = { characterId, name, value ->
+                        updateConfig { newConfig ->
+                            if (characterId == null) {
+                                newConfig[ClientSpec.globalMacros] = newConfig[ClientSpec.globalMacros] + (name to value)
+                            } else {
+                                val newMacros = (newConfig[ClientSpec.characterMacros][characterId] ?: emptyMap()) + (name to value)
+                                newConfig[ClientSpec.characterMacros] = newConfig[ClientSpec.characterMacros] + (characterId to newMacros)
+                            }
+                        }
+                    },
+                    deleteMacro = { characterId, name ->
+                        updateConfig { newConfig ->
+                            if (characterId == null) {
+                                newConfig[ClientSpec.globalMacros] = newConfig[ClientSpec.globalMacros] - name
+                            } else {
+                                val newMacros =
+                                    (newConfig[ClientSpec.characterMacros][characterId] ?: emptyMap()) - name
+                                newConfig[ClientSpec.characterMacros] =
+                                    newConfig[ClientSpec.characterMacros] + (characterId to newMacros)
+                            }
+                        }
+                    }
                 )
-                MacroSettingsState -> MacrosView(macros = macros, saveMacro = saveMacro, deleteMacro = deleteMacro)
             }
         }
     }

@@ -6,6 +6,5 @@ object SgeSpec : ConfigSpec("sge") {
     val host by optional("eaccess.play.net")
     val port by optional<Int>(7900)
 
-    val username by optional<String?>(null)
-    val password by optional<String?>(null)
+    val lastUsername by optional<String?>(null)
 }

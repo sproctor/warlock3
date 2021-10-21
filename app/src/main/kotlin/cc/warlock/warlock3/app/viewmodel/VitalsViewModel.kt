@@ -2,8 +2,8 @@ package cc.warlock.warlock3.app.viewmodel
 
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshots.SnapshotStateMap
-import cc.warlock.warlock3.core.ClientProgressBarEvent
-import cc.warlock.warlock3.core.ProgressBarData
+import cc.warlock.warlock3.core.client.ClientProgressBarEvent
+import cc.warlock.warlock3.core.client.ProgressBarData
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

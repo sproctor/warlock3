@@ -1,7 +1,11 @@
 package cc.warlock.warlock3.stormfront.network
 
-import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
+import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.text.flattenStyles
+import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
 import kotlinx.coroutines.CoroutineScope
@@ -15,18 +19,18 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.ConcurrentHashMap
 
-private val defaultLocations = mapOf("main" to WindowLocation.MAIN)
-
 class StormfrontClient(
     host: String,
     port: Int,
-    initialVariables: Map<String, String>,
-    private val saveVariables: (Map<String, String>) -> Unit,
     override val maxTypeAhead: Int,
+    private val windowRegistry: WindowRegistry,
 ) : WarlockClient {
     private val socket = Socket(host, port)
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
+
+    private val _characterId = MutableStateFlow<String?>(null)
+    override val characterId: StateFlow<String?> = _characterId.asStateFlow()
 
     private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
     override val properties: StateFlow<Map<String, String>> = _properties.asStateFlow()
@@ -34,28 +38,8 @@ class StormfrontClient(
     private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
     override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
 
-    private val _variables = MutableStateFlow<Map<String, String>>(initialVariables)
-    override val variables = _variables.asStateFlow()
-
     private val mainStream = TextStream("main")
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
-
-    private val _openWindows = MutableStateFlow(setOf("main", "room"))
-    val openWindows = _openWindows.asStateFlow()
-
-    private val _windows = MutableStateFlow<Map<String, Window>>(
-        mapOf(
-            "main" to Window(
-                name = "main",
-                title = "Main",
-                subtitle = "",
-                styleIfClosed = null,
-                ifClosed = null,
-                location = WindowLocation.MAIN,
-            )
-        )
-    )
-    val windows = _windows.asStateFlow()
 
     private var parseText = true
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -100,8 +84,8 @@ class StormfrontClient(
                                         }
                                     is StormfrontStreamEvent ->
                                         currentStream = if (event.id != null) {
-                                            val ifClosed = windows.value[event.id]?.ifClosed
-                                            if (ifClosed?.isNotBlank() == true && !openWindows.value.contains(event.id)) {
+                                            val ifClosed = windowRegistry.getWindow(event.id)?.ifClosed
+                                            if (ifClosed?.isNotBlank() == true && !windowRegistry.isOpen(event.id)) {
                                                 getStream(ifClosed)
                                             } else {
                                                 getStream(event.id)
@@ -119,6 +103,7 @@ class StormfrontClient(
                                         }
                                     }
                                     is StormfrontAppEvent -> {
+                                        _characterId.value = "${event.game}:${event.character}"
                                         val newProperties = properties.value
                                             .plus("character" to (event.character ?: ""))
                                             .plus("game" to (event.game ?: ""))
@@ -213,10 +198,7 @@ class StormfrontClient(
                                     }
                                     StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
                                     is StormfrontStreamWindowEvent -> {
-                                        val name = event.window.name
-                                        _windows.value = windows.value +
-                                                (name to event.window
-                                                    .copy(location = defaultLocations[name] ?: event.window.location))
+                                        windowRegistry.addWindow(event.window)
                                     }
                                 }
                             }
@@ -300,23 +282,5 @@ class StormfrontClient(
     @Synchronized
     fun getStream(name: String): TextStream {
         return streams.getOrPut(name) { TextStream(name) }
-    }
-
-    fun showWindow(name: String) {
-        _openWindows.value += name
-    }
-
-    fun hideWindow(name: String) {
-        _openWindows.value -= name
-    }
-
-    override fun setVariable(name: String, value: String) {
-        _variables.value += name to value
-        saveVariables(_variables.value)
-    }
-
-    override fun deleteVariable(name: String) {
-        _variables.value -= name
-        saveVariables(_variables.value)
     }
 }

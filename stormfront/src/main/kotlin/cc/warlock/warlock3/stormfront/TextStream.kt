@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.stormfront
 
-import cc.warlock.warlock3.core.*
+import cc.warlock.warlock3.core.text.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 

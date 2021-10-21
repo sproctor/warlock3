@@ -1,6 +1,5 @@
 package cc.warlock.warlock3.app.viewmodel
 
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -8,11 +7,14 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.macros.macroCommands
-import cc.warlock.warlock3.core.ScriptInstance
-import cc.warlock.warlock3.core.StyledString
+import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.parser.MacroLexer
-import cc.warlock.warlock3.core.wsl.WslScript
-import cc.warlock.warlock3.core.wsl.WslScriptInstance
+import cc.warlock.warlock3.core.script.ScriptInstance
+import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.script.wsl.WslScript
+import cc.warlock.warlock3.core.script.wsl.WslScriptInstance
+import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,8 +27,10 @@ import java.io.File
 import kotlin.math.max
 
 class GameViewModel(
+    windowRegistry: WindowRegistry,
     val client: StormfrontClient,
-    val lookupMacro: (String) -> String?
+    val macroRepository: MacroRepository,
+    val variableRegistry: VariableRegistry,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -36,6 +40,11 @@ class GameViewModel(
     private val storedText = mutableStateOf<String?>(null)
 
     val properties: StateFlow<Map<String, String>> = client.properties
+
+    val variables = combine(client.characterId, variableRegistry.variables) { characterId, allVariables ->
+        characterId?.let { allVariables[it] } ?: emptyMap()
+    }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     private val currentTime: Flow<Int> = flow {
         while (true) {
@@ -64,9 +73,9 @@ class GameViewModel(
 
     private val scriptInstances = mutableStateOf<List<ScriptInstance>>(emptyList())
 
-    val windows = client.windows
+    val windows = windowRegistry.windows
 
-    val openWindows = client.openWindows
+    val openWindows = windowRegistry.openWindows
 
     fun submit() {
         val line = _entryText.value.text
@@ -83,7 +92,7 @@ class GameViewModel(
                 client.print(StyledString("File exists"))
                 val script = WslScript(name = scriptName, file = file)
                 val scriptInstance = WslScriptInstance(name = scriptName, script = script)
-                scriptInstance.start(client = client, argumentString = args)
+                scriptInstance.start(client = client, argumentString = args, variableRegistry = variableRegistry)
                 scriptInstances.value += scriptInstance
             } else {
                 client.print(StyledString("Could not find a script with that name"))
@@ -91,14 +100,6 @@ class GameViewModel(
         } else {
             client.sendCommand(line)
         }
-    }
-
-    fun showWindow(name: String) {
-        client.showWindow(name)
-    }
-
-    fun hideWindow(name: String) {
-        client.hideWindow(name)
     }
 
     fun stopScripts() {
@@ -121,7 +122,7 @@ class GameViewModel(
         }
 
         val keyString = translateKeyPress(event)
-        val macroString = lookupMacro(keyString) ?: return false
+        val macroString = client.characterId.value?.let { macroRepository.getMacro(it, keyString) } ?: return false
 
         val tokens = tokenizeMacro(macroString) ?: return false
 
@@ -152,7 +153,7 @@ class GameViewModel(
                     MacroLexer.VariableName -> {
                         token.text?.let { if (it.endsWith("%")) it.drop(1) else it }
                             ?.let { name ->
-                                entryAppend(client.variables.value[name] ?: "")
+                                entryAppend(variables.value[name] ?: "")
                             }
                     }
                     MacroLexer.CommandText -> {

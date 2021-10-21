@@ -26,12 +26,16 @@ import java.awt.event.KeyEvent
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun MacrosView(
-    macros: Map<String, String>,
-    saveMacro: (String, String) -> Unit,
-    deleteMacro: (String) -> Unit,
+    currentCharacter: String?,
+    globalMacros: Map<String, String>,
+    characterMacros: Map<String, Map<String, String>>,
+    saveMacro: (String?, String, String) -> Unit,
+    deleteMacro: (String?, String) -> Unit,
 ) {
+    val macros = if (currentCharacter == null) globalMacros else characterMacros[currentCharacter.lowercase()] ?: emptyMap()
     var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
     Column {
+        Text("Showing macros for $currentCharacter")
         Column(Modifier.fillMaxWidth().weight(1f)) {
             macros.forEach { macro ->
                 val parts = macro.key.split("+")
@@ -63,9 +67,9 @@ fun MacrosView(
             value = macro.second,
             saveMacro = { key, value ->
                 if (key != macro.first) {
-                    macro.first?.let { deleteMacro(it) }
+                    macro.first?.let { deleteMacro(currentCharacter?.lowercase(), it) }
                 }
-                saveMacro(key, value)
+                saveMacro(currentCharacter?.lowercase(), key, value)
                 editingMacro = null
             },
             onClose = { editingMacro = null }

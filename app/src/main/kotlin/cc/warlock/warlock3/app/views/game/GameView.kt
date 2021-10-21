@@ -2,71 +2,41 @@ package cc.warlock.warlock3.app.views.game
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.FrameWindowScope
-import androidx.compose.ui.window.MenuBar
 import cc.warlock.warlock3.app.components.ResizablePanel
 import cc.warlock.warlock3.app.components.ResizablePanelState
 import cc.warlock.warlock3.app.viewmodel.CompassViewModel
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.VitalsViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
-import cc.warlock.warlock3.app.views.settings.MacroRegistry
-import cc.warlock.warlock3.app.views.settings.SettingsDialog
-import cc.warlock.warlock3.core.Window
-import cc.warlock.warlock3.core.WindowLocation
-import cc.warlock.warlock3.stormfront.network.StormfrontClient
+import cc.warlock.warlock3.core.window.Window
+import cc.warlock.warlock3.core.window.WindowLocation
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun FrameWindowScope.GameView(
+fun GameView(
     viewModel: GameViewModel,
-    macroRegistry: MacroRegistry
+    windowViewModels: Map<String, WindowViewModel>,
+    mainWindowViewModel: WindowViewModel,
 ) {
     val windows by viewModel.windows.collectAsState()
     val openWindows by viewModel.openWindows.collectAsState()
-    var showSettings by remember { mutableStateOf(false) }
 
-    GameMenu(
-        windows = windows,
-        openWindows = openWindows,
-        showWindow = viewModel::showWindow,
-        hideWindow = viewModel::hideWindow,
-        showSettings = { showSettings = true },
-    )
     Column(modifier = Modifier.fillMaxSize()) {
         GameTextWindows(
             windows = windows,
             openWindows = openWindows,
-            client = viewModel.client,
+            windowViewModels = windowViewModels,
+            mainWindowViewModel = mainWindowViewModel,
         )
         GameBottomBar(viewModel)
-    }
-    if (showSettings) {
-        val variables by viewModel.client.variables.collectAsState()
-        SettingsDialog(
-            variables = variables,
-            closeDialog = {
-                showSettings = false
-            },
-            saveVariable = { name, value ->
-                viewModel.client.setVariable(name, value)
-            },
-            deleteVariable = {
-                viewModel.client.deleteVariable(it)
-            },
-            macros = macroRegistry.macros,
-            saveMacro = { name, value ->
-                macroRegistry.saveMacro(name, value)
-            },
-            deleteMacro = { name ->
-                macroRegistry.deleteMacro(name)
-            },
-        )
     }
 }
 
@@ -74,10 +44,9 @@ fun FrameWindowScope.GameView(
 fun ColumnScope.GameTextWindows(
     windows: Map<String, Window>,
     openWindows: Set<String>,
-    client: StormfrontClient,
+    windowViewModels: Map<String, WindowViewModel>,
+    mainWindowViewModel: WindowViewModel,
 ) {
-    val windowViewModels = remember { mutableStateOf(mapOf<String, WindowViewModel>()) }
-
     // Container for all window views
     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
         // Left column
@@ -93,7 +62,6 @@ fun ColumnScope.GameTextWindows(
                 Column {
                     WindowViews(
                         windows = leftWindows,
-                        client = client,
                         windowViewModels = windowViewModels,
                     )
                 }
@@ -105,15 +73,11 @@ fun ColumnScope.GameTextWindows(
         Column(modifier = Modifier.weight(1f)) {
             WindowViews(
                 windows = topWindows,
-                client = client,
                 windowViewModels = windowViewModels,
             )
-            val mainViewModel = windowViewModels.value["main"] ?: WindowViewModel("main", client).also {
-                windowViewModels.value += "main" to it
-            }
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                viewModel = mainViewModel,
+                viewModel = mainWindowViewModel,
             )
         }
         // Right Column
@@ -130,7 +94,6 @@ fun ColumnScope.GameTextWindows(
                 Column {
                     WindowViews(
                         windows = rightWindows,
-                        client = client,
                         windowViewModels = windowViewModels,
                     )
                 }
@@ -167,55 +130,21 @@ fun GameBottomBar(viewModel: GameViewModel) {
 }
 
 @Composable
-fun FrameWindowScope.GameMenu(
-    windows: Map<String, Window>,
-    openWindows: Set<String>,
-    showWindow: (String) -> Unit,
-    hideWindow: (String) -> Unit,
-    showSettings: () -> Unit,
-) {
-    MenuBar {
-        Menu("File") {
-            Item("Settings", onClick = showSettings)
-        }
-
-        Menu("Windows") {
-            windows.values.forEach { window ->
-                if (window.name != "main") {
-                    CheckboxItem(
-                        text = window.title,
-                        checked = openWindows.any { it == window.name },
-                        onCheckedChange = {
-                            if (it) {
-                                showWindow(window.name)
-                            } else {
-                                hideWindow(window.name)
-                            }
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun WindowViews(
     windows: Map<String, Window>,
-    client: StormfrontClient,
-    windowViewModels: MutableState<Map<String, WindowViewModel>>,
+    windowViewModels: Map<String, WindowViewModel>,
 ) {
     windows.forEach { entry ->
-        val panelState = remember(entry.key) { ResizablePanelState(initialSize = 160.dp, minSize = 16.dp) }
-        ResizablePanel(
-            modifier = Modifier.fillMaxWidth(),
-            isHorizontal = false,
-            state = panelState,
-        ) {
-            val windowViewModel = windowViewModels.value[entry.key] ?: WindowViewModel(entry.key, client).also {
-                windowViewModels.value += entry.key to it
+        val windowViewModel = windowViewModels[entry.key]
+        if (windowViewModel != null) {
+            val panelState = remember(entry.key) { ResizablePanelState(initialSize = 160.dp, minSize = 16.dp) }
+            ResizablePanel(
+                modifier = Modifier.fillMaxWidth(),
+                isHorizontal = false,
+                state = panelState,
+            ) {
+                WindowView(modifier = Modifier.matchParentSize(), viewModel = windowViewModel)
             }
-            WindowView(modifier = Modifier.matchParentSize(), viewModel = windowViewModel)
         }
     }
 }
