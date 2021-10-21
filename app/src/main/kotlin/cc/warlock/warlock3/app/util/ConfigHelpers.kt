@@ -6,6 +6,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalCoroutinesApi::class)
 inline fun <reified T> Config.observe(item: Item<T>): Flow<T> =
@@ -16,3 +17,4 @@ inline fun <reified T> Config.observe(item: Item<T>): Flow<T> =
         }
         awaitClose { handler.cancel() }
     }
+        .distinctUntilChanged()
