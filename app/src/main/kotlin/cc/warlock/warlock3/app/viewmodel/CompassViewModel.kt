@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import cc.warlock.warlock3.core.client.ClientCompassEvent
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -11,7 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.jetbrains.skija.Image
+import org.jetbrains.skia.Image
 import java.util.*
 
 class CompassViewModel(
@@ -46,7 +47,7 @@ fun loadTheme(): CompassTheme {
         val position = Pair(xy[0].toInt(), xy[1].toInt())
         val imageStream = object {}.javaClass.getResourceAsStream("/images/compass/${direction.value}_on.png")
             ?: throw Exception("Could not load compass image")
-        val image = Image.makeFromEncoded(imageStream.readBytes()).asImageBitmap()
+        val image = Image.makeFromEncoded(imageStream.readBytes()).toComposeImageBitmap()
 
         CompassDirection(
             direction = direction,
@@ -56,7 +57,7 @@ fun loadTheme(): CompassTheme {
     }
     val mainImageStream = object {}.javaClass.getResourceAsStream("/images/compass/compass_main.png")
         ?: throw Exception("Could not load compass background")
-    val mainImage = Image.makeFromEncoded(mainImageStream.readBytes()).asImageBitmap()
+    val mainImage = Image.makeFromEncoded(mainImageStream.readBytes()).toComposeImageBitmap()
     return CompassTheme(
         background = mainImage,
         description = properties.getProperty("theme.description", ""),

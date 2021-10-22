@@ -70,7 +70,7 @@ fun ResizablePanelHandle(
                 )
             }
         }
-        .pointerIcon(
+        .pointerHoverIcon(
             icon = PointerIcon(Cursor(if (isHorizontal) Cursor.E_RESIZE_CURSOR else Cursor.S_RESIZE_CURSOR))
         )
     Box(
