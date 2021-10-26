@@ -16,7 +16,7 @@ dependencies {
     implementation(project(":stormfront"))
 
     implementation("org.slf4j:slf4j-api:_")
-    implementation("com.uchuhimo:konf-core:_")
+    implementation("com.uchuhimo:konf-hocon:_")
     implementation(KotlinX.coroutines.core)
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)

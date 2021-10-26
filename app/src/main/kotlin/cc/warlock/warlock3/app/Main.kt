@@ -15,13 +15,14 @@ import androidx.compose.ui.window.singleWindowApplication
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.config.SgeSpec
 import com.uchuhimo.konf.Config
+import com.uchuhimo.konf.source.hocon
 import com.uchuhimo.konf.source.json.toJson
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import java.io.File
 import kotlin.math.roundToInt
 
-private val preferencesFile = File(System.getProperty("user.home") + "/.warlock3/preferences.json")
+private val preferencesFile = File(System.getProperty("user.home") + "/.warlock3/preferences.conf")
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
@@ -31,7 +32,7 @@ fun main() {
         addSpec(SgeSpec)
         addSpec(ClientSpec)
     }
-        .from.json.watchFile(preferencesFile)
+        .from.hocon.watchFile(preferencesFile)
     val initialWidth = config[ClientSpec.width]
     val initialHeight = config[ClientSpec.height]
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
