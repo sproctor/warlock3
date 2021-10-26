@@ -2,6 +2,7 @@ package cc.warlock.warlock3.app.config
 
 import cc.warlock.warlock3.app.model.Account
 import cc.warlock.warlock3.app.model.GameCharacter
+import cc.warlock.warlock3.core.highlights.Highlight
 import com.uchuhimo.konf.ConfigSpec
 
 object ClientSpec : ConfigSpec("client") {
@@ -17,4 +18,7 @@ object ClientSpec : ConfigSpec("client") {
 
     val globalMacros by optional<Map<String, String>>(emptyMap())
     val characterMacros by optional<Map<String, Map<String, String>>>(emptyMap())
+
+    val globalHighlights by optional<List<Highlight>>(emptyList())
+    val characterHighlights by optional<Map<String, List<Highlight>>>(emptyMap())
 }

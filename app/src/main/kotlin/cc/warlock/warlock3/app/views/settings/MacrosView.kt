@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.WindowSize
@@ -87,7 +88,7 @@ fun EditMacroDialog(
 ) {
     Dialog(
         onCloseRequest = onClose,
-        state = rememberDialogState(size = WindowSize(width = 1200.dp, height = 500.dp))
+        state = rememberDialogState(size = DpSize(width = 1200.dp, height = 500.dp))
     ) {
         Column(
             modifier = Modifier

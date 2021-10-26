@@ -36,6 +36,9 @@ fun SettingsDialog(
                 TextButton(onClick = { state = MacroSettingsState }) {
                     Text("Macros")
                 }
+                TextButton(onClick = { state = HighlightSettingsState }) {
+                    Text("Highlights")
+                }
             }
             when (state) {
                 VariableSettingsState -> {
@@ -76,6 +79,33 @@ fun SettingsDialog(
                         }
                     }
                 )
+                HighlightSettingsState -> HighlightsView(
+                    currentCharacter = currentCharacter,
+                    globalHighlights = config.observe(ClientSpec.globalHighlights).collectAsState(emptyList()).value,
+                    characterHighlights = config.observe(ClientSpec.characterHighlights).collectAsState(emptyMap()).value,
+                    saveHighlight = { characterId, highlight ->
+                        updateConfig { newConfig ->
+                            if (characterId == null) {
+                                newConfig[ClientSpec.globalHighlights] = newConfig[ClientSpec.globalHighlights] + highlight
+                            } else {
+                                val newHighlights = (newConfig[ClientSpec.characterHighlights][characterId] ?: emptyList()) + highlight
+                                newConfig[ClientSpec.characterHighlights] = newConfig[ClientSpec.characterHighlights] + (characterId to newHighlights)
+                            }
+                        }
+                    },
+                    deleteHighlight = { characterId, pattern ->
+                        updateConfig { newConfig ->
+                            if (characterId == null) {
+                                newConfig[ClientSpec.globalHighlights] = newConfig[ClientSpec.globalHighlights].filter { it.pattern != pattern }
+                            } else {
+                                val newHighlight =
+                                    (newConfig[ClientSpec.characterHighlights][characterId] ?: emptyList()).filter { it.pattern != pattern }
+                                newConfig[ClientSpec.characterHighlights] =
+                                    newConfig[ClientSpec.characterHighlights] + (characterId to newHighlight)
+                            }
+                        }
+                    }
+                )
             }
         }
     }
@@ -84,3 +114,4 @@ fun SettingsDialog(
 sealed class SettingsState
 object VariableSettingsState : SettingsState()
 object MacroSettingsState : SettingsState()
+object HighlightSettingsState : SettingsState()
