@@ -7,9 +7,22 @@ fun AnnotatedString.highlight(highlights: List<Highlight>): AnnotatedString {
     val text = text
     return with(AnnotatedString.Builder(this)) {
         highlights.forEach { highlight ->
-            val index = text.indexOf(highlight.pattern, ignoreCase = highlight.ignoreCase)
-            if (index >= 0) {
-                addStyle(highlight.styles[0].toSpanStyle(), index, index + highlight.pattern.length)
+            val pattern = if (highlight.isRegex) {
+                highlight.pattern
+            } else {
+                val subpattern = Regex.escape(highlight.pattern)
+                if (highlight.matchPartialWord) {
+                    subpattern
+                } else {
+                    "\\b$subpattern\\b"
+                }
+            }
+            val regex = Regex(
+                pattern = pattern,
+                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+            )
+            regex.find(text)?.let { result ->
+                addStyle(highlight.styles[0].toSpanStyle(), result.range.first, result.range.last + 1)
             }
         }
         toAnnotatedString()

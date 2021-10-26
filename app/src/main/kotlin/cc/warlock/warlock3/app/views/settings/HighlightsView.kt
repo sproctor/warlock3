@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogState
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPicker
@@ -85,6 +86,9 @@ fun EditHighlightDialog(
     var pattern by remember { mutableStateOf(highlight.pattern) }
     val styles = remember { mutableListOf<WarlockStyle>().apply { addAll(highlight.styles) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
+    var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
+    var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
+
     Dialog(
         onCloseRequest = onClose,
         state = rememberDialogState(size = DpSize(width = 1200.dp, height = 500.dp))
@@ -123,6 +127,10 @@ fun EditHighlightDialog(
                         }
                     }
                 }
+                Row {
+                    Checkbox(checked = matchPartialWord, onCheckedChange = { matchPartialWord = it })
+                    Text("Match partial words")
+                }
             }
             Row {
                 Button(
@@ -131,9 +139,9 @@ fun EditHighlightDialog(
                             Highlight(
                                 pattern = pattern,
                                 styles = styles,
-                                isRegex = false,
-                                matchPartialWord = true,
-                                ignoreCase = true,
+                                isRegex = isRegex,
+                                matchPartialWord = matchPartialWord,
+                                ignoreCase = ignoreCase,
                             )
                         )
                     }
@@ -148,21 +156,29 @@ fun EditHighlightDialog(
     }
     editColor?.let { (group, content) ->
         Dialog(
+            state = DialogState(size = DpSize(300.dp, height = 400.dp)),
             onCloseRequest = { editColor = null }
         ) {
-            ColorPicker { color ->
-                val currentStyle = styles.getOrNull(group) ?: WarlockStyle()
-                val newStyle =
-                    if (content)
-                        currentStyle.copy(textColor = color.toWarlockColor())
-                    else
-                        currentStyle.copy(backgroundColor = color.toWarlockColor())
-                if (styles.size < group + 1) {
-                    for (i in styles.size..group) {
-                        styles.add(WarlockStyle())
+            Column(Modifier.fillMaxSize()) {
+                ColorPicker(
+                    modifier = Modifier.padding(top = 120.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
+                ) { color ->
+                    val currentStyle = styles.getOrNull(group) ?: WarlockStyle()
+                    val newStyle =
+                        if (content)
+                            currentStyle.copy(textColor = color.toWarlockColor())
+                        else
+                            currentStyle.copy(backgroundColor = color.toWarlockColor())
+                    if (styles.size < group + 1) {
+                        for (i in styles.size..group) {
+                            styles.add(WarlockStyle())
+                        }
                     }
+                    styles[group] = newStyle
                 }
-                styles[group] = newStyle
+                Button(onClick = { editColor = null }) {
+                    Text("OK")
+                }
             }
         }
     }
