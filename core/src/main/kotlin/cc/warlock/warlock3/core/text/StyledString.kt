@@ -35,8 +35,8 @@ fun StyledStringLeaf.applyStyle(style: WarlockStyle): StyledStringLeaf {
 }
 
 data class WarlockStyle(
-    val textColor: WarlockColor? = null,
-    val backgroundColor: WarlockColor? = null,
+    val textColor: WarlockColor = WarlockColor(-1),
+    val backgroundColor: WarlockColor = WarlockColor(-1),
     val isEntireLineBackground: Boolean = false,
     val bold: Boolean = false,
     val italic: Boolean = false,
@@ -45,8 +45,8 @@ data class WarlockStyle(
 ) {
     fun mergeWith(other: WarlockStyle): WarlockStyle {
         return WarlockStyle(
-            textColor = textColor ?: other.textColor,
-            backgroundColor = backgroundColor ?: other.backgroundColor,
+            textColor = if (textColor.isSpecified()) textColor else other.textColor,
+            backgroundColor = if (backgroundColor.isSpecified()) backgroundColor else other.backgroundColor,
             isEntireLineBackground = isEntireLineBackground || other.isEntireLineBackground,
             bold = bold || other.bold,
             italic = italic || other.italic,
@@ -56,7 +56,13 @@ data class WarlockStyle(
     }
 }
 
-data class WarlockColor(val red: Int, val green: Int, val blue: Int)
+data class WarlockColor(val argb: Long) {
+    constructor(value: String) : this(value.toLongOrNull() ?: -1)
+    constructor(red: Int, green: Int, blue: Int, alpha: Int = 0xFF) : this(alpha.toLong() * 0x1000000L + red.toLong() * 0x10000L + green.toLong() * 0x100L + blue.toLong())
+}
+
+fun WarlockColor.isUnspecified(): Boolean = !isSpecified()
+fun WarlockColor.isSpecified(): Boolean = argb >= 0
 
 fun flattenStyles(styles: List<WarlockStyle>): WarlockStyle? {
     return styles

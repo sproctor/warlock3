@@ -9,7 +9,7 @@ import cc.warlock.warlock3.core.text.*
 
 
 fun WarlockColor.toColor(): Color {
-    return Color(red = red, green = green, blue = blue)
+    return if (isUnspecified()) Color.Unspecified else Color(argb)
 }
 
 fun StyledString.toAnnotatedString(
@@ -23,8 +23,8 @@ fun StyledString.toAnnotatedString(
 
 fun WarlockStyle.toSpanStyle(): SpanStyle {
     return SpanStyle(
-        color = textColor?.toColor() ?: Color.Unspecified,
-        background = backgroundColor?.toColor() ?: Color.Unspecified,
+        color = textColor.toColor(),
+        background = backgroundColor.toColor(),
         fontFamily = if (monospace) FontFamily.Monospace else null,
         textDecoration = if (underline) TextDecoration.Underline else null,
     )
