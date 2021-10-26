@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import cc.warlock.warlock3.app.util.highlight
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
@@ -58,6 +59,7 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     val components = viewModel.components.collectAsState()
     val scope = rememberCoroutineScope()
     var lastIndex by remember { mutableStateOf(0) }
+    val highlights by viewModel.highlights.collectAsState(emptyList())
 
     BoxWithConstraints(Modifier.background(viewModel.backgroundColor.value).padding(4.dp)) {
         val height = this.maxHeight
@@ -74,11 +76,12 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                             val annotatedString =
                                 line.stringFactory(components.value).toAnnotatedString(components.value)
                             if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
+                                val highlightedLine = annotatedString.highlight(highlights)
                                 Box(
                                     modifier = Modifier.fillParentMaxWidth()
                                         .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
                                 ) {
-                                    Text(text = annotatedString)
+                                    Text(text = highlightedLine)
                                 }
                             }
                         }

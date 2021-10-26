@@ -5,10 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.*
 import androidx.compose.material.icons.filled.Add
@@ -44,7 +41,7 @@ fun HighlightsView(
         Column(Modifier.fillMaxWidth().weight(1f)) {
             highlights.forEach { highlight ->
                 ListItem(
-                    modifier = Modifier.clickable { },
+                    modifier = Modifier.clickable { editingHighlight = highlight},
                     text = { Text(highlight.pattern) },
                 )
             }
@@ -97,19 +94,19 @@ fun EditHighlightDialog(
             Column {
                 for (i in 0 until groupCount) {
                     val style = styles.getOrNull(i)
-                    Button({ editColor = i to true }) {
+                    OutlinedButton({ editColor = i to true }) {
                         Row {
                             Text("Content: ")
                             style?.textColor?.let {
-                                Box(Modifier.background(it.toColor()).border(1.dp, Color.Black))
+                                Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
                             }
                         }
                     }
-                    Button({ editColor = i to false }) {
+                    OutlinedButton({ editColor = i to false }) {
                         Row {
                             Text("Background: ")
                             style?.backgroundColor?.let {
-                                Box(Modifier.background(it.toColor()).border(1.dp, Color.Black))
+                                Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
                             }
                         }
                     }

@@ -12,6 +12,7 @@ import cc.warlock.warlock3.app.views.AppMenuBar
 import cc.warlock.warlock3.app.views.game.GameView
 import cc.warlock.warlock3.app.views.settings.SettingsDialog
 import cc.warlock.warlock3.app.views.sge.SgeWizard
+import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.window.WindowRegistry
@@ -33,6 +34,23 @@ fun FrameWindowScope.WarlockApp(
         VariableRegistry(initialVariables = config[ClientSpec.variables], saveVariables = { variables ->
             saveConfig { newConfig -> newConfig[ClientSpec.variables] = variables }
         })
+    }
+    val highlightRegistry = remember {
+        HighlightRegistry(
+            globalHighlights = config.observe(ClientSpec.globalHighlights).stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList()),
+            characterHighlights = config.observe(ClientSpec.characterHighlights).stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
+            saveGlobalHighlight = { highlight ->
+                saveConfig { config ->
+                    config[ClientSpec.globalHighlights] = config[ClientSpec.globalHighlights] + highlight
+                }
+            },
+            saveHighlight = { characterId, highlight ->
+                saveConfig { config ->
+                    val newHighlights = (config[ClientSpec.characterHighlights][characterId] ?: emptyList()) + highlight
+                    config[ClientSpec.characterHighlights] = config[ClientSpec.characterHighlights] + (characterId to newHighlights)
+                }
+            }
+        )
     }
 
     AppMenuBar(
@@ -102,10 +120,22 @@ fun FrameWindowScope.WarlockApp(
             val windows by windowRegistry.windows.collectAsState()
             windows.keys.forEach { name ->
                 if (name != "main" && windowViewModels.value[name] == null) {
-                    windowViewModels.value += name to WindowViewModel(client = client, name = name, window = windowRegistry.windows.map { it[name] })
+                    windowViewModels.value += name to WindowViewModel(
+                        client = client,
+                        name = name,
+                        window = windowRegistry.windows.map { it[name] },
+                        highlightRegistry = highlightRegistry,
+                    )
                 }
             }
-            val mainWindowViewModel = remember { WindowViewModel("main", client, window = windowRegistry.windows.map { it["main"] }) }
+            val mainWindowViewModel = remember {
+                WindowViewModel(
+                    name = "main",
+                    client = client,
+                    window = windowRegistry.windows.map { it["main"] },
+                    highlightRegistry = highlightRegistry,
+                )
+            }
             GameView(viewModel = viewModel, windowViewModels.value, mainWindowViewModel)
         }
     }
