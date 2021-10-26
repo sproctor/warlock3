@@ -6,7 +6,7 @@ interface ScriptInstance {
     val name: String
     val isRunning: Boolean
 
-    fun start(client: WarlockClient, argumentString: String, variableRegistry: VariableRegistry)
+    fun start(client: WarlockClient, argumentString: String)
 
     fun stop()
 

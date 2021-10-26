@@ -7,7 +7,7 @@ fun AnnotatedString.highlight(highlights: List<Highlight>): AnnotatedString {
     val text = text
     return with(AnnotatedString.Builder(this)) {
         highlights.forEach { highlight ->
-            val index = text.indexOf(highlight.pattern)
+            val index = text.indexOf(highlight.pattern, ignoreCase = highlight.ignoreCase)
             if (index >= 0) {
                 addStyle(highlight.styles[0].toSpanStyle(), index, index + highlight.pattern.length)
             }

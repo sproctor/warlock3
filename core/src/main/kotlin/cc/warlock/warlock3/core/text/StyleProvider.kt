@@ -17,7 +17,7 @@ object StyleProvider {
             "error" to errorStyle,
             "roomName" to WarlockStyle(
                 backgroundColor = WarlockColor(red = 0, green = 0, blue = 0xFF),
-                isEntireLineBackground = true
+                entireLine = true
             )
         )
     fun getStyle(name: String): WarlockStyle {

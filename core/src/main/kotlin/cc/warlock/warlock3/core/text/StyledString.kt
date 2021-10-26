@@ -37,7 +37,7 @@ fun StyledStringLeaf.applyStyle(style: WarlockStyle): StyledStringLeaf {
 data class WarlockStyle(
     val textColor: WarlockColor = WarlockColor(-1),
     val backgroundColor: WarlockColor = WarlockColor(-1),
-    val isEntireLineBackground: Boolean = false,
+    val entireLine: Boolean = false,
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
@@ -47,7 +47,7 @@ data class WarlockStyle(
         return WarlockStyle(
             textColor = if (textColor.isSpecified()) textColor else other.textColor,
             backgroundColor = if (backgroundColor.isSpecified()) backgroundColor else other.backgroundColor,
-            isEntireLineBackground = isEntireLineBackground || other.isEntireLineBackground,
+            entireLine = entireLine || other.entireLine,
             bold = bold || other.bold,
             italic = italic || other.italic,
             underline = underline || other.underline,
@@ -59,6 +59,10 @@ data class WarlockStyle(
 data class WarlockColor(val argb: Long) {
     constructor(value: String) : this(value.toLongOrNull() ?: -1)
     constructor(red: Int, green: Int, blue: Int, alpha: Int = 0xFF) : this(alpha.toLong() * 0x1000000L + red.toLong() * 0x10000L + green.toLong() * 0x100L + blue.toLong())
+
+    companion object {
+        val Unspecified = WarlockColor(-1)
+    }
 }
 
 fun WarlockColor.isUnspecified(): Boolean = !isSpecified()

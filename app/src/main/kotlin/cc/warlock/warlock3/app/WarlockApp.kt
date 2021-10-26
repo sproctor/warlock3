@@ -37,17 +37,32 @@ fun FrameWindowScope.WarlockApp(
     }
     val highlightRegistry = remember {
         HighlightRegistry(
-            globalHighlights = config.observe(ClientSpec.globalHighlights).stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList()),
-            characterHighlights = config.observe(ClientSpec.characterHighlights).stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
-            saveGlobalHighlight = { highlight ->
+            globalHighlights = config.observe(ClientSpec.globalHighlights)
+                .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList()),
+            characterHighlights = config.observe(ClientSpec.characterHighlights)
+                .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
+            addHighlight = { characterId, highlight ->
                 saveConfig { config ->
-                    config[ClientSpec.globalHighlights] = config[ClientSpec.globalHighlights] + highlight
+                    if (characterId != null) {
+                        val newHighlights =
+                            (config[ClientSpec.characterHighlights][characterId] ?: emptyList()) + highlight
+                        config[ClientSpec.characterHighlights] =
+                            config[ClientSpec.characterHighlights] + (characterId to newHighlights)
+                    } else {
+                        config[ClientSpec.globalHighlights] = config[ClientSpec.globalHighlights] + highlight
+                    }
                 }
             },
-            saveHighlight = { characterId, highlight ->
-                saveConfig { config ->
-                    val newHighlights = (config[ClientSpec.characterHighlights][characterId] ?: emptyList()) + highlight
-                    config[ClientSpec.characterHighlights] = config[ClientSpec.characterHighlights] + (characterId to newHighlights)
+            deleteHighlight = { characterId, pattern ->
+                if (characterId != null) {
+                    val newHighlights =
+                        (config[ClientSpec.characterHighlights][characterId]
+                            ?: emptyList()).filter { it.pattern != pattern }
+                    config[ClientSpec.characterHighlights] =
+                        config[ClientSpec.characterHighlights] + (characterId to newHighlights)
+                } else {
+                    config[ClientSpec.globalHighlights] =
+                        config[ClientSpec.globalHighlights].filter { it.pattern != pattern }
                 }
             }
         )
@@ -113,7 +128,8 @@ fun FrameWindowScope.WarlockApp(
                     client = client,
                     macroRepository = macroRepository,
                     windowRegistry = windowRegistry,
-                    variableRegistry = variableRegistry
+                    variableRegistry = variableRegistry,
+                    highlightRegistry = highlightRegistry,
                 )
             }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }

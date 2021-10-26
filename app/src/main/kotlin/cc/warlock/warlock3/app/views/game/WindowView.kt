@@ -79,7 +79,7 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                                 val highlightedLine = annotatedString.highlight(highlights)
                                 Box(
                                     modifier = Modifier.fillParentMaxWidth()
-                                        .background(line.backgroundColor?.toColor() ?: Color.Unspecified)
+                                        .background(line.style?.backgroundColor?.toColor() ?: Color.Unspecified)
                                 ) {
                                     Text(text = highlightedLine)
                                 }

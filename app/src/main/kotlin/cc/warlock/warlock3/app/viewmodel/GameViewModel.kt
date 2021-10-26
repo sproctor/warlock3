@@ -7,6 +7,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.macros.macroCommands
+import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.script.ScriptInstance
@@ -31,6 +32,7 @@ class GameViewModel(
     val client: StormfrontClient,
     val macroRepository: MacroRepository,
     val variableRegistry: VariableRegistry,
+    val highlightRegistry: HighlightRegistry,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -91,8 +93,13 @@ class GameViewModel(
             if (file.exists()) {
                 client.print(StyledString("File exists"))
                 val script = WslScript(name = scriptName, file = file)
-                val scriptInstance = WslScriptInstance(name = scriptName, script = script)
-                scriptInstance.start(client = client, argumentString = args, variableRegistry = variableRegistry)
+                val scriptInstance = WslScriptInstance(
+                    name = scriptName,
+                    script = script,
+                    variableRegistry = variableRegistry,
+                    highlightRegistry = highlightRegistry,
+                )
+                scriptInstance.start(client = client, argumentString = args)
                 scriptInstances.value += scriptInstance
             } else {
                 client.print(StyledString("Could not find a script with that name"))

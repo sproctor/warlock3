@@ -1,13 +1,18 @@
 package cc.warlock.warlock3.core.script.wsl
 
-import cc.warlock.warlock3.core.*
 import cc.warlock.warlock3.core.client.ClientNavEvent
 import cc.warlock.warlock3.core.client.ClientPromptEvent
 import cc.warlock.warlock3.core.client.ClientTextEvent
 import cc.warlock.warlock3.core.client.WarlockClient
+import cc.warlock.warlock3.core.highlights.Highlight
+import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
-import kotlinx.coroutines.*
+import cc.warlock.warlock3.core.text.WarlockStyle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -17,6 +22,7 @@ class WslContext(
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
     private val variableRegistry: VariableRegistry,
+    private val highlightRegistry: HighlightRegistry,
 ) : AutoCloseable {
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -211,5 +217,28 @@ class WslContext(
 
     override fun close() {
         scope.cancel()
+    }
+
+    fun addHighlight(
+        pattern: String,
+        style: WarlockStyle,
+        matchPartialWord: Boolean,
+        ignoreCase: Boolean,
+        isRegex: Boolean,
+    ) {
+        highlightRegistry.addHighlight(
+            client.characterId.value?.lowercase(),
+            Highlight(
+                pattern = pattern,
+                styles = listOf(style),
+                matchPartialWord = matchPartialWord,
+                ignoreCase = ignoreCase,
+                isRegex = isRegex,
+            )
+        )
+    }
+
+    fun deleteHighlight(pattern: String) {
+        highlightRegistry.deleteHighlight(client.characterId.value?.lowercase(), pattern)
     }
 }

@@ -10,15 +10,15 @@ class TextStream(
     // Line state variables
     private var buffer: StyledString? = null
     private var isPrompting = false
-    private var lineBackgroundColor: WarlockColor? = null
+    private var lineStyle: WarlockStyle? = null
 
     private val _lines = MutableStateFlow<List<StreamLine>>(emptyList())
     val lines = _lines.asStateFlow()
 
     fun append(text: String, styles: List<WarlockStyle>) {
         styles.forEach {
-            if (it.isEntireLineBackground)
-                lineBackgroundColor = it.backgroundColor
+            if (it.entireLine)
+                lineStyle = it
         }
         val newString = StyledString(
             text = text,
@@ -30,8 +30,8 @@ class TextStream(
 
     fun appendVariable(name: String, styles: List<WarlockStyle>) {
         styles.forEach {
-            if (it.isEntireLineBackground)
-                lineBackgroundColor = it.backgroundColor
+            if (it.entireLine)
+                lineStyle = it
         }
         val newString = StyledString(
             listOf(
@@ -46,7 +46,7 @@ class TextStream(
     }
 
     fun appendMessage(text: StyledString) {
-        _lines.value += StreamLine(ignoreWhenBlank = false, backgroundColor = null, stringFactory = { text })
+        _lines.value += StreamLine(ignoreWhenBlank = false, style = null, stringFactory = { text })
         isPrompting = false
     }
 
@@ -67,7 +67,7 @@ class TextStream(
         } else {
             _lines.value += StreamLine(
                 ignoreWhenBlank = false,
-                backgroundColor = null,
+                style = null,
                 stringFactory = { StyledString(command) },
             )
         }
@@ -79,10 +79,10 @@ class TextStream(
         val text = buffer ?: StyledString("")
         _lines.value = _lines.value + StreamLine(
             ignoreWhenBlank = ignoreWhenBlank,
-            backgroundColor = lineBackgroundColor,
+            style = lineStyle,
             stringFactory = { text }
         )
-        lineBackgroundColor = null
+        lineStyle = null
         buffer = null
         isPrompting = false
         return text.toPlainString()
@@ -93,7 +93,7 @@ class TextStream(
             isPrompting = true
             _lines.value += StreamLine(
                 ignoreWhenBlank = false,
-                backgroundColor = null,
+                style = null,
                 stringFactory = { StyledString(prompt) })
         }
     }
@@ -101,6 +101,6 @@ class TextStream(
 
 data class StreamLine(
     val ignoreWhenBlank: Boolean,
-    val backgroundColor: WarlockColor?,
+    val style: WarlockStyle?,
     val stringFactory: (Map<String, StyledString>) -> StyledString,
 )

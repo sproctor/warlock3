@@ -41,13 +41,21 @@ fun HighlightsView(
         Column(Modifier.fillMaxWidth().weight(1f)) {
             highlights.forEach { highlight ->
                 ListItem(
-                    modifier = Modifier.clickable { editingHighlight = highlight},
+                    modifier = Modifier.clickable { editingHighlight = highlight },
                     text = { Text(highlight.pattern) },
                 )
             }
         }
         Column(Modifier.fillMaxWidth().weight(1f)) {
-            Button(onClick = { editingHighlight = Highlight("", emptyList(), false) }) {
+            Button(onClick = {
+                editingHighlight = Highlight(
+                    pattern = "",
+                    styles = emptyList(),
+                    isRegex = false,
+                    ignoreCase = true,
+                    matchPartialWord = true,
+                )
+            }) {
                 Icon(imageVector = WarlockIcons.Add, contentDescription = null)
             }
         }
@@ -90,7 +98,11 @@ fun EditHighlightDialog(
         ) {
             TextField(value = pattern, label = { Text("Pattern") }, onValueChange = { pattern = it })
             // Add | to match empty string, then match and see how many groups there are
-            val groupCount = if (isRegex) try { Regex("$pattern|") } catch (e: Throwable) { null }?.find("")?.groups?.size ?: 1 else 1
+            val groupCount = if (isRegex) try {
+                Regex("$pattern|")
+            } catch (e: Throwable) {
+                null
+            }?.find("")?.groups?.size ?: 1 else 1
             Column {
                 for (i in 0 until groupCount) {
                     val style = styles.getOrNull(i)
@@ -115,7 +127,15 @@ fun EditHighlightDialog(
             Row {
                 Button(
                     onClick = {
-                        saveHighlight(Highlight(pattern, styles, false))
+                        saveHighlight(
+                            Highlight(
+                                pattern = pattern,
+                                styles = styles,
+                                isRegex = false,
+                                matchPartialWord = true,
+                                ignoreCase = true,
+                            )
+                        )
                     }
                 ) {
                     Text("OK")
@@ -138,7 +158,7 @@ fun EditHighlightDialog(
                     else
                         currentStyle.copy(backgroundColor = color.toWarlockColor())
                 if (styles.size < group + 1) {
-                    for (i in styles.size .. group) {
+                    for (i in styles.size..group) {
                         styles.add(WarlockStyle())
                     }
                 }

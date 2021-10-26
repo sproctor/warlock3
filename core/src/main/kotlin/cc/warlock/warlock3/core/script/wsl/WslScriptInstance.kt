@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.core.script.wsl
 
 import cc.warlock.warlock3.core.client.WarlockClient
+import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.script.ScriptInstance
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleProvider
@@ -13,6 +14,8 @@ import kotlinx.coroutines.launch
 class WslScriptInstance(
     override val name: String,
     private val script: WslScript,
+    private val variableRegistry: VariableRegistry,
+    private val highlightRegistry: HighlightRegistry,
 ) : ScriptInstance {
     private var _isRunning = false
     override val isRunning: Boolean
@@ -20,7 +23,7 @@ class WslScriptInstance(
     private lateinit var lines: List<WslLine>
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    override fun start(client: WarlockClient, argumentString: String, variableRegistry: VariableRegistry) {
+    override fun start(client: WarlockClient, argumentString: String) {
         val arguments = parseArguments(argumentString)
         _isRunning = true
         scope.launch {
@@ -30,7 +33,8 @@ class WslScriptInstance(
                     client = client,
                     lines = lines,
                     scriptInstance = this@WslScriptInstance,
-                    variableRegistry = variableRegistry
+                    variableRegistry = variableRegistry,
+                    highlightRegistry = highlightRegistry,
                 )
                 context.setScriptVariable("0", WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->
