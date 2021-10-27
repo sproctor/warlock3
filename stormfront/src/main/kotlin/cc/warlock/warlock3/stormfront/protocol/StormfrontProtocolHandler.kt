@@ -8,7 +8,6 @@ import org.antlr.v4.runtime.CommonTokenStream
 import java.util.*
 
 class StormfrontProtocolHandler {
-    private val elementStack = LinkedList<StartElement>()
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
         "app" to AppHandler(),
@@ -24,6 +23,7 @@ class StormfrontProtocolHandler {
         "mode" to ModeHandler(),
         "nav" to NavHandler(),
         "output" to OutputHandler(),
+        "preset" to PresetHandler(),
         "popbold" to PopBoldHandler(),
         "popstream" to PopStreamHandler(),
         "progressbar" to ProgressBarHandler(),
@@ -53,8 +53,9 @@ class StormfrontProtocolHandler {
     }
 
     private fun handleContent(contents: List<Content>): List<StormfrontEvent> {
-        // FIXME: this is kind of hacky
+        // open/close tags must occur on the same line
         var lineHasTags = false
+        val elementStack = LinkedList<StartElement>()
         val events = LinkedList<StormfrontEvent>()
         for (content in contents) {
             when (content) {
@@ -92,7 +93,6 @@ class StormfrontProtocolHandler {
         }
         // If a line has tags, ignore it when it has no text
         events.add(StormfrontEolEvent(ignoreWhenBlank = lineHasTags))
-
         return events
     }
 }
