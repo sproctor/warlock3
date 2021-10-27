@@ -61,7 +61,7 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     var lastIndex by remember { mutableStateOf(0) }
     val highlights by viewModel.highlights.collectAsState(emptyList())
 
-    BoxWithConstraints(Modifier.background(viewModel.backgroundColor.value).padding(4.dp)) {
+    BoxWithConstraints(Modifier.background(viewModel.backgroundColor.value).padding(vertical = 4.dp)) {
         val height = this.maxHeight
         SelectionContainer {
             CompositionLocalProvider(LocalTextStyle provides TextStyle(color = viewModel.textColor.value)) {
@@ -80,6 +80,7 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                                 Box(
                                     modifier = Modifier.fillParentMaxWidth()
                                         .background(line.style?.backgroundColor?.toColor() ?: Color.Unspecified)
+                                        .padding(horizontal = 4.dp)
                                 ) {
                                     Text(text = highlightedLine)
                                 }
