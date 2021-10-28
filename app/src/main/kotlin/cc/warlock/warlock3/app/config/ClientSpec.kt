@@ -3,6 +3,8 @@ package cc.warlock.warlock3.app.config
 import cc.warlock.warlock3.app.model.Account
 import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.core.highlights.Highlight
+import cc.warlock.warlock3.core.text.WarlockColor
+import cc.warlock.warlock3.core.text.WarlockStyle
 import com.uchuhimo.konf.ConfigSpec
 
 object ClientSpec : ConfigSpec("client") {
@@ -21,4 +23,8 @@ object ClientSpec : ConfigSpec("client") {
 
     val globalHighlights by optional<List<Highlight>>(emptyList())
     val characterHighlights by optional<Map<String, List<Highlight>>>(emptyMap())
+
+    val styles by optional<Map<String, WarlockStyle>>(emptyMap())
+    val textColor by optional<WarlockColor>(WarlockColor("#F0F0FF"))
+    val backgroundColor by optional<WarlockColor>(WarlockColor("#191932"))
 }

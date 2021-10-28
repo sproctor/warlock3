@@ -15,6 +15,7 @@ import cc.warlock.warlock3.app.views.sge.SgeWizard
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.text.StyleRegistry
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.uchuhimo.konf.Config
@@ -67,6 +68,15 @@ fun FrameWindowScope.WarlockApp(
             }
         )
     }
+    val styleRegistry = remember {
+        StyleRegistry(
+            caseSensitiveStyles = config.observe(ClientSpec.styles),
+            scope = scope,
+            saveStyle = { characterId, style ->
+
+            }
+        )
+    }
 
     AppMenuBar(
         windowRegistry = windowRegistry,
@@ -105,6 +115,7 @@ fun FrameWindowScope.WarlockApp(
                     port = currentState.port,
                     windowRegistry = windowRegistry,
                     maxTypeAhead = config[ClientSpec.maxTypeAhead],
+                    styleRegistry = styleRegistry,
                 ).apply {
                     connect(currentState.key)
                 }
@@ -130,6 +141,7 @@ fun FrameWindowScope.WarlockApp(
                     windowRegistry = windowRegistry,
                     variableRegistry = variableRegistry,
                     highlightRegistry = highlightRegistry,
+                    styleRegistry = styleRegistry,
                 )
             }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }
@@ -163,6 +175,7 @@ fun FrameWindowScope.WarlockApp(
                 showSettings = false
             },
             variableRegistry = variableRegistry,
+            styleRegistry = styleRegistry,
             updateConfig = saveConfig,
         )
     }

@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class TextStream(
-    val name: String
+    val name: String,
+    private val styleRegistry: StyleRegistry,
 ) {
     // Line state variables
     private var buffer: StyledString? = null
@@ -46,29 +47,25 @@ class TextStream(
     }
 
     fun appendMessage(text: StyledString) {
-        _lines.value += StreamLine(ignoreWhenBlank = false, style = null, stringFactory = { text })
+        _lines.value += StreamLine(ignoreWhenBlank = false, style = null, text = text)
         isPrompting = false
     }
 
     fun appendCommand(command: String) {
         val string = StyledString(
             text = command,
-            style = StyleProvider.commandStyle,
+            style = styleRegistry.commandStyle,
         )
         if (isPrompting) {
             val lastLine = _lines.value.last().copy()
             _lines.value = _lines.value.dropLast(1) +
-                    lastLine.copy(
-                        stringFactory = {
-                            lastLine.stringFactory(it) + StyledString(" ") + string
-                        }
-                    )
+                    lastLine.copy(text = lastLine.text + StyledString(" ") + string)
             isPrompting = false
         } else {
             _lines.value += StreamLine(
                 ignoreWhenBlank = false,
                 style = null,
-                stringFactory = { StyledString(command) },
+                text = StyledString(command),
             )
         }
     }
@@ -80,7 +77,7 @@ class TextStream(
         _lines.value = _lines.value + StreamLine(
             ignoreWhenBlank = ignoreWhenBlank,
             style = lineStyle,
-            stringFactory = { text }
+            text = text,
         )
         lineStyle = null
         buffer = null
@@ -94,7 +91,8 @@ class TextStream(
             _lines.value += StreamLine(
                 ignoreWhenBlank = false,
                 style = null,
-                stringFactory = { StyledString(prompt) })
+                text = StyledString(prompt),
+            )
         }
     }
 }
@@ -102,5 +100,5 @@ class TextStream(
 data class StreamLine(
     val ignoreWhenBlank: Boolean,
     val style: WarlockStyle?,
-    val stringFactory: (Map<String, StyledString>) -> StyledString,
+    val text: StyledString,
 )

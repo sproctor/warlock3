@@ -11,6 +11,8 @@ import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.util.observe
 import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.text.StyleRegistry
+import cc.warlock.warlock3.core.text.WarlockColor
 import com.uchuhimo.konf.Config
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -20,16 +22,20 @@ fun SettingsDialog(
     config: Config,
     updateConfig: ((Config) -> Unit) -> Unit,
     variableRegistry: VariableRegistry,
+    styleRegistry: StyleRegistry,
     closeDialog: () -> Unit,
 ) {
     Window(
         title = "Settings",
         onCloseRequest = closeDialog,
     ) {
-        var state: SettingsState by remember { mutableStateOf(VariableSettingsState) }
+        var state: SettingsState by remember { mutableStateOf(AppearanceSettingsState) }
 
         Row(Modifier.fillMaxSize()) {
-            Column(Modifier.width(200.dp).fillMaxHeight()) {
+            Column(Modifier.width(160.dp).fillMaxHeight()) {
+                TextButton(onClick = { state = AppearanceSettingsState }) {
+                    Text("Appearance")
+                }
                 TextButton(onClick = { state = VariableSettingsState }) {
                     Text("Variables")
                 }
@@ -106,6 +112,16 @@ fun SettingsDialog(
                         }
                     }
                 )
+                AppearanceSettingsState -> {
+                    val defaultTextColor by config.observe(ClientSpec.textColor).collectAsState(WarlockColor("#F0F0FF"))
+                    val defaultBackgroundColor by config.observe(ClientSpec.backgroundColor).collectAsState(WarlockColor("#191932"))
+                    AppearanceView(
+                        defaultTextColor = defaultTextColor,
+                        defaultBackgroundColor = defaultBackgroundColor,
+                        defaultFont = "",
+                        styleRegistry = styleRegistry,
+                    )
+                }
             }
         }
     }
@@ -115,3 +131,4 @@ sealed class SettingsState
 object VariableSettingsState : SettingsState()
 object MacroSettingsState : SettingsState()
 object HighlightSettingsState : SettingsState()
+object AppearanceSettingsState : SettingsState()

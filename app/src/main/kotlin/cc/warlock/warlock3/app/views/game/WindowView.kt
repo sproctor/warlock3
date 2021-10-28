@@ -73,8 +73,7 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                         state = scrollState
                     ) {
                         items(lines) { line ->
-                            val annotatedString =
-                                line.stringFactory(components.value).toAnnotatedString(components.value)
+                            val annotatedString = line.text.toAnnotatedString(components.value)
                             if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
                                 val highlightedLine = annotatedString.highlight(highlights)
                                 Box(

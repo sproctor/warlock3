@@ -2,6 +2,7 @@ package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
+import cc.warlock.warlock3.core.text.StyleRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.text.flattenStyles
@@ -24,6 +25,7 @@ class StormfrontClient(
     port: Int,
     override val maxTypeAhead: Int,
     private val windowRegistry: WindowRegistry,
+    private val styleRegistry: StyleRegistry,
 ) : WarlockClient {
     private val socket = Socket(host, port)
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
@@ -38,7 +40,7 @@ class StormfrontClient(
     private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
     override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
 
-    private val mainStream = TextStream("main")
+    private val mainStream = TextStream("main", styleRegistry)
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
 
     private var parseText = true
@@ -66,7 +68,7 @@ class StormfrontClient(
             sendCommand("/FE:STORMFRONT /XML", echo = false)
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-            val protocolHandler = StormfrontProtocolHandler()
+            val protocolHandler = StormfrontProtocolHandler(styleRegistry)
 
             while (!socket.isClosed) {
                 try {
@@ -281,6 +283,6 @@ class StormfrontClient(
 
     @Synchronized
     fun getStream(name: String): TextStream {
-        return streams.getOrPut(name) { TextStream(name) }
+        return streams.getOrPut(name) { TextStream(name, styleRegistry) }
     }
 }
