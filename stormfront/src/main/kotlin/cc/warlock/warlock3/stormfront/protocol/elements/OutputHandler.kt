@@ -13,8 +13,9 @@ class OutputHandler : BaseElementListener() {
 }
 
 fun getStyleByClass(name: String?): WarlockStyle? {
-    return when (name) {
-        "mono" -> WarlockStyle(monospace = true)
-        else -> null
+    return if (name?.isNotBlank() == true) {
+        WarlockStyle(name)
+    } else {
+        null
     }
 }

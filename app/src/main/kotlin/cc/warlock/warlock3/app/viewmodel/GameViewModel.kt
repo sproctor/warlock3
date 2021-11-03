@@ -14,7 +14,6 @@ import cc.warlock.warlock3.core.script.ScriptInstance
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.script.wsl.WslScript
 import cc.warlock.warlock3.core.script.wsl.WslScriptInstance
-import cc.warlock.warlock3.core.text.StyleRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -34,7 +33,6 @@ class GameViewModel(
     val macroRepository: MacroRepository,
     val variableRegistry: VariableRegistry,
     val highlightRegistry: HighlightRegistry,
-    val styleRegistry: StyleRegistry,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -100,7 +98,6 @@ class GameViewModel(
                     script = script,
                     variableRegistry = variableRegistry,
                     highlightRegistry = highlightRegistry,
-                    styleRegistry = styleRegistry,
                 )
                 scriptInstance.start(client = client, argumentString = args)
                 scriptInstances.value += scriptInstance

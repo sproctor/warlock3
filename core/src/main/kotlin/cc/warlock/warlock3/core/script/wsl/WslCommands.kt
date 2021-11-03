@@ -1,7 +1,7 @@
 package cc.warlock.warlock3.core.script.wsl
 
 import cc.warlock.warlock3.core.text.WarlockColor
-import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.util.findArgumentBreak
 import cc.warlock.warlock3.core.util.parseArguments
 import cc.warlock.warlock3.core.util.toWarlockColor
@@ -50,7 +50,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         }
         context.addHighlight(
             pattern = pattern!!,
-            style = WarlockStyle(
+            style = StyleDefinition(
                 textColor = textColor ?: WarlockColor.Unspecified,
                 backgroundColor = backgroundColor ?: WarlockColor.Unspecified,
                 entireLine = entireLine,

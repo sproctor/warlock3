@@ -2,10 +2,8 @@ package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
-import cc.warlock.warlock3.core.text.StyleRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
-import cc.warlock.warlock3.core.text.flattenStyles
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
@@ -25,7 +23,6 @@ class StormfrontClient(
     port: Int,
     override val maxTypeAhead: Int,
     private val windowRegistry: WindowRegistry,
-    private val styleRegistry: StyleRegistry,
 ) : WarlockClient {
     private val socket = Socket(host, port)
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
@@ -40,7 +37,7 @@ class StormfrontClient(
     private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
     override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
 
-    private val mainStream = TextStream("main", styleRegistry)
+    private val mainStream = TextStream("main")
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
 
     private var parseText = true
@@ -68,7 +65,7 @@ class StormfrontClient(
             sendCommand("/FE:STORMFRONT /XML", echo = false)
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-            val protocolHandler = StormfrontProtocolHandler(styleRegistry)
+            val protocolHandler = StormfrontProtocolHandler()
 
             while (!socket.isClosed) {
                 try {
@@ -184,7 +181,7 @@ class StormfrontClient(
                                     is StormfrontComponentTextEvent -> {
                                         val string = StyledString(
                                             text = event.text,
-                                            style = flattenStyles(listOfNotNull(currentStyle))
+                                            styles = listOfNotNull(currentStyle)
                                         )
                                         componentText = componentText?.plus(string) ?: string
                                     }
@@ -228,7 +225,7 @@ class StormfrontClient(
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    mainStream.append(text = line, styles = listOf(WarlockStyle(monospace = true)))
+                                    mainStream.append(text = line, styles = listOf(WarlockStyle.Mono))
                                 }
                             } else {
                                 while (reader.ready()) {
@@ -237,7 +234,7 @@ class StormfrontClient(
                                 print(buffer.toString())
                                 mainStream.append(
                                     text = buffer.toString(),
-                                    styles = listOf(WarlockStyle(monospace = true))
+                                    styles = listOf(WarlockStyle.Mono)
                                 )
                             }
                         }
@@ -283,6 +280,6 @@ class StormfrontClient(
 
     @Synchronized
     fun getStream(name: String): TextStream {
-        return streams.getOrPut(name) { TextStream(name, styleRegistry) }
+        return streams.getOrPut(name) { TextStream(name) }
     }
 }

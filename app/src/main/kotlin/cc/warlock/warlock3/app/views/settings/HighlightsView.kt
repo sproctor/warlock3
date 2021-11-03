@@ -22,7 +22,7 @@ import cc.warlock.warlock3.app.components.ColorPicker
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.highlights.Highlight
-import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.text.StyleDefinition
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -84,7 +84,7 @@ fun EditHighlightDialog(
 ) {
     var editColor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
     var pattern by remember { mutableStateOf(highlight.pattern) }
-    val styles = remember { mutableListOf<WarlockStyle>().apply { addAll(highlight.styles) } }
+    val styles = remember { mutableListOf<StyleDefinition>().apply { addAll(highlight.styles) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
@@ -110,19 +110,21 @@ fun EditHighlightDialog(
             Column {
                 for (i in 0 until groupCount) {
                     val style = styles.getOrNull(i)
-                    OutlinedButton({ editColor = i to true }) {
-                        Row {
-                            Text("Content: ")
-                            style?.textColor?.let {
-                                Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
+                    Row {
+                        OutlinedButton({ editColor = i to true }) {
+                            Row {
+                                Text("Text: ")
+                                style?.textColor?.let {
+                                    Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
+                                }
                             }
                         }
-                    }
-                    OutlinedButton({ editColor = i to false }) {
-                        Row {
-                            Text("Background: ")
-                            style?.backgroundColor?.let {
-                                Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
+                        OutlinedButton({ editColor = i to false }) {
+                            Row {
+                                Text("Background: ")
+                                style?.backgroundColor?.let {
+                                    Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
+                                }
                             }
                         }
                     }
@@ -163,7 +165,7 @@ fun EditHighlightDialog(
                 ColorPicker(
                     modifier = Modifier.padding(top = 120.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
                 ) { color ->
-                    val currentStyle = styles.getOrNull(group) ?: WarlockStyle()
+                    val currentStyle = styles.getOrNull(group) ?: StyleDefinition()
                     val newStyle =
                         if (content)
                             currentStyle.copy(textColor = color.toWarlockColor())
@@ -171,7 +173,7 @@ fun EditHighlightDialog(
                             currentStyle.copy(backgroundColor = color.toWarlockColor())
                     if (styles.size < group + 1) {
                         for (i in styles.size..group) {
-                            styles.add(WarlockStyle())
+                            styles.add(StyleDefinition())
                         }
                     }
                     styles[group] = newStyle

@@ -11,8 +11,7 @@ import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.util.observe
 import cc.warlock.warlock3.core.script.VariableRegistry
-import cc.warlock.warlock3.core.text.StyleRegistry
-import cc.warlock.warlock3.core.text.WarlockColor
+import cc.warlock.warlock3.core.text.StyleRepository
 import com.uchuhimo.konf.Config
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -22,7 +21,7 @@ fun SettingsDialog(
     config: Config,
     updateConfig: ((Config) -> Unit) -> Unit,
     variableRegistry: VariableRegistry,
-    styleRegistry: StyleRegistry,
+    styleRepository: StyleRepository,
     closeDialog: () -> Unit,
 ) {
     Window(
@@ -30,6 +29,7 @@ fun SettingsDialog(
         onCloseRequest = closeDialog,
     ) {
         var state: SettingsState by remember { mutableStateOf(AppearanceSettingsState) }
+        val characters by config.observe(ClientSpec.characters).collectAsState(emptyList())
 
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.width(160.dp).fillMaxHeight()) {
@@ -48,7 +48,7 @@ fun SettingsDialog(
             }
             when (state) {
                 VariableSettingsState -> {
-                    val initialCharacter = currentCharacter ?: config[ClientSpec.characters].firstOrNull()?.characterName
+                    val initialCharacter = currentCharacter ?: characters.firstOrNull()?.characterName
                     if (initialCharacter != null) {
                         VariablesView(
                             currentCharacter = initialCharacter,
@@ -113,13 +113,16 @@ fun SettingsDialog(
                     }
                 )
                 AppearanceSettingsState -> {
-                    val defaultTextColor by config.observe(ClientSpec.textColor).collectAsState(WarlockColor("#F0F0FF"))
-                    val defaultBackgroundColor by config.observe(ClientSpec.backgroundColor).collectAsState(WarlockColor("#191932"))
                     AppearanceView(
-                        defaultTextColor = defaultTextColor,
-                        defaultBackgroundColor = defaultBackgroundColor,
-                        defaultFont = "",
-                        styleRegistry = styleRegistry,
+                        styleRepository = styleRepository,
+                        currentId = currentCharacter,
+                        characters = characters,
+                        saveStyle = { characterId, name, styleDefinition ->
+                            updateConfig { newConfig ->
+                                val newStyles = (newConfig[ClientSpec.styles][characterId] ?: emptyMap()) + (name to styleDefinition)
+                                newConfig[ClientSpec.styles] = newConfig[ClientSpec.styles] + (characterId to newStyles)
+                            }
+                        }
                     )
                 }
             }

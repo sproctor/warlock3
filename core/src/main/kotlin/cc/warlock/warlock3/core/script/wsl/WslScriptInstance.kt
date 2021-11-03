@@ -4,8 +4,8 @@ import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.script.ScriptInstance
 import cc.warlock.warlock3.core.script.VariableRegistry
-import cc.warlock.warlock3.core.text.StyleRegistry
 import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.parseArguments
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +16,6 @@ class WslScriptInstance(
     private val script: WslScript,
     private val variableRegistry: VariableRegistry,
     private val highlightRegistry: HighlightRegistry,
-    private val styleRegistry: StyleRegistry,
 ) : ScriptInstance {
     private var _isRunning = false
     override val isRunning: Boolean
@@ -51,10 +50,10 @@ class WslScriptInstance(
                     line.statement.execute(context)
                 }
             } catch (e: WslParseException) {
-                client.print(StyledString(e.reason, style = styleRegistry.errorStyle))
+                client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
             } catch (e: WslRuntimeException) {
                 _isRunning = false
-                client.print(StyledString("Script error: ${e.reason}", styleRegistry.errorStyle))
+                client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
             }
         }
     }

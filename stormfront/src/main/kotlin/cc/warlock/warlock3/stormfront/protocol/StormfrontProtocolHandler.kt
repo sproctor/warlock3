@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.stormfront.protocol
 
-import cc.warlock.warlock3.core.text.StyleRegistry
+import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.stormfront.parser.StormfrontLexer
 import cc.warlock.warlock3.stormfront.parser.StormfrontParser
 import cc.warlock.warlock3.stormfront.protocol.elements.*
@@ -8,11 +8,11 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.util.*
 
-class StormfrontProtocolHandler(styleRegistry: StyleRegistry) {
+class StormfrontProtocolHandler() {
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
         "app" to AppHandler(),
-        "b" to BHandler(styleRegistry),
+        "b" to BHandler(),
         "casttime" to CastTimeHandler(),
         "compass" to CompassHandler(),
         "compdef" to CompDefHandler(),
@@ -24,19 +24,19 @@ class StormfrontProtocolHandler(styleRegistry: StyleRegistry) {
         "mode" to ModeHandler(),
         "nav" to NavHandler(),
         "output" to OutputHandler(),
-        "preset" to PresetHandler(styleRegistry),
+        "preset" to PresetHandler(),
         "popbold" to PopBoldHandler(),
         "popstream" to PopStreamHandler(),
         "progressbar" to ProgressBarHandler(),
         "prompt" to PromptHandler(),
-        "pushbold" to PushBoldHandler(styleRegistry),
+        "pushbold" to PushBoldHandler(),
         "pushstream" to PushStreamHandler(),
         "right" to RightHandler(),
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
         "streamwindow" to StreamWindowHandler(),
         "spell" to SpellHandler(),
-        "style" to StyleHandler(styleRegistry),
+        "style" to StyleHandler(),
     )
 
     fun parseLine(line: String): List<StormfrontEvent> {

@@ -8,7 +8,7 @@ import cc.warlock.warlock3.core.highlights.Highlight
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
-import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.text.StyleDefinition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -221,7 +221,7 @@ class WslContext(
 
     fun addHighlight(
         pattern: String,
-        style: WarlockStyle,
+        style: StyleDefinition,
         matchPartialWord: Boolean,
         ignoreCase: Boolean,
         isRegex: Boolean,

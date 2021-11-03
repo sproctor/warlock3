@@ -19,10 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import cc.warlock.warlock3.app.util.getEntireLineStyles
 import cc.warlock.warlock3.app.util.highlight
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
+import cc.warlock.warlock3.core.text.flattenStyles
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.lang.Integer.max
@@ -60,11 +62,14 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     val scope = rememberCoroutineScope()
     var lastIndex by remember { mutableStateOf(0) }
     val highlights by viewModel.highlights.collectAsState(emptyList())
+    val styleMap by viewModel.styleMap.collectAsState(emptyMap())
+    val backgroundColor = styleMap["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
+    val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
 
-    BoxWithConstraints(Modifier.background(viewModel.backgroundColor.value).padding(vertical = 4.dp)) {
+    BoxWithConstraints(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         val height = this.maxHeight
         SelectionContainer {
-            CompositionLocalProvider(LocalTextStyle provides TextStyle(color = viewModel.textColor.value)) {
+            CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
                 Row(modifier = Modifier.matchParentSize()) {
                     LazyColumn(
                         modifier = Modifier
@@ -73,12 +78,19 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
                         state = scrollState
                     ) {
                         items(lines) { line ->
-                            val annotatedString = line.text.toAnnotatedString(components.value)
+                            val annotatedString =
+                                line.text.toAnnotatedString(variables = components.value, styleMap = styleMap)
+                            val lineStyle = flattenStyles(
+                                line.text.getEntireLineStyles(
+                                    variables = components.value,
+                                    styleMap = styleMap,
+                                )
+                            )
                             if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
                                 val highlightedLine = annotatedString.highlight(highlights)
                                 Box(
                                     modifier = Modifier.fillParentMaxWidth()
-                                        .background(line.style?.backgroundColor?.toColor() ?: Color.Unspecified)
+                                        .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
                                         .padding(horizontal = 4.dp)
                                 ) {
                                     Text(text = highlightedLine)

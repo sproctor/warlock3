@@ -15,7 +15,7 @@ import cc.warlock.warlock3.app.views.sge.SgeWizard
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.script.VariableRegistry
-import cc.warlock.warlock3.core.text.StyleRegistry
+import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.uchuhimo.konf.Config
@@ -68,12 +68,14 @@ fun FrameWindowScope.WarlockApp(
             }
         )
     }
-    val styleRegistry = remember {
-        StyleRegistry(
+    val styleRepository = remember {
+        StyleRepository(
             caseSensitiveStyles = config.observe(ClientSpec.styles),
-            scope = scope,
-            saveStyle = { characterId, style ->
-
+            saveStyle = { characterId, name, style ->
+                saveConfig { config ->
+                    val newStyles = (config[ClientSpec.styles][characterId] ?: emptyMap()) + (name to style)
+                    config[ClientSpec.styles] = config[ClientSpec.styles] + (characterId to newStyles)
+                }
             }
         )
     }
@@ -115,7 +117,6 @@ fun FrameWindowScope.WarlockApp(
                     port = currentState.port,
                     windowRegistry = windowRegistry,
                     maxTypeAhead = config[ClientSpec.maxTypeAhead],
-                    styleRegistry = styleRegistry,
                 ).apply {
                     connect(currentState.key)
                 }
@@ -141,7 +142,6 @@ fun FrameWindowScope.WarlockApp(
                     windowRegistry = windowRegistry,
                     variableRegistry = variableRegistry,
                     highlightRegistry = highlightRegistry,
-                    styleRegistry = styleRegistry,
                 )
             }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }
@@ -153,6 +153,7 @@ fun FrameWindowScope.WarlockApp(
                         name = name,
                         window = windowRegistry.windows.map { it[name] },
                         highlightRegistry = highlightRegistry,
+                        styleRepository = styleRepository,
                     )
                 }
             }
@@ -162,6 +163,7 @@ fun FrameWindowScope.WarlockApp(
                     client = client,
                     window = windowRegistry.windows.map { it["main"] },
                     highlightRegistry = highlightRegistry,
+                    styleRepository = styleRepository,
                 )
             }
             GameView(viewModel = viewModel, windowViewModels.value, mainWindowViewModel)
@@ -175,7 +177,7 @@ fun FrameWindowScope.WarlockApp(
                 showSettings = false
             },
             variableRegistry = variableRegistry,
-            styleRegistry = styleRegistry,
+            styleRepository = styleRepository,
             updateConfig = saveConfig,
         )
     }

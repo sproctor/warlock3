@@ -6,22 +6,20 @@ import androidx.compose.ui.graphics.Color
 import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.util.toSpanStyle
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
+import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 
 class WindowViewModel(
     val name: String,
     client: StormfrontClient,
     val window: Flow<Window?>,
     val highlightRegistry: HighlightRegistry,
+    private val styleRepository: StyleRepository,
 ) {
-    private val _backgroundColor = mutableStateOf(Color.DarkGray)
-    val backgroundColor: State<Color> = _backgroundColor
-
-    private val _textColor = mutableStateOf(Color.White)
-    val textColor: State<Color> = _textColor
 
     val components = client.components
 
@@ -52,5 +50,10 @@ class WindowViewModel(
                 styles = highlight.styles.map { it.toSpanStyle() },
             )
         }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val styleMap: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
+        characterId?.let { styleRepository.getStyleMap(it) } ?: flow {  }
     }
 }
