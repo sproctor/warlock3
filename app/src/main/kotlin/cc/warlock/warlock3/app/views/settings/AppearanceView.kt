@@ -5,20 +5,20 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.OutlinedButton
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import cc.warlock.warlock3.app.config.ClientSpec
+import cc.warlock.warlock3.app.components.ColorPicker
 import cc.warlock.warlock3.app.model.GameCharacter
-import cc.warlock.warlock3.app.util.getEntireLineStyles
-import cc.warlock.warlock3.app.util.toAnnotatedString
-import cc.warlock.warlock3.app.util.toColor
+import cc.warlock.warlock3.app.util.*
 import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.core.util.toWarlockColor
 import cc.warlock.warlock3.stormfront.StreamLine
-import com.uchuhimo.konf.Config
 
 @Composable
 fun AppearanceView(
@@ -109,7 +109,9 @@ fun AppearanceView(
                 }
             }
         }
-        PresetSettings(styleMap = styleMap, saveStyle = { name, styleDefinition -> saveStyle(characterId, name, styleDefinition) })
+        PresetSettings(
+            styleMap = styleMap,
+            saveStyle = { name, styleDefinition -> saveStyle(characterId, name, styleDefinition) })
     }
 }
 
@@ -118,45 +120,74 @@ fun PresetSettings(
     styleMap: Map<String, StyleDefinition>,
     saveStyle: (name: String, StyleDefinition) -> Unit,
 ) {
-    var editColor: Pair<WarlockColor, (WarlockColor) -> Unit>? = null
+    var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
 
-    Column {
-        val presets = listOf("bold", "command", "roomName", "speech", "thought", "watching", "whisper", "echo")
-        presets.forEach { preset ->
-            val style = styleMap[preset]
-            if (style != null) {
-                Row {
-                    OutlinedButton(
-                        onClick = {
-                            editColor = Pair(style.textColor) { color ->
-                                saveStyle(
-                                    preset,
-                                    style.copy(textColor = color)
-                                )
-                            }
-                        }
-                    ) {
-                        Row {
-                            Text("Content: ")
-                            Box(Modifier.size(16.dp).background(style.textColor.toColor()).border(1.dp, Color.Black))
-                        }
+    Row {
+        Column(Modifier.weight(1f)) {
+            if (editColor != null) {
+                val currentColor = editColor!!.first
+                var currentText by remember(currentColor) {
+                    mutableStateOf(if (currentColor.isUnspecified()) "" else currentColor.argb.toHexString())
+                }
+                ColorPicker {
+                    editColor!!.second(it.toWarlockColor())
+                    editColor = editColor!!.copy(first = it.toWarlockColor())
+                }
+                OutlinedTextField(
+                    value = currentText,
+                    onValueChange = {
+                        currentText = it
+                        editColor!!.second("#$it".toWarlockColor() ?: WarlockColor.Unspecified)
                     }
-                    OutlinedButton(
-                        onClick = {
-                            editColor = Pair(style.textColor) { color ->
-                                saveStyle(
-                                    preset,
-                                    style.copy(backgroundColor = color)
+                )
+            } else {
+                Text("No style selected")
+            }
+        }
+        Column {
+            val presets = listOf("bold", "command", "roomName", "speech", "thought", "watching", "whisper", "echo")
+            presets.forEach { preset ->
+                val style = styleMap[preset]
+                if (style != null) {
+                    Row {
+                        Text(
+                            modifier = Modifier.width(160.dp).align(Alignment.CenterVertically),
+                            text = preset.replaceFirstChar { it.uppercase() },
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                editColor = Pair(style.textColor) { color ->
+                                    saveStyle(
+                                        preset,
+                                        style.copy(textColor = color)
+                                    )
+                                }
+                            }
+                        ) {
+                            Row {
+                                Text("Content: ")
+                                Box(
+                                    Modifier.size(16.dp).background(style.textColor.toColor()).border(1.dp, Color.Black)
                                 )
                             }
                         }
-                    ) {
-                        Row {
-                            Text("Background: ")
-                            Box(
-                                Modifier.size(16.dp).background(style.backgroundColor.toColor())
-                                    .border(1.dp, Color.Black)
-                            )
+                        OutlinedButton(
+                            onClick = {
+                                editColor = Pair(style.backgroundColor) { color ->
+                                    saveStyle(
+                                        preset,
+                                        style.copy(backgroundColor = color)
+                                    )
+                                }
+                            }
+                        ) {
+                            Row {
+                                Text("Background: ")
+                                Box(
+                                    Modifier.size(16.dp).background(style.backgroundColor.toColor())
+                                        .border(1.dp, Color.Black)
+                                )
+                            }
                         }
                     }
                 }
