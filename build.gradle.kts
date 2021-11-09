@@ -17,6 +17,6 @@ allprojects {
 }
 
 subprojects {
-    version = "1.0.0-alpha04"
+    version = "1.0.0-alpha05"
     group = "cc.warlock.warlock3"
 }
