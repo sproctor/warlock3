@@ -32,6 +32,21 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             }
         }
     },
+    "addtextlistenerre" to { context, argString ->
+        val args = parseArguments(argString)
+        if (args.size < 2) {
+            throw WslRuntimeException("Not enough arguments to AddTextListenerRe")
+        }
+        val variableName = args[0]
+        val regex = parseRegex(args[1]) ?: throw WslRuntimeException("Invalid regex passed to AddTextListenerRe")
+
+        context.addListener(variableName) {
+            val match = regex.find(it)
+            if (match != null) {
+                context.setScriptVariable(variableName, WslString(match.value))
+            }
+        }
+    },
     "addtohighlightstrings" to { context, argString ->
         val args = parseArguments(argString)
         var pattern: String? = null
@@ -246,6 +261,19 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             }
         }
     },
+    "var" to { context, args ->
+        val (name, value) = args.splitFirstWord()
+
+        if (name.isBlank()) {
+            throw WslRuntimeException("Invalid arguments to var")
+        }
+        //cx.scriptDebug(1, "setVariable: $name=$value")
+        context.setScriptVariable(name, WslString(value ?: ""))
+    },
+    "unvar" to { context, args ->
+        val (name, _) = args.splitFirstWord()
+        context.deleteScriptVariable(name)
+    },
     "wait" to { context, _ ->
         context.waitForPrompt()
     },
@@ -274,25 +302,6 @@ fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit {
         if (context.hasVariable(n.toString())) {
             context.executeCommand(args)
         }
-    }
-}
-
-sealed class ScriptMatch(val label: String) {
-    abstract fun match(line: String): String?
-}
-
-class TextMatch(label: String, val text: String) : ScriptMatch(label) {
-    override fun match(line: String): String? {
-        if (line.contains(text)) {
-            return text
-        }
-        return null
-    }
-}
-
-class RegexMatch(label: String, val regex: Regex) : ScriptMatch(label) {
-    override fun match(line: String): String? {
-        return regex.find(line)?.value
     }
 }
 
