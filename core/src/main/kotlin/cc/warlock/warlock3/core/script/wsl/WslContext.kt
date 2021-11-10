@@ -28,7 +28,9 @@ class WslContext(
 
     private val storedVariables = client.characterId.value?.let { variableRegistry.getVariablesForCharacter(it) }
         ?.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
-    private val scriptVariables = mutableMapOf<String, WslValue>()
+    private val scriptVariables = mutableMapOf<String, WslValue>(
+        "components" to WslComponents(client),
+    )
 
     private val matches = mutableListOf<ScriptMatch>()
     private val listeners = mutableMapOf<String, (String) -> Unit>()

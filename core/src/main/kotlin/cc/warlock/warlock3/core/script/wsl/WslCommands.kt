@@ -320,26 +320,3 @@ fun String.splitFirstWord(): Pair<String, String?> {
     val list = trim().split(Regex("[ \t]+"), limit = 2)
     return Pair(list[0], list.getOrNull(1))
 }
-
-class WslTimer : WslValue {
-    private val startTime = System.currentTimeMillis()
-    override fun toBoolean(): Boolean {
-        throw WslRuntimeException("Cannot convert timer to boolean")
-    }
-
-    override fun toNumber(): BigDecimal {
-        return ((System.currentTimeMillis() - startTime) / 1000L).toBigDecimal()
-    }
-
-    override fun isNumeric(): Boolean {
-        return true
-    }
-
-    override fun toString(): String {
-        return toNumber().toString()
-    }
-
-    override fun toMap(): Map<String, WslValue>? {
-        return null
-    }
-}
