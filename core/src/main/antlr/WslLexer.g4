@@ -72,7 +72,7 @@ RPAREN: ')';
 LSQUARE: '[';
 RSQUARE: ']';
 EXISTS: 'exists';
-CONTAINS: 'contains' | 'indexof';
+CONTAINS: 'contains';
 CONTAINSRE: 'containsre';
 TRUE: 'true';
 FALSE: 'false';

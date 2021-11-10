@@ -55,6 +55,7 @@ VARIABLE_NAME=42
 '['=25
 ']'=26
 'exists'=27
+'contains'=28
 'containsre'=29
 'true'=30
 'false'=31

@@ -76,6 +76,9 @@ class WslContext(
     }
 
     fun lookupVariable(name: String): WslValue? {
+        frameStack.reversed().forEach { frame ->
+            frame.lookupVariable(name)?.let { return it }
+        }
         return scriptVariables[name.lowercase()] ?: storedVariables?.value?.get(name.lowercase())?.let { WslString(it) }
     }
 
@@ -177,6 +180,10 @@ class WslContext(
             throw WslRuntimeException("Could not find label \"$label\".")
         }
         frameStack.add(WslFrame(index))
+        currentFrame.setVariable(
+            name = "args",
+            value = WslMap(args.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()),
+        )
     }
 
     fun gosubReturn() {

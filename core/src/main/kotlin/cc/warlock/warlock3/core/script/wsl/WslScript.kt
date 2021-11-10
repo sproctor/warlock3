@@ -140,34 +140,54 @@ class WslScript(
         multiplicativeExpression: WslParser.MultiplicativeExpressionContext
     ): WslMultiplicativeExpression {
         return WslMultiplicativeExpression(
-            unaryExpression = parseUnaryExpression(multiplicativeExpression.unaryExpression(0)),
+            prefixUnaryExpression = parsePrefixUnaryExpression(multiplicativeExpression.prefixUnaryExpression(0)),
             otherUnaryExpressions = multiplicativeExpression.multiplicativeOperator().mapIndexed { index, opContext ->
                 val operator = when {
                     opContext.MULT() != null -> WslMultiplicativeOperator.MULT
                     opContext.DIV() != null -> WslMultiplicativeOperator.DIV
                     else -> throw WslParseException("Unhandled multiplicative operator")
                 }
-                Pair(operator, parseUnaryExpression(multiplicativeExpression.unaryExpression(index + 1)))
+                Pair(operator, parsePrefixUnaryExpression(multiplicativeExpression.prefixUnaryExpression(index + 1)))
             }
         )
     }
 
-    private fun parseUnaryExpression(
-        unaryExpression: WslParser.UnaryExpressionContext
-    ): WslUnaryExpression {
-        unaryExpression.unaryOperator()?.let { opContext ->
-            val operator = when {
-                opContext.EXISTS() != null -> WslUnaryOperator.EXISTS
-                opContext.NOT() != null -> WslUnaryOperator.NOT
-                else -> throw WslParseException("Unhandled unary operator")
-            }
-            return WslUnaryExpression.WithOperator(
-                operator = operator, unaryExpression = parseUnaryExpression(unaryExpression.unaryExpression())
-            )
+    private fun parsePrefixUnaryExpression(
+        prefixUnaryExpression: WslParser.PrefixUnaryExpressionContext
+    ): WslPrefixUnaryExpression {
+        return WslPrefixUnaryExpression(
+            operators = prefixUnaryExpression.prefixUnaryOperator().map {
+                parsePrefixUnaryOperator(it)
+            },
+            postfixUnaryExpression = parsePostfixUnaryExpression(prefixUnaryExpression.postfixUnaryExpression())
+        )
+    }
+
+    private fun parsePrefixUnaryOperator(
+        prefixUnaryOperator: WslParser.PrefixUnaryOperatorContext
+    ): WslPrefixUnaryOperator {
+        return when {
+            prefixUnaryOperator.EXISTS() != null -> WslPrefixUnaryOperator.EXISTS
+            prefixUnaryOperator.NOT() != null -> WslPrefixUnaryOperator.NOT
+            else -> throw WslParseException("Unhandled unary operator")
         }
-        val primaryExpression =
-            unaryExpression.primaryExpression() ?: throw WslParseException("Expected primary expression")
-        return WslUnaryExpression.Base(primaryExpression = parsePrimaryExpression(primaryExpression))
+    }
+
+    private fun parsePostfixUnaryExpression(
+        postfixUnaryExpression: WslParser.PostfixUnaryExpressionContext
+    ): WslPostfixUnaryExpression {
+        return WslPostfixUnaryExpression(
+            primaryExpression = parsePrimaryExpression(postfixUnaryExpression.primaryExpression()),
+            indexingSuffixes = postfixUnaryExpression.indexingSuffix().map {
+                parseIndexingSuffix(it)
+            }
+        )
+    }
+
+    private fun parseIndexingSuffix(
+        indexingSuffix: WslParser.IndexingSuffixContext
+    ): WslExpression {
+        return parseExpression(indexingSuffix.expression())
     }
 
     private fun parsePrimaryExpression(
@@ -212,147 +232,6 @@ class WslScript(
         stringLiteral.VARIABLE_NAME()?.let { return WslStringContent.Variable(it.text) }
         stringLiteral.DOUBLE_PERCENT()?.let { return WslStringContent.Text("%") }
         throw WslParseException("Unhandled string content alternative")
-    }
-}
-
-interface WslValue {
-    fun toBoolean(): Boolean
-    fun toNumber(): BigDecimal
-    fun isNumeric(): Boolean
-
-    fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
-        if (isNumeric() && other.isNumeric())
-            return compare(operator, toNumber(), other.toNumber())
-        return compare(operator, toString(), other.toString())
-    }
-}
-
-data class WslBoolean(val value: Boolean) : WslValue {
-    override fun toBoolean(): Boolean {
-        return value
-    }
-
-    override fun toNumber(): BigDecimal {
-        throw WslRuntimeException("Boolean cannot be used as a number")
-    }
-
-    override fun toString(): String {
-        return if (value) "true" else "false"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        return when (other) {
-            is WslBoolean -> value == other.toBoolean()
-            else -> false
-        }
-    }
-
-    override fun hashCode(): Int {
-        return value.hashCode()
-    }
-
-    override fun isNumeric(): Boolean {
-        return false
-    }
-}
-
-data class WslString(val value: String) : WslValue {
-    override fun toBoolean(): Boolean {
-        return when (value.lowercase()) {
-            "true" -> true
-            "false" -> false
-            else -> throw WslRuntimeException("String that is not \"true\" or \"false\" cannot be used as a boolean")
-        }
-    }
-
-    override fun toNumber(): BigDecimal {
-        if (value.isBlank()) return BigDecimal.ZERO
-        return value.toBigDecimalOrNull() ?: throw WslRuntimeException("String \"$value\" cannot be converted to a number.")
-    }
-
-    override fun toString(): String {
-        return value
-    }
-
-
-
-    override fun equals(other: Any?): Boolean {
-        return when (other) {
-            is WslBoolean -> value.toBoolean() == other.value
-            is WslString -> value.equals(other = other.value, ignoreCase = true)
-            is WslNumber -> value.toBigDecimal() == other.value
-            else -> false
-        }
-    }
-
-    override fun hashCode(): Int {
-        return value.hashCode()
-    }
-
-    override fun isNumeric(): Boolean {
-        return value.toBigDecimalOrNull() != null
-    }
-}
-
-data class WslNumber(val value: BigDecimal) : WslValue {
-    override fun toBoolean(): Boolean {
-        throw WslRuntimeException("Attempted to use number as a boolean")
-    }
-
-    override fun toNumber(): BigDecimal {
-        return value
-    }
-
-    override fun toString(): String {
-        return value.toPlainString()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        return when (other) {
-            is WslBoolean -> toBoolean() == other.value
-            is WslString -> value == other.toNumber()
-            is WslNumber -> value == other.value
-            else -> false
-        }
-    }
-
-    override fun hashCode(): Int {
-        return value.hashCode()
-    }
-
-    override fun isNumeric(): Boolean {
-        return true
-    }
-}
-
-object WslNull : WslValue {
-    override fun equals(other: Any?): Boolean {
-        return other == null
-    }
-
-    override fun toString(): String {
-        return ""
-    }
-
-    override fun toBoolean(): Boolean {
-        return false
-    }
-
-    override fun toNumber(): BigDecimal {
-        throw WslRuntimeException("Cannot convert null to number")
-    }
-
-    override fun isNumeric(): Boolean {
-        return false
-    }
-}
-
-private fun <T> compare(operator: WslComparisonOperator, value1: Comparable<T>, value2: T): Boolean {
-    return when (operator) {
-        WslComparisonOperator.GT -> value1 > value2
-        WslComparisonOperator.LT -> value1 < value2
-        WslComparisonOperator.GTE -> value1 >= value2
-        WslComparisonOperator.LTE -> value1 <= value2
     }
 }
 
@@ -539,11 +418,11 @@ enum class WslAdditiveOperator {
 }
 
 data class WslMultiplicativeExpression(
-    val unaryExpression: WslUnaryExpression,
-    val otherUnaryExpressions: List<Pair<WslMultiplicativeOperator, WslUnaryExpression>>
+    val prefixUnaryExpression: WslPrefixUnaryExpression,
+    val otherUnaryExpressions: List<Pair<WslMultiplicativeOperator, WslPrefixUnaryExpression>>
 ) {
     fun getValue(context: WslContext): WslValue {
-        var acc = unaryExpression.getValue(context)
+        var acc = prefixUnaryExpression.getValue(context)
         otherUnaryExpressions.forEach { (op, exp) ->
             acc = op.getValue(acc, exp.getValue(context))
         }
@@ -576,24 +455,21 @@ enum class WslMultiplicativeOperator {
     abstract fun getValue(value1: WslValue, value2: WslValue): WslValue
 }
 
-sealed class WslUnaryExpression {
-    data class WithOperator(val operator: WslUnaryOperator, val unaryExpression: WslUnaryExpression) :
-        WslUnaryExpression() {
-        override fun getValue(context: WslContext): WslValue {
-            return operator.getValue(unaryExpression.getValue(context), context)
-        }
+data class WslPrefixUnaryExpression(
+    val operators: List<WslPrefixUnaryOperator>,
+    val postfixUnaryExpression: WslPostfixUnaryExpression,
+) {
+    fun getValue(context: WslContext): WslValue {
+        return operators.foldRight(
+            initial = postfixUnaryExpression.getValue(context),
+            operation = { v, acc ->
+                v.getValue(acc, context)
+            }
+        )
     }
-
-    data class Base(val primaryExpression: WslPrimaryExpression) : WslUnaryExpression() {
-        override fun getValue(context: WslContext): WslValue {
-            return primaryExpression.getValue(context)
-        }
-    }
-
-    abstract fun getValue(context: WslContext): WslValue
 }
 
-enum class WslUnaryOperator {
+enum class WslPrefixUnaryOperator {
     NOT {
         override fun getValue(value: WslValue, context: WslContext): WslValue {
             return WslBoolean(!value.toBoolean())
@@ -606,6 +482,19 @@ enum class WslUnaryOperator {
     };
 
     abstract fun getValue(value: WslValue, context: WslContext): WslValue
+}
+
+data class WslPostfixUnaryExpression(
+    val primaryExpression: WslPrimaryExpression,
+    val indexingSuffixes: List<WslExpression>
+) {
+    fun getValue(context: WslContext): WslValue {
+        var acc = primaryExpression.getValue(context)
+        indexingSuffixes.forEach {
+            acc = acc.toMap()?.get(it.getValue(context).toString()) ?: WslNull
+        }
+        return acc
+    }
 }
 
 sealed class WslPrimaryExpression {

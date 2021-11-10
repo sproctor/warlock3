@@ -57,12 +57,15 @@ additiveExpression
     ;
 
 multiplicativeExpression
-    : unaryExpression (multiplicativeOperator unaryExpression)*
+    : prefixUnaryExpression (multiplicativeOperator prefixUnaryExpression)*
     ;
 
-unaryExpression
-    : unaryOperator unaryExpression
-    | primaryExpression
+prefixUnaryExpression
+    : prefixUnaryOperator* postfixUnaryExpression
+    ;
+
+postfixUnaryExpression
+    : primaryExpression indexingSuffix*
     ;
 
 primaryExpression
@@ -120,7 +123,11 @@ multiplicativeOperator
     | DIV
     ;
 
-unaryOperator
+prefixUnaryOperator
     : NOT
     | EXISTS
+    ;
+
+indexingSuffix
+    : LSQUARE expression RSQUARE
     ;

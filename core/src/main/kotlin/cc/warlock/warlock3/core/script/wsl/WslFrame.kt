@@ -16,4 +16,12 @@ class WslFrame(startLine: Int) {
     fun goto(index: Int) {
         nextLine = index
     }
+
+    fun setVariable(name: String, value: WslValue) {
+        localVariables[name] = value
+    }
+
+    fun lookupVariable(name: String): WslValue? {
+        return localVariables[name]
+    }
 }

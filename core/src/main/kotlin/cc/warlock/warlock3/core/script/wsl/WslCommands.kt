@@ -338,4 +338,8 @@ class WslTimer : WslValue {
     override fun toString(): String {
         return toNumber().toString()
     }
+
+    override fun toMap(): Map<String, WslValue>? {
+        return null
+    }
 }
