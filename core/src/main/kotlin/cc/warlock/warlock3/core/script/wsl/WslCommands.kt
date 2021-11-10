@@ -19,6 +19,19 @@ val loggingLevels = mapOf(
 )
 
 val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
+    "addtextlistener" to { context, argString ->
+        val args = parseArguments(argString)
+        if (args.isEmpty()) {
+            throw WslRuntimeException("Not enough arguments to AddTextListener")
+        }
+        val variableName = args[0]
+        val pattern = args.getOrNull(1)
+        context.addListener(variableName) {
+            if (pattern == null || it.contains(pattern)) {
+                context.setScriptVariable(variableName, WslString(it))
+            }
+        }
+    },
     "addtohighlightstrings" to { context, argString ->
         val args = parseArguments(argString)
         var pattern: String? = null
@@ -170,6 +183,11 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
         val max = argList.getOrNull(1)?.toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
         context.setScriptVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
+    },
+    "removetextlistener" to { context, args ->
+        parseArguments(args).forEach { arg ->
+            context.removeListener(arg)
+        }
     },
     "save" to { context, args ->
         context.setScriptVariable("s", WslString(args))

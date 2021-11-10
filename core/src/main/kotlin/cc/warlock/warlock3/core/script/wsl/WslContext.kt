@@ -31,6 +31,7 @@ class WslContext(
     private val scriptVariables = mutableMapOf<String, WslValue>()
 
     private val matches = mutableListOf<ScriptMatch>()
+    private val listeners = mutableMapOf<String, (String) -> Unit>()
 
     private var currentLine = -1
     val lineNumber: Int
@@ -41,7 +42,7 @@ class WslContext(
 
     var typeAhead = 0
 
-    val mutex = Mutex()
+    private val mutex = Mutex()
 
     init {
         client.eventFlow
@@ -52,8 +53,12 @@ class WslContext(
                             if (typeAhead > 0)
                                 typeAhead--
                         }
-                    else -> {
+                    is ClientTextEvent -> {
+                        listeners.forEach { (_, action) ->
+                            action(event.text)
+                        }
                     }
+                    else -> Unit
                 }
             }
             .launchIn(scope)
@@ -240,5 +245,13 @@ class WslContext(
 
     fun deleteHighlight(pattern: String) {
         highlightRegistry.deleteHighlight(client.characterId.value?.lowercase(), pattern)
+    }
+
+    fun addListener(name: String, action: (String) -> Unit) {
+        listeners[name] = action
+    }
+
+    fun removeListener(name: String) {
+        listeners.remove(name)
     }
 }
