@@ -1,8 +1,8 @@
 package cc.warlock.warlock3.core.text
 
+import cc.warlock.warlock3.core.util.CaseInsensitiveMap
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.*
 
 class StyleRepository(
     private val caseSensitiveStyles: Flow<Map<String, Map<String, StyleDefinition>>>,
@@ -10,7 +10,7 @@ class StyleRepository(
 ) {
     fun getStyleMap(characterId: String): Flow<Map<String, StyleDefinition>> {
         return caseSensitiveStyles.map { allStyles ->
-            TreeMap<String, StyleDefinition>(String.CASE_INSENSITIVE_ORDER).apply {
+            CaseInsensitiveMap<StyleDefinition>().apply {
                 putAll(defaultStyles)
                 allStyles[characterId]?.let { putAll(it) }
             }

@@ -491,7 +491,9 @@ data class WslPostfixUnaryExpression(
     fun getValue(context: WslContext): WslValue {
         var acc = primaryExpression.getValue(context)
         indexingSuffixes.forEach {
-            acc = acc.toMap()?.get(it.getValue(context).toString()) ?: WslNull
+            val key = it.getValue(context).toString()
+            val asMap = acc.toMap()
+            acc = asMap?.get(key) ?: WslNull
         }
         return acc
     }

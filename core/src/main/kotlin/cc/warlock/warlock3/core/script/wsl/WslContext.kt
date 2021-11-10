@@ -9,6 +9,7 @@ import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -26,9 +27,7 @@ class WslContext(
 ) : AutoCloseable {
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    private val storedVariables = client.characterId.value?.let { variableRegistry.getVariablesForCharacter(it) }
-        ?.stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
-    private val scriptVariables = mutableMapOf<String, WslValue>(
+    private val scriptVariables = CaseInsensitiveMap<WslValue>(
         "components" to WslComponents(client),
     )
 
@@ -77,25 +76,41 @@ class WslContext(
         command(this, args ?: "")
     }
 
+    private fun getGlobalVariable(name: String): String? {
+        val characterId = client.characterId.value?.lowercase() ?: return null
+        val clientVariables = variableRegistry.variables.value[characterId]
+        clientVariables?.forEach { (key, value) ->
+            if (key.equals(name, ignoreCase = true)) {
+                return value
+            }
+        }
+        return null
+    }
+
     fun lookupVariable(name: String): WslValue? {
         frameStack.reversed().forEach { frame ->
-            frame.lookupVariable(name)?.let { return it }
+            val value = frame.lookupVariable(name)
+            if (value != null)
+                return value
         }
-        return scriptVariables[name.lowercase()] ?: storedVariables?.value?.get(name.lowercase())?.let { WslString(it) }
+        val scriptValue = scriptVariables[name]
+        if (scriptValue != null)
+            return scriptValue
+        return getGlobalVariable(name)?.let { WslString(it) }
     }
 
     fun hasVariable(name: String): Boolean {
-        return scriptVariables.containsKey(name.lowercase()) || (storedVariables?.value?.containsKey(name.lowercase()) == true)
+        return scriptVariables.containsKey(name) || (getGlobalVariable(name) != null)
     }
 
     fun setStoredVariable(name: String, value: String) {
         log(10, "Setting stored variable \"$name\" to $value")
-        client.characterId.value?.let { variableRegistry.setVariable(it, name.lowercase(), value) }
+        client.characterId.value?.let { variableRegistry.setVariable(it.lowercase(), name, value) }
     }
 
     fun deleteStoredVariable(name: String) {
         log(10, "Deleting stored variable: $name")
-        client.characterId.value?.let { variableRegistry.deleteVariable(it, name.lowercase()) }
+        client.characterId.value?.let { variableRegistry.deleteVariable(it.lowercase(), name) }
     }
 
     fun setScriptVariable(name: String, value: WslValue) {

@@ -2,6 +2,7 @@ package cc.warlock.warlock3.core.script.wsl
 
 import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.util.CaseInsensitiveMap
 import cc.warlock.warlock3.core.util.findArgumentBreak
 import cc.warlock.warlock3.core.util.parseArguments
 import cc.warlock.warlock3.core.util.toWarlockColor
@@ -18,7 +19,7 @@ val loggingLevels = mapOf(
     "critical" to 50
 )
 
-val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
+val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "addtextlistener" to { context, argString ->
         val args = parseArguments(argString)
         if (args.isEmpty()) {
