@@ -167,6 +167,13 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
             context.setLoggingLevel(it)
         } ?: throw WslRuntimeException("Invalid logging level")
     },
+    "mapadd" to { context, argString ->
+        val (name, rest) = argString.splitFirstWord()
+        val (key, value) = rest?.splitFirstWord() ?: throw WslRuntimeException("bad arguments passed to MapAdd")
+        val currentMap = context.lookupVariable(name)?.toMap() ?: emptyMap()
+        val newMap = currentMap + (key to WslString(value ?: ""))
+        context.setScriptVariable(name, WslMap(newMap))
+    },
     "match" to { context, args ->
         val (label, text) = args.splitFirstWord()
         if (text?.isBlank() != false) {
