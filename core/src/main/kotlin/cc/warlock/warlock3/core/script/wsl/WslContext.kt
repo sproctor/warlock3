@@ -33,10 +33,11 @@ class WslContext(
     private val matches = mutableListOf<ScriptMatch>()
     private val listeners = mutableMapOf<String, (String) -> Unit>()
 
-    private var currentLine = -1
-    val lineNumber: Int
-        get() = currentLine + 1
-    private var nextLine = 0
+    private val frameStack = mutableListOf(
+        WslFrame(0)
+    )
+    private val currentFrame: WslFrame
+        get() = frameStack.last()
 
     private var loggingLevel = 30
 
@@ -65,6 +66,7 @@ class WslContext(
     }
 
     suspend fun executeCommand(commandLine: String) {
+        val lineNumber = currentFrame.lineNumber
         log(5, "Line $lineNumber: $commandLine")
 
         val (commandName, args) = commandLine.splitFirstWord()
@@ -102,8 +104,7 @@ class WslContext(
     }
 
     fun getNextLine(): WslLine? {
-        currentLine = nextLine
-        nextLine++
+        val currentLine = currentFrame.nextLine()
         if (currentLine >= lines.size) {
             return null
         }
@@ -165,7 +166,25 @@ class WslContext(
         if (index == -1) {
             throw WslRuntimeException("Could not find label \"$label\".")
         }
-        nextLine = index
+        currentFrame.goto(index)
+    }
+
+    fun gosub(label: String, args: List<String>) {
+        val index = lines.indexOfFirst { line ->
+            line.labels.any { it.equals(other = label, ignoreCase = true) }
+        }
+        if (index == -1) {
+            throw WslRuntimeException("Could not find label \"$label\".")
+        }
+        frameStack.add(WslFrame(index))
+    }
+
+    fun gosubReturn() {
+        if (frameStack.size > 1) {
+            frameStack.removeLast()
+        } else {
+            throw WslRuntimeException("Return called outside of a subroutine")
+        }
     }
 
     suspend fun waitForNav() {

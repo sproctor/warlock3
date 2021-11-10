@@ -139,6 +139,13 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     "exit" to { context, _ ->
         context.stop()
     },
+    "gosub" to { context, argStr ->
+        val args = parseArguments(argStr)
+        if (args.isEmpty()) {
+            throw WslRuntimeException("GOSUB with no label")
+        }
+        context.gosub(args[0], args.drop(1))
+    },
     "goto" to { context, argStr ->
         val (label, _) = argStr.splitFirstWord()
         if (label.isBlank()) {
@@ -201,6 +208,9 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         parseArguments(args).forEach { arg ->
             context.removeListener(arg)
         }
+    },
+    "return" to { context, _ ->
+        context.gosubReturn()
     },
     "save" to { context, args ->
         context.setScriptVariable("s", WslString(args))
