@@ -156,11 +156,9 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
                 throw WslRuntimeException("maximum logging level is 50")
             }
             context.setLoggingLevel(it)
-        } ?:
-        loggingLevels[level]?.let {
+        } ?: loggingLevels[level]?.let {
             context.setLoggingLevel(it)
-        } ?:
-        throw WslRuntimeException("Invalid logging level")
+        } ?: throw WslRuntimeException("Invalid logging level")
     },
     "match" to { context, args ->
         val (label, text) = args.splitFirstWord()
@@ -191,7 +189,7 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
         delay((duration * BigDecimal(1000)).toLong())
     },
     "put" to { context, args ->
-        context.sendCommand(args)
+        context.putCommand(args)
     },
     "random" to { context, args ->
         val argList = args.split(Regex("[ \t]+"))
@@ -206,6 +204,9 @@ val wslCommands = mapOf<String, suspend (WslContext, String) -> Unit>(
     },
     "save" to { context, args ->
         context.setScriptVariable("s", WslString(args))
+    },
+    "send" to { context, args ->
+        context.sendCommand(args)
     },
     "setvariable" to { context, args ->
         val (name, value) = args.splitFirstWord()

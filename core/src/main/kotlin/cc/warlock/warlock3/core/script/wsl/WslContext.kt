@@ -128,12 +128,20 @@ class WslContext(
         loggingLevel = level
     }
 
-    suspend fun sendCommand(command: String) {
+    suspend fun putCommand(command: String) {
         log(5, "sending command: $command")
         waitForRoundTime()
         while (typeAhead >= client.maxTypeAhead) {
             waitForPrompt()
         }
+        mutex.withLock {
+            typeAhead++
+        }
+        client.sendCommand(command)
+    }
+
+    suspend fun sendCommand(command: String) {
+        log(5, "sending command: $command")
         mutex.withLock {
             typeAhead++
         }
