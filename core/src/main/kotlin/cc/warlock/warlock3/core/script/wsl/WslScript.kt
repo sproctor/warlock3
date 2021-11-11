@@ -480,7 +480,7 @@ enum class WslPrefixUnaryOperator {
     },
     EXISTS {
         override fun getValue(value: WslValue, context: WslContext): WslValue {
-            return WslBoolean(context.hasVariable(value.toString()))
+            return WslBoolean(value != WslNull)
         }
     };
 

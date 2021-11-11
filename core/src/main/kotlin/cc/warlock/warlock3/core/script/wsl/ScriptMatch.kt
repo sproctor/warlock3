@@ -6,7 +6,7 @@ sealed class ScriptMatch(val label: String) {
 
 class TextMatch(label: String, val text: String) : ScriptMatch(label) {
     override fun match(line: String): String? {
-        if (line.contains(text)) {
+        if (line.contains(text, ignoreCase = true)) {
             return text
         }
         return null

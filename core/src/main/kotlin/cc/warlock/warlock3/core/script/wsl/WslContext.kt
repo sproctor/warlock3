@@ -17,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.locks.ReentrantLock
 
 class WslContext(
     private val client: WarlockClient,
@@ -48,19 +49,30 @@ class WslContext(
 
     private val mutex = Mutex()
 
+    private val navLock = ReentrantLock()
+    private val navCondition = navLock.newCondition()
+
+    private val promptLock = ReentrantLock()
+    private val promptCondition = promptLock.newCondition()
+
     init {
         client.eventFlow
             .onEach { event ->
                 when (event) {
-                    is ClientPromptEvent ->
+                    is ClientPromptEvent -> {
                         mutex.withLock {
                             if (typeAhead > 0)
                                 typeAhead--
                         }
+                        promptCondition.signalAll()
+                    }
                     is ClientTextEvent -> {
                         listeners.forEach { (_, action) ->
                             action(event.text)
                         }
+                    }
+                    ClientNavEvent -> {
+                        navCondition.signalAll()
                     }
                     else -> Unit
                 }
@@ -213,14 +225,14 @@ class WslContext(
         }
     }
 
-    suspend fun waitForNav() {
+    fun waitForNav() {
         log(5, "waiting for next room")
-        client.eventFlow.first { it == ClientNavEvent }
+        navCondition.await()
     }
 
-    suspend fun waitForPrompt() {
+    fun waitForPrompt() {
         log(5, "waiting for next prompt")
-        client.eventFlow.first { it == ClientPromptEvent }
+        promptCondition.await()
     }
 
     suspend fun waitForText(text: String, ignoreCase: Boolean) {
@@ -259,6 +271,8 @@ class WslContext(
             }
             false
         }
+
+        matches.clear()
     }
 
     suspend fun waitForRoundTime() {
