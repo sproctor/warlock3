@@ -108,6 +108,11 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "debug" to { context, args ->
         context.log(10, args)
     },
+    "delay" to { _, args ->
+        val (arg, _) = args.splitFirstWord()
+        val duration = arg.toBigDecimalOrNull() ?: BigDecimal.ONE
+        delay((duration * BigDecimal(1000)).toLong())
+    },
     "deletefromhighlightstrings" to { context, argString ->
         val args = parseArguments(argString)
         var pattern: String? = null
@@ -171,9 +176,12 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "mapadd" to { context, argString ->
         val (name, rest) = argString.splitFirstWord()
         val (key, value) = rest?.splitFirstWord() ?: throw WslRuntimeException("bad arguments passed to MapAdd")
-        val currentMap = context.lookupVariable(name)?.toMap() ?: emptyMap()
-        val newMap = currentMap + (key to WslString(value ?: ""))
-        context.setScriptVariable(name, WslMap(newMap))
+        val variable = context.lookupVariable(name) ?: WslMap(emptyMap()).also { context.setScriptVariable(name, it) }
+        if (variable.isMap()) {
+            variable.setProperty(key, WslString(value ?: ""))
+        } else {
+            throw WslRuntimeException("Trying to set a property on a non-map variable")
+        }
     },
     "match" to { context, args ->
         val (label, text) = args.splitFirstWord()
@@ -198,9 +206,10 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "nextroom" to { context, _ ->
         context.waitForNav()
     },
-    "pause" to { _, args ->
+    "pause" to { context, args ->
         val (arg, _) = args.splitFirstWord()
         val duration = arg.toBigDecimalOrNull() ?: BigDecimal.ONE
+        context.waitForRoundTime()
         delay((duration * BigDecimal(1000)).toLong())
     },
     "put" to { context, args ->

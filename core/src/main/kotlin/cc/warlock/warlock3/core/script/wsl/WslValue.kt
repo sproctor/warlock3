@@ -6,7 +6,8 @@ interface WslValue {
     fun toBoolean(): Boolean
     fun toNumber(): BigDecimal
     fun isNumeric(): Boolean
-    fun toMap(): Map<String, WslValue>?
+    fun getProperty(key: String): WslValue
+    fun setProperty(key: String, value: WslValue)
     fun isMap(): Boolean
 
     fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
@@ -25,9 +26,11 @@ data class WslBoolean(val value: Boolean) : WslValue {
         throw WslRuntimeException("Boolean cannot be used as a number")
     }
 
-    override fun toMap(): Map<String, WslValue>? {
-        return null
+    override fun getProperty(key: String): WslValue {
+        return WslNull
     }
+
+    override fun setProperty(key: String, value: WslValue) { }
 
     override fun toString(): String {
         return if (value) "true" else "false"
@@ -72,9 +75,16 @@ data class WslString(val value: String) : WslValue {
         return value
     }
 
-    override fun toMap(): Map<String, WslValue>? {
-        return null
+    override fun getProperty(key: String): WslValue {
+        val index = key.toIntOrNull()
+        return if (index != null) {
+            value.getOrNull(index)?.let { WslString(it.toString()) } ?: WslNull
+        } else {
+            WslNull
+        }
     }
+
+    override fun setProperty(key: String, value: WslValue) {}
 
     override fun equals(other: Any?): Boolean {
         return when (other) {
@@ -107,9 +117,11 @@ data class WslNumber(val value: BigDecimal) : WslValue {
         return value
     }
 
-    override fun toMap(): Map<String, WslValue>? {
-        return null
+    override fun getProperty(key: String): WslValue {
+        return WslNull
     }
+
+    override fun setProperty(key: String, value: WslValue) {}
 
     override fun toString(): String {
         return value.toPlainString()
@@ -154,9 +166,11 @@ object WslNull : WslValue {
         throw WslRuntimeException("Cannot convert null to number")
     }
 
-    override fun toMap(): Map<String, WslValue>? {
-        return null
+    override fun getProperty(key: String): WslValue {
+        return WslNull
     }
+
+    override fun setProperty(key: String, value: WslValue) {}
 
     override fun isNumeric(): Boolean {
         return false
@@ -167,7 +181,9 @@ object WslNull : WslValue {
     }
 }
 
-data class WslMap(val values: Map<String, WslValue>) : WslValue {
+class WslMap(initialValues: Map<String, WslValue>) : WslValue {
+    private val values = initialValues.toMutableMap()
+
     override fun toBoolean(): Boolean {
         return false
     }
@@ -180,8 +196,12 @@ data class WslMap(val values: Map<String, WslValue>) : WslValue {
         return false
     }
 
-    override fun toMap(): Map<String, WslValue> {
-        return values
+    override fun getProperty(key: String): WslValue {
+        return values[key] ?: WslNull
+    }
+
+    override fun setProperty(key: String, value: WslValue) {
+        values[key] = value
     }
 
     override fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {

@@ -1,10 +1,9 @@
 package cc.warlock.warlock3.core.script.wsl
 
-import cc.warlock.warlock3.core.client.WarlockClient
 import java.math.BigDecimal
 
-class WslProperties(
-    private val client: WarlockClient
+class WslVariables(
+    private val context: WslContext
 ) : WslValue {
     override fun toString(): String {
         return ""
@@ -23,11 +22,11 @@ class WslProperties(
     }
 
     override fun getProperty(key: String): WslValue {
-        return client.properties.value[key]?.let { WslString(it) } ?: WslNull
+        return context.lookupVariable(key) ?: WslNull
     }
 
     override fun setProperty(key: String, value: WslValue) {
-        throw WslRuntimeException("Cannot set properties of properties")
+        context.setScriptVariable(key, value)
     }
 
     override fun isMap(): Boolean {

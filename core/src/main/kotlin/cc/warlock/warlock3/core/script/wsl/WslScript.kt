@@ -374,7 +374,7 @@ enum class WslInfixOperator {
     CONTAINS {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
             if (value1.isMap()) {
-                return WslBoolean(value1.toMap()?.containsKey(value2.toString()) ?: false)
+                return WslBoolean(value1.getProperty(value2.toString()) != WslNull)
             }
             return WslBoolean(value1.toString().contains(value2.toString()))
         }
@@ -495,8 +495,7 @@ data class WslPostfixUnaryExpression(
         var acc = primaryExpression.getValue(context)
         indexingSuffixes.forEach {
             val key = it.getValue(context).toString()
-            val asMap = acc.toMap()
-            acc = asMap?.get(key) ?: WslNull
+            acc = acc.getProperty(key)
         }
         return acc
     }

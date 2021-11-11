@@ -30,6 +30,7 @@ class WslContext(
     private val scriptVariables = CaseInsensitiveMap(
         "components" to WslComponents(client),
         "properties" to WslProperties(client),
+        "variables" to WslVariables(this),
     )
 
     private val matches = mutableListOf<ScriptMatch>()

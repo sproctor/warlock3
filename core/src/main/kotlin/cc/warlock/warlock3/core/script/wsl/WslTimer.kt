@@ -20,9 +20,11 @@ class WslTimer : WslValue {
         return toNumber().toString()
     }
 
-    override fun toMap(): Map<String, WslValue>? {
-        return null
+    override fun getProperty(key: String): WslValue {
+        return WslNull
     }
+
+    override fun setProperty(key: String, value: WslValue) {}
 
     override fun isMap(): Boolean {
         return false

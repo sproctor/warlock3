@@ -22,8 +22,12 @@ class WslComponents(
         return false
     }
 
-    override fun toMap(): Map<String, WslValue> {
-        return client.components.value.mapValues { WslString(it.value.toPlainString()) }
+    override fun getProperty(key: String): WslValue {
+        return client.components.value[key]?.toPlainString()?.let { WslString(it) } ?: WslNull
+    }
+
+    override fun setProperty(key: String, value: WslValue) {
+        throw WslRuntimeException("Cannot set properties of components")
     }
 
     override fun isMap(): Boolean {
