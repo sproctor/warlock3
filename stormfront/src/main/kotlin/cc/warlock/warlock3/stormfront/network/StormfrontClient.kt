@@ -45,6 +45,7 @@ class StormfrontClient(
 
     private var currentStream: TextStream? = mainStream
     private var currentStyle: WarlockStyle? = null
+
     // Output style is for echo style! Not receieved text
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
@@ -156,6 +157,9 @@ class StormfrontClient(
                                                 )
                                             )
                                         )
+                                        _properties.value = _properties.value +
+                                                (event.id to event.value.value.toString()) +
+                                                (event.id + "text" to event.text)
                                     }
                                     is StormfrontCompassEndEvent -> {
                                         _eventFlow.emit(ClientCompassEvent(directions))
