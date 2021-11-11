@@ -23,4 +23,8 @@ class WslTimer : WslValue {
     override fun toMap(): Map<String, WslValue>? {
         return null
     }
+
+    override fun isMap(): Boolean {
+        return false
+    }
 }

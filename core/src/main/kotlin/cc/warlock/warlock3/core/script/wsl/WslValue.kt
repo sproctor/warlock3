@@ -7,6 +7,7 @@ interface WslValue {
     fun toNumber(): BigDecimal
     fun isNumeric(): Boolean
     fun toMap(): Map<String, WslValue>?
+    fun isMap(): Boolean
 
     fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
         if (isNumeric() && other.isNumeric())
@@ -44,6 +45,10 @@ data class WslBoolean(val value: Boolean) : WslValue {
     }
 
     override fun isNumeric(): Boolean {
+        return false
+    }
+
+    override fun isMap(): Boolean {
         return false
     }
 }
@@ -87,6 +92,10 @@ data class WslString(val value: String) : WslValue {
     override fun isNumeric(): Boolean {
         return value.toBigDecimalOrNull() != null
     }
+
+    override fun isMap(): Boolean {
+        return false
+    }
 }
 
 data class WslNumber(val value: BigDecimal) : WslValue {
@@ -122,6 +131,10 @@ data class WslNumber(val value: BigDecimal) : WslValue {
     override fun isNumeric(): Boolean {
         return true
     }
+
+    override fun isMap(): Boolean {
+        return false
+    }
 }
 
 object WslNull : WslValue {
@@ -146,6 +159,10 @@ object WslNull : WslValue {
     }
 
     override fun isNumeric(): Boolean {
+        return false
+    }
+
+    override fun isMap(): Boolean {
         return false
     }
 }
@@ -173,6 +190,10 @@ data class WslMap(val values: Map<String, WslValue>) : WslValue {
 
     override fun toString(): String {
         return values.toString()
+    }
+
+    override fun isMap(): Boolean {
+        return true
     }
 }
 

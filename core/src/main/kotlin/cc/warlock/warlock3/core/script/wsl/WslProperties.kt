@@ -3,7 +3,7 @@ package cc.warlock.warlock3.core.script.wsl
 import cc.warlock.warlock3.core.client.WarlockClient
 import java.math.BigDecimal
 
-class WslComponents(
+class WslProperties(
     private val client: WarlockClient
 ) : WslValue {
     override fun toString(): String {
@@ -23,7 +23,7 @@ class WslComponents(
     }
 
     override fun toMap(): Map<String, WslValue> {
-        return client.components.value.mapValues { WslString(it.value.toPlainString()) }
+        return client.properties.value.mapValues { WslString(it.value) }
     }
 
     override fun isMap(): Boolean {

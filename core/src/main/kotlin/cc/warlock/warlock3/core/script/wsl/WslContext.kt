@@ -27,8 +27,9 @@ class WslContext(
 ) : AutoCloseable {
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    private val scriptVariables = CaseInsensitiveMap<WslValue>(
+    private val scriptVariables = CaseInsensitiveMap(
         "components" to WslComponents(client),
+        "properties" to WslProperties(client),
     )
 
     private val matches = mutableListOf<ScriptMatch>()
