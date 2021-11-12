@@ -131,8 +131,11 @@ class GameViewModel(
         val keyString = translateKeyPress(event)
         val macroString = client.characterId.value?.let { macroRepository.getMacro(it, keyString) } ?: return false
 
-        val tokens = tokenizeMacro(macroString) ?: return false
-
+        val tokens = try {
+            tokenizeMacro(macroString)
+        } catch (e: Exception) {
+            return false
+        }
         executeMacro(tokens)
 
         return true

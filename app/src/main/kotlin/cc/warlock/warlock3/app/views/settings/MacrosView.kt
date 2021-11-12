@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -19,7 +18,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.WindowSize
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import java.awt.event.KeyEvent
@@ -88,7 +86,7 @@ fun EditMacroDialog(
 ) {
     Dialog(
         onCloseRequest = onClose,
-        state = rememberDialogState(size = DpSize(width = 1200.dp, height = 500.dp))
+        state = rememberDialogState(size = DpSize(width = 1400.dp, height = 500.dp))
     ) {
         Column(
             modifier = Modifier
@@ -269,9 +267,12 @@ fun KeyboardLayout(
                 modifier = Modifier.padding(end = 8.dp)
             )
 
-            KeyButton(key = "7", isSelected = selectedKey == Key.NumPad7, onClick = { onClickKey(Key.NumPad7) })
-            KeyButton(key = "8", isSelected = selectedKey == Key.NumPad8, onClick = { onClickKey(Key.NumPad8) })
-            KeyButton(key = "9", isSelected = selectedKey == Key.NumPad9, onClick = { onClickKey(Key.NumPad9) })
+            val numpadHome = Key(KeyEvent.VK_HOME, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "7", isSelected = selectedKey == numpadHome, onClick = { onClickKey(numpadHome) })
+            val numpadUp = Key(KeyEvent.VK_KP_UP, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "8", isSelected = selectedKey == numpadUp, onClick = { onClickKey(numpadUp) })
+            val numpadPgUp = Key(KeyEvent.VK_PAGE_UP, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "9", isSelected = selectedKey == numpadPgUp, onClick = { onClickKey(numpadPgUp) })
             KeyButton(key = "+", isSelected = selectedKey == Key.NumPadAdd, onClick = { onClickKey(Key.NumPadAdd) })
         }
         Row {
@@ -294,9 +295,12 @@ fun KeyboardLayout(
                 width = 108.dp,
                 modifier = Modifier.padding(end = 220.dp)
             )
-            KeyButton(key = "4", isSelected = selectedKey == Key.NumPad4, onClick = { onClickKey(Key.NumPad4) })
-            KeyButton(key = "5", isSelected = selectedKey == Key.NumPad5, onClick = { onClickKey(Key.NumPad5) })
-            KeyButton(key = "6", isSelected = selectedKey == Key.NumPad6, onClick = { onClickKey(Key.NumPad6) })
+            val numpadLeft = Key(KeyEvent.VK_KP_LEFT, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "4", isSelected = selectedKey == numpadLeft, onClick = { onClickKey(numpadLeft) })
+            val numpadCenter = Key(KeyEvent.VK_BEGIN, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "5", isSelected = selectedKey == numpadCenter, onClick = { onClickKey(numpadCenter) })
+            val numpadRight = Key(KeyEvent.VK_KP_RIGHT, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "6", isSelected = selectedKey == numpadRight, onClick = { onClickKey(numpadRight) })
         }
         Row {
             KeyButton(
@@ -330,13 +334,17 @@ fun KeyboardLayout(
                 modifier = Modifier.padding(end = 76.dp)
             )
 
-            KeyButton(key = "1", isSelected = selectedKey == Key.NumPad1, onClick = { onClickKey(Key.NumPad1) })
-            KeyButton(key = "2", isSelected = selectedKey == Key.NumPad2, onClick = { onClickKey(Key.NumPad2) })
-            KeyButton(key = "3", isSelected = selectedKey == Key.NumPad3, onClick = { onClickKey(Key.NumPad3) })
+            val numpadEnd = Key(KeyEvent.VK_END, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "1", isSelected = selectedKey == numpadEnd, onClick = { onClickKey(numpadEnd) })
+            val numpadDown = Key(KeyEvent.VK_KP_DOWN, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "2", isSelected = selectedKey == numpadDown, onClick = { onClickKey(numpadDown) })
+            val numpadPgDn = Key(KeyEvent.VK_PAGE_DOWN, KeyEvent.KEY_LOCATION_NUMPAD)
+            KeyButton(key = "3", isSelected = selectedKey == numpadPgDn, onClick = { onClickKey(numpadPgDn) })
+            val numpadEnter = Key(KeyEvent.VK_ENTER, KeyEvent.KEY_LOCATION_NUMPAD)
             KeyButton(
                 key = "Ent",
-                isSelected = selectedKey == Key.NumPadEnter,
-                onClick = { onClickKey(Key.NumPadEnter) })
+                isSelected = selectedKey == numpadEnter,
+                onClick = { onClickKey(numpadEnter) })
         }
         Row {
             KeyButton(
@@ -388,16 +396,18 @@ fun KeyboardLayout(
                 modifier = Modifier.padding(end = 8.dp)
             )
 
+            val numpadIns = Key(KeyEvent.VK_INSERT, KeyEvent.KEY_LOCATION_NUMPAD)
             KeyButton(
                 key = "0",
-                isSelected = selectedKey == Key.NumPad0,
-                onClick = { onClickKey(Key.NumPad0) },
+                isSelected = selectedKey == numpadIns,
+                onClick = { onClickKey(numpadIns) },
                 width = 128.dp
             )
+            val numpadDel = Key(KeyEvent.VK_DELETE, KeyEvent.KEY_LOCATION_NUMPAD)
             KeyButton(
                 key = ".",
-                isSelected = selectedKey == Key.NumPadDot,
-                onClick = { onClickKey(Key.NumPadDot) },
+                isSelected = selectedKey == numpadDel,
+                onClick = { onClickKey(numpadDel) },
             )
         }
     }

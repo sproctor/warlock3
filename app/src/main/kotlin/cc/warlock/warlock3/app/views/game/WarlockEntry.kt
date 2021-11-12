@@ -17,9 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -65,11 +63,8 @@ fun WarlockEntryContent(
                 .focusRequester(focusRequester)
                 .fillMaxWidth()
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown) {
-                        onKeyPress(event)
-                    } else {
-                        false
-                    }
+                    val result = onKeyPress(event)
+                    result
                 },
             textStyle = TextStyle.Default.copy(fontSize = 16.sp),
             onValueChange = onValueChange,
