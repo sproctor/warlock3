@@ -283,7 +283,7 @@ class StormfrontClient(
     }
 
     override fun debug(message: String) {
-        TODO("Not yet implemented")
+        mainStream.appendMessage(StyledString(message, WarlockStyle.Echo))
     }
 
     @Synchronized

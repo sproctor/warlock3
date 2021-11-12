@@ -154,7 +154,7 @@ class WslContext(
 
     fun log(level: Int, message: String) {
         if (level <= loggingLevel) {
-            client.print(StyledString(message))
+            client.debug(message)
         }
     }
 
