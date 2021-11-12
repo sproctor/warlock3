@@ -282,6 +282,10 @@ class StormfrontClient(
         mainStream.appendMessage(if (style != null) message.applyStyle(style) else message)
     }
 
+    override fun debug(message: String) {
+        TODO("Not yet implemented")
+    }
+
     @Synchronized
     fun getStream(name: String): TextStream {
         return streams.getOrPut(name) { TextStream(name) }

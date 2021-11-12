@@ -162,7 +162,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "info" to { context, args ->
         context.log(20, args)
     },
-    "level" to { context, args ->
+    "debuglevel" to { context, args ->
         val (level, _) = args.splitFirstWord()
         level.toIntOrNull()?.let {
             if (it > 50) {

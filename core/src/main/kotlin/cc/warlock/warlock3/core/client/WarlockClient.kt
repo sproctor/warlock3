@@ -25,4 +25,6 @@ interface WarlockClient {
     // fun send(toSend: String)
 
     fun print(message: StyledString)
+
+    fun debug(message: String)
 }
