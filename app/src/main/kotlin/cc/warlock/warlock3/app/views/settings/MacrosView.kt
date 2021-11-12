@@ -1,14 +1,14 @@
 package cc.warlock.warlock3.app.views.settings
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,23 +34,37 @@ fun MacrosView(
     val macros = if (currentCharacter == null) globalMacros else characterMacros[currentCharacter.lowercase()] ?: emptyMap()
     var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
     Column {
-        Text("Showing macros for $currentCharacter")
-        Column(Modifier.fillMaxWidth().weight(1f)) {
-            macros.forEach { macro ->
-                val parts = macro.key.split("+")
-                val textBuilder = StringBuilder()
-                for (i in 0..(parts.size - 2)) {
-                    textBuilder.append(parts[i])
-                    textBuilder.append("+")
+        val scrollState = rememberScrollState(0)
+        Box(
+            Modifier.fillMaxWidth()
+                .weight(1f)
+        ) {
+            Column(
+                Modifier.fillMaxSize()
+                    .padding(end = 12.dp)
+                    .verticalScroll(scrollState)
+            ) {
+                macros.forEach { macro ->
+                    val parts = macro.key.split("+")
+                    val textBuilder = StringBuilder()
+                    for (i in 0..(parts.size - 2)) {
+                        textBuilder.append(parts[i])
+                        textBuilder.append("+")
+                    }
+                    val key = Key(parts.last().toLongOrNull() ?: 0)
+                    textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
+                    ListItem(
+                        modifier = Modifier.clickable { },
+                        text = { Text(textBuilder.toString()) },
+                        secondaryText = { Text(macro.value) }
+                    )
                 }
-                val key = Key(parts.last().toLongOrNull() ?: 0)
-                textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
-                ListItem(
-                    modifier = Modifier.clickable { },
-                    text = { Text(textBuilder.toString()) },
-                    secondaryText = { Text(macro.value) }
-                )
             }
+            VerticalScrollbar(
+                modifier = Modifier.align(Alignment.CenterEnd)
+                    .fillMaxHeight(),
+                adapter = rememberScrollbarAdapter(scrollState)
+            )
         }
         Row(Modifier.fillMaxWidth()) {
             Button(onClick = { editingMacro = Pair(null, "") }) {
@@ -86,7 +100,7 @@ fun EditMacroDialog(
 ) {
     Dialog(
         onCloseRequest = onClose,
-        state = rememberDialogState(size = DpSize(width = 1400.dp, height = 500.dp))
+        state = rememberDialogState(size = DpSize(width = 1500.dp, height = 500.dp))
     ) {
         Column(
             modifier = Modifier
@@ -109,6 +123,7 @@ fun EditMacroDialog(
             )
             Row {
                 Button(
+                    enabled = selectedKey != null,
                     onClick = {
                         selectedKey?.let { key ->
                             val newKey = StringBuilder()
