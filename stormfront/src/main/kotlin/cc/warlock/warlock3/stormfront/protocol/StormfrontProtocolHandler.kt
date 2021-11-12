@@ -1,6 +1,5 @@
 package cc.warlock.warlock3.stormfront.protocol
 
-import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.stormfront.parser.StormfrontLexer
 import cc.warlock.warlock3.stormfront.parser.StormfrontParser
 import cc.warlock.warlock3.stormfront.protocol.elements.*
@@ -8,7 +7,7 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.util.*
 
-class StormfrontProtocolHandler() {
+class StormfrontProtocolHandler {
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
         "app" to AppHandler(),
@@ -20,6 +19,7 @@ class StormfrontProtocolHandler() {
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),
         "indicator" to IndicatorHandler(),
+        "inv" to InvHandler(),
         "left" to LeftHandler(),
         "mode" to ModeHandler(),
         "nav" to NavHandler(),
