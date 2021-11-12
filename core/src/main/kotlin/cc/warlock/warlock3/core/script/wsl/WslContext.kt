@@ -7,17 +7,19 @@ import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.highlights.Highlight
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.script.VariableRegistry
-import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.concurrent.locks.ReentrantLock
 
 class WslContext(
     private val client: WarlockClient,
@@ -49,11 +51,8 @@ class WslContext(
 
     private val mutex = Mutex()
 
-    private val navLock = ReentrantLock()
-    private val navCondition = navLock.newCondition()
-
-    private val promptLock = ReentrantLock()
-    private val promptCondition = promptLock.newCondition()
+    private val navChannel = Channel<Unit>(0)
+    private val promptChannel = Channel<Unit>(0)
 
     init {
         client.eventFlow
@@ -64,7 +63,7 @@ class WslContext(
                             if (typeAhead > 0)
                                 typeAhead--
                         }
-                        promptCondition.signalAll()
+                        promptChannel.trySend(Unit)
                     }
                     is ClientTextEvent -> {
                         listeners.forEach { (_, action) ->
@@ -72,7 +71,7 @@ class WslContext(
                         }
                     }
                     ClientNavEvent -> {
-                        navCondition.signalAll()
+                        navChannel.trySend(Unit)
                     }
                     else -> Unit
                 }
@@ -225,14 +224,14 @@ class WslContext(
         }
     }
 
-    fun waitForNav() {
+    suspend fun waitForNav() {
         log(5, "waiting for next room")
-        navCondition.await()
+        navChannel.receive()
     }
 
-    fun waitForPrompt() {
+    suspend fun waitForPrompt() {
         log(5, "waiting for next prompt")
-        promptCondition.await()
+        promptChannel.receive()
     }
 
     suspend fun waitForText(text: String, ignoreCase: Boolean) {
