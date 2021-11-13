@@ -9,6 +9,7 @@ interface WslValue {
     fun getProperty(key: String): WslValue
     fun setProperty(key: String, value: WslValue)
     fun isMap(): Boolean
+    fun isNull(): Boolean = false
 
     fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
         if (isNumeric() && other.isNumeric())
@@ -179,6 +180,8 @@ object WslNull : WslValue {
     override fun isMap(): Boolean {
         return false
     }
+
+    override fun isNull(): Boolean = true
 }
 
 class WslMap(initialValues: Map<String, WslValue>) : WslValue {
@@ -202,10 +205,6 @@ class WslMap(initialValues: Map<String, WslValue>) : WslValue {
 
     override fun setProperty(key: String, value: WslValue) {
         values[key] = value
-    }
-
-    override fun compareWith(operator: WslComparisonOperator, other: WslValue): Boolean {
-        return super.compareWith(operator, other)
     }
 
     override fun toString(): String {

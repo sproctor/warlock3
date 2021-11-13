@@ -354,7 +354,7 @@ enum class WslComparisonOperator {
     GT,
     LT,
     GTE,
-    LTE
+    LTE,
 }
 
 data class WslInfixExpression(
@@ -480,7 +480,7 @@ enum class WslPrefixUnaryOperator {
     },
     EXISTS {
         override fun getValue(value: WslValue, context: WslContext): WslValue {
-            return WslBoolean(value != WslNull)
+            return WslBoolean(!value.isNull())
         }
     };
 
