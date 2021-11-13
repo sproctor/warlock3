@@ -244,11 +244,11 @@ class StormfrontClient(
                         }
                     }
                 } catch (e: SocketException) {
-                    // who knows! let's retry, we can check the result of read/readLine to be sure
                     println("Socket exception: " + e.message)
+                    disconnect()
                 } catch (e: SocketTimeoutException) {
-                    // Timeout, let's retry here too!
                     println("Socket timeout: " + e.message)
+                    disconnect()
                 }
             }
         }
@@ -262,7 +262,9 @@ class StormfrontClient(
     }
 
     override suspend fun disconnect() {
-        socket.close()
+        runCatching {
+            socket.close()
+        }
         mainStream.appendMessage(StyledString("Connection closed by server."))
         _connected.value = false
     }
