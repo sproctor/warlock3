@@ -21,12 +21,10 @@ val loggingLevels = mapOf(
 
 val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "addtextlistener" to { context, argString ->
-        val args = parseArguments(argString)
-        if (args.isEmpty()) {
+        val (variableName, pattern) = argString.splitFirstWord()
+        if (variableName.isEmpty()) {
             throw WslRuntimeException("Not enough arguments to AddTextListener")
         }
-        val variableName = args[0]
-        val pattern = args.getOrNull(1)
         context.addListener(variableName) {
             if (pattern == null || it.contains(pattern)) {
                 context.setScriptVariable(variableName, WslString(it))
@@ -34,12 +32,11 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         }
     },
     "addtextlistenerre" to { context, argString ->
-        val args = parseArguments(argString)
-        if (args.size < 2) {
-            throw WslRuntimeException("Not enough arguments to AddTextListenerRe")
+        val (variableName, pattern) = argString.splitFirstWord()
+        if (variableName.isEmpty() || pattern == null) {
+            throw WslRuntimeException("Not enough arguments to AddTextListener")
         }
-        val variableName = args[0]
-        val regex = parseRegex(args[1]) ?: throw WslRuntimeException("Invalid regex passed to AddTextListenerRe")
+        val regex = parseRegex(pattern) ?: throw WslRuntimeException("Invalid regex passed to AddTextListenerRe")
 
         context.addListener(variableName) {
             val match = regex.find(it)
