@@ -65,7 +65,7 @@ class StormfrontClient(
             sendCommand(key, echo = false)
             sendCommand("/FE:STORMFRONT /XML", echo = false)
 
-            val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+            val reader = BufferedReader(InputStreamReader(socket.getInputStream(), "windows-1252"))
             val protocolHandler = StormfrontProtocolHandler()
 
             while (!socket.isClosed) {
