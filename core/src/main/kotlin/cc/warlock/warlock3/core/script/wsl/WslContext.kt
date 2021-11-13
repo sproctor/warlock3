@@ -202,13 +202,16 @@ class WslContext(
     }
 
     fun gosub(label: String, args: List<String>) {
-        val index = lines.indexOfFirst { line ->
+        val lineIndex = lines.indexOfFirst { line ->
             line.labels.any { it.equals(other = label, ignoreCase = true) }
         }
-        if (index == -1) {
+        if (lineIndex == -1) {
             throw WslRuntimeException("Could not find label \"$label\".")
         }
-        frameStack.add(WslFrame(index))
+        frameStack.add(WslFrame(lineIndex))
+        args.forEachIndexed { i, s ->
+            currentFrame.setVariable("arg${i + 1}", WslString(s))
+        }
         currentFrame.setVariable(
             name = "args",
             value = WslMap(args.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()),
