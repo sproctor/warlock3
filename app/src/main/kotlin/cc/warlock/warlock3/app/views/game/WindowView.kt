@@ -15,6 +15,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -66,43 +67,43 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     val backgroundColor = styleMap["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
     val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
 
-    BoxWithConstraints(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
-        val height = this.maxHeight
-        SelectionContainer {
-            CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
-                Row(modifier = Modifier.matchParentSize()) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(height),
-                        state = scrollState
-                    ) {
-                        items(lines) { line ->
-                            val annotatedString =
-                                line.text.toAnnotatedString(variables = components.value, styleMap = styleMap)
-                            val lineStyle = flattenStyles(
-                                line.text.getEntireLineStyles(
-                                    variables = components.value,
-                                    styleMap = styleMap,
-                                )
+    Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
+
+        CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
+            SelectionContainer {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = 12.dp),
+                    state = scrollState
+                ) {
+
+                    items(lines) { line ->
+                        val annotatedString =
+                            line.text.toAnnotatedString(variables = components.value, styleMap = styleMap)
+                        val lineStyle = flattenStyles(
+                            line.text.getEntireLineStyles(
+                                variables = components.value,
+                                styleMap = styleMap,
                             )
-                            if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
-                                val highlightedLine = annotatedString.highlight(highlights)
-                                Box(
-                                    modifier = Modifier.fillParentMaxWidth()
-                                        .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
-                                        .padding(horizontal = 4.dp)
-                                ) {
-                                    Text(text = highlightedLine)
-                                }
+                        )
+                        if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
+                            val highlightedLine = annotatedString.highlight(highlights)
+                            Box(
+                                modifier = Modifier.fillParentMaxWidth()
+                                    .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
+                                    .padding(horizontal = 4.dp)
+                            ) {
+                                Text(text = highlightedLine)
                             }
                         }
                     }
-                    VerticalScrollbar(
-                        adapter = rememberScrollbarAdapter(scrollState),
-                    )
                 }
             }
+            VerticalScrollbar(
+                modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
+                adapter = rememberScrollbarAdapter(scrollState),
+            )
         }
     }
 
