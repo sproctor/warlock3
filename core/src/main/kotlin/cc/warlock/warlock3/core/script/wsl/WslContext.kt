@@ -10,11 +10,8 @@ import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.util.CaseInsensitiveMap
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -148,13 +145,15 @@ class WslContext(
         scriptInstance.stop()
     }
 
-    fun echo(message: String) {
+    suspend fun echo(message: String) {
         client.print(StyledString(message))
     }
 
     fun log(level: Int, message: String) {
         if (level <= loggingLevel) {
-            client.debug(message)
+            scope.launch {
+                client.debug(message)
+            }
         }
     }
 

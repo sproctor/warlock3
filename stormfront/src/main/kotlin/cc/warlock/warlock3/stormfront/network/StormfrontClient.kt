@@ -254,14 +254,14 @@ class StormfrontClient(
         }
     }
 
-    override fun sendCommand(line: String, echo: Boolean) {
+    override suspend fun sendCommand(line: String, echo: Boolean) {
         if (echo) {
             mainStream.appendCommand(line)
         }
         send("<c>$line\n")
     }
 
-    override fun disconnect() {
+    override suspend fun disconnect() {
         socket.close()
         mainStream.appendMessage(StyledString("Connection closed by server."))
         _connected.value = false
@@ -274,7 +274,7 @@ class StormfrontClient(
         }
     }
 
-    override fun print(message: StyledString) {
+    override suspend fun print(message: StyledString) {
         scope.launch {
             _eventFlow.emit(ClientTextEvent(message.toPlainString()))
         }
@@ -282,7 +282,7 @@ class StormfrontClient(
         mainStream.appendMessage(if (style != null) message.applyStyle(style) else message)
     }
 
-    override fun debug(message: String) {
+    override suspend fun debug(message: String) {
         mainStream.appendMessage(StyledString(message, WarlockStyle.Echo))
     }
 

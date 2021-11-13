@@ -18,13 +18,13 @@ interface WarlockClient {
 
     val time: Long
 
-    fun disconnect()
+    suspend fun disconnect()
 
-    fun sendCommand(line: String, echo: Boolean = true)
+    suspend fun sendCommand(line: String, echo: Boolean = true)
 
     // fun send(toSend: String)
 
-    fun print(message: StyledString)
+    suspend fun print(message: StyledString)
 
-    fun debug(message: String)
+    suspend fun debug(message: String)
 }

@@ -79,7 +79,7 @@ class GameViewModel(
 
     val openWindows = windowRegistry.openWindows
 
-    fun submit() {
+    private fun submit() {
         val line = _entryText.value.text
         _entryText.value = TextFieldValue()
         _sendHistory.value = listOf(line) + _sendHistory.value
@@ -90,26 +90,30 @@ class GameViewModel(
             val args = splitCommand.getOrNull(1) ?: ""
             val scriptDir = System.getProperty("user.home") + "/.warlock3/scripts"
             val file = File("$scriptDir/$scriptName.wsl")
-            if (file.exists()) {
-                client.print(StyledString("File exists"))
-                val script = WslScript(name = scriptName, file = file)
-                val scriptInstance = WslScriptInstance(
-                    name = scriptName,
-                    script = script,
-                    variableRegistry = variableRegistry,
-                    highlightRegistry = highlightRegistry,
-                )
-                scriptInstance.start(client = client, argumentString = args)
-                scriptInstances.value += scriptInstance
-            } else {
-                client.print(StyledString("Could not find a script with that name"))
+            scope.launch {
+                if (file.exists()) {
+                    client.print(StyledString("File exists"))
+                    val script = WslScript(name = scriptName, file = file)
+                    val scriptInstance = WslScriptInstance(
+                        name = scriptName,
+                        script = script,
+                        variableRegistry = variableRegistry,
+                        highlightRegistry = highlightRegistry,
+                    )
+                    scriptInstance.start(client = client, argumentString = args)
+                    scriptInstances.value += scriptInstance
+                } else {
+                    client.print(StyledString("Could not find a script with that name"))
+                }
             }
         } else {
-            client.sendCommand(line)
+            scope.launch {
+                client.sendCommand(line)
+            }
         }
     }
 
-    fun stopScripts() {
+    suspend fun stopScripts() {
         val count = scriptInstances.value.size
         scriptInstances.value.forEach { scriptInstance ->
             scriptInstance.stop()
