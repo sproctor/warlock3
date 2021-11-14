@@ -197,7 +197,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         context.matchWait()
     },
     "move" to { context, args ->
-        context.sendCommand(args)
+        context.putCommand(args)
         context.waitForNav()
     },
     "nextroom" to { context, _ ->
