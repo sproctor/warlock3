@@ -16,7 +16,7 @@ class TextStream(
     private val _lines = MutableStateFlow<List<StreamLine>>(emptyList())
     val lines = _lines.asStateFlow()
 
-    val mutex = Mutex()
+    private val mutex = Mutex()
 
     suspend fun append(text: String, styles: List<WarlockStyle>) {
         val newString = StyledString(

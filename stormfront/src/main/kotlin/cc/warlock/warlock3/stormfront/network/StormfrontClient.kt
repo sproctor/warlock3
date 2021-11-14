@@ -43,7 +43,7 @@ class StormfrontClient(
     private var parseText = true
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    private var currentStream: TextStream? = mainStream
+    private var currentStream: TextStream = mainStream
     private var currentStyle: WarlockStyle? = null
 
     // Output style is for echo style! Not receieved text
@@ -84,22 +84,40 @@ class StormfrontClient(
                                         }
                                     is StormfrontStreamEvent ->
                                         currentStream = if (event.id != null) {
-                                            val ifClosed = windowRegistry.getWindow(event.id)?.ifClosed
-                                            if (ifClosed?.isNotBlank() == true && !windowRegistry.isOpen(event.id)) {
-                                                getStream(ifClosed)
-                                            } else {
-                                                getStream(event.id)
-                                            }
+                                            getStream(event.id)
                                         } else {
                                             mainStream
                                         }
                                     is StormfrontDataReceivedEvent -> {
                                         val styles = listOfNotNull(currentStyle)
-                                        currentStream?.append(event.text, styles = styles)
+                                        currentStream.append(event.text, styles = styles)
+                                        val currentWindow = windowRegistry.getWindow(currentStream.name)
+                                        val ifClosed = currentWindow?.ifClosed ?: "main"
+                                        if (ifClosed != currentStream.name && ifClosed.isNotBlank() && !windowRegistry.openWindows.value.contains(
+                                                currentStream.name
+                                            )
+                                        ) {
+                                            val targetStream = getStream(ifClosed)
+                                            targetStream.append(
+                                                event.text,
+                                                styles = styles + listOfNotNull(currentWindow?.styleIfClosed?.let {
+                                                    WarlockStyle(it)
+                                                })
+                                            )
+                                        }
                                     }
                                     is StormfrontEolEvent -> {
-                                        currentStream?.appendEol(event.ignoreWhenBlank)?.let { text ->
+                                        currentStream.appendEol(event.ignoreWhenBlank)?.let { text ->
                                             _eventFlow.emit(ClientTextEvent(text))
+                                        }
+                                        val currentWindow = windowRegistry.getWindow(currentStream.name)
+                                        val ifClosed = currentWindow?.ifClosed ?: "main"
+                                        if (ifClosed != currentStream.name && ifClosed.isNotBlank() && !windowRegistry.openWindows.value.contains(
+                                                currentStream.name
+                                            )
+                                        ) {
+                                            val targetStream = getStream(ifClosed)
+                                            targetStream.appendEol(event.ignoreWhenBlank)
                                         }
                                     }
                                     is StormfrontAppEvent -> {
