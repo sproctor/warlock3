@@ -16,6 +16,7 @@ import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleRepository
+import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.uchuhimo.konf.Config
@@ -32,9 +33,21 @@ fun FrameWindowScope.WarlockApp(
     var showSettings by remember { mutableStateOf(false) }
     var characterId: String? by remember { mutableStateOf(null) }
     val variableRegistry = remember {
-        VariableRegistry(initialVariables = config[ClientSpec.variables], saveVariables = { variables ->
-            saveConfig { newConfig -> newConfig[ClientSpec.variables] = variables }
-        })
+        VariableRegistry(
+            variables = config.observe(ClientSpec.variables),
+            saveVariable = { character: String, name: String, value: String ->
+                saveConfig { newConfig ->
+                    val characterVariables = newConfig[ClientSpec.variables].getOrDefault(character, emptyMap()).toCaseInsensitiveMap() + (name to value)
+                    newConfig[ClientSpec.variables] = newConfig[ClientSpec.variables].toCaseInsensitiveMap() + (character to characterVariables)
+                }
+            },
+            deleteVariable = { character, name ->
+                saveConfig { newConfig ->
+                    val characterVariables = newConfig[ClientSpec.variables].getOrDefault(character, emptyMap()).toCaseInsensitiveMap() - name
+                    newConfig[ClientSpec.variables] = newConfig[ClientSpec.variables].toCaseInsensitiveMap() + (character to characterVariables)
+                }
+            }
+        )
     }
     val highlightRegistry = remember {
         HighlightRegistry(

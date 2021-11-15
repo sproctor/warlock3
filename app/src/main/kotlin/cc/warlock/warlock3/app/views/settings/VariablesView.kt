@@ -24,7 +24,7 @@ fun VariablesView(
     Column(Modifier.fillMaxSize()) {
         // TODO add character selector
         Text("Showing variables for $subject")
-        val allVariables = variableRegistry.variables.collectAsState()
+        val allVariables = variableRegistry.variables.collectAsState(initial = emptyMap())
         val variables = allVariables.value[subject.lowercase()] ?: emptyMap()
         Column(Modifier.weight(1f).fillMaxHeight()) {
             variables.forEach { entry ->
@@ -57,7 +57,7 @@ fun VariablesView(
                 if (name != variable.first) {
                     variableRegistry.deleteVariable(subject.lowercase(), variable.first)
                 }
-                variableRegistry.setVariable(subject.lowercase(), name, value)
+                variableRegistry.saveVariable(subject.lowercase(), name, value)
                 editingVariable = null
             },
             onClose = { editingVariable = null }

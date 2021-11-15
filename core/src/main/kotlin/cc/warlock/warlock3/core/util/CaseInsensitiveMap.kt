@@ -11,3 +11,7 @@ class CaseInsensitiveMap<T> constructor() : TreeMap<String, T>(String.CASE_INSEN
         putAll(pairs)
     }
 }
+
+fun <T> Map<String, T>.toCaseInsensitiveMap(): Map<String, T> {
+    return CaseInsensitiveMap(this)
+}
