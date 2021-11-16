@@ -10,10 +10,15 @@ import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.util.CaseInsensitiveMap
-import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -21,24 +26,12 @@ class WslContext(
     private val client: WarlockClient,
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
+    private val scope: CoroutineScope,
+    private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRegistry: VariableRegistry,
     private val highlightRegistry: HighlightRegistry,
 ) : AutoCloseable {
-    private val scope = CoroutineScope(Dispatchers.IO)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val globalVariables = client.characterId.flatMapLatest { id ->
-        if (id != null) {
-            variableRegistry.getVariablesForCharacter(id).map {
-                it.toCaseInsensitiveMap()
-            }
-        } else {
-            flow {
-                emptyMap<String, String>()
-            }
-        }
-    }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
     private val scriptVariables = CaseInsensitiveMap(
         "components" to WslComponents(client),
         "properties" to WslProperties(client),
@@ -68,7 +61,6 @@ class WslContext(
             .onEach { event ->
                 when (event) {
                     is ClientPromptEvent -> {
-                        log(50, "got prompt")
                         mutex.withLock {
                             if (typeAhead > 0)
                                 typeAhead--
@@ -100,12 +92,7 @@ class WslContext(
     }
 
     private fun getGlobalVariable(name: String): String? {
-        globalVariables.value.forEach { (key, value) ->
-            if (key.equals(name, ignoreCase = true)) {
-                return value
-            }
-        }
-        return null
+        return globalVariables.value[name]
     }
 
     fun lookupVariable(name: String): WslValue? {
@@ -161,7 +148,7 @@ class WslContext(
     }
 
     fun log(level: Int, message: String) {
-        if (level <= loggingLevel) {
+        if (level >= loggingLevel) {
             scope.launch {
                 client.debug(message)
             }
@@ -174,7 +161,6 @@ class WslContext(
 
     suspend fun putCommand(command: String) {
         waitForRoundTime()
-        log(50, "current typeahead: $typeAhead")
         mutex.withLock {
             typeAhead++
         }
@@ -294,13 +280,13 @@ class WslContext(
             val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: return
             val currentTime = client.time
             if (roundEnd < currentTime) {
-                return
+                break
             }
             val duration = roundEnd - currentTime
-            log(10, "wait duration: ${duration}ms")
+            log(0, "wait duration: ${duration}ms")
             delay(duration)
         }
-        log(50, "done waiting for round time")
+        log(5, "done waiting for round time")
     }
 
     override fun close() {

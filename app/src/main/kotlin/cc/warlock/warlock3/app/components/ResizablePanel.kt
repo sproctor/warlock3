@@ -90,7 +90,6 @@ class ResizablePanelState(
     var currentSize by mutableStateOf(initialSize)
 
     fun dispatchRawMovement(delta: Dp) {
-        println("resize delta: $delta")
         currentSize = min(max(minSize, currentSize + delta), maxSize)
     }
 }
