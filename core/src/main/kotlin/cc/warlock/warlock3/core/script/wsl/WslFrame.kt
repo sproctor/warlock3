@@ -21,6 +21,10 @@ class WslFrame(startLine: Int) {
         localVariables[name] = value
     }
 
+    fun deleteVariable(name: String) {
+        localVariables -= name
+    }
+
     fun lookupVariable(name: String): WslValue? {
         return localVariables[name]
     }

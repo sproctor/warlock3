@@ -105,6 +105,17 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "debug" to { context, args ->
         context.log(10, args)
     },
+    "debuglevel" to { context, args ->
+        val (level, _) = args.splitFirstWord()
+        level.toIntOrNull()?.let {
+            if (it > 50) {
+                throw WslRuntimeException("maximum logging level is 50")
+            }
+            context.setLoggingLevel(it)
+        } ?: loggingLevels[level]?.let {
+            context.setLoggingLevel(it)
+        } ?: throw WslRuntimeException("Invalid logging level")
+    },
     "delay" to { _, args ->
         val (arg, _) = args.splitFirstWord()
         val duration = arg.toBigDecimalOrNull() ?: BigDecimal.ONE
@@ -159,16 +170,14 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "info" to { context, args ->
         context.log(20, args)
     },
-    "debuglevel" to { context, args ->
-        val (level, _) = args.splitFirstWord()
-        level.toIntOrNull()?.let {
-            if (it > 50) {
-                throw WslRuntimeException("maximum logging level is 50")
-            }
-            context.setLoggingLevel(it)
-        } ?: loggingLevels[level]?.let {
-            context.setLoggingLevel(it)
-        } ?: throw WslRuntimeException("Invalid logging level")
+    "local" to { context, args ->
+        val (name, value) = args.splitFirstWord()
+
+        if (name.isBlank()) {
+            throw WslRuntimeException("Invalid arguments to var")
+        }
+        //cx.scriptDebug(1, "setVariable: $name=$value")
+        context.setLocalVariable(name, WslString(value ?: ""))
     },
     "mapadd" to { context, argString ->
         val (name, rest) = argString.splitFirstWord()
@@ -295,9 +304,13 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         //cx.scriptDebug(1, "setVariable: $name=$value")
         context.setScriptVariable(name, WslString(value ?: ""))
     },
-    "unvar" to { context, args ->
+    "unsetvar" to { context, args ->
         val (name, _) = args.splitFirstWord()
         context.deleteScriptVariable(name)
+    },
+    "unsetlocal" to { context, args ->
+        val (name, _) = args.splitFirstWord()
+        context.deleteLocalVariable(name)
     },
     "wait" to { context, _ ->
         context.waitForPrompt()

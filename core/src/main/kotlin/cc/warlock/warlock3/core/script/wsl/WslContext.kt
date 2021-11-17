@@ -131,6 +131,16 @@ class WslContext(
         scriptVariables -= name
     }
 
+    fun setLocalVariable(name: String, value: WslValue) {
+        log(10, "Setting local variable \"$name\" to $value")
+        currentFrame.setVariable(name, value)
+    }
+
+    fun deleteLocalVariable(name: String) {
+        log(10, "Deleting local variable: $name")
+        currentFrame.deleteVariable(name)
+    }
+
     fun getNextLine(): WslLine? {
         val currentLine = currentFrame.nextLine()
         if (currentLine >= lines.size) {
