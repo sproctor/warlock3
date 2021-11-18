@@ -7,13 +7,11 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.macros.macroCommands
-import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.script.ScriptInstance
 import cc.warlock.warlock3.core.script.VariableRegistry
-import cc.warlock.warlock3.core.script.wsl.WslScript
-import cc.warlock.warlock3.core.script.wsl.WslScriptInstance
+import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -24,7 +22,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.Token
-import java.io.File
 import kotlin.math.max
 
 class GameViewModel(
@@ -32,7 +29,7 @@ class GameViewModel(
     val client: StormfrontClient,
     val macroRepository: MacroRepository,
     val variableRegistry: VariableRegistry,
-    val highlightRegistry: HighlightRegistry,
+    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -84,30 +81,11 @@ class GameViewModel(
         _entryText.value = TextFieldValue()
         _sendHistory.value = listOf(line) + _sendHistory.value
         historyPosition = -1
-        if (line.startsWith(".")) {
-            val splitCommand = line.drop(1).split(" ", "\t", limit = 2)
-            val scriptName = splitCommand.firstOrNull() ?: ""
-            val args = splitCommand.getOrNull(1) ?: ""
-            val scriptDir = System.getProperty("user.home") + "/.warlock3/scripts"
-            val file = File("$scriptDir/$scriptName.wsl")
-            scope.launch {
-                if (file.exists()) {
-                    client.print(StyledString("File exists"))
-                    val script = WslScript(name = scriptName, file = file)
-                    val scriptInstance = WslScriptInstance(
-                        name = scriptName,
-                        script = script,
-                        variableRegistry = variableRegistry,
-                        highlightRegistry = highlightRegistry,
-                    )
-                    scriptInstance.start(client = client, argumentString = args)
-                    scriptInstances.value += scriptInstance
-                } else {
-                    client.print(StyledString("Could not find a script with that name"))
-                }
-            }
-        } else {
-            scope.launch {
+        scope.launch {
+            if (line.startsWith(".")) {
+                val scriptCommand = line.drop(1)
+                scriptEngineRegistry.startScript(client, scriptCommand)
+            } else {
                 client.sendCommand(line)
             }
         }
@@ -156,7 +134,8 @@ class GameViewModel(
                         handleEntity(entity[1])
                     }
                     MacroLexer.At -> {
-                        _entryText.value = _entryText.value.copy(selection = TextRange(_entryText.value.text.length))
+                        _entryText.value =
+                            _entryText.value.copy(selection = TextRange(_entryText.value.text.length))
                     }
                     MacroLexer.Question -> {
                         storedText.value?.let { entryAppend(it) }

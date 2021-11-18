@@ -15,6 +15,7 @@ import cc.warlock.warlock3.app.views.sge.SgeWizard
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
 import cc.warlock.warlock3.core.window.WindowRegistry
@@ -148,13 +149,19 @@ fun FrameWindowScope.WarlockApp(
                     println("macros: ${it.characterMacros.value}")
                 }
             }
+            val scriptEngineRegistry = remember {
+                WarlockScriptEngineRegistry(
+                    highlightRegistry = highlightRegistry,
+                    variableRegistry = variableRegistry,
+                )
+            }
             val viewModel = remember(client) {
                 GameViewModel(
                     client = client,
                     macroRepository = macroRepository,
                     windowRegistry = windowRegistry,
                     variableRegistry = variableRegistry,
-                    highlightRegistry = highlightRegistry,
+                    scriptEngineRegistry = scriptEngineRegistry,
                 )
             }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }
