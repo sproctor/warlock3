@@ -21,7 +21,6 @@ dependencies {
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
-    implementation("org.mozilla:rhino:_")
 }
 
 java {

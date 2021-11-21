@@ -6,10 +6,10 @@ plugins {
 dependencies {
     implementation(Kotlin.stdlib.jdk8)
     implementation(KotlinX.coroutines.core)
-    //implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     // testImplementation(Testing.junit4)
     testImplementation(kotlin("test"))
     antlr("org.antlr:antlr4:_")
+    implementation("org.mozilla:rhino:_")
 }
 
 tasks.test {

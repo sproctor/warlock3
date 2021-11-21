@@ -6,9 +6,10 @@ import cc.warlock.warlock3.core.script.js.JsEngine
 import cc.warlock.warlock3.core.script.wsl.WslEngine
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import java.io.File
-import javax.script.ScriptEngineManager
 
 class WarlockScriptEngineRegistry(
     highlightRegistry: HighlightRegistry,
@@ -18,11 +19,9 @@ class WarlockScriptEngineRegistry(
     private val _runningScripts = MutableStateFlow<List<ScriptInstance>>(emptyList())
     val runningScripts = _runningScripts
 
-    private val jvmScriptManager = ScriptEngineManager()
-
     private val engines = listOf(
         WslEngine(highlightRegistry = highlightRegistry, variableRegistry = variableRegistry),
-        JsEngine(jvmScriptManager)
+        JsEngine(variableRegistry)
     )
 
     suspend fun startScript(client: WarlockClient, command: String) {
@@ -30,11 +29,16 @@ class WarlockScriptEngineRegistry(
 
         val instance = findInstance(name)
         if (instance != null) {
-            client.print(StyledString("Starting script: $name"))
-            instance.start(client = client, argumentString = argString ?: "")
+            client.print(StyledString("Starting script: $name", style = WarlockStyle.Echo))
             _runningScripts.value += instance
+            instance.start(client = client, argumentString = argString ?: "") {
+                _runningScripts.value -= instance
+                runBlocking {
+                    client.print(StyledString("Script has finished: $name", style = WarlockStyle.Echo))
+                }
+            }
         } else {
-            client.print(StyledString("Could not find a script with that name"))
+            client.print(StyledString("Could not find a script with that name", style = WarlockStyle.Error))
         }
     }
 

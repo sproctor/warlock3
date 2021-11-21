@@ -1,19 +1,22 @@
 package cc.warlock.warlock3.core.script.js
 
 import cc.warlock.warlock3.core.script.ScriptInstance
+import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.script.WarlockScriptEngine
+import org.mozilla.javascript.ContextFactory
 import java.io.File
-import javax.script.ScriptEngine
-import javax.script.ScriptEngineManager
 
 class JsEngine(
-    private val manager: ScriptEngineManager
+    private val variableRegistry: VariableRegistry,
 ) : WarlockScriptEngine {
+
     override val extensions: List<String> = listOf("js")
 
-    private val engine = manager.getEngineByName("rhino")
+    init {
+        ContextFactory.initGlobal(InterruptableContextFactory())
+    }
 
     override fun createInstance(name: String, file: File): ScriptInstance {
-        return JsInstance(name, file, engine)
+        return JsInstance(name, file, variableRegistry)
     }
 }

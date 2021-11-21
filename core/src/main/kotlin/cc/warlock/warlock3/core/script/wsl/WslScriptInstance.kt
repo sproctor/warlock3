@@ -27,7 +27,7 @@ class WslScriptInstance(
     private val scope = CoroutineScope(Dispatchers.Default)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun start(client: WarlockClient, argumentString: String) {
+    override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         val arguments = parseArguments(argumentString)
         _isRunning = true
         scope.launch {
@@ -78,7 +78,7 @@ class WslScriptInstance(
                 client.sendCommand("_state scripting off", echo = false)
             }
 
-            client.print(StyledString("Script has finished: $name"))
+            onStop()
         }
     }
 

@@ -1,10 +1,10 @@
 package cc.warlock.warlock3.core.script.wsl
 
-sealed class ScriptMatch(val label: String) {
+sealed class WslMatch(val label: String) {
     abstract fun match(line: String): String?
 }
 
-class TextMatch(label: String, val text: String) : ScriptMatch(label) {
+class TextMatch(label: String, val text: String) : WslMatch(label) {
     override fun match(line: String): String? {
         if (line.contains(text, ignoreCase = true)) {
             return text
@@ -13,7 +13,7 @@ class TextMatch(label: String, val text: String) : ScriptMatch(label) {
     }
 }
 
-class RegexMatch(label: String, val regex: Regex) : ScriptMatch(label) {
+class RegexMatch(label: String, val regex: Regex) : WslMatch(label) {
     override fun match(line: String): String? {
         return regex.find(line)?.value
     }

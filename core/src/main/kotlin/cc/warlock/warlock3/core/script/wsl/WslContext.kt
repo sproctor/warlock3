@@ -38,7 +38,7 @@ class WslContext(
         "variables" to WslVariables(this),
     )
 
-    private val matches = mutableListOf<ScriptMatch>()
+    private val matches = mutableListOf<WslMatch>()
     private val listeners = mutableMapOf<String, (String) -> Unit>()
 
     private val frameStack = mutableListOf(
@@ -258,7 +258,7 @@ class WslContext(
         }
     }
 
-    fun addMatch(match: ScriptMatch) {
+    fun addMatch(match: WslMatch) {
         matches += match
     }
 

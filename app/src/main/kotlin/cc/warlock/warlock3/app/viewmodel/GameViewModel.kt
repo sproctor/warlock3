@@ -70,8 +70,6 @@ class GameViewModel(
     private val _sendHistory = mutableStateOf<List<String>>(emptyList())
     val sendHistory: State<List<String>> = _sendHistory
 
-    private val scriptInstances = mutableStateOf<List<ScriptInstance>>(emptyList())
-
     val windows = windowRegistry.windows
 
     val openWindows = windowRegistry.openWindows
@@ -92,11 +90,11 @@ class GameViewModel(
     }
 
     suspend fun stopScripts() {
-        val count = scriptInstances.value.size
-        scriptInstances.value.forEach { scriptInstance ->
+        val scriptInstances = scriptEngineRegistry.runningScripts.value
+        val count = scriptInstances.size
+        scriptInstances.forEach { scriptInstance ->
             scriptInstance.stop()
         }
-        scriptInstances.value = emptyList()
         client.print(StyledString("Stopped $count script(s)"))
     }
 

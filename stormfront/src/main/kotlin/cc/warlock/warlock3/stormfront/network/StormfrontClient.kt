@@ -273,10 +273,13 @@ class StormfrontClient(
     }
 
     override suspend fun sendCommand(line: String, echo: Boolean) {
+        send("<c>$line\n")
         if (echo) {
             mainStream.appendCommand(line)
+            scope.launch {
+                _eventFlow.emit(ClientTextEvent(line))
+            }
         }
-        send("<c>$line\n")
     }
 
     override suspend fun disconnect() {
