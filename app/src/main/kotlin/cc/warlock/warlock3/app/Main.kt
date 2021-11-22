@@ -13,28 +13,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.singleWindowApplication
 import cc.warlock.warlock3.app.config.ClientSpec
+import cc.warlock.warlock3.app.config.ConfigWatcher
 import cc.warlock.warlock3.app.config.SgeSpec
 import com.uchuhimo.konf.Config
 import com.uchuhimo.konf.source.hocon
+import com.uchuhimo.konf.source.hocon.toHocon
 import com.uchuhimo.konf.source.json.toJson
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import java.io.File
+import java.nio.file.*
 import kotlin.math.roundToInt
-
-private val preferencesFile = File(System.getProperty("user.home") + "/.warlock3/preferences.conf")
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    preferencesFile.parentFile.mkdirs()
-    preferencesFile.createNewFile()
-    val config = Config {
-        addSpec(SgeSpec)
-        addSpec(ClientSpec)
-    }
-        .from.hocon.watchFile(preferencesFile)
-    val initialWidth = config[ClientSpec.width]
-    val initialHeight = config[ClientSpec.height]
+
+    val configWatcher = ConfigWatcher()
+    val initialConfig = configWatcher.configState.value
+
+    val initialWidth = initialConfig[ClientSpec.width]
+    val initialHeight = initialConfig[ClientSpec.height]
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
 
     singleWindowApplication(
@@ -46,16 +46,17 @@ fun main() {
             Surface(Modifier.fillMaxSize()) {
                 WarlockApp(
                     state = rememberGameState(),
-                    config = config,
-                    saveConfig = { updater -> updateConfig(config, updater) })
+                    config = configWatcher.configState,
+                    saveConfig = { updater -> configWatcher.updateConfig(updater) })
             }
         }
         LaunchedEffect(windowState) {
             snapshotFlow { windowState.size }
                 .onEach { size ->
-                    updateConfig(config) { updatedConfig ->
+                    configWatcher.updateConfig { updatedConfig ->
                         updatedConfig[ClientSpec.width] = size.width.value.roundToInt()
                         updatedConfig[ClientSpec.height] = size.height.value.roundToInt()
+                        updatedConfig
                     }
                 }
                 .launchIn(this)
@@ -63,16 +64,6 @@ fun main() {
     }
 }
 
-fun updateConfig(
-    config: Config,
-    updates: (Config) -> Unit
-) {
-    // first, lock file
-    preferencesFile.outputStream().channel.lock().use {
-        // then apply the new update
-        updates(config)
 
-        // Then save the changes to preference
-        config.toJson.toFile(preferencesFile)
-    }
-}
+
+

@@ -9,17 +9,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
-import cc.warlock.warlock3.app.util.observe
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleRepository
 import com.uchuhimo.konf.Config
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsDialog(
     currentCharacter: String?,
-    config: Config,
-    updateConfig: ((Config) -> Unit) -> Unit,
+    config: StateFlow<Config>,
+    updateConfig: ((Config) -> Config) -> Unit,
     variableRegistry: VariableRegistry,
     styleRepository: StyleRepository,
     closeDialog: () -> Unit,
@@ -29,7 +30,7 @@ fun SettingsDialog(
         onCloseRequest = closeDialog,
     ) {
         var state: SettingsState by remember { mutableStateOf(AppearanceSettingsState) }
-        val characters by config.observe(ClientSpec.characters).collectAsState(emptyList())
+        val characters by config.map { it[ClientSpec.characters] }.collectAsState(config.value[ClientSpec.characters])
 
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.width(160.dp).fillMaxHeight()) {
@@ -60,8 +61,8 @@ fun SettingsDialog(
                 }
                 MacroSettingsState -> MacrosView(
                     currentCharacter = currentCharacter,
-                    globalMacros = config.observe(ClientSpec.globalMacros).collectAsState(emptyMap()).value,
-                    characterMacros = config.observe(ClientSpec.characterMacros).collectAsState(emptyMap()).value,
+                    globalMacros = config.map { it[ClientSpec.globalMacros] }.collectAsState(config.value[ClientSpec.globalMacros]).value,
+                    characterMacros = config.map { it[ClientSpec.characterMacros] }.collectAsState(config.value[ClientSpec.characterMacros]).value,
                     saveMacro = { characterId, name, value ->
                         updateConfig { newConfig ->
                             if (characterId == null) {
@@ -70,6 +71,7 @@ fun SettingsDialog(
                                 val newMacros = (newConfig[ClientSpec.characterMacros][characterId] ?: emptyMap()) + (name to value)
                                 newConfig[ClientSpec.characterMacros] = newConfig[ClientSpec.characterMacros] + (characterId to newMacros)
                             }
+                            newConfig
                         }
                     },
                     deleteMacro = { characterId, name ->
@@ -82,13 +84,14 @@ fun SettingsDialog(
                                 newConfig[ClientSpec.characterMacros] =
                                     newConfig[ClientSpec.characterMacros] + (characterId to newMacros)
                             }
+                            newConfig
                         }
                     }
                 )
                 HighlightSettingsState -> HighlightsView(
                     currentCharacter = currentCharacter,
-                    globalHighlights = config.observe(ClientSpec.globalHighlights).collectAsState(emptyList()).value,
-                    characterHighlights = config.observe(ClientSpec.characterHighlights).collectAsState(emptyMap()).value,
+                    globalHighlights = config.map { it[ClientSpec.globalHighlights] }.collectAsState(emptyList()).value,
+                    characterHighlights = config.map { it[ClientSpec.characterHighlights] }.collectAsState(emptyMap()).value,
                     saveHighlight = { characterId, highlight ->
                         updateConfig { newConfig ->
                             if (characterId == null) {
@@ -97,6 +100,7 @@ fun SettingsDialog(
                                 val newHighlights = (newConfig[ClientSpec.characterHighlights][characterId] ?: emptyList()) + highlight
                                 newConfig[ClientSpec.characterHighlights] = newConfig[ClientSpec.characterHighlights] + (characterId to newHighlights)
                             }
+                            newConfig
                         }
                     },
                     deleteHighlight = { characterId, pattern ->
@@ -109,6 +113,7 @@ fun SettingsDialog(
                                 newConfig[ClientSpec.characterHighlights] =
                                     newConfig[ClientSpec.characterHighlights] + (characterId to newHighlight)
                             }
+                            newConfig
                         }
                     }
                 )
@@ -121,6 +126,7 @@ fun SettingsDialog(
                             updateConfig { newConfig ->
                                 val newStyles = (newConfig[ClientSpec.styles][characterId] ?: emptyMap()) + (name to styleDefinition)
                                 newConfig[ClientSpec.styles] = newConfig[ClientSpec.styles] + (characterId to newStyles)
+                                newConfig
                             }
                         }
                     )

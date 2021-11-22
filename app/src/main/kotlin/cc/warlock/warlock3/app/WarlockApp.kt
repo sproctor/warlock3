@@ -4,7 +4,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.window.FrameWindowScope
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.config.SgeSpec
-import cc.warlock.warlock3.app.util.observe
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
@@ -21,13 +20,16 @@ import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.uchuhimo.konf.Config
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 @Composable
 fun FrameWindowScope.WarlockApp(
     state: MutableState<GameState>,
-    config: Config,
-    saveConfig: ((Config) -> Unit) -> Unit,
+    config: StateFlow<Config>,
+    saveConfig: ((Config) -> Config) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val windowRegistry = remember { WindowRegistry() }
@@ -35,26 +37,30 @@ fun FrameWindowScope.WarlockApp(
     var characterId: String? by remember { mutableStateOf(null) }
     val variableRegistry = remember {
         VariableRegistry(
-            variables = config.observe(ClientSpec.variables),
+            variables = config.map { it[ClientSpec.variables] },
             saveVariable = { character: String, name: String, value: String ->
                 saveConfig { newConfig ->
-                    val characterVariables = newConfig[ClientSpec.variables].getOrDefault(character, emptyMap()).toCaseInsensitiveMap() + (name to value)
-                    newConfig[ClientSpec.variables] = newConfig[ClientSpec.variables].toCaseInsensitiveMap() + (character to characterVariables)
+                    val allVariables = newConfig[ClientSpec.variables].toCaseInsensitiveMap()
+                    val characterVariables = allVariables[character]?.toCaseInsensitiveMap() ?: emptyMap()
+                    newConfig[ClientSpec.variables] = allVariables + (character to (characterVariables + (name to value)))
+                    newConfig
                 }
             },
             deleteVariable = { character, name ->
                 saveConfig { newConfig ->
-                    val characterVariables = newConfig[ClientSpec.variables].getOrDefault(character, emptyMap()).toCaseInsensitiveMap() - name
-                    newConfig[ClientSpec.variables] = newConfig[ClientSpec.variables].toCaseInsensitiveMap() + (character to characterVariables)
+                    val allVariables = newConfig[ClientSpec.variables].toCaseInsensitiveMap()
+                    val characterVariables = allVariables.getOrDefault(character, emptyMap()).toCaseInsensitiveMap() - name
+                    newConfig[ClientSpec.variables] = allVariables + (character to characterVariables)
+                    newConfig
                 }
             }
         )
     }
     val highlightRegistry = remember {
         HighlightRegistry(
-            globalHighlights = config.observe(ClientSpec.globalHighlights)
+            globalHighlights = config.map { it[ClientSpec.globalHighlights] }
                 .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList()),
-            characterHighlights = config.observe(ClientSpec.characterHighlights)
+            characterHighlights = config.map { it[ClientSpec.characterHighlights] }
                 .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
             addHighlight = { characterId, highlight ->
                 saveConfig { config ->
@@ -66,29 +72,34 @@ fun FrameWindowScope.WarlockApp(
                     } else {
                         config[ClientSpec.globalHighlights] = config[ClientSpec.globalHighlights] + highlight
                     }
+                    config
                 }
             },
             deleteHighlight = { characterId, pattern ->
-                if (characterId != null) {
-                    val newHighlights =
-                        (config[ClientSpec.characterHighlights][characterId]
-                            ?: emptyList()).filter { it.pattern != pattern }
-                    config[ClientSpec.characterHighlights] =
-                        config[ClientSpec.characterHighlights] + (characterId to newHighlights)
-                } else {
-                    config[ClientSpec.globalHighlights] =
-                        config[ClientSpec.globalHighlights].filter { it.pattern != pattern }
+                saveConfig { config ->
+                    if (characterId != null) {
+                        val newHighlights =
+                            (config[ClientSpec.characterHighlights][characterId]
+                                ?: emptyList()).filter { it.pattern != pattern }
+                        config[ClientSpec.characterHighlights] =
+                            config[ClientSpec.characterHighlights] + (characterId to newHighlights)
+                    } else {
+                        config[ClientSpec.globalHighlights] =
+                            config[ClientSpec.globalHighlights].filter { it.pattern != pattern }
+                    }
+                    config
                 }
             }
         )
     }
     val styleRepository = remember {
         StyleRepository(
-            caseSensitiveStyles = config.observe(ClientSpec.styles),
+            caseSensitiveStyles = config.map { it[ClientSpec.styles] },
             saveStyle = { characterId, name, style ->
                 saveConfig { config ->
                     val newStyles = (config[ClientSpec.styles][characterId] ?: emptyMap()) + (name to style)
                     config[ClientSpec.styles] = config[ClientSpec.styles] + (characterId to newStyles)
+                    config
                 }
             }
         )
@@ -102,11 +113,11 @@ fun FrameWindowScope.WarlockApp(
         GameState.NewGameState -> {
             val viewModel = remember {
                 SgeViewModel(
-                    host = config[SgeSpec.host],
-                    port = config[SgeSpec.port],
-                    lastUsername = config[SgeSpec.lastUsername],
-                    accounts = config[ClientSpec.accounts],
-                    characters = config[ClientSpec.characters],
+                    host = config.value[SgeSpec.host],
+                    port = config.value[SgeSpec.port],
+                    lastUsername = config.value[SgeSpec.lastUsername],
+                    accounts = config.value[ClientSpec.accounts],
+                    characters = config.value[ClientSpec.characters],
                     readyToPlay = { properties ->
                         val key = properties["KEY"]
                         val host = properties["GAMEHOST"]
@@ -118,6 +129,7 @@ fun FrameWindowScope.WarlockApp(
                             updatedConfig[SgeSpec.lastUsername] = newAccount.name
                             updatedConfig[ClientSpec.accounts] =
                                 updatedConfig[ClientSpec.accounts].filter { it.name != newAccount.name } + newAccount
+                            updatedConfig
                         }
                     }
                 )
@@ -130,7 +142,7 @@ fun FrameWindowScope.WarlockApp(
                     host = currentState.host,
                     port = currentState.port,
                     windowRegistry = windowRegistry,
-                    maxTypeAhead = config[ClientSpec.maxTypeAhead],
+                    maxTypeAhead = config.value[ClientSpec.maxTypeAhead],
                 ).apply {
                     connect(currentState.key)
                 }
@@ -141,9 +153,9 @@ fun FrameWindowScope.WarlockApp(
             }
             val macroRepository = remember {
                 MacroRepository(
-                    globalMacros = config.observe(ClientSpec.globalMacros)
+                    globalMacros = config.map { it[ClientSpec.globalMacros] }
                         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
-                    characterMacros = config.observe(ClientSpec.characterMacros)
+                    characterMacros = config.map { it[ClientSpec.characterMacros] }
                         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
                 ).also {
                     println("macros: ${it.characterMacros.value}")
