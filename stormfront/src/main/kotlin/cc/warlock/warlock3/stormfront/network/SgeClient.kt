@@ -82,6 +82,7 @@ class SgeClient(
                 stopped = true
                 _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(response.properties))
             }
+            SgeResponse.SgeUnrecognizedResponse -> Unit // TODO: implement?
         }
     }
 

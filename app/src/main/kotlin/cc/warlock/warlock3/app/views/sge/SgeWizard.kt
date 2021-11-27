@@ -44,6 +44,7 @@ fun SgeWizard(
         )
         is SgeViewState.SgeConnecting -> SgeLoadingView("Connecting to SGE server")
         is SgeViewState.SgeError -> SgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
+        is SgeViewState.SgeConnectingToGame -> Unit // TODO: implement?
     }
 }
 

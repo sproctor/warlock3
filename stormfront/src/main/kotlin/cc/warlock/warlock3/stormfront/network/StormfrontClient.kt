@@ -78,6 +78,7 @@ class StormfrontClient(
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
                                 when (event) {
+                                    StormfrontHandledEvent -> Unit
                                     is StormfrontModeEvent ->
                                         if (event.id.equals("cmgr", true)) {
                                             parseText = false
@@ -134,7 +135,7 @@ class StormfrontClient(
                                     is StormfrontPromptEvent -> {
                                         _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
-                                        currentStream?.appendPrompt(event.text)
+                                        currentStream.appendPrompt(event.text)
                                     }
                                     is StormfrontTimeEvent -> {
                                         val newTime = event.time.toLong() * 1000L
@@ -194,7 +195,7 @@ class StormfrontClient(
                                     }
                                     is StormfrontComponentDefinitionEvent -> {
                                         val styles = listOfNotNull(currentStyle)
-                                        currentStream?.appendVariable(name = event.id, styles = styles)
+                                        currentStream.appendVariable(name = event.id, styles = styles)
                                     }
                                     is StormfrontComponentStartEvent -> {
                                         componentId = event.id

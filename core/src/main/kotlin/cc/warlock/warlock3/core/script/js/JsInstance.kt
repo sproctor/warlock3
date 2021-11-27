@@ -70,7 +70,7 @@ class JsInstance(
                         jsScope,
                         JsStateMap(
                             map = globalVariables,
-                            onPut = { name, value ->
+                            onPut = { name: String, value: String ->
                                 client.characterId.value?.let { characterId ->
                                     variableRegistry.saveVariable(characterId, name, value)
                                 }
