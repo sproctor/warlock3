@@ -1,8 +1,5 @@
 package cc.warlock.warlock3.app.viewmodel
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.Color
 import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.util.toSpanStyle
 import cc.warlock.warlock3.core.highlights.HighlightRegistry
@@ -11,7 +8,10 @@ import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 
 class WindowViewModel(
     val name: String,

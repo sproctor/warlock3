@@ -52,7 +52,7 @@ class TextStream(
     }
 
     suspend fun appendCommand(command: String) {
-        val string = StyledString(
+        val commandString = StyledString(
             text = command,
             styles = listOf(WarlockStyle.Command),
         )
@@ -60,12 +60,12 @@ class TextStream(
             if (isPrompting) {
                 val lastLine = _lines.value.last().copy()
                 _lines.value = _lines.value.dropLast(1) +
-                        lastLine.copy(text = lastLine.text + StyledString(" ") + string)
+                        lastLine.copy(text = lastLine.text + StyledString(" ") + commandString)
                 isPrompting = false
             } else {
                 _lines.value += StreamLine(
                     ignoreWhenBlank = false,
-                    text = StyledString(command),
+                    text = commandString,
                 )
             }
         }

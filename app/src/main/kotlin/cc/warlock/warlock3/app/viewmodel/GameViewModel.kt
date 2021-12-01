@@ -9,7 +9,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.macros.macroCommands
 import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.parser.MacroLexer
-import cc.warlock.warlock3.core.script.ScriptInstance
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
@@ -44,6 +43,8 @@ class GameViewModel(
         characterId?.let { allVariables[it] } ?: emptyMap()
     }
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
+    private var scriptsPaused = false
 
     private val currentTime: Flow<Int> = flow {
         while (true) {
@@ -92,10 +93,32 @@ class GameViewModel(
     suspend fun stopScripts() {
         val scriptInstances = scriptEngineRegistry.runningScripts.value
         val count = scriptInstances.size
-        scriptInstances.forEach { scriptInstance ->
-            scriptInstance.stop()
+        if (count > 0) {
+            scriptInstances.forEach { scriptInstance ->
+                scriptInstance.stop()
+            }
+            client.print(StyledString("Stopped $count script(s)"))
         }
-        client.print(StyledString("Stopped $count script(s)"))
+    }
+
+    suspend fun pauseScripts() {
+        val paused = this.scriptsPaused
+        this.scriptsPaused = !paused
+        val scriptInstances = scriptEngineRegistry.runningScripts.value
+        if (scriptInstances.isNotEmpty()) {
+            if (paused) {
+                client.print(StyledString("Resumed script(s)"))
+            } else {
+                client.print(StyledString("Paused script(s)"))
+            }
+            for (instance in scriptInstances) {
+                if (paused) {
+                    instance.resume()
+                } else {
+                    instance.suspend()
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalComposeUiApi::class)

@@ -11,10 +11,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.EvaluatorException
-import org.mozilla.javascript.FunctionObject
-import org.mozilla.javascript.ScriptableObject
+import org.mozilla.javascript.*
 import java.io.File
 import java.io.InputStreamReader
 import kotlin.concurrent.thread
@@ -116,11 +113,21 @@ class JsInstance(
                 ScriptableObject.defineClass(jsScope, MatchList::class.java)
                 context.evaluateReader(jsScope, reader, file.name, 1, null)
             } catch (e: StopException) {
-                runBlocking {
-                    client.print(StyledString("JS scripted stopped", style = WarlockStyle.Echo))
+                // nothing to do
+            } catch (e: WrappedException) {
+                val wrappedException = e.wrappedException
+                if (wrappedException is StopException) {
+                    // nothing to do
+                } else {
+                    e.printStackTrace()
+                    // FIXME: What should we do here? Is this correct?
+                    runBlocking {
+                        client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
+                    }
                 }
             } catch (e: EvaluatorException) {
                 runBlocking {
+                    e.printStackTrace()
                     client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
                 }
             } finally {

@@ -18,5 +18,8 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
     },
     "stopscript" to {
         it.stopScripts()
-    }
+    },
+    "pausescript" to {
+        it.pauseScripts()
+    },
 )
