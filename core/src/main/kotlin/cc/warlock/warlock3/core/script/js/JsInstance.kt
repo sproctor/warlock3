@@ -7,10 +7,7 @@ import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import org.mozilla.javascript.*
 import java.io.File
 import java.io.InputStreamReader
@@ -69,7 +66,7 @@ class JsInstance(
                             }
                         } else {
                             flow {
-                                mutableMapOf<String, String>()
+                                emit(mutableMapOf<String, String>())
                             }
                         }
                     }
