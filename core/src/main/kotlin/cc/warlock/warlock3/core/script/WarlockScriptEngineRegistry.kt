@@ -8,12 +8,14 @@ import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
 class WarlockScriptEngineRegistry(
     highlightRegistry: HighlightRegistry,
     variableRegistry: VariableRegistry,
+    private val scriptDir: StateFlow<String>,
 ) {
 
     private val _runningScripts = MutableStateFlow<List<ScriptInstance>>(emptyList())
@@ -43,10 +45,9 @@ class WarlockScriptEngineRegistry(
     }
 
     private fun findInstance(name: String): ScriptInstance? {
-        val scriptDir = System.getProperty("user.home") + "/.warlock3/scripts"
         for (engine in engines) {
             for (extension in engine.extensions) {
-                val file = File("$scriptDir/$name.$extension")
+                val file = File("${scriptDir.value}/$name.$extension")
                 if (file.exists()) {
                     return engine.createInstance(name, file)
                 }
