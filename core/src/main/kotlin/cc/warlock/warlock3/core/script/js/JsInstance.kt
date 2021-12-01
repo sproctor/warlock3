@@ -6,19 +6,19 @@ import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.runBlocking
 import org.mozilla.javascript.Context
+import org.mozilla.javascript.EvaluatorException
+import org.mozilla.javascript.FunctionObject
 import org.mozilla.javascript.ScriptableObject
 import java.io.File
 import java.io.InputStreamReader
 import kotlin.concurrent.thread
+import kotlin.reflect.jvm.javaMethod
 
 class JsInstance(
     override val name: String,
@@ -30,15 +30,26 @@ class JsInstance(
     override val isRunning: Boolean
         get() = _isRunning
 
+    private var _isSuspended = false
+    override val isSuspended: Boolean
+        get() = _isSuspended
+
     private lateinit var thread: Thread
 
-    private var scope = CoroutineScope(Dispatchers.Default)
+    val scope = CoroutineScope(Dispatchers.Default)
+
+    lateinit var context: Context
+        private set
+
+    var client: WarlockClient? = null
+        private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         _isRunning = true
+        this.client = client
         thread = thread {
-            val context = Context.enter()
+            context = Context.enter()
             try {
                 val jsScope = context.initStandardObjects()
                 val reader = InputStreamReader(file.inputStream())
@@ -49,6 +60,7 @@ class JsInstance(
                         client = client,
                         context = scope.coroutineContext,
                         variableRegistry = variableRegistry,
+                        instance = this,
                     )
                 )
                 runBlocking {
@@ -82,6 +94,24 @@ class JsInstance(
                             },
                         )
                     )
+                    jsScope.put(
+                        "pause",
+                        jsScope,
+                        FunctionObject(
+                            "pause",
+                            JavascriptFunctions::pause.javaMethod,
+                            jsScope,
+                        ),
+                    )
+                    jsScope.put(
+                        "exit",
+                        jsScope,
+                        FunctionObject(
+                            "exit",
+                            JavascriptFunctions::exit.javaMethod,
+                            jsScope,
+                        )
+                    )
                 }
                 ScriptableObject.defineClass(jsScope, MatchList::class.java)
                 context.evaluateReader(jsScope, reader, file.name, 1, null)
@@ -89,7 +119,12 @@ class JsInstance(
                 runBlocking {
                     client.print(StyledString("JS scripted stopped", style = WarlockStyle.Echo))
                 }
+            } catch (e: EvaluatorException) {
+                runBlocking {
+                    client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
+                }
             } finally {
+                _isRunning = false
                 Context.exit()
                 onStop()
             }
@@ -99,13 +134,30 @@ class JsInstance(
     override fun stop() {
         _isRunning = false
         thread.interrupt()
+        scope.cancel()
     }
 
     override fun suspend() {
-        TODO("Not yet implemented")
+        _isSuspended = true
+        thread.interrupt()
     }
 
     override fun resume() {
-        TODO("Not yet implemented")
+        _isSuspended = false
+        thread.interrupt()
+    }
+
+    fun checkStatus() {
+        // Check suspend first, so if we're stopped while suspended, we immediately throw StopException
+        while (isSuspended && isRunning) {
+            try {
+                Thread.sleep(1000)
+            } catch (e: InterruptedException) {
+                // don't care
+            }
+        }
+        if (!isRunning) {
+            throw StopException()
+        }
     }
 }

@@ -1,6 +1,5 @@
 package cc.warlock.warlock3.core.script.js
 
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript.ScriptableObject

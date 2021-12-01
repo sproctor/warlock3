@@ -3,6 +3,7 @@ package cc.warlock.warlock3.core.script.js
 import cc.warlock.warlock3.core.client.ClientTextEvent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.mozilla.javascript.Context
 import org.mozilla.javascript.ScriptableObject
 import org.mozilla.javascript.annotations.JSFunction
 
@@ -26,12 +27,15 @@ class MatchList : ScriptableObject() {
 
     @JSFunction
     fun wait(): Any? {
-        val jsClient = parentScope.get("client", parentScope) as JavascriptClient?
-        val client = jsClient?.client ?: return null
+        val context = Context.getCurrentContext()
+        val contextFactory = context.factory as InterruptableContextFactory
+        val instance = contextFactory.getInstance(context)
+        val client = instance.client!!
         var result: Any? = null
-        runBlocking(jsClient.context) {
+        instance.checkStatus()
+        runBlocking(instance.scope.coroutineContext) {
             client.eventFlow.first { event ->
-                if (event is ClientTextEvent) {
+                if (!instance.isSuspended && event is ClientTextEvent) {
                     val match = matches.firstOrNull { it.matches(event.text) }
                     if (match != null) {
                         result = match.obj

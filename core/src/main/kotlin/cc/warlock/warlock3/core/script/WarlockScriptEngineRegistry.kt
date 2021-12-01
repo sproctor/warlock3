@@ -21,7 +21,7 @@ class WarlockScriptEngineRegistry(
 
     private val engines = listOf(
         WslEngine(highlightRegistry = highlightRegistry, variableRegistry = variableRegistry),
-        JsEngine(variableRegistry)
+        JsEngine(variableRegistry, this)
     )
 
     suspend fun startScript(client: WarlockClient, command: String) {

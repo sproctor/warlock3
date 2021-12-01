@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(Kotlin.stdlib.jdk8)
+    implementation("org.jetbrains.kotlin:kotlin-reflect:_")
     implementation(KotlinX.coroutines.core)
     // testImplementation(Testing.junit4)
     testImplementation(kotlin("test"))

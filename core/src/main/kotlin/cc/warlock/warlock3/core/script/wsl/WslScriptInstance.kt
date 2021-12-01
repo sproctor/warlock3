@@ -9,6 +9,7 @@ import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.parseArguments
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -20,11 +21,19 @@ class WslScriptInstance(
     private val variableRegistry: VariableRegistry,
     private val highlightRegistry: HighlightRegistry,
 ) : ScriptInstance {
+
     private var _isRunning = false
     override val isRunning: Boolean
         get() = _isRunning
+
+    private var _isSuspended = false
+    override val isSuspended: Boolean
+        get() = _isSuspended
+
     private lateinit var lines: List<WslLine>
     private val scope = CoroutineScope(Dispatchers.Default)
+
+    private val suspendedChannel = Channel<Unit>(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
@@ -66,6 +75,9 @@ class WslScriptInstance(
                         client.print(StyledString("Script \"$name\" ended"))
                         break
                     }
+                    while (isSuspended) {
+                        suspendedChannel.receive()
+                    }
                     line.statement.execute(context)
                 }
             } catch (e: WslParseException) {
@@ -88,10 +100,11 @@ class WslScriptInstance(
     }
 
     override fun suspend() {
-        TODO("Not yet implemented")
+        _isSuspended = true
     }
 
     override fun resume() {
-        TODO("Not yet implemented")
+        _isSuspended = false
+        suspendedChannel.trySend(Unit)
     }
 }

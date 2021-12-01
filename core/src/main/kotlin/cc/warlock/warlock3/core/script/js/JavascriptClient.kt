@@ -17,6 +17,7 @@ class JavascriptClient(
     val client: WarlockClient,
     val context: CoroutineContext,
     val variableRegistry: VariableRegistry,
+    private val instance: JsInstance,
 ) {
 
     private val promptChannel = Channel<Unit>(0)
@@ -28,24 +29,28 @@ class JavascriptClient(
     private var loggingLevel = 30
 
     fun echo(text: String) {
+        instance.checkStatus()
         runBlocking(context) {
             client.print(StyledString(text, style = WarlockStyle.Echo))
         }
     }
 
     fun put(command: String) {
+        instance.checkStatus()
         runBlocking(context) {
             putCommand(command)
         }
     }
 
     fun waitForNav() {
+        instance.checkStatus()
         runBlocking(context) {
             doWaitForNav()
         }
     }
 
     fun move(command: String) {
+        instance.checkStatus()
         runBlocking(context) {
             putCommand(command)
             doWaitForNav()
@@ -53,6 +58,7 @@ class JavascriptClient(
     }
 
     fun log(level: Int, message: String) {
+        instance.checkStatus()
         if (level >= loggingLevel) {
             runBlocking(context) {
                 client.debug(message)
@@ -61,29 +67,29 @@ class JavascriptClient(
     }
 
     fun waitForPrompt() {
+        instance.checkStatus()
         runBlocking(context) {
             doWaitForPrompt()
         }
     }
 
     fun waitForRoundTime() {
+        instance.checkStatus()
         runBlocking(context) {
             doWaitForRoundTime()
         }
     }
 
     fun setVariable(name: String, value: String) {
+        instance.checkStatus()
         val characterId = client.characterId.value ?: return
         variableRegistry.saveVariable(characterId, name, value)
-    }
-
-    fun exit() {
-        throw StopException()
     }
 
     private suspend fun doWaitForRoundTime() {
         log(5, "waiting for round time")
         while (true) {
+            instance.checkStatus()
             val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: return
             val currentTime = client.time
             if (roundEnd < currentTime) {
