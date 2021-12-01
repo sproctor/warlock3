@@ -161,19 +161,19 @@ fun FrameWindowScope.WarlockApp(
                     println("macros: ${it.characterMacros.value}")
                 }
             }
-            val scriptDir = config.map {
-                it[ClientSpec.scriptDirectory]
+            val scriptDirs = config.map {
+                it[ClientSpec.scriptDirectories]
             }
                 .stateIn(
                     scope = scope,
                     started = SharingStarted.Eagerly,
-                    initialValue = config.value[ClientSpec.scriptDirectory],
+                    initialValue = config.value[ClientSpec.scriptDirectories],
                 )
             val scriptEngineRegistry = remember {
                 WarlockScriptEngineRegistry(
                     highlightRegistry = highlightRegistry,
                     variableRegistry = variableRegistry,
-                    scriptDir = scriptDir,
+                    scriptDirectories = scriptDirs,
                 )
             }
             val viewModel = remember(client) {

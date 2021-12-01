@@ -15,7 +15,7 @@ import java.io.File
 class WarlockScriptEngineRegistry(
     highlightRegistry: HighlightRegistry,
     variableRegistry: VariableRegistry,
-    private val scriptDir: StateFlow<String>,
+    private val scriptDirectories: StateFlow<List<String>>,
 ) {
 
     private val _runningScripts = MutableStateFlow<List<ScriptInstance>>(emptyList())
@@ -47,9 +47,11 @@ class WarlockScriptEngineRegistry(
     private fun findInstance(name: String): ScriptInstance? {
         for (engine in engines) {
             for (extension in engine.extensions) {
-                val file = File("${scriptDir.value}/$name.$extension")
-                if (file.exists()) {
-                    return engine.createInstance(name, file)
+                for (scriptDir in scriptDirectories.value) {
+                    val file = File("$scriptDir/$name.$extension")
+                    if (file.exists()) {
+                        return engine.createInstance(name, file)
+                    }
                 }
             }
         }

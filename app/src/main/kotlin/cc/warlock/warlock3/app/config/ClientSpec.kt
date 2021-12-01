@@ -15,7 +15,7 @@ object ClientSpec : ConfigSpec("client") {
 
     val variables by optional<Map<String, Map<String, String>>>(emptyMap())
 
-    val scriptDirectory by optional(System.getProperty("user.home") + "/.warlock3/scripts")
+    val scriptDirectories by optional(listOf(System.getProperty("user.home") + "/.warlock3/scripts"))
 
     val maxTypeAhead by optional(1)
 
