@@ -88,9 +88,8 @@ class WslScriptInstance(
                 client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
             } finally {
                 client.sendCommand("_state scripting off", echo = false)
+                onStop()
             }
-
-            onStop()
         }
     }
 
