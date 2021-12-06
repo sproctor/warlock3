@@ -44,6 +44,7 @@ class JsInstance(
         this.client = client
         thread = thread {
             context = Context.enter()
+            context.languageVersion = Context.VERSION_ES6
             try {
                 val jsScope = context.initStandardObjects()
                 val reader = InputStreamReader(file.inputStream())
@@ -52,7 +53,7 @@ class JsInstance(
                     jsScope,
                     JavascriptClient(
                         client = client,
-                        context = scope.coroutineContext,
+                        scope = scope,
                         variableRegistry = variableRegistry,
                         instance = this,
                     )
@@ -123,6 +124,11 @@ class JsInstance(
                     }
                 }
             } catch (e: EvaluatorException) {
+                runBlocking {
+                    e.printStackTrace()
+                    client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
+                }
+            } catch (e: EcmaError) {
                 runBlocking {
                     e.printStackTrace()
                     client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))

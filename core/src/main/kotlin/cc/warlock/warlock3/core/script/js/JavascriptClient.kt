@@ -1,5 +1,7 @@
 package cc.warlock.warlock3.core.script.js
 
+import cc.warlock.warlock3.core.client.ClientNavEvent
+import cc.warlock.warlock3.core.client.ClientPromptEvent
 import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
@@ -7,15 +9,15 @@ import cc.warlock.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.coroutines.CoroutineContext
 
 class JavascriptClient(
     val client: WarlockClient,
-    val context: CoroutineContext,
+    val scope: CoroutineScope,
     val variableRegistry: VariableRegistry,
     private val instance: JsInstance,
 ) {
@@ -28,30 +30,50 @@ class JavascriptClient(
 
     private var loggingLevel = 30
 
+    init {
+        client.eventFlow
+            .onEach { event ->
+                when (event) {
+                    is ClientPromptEvent -> {
+                        mutex.withLock {
+                            if (typeAhead > 0)
+                                typeAhead--
+                            promptChannel.trySend(Unit)
+                        }
+                    }
+                    ClientNavEvent -> {
+                        navChannel.trySend(Unit)
+                    }
+                    else -> Unit
+                }
+            }
+            .launchIn(scope)
+    }
+
     fun echo(text: String) {
         instance.checkStatus()
-        runBlocking(context) {
+        runBlocking(scope.coroutineContext) {
             client.print(StyledString(text, style = WarlockStyle.Echo))
         }
     }
 
     fun put(command: String) {
         instance.checkStatus()
-        runBlocking(context) {
+        runBlocking(scope.coroutineContext) {
             putCommand(command)
         }
     }
 
     fun waitForNav() {
         instance.checkStatus()
-        runBlocking(context) {
+        runBlocking(scope.coroutineContext) {
             doWaitForNav()
         }
     }
 
     fun move(command: String) {
         instance.checkStatus()
-        runBlocking(context) {
+        runBlocking(scope.coroutineContext) {
             putCommand(command)
             doWaitForNav()
         }
@@ -60,7 +82,7 @@ class JavascriptClient(
     fun log(level: Int, message: String) {
         instance.checkStatus()
         if (level >= loggingLevel) {
-            runBlocking(context) {
+            runBlocking(scope.coroutineContext) {
                 client.debug(message)
             }
         }
@@ -68,14 +90,14 @@ class JavascriptClient(
 
     fun waitForPrompt() {
         instance.checkStatus()
-        runBlocking(context) {
+        runBlocking(scope.coroutineContext) {
             doWaitForPrompt()
         }
     }
 
     fun waitForRoundTime() {
         instance.checkStatus()
-        runBlocking(context) {
+        runBlocking(scope.coroutineContext) {
             doWaitForRoundTime()
         }
     }
