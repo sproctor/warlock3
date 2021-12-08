@@ -1,11 +1,10 @@
 package cc.warlock.warlock3.app.views.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
@@ -33,20 +32,35 @@ fun SettingsDialog(
         val characters by config.map { it[ClientSpec.characters] }.collectAsState(config.value[ClientSpec.characters])
 
         Row(Modifier.fillMaxSize()) {
-            Column(Modifier.width(160.dp).fillMaxHeight()) {
-                TextButton(onClick = { state = AppearanceSettingsState }) {
-                    Text("Appearance")
-                }
-                TextButton(onClick = { state = VariableSettingsState }) {
-                    Text("Variables")
-                }
-                TextButton(onClick = { state = MacroSettingsState }) {
-                    Text("Macros")
-                }
-                TextButton(onClick = { state = HighlightSettingsState }) {
-                    Text("Highlights")
+            Surface(Modifier.padding(8.dp).width(160.dp)) {
+                Column(Modifier.fillMaxSize()) {
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = AppearanceSettingsState },
+                    ) {
+                        Text(text = "Appearance", textAlign = TextAlign.Start)
+                    }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = VariableSettingsState },
+                    ) {
+                        Text(text = "Variables", textAlign = TextAlign.Start)
+                    }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = MacroSettingsState },
+                    ) {
+                        Text("Macros")
+                    }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = HighlightSettingsState },
+                    ) {
+                        Text("Highlights")
+                    }
                 }
             }
+            Divider(Modifier.fillMaxHeight().width(1.dp))
             when (state) {
                 VariableSettingsState -> {
                     val initialCharacter = currentCharacter ?: characters.firstOrNull()?.characterName
