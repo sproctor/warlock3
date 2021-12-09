@@ -1,13 +1,11 @@
 package cc.warlock.warlock3.app
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.window.FrameWindowScope
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.config.SgeSpec
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
-import cc.warlock.warlock3.app.views.AppMenuBar
 import cc.warlock.warlock3.app.views.game.GameView
 import cc.warlock.warlock3.app.views.settings.SettingsDialog
 import cc.warlock.warlock3.app.views.sge.SgeWizard
@@ -26,14 +24,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @Composable
-fun FrameWindowScope.WarlockApp(
+fun WarlockApp(
     state: MutableState<GameState>,
     config: StateFlow<Config>,
     saveConfig: ((Config) -> Config) -> Unit,
+    windowRegistry: WindowRegistry,
+    showSettings: Boolean,
+    closeSettings: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val windowRegistry = remember { WindowRegistry() }
-    var showSettings by remember { mutableStateOf(false) }
+
     var characterId: String? by remember { mutableStateOf(null) }
     val variableRegistry = remember {
         VariableRegistry(
@@ -105,10 +105,6 @@ fun FrameWindowScope.WarlockApp(
         )
     }
 
-    AppMenuBar(
-        windowRegistry = windowRegistry,
-        showSettings = { showSettings = true },
-    )
     when (val currentState = state.value) {
         GameState.NewGameState -> {
             val viewModel = remember {
@@ -214,9 +210,7 @@ fun FrameWindowScope.WarlockApp(
         SettingsDialog(
             currentCharacter = characterId,
             config = config,
-            closeDialog = {
-                showSettings = false
-            },
+            closeDialog = closeSettings,
             variableRegistry = variableRegistry,
             styleRepository = styleRepository,
             updateConfig = saveConfig,
