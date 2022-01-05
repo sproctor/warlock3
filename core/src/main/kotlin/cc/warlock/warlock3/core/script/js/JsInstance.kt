@@ -66,8 +66,8 @@ class JsInstance(
                                 it.toCaseInsensitiveMap().toMutableMap()
                             }
                         } else {
-                            flow {
-                                emit(mutableMapOf<String, String>())
+                            flow<MutableMap<String, String>> {
+                                emit(mutableMapOf())
                             }
                         }
                     }
