@@ -3,16 +3,12 @@ package cc.warlock.warlock3.app.viewmodel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import cc.warlock.warlock3.app.config.ClientSpec
-import cc.warlock.warlock3.app.config.SgeSpec
 import cc.warlock.warlock3.app.model.Account
 import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.stormfront.network.*
-import com.uchuhimo.konf.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class SgeViewModel(
@@ -70,7 +66,6 @@ class SgeViewModel(
                     }
                 }
             }
-            println("Done collecting")
         }
     }
 

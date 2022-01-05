@@ -22,9 +22,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import org.pushingpixels.aurora.theming.AuroraSkinDefinition
+import org.pushingpixels.aurora.window.AuroraApplicationScope
 
 @Composable
-fun WarlockApp(
+fun AuroraApplicationScope.WarlockApp(
+    skin: AuroraSkinDefinition,
     state: MutableState<GameState>,
     config: StateFlow<Config>,
     saveConfig: ((Config) -> Config) -> Unit,
@@ -208,6 +211,7 @@ fun WarlockApp(
     }
     if (showSettings) {
         SettingsDialog(
+            skin = skin,
             currentCharacter = characterId,
             config = config,
             closeDialog = closeSettings,

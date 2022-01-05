@@ -6,17 +6,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleRepository
 import com.uchuhimo.konf.Config
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import org.pushingpixels.aurora.theming.AuroraSkinDefinition
+import org.pushingpixels.aurora.window.AuroraApplicationScope
+import org.pushingpixels.aurora.window.AuroraWindow
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun SettingsDialog(
+fun AuroraApplicationScope.SettingsDialog(
+    skin: AuroraSkinDefinition,
     currentCharacter: String?,
     config: StateFlow<Config>,
     updateConfig: ((Config) -> Config) -> Unit,
@@ -24,8 +27,9 @@ fun SettingsDialog(
     styleRepository: StyleRepository,
     closeDialog: () -> Unit,
 ) {
-    Window(
+    AuroraWindow(
         title = "Settings",
+        skin = skin,
         onCloseRequest = closeDialog,
     ) {
         var state: SettingsState by remember { mutableStateOf(AppearanceSettingsState) }
