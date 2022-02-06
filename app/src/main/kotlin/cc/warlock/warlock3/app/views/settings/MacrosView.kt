@@ -20,20 +20,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.app.model.GameCharacter
 import java.awt.event.KeyEvent
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun MacrosView(
-    currentCharacter: String?,
+    initialCharacter: GameCharacter?,
+    characters: List<GameCharacter>,
     globalMacros: Map<String, String>,
     characterMacros: Map<String, Map<String, String>>,
     saveMacro: (String?, String, String) -> Unit,
     deleteMacro: (String?, String) -> Unit,
 ) {
-    val macros = if (currentCharacter == null) globalMacros else characterMacros[currentCharacter.lowercase()] ?: emptyMap()
+    var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
+    val macros = if (currentCharacter == null) globalMacros else characterMacros[currentCharacter!!.key] ?: emptyMap()
     var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
     Column {
+        SettingsCharacterSelector(
+            selectedCharacter = currentCharacter,
+            characters = characters,
+            onSelect = { currentCharacter = it },
+            allowGlobal = true,
+        )
         val scrollState = rememberScrollState(0)
         Box(
             Modifier.fillMaxWidth()
@@ -80,9 +89,9 @@ fun MacrosView(
             value = macro.second,
             saveMacro = { key, value ->
                 if (key != macro.first) {
-                    macro.first?.let { deleteMacro(currentCharacter?.lowercase(), it) }
+                    macro.first?.let { deleteMacro(currentCharacter?.key, it) }
                 }
-                saveMacro(currentCharacter?.lowercase(), key, value)
+                saveMacro(currentCharacter?.key, key, value)
                 editingMacro = null
             },
             onClose = { editingMacro = null }

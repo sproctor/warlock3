@@ -1,9 +1,9 @@
 package cc.warlock.warlock3.app
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.window.FrameWindowScope
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.config.SgeSpec
+import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @Composable
-fun FrameWindowScope.WarlockApp(
+fun WarlockApp(
     state: MutableState<GameState>,
     config: StateFlow<Config>,
     saveConfig: ((Config) -> Config) -> Unit,
@@ -35,7 +35,7 @@ fun FrameWindowScope.WarlockApp(
 ) {
     val scope = rememberCoroutineScope()
 
-    var characterId: String? by remember { mutableStateOf(null) }
+    var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
     val variableRegistry = remember {
         VariableRegistry(
             variables = config.map { it[ClientSpec.variables] },
@@ -43,14 +43,16 @@ fun FrameWindowScope.WarlockApp(
                 saveConfig { newConfig ->
                     val allVariables = newConfig[ClientSpec.variables].toCaseInsensitiveMap()
                     val characterVariables = allVariables[character]?.toCaseInsensitiveMap() ?: emptyMap()
-                    newConfig[ClientSpec.variables] = allVariables + (character to (characterVariables + (name to value)))
+                    newConfig[ClientSpec.variables] =
+                        allVariables + (character to (characterVariables + (name to value)))
                     newConfig
                 }
             },
             deleteVariable = { character, name ->
                 saveConfig { newConfig ->
                     val allVariables = newConfig[ClientSpec.variables].toCaseInsensitiveMap()
-                    val characterVariables = allVariables.getOrDefault(character, emptyMap()).toCaseInsensitiveMap() - name
+                    val characterVariables =
+                        allVariables.getOrDefault(character, emptyMap()).toCaseInsensitiveMap() - name
                     newConfig[ClientSpec.variables] = allVariables + (character to characterVariables)
                     newConfig
                 }
@@ -145,8 +147,19 @@ fun FrameWindowScope.WarlockApp(
                 }
             }
             val clientCharacterId = client.characterId.collectAsState()
-            if (characterId != clientCharacterId.value) {
-                characterId = clientCharacterId.value
+            if (currentCharacter?.key != clientCharacterId.value?.lowercase()) {
+                val values = clientCharacterId.value?.split(":")
+                val game = values?.getOrNull(0)
+                val name = values?.getOrNull(1)
+                if (game != null && name != null) {
+                    val character = GameCharacter(game, name)
+                    saveConfig { updatedConfig ->
+                        updatedConfig[ClientSpec.characters] =
+                            updatedConfig[ClientSpec.characters].filter { it.key != character.key } + character
+                        updatedConfig
+                    }
+                    currentCharacter = character
+                }
             }
             val macroRepository = remember {
                 MacroRepository(
@@ -209,7 +222,7 @@ fun FrameWindowScope.WarlockApp(
     }
     if (showSettings) {
         SettingsDialog(
-            currentCharacter = characterId,
+            currentCharacter = currentCharacter,
             config = config,
             closeDialog = closeSettings,
             variableRegistry = variableRegistry,

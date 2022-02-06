@@ -11,21 +11,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.core.script.VariableRegistry
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun VariablesView(
-    currentCharacter: String,
+    initialCharacter: GameCharacter,
+    characters: List<GameCharacter>,
     variableRegistry: VariableRegistry,
 ) {
-    var subject by remember { mutableStateOf(currentCharacter) }
+    var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
+    val characterKey = currentCharacter.key
     var editingVariable by remember { mutableStateOf<Pair<String, String>?>(null) }
     Column(Modifier.fillMaxSize()) {
-        // TODO add character selector
-        Text("Showing variables for $subject")
+        SettingsCharacterSelector(
+            selectedCharacter = currentCharacter,
+            characters = characters,
+            onSelect = { currentCharacter = it!! }
+        )
         val allVariables = variableRegistry.variables.collectAsState(initial = emptyMap())
-        val variables = allVariables.value[subject.lowercase()] ?: emptyMap()
+        val variables = allVariables.value[characterKey] ?: emptyMap()
         Column(Modifier.weight(1f).fillMaxHeight()) {
             variables.forEach { entry ->
                 ListItem(
@@ -55,9 +61,9 @@ fun VariablesView(
             value = variable.second,
             saveVariable = { name, value ->
                 if (name != variable.first) {
-                    variableRegistry.deleteVariable(subject.lowercase(), variable.first)
+                    variableRegistry.deleteVariable(characterKey, variable.first)
                 }
-                variableRegistry.saveVariable(subject.lowercase(), name, value)
+                variableRegistry.saveVariable(characterKey, name, value)
                 editingVariable = null
             },
             onClose = { editingVariable = null }

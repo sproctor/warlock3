@@ -18,6 +18,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPickerDialog
+import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.highlights.Highlight
@@ -28,18 +29,25 @@ import cc.warlock.warlock3.core.text.isUnspecified
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun HighlightsView(
-    currentCharacter: String?,
+    currentCharacter: GameCharacter?,
+    allCharacters: List<GameCharacter>,
     globalHighlights: List<Highlight>,
     characterHighlights: Map<String, List<Highlight>>,
     saveHighlight: (String?, Highlight) -> Unit,
     deleteHighlight: (String?, String) -> Unit,
 ) {
+    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val highlights =
-        if (currentCharacter == null) globalHighlights else characterHighlights[currentCharacter.lowercase()]
+        if (currentCharacter == null) globalHighlights else characterHighlights[currentCharacter.key]
             ?: emptyList()
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     Column(Modifier.fillMaxSize().padding(8.dp)) {
-        Text("Showing highlights for $currentCharacter")
+        SettingsCharacterSelector(
+            selectedCharacter = selectedCharacter,
+            characters = allCharacters,
+            onSelect = { selectedCharacter = it },
+            allowGlobal = true,
+        )
         Column(Modifier.fillMaxWidth().weight(1f)) {
             highlights.forEach { highlight ->
                 ListItem(
@@ -67,9 +75,9 @@ fun HighlightsView(
             highlight = highlight,
             saveHighlight = { newHighlight ->
                 if (highlight.pattern.isNotBlank()) {
-                    deleteHighlight(currentCharacter?.lowercase(), highlight.pattern)
+                    deleteHighlight(currentCharacter?.key, highlight.pattern)
                 }
-                saveHighlight(currentCharacter?.lowercase(), newHighlight)
+                saveHighlight(currentCharacter?.key, newHighlight)
                 editingHighlight = null
             },
             onClose = { editingHighlight = null }

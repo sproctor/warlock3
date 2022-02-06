@@ -122,7 +122,13 @@ class StormfrontClient(
                                         }
                                     }
                                     is StormfrontAppEvent -> {
-                                        _characterId.value = "${event.game}:${event.character}"
+                                        val game = event.game
+                                        val character = event.character
+                                        _characterId.value = if (game != null && character != null) {
+                                            "${event.game}:${event.character}"
+                                        } else {
+                                            null
+                                        }
                                         val newProperties = properties.value
                                             .plus("character" to (event.character ?: ""))
                                             .plus("game" to (event.game ?: ""))

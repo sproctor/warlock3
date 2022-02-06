@@ -24,13 +24,17 @@ import cc.warlock.warlock3.stormfront.StreamLine
 @Composable
 fun AppearanceView(
     styleRepository: StyleRepository,
-    currentId: String?,
+    initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
     saveStyle: (characterId: String, name: String, StyleDefinition) -> Unit
 ) {
-    val characterIdState = remember { mutableStateOf(currentId ?: characters.firstOrNull()?.characterName) }
-    val characterId = characterIdState.value ?: return
-    val styleMap by styleRepository.getStyleMap(characterId).collectAsState(emptyMap())
+    val currentCharacterState = remember(initialCharacter) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
+    val currentCharacter = currentCharacterState.value
+    if (currentCharacter == null) {
+        Text("no characters created")
+        return
+    }
+    val styleMap by styleRepository.getStyleMap(currentCharacter.key).collectAsState(emptyMap())
     val previewLines = listOf(
         StreamLine(
             text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName),
@@ -80,7 +84,12 @@ fun AppearanceView(
         )
     )
 
-    Column {
+    Column(Modifier.fillMaxSize().padding(8.dp)) {
+        SettingsCharacterSelector(
+            selectedCharacter = currentCharacter,
+            characters = characters,
+            onSelect = { currentCharacterState.value = it },
+        )
         CompositionLocalProvider(
             LocalTextStyle provides TextStyle(
                 color = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
@@ -112,7 +121,7 @@ fun AppearanceView(
         }
         PresetSettings(
             styleMap = styleMap,
-            saveStyle = { name, styleDefinition -> saveStyle(characterId, name, styleDefinition) })
+            saveStyle = { name, styleDefinition -> saveStyle(currentCharacter.key, name, styleDefinition) })
     }
 }
 

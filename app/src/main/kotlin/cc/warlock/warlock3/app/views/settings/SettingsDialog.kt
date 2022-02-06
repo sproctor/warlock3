@@ -8,6 +8,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
+import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyleRepository
 import com.uchuhimo.konf.Config
@@ -17,7 +18,7 @@ import kotlinx.coroutines.flow.map
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsDialog(
-    currentCharacter: String?,
+    currentCharacter: GameCharacter?,
     config: StateFlow<Config>,
     updateConfig: ((Config) -> Config) -> Unit,
     variableRegistry: VariableRegistry,
@@ -63,10 +64,11 @@ fun SettingsDialog(
             Divider(Modifier.fillMaxHeight().width(1.dp))
             when (state) {
                 VariableSettingsState -> {
-                    val initialCharacter = currentCharacter ?: characters.firstOrNull()?.characterName
+                    val initialCharacter = currentCharacter ?: characters.firstOrNull()
                     if (initialCharacter != null) {
                         VariablesView(
-                            currentCharacter = initialCharacter,
+                            initialCharacter = initialCharacter,
+                            characters = characters,
                             variableRegistry = variableRegistry,
                         )
                     } else {
@@ -74,7 +76,8 @@ fun SettingsDialog(
                     }
                 }
                 MacroSettingsState -> MacrosView(
-                    currentCharacter = currentCharacter,
+                    initialCharacter = currentCharacter,
+                    characters = characters,
                     globalMacros = config.map { it[ClientSpec.globalMacros] }.collectAsState(config.value[ClientSpec.globalMacros]).value,
                     characterMacros = config.map { it[ClientSpec.characterMacros] }.collectAsState(config.value[ClientSpec.characterMacros]).value,
                     saveMacro = { characterId, name, value ->
@@ -103,7 +106,8 @@ fun SettingsDialog(
                     }
                 )
                 HighlightSettingsState -> HighlightsView(
-                    currentCharacter = currentCharacter,
+                    currentCharacter = null,
+                    allCharacters = characters,
                     globalHighlights = config.map { it[ClientSpec.globalHighlights] }.collectAsState(emptyList()).value,
                     characterHighlights = config.map { it[ClientSpec.characterHighlights] }.collectAsState(emptyMap()).value,
                     saveHighlight = { characterId, highlight ->
@@ -134,7 +138,7 @@ fun SettingsDialog(
                 AppearanceSettingsState -> {
                     AppearanceView(
                         styleRepository = styleRepository,
-                        currentId = currentCharacter,
+                        initialCharacter = currentCharacter,
                         characters = characters,
                         saveStyle = { characterId, name, styleDefinition ->
                             updateConfig { newConfig ->
