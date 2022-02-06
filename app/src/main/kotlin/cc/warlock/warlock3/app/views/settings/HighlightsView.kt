@@ -15,14 +15,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogState
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
-import cc.warlock.warlock3.app.components.ColorPicker
+import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.highlights.Highlight
 import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.WarlockColor
+import cc.warlock.warlock3.core.text.isUnspecified
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -37,7 +38,7 @@ fun HighlightsView(
         if (currentCharacter == null) globalHighlights else characterHighlights[currentCharacter.lowercase()]
             ?: emptyList()
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
-    Column {
+    Column(Modifier.fillMaxSize().padding(8.dp)) {
         Text("Showing highlights for $currentCharacter")
         Column(Modifier.fillMaxWidth().weight(1f)) {
             highlights.forEach { highlight ->
@@ -47,7 +48,7 @@ fun HighlightsView(
                 )
             }
         }
-        Column(Modifier.fillMaxWidth().weight(1f)) {
+        Row(Modifier.fillMaxWidth()) {
             Button(onClick = {
                 editingHighlight = Highlight(
                     pattern = "",
@@ -157,31 +158,28 @@ fun EditHighlightDialog(
         }
     }
     editColor?.let { (group, content) ->
-        Dialog(
-            state = DialogState(size = DpSize(300.dp, height = 400.dp)),
-            onCloseRequest = { editColor = null }
-        ) {
-            Column(Modifier.fillMaxSize()) {
-                ColorPicker(
-                    modifier = Modifier.padding(top = 120.dp, start = 8.dp, end = 8.dp, bottom = 8.dp)
-                ) { color ->
-                    val currentStyle = styles.getOrNull(group) ?: StyleDefinition()
-                    val newStyle =
-                        if (content)
-                            currentStyle.copy(textColor = color.toWarlockColor())
-                        else
-                            currentStyle.copy(backgroundColor = color.toWarlockColor())
-                    if (styles.size < group + 1) {
-                        for (i in styles.size..group) {
-                            styles.add(StyleDefinition())
-                        }
-                    }
-                    styles[group] = newStyle
-                }
-                Button(onClick = { editColor = null }) {
-                    Text("OK")
-                }
-            }
+        val currentStyle = styles.getOrNull(group) ?: StyleDefinition()
+        val initialColor = (if (content) currentStyle.textColor else currentStyle.backgroundColor).let { color ->
+            if (color.isUnspecified()) Color.Black else color.toColor()
         }
+        ColorPickerDialog(
+            initialColor = initialColor,
+            onCloseRequest = { editColor = null },
+            onColorSelected = { color ->
+                val warlockColor =  color?.toWarlockColor() ?: WarlockColor.Unspecified
+                val newStyle =
+                    if (content)
+                        currentStyle.copy(textColor = warlockColor)
+                    else
+                        currentStyle.copy(backgroundColor = warlockColor)
+                if (styles.size < group + 1) {
+                    for (i in styles.size..group) {
+                        styles.add(StyleDefinition())
+                    }
+                }
+                styles[group] = newStyle
+                editColor = null
+            }
+        )
     }
 }

@@ -6,7 +6,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.core.script.VariableRegistry

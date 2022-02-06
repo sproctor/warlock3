@@ -1,8 +1,8 @@
 package cc.warlock.warlock3.core.text
 
 data class StyleDefinition(
-    val textColor: WarlockColor = WarlockColor(-1),
-    val backgroundColor: WarlockColor = WarlockColor(-1),
+    val textColor: WarlockColor = WarlockColor.Unspecified,
+    val backgroundColor: WarlockColor = WarlockColor.Unspecified,
     val entireLine: Boolean = false,
     val bold: Boolean = false,
     val italic: Boolean = false,

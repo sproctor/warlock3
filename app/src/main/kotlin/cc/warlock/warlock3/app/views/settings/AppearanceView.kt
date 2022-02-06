@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.OutlinedButton
-import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import cc.warlock.warlock3.app.components.ColorPicker
+import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.model.GameCharacter
-import cc.warlock.warlock3.app.util.*
+import cc.warlock.warlock3.app.util.getEntireLineStyles
+import cc.warlock.warlock3.app.util.toAnnotatedString
+import cc.warlock.warlock3.app.util.toColor
+import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.text.*
-import cc.warlock.warlock3.core.util.toWarlockColor
 import cc.warlock.warlock3.stormfront.StreamLine
 
 @Composable
@@ -122,28 +123,16 @@ fun PresetSettings(
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
 
-    Row {
-        Column(Modifier.weight(1f)) {
-            if (editColor != null) {
-                val currentColor = editColor!!.first
-                var currentText by remember(currentColor) {
-                    mutableStateOf(if (currentColor.isUnspecified()) "" else currentColor.argb.toHexString())
-                }
-                ColorPicker {
-                    editColor!!.second(it.toWarlockColor())
-                    editColor = editColor!!.copy(first = it.toWarlockColor())
-                }
-                OutlinedTextField(
-                    value = currentText,
-                    onValueChange = {
-                        currentText = it
-                        editColor!!.second("#$it".toWarlockColor() ?: WarlockColor.Unspecified)
-                    }
-                )
-            } else {
-                Text("No style selected")
+    if (editColor != null) {
+        ColorPickerDialog(
+            initialColor = editColor!!.first.toColor(),
+            onCloseRequest = { editColor = null},
+            onColorSelected = { color ->
+                editColor?.second?.invoke(color?.toWarlockColor() ?: WarlockColor.Unspecified)
             }
-        }
+        )
+    }
+    Row {
         Column {
             val presets = listOf("bold", "command", "roomName", "speech", "thought", "watching", "whisper", "echo")
             presets.forEach { preset ->

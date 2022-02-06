@@ -1,5 +1,4 @@
 package cc.warlock.warlock3.app.util
 
-fun Long.toHexString(): String {
-    return "%X".format(this)
-}
+fun Number.toHexString(): String =
+    "%X".format(this)

@@ -1,15 +1,10 @@
 package cc.warlock.warlock3.app.util
 
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import cc.warlock.warlock3.core.text.*
-
-fun WarlockColor.toColor(): Color {
-    return if (isUnspecified()) Color.Unspecified else Color(argb)
-}
 
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
