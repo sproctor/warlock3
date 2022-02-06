@@ -22,9 +22,6 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
     // implementation("org.jetbrains.compose.components:components-splitpane:_")
-    implementation("org.pushing-pixels:aurora-theming:_")
-    implementation("org.pushing-pixels:aurora-component:_")
-    implementation("org.pushing-pixels:aurora-window:_")
 }
 
 java {

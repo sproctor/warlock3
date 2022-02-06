@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.app
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.window.FrameWindowScope
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.config.SgeSpec
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
@@ -22,12 +23,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import org.pushingpixels.aurora.theming.AuroraSkinDefinition
-import org.pushingpixels.aurora.window.AuroraApplicationScope
 
 @Composable
-fun AuroraApplicationScope.WarlockApp(
-    skin: AuroraSkinDefinition,
+fun FrameWindowScope.WarlockApp(
     state: MutableState<GameState>,
     config: StateFlow<Config>,
     saveConfig: ((Config) -> Config) -> Unit,
@@ -211,7 +209,6 @@ fun AuroraApplicationScope.WarlockApp(
     }
     if (showSettings) {
         SettingsDialog(
-            skin = skin,
             currentCharacter = characterId,
             config = config,
             closeDialog = closeSettings,

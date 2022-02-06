@@ -6,20 +6,19 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.res.useResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.application
 import cc.warlock.warlock3.app.config.ClientSpec
 import cc.warlock.warlock3.app.config.ConfigWatcher
-import cc.warlock.warlock3.app.views.appMenuBar
+import cc.warlock.warlock3.app.views.AppMenuBar
 import cc.warlock.warlock3.core.window.WindowRegistry
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import org.pushingpixels.aurora.theming.marinerSkin
-import org.pushingpixels.aurora.window.AuroraWindow
-import org.pushingpixels.aurora.window.auroraApplication
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalComposeUiApi::class)
-fun main() = auroraApplication {
+fun main() = application {
 
     val configWatcher = ConfigWatcher()
     val initialConfig = configWatcher.configState.value
@@ -30,21 +29,17 @@ fun main() = auroraApplication {
     val windowRegistry = remember { WindowRegistry() }
     var showSettings by remember { mutableStateOf(false) }
 
-    val skin = marinerSkin()
-
-    AuroraWindow(
+    Window(
         title = "Warlock 3",
-        skin = skin,
         state = windowState,
         icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
         onCloseRequest = ::exitApplication,
-        menuCommands = appMenuBar(
+    ) {
+        AppMenuBar(
             windowRegistry = windowRegistry,
             showSettings = { showSettings = true }
         )
-    ) {
         WarlockApp(
-            skin = skin,
             state = rememberGameState(),
             config = configWatcher.configState,
             saveConfig = { updater -> configWatcher.updateConfig(updater) },
