@@ -1,34 +1,32 @@
 package cc.warlock.warlock3.app
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.Button
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
 import cc.warlock.warlock3.app.views.game.GameView
 import cc.warlock.warlock3.app.views.settings.SettingsDialog
 import cc.warlock.warlock3.app.views.sge.SgeWizard
-import cc.warlock.warlock3.core.prefs.*
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
-import cc.warlock.warlock3.core.prefs.models.PresetRepository
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
-import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.net.UnknownHostException
 
 @Composable
 fun WarlockApp(
     state: MutableState<GameState>,
-    clientSettingRepository: ClientSettingRepository,
-    accountRepository: AccountRepository,
-    characterRepository: CharacterRepository,
-    variableRepository: VariableRepository,
-    macroRepository: MacroRepository,
-    highlightRepository: HighlightRepository,
-    presetRepository: PresetRepository,
-    windowRegistry: WindowRegistry,
     showSettings: Boolean,
     closeSettings: () -> Unit,
 ) {
@@ -40,16 +38,10 @@ fun WarlockApp(
         GameState.NewGameState -> {
             val viewModel = remember {
                 SgeViewModel(
-                    host = "eaccess.play.net",
-                    port = 7900,
-                    clientSettingRepository = clientSettingRepository,
-                    accountRepository = accountRepository,
-                    readyToPlay = { properties, character ->
-                        val key = properties["KEY"]!!
-                        val host = properties["GAMEHOST"]!!
-                        val port = properties["GAMEPORT"]!!.toInt()
-                        state.value =
-                            GameState.ConnectedGameState(host = host, port = port, key = key, character = character)
+                    clientSettingRepository = AppContainer.clientSettings,
+                    accountRepository = AppContainer.accountRepository,
+                    readyToPlay = { gameState ->
+                        state.value = gameState
                     },
                 )
             }
@@ -59,19 +51,24 @@ fun WarlockApp(
             val client = remember(currentState.key) {
                 currentCharacter = currentState.character
                 scope.launch {
-                    characterRepository.saveCharacter(currentState.character)
-                    clientSettingRepository.put("lastUsername", currentState.character.accountId)
+                    AppContainer.characterRepository.saveCharacter(currentState.character)
+                    AppContainer.clientSettings.put("lastUsername", currentState.character.accountId)
                 }
-                StormfrontClient(
-                    host = currentState.host,
-                    port = currentState.port,
-                    windowRegistry = windowRegistry,
-                    maxTypeAhead = 1,
-                ).apply {
-                    connect(currentState.key)
+                try {
+                    StormfrontClient(
+                        host = currentState.host,
+                        port = currentState.port,
+                        windowRepository = AppContainer.windowRepository,
+                        maxTypeAhead = 1,
+                    ).apply {
+                        connect(currentState.key)
+                    }
+                } catch (e: UnknownHostException) {
+                    state.value = GameState.ErrorState("Unknown host: ${e.message}")
+                    return
                 }
             }
-            val scriptDirs = clientSettingRepository.observeScriptDirs()
+            val scriptDirs = AppContainer.clientSettings.observeScriptDirs()
                 .stateIn(
                     scope = scope,
                     started = SharingStarted.Eagerly,
@@ -79,30 +76,30 @@ fun WarlockApp(
                 )
             val scriptEngineRegistry = remember {
                 WarlockScriptEngineRegistry(
-                    highlightRepository = highlightRepository,
-                    variableRepository = variableRepository,
+                    highlightRepository = AppContainer.highlightRepository,
+                    variableRepository = AppContainer.variableRepository,
                     scriptDirectories = scriptDirs,
                 )
             }
             val viewModel = remember(client) {
                 GameViewModel(
                     client = client,
-                    macroRepository = macroRepository,
-                    windowRegistry = windowRegistry,
-                    variableRepository = variableRepository,
+                    macroRepository = AppContainer.macroRepository,
+                    windowRepository = AppContainer.windowRepository,
+                    variableRepository = AppContainer.variableRepository,
                     scriptEngineRegistry = scriptEngineRegistry,
                 )
             }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }
-            val windows by windowRegistry.windows.collectAsState()
+            val windows by AppContainer.windowRepository.windows.collectAsState()
             windows.keys.forEach { name ->
                 if (name != "main" && windowViewModels.value[name] == null) {
                     windowViewModels.value += name to WindowViewModel(
                         client = client,
                         name = name,
-                        window = windowRegistry.windows.map { it[name] },
-                        highlightRepository = highlightRepository,
-                        presetRepository = presetRepository,
+                        window = AppContainer.windowRepository.windows.map { it[name] },
+                        highlightRepository = AppContainer.highlightRepository,
+                        presetRepository = AppContainer.presetRepository,
                     )
                 }
             }
@@ -110,23 +107,38 @@ fun WarlockApp(
                 WindowViewModel(
                     name = "main",
                     client = client,
-                    window = windowRegistry.windows.map { it["main"] },
-                    highlightRepository = highlightRepository,
-                    presetRepository = presetRepository,
+                    window = AppContainer.windowRepository.windows.map { it["main"] },
+                    highlightRepository = AppContainer.highlightRepository,
+                    presetRepository = AppContainer.presetRepository,
                 )
             }
             GameView(viewModel = viewModel, windowViewModels.value, mainWindowViewModel)
+
+        }
+        is GameState.ErrorState -> {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(text = currentState.message)
+                Button(
+                    onClick = { state.value = GameState.NewGameState }
+                ) {
+                    Text("OK")
+                }
+            }
         }
     }
     if (showSettings) {
         SettingsDialog(
             currentCharacter = currentCharacter,
             closeDialog = closeSettings,
-            variableRepository = variableRepository,
-            macroRepository = macroRepository,
-            presetRepository = presetRepository,
-            characterRepository = characterRepository,
-            highlightRepository = highlightRepository,
+            variableRepository = AppContainer.variableRepository,
+            macroRepository = AppContainer.macroRepository,
+            presetRepository = AppContainer.presetRepository,
+            characterRepository = AppContainer.characterRepository,
+            highlightRepository = AppContainer.highlightRepository,
         )
     }
 }
@@ -140,4 +152,6 @@ sealed class GameState {
     object NewGameState : GameState()
     data class ConnectedGameState(val host: String, val port: Int, val key: String, val character: GameCharacter) :
         GameState()
+
+    data class ErrorState(val message: String) : GameState()
 }

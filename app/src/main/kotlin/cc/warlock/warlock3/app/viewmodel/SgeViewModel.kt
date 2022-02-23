@@ -3,6 +3,7 @@ package cc.warlock.warlock3.app.viewmodel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import cc.warlock.warlock3.app.GameState
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.ClientSettingRepository
 import cc.warlock.warlock3.core.prefs.models.Account
@@ -16,12 +17,15 @@ import kotlinx.coroutines.launch
 
 // FIXME: This needs some re-organization
 class SgeViewModel(
-    host: String,
-    port: Int,
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
-    readyToPlay: (Map<String, String>, GameCharacter) -> Unit,
+    readyToPlay: (GameState) -> Unit,
 ) : AutoCloseable {
+
+    // TODO: Make these configurable?
+    private val host = "eaccess.play.net"
+    private val port = 7900
+
     private val _state = mutableStateOf<SgeViewState>(SgeViewState.SgeConnecting)
     val state: State<SgeViewState> = _state
     private val backStack = mutableStateListOf<SgeViewState>()
@@ -75,9 +79,15 @@ class SgeViewModel(
                         navigate(SgeViewState.SgeError(errorMessage))
                     }
                     is SgeEvent.SgeReadyToPlayEvent -> {
-                        readyToPlay(
-                            event.loginProperties,
+                        val properties = event.loginProperties
+                        val key = properties["KEY"]!!
+                        val host = properties["GAMEHOST"]!!
+                        val port = properties["GAMEPORT"]!!.toInt()
+                        val character =
                             GameCharacter(accountId!!, "$gameCode:$characterName", gameCode!!, characterName!!)
+
+                        readyToPlay(
+                            GameState.ConnectedGameState(host = host, port = port, key = key, character = character)
                         )
                         close()
                     }

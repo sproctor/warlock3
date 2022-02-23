@@ -12,7 +12,7 @@ import cc.warlock.warlock3.core.prefs.MacroRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
-import cc.warlock.warlock3.core.window.WindowRegistry
+import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -21,7 +21,7 @@ import org.antlr.v4.runtime.Token
 import kotlin.math.max
 
 class GameViewModel(
-    windowRegistry: WindowRegistry,
+    windowRepository: WindowRepository,
     val client: StormfrontClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
@@ -86,9 +86,17 @@ class GameViewModel(
     private val _sendHistory = mutableStateOf<List<String>>(emptyList())
     val sendHistory: State<List<String>> = _sendHistory
 
-    val windows = windowRegistry.windows
+    val windows = windowRepository.windows
 
-    val openWindows = windowRegistry.openWindows
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val openWindows = client.characterId.flatMapLatest {
+        if (it != null) {
+            windowRepository.observeOpenWindows(it)
+        } else {
+            flow { emit(emptySet()) }
+        }
+    }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptySet())
 
     private fun submit() {
         val line = _entryText.value.text

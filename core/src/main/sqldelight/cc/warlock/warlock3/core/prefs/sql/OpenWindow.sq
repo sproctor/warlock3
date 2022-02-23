@@ -1,0 +1,16 @@
+CREATE TABLE OpenWindow (
+    characterId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    PRIMARY KEY (characterId, name)
+);
+
+getByCharacter:
+SELECT name
+FROM OpenWindow
+WHERE characterId = :characterId;
+
+put:
+INSERT OR REPLACE INTO OpenWindow VALUES ?;
+
+delete:
+DELETE FROM OpenWindow WHERE characterId = :characterId AND name = :name;
