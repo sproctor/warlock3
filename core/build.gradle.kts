@@ -1,16 +1,34 @@
 plugins {
     kotlin("jvm")
     antlr
+    id("com.squareup.sqldelight")
 }
 
 dependencies {
+    // Standard libraries
     implementation(Kotlin.stdlib.jdk8)
     implementation("org.jetbrains.kotlin:kotlin-reflect:_")
     implementation(KotlinX.coroutines.core)
-    // testImplementation(Testing.junit4)
-    testImplementation(kotlin("test"))
+
+    // Parsing
     antlr("org.antlr:antlr4:_")
     implementation("org.mozilla:rhino:_")
+
+    // Preferences
+    implementation("com.squareup.sqldelight:sqlite-driver:_")
+    implementation("com.squareup.sqldelight:coroutines-extensions-jvm:_")
+
+    // Testing
+    // testImplementation(Testing.junit4)
+    testImplementation(kotlin("test"))
+}
+
+sqldelight {
+    database("Database") {
+        packageName = "cc.warlock.warlock3.core.prefs.sql"
+        // dialect = "sqlite:3.24"
+        // verifyMigrations = true
+    }
 }
 
 tasks.test {

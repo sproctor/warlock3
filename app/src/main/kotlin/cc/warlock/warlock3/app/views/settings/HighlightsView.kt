@@ -18,28 +18,31 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPickerDialog
-import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toWarlockColor
-import cc.warlock.warlock3.core.highlights.Highlight
+import cc.warlock.warlock3.core.prefs.HighlightRepository
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.text.isUnspecified
+import kotlinx.coroutines.runBlocking
+import java.util.*
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun HighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
-    globalHighlights: List<Highlight>,
-    characterHighlights: Map<String, List<Highlight>>,
-    saveHighlight: (String?, Highlight) -> Unit,
-    deleteHighlight: (String?, String) -> Unit,
+    highlightRepository: HighlightRepository,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val highlights =
-        if (currentCharacter == null) globalHighlights else characterHighlights[currentCharacter.key]
-            ?: emptyList()
+    val highlights by if (currentCharacter == null) {
+        highlightRepository.observeGlobal()
+    } else {
+        highlightRepository.observeForCharacter(currentCharacter.id)
+    }
+        .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     Column(Modifier.fillMaxSize().padding(8.dp)) {
         SettingsCharacterSelector(
@@ -59,8 +62,9 @@ fun HighlightsView(
         Row(Modifier.fillMaxWidth()) {
             Button(onClick = {
                 editingHighlight = Highlight(
+                    id = UUID.randomUUID(),
                     pattern = "",
-                    styles = emptyList(),
+                    styles = emptyMap(),
                     isRegex = false,
                     ignoreCase = true,
                     matchPartialWord = true,
@@ -74,11 +78,15 @@ fun HighlightsView(
         EditHighlightDialog(
             highlight = highlight,
             saveHighlight = { newHighlight ->
-                if (highlight.pattern.isNotBlank()) {
-                    deleteHighlight(currentCharacter?.key, highlight.pattern)
+                runBlocking {
+                    val characterId = currentCharacter?.id
+                    if (characterId != null) {
+                        highlightRepository.save(characterId, newHighlight)
+                    } else {
+                        highlightRepository.saveGlobal(newHighlight)
+                    }
+                    editingHighlight = null
                 }
-                saveHighlight(currentCharacter?.key, newHighlight)
-                editingHighlight = null
             },
             onClose = { editingHighlight = null }
         )
@@ -93,7 +101,7 @@ fun EditHighlightDialog(
 ) {
     var editColor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
     var pattern by remember { mutableStateOf(highlight.pattern) }
-    val styles = remember { mutableListOf<StyleDefinition>().apply { addAll(highlight.styles) } }
+    val styles = remember { mutableListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
@@ -148,8 +156,9 @@ fun EditHighlightDialog(
                     onClick = {
                         saveHighlight(
                             Highlight(
+                                id = highlight.id,
                                 pattern = pattern,
-                                styles = styles,
+                                styles = styles.mapIndexed { index, style -> Pair(index, style) }.toMap(),
                                 isRegex = isRegex,
                                 matchPartialWord = matchPartialWord,
                                 ignoreCase = ignoreCase,
@@ -174,7 +183,7 @@ fun EditHighlightDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },
             onColorSelected = { color ->
-                val warlockColor =  color?.toWarlockColor() ?: WarlockColor.Unspecified
+                val warlockColor = color?.toWarlockColor() ?: WarlockColor.Unspecified
                 val newStyle =
                     if (content)
                         currentStyle.copy(textColor = warlockColor)

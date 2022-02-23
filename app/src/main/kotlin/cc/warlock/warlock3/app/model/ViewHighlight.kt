@@ -4,5 +4,5 @@ import androidx.compose.ui.text.SpanStyle
 
 data class ViewHighlight(
     val regex: Regex,
-    val styles: List<SpanStyle?>,
+    val styles: Map<Int, SpanStyle>,
 )

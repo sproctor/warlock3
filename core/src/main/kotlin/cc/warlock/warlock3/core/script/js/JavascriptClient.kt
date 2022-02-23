@@ -3,7 +3,7 @@ package cc.warlock.warlock3.core.script.js
 import cc.warlock.warlock3.core.client.ClientNavEvent
 import cc.warlock.warlock3.core.client.ClientPromptEvent
 import cc.warlock.warlock3.core.client.WarlockClient
-import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +18,7 @@ import kotlinx.coroutines.sync.withLock
 class JavascriptClient(
     val client: WarlockClient,
     val scope: CoroutineScope,
-    val variableRegistry: VariableRegistry,
+    val variableRepository: VariableRepository,
     private val instance: JsInstance,
 ) {
 
@@ -102,10 +102,10 @@ class JavascriptClient(
         }
     }
 
-    fun setVariable(name: String, value: String) {
+    suspend fun setVariable(name: String, value: String) {
         instance.checkStatus()
-        val characterId = client.characterId.value ?: return
-        variableRegistry.saveVariable(characterId, name, value)
+        val characterId = client.characterId.value?.lowercase() ?: return
+        variableRepository.put(characterId, name, value)
     }
 
     private suspend fun doWaitForRoundTime() {

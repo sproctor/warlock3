@@ -1,7 +1,8 @@
 package cc.warlock.warlock3.core.script
 
 import cc.warlock.warlock3.core.client.WarlockClient
-import cc.warlock.warlock3.core.highlights.HighlightRegistry
+import cc.warlock.warlock3.core.prefs.HighlightRepository
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.js.JsEngine
 import cc.warlock.warlock3.core.script.wsl.WslEngine
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
@@ -13,8 +14,8 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 
 class WarlockScriptEngineRegistry(
-    highlightRegistry: HighlightRegistry,
-    variableRegistry: VariableRegistry,
+    highlightRepository: HighlightRepository,
+    variableRepository: VariableRepository,
     private val scriptDirectories: StateFlow<List<String>>,
 ) {
 
@@ -22,8 +23,8 @@ class WarlockScriptEngineRegistry(
     val runningScripts = _runningScripts
 
     private val engines = listOf(
-        WslEngine(highlightRegistry = highlightRegistry, variableRegistry = variableRegistry),
-        JsEngine(variableRegistry, this)
+        WslEngine(highlightRepository = highlightRepository, variableRepository = variableRepository),
+        JsEngine(variableRepository, this)
     )
 
     suspend fun startScript(client: WarlockClient, command: String) {

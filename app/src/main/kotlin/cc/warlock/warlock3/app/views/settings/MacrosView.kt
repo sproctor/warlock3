@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
-import cc.warlock.warlock3.app.model.GameCharacter
+import cc.warlock.warlock3.core.prefs.MacroRepository
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import kotlinx.coroutines.launch
 import java.awt.event.KeyEvent
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -28,14 +30,17 @@ import java.awt.event.KeyEvent
 fun MacrosView(
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
-    globalMacros: Map<String, String>,
-    characterMacros: Map<String, Map<String, String>>,
-    saveMacro: (String?, String, String) -> Unit,
-    deleteMacro: (String?, String) -> Unit,
+    macroRepository: MacroRepository,
 ) {
     var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
-    val macros = if (currentCharacter == null) globalMacros else characterMacros[currentCharacter!!.key] ?: emptyMap()
+    val macros by if (currentCharacter == null) {
+        macroRepository.observeGlobalMacros()
+    } else {
+        macroRepository.observeCharacterMacros(currentCharacter!!.id)
+    }.collectAsState(emptyList())
     var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
+    val scope = rememberCoroutineScope()
+
     Column {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
@@ -54,7 +59,7 @@ fun MacrosView(
                     .verticalScroll(scrollState)
             ) {
                 macros.forEach { macro ->
-                    val parts = macro.key.split("+")
+                    val parts = macro.first.split("+")
                     val textBuilder = StringBuilder()
                     for (i in 0..(parts.size - 2)) {
                         textBuilder.append(parts[i])
@@ -65,7 +70,7 @@ fun MacrosView(
                     ListItem(
                         modifier = Modifier.clickable { },
                         text = { Text(textBuilder.toString()) },
-                        secondaryText = { Text(macro.value) }
+                        secondaryText = { Text(macro.second) }
                     )
                 }
             }
@@ -88,11 +93,24 @@ fun MacrosView(
             modifiers = modifiers,
             value = macro.second,
             saveMacro = { key, value ->
-                if (key != macro.first) {
-                    macro.first?.let { deleteMacro(currentCharacter?.key, it) }
+                scope.launch {
+                    if (key != macro.first) {
+                        macro.first?.let {
+
+                            if (currentCharacter != null) {
+                                macroRepository.delete(currentCharacter!!.id, it)
+                            } else {
+                                macroRepository.deleteGlobal(it)
+                            }
+                        }
+                    }
+                    if (currentCharacter != null) {
+                        macroRepository.put(currentCharacter!!.id, key, value)
+                    } else {
+                        macroRepository.putGlobal(key, value)
+                    }
+                    editingMacro = null
                 }
-                saveMacro(currentCharacter?.key, key, value)
-                editingMacro = null
             },
             onClose = { editingMacro = null }
         )

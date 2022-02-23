@@ -7,18 +7,15 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.macros.macroCommands
-import cc.warlock.warlock3.core.macros.MacroRepository
 import cc.warlock.warlock3.core.parser.MacroLexer
-import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.prefs.MacroRepository
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.Token
 import kotlin.math.max
@@ -27,7 +24,7 @@ class GameViewModel(
     windowRegistry: WindowRegistry,
     val client: StormfrontClient,
     val macroRepository: MacroRepository,
-    val variableRegistry: VariableRegistry,
+    val variableRepository: VariableRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -39,8 +36,26 @@ class GameViewModel(
 
     val properties: StateFlow<Map<String, String>> = client.properties
 
-    val variables = combine(client.characterId, variableRegistry.variables) { characterId, allVariables ->
-        characterId?.let { allVariables[it] } ?: emptyMap()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val macros = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            macroRepository.observeCharacterMacros(characterId)
+        } else {
+            macroRepository.observeGlobalMacros()
+        }
+            .map { it.toMap() }
+    }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            variableRepository.observeCharacterVariables(characterId).map { list ->
+                list.associate { it.name to it.value } as Map<String, String>
+            }
+        } else {
+            flow { emit(emptyMap()) }
+        }
     }
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
@@ -132,7 +147,7 @@ class GameViewModel(
         }
 
         val keyString = translateKeyPress(event)
-        val macroString = client.characterId.value?.let { macroRepository.getMacro(it, keyString) } ?: return false
+        val macroString = macros.value[keyString] ?: return false
 
         val tokens = try {
             tokenizeMacro(macroString)

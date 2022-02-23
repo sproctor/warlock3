@@ -13,7 +13,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import cc.warlock.warlock3.app.model.Account
+import cc.warlock.warlock3.core.prefs.models.Account
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

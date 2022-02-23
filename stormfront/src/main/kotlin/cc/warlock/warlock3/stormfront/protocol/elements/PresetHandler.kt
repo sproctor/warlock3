@@ -1,6 +1,5 @@
 package cc.warlock.warlock3.stormfront.protocol.elements
 
-import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.stormfront.protocol.*
 

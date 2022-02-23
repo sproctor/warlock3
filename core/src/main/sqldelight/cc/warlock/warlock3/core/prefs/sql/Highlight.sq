@@ -1,0 +1,24 @@
+import java.util.UUID;
+
+CREATE TABLE Highlight (
+    id BLOB AS UUID NOT NULL PRIMARY KEY,
+    characterId TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    isRegex INTEGER AS Boolean NOT NULL,
+    matchPartialWord INTEGER AS Boolean NOT NULL,
+    ignoreCase INTEGER AS Boolean NOT NULL
+);
+
+getHighlightsByCharacter:
+SELECT *
+FROM Highlight
+WHERE characterId = :characterId;
+
+deleteByPattern:
+DELETE FROM Highlight WHERE pattern = :pattern AND characterId = :characterId;
+
+deleteGlobalByPattern:
+DELETE FROM Highlight WHERE pattern = :pattern AND characterId = "global";
+
+save:
+INSERT OR REPLACE INTO Highlight VALUES ?;

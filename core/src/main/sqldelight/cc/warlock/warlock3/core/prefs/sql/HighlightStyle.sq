@@ -1,0 +1,27 @@
+import cc.warlock.warlock3.core.text.WarlockColor;
+import java.util.UUID;
+
+CREATE TABLE HightlightStyle (
+    highlightId BLOB AS UUID NOT NULL,
+    groupNumber INTEGER AS Int NOT NULL,
+    textColor INTEGER AS WarlockColor NOT NULL,
+    backgroundColor INTEGER AS WarlockColor NOT NULL,
+    entireLine INTEGER AS Boolean NOT NULL,
+    bold INTEGER AS Boolean NOT NULL,
+    italic INTEGER AS Boolean NOT NULL,
+    underline INTEGER AS Boolean NOT NULL,
+    monospace INTEGER AS Boolean NOT NULL,
+    PRIMARY KEY (highlightId, groupNumber),
+    FOREIGN KEY (highlightId) REFERENCES Highlight(id) ON DELETE CASCADE
+);
+
+getByHighlight:
+SELECT *
+FROM HightlightStyle
+WHERE highlightId = :highlightId;
+
+deleteByHighlight:
+DELETE FROM HightlightStyle WHERE highlightId = :highlightId;
+
+save:
+INSERT OR REPLACE INTO HightlightStyle VALUES ?;

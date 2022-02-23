@@ -2,58 +2,67 @@ package cc.warlock.warlock3.app.viewmodel
 
 import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.util.toSpanStyle
-import cc.warlock.warlock3.core.highlights.HighlightRegistry
+import cc.warlock.warlock3.core.prefs.HighlightRepository
+import cc.warlock.warlock3.core.prefs.models.PresetRepository
 import cc.warlock.warlock3.core.text.StyleDefinition
-import cc.warlock.warlock3.core.text.StyleRepository
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 
 class WindowViewModel(
     val name: String,
     client: StormfrontClient,
     val window: Flow<Window?>,
-    val highlightRegistry: HighlightRegistry,
-    private val styleRepository: StyleRepository,
+    val highlightRepository: HighlightRepository,
+    private val presetRepository: PresetRepository,
 ) {
 
     val components = client.components
 
     val lines = client.getStream(name).lines
 
-    val highlights = combine(
-        client.characterId,
-        highlightRegistry.globalHighlights,
-        highlightRegistry.characterHighlights,
-    ) { characterId, globalHighlights, characterHighlights ->
-        val settingsHighlights = globalHighlights + (characterHighlights[characterId?.lowercase()] ?: emptyList())
-        settingsHighlights.map { highlight ->
-            val pattern = if (highlight.isRegex) {
-                highlight.pattern
-            } else {
-                val subpattern = Regex.escape(highlight.pattern)
-                if (highlight.matchPartialWord) {
-                    subpattern
-                } else {
-                    "\\b$subpattern\\b"
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val highlights = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            highlightRepository.observeForCharacter(characterId)
+                .map { highlights ->
+                    highlights.map { highlight ->
+                        val pattern = if (highlight.isRegex) {
+                            highlight.pattern
+                        } else {
+                            val subpattern = Regex.escape(highlight.pattern)
+                            if (highlight.matchPartialWord) {
+                                subpattern
+                            } else {
+                                "\\b$subpattern\\b"
+                            }
+                        }
+                        ViewHighlight(
+                            regex = Regex(
+                                pattern = pattern,
+                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                            ),
+                            styles = highlight.styles.mapValues { it.value.toSpanStyle() }
+                        )
+                    }
                 }
+        } else {
+            flow {
+                emit(emptyList())
             }
-            ViewHighlight(
-                regex = Regex(
-                    pattern = pattern,
-                    options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-                ),
-                styles = highlight.styles.map { it.toSpanStyle() },
-            )
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val styleMap: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
-        characterId?.let { styleRepository.getStyleMap(it) } ?: flow {  }
+    val presets: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            presetRepository.observePresetsForCharacter(characterId)
+        } else {
+            flow { emit(emptyMap()) }
+        }
     }
 }

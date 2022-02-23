@@ -7,12 +7,14 @@ buildscript {
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:_")
         classpath("org.jetbrains.compose:compose-gradle-plugin:_")
+        classpath(Square.sqlDelight.gradlePlugin)
     }
 }
 
 allprojects {
     repositories {
         mavenCentral()
+        google()
     }
 }
 

@@ -4,9 +4,9 @@ import cc.warlock.warlock3.core.client.ClientNavEvent
 import cc.warlock.warlock3.core.client.ClientPromptEvent
 import cc.warlock.warlock3.core.client.ClientTextEvent
 import cc.warlock.warlock3.core.client.WarlockClient
-import cc.warlock.warlock3.core.highlights.Highlight
-import cc.warlock.warlock3.core.highlights.HighlightRegistry
-import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.prefs.models.Highlight
+import cc.warlock.warlock3.core.prefs.HighlightRepository
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.util.CaseInsensitiveMap
@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.UUID
 
 class WslContext(
     private val client: WarlockClient,
@@ -28,8 +29,8 @@ class WslContext(
     val scriptInstance: WslScriptInstance,
     private val scope: CoroutineScope,
     private val globalVariables: StateFlow<Map<String, String>>,
-    private val variableRegistry: VariableRegistry,
-    private val highlightRegistry: HighlightRegistry,
+    private val variableRepository: VariableRepository,
+    private val highlightRepository: HighlightRepository,
 ) : AutoCloseable {
 
     private val scriptVariables = CaseInsensitiveMap(
@@ -111,14 +112,14 @@ class WslContext(
         return scriptVariables.containsKey(name) || (getGlobalVariable(name) != null)
     }
 
-    fun setStoredVariable(name: String, value: String) {
+    suspend fun setStoredVariable(name: String, value: String) {
         log(10, "Setting stored variable \"$name\" to $value")
-        client.characterId.value?.let { variableRegistry.saveVariable(it.lowercase(), name, value) }
+        client.characterId.value?.let { variableRepository.put(it.lowercase(), name, value) }
     }
 
-    fun deleteStoredVariable(name: String) {
+    suspend fun deleteStoredVariable(name: String) {
         log(10, "Deleting stored variable: $name")
-        client.characterId.value?.let { variableRegistry.deleteVariable(it.lowercase(), name) }
+        client.characterId.value?.let { variableRepository.delete(it.lowercase(), name) }
     }
 
     fun setScriptVariable(name: String, value: WslValue) {
@@ -303,27 +304,32 @@ class WslContext(
         scope.cancel()
     }
 
-    fun addHighlight(
+    suspend fun addHighlight(
         pattern: String,
         style: StyleDefinition,
         matchPartialWord: Boolean,
         ignoreCase: Boolean,
         isRegex: Boolean,
     ) {
-        highlightRegistry.addHighlight(
-            client.characterId.value?.lowercase(),
-            Highlight(
-                pattern = pattern,
-                styles = listOf(style),
-                matchPartialWord = matchPartialWord,
-                ignoreCase = ignoreCase,
-                isRegex = isRegex,
+        client.characterId.value?.lowercase()?.let { characterId ->
+            highlightRepository.save(
+                characterId,
+                Highlight(
+                    id = UUID.randomUUID(),
+                    pattern = pattern,
+                    styles = mapOf(0 to style),
+                    matchPartialWord = matchPartialWord,
+                    ignoreCase = ignoreCase,
+                    isRegex = isRegex,
+                )
             )
-        )
+        }
     }
 
-    fun deleteHighlight(pattern: String) {
-        highlightRegistry.deleteHighlight(client.characterId.value?.lowercase(), pattern)
+    suspend fun deleteHighlight(pattern: String) {
+        client.characterId.value?.lowercase()?.let { characterId ->
+            highlightRepository.deleteByPattern(characterId, pattern)
+        }
     }
 
     fun addListener(name: String, action: (String) -> Unit) {

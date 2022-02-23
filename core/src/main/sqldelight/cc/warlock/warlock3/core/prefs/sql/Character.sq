@@ -1,0 +1,13 @@
+CREATE TABLE Character (
+    id TEXT NOT NULL PRIMARY KEY,
+    accountId TEXT NOT NULL,
+    gameCode TEXT NOT NULL,
+    name TEXT NOT NULL
+);
+
+getAll:
+SELECT *
+FROM Character;
+
+save:
+INSERT OR REPLACE INTO Character VALUES ?;

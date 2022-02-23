@@ -1,0 +1,18 @@
+CREATE TABLE CharacterSetting (
+    characterId TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (characterId, key)
+);
+
+getAll:
+SELECT *
+FROM CharacterSetting;
+
+getByKey:
+SELECT value
+FROM CharacterSetting
+WHERE key = :key;
+
+save:
+INSERT OR REPLACE INTO CharacterSetting VALUES ?;

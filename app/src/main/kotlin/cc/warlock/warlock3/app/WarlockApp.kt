@@ -1,34 +1,33 @@
 package cc.warlock.warlock3.app
 
 import androidx.compose.runtime.*
-import cc.warlock.warlock3.app.config.ClientSpec
-import cc.warlock.warlock3.app.config.SgeSpec
-import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.app.viewmodel.GameViewModel
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
 import cc.warlock.warlock3.app.viewmodel.WindowViewModel
 import cc.warlock.warlock3.app.views.game.GameView
 import cc.warlock.warlock3.app.views.settings.SettingsDialog
 import cc.warlock.warlock3.app.views.sge.SgeWizard
-import cc.warlock.warlock3.core.highlights.HighlightRegistry
-import cc.warlock.warlock3.core.macros.MacroRepository
-import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.prefs.models.PresetRepository
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
-import cc.warlock.warlock3.core.text.StyleRepository
-import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
 import cc.warlock.warlock3.core.window.WindowRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import com.uchuhimo.konf.Config
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @Composable
 fun WarlockApp(
     state: MutableState<GameState>,
-    config: StateFlow<Config>,
-    saveConfig: ((Config) -> Config) -> Unit,
+    clientSettingRepository: ClientSettingRepository,
+    accountRepository: AccountRepository,
+    characterRepository: CharacterRepository,
+    variableRepository: VariableRepository,
+    macroRepository: MacroRepository,
+    highlightRepository: HighlightRepository,
+    presetRepository: PresetRepository,
     windowRegistry: WindowRegistry,
     showSettings: Boolean,
     closeSettings: () -> Unit,
@@ -36,153 +35,52 @@ fun WarlockApp(
     val scope = rememberCoroutineScope()
 
     var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
-    val variableRegistry = remember {
-        VariableRegistry(
-            variables = config.map { it[ClientSpec.variables] },
-            saveVariable = { character: String, name: String, value: String ->
-                saveConfig { newConfig ->
-                    val allVariables = newConfig[ClientSpec.variables].toCaseInsensitiveMap()
-                    val characterVariables = allVariables[character]?.toCaseInsensitiveMap() ?: emptyMap()
-                    newConfig[ClientSpec.variables] =
-                        allVariables + (character to (characterVariables + (name to value)))
-                    newConfig
-                }
-            },
-            deleteVariable = { character, name ->
-                saveConfig { newConfig ->
-                    val allVariables = newConfig[ClientSpec.variables].toCaseInsensitiveMap()
-                    val characterVariables =
-                        allVariables.getOrDefault(character, emptyMap()).toCaseInsensitiveMap() - name
-                    newConfig[ClientSpec.variables] = allVariables + (character to characterVariables)
-                    newConfig
-                }
-            }
-        )
-    }
-    val highlightRegistry = remember {
-        HighlightRegistry(
-            globalHighlights = config.map { it[ClientSpec.globalHighlights] }
-                .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList()),
-            characterHighlights = config.map { it[ClientSpec.characterHighlights] }
-                .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
-            addHighlight = { characterId, highlight ->
-                saveConfig { config ->
-                    if (characterId != null) {
-                        val newHighlights =
-                            (config[ClientSpec.characterHighlights][characterId] ?: emptyList()) + highlight
-                        config[ClientSpec.characterHighlights] =
-                            config[ClientSpec.characterHighlights] + (characterId to newHighlights)
-                    } else {
-                        config[ClientSpec.globalHighlights] = config[ClientSpec.globalHighlights] + highlight
-                    }
-                    config
-                }
-            },
-            deleteHighlight = { characterId, pattern ->
-                saveConfig { config ->
-                    if (characterId != null) {
-                        val newHighlights =
-                            (config[ClientSpec.characterHighlights][characterId]
-                                ?: emptyList()).filter { it.pattern != pattern }
-                        config[ClientSpec.characterHighlights] =
-                            config[ClientSpec.characterHighlights] + (characterId to newHighlights)
-                    } else {
-                        config[ClientSpec.globalHighlights] =
-                            config[ClientSpec.globalHighlights].filter { it.pattern != pattern }
-                    }
-                    config
-                }
-            }
-        )
-    }
-    val styleRepository = remember {
-        StyleRepository(
-            caseSensitiveStyles = config.map { it[ClientSpec.styles] },
-            saveStyle = { characterId, name, style ->
-                saveConfig { config ->
-                    val newStyles = (config[ClientSpec.styles][characterId] ?: emptyMap()) + (name to style)
-                    config[ClientSpec.styles] = config[ClientSpec.styles] + (characterId to newStyles)
-                    config
-                }
-            }
-        )
-    }
 
     when (val currentState = state.value) {
         GameState.NewGameState -> {
             val viewModel = remember {
                 SgeViewModel(
-                    host = config.value[SgeSpec.host],
-                    port = config.value[SgeSpec.port],
-                    lastUsername = config.value[SgeSpec.lastUsername],
-                    accounts = config.value[ClientSpec.accounts],
-                    characters = config.value[ClientSpec.characters],
-                    readyToPlay = { properties ->
-                        val key = properties["KEY"]
-                        val host = properties["GAMEHOST"]
-                        val port = properties["GAMEPORT"]?.toInt()
-                        state.value = GameState.ConnectedGameState(host = host!!, port = port!!, key = key!!)
+                    host = "eaccess.play.net",
+                    port = 7900,
+                    clientSettingRepository = clientSettingRepository,
+                    accountRepository = accountRepository,
+                    readyToPlay = { properties, character ->
+                        val key = properties["KEY"]!!
+                        val host = properties["GAMEHOST"]!!
+                        val port = properties["GAMEPORT"]!!.toInt()
+                        state.value =
+                            GameState.ConnectedGameState(host = host, port = port, key = key, character = character)
                     },
-                    saveAccount = { newAccount ->
-                        saveConfig { updatedConfig ->
-                            updatedConfig[SgeSpec.lastUsername] = newAccount.name
-                            updatedConfig[ClientSpec.accounts] =
-                                updatedConfig[ClientSpec.accounts].filter { it.name != newAccount.name } + newAccount
-                            updatedConfig
-                        }
-                    }
                 )
             }
             SgeWizard(viewModel = viewModel)
         }
         is GameState.ConnectedGameState -> {
             val client = remember(currentState.key) {
+                currentCharacter = currentState.character
+                scope.launch {
+                    characterRepository.saveCharacter(currentState.character)
+                    clientSettingRepository.put("lastUsername", currentState.character.accountId)
+                }
                 StormfrontClient(
                     host = currentState.host,
                     port = currentState.port,
                     windowRegistry = windowRegistry,
-                    maxTypeAhead = config.value[ClientSpec.maxTypeAhead],
+                    maxTypeAhead = 1,
                 ).apply {
                     connect(currentState.key)
                 }
             }
-            val clientCharacterId = client.characterId.collectAsState()
-            if (currentCharacter?.key != clientCharacterId.value?.lowercase()) {
-                val values = clientCharacterId.value?.split(":")
-                val game = values?.getOrNull(0)
-                val name = values?.getOrNull(1)
-                if (game != null && name != null) {
-                    val character = GameCharacter(game, name)
-                    saveConfig { updatedConfig ->
-                        updatedConfig[ClientSpec.characters] =
-                            updatedConfig[ClientSpec.characters].filter { it.key != character.key } + character
-                        updatedConfig
-                    }
-                    currentCharacter = character
-                }
-            }
-            val macroRepository = remember {
-                MacroRepository(
-                    globalMacros = config.map { it[ClientSpec.globalMacros] }
-                        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap()),
-                    characterMacros = config.map { it[ClientSpec.characterMacros] }
-                        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
-                ).also {
-                    println("macros: ${it.characterMacros.value}")
-                }
-            }
-            val scriptDirs = config.map {
-                it[ClientSpec.scriptDirectories]
-            }
+            val scriptDirs = clientSettingRepository.observeScriptDirs()
                 .stateIn(
                     scope = scope,
                     started = SharingStarted.Eagerly,
-                    initialValue = config.value[ClientSpec.scriptDirectories],
+                    initialValue = emptyList(),
                 )
             val scriptEngineRegistry = remember {
                 WarlockScriptEngineRegistry(
-                    highlightRegistry = highlightRegistry,
-                    variableRegistry = variableRegistry,
+                    highlightRepository = highlightRepository,
+                    variableRepository = variableRepository,
                     scriptDirectories = scriptDirs,
                 )
             }
@@ -191,7 +89,7 @@ fun WarlockApp(
                     client = client,
                     macroRepository = macroRepository,
                     windowRegistry = windowRegistry,
-                    variableRegistry = variableRegistry,
+                    variableRepository = variableRepository,
                     scriptEngineRegistry = scriptEngineRegistry,
                 )
             }
@@ -203,8 +101,8 @@ fun WarlockApp(
                         client = client,
                         name = name,
                         window = windowRegistry.windows.map { it[name] },
-                        highlightRegistry = highlightRegistry,
-                        styleRepository = styleRepository,
+                        highlightRepository = highlightRepository,
+                        presetRepository = presetRepository,
                     )
                 }
             }
@@ -213,8 +111,8 @@ fun WarlockApp(
                     name = "main",
                     client = client,
                     window = windowRegistry.windows.map { it["main"] },
-                    highlightRegistry = highlightRegistry,
-                    styleRepository = styleRepository,
+                    highlightRepository = highlightRepository,
+                    presetRepository = presetRepository,
                 )
             }
             GameView(viewModel = viewModel, windowViewModels.value, mainWindowViewModel)
@@ -223,11 +121,12 @@ fun WarlockApp(
     if (showSettings) {
         SettingsDialog(
             currentCharacter = currentCharacter,
-            config = config,
             closeDialog = closeSettings,
-            variableRegistry = variableRegistry,
-            styleRepository = styleRepository,
-            updateConfig = saveConfig,
+            variableRepository = variableRepository,
+            macroRepository = macroRepository,
+            presetRepository = presetRepository,
+            characterRepository = characterRepository,
+            highlightRepository = highlightRepository,
         )
     }
 }
@@ -239,5 +138,6 @@ fun rememberGameState(): MutableState<GameState> {
 
 sealed class GameState {
     object NewGameState : GameState()
-    data class ConnectedGameState(val host: String, val port: Int, val key: String) : GameState()
+    data class ConnectedGameState(val host: String, val port: Int, val key: String, val character: GameCharacter) :
+        GameState()
 }

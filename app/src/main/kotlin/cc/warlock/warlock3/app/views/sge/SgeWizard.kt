@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cc.warlock.warlock3.app.viewmodel.SgeViewModel
@@ -16,10 +18,9 @@ fun SgeWizard(
     val state = viewModel.state
     when (val currentState = state.value) {
         SgeViewState.SgeAccountSelector -> {
-            val account =
-                viewModel.lastUsername?.let { lastUsername -> viewModel.accounts.firstOrNull { it.name == lastUsername } }
+            val account by viewModel.lastAccount.collectAsState(null)
             AccountsView(
-                initialUsername = viewModel.lastUsername,
+                initialUsername = account?.username,
                 initialPassword = account?.password,
                 onAccountSelect = { newAccount ->
                     println("saving username/password")

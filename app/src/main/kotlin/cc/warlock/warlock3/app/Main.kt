@@ -9,22 +9,61 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import cc.warlock.warlock3.app.config.ClientSpec
-import cc.warlock.warlock3.app.config.ConfigWatcher
 import cc.warlock.warlock3.app.views.AppMenuBar
+import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.prefs.adapters.UUIDAdapter
+import cc.warlock.warlock3.core.prefs.adapters.WarlockColorAdapter
+import cc.warlock.warlock3.core.prefs.models.PresetRepository
+import cc.warlock.warlock3.core.prefs.sql.Database
+import cc.warlock.warlock3.core.prefs.sql.Highlight
+import cc.warlock.warlock3.core.prefs.sql.HightlightStyle
+import cc.warlock.warlock3.core.prefs.sql.PresetStyle
 import cc.warlock.warlock3.core.window.WindowRegistry
+import com.squareup.sqldelight.sqlite.driver.JdbcSqliteDriver
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.runBlocking
+import java.io.File
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() = application {
 
-    val configWatcher = ConfigWatcher()
-    val initialConfig = configWatcher.configState.value
+    val configDir = System.getProperty("user.home") + "/.warlock3"
+    File(configDir).mkdirs()
+    val dbFilename = "$configDir/prefs.db"
+    val dbExists = File(dbFilename).exists()
+    val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename")
+    val database = Database(
+        driver = driver,
+        HighlightAdapter = Highlight.Adapter(idAdapter = UUIDAdapter),
+        HightlightStyleAdapter = HightlightStyle.Adapter(
+            highlightIdAdapter = UUIDAdapter,
+            textColorAdapter = WarlockColorAdapter,
+            backgroundColorAdapter = WarlockColorAdapter,
+        ),
+        PresetStyleAdapter = PresetStyle.Adapter(
+            textColorAdapter = WarlockColorAdapter,
+            backgroundColorAdapter = WarlockColorAdapter,
+        )
+    )
+    if (!dbExists) {
+        Database.Schema.create(driver)
+    }
 
-    val initialWidth = initialConfig[ClientSpec.width]
-    val initialHeight = initialConfig[ClientSpec.height]
+    val variableRepository = VariableRepository(database.variableQueries, Dispatchers.IO)
+    val characterRepository = CharacterRepository(database.characterQueries, Dispatchers.IO)
+    val macroRepository = MacroRepository(database.macroQueries, Dispatchers.IO)
+    val accountRepository = AccountRepository(database.accountQueries, Dispatchers.IO)
+    val highlightRepository =
+        HighlightRepository(database.highlightQueries, database.highlightStyleQueries, Dispatchers.IO)
+    val presetRepository = PresetRepository(database.presetStyleQueries, Dispatchers.IO)
+
+    val clientSettings = ClientSettingRepository(database.clientSettingQueries, Dispatchers.IO)
+
+    val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
+    val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
     val windowRegistry = remember { WindowRegistry() }
     var showSettings by remember { mutableStateOf(false) }
@@ -41,20 +80,22 @@ fun main() = application {
         )
         WarlockApp(
             state = rememberGameState(),
-            config = configWatcher.configState,
-            saveConfig = { updater -> configWatcher.updateConfig(updater) },
             showSettings = showSettings,
             closeSettings = { showSettings = false },
             windowRegistry = windowRegistry,
+            clientSettingRepository = clientSettings,
+            accountRepository = accountRepository,
+            characterRepository = characterRepository,
+            variableRepository = variableRepository,
+            macroRepository = macroRepository,
+            highlightRepository = highlightRepository,
+            presetRepository = presetRepository,
         )
         LaunchedEffect(windowState) {
             snapshotFlow { windowState.size }
                 .onEach { size ->
-                    configWatcher.updateConfig { updatedConfig ->
-                        updatedConfig[ClientSpec.width] = size.width.value.roundToInt()
-                        updatedConfig[ClientSpec.height] = size.height.value.roundToInt()
-                        updatedConfig
-                    }
+                    clientSettings.putWidth(size.width.value.roundToInt())
+                    clientSettings.putHeight(size.height.value.roundToInt())
                 }
                 .launchIn(this)
         }

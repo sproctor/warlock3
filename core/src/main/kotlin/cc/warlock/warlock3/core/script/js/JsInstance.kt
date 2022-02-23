@@ -1,8 +1,8 @@
 package cc.warlock.warlock3.core.script.js
 
 import cc.warlock.warlock3.core.client.WarlockClient
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.ScriptInstance
-import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
@@ -17,7 +17,7 @@ import kotlin.reflect.jvm.javaMethod
 class JsInstance(
     override val name: String,
     private val file: File,
-    private val variableRegistry: VariableRegistry,
+    private val variableRepository: VariableRepository,
 ) : ScriptInstance {
 
     private var _isRunning = false
@@ -54,16 +54,19 @@ class JsInstance(
                     JavascriptClient(
                         client = client,
                         scope = scope,
-                        variableRegistry = variableRegistry,
+                        variableRepository = variableRepository,
                         instance = this,
                     )
                 )
                 runBlocking {
                     val globalVariables = client.characterId.flatMapLatest { id ->
                         if (id != null) {
-                            variableRegistry.getVariablesForCharacter(id).map {
+                            variableRepository.observeCharacterVariables(id).map {
                                 println("reloading variables $it")
-                                it.toCaseInsensitiveMap().toMutableMap()
+                                it.map { variable -> Pair(variable.name, variable.value) }
+                                    .toMap()
+                                    .toCaseInsensitiveMap()
+                                    .toMutableMap()
                             }
                         } else {
                             flow<MutableMap<String, String>> {
@@ -79,12 +82,16 @@ class JsInstance(
                             map = globalVariables,
                             onPut = { name: String, value: String ->
                                 client.characterId.value?.let { characterId ->
-                                    variableRegistry.saveVariable(characterId, name, value)
+                                    runBlocking {
+                                        variableRepository.put(characterId, name, value)
+                                    }
                                 }
                             },
                             onDelete = {
                                 client.characterId.value?.let { characterId ->
-                                    variableRegistry.deleteVariable(characterId, name)
+                                    runBlocking {
+                                        variableRepository.delete(characterId, name)
+                                    }
                                 }
                             },
                         )

@@ -13,20 +13,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.components.ColorPickerDialog
-import cc.warlock.warlock3.app.model.GameCharacter
 import cc.warlock.warlock3.app.util.getEntireLineStyles
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toWarlockColor
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.prefs.models.PresetRepository
 import cc.warlock.warlock3.core.text.*
 import cc.warlock.warlock3.stormfront.StreamLine
+import kotlinx.coroutines.runBlocking
 
 @Composable
 fun AppearanceView(
-    styleRepository: StyleRepository,
+    presetRepository: PresetRepository,
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
-    saveStyle: (characterId: String, name: String, StyleDefinition) -> Unit
 ) {
     val currentCharacterState = remember(initialCharacter) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
     val currentCharacter = currentCharacterState.value
@@ -34,7 +35,8 @@ fun AppearanceView(
         Text("no characters created")
         return
     }
-    val styleMap by styleRepository.getStyleMap(currentCharacter.key).collectAsState(emptyMap())
+    val presetFlow = remember(currentCharacter.id) { presetRepository.observePresetsForCharacter(currentCharacter.id) }
+    val presets by presetFlow.collectAsState(emptyMap())
     val previewLines = listOf(
         StreamLine(
             text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName),
@@ -92,12 +94,12 @@ fun AppearanceView(
         )
         CompositionLocalProvider(
             LocalTextStyle provides TextStyle(
-                color = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
+                color = presets["default"]?.textColor?.toColor() ?: Color.Unspecified
             )
         ) {
             Column(
                 modifier = Modifier
-                    .background(styleMap["default"]?.backgroundColor?.toColor() ?: Color.Unspecified)
+                    .background(presets["default"]?.backgroundColor?.toColor() ?: Color.Unspecified)
                     .padding(vertical = 4.dp)
                     .fillMaxWidth()
                     .weight(1f),
@@ -106,7 +108,7 @@ fun AppearanceView(
                     val lineStyle = flattenStyles(
                         line.text.getEntireLineStyles(
                             variables = emptyMap(),
-                            styleMap = styleMap,
+                            styleMap = presets,
                         )
                     )
                     Box(
@@ -114,14 +116,19 @@ fun AppearanceView(
                             .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
                             .padding(horizontal = 4.dp)
                     ) {
-                        Text(text = line.text.toAnnotatedString(variables = emptyMap(), styleMap = styleMap))
+                        Text(text = line.text.toAnnotatedString(variables = emptyMap(), styleMap = presets))
                     }
                 }
             }
         }
         PresetSettings(
-            styleMap = styleMap,
-            saveStyle = { name, styleDefinition -> saveStyle(currentCharacter.key, name, styleDefinition) })
+            styleMap = presets,
+            saveStyle = { name, styleDefinition ->
+                runBlocking {
+                    presetRepository.save(currentCharacter.id, name, styleDefinition)
+                }
+            },
+        )
     }
 }
 

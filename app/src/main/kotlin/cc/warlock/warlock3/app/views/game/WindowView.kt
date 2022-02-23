@@ -63,7 +63,7 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     val scope = rememberCoroutineScope()
     var lastIndex by remember { mutableStateOf(0) }
     val highlights by viewModel.highlights.collectAsState(emptyList())
-    val styleMap by viewModel.styleMap.collectAsState(emptyMap())
+    val styleMap by viewModel.presets.collectAsState(emptyMap())
     val backgroundColor = styleMap["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
     val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
 

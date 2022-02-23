@@ -11,35 +11,36 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
-import cc.warlock.warlock3.app.model.GameCharacter
-import cc.warlock.warlock3.core.script.VariableRegistry
+import cc.warlock.warlock3.core.prefs.VariableRepository
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.prefs.models.Variable
+import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun VariablesView(
     initialCharacter: GameCharacter,
     characters: List<GameCharacter>,
-    variableRegistry: VariableRegistry,
+    variableRepository: VariableRepository,
 ) {
     var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
-    val characterKey = currentCharacter.key
-    var editingVariable by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val characterId = currentCharacter.id
+    var editingVariable by remember { mutableStateOf<Variable?>(null) }
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
             onSelect = { currentCharacter = it!! }
         )
-        val allVariables = variableRegistry.variables.collectAsState(initial = emptyMap())
-        val variables = allVariables.value[characterKey] ?: emptyMap()
+        val variables by variableRepository.observeCharacterVariables(characterId).collectAsState(emptyList())
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            variables.forEach { entry ->
+            variables.forEach { variable ->
                 ListItem(
-                    text = { Text(entry.key) },
-                    secondaryText = { Text(entry.value) },
+                    text = { Text(variable.name) },
+                    secondaryText = { Text(variable.value) },
                     trailing = {
                         IconButton(
-                            onClick = { editingVariable = entry.toPair() }
+                            onClick = { editingVariable = variable }
                         ) {
                             Icon(imageVector = WarlockIcons.Edit, contentDescription = "edit")
                         }
@@ -49,7 +50,7 @@ fun VariablesView(
         }
         Row {
             IconButton(
-                onClick = { editingVariable = Pair("", "") }
+                onClick = { editingVariable = Variable("", "") }
             ) {
                 Icon(imageVector = WarlockIcons.Add, contentDescription = "add")
             }
@@ -57,14 +58,16 @@ fun VariablesView(
     }
     editingVariable?.let { variable ->
         EditVariableDialog(
-            name = variable.first,
-            value = variable.second,
+            name = variable.name,
+            value = variable.value,
             saveVariable = { name, value ->
-                if (name != variable.first) {
-                    variableRegistry.deleteVariable(characterKey, variable.first)
+                runBlocking {
+                    if (name != variable.name) {
+                        variableRepository.delete(characterId, variable.name)
+                    }
+                    variableRepository.put(characterId, name, value)
+                    editingVariable = null
                 }
-                variableRegistry.saveVariable(characterKey, name, value)
-                editingVariable = null
             },
             onClose = { editingVariable = null }
         )

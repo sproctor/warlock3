@@ -16,13 +16,13 @@ dependencies {
     implementation(project(":stormfront"))
 
     implementation("org.slf4j:slf4j-api:_")
-    implementation("com.uchuhimo:konf-hocon:_")
     implementation(KotlinX.coroutines.core)
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
     // implementation("org.jetbrains.compose.components:components-splitpane:_")
     implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
+    implementation("com.squareup.sqldelight:sqlite-driver:_")
 }
 
 java {

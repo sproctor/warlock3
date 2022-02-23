@@ -3,7 +3,7 @@ package cc.warlock.warlock3.app.views.settings
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import cc.warlock.warlock3.app.components.DropdownSelect
-import cc.warlock.warlock3.app.model.GameCharacter
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
 
 @Composable
 fun SettingsCharacterSelector(
@@ -26,7 +26,7 @@ fun SettingsCharacterSelector(
             if (it == null) {
                 "Global"
             } else {
-                "${it.gameCode} ${it.characterName}"
+                "${it.gameCode} ${it.name}"
             }
         }
     )

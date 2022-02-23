@@ -10,7 +10,7 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedString 
             highlight.regex.find(text)?.let { result ->
                 for ((index, group) in result.groups.withIndex()) {
                     if (group != null) {
-                        highlight.styles.getOrNull(index)?.let { style ->
+                        highlight.styles[index]?.let { style ->
                             addStyle(style, group.range.first, group.range.last + 1)
                         }
                     }

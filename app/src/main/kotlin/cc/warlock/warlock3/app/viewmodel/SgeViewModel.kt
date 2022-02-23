@@ -3,22 +3,24 @@ package cc.warlock.warlock3.app.viewmodel
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import cc.warlock.warlock3.app.model.Account
-import cc.warlock.warlock3.app.model.GameCharacter
+import cc.warlock.warlock3.core.prefs.AccountRepository
+import cc.warlock.warlock3.core.prefs.ClientSettingRepository
+import cc.warlock.warlock3.core.prefs.models.Account
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
 import cc.warlock.warlock3.stormfront.network.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
+// FIXME: This needs some re-organization
 class SgeViewModel(
     host: String,
     port: Int,
-    val lastUsername: String?,
-    val accounts: List<Account>,
-    val characters: List<GameCharacter>,
-    readyToPlay: (Map<String, String>) -> Unit,
-    val saveAccount: (Account) -> Unit,
+    private val clientSettingRepository: ClientSettingRepository,
+    private val accountRepository: AccountRepository,
+    readyToPlay: (Map<String, String>, GameCharacter) -> Unit,
 ) : AutoCloseable {
     private val _state = mutableStateOf<SgeViewState>(SgeViewState.SgeConnecting)
     val state: State<SgeViewState> = _state
@@ -27,6 +29,18 @@ class SgeViewModel(
     private val client = SgeClient(host = host, port = port)
     private val scope = CoroutineScope(Dispatchers.IO)
     private val job: Job
+
+    private var accountId: String? = null
+    private var characterName: String? = null
+    private var gameCode: String? = null
+
+    val lastAccount = flow<Account?> {
+        emit(
+            clientSettingRepository.get("lastUsername")?.let { username ->
+                accountRepository.getByUsername(username)
+            }
+        )
+    }
 
     init {
         job = scope.launch {
@@ -61,7 +75,10 @@ class SgeViewModel(
                         navigate(SgeViewState.SgeError(errorMessage))
                     }
                     is SgeEvent.SgeReadyToPlayEvent -> {
-                        readyToPlay(event.loginProperties)
+                        readyToPlay(
+                            event.loginProperties,
+                            GameCharacter(accountId!!, "$gameCode:$characterName", gameCode!!, characterName!!)
+                        )
                         close()
                     }
                 }
@@ -71,22 +88,31 @@ class SgeViewModel(
 
     fun accountSelected(account: Account) {
         _state.value = SgeViewState.SgeLoadingGameList
-        client.login(account.name, account.password)
+        accountId = account.username
+        client.login(account.username, account.password)
     }
 
     fun gameSelected(game: SgeGame) {
         _state.value = SgeViewState.SgeLoadingCharacterList(game)
+        gameCode = game.code.lowercase()
         client.selectGame(game)
     }
 
     fun characterSelected(game: SgeGame, character: SgeCharacter) {
         _state.value = SgeViewState.SgeConnectingToGame(game, character)
+        characterName = character.name.lowercase()
         client.selectCharacter(character)
     }
 
     fun goBack() {
         backStack.removeLast()
         _state.value = backStack.last()
+    }
+
+    fun saveAccount(account: Account) {
+        scope.launch {
+            accountRepository.save(account)
+        }
     }
 
     private fun navigate(newState: SgeViewState) {

@@ -1,9 +1,9 @@
 package cc.warlock.warlock3.core.script.wsl
 
 import cc.warlock.warlock3.core.client.WarlockClient
-import cc.warlock.warlock3.core.highlights.HighlightRegistry
+import cc.warlock.warlock3.core.prefs.HighlightRepository
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.ScriptInstance
-import cc.warlock.warlock3.core.script.VariableRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.parseArguments
@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.stateIn
 class WslScriptInstance(
     override val name: String,
     private val script: WslScript,
-    private val variableRegistry: VariableRegistry,
-    private val highlightRegistry: HighlightRegistry,
+    private val variableRepository: VariableRepository,
+    private val highlightRepository: HighlightRepository,
 ) : ScriptInstance {
 
     private var _isRunning = false
@@ -45,8 +45,10 @@ class WslScriptInstance(
                 lines = script.parse()
                 val globalVariables = client.characterId.flatMapLatest { id ->
                     if (id != null) {
-                        variableRegistry.getVariablesForCharacter(id).map {
-                            it.toCaseInsensitiveMap()
+                        variableRepository.observeCharacterVariables(id).map {
+                            it.map { variable -> Pair(variable.name, variable.value) }
+                                .toMap()
+                                .toCaseInsensitiveMap()
                         }
                     } else {
                         flow {
@@ -61,8 +63,8 @@ class WslScriptInstance(
                     scriptInstance = this@WslScriptInstance,
                     scope = scope,
                     globalVariables = globalVariables,
-                    variableRegistry = variableRegistry,
-                    highlightRegistry = highlightRegistry,
+                    variableRepository = variableRepository,
+                    highlightRepository = highlightRepository,
                 )
                 context.setScriptVariable("0", WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->

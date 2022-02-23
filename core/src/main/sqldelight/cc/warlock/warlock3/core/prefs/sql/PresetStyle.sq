@@ -1,0 +1,22 @@
+import cc.warlock.warlock3.core.text.WarlockColor;
+
+CREATE TABLE PresetStyle (
+    presetId TEXT NOT NULL,
+    characterId TEXT NOT NULL,
+    textColor INTEGER AS WarlockColor NOT NULL,
+    backgroundColor INTEGER AS WarlockColor NOT NULL,
+    entireLine INTEGER AS Boolean NOT NULL,
+    bold INTEGER AS Boolean NOT NULL,
+    italic INTEGER AS Boolean NOT NULL,
+    underline INTEGER AS Boolean NOT NULL,
+    monospace INTEGER AS Boolean NOT NULL,
+    PRIMARY KEY (presetId, characterId)
+);
+
+getByCharacter:
+SELECT *
+FROM PresetStyle
+WHERE characterId = :characterId;
+
+save:
+INSERT OR REPLACE INTO PresetStyle VALUES ?;
