@@ -21,22 +21,22 @@ fun FrameWindowScope.AppMenuBar(
             Item("Settings", onClick = showSettings)
         }
 
-        Menu("Windows") {
-            windows.values.forEach { window ->
-                if (window.name != "main") {
-                    CheckboxItem(
-                        text = window.title,
-                        checked = openWindows.any { it == window.name },
-                        onCheckedChange = {
-                            if (characterId != null) {
+        if (characterId != null) {
+            Menu("Windows") {
+                windows.values.forEach { window ->
+                    if (window.name != "main") {
+                        CheckboxItem(
+                            text = window.title,
+                            checked = openWindows.any { it == window.name },
+                            onCheckedChange = {
                                 if (it) {
                                     windowRepository.openWindow(characterId, window.name)
                                 } else {
                                     windowRepository.closeWindow(characterId, window.name)
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
