@@ -19,18 +19,23 @@ import kotlinx.coroutines.runBlocking
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun VariablesView(
-    initialCharacter: GameCharacter,
+    initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
     variableRepository: VariableRepository,
 ) {
-    var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
+    val currentCharacterState = remember(initialCharacter) { mutableStateOf(initialCharacter) }
+    val currentCharacter = currentCharacterState.value
+    if (currentCharacter == null) {
+        Text("no characters created")
+        return
+    }
     val characterId = currentCharacter.id
     var editingVariable by remember { mutableStateOf<Variable?>(null) }
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
-            onSelect = { currentCharacter = it!! }
+            onSelect = { currentCharacterState.value = it }
         )
         val variables by variableRepository.observeCharacterVariables(characterId).collectAsState(emptyList())
         Column(Modifier.weight(1f).fillMaxHeight()) {

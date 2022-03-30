@@ -59,21 +59,23 @@ fun SettingsDialog(
                     ) {
                         Text("Highlights")
                     }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = ScriptSettingsState },
+                    ) {
+                        Text("Scripting")
+                    }
                 }
             }
             Divider(Modifier.fillMaxHeight().width(1.dp))
+            val currentOrFirstCharacter = currentCharacter ?: characters.firstOrNull()
             when (state) {
                 VariableSettingsState -> {
-                    val initialCharacter = currentCharacter ?: characters.firstOrNull()
-                    if (initialCharacter != null) {
-                        VariablesView(
-                            initialCharacter = initialCharacter,
-                            characters = characters,
-                            variableRepository = variableRepository,
-                        )
-                    } else {
-                        Text("No characters have connected")
-                    }
+                    VariablesView(
+                        initialCharacter = currentOrFirstCharacter,
+                        characters = characters,
+                        variableRepository = variableRepository,
+                    )
                 }
                 MacroSettingsState -> MacrosView(
                     initialCharacter = currentCharacter,
@@ -81,16 +83,19 @@ fun SettingsDialog(
                     macroRepository = macroRepository,
                 )
                 HighlightSettingsState -> HighlightsView(
-                    currentCharacter = null,
+                    currentCharacter = currentCharacter,
                     allCharacters = characters,
                     highlightRepository = highlightRepository,
                 )
                 AppearanceSettingsState -> {
                     AppearanceView(
                         presetRepository = presetRepository,
-                        initialCharacter = currentCharacter,
+                        initialCharacter = currentOrFirstCharacter,
                         characters = characters,
                     )
+                }
+                ScriptSettingsState -> {
+
                 }
             }
         }
@@ -102,3 +107,4 @@ object VariableSettingsState : SettingsState()
 object MacroSettingsState : SettingsState()
 object HighlightSettingsState : SettingsState()
 object AppearanceSettingsState : SettingsState()
+object ScriptSettingsState : SettingsState()
