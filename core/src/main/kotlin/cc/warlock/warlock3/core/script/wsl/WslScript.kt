@@ -16,7 +16,7 @@ class WslScript(
 
     fun parse(): List<WslLine> {
         val reader = FileReader(file)
-        val input: CharStream = CaseChangingCharStream(CharStreams.fromReader(reader))
+        val input: CharStream = CharStreams.fromReader(reader)
         val lexer = WslLexer(input)
         val parser = WslParser(CommonTokenStream(lexer))
         val script = parser.script()

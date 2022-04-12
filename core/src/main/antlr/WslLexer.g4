@@ -1,5 +1,7 @@
 lexer grammar WslLexer;
 
+options { caseInsensitive = true; }
+
 LineComment
     : '#' ~[\r\n]*
       -> channel(HIDDEN)
@@ -36,14 +38,14 @@ fragment Digit
 fragment NameChar
     : NameStartChar | '.' | Digit
     ;
-fragment NameStartChar:  [a-zA-Z_] ;
+fragment NameStartChar:  [a-z_] ;
 
 fragment Identifier
     : NameStartChar NameChar*
     ;
 
 fragment EscapedIdentifier
-    : '\\' ('t' | 'b' | 'r' | 'n' | '\'' | '"' | '\\' | '$')
+    : '\\' .
     ;
 
 mode EXPRESSION;
