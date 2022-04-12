@@ -33,21 +33,23 @@ class MatchList : ScriptableObject() {
         val client = instance.client!!
         var result: Any? = null
         instance.checkStatus()
-        runBlocking(instance.scope.coroutineContext) {
-            client.eventFlow.first { event ->
-                if (!instance.isSuspended && event is ClientTextEvent) {
-                    val match = matches.firstOrNull { it.matches(event.text) }
-                    if (match != null) {
-                        result = match.obj
-                        true
+        try {
+            runBlocking(instance.scope.coroutineContext) {
+                client.eventFlow.first { event ->
+                    if (!instance.isSuspended && event is ClientTextEvent) {
+                        val match = matches.firstOrNull { it.matches(event.text) }
+                        if (match != null) {
+                            result = match.obj
+                            true
+                        } else {
+                            false
+                        }
                     } else {
                         false
                     }
-                } else {
-                    false
                 }
             }
-        }
+        } catch (_: InterruptedException) { }
         return result
     }
 }
