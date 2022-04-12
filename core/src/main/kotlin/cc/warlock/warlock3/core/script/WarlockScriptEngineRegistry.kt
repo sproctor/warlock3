@@ -48,8 +48,8 @@ class WarlockScriptEngineRegistry(
     private fun findInstance(name: String): ScriptInstance? {
         for (engine in engines) {
             for (extension in engine.extensions) {
-                for (scriptDir in scriptDirectories.value) {
-                    val file = File("$scriptDir/$name.$extension")
+                for (scriptDir in (scriptDirectories.value + "\$HOME/.warlock3/scripts")) {
+                    val file = File(scriptDir.replace("\$HOME", System.getProperty("user.home")) + "/$name.$extension")
                     if (file.exists()) {
                         return engine.createInstance(name, file)
                     }
