@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.sge
+package cc.warlock.warlock3.app.ui.sge
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

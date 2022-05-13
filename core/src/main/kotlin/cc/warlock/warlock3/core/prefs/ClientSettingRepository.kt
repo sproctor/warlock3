@@ -27,6 +27,10 @@ class ClientSettingRepository(
         }
     }
 
+    suspend fun getScriptDirs(): List<String> {
+        return get("scriptDirs")?.split(",") ?: emptyList()
+    }
+
     suspend fun get(key: String): String? {
         return withContext(ioDispatcher) {
             clientSettingQueries.getByKey(key).executeAsOneOrNull()?.value_

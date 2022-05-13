@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.settings
+package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -30,7 +30,7 @@ fun SettingsDialog(
         onCloseRequest = closeDialog,
     ) {
         var state: SettingsState by remember { mutableStateOf(AppearanceSettingsState) }
-        val characters by characterRepository.getAllCharacters().collectAsState(emptyList())
+        val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
         Row(Modifier.fillMaxSize()) {
             Surface(Modifier.padding(8.dp).width(160.dp)) {

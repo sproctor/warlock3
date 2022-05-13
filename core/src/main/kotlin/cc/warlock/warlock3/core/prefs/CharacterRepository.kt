@@ -14,7 +14,7 @@ class CharacterRepository(
     private val characterQueries: CharacterQueries,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    fun getAllCharacters(): Flow<List<GameCharacter>> {
+    fun observeAllCharacters(): Flow<List<GameCharacter>> {
         return characterQueries.getAll()
             .asFlow()
             .mapToList(ioDispatcher)

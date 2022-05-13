@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.game
+package cc.warlock.warlock3.app.components
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Image
@@ -7,10 +7,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
-import cc.warlock.warlock3.app.viewmodel.CompassState
-import cc.warlock.warlock3.app.viewmodel.CompassTheme
-import cc.warlock.warlock3.app.viewmodel.loadTheme
+import cc.warlock.warlock3.app.util.loadCompassTheme
 import cc.warlock.warlock3.core.compass.DirectionType
 
 @Composable
@@ -30,12 +29,28 @@ fun CompassView(state: CompassState, theme: CompassTheme) {
     }
 }
 
+data class CompassState(
+    val directions: Set<DirectionType>
+)
+
+data class CompassTheme(
+    val background: ImageBitmap,
+    val description: String,
+    val directions: Map<DirectionType, CompassDirection>
+)
+
+data class CompassDirection(
+    val direction: DirectionType,
+    val position: Pair<Int, Int>,
+    val image: ImageBitmap,
+)
+
 @Preview
 @Composable
 fun EmptyCompassPreview() {
     CompassView(
         state = CompassState(directions = emptySet()),
-        theme = loadTheme()
+        theme = loadCompassTheme()
     )
 }
 
@@ -44,6 +59,6 @@ fun EmptyCompassPreview() {
 fun CompassPreview() {
     CompassView(
         state = CompassState(directions = setOf(DirectionType.North, DirectionType.West)),
-        theme = loadTheme()
+        theme = loadCompassTheme()
     )
 }

@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.settings
+package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable

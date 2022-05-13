@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.app.macros
 
-import cc.warlock.warlock3.app.viewmodel.GameViewModel
+import cc.warlock.warlock3.app.ui.game.GameViewModel
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 

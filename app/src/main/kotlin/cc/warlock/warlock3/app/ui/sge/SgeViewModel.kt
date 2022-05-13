@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.viewmodel
+package cc.warlock.warlock3.app.ui.sge
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf

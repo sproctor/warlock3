@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.game
+package cc.warlock.warlock3.app.ui.game
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
@@ -22,7 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cc.warlock.warlock3.app.viewmodel.GameViewModel
+import cc.warlock.warlock3.app.ui.game.GameViewModel
 import kotlin.math.min
 
 @Composable

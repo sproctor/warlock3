@@ -1,41 +1,13 @@
-package cc.warlock.warlock3.app.viewmodel
+package cc.warlock.warlock3.app.util
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
-import cc.warlock.warlock3.core.client.ClientCompassEvent
+import cc.warlock.warlock3.app.components.CompassDirection
+import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.core.compass.DirectionType
-import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import org.jetbrains.skia.Image
 import java.util.*
 
-class CompassViewModel(
-    private val client: StormfrontClient
-) {
-    private val _compassState = mutableStateOf(CompassState(emptySet()))
-    val compassState: State<CompassState> = _compassState
-    val theme = loadTheme()
-
-    private val scope = CoroutineScope(Dispatchers.IO)
-
-    init {
-        scope.launch {
-            client.eventFlow.collect { event ->
-                if (event is ClientCompassEvent) {
-                    _compassState.value = CompassState(directions = event.directions.toSet())
-                }
-            }
-        }
-    }
-}
-
-fun loadTheme(): CompassTheme {
+fun loadCompassTheme(): CompassTheme {
     val properties = Properties()
     val stream = object {}.javaClass.getResourceAsStream("/images/compass/theme.properties")
         ?: throw Exception("Could not find compass theme file")
@@ -64,19 +36,3 @@ fun loadTheme(): CompassTheme {
         directions = directions
     )
 }
-
-data class CompassState(
-    val directions: Set<DirectionType>
-)
-
-data class CompassTheme(
-    val background: ImageBitmap,
-    val description: String,
-    val directions: Map<DirectionType, CompassDirection>
-)
-
-data class CompassDirection(
-    val direction: DirectionType,
-    val position: Pair<Int, Int>,
-    val image: ImageBitmap,
-)

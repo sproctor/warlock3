@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.sge
+package cc.warlock.warlock3.app.ui.sge
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
@@ -20,7 +20,8 @@ import cc.warlock.warlock3.core.prefs.models.Account
 fun AccountsView(
     initialUsername: String?,
     initialPassword: String?,
-    onAccountSelect: (Account) -> Unit
+    onAccountSelect: (Account) -> Unit,
+    onCancel: () -> Unit,
 ) {
     var username by remember(initialUsername) { mutableStateOf(initialUsername ?: "") }
     var password by remember(initialPassword) { mutableStateOf(initialPassword ?: "") }
@@ -81,6 +82,12 @@ fun AccountsView(
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
+            Button(
+                modifier = Modifier.padding(end = 16.dp),
+                onClick = onCancel
+            ) {
+                Text("Cancel")
+            }
             Button(
                 onClick = { onAccountSelect(Account(username, password)) }
             ) {

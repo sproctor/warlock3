@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.sge
+package cc.warlock.warlock3.app.ui.sge
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,12 +8,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import cc.warlock.warlock3.app.viewmodel.SgeViewModel
-import cc.warlock.warlock3.app.viewmodel.SgeViewState
+import cc.warlock.warlock3.app.GameState
 
 @Composable
 fun SgeWizard(
     viewModel: SgeViewModel,
+    onCancel: () -> Unit,
 ) {
     val state = viewModel.state
     when (val currentState = state.value) {
@@ -26,7 +26,8 @@ fun SgeWizard(
                     println("saving username/password")
                     viewModel.saveAccount(newAccount)
                     viewModel.accountSelected(newAccount)
-                }
+                },
+                onCancel = onCancel
             )
         }
         SgeViewState.SgeLoadingGameList -> SgeLoadingView("Loading game list")

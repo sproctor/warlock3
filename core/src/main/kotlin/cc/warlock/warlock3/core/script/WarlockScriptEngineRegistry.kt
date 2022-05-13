@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.core.script
 
 import cc.warlock.warlock3.core.client.WarlockClient
+import cc.warlock.warlock3.core.prefs.ClientSettingRepository
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.js.JsEngine
@@ -9,14 +10,13 @@ import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
 class WarlockScriptEngineRegistry(
     highlightRepository: HighlightRepository,
     variableRepository: VariableRepository,
-    private val scriptDirectories: StateFlow<List<String>>,
+    private val clientSettingRepository: ClientSettingRepository,
 ) {
 
     private val _runningScripts = MutableStateFlow<List<ScriptInstance>>(emptyList())
@@ -45,10 +45,10 @@ class WarlockScriptEngineRegistry(
         }
     }
 
-    private fun findInstance(name: String): ScriptInstance? {
+    private suspend fun findInstance(name: String): ScriptInstance? {
         for (engine in engines) {
             for (extension in engine.extensions) {
-                for (scriptDir in (scriptDirectories.value + "\$HOME/.warlock3/scripts")) {
+                for (scriptDir in (clientSettingRepository.getScriptDirs() + "\$HOME/.warlock3/scripts")) {
                     val file = File(scriptDir.replace("\$HOME", System.getProperty("user.home")) + "/$name.$extension")
                     if (file.exists()) {
                         return engine.createInstance(name, file)

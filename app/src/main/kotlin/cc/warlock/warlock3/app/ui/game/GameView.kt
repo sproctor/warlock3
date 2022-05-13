@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.game
+package cc.warlock.warlock3.app.ui.game
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -10,12 +10,14 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import cc.warlock.warlock3.app.components.CompassView
 import cc.warlock.warlock3.app.components.ResizablePanel
 import cc.warlock.warlock3.app.components.ResizablePanelState
-import cc.warlock.warlock3.app.viewmodel.CompassViewModel
-import cc.warlock.warlock3.app.viewmodel.GameViewModel
-import cc.warlock.warlock3.app.viewmodel.VitalsViewModel
-import cc.warlock.warlock3.app.viewmodel.WindowViewModel
+import cc.warlock.warlock3.app.ui.components.HandsView
+import cc.warlock.warlock3.app.ui.components.IndicatorView
+import cc.warlock.warlock3.app.ui.components.VitalBars
+import cc.warlock.warlock3.app.ui.window.WindowViewModel
+import cc.warlock.warlock3.app.views.game.WindowView
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
 
@@ -104,7 +106,7 @@ fun ColumnScope.GameTextWindows(
 
 @Composable
 fun GameBottomBar(viewModel: GameViewModel) {
-    val vitalsViewModel = remember(viewModel.client) { VitalsViewModel(viewModel.client) }
+    val properties = viewModel.properties.collectAsState()
 
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
@@ -115,16 +117,15 @@ fun GameBottomBar(viewModel: GameViewModel) {
                         .padding(start = 2.dp)
                         .height(32.dp)
                         .background(Color(25, 25, 50)),
-                    viewModel = viewModel,
+                    properties = properties.value,
                 )
             }
-            VitalBars(vitalsViewModel.vitalBars)
-            HandsView(viewModel)
+            VitalBars(viewModel.vitalBars)
+            HandsView(viewModel.properties.collectAsState().value)
         }
-        val compassViewModel = remember(viewModel.client) { CompassViewModel(viewModel.client) }
         CompassView(
-            state = compassViewModel.compassState.value,
-            theme = compassViewModel.theme,
+            state = viewModel.compassState.value,
+            theme = viewModel.compassTheme,
         )
     }
 }

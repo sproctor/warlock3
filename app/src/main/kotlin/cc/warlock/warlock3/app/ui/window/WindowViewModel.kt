@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.viewmodel
+package cc.warlock.warlock3.app.ui.window
 
 import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.util.toSpanStyle

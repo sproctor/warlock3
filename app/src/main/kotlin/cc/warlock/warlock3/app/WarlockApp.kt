@@ -9,18 +9,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cc.warlock.warlock3.app.di.AppContainer
-import cc.warlock.warlock3.app.viewmodel.GameViewModel
-import cc.warlock.warlock3.app.viewmodel.SgeViewModel
-import cc.warlock.warlock3.app.viewmodel.WindowViewModel
-import cc.warlock.warlock3.app.views.game.GameView
-import cc.warlock.warlock3.app.views.settings.SettingsDialog
-import cc.warlock.warlock3.app.views.sge.SgeWizard
+import cc.warlock.warlock3.app.ui.dashboard.DashboardView
+import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
+import cc.warlock.warlock3.app.ui.game.GameView
+import cc.warlock.warlock3.app.ui.window.WindowViewModel
+import cc.warlock.warlock3.app.ui.settings.SettingsDialog
+import cc.warlock.warlock3.app.ui.sge.SgeViewModel
+import cc.warlock.warlock3.app.ui.sge.SgeWizard
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
-import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.net.UnknownHostException
 
@@ -35,6 +33,13 @@ fun WarlockApp(
     var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 
     when (val currentState = state.value) {
+        GameState.Dashboard -> {
+            val viewModel = remember { AppContainer.dashboardViewModelFactory() }
+            DashboardView(
+                viewModel = viewModel,
+                connectToSGE = { state.value = GameState.NewGameState }
+            )
+        }
         GameState.NewGameState -> {
             val viewModel = remember {
                 SgeViewModel(
@@ -45,7 +50,7 @@ fun WarlockApp(
                     },
                 )
             }
-            SgeWizard(viewModel = viewModel)
+            SgeWizard(viewModel = viewModel, onCancel = { state.value = GameState.Dashboard })
         }
         is GameState.ConnectedGameState -> {
             val client = remember(currentState.key) {
@@ -68,28 +73,7 @@ fun WarlockApp(
                     return
                 }
             }
-            val scriptDirs = AppContainer.clientSettings.observeScriptDirs()
-                .stateIn(
-                    scope = scope,
-                    started = SharingStarted.Eagerly,
-                    initialValue = emptyList(),
-                )
-            val scriptEngineRegistry = remember {
-                WarlockScriptEngineRegistry(
-                    highlightRepository = AppContainer.highlightRepository,
-                    variableRepository = AppContainer.variableRepository,
-                    scriptDirectories = scriptDirs,
-                )
-            }
-            val viewModel = remember(client) {
-                GameViewModel(
-                    client = client,
-                    macroRepository = AppContainer.macroRepository,
-                    windowRepository = AppContainer.windowRepository,
-                    variableRepository = AppContainer.variableRepository,
-                    scriptEngineRegistry = scriptEngineRegistry,
-                )
-            }
+            val viewModel = remember(client) { AppContainer.gameViewModelFactory(client) }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }
             val windows by AppContainer.windowRepository.windows.collectAsState()
             windows.keys.forEach { name ->
@@ -145,10 +129,11 @@ fun WarlockApp(
 
 @Composable
 fun rememberGameState(): MutableState<GameState> {
-    return remember { mutableStateOf(GameState.NewGameState) }
+    return remember { mutableStateOf(GameState.Dashboard) }
 }
 
 sealed class GameState {
+    object Dashboard : GameState()
     object NewGameState : GameState()
     data class ConnectedGameState(val host: String, val port: Int, val key: String, val character: GameCharacter) :
         GameState()

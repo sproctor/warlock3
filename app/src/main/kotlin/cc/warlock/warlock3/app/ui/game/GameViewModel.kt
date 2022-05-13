@@ -1,18 +1,25 @@
-package cc.warlock.warlock3.app.viewmodel
+package cc.warlock.warlock3.app.ui.game
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import cc.warlock.warlock3.app.components.CompassState
+import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.macros.macroCommands
+import cc.warlock.warlock3.core.client.ClientCompassEvent
+import cc.warlock.warlock3.core.client.ClientProgressBarEvent
+import cc.warlock.warlock3.core.client.ProgressBarData
 import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.prefs.MacroRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
+import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
-import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -26,12 +33,20 @@ class GameViewModel(
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
-) {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    val compassTheme: CompassTheme,
+) : AutoCloseable {
+    private val viewModelScope = CoroutineScope(Dispatchers.IO)
 
     private val _entryText = mutableStateOf(TextFieldValue())
     val entryText: State<TextFieldValue> = _entryText
 
+    private val _compassState = mutableStateOf(CompassState(emptySet()))
+    val compassState: State<CompassState> = _compassState
+
+    private val _vitalBars = mutableStateMapOf<String, ProgressBarData>()
+    val vitalBars: SnapshotStateMap<String, ProgressBarData> = _vitalBars
+
+    // Saved by macros
     private val storedText = mutableStateOf<String?>(null)
 
     val properties: StateFlow<Map<String, String>> = client.properties
@@ -45,7 +60,7 @@ class GameViewModel(
         }
             .map { it.toMap() }
     }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
@@ -57,7 +72,7 @@ class GameViewModel(
             flow { emit(emptyMap()) }
         }
     }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     private var scriptsPaused = false
 
@@ -74,13 +89,13 @@ class GameViewModel(
         val roundEnd = properties["roundtime"]?.toIntOrNull() ?: 0
         max(0, roundEnd - currentTime)
     }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = 0)
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
     val castTime = combine(currentTime, properties) { currentTime, properties ->
         val roundEnd = properties["casttime"]?.toIntOrNull() ?: 0
         max(0, roundEnd - currentTime)
     }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = 0)
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
     private var historyPosition = -1
     private val _sendHistory = mutableStateOf<List<String>>(emptyList())
@@ -96,14 +111,32 @@ class GameViewModel(
             flow { emit(emptySet()) }
         }
     }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptySet())
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptySet())
+
+    init {
+        client.eventFlow
+            .onEach { event ->
+                when (event) {
+                    is ClientProgressBarEvent -> {
+                        _vitalBars += event.progressBarData.id to event.progressBarData
+                    }
+                    is ClientCompassEvent -> {
+                        _compassState.value = CompassState(directions = event.directions.toSet())
+                    }
+                    else -> {
+                        // don't care
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     private fun submit() {
         val line = _entryText.value.text
         _entryText.value = TextFieldValue()
         _sendHistory.value = listOf(line) + _sendHistory.value
         historyPosition = -1
-        scope.launch {
+        viewModelScope.launch {
             if (line.startsWith(".")) {
                 val scriptCommand = line.drop(1)
                 scriptEngineRegistry.startScript(client, scriptCommand)
@@ -168,7 +201,7 @@ class GameViewModel(
     }
 
     private fun executeMacro(tokens: List<Token>) {
-        scope.launch {
+        viewModelScope.launch {
             tokens.forEach { token ->
                 when (token.type) {
                     MacroLexer.Entity -> {
@@ -272,5 +305,9 @@ class GameViewModel(
 
     fun setEntryText(value: TextFieldValue) {
         _entryText.value = value
+    }
+
+    override fun close() {
+        viewModelScope.cancel()
     }
 }
