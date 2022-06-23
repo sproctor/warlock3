@@ -12,7 +12,7 @@ import java.net.SocketTimeoutException
 class SgeClient(
     private val host: String,
     private val port: Int
-) {
+) : AutoCloseable {
     private var sink: BufferedSink? = null
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
@@ -180,15 +180,15 @@ class SgeClient(
         send("C\n")
     }
 
-    fun selectGame(game: SgeGame) {
-        send("G\t${game.code}\n")
+    fun selectGame(gameCode: String) {
+        send("G\t${gameCode}\n")
     }
 
-    fun selectCharacter(character: SgeCharacter) {
-        send("L\t${character.code}\tSTORM\n")
+    fun selectCharacter(characterCode: String) {
+        send("L\t${characterCode}\tSTORM\n")
     }
 
-    fun close() {
+    override fun close() {
         stopped = true
         scope.cancel()
     }

@@ -1,7 +1,6 @@
 package cc.warlock.warlock3.app
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.res.useResource
@@ -25,8 +24,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalComposeUiApi::class)
-fun main() = application {
+fun main() {
 
     val configDir = System.getProperty("user.home") + "/.warlock3"
     File(configDir).mkdirs()
@@ -51,36 +49,39 @@ fun main() = application {
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
-    var showSettings by remember { mutableStateOf(false) }
 
-    Window(
-        title = "Warlock 3",
-        state = windowState,
-        icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
-        onCloseRequest = ::exitApplication,
-    ) {
-        val gameState = rememberGameState()
-        val characterId = when (val currentState = gameState.value) {
-            is GameState.ConnectedGameState -> currentState.character.id
-            else -> null
-        }
-        AppMenuBar(
-            characterId = characterId,
-            windowRepository = AppContainer.windowRepository,
-            showSettings = { showSettings = true }
-        )
-        WarlockApp(
-            state = gameState,
-            showSettings = showSettings,
-            closeSettings = { showSettings = false },
-        )
-        LaunchedEffect(windowState) {
-            snapshotFlow { windowState.size }
-                .onEach { size ->
-                    clientSettings.putWidth(size.width.value.roundToInt())
-                    clientSettings.putHeight(size.height.value.roundToInt())
-                }
-                .launchIn(this)
+    application {
+        var showSettings by remember { mutableStateOf(false) }
+
+        Window(
+            title = "Warlock 3",
+            state = windowState,
+            icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
+            onCloseRequest = ::exitApplication,
+        ) {
+            val gameState = rememberGameState()
+            val characterId = when (val currentState = gameState.value) {
+                is GameState.ConnectedGameState -> currentState.character.id
+                else -> null
+            }
+            AppMenuBar(
+                characterId = characterId,
+                windowRepository = AppContainer.windowRepository,
+                showSettings = { showSettings = true }
+            )
+            WarlockApp(
+                state = gameState,
+                showSettings = showSettings,
+                closeSettings = { showSettings = false },
+            )
+            LaunchedEffect(windowState) {
+                snapshotFlow { windowState.size }
+                    .onEach { size ->
+                        clientSettings.putWidth(size.width.value.roundToInt())
+                        clientSettings.putHeight(size.height.value.roundToInt())
+                    }
+                    .launchIn(this)
+            }
         }
     }
 }

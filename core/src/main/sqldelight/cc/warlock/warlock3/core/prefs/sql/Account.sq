@@ -1,5 +1,5 @@
 CREATE TABLE Account (
-    username TEXT NOT NULL PRIMARY KEY ,
+    username TEXT NOT NULL PRIMARY KEY,
     password TEXT
 );
 

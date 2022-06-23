@@ -35,7 +35,7 @@ fun DashboardView(
             }
             items(characters.value) { character ->
                 ListItem(
-                    modifier = Modifier.clickable {  },
+                    modifier = Modifier.clickable { viewModel.connectCharacter(character) },
                     text = { Text(character.name) },
                     secondaryText = { Text(character.gameCode) },
                 )

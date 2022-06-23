@@ -34,7 +34,9 @@ fun WarlockApp(
 
     when (val currentState = state.value) {
         GameState.Dashboard -> {
-            val viewModel = remember { AppContainer.dashboardViewModelFactory() }
+            val viewModel = remember {
+                AppContainer.dashboardViewModelFactory { gameState -> state.value = gameState }
+            }
             DashboardView(
                 viewModel = viewModel,
                 connectToSGE = { state.value = GameState.NewGameState }

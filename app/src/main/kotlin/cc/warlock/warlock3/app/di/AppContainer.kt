@@ -1,5 +1,6 @@
 package cc.warlock.warlock3.app.di
 
+import cc.warlock.warlock3.app.GameState
 import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
 import cc.warlock.warlock3.app.ui.game.GameViewModel
@@ -43,9 +44,11 @@ object AppContainer {
             compassTheme = compassTheme,
         )
     }
-    val dashboardViewModelFactory = {
+    val dashboardViewModelFactory = { readyToPlay: (GameState) -> Unit ->
         DashboardViewModel(
-            characterRepository = characterRepository
+            characterRepository = characterRepository,
+            accountRepository = accountRepository,
+            readyToPlay = readyToPlay
         )
     }
 }

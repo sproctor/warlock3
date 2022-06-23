@@ -84,7 +84,7 @@ class SgeViewModel(
                         val host = properties["GAMEHOST"]!!
                         val port = properties["GAMEPORT"]!!.toInt()
                         val character =
-                            GameCharacter(accountId!!, "$gameCode:$characterName", gameCode!!, characterName!!)
+                            GameCharacter(accountId!!, "$gameCode:$characterName".lowercase(), gameCode!!, characterName!!)
 
                         readyToPlay(
                             GameState.ConnectedGameState(host = host, port = port, key = key, character = character)
@@ -104,14 +104,14 @@ class SgeViewModel(
 
     fun gameSelected(game: SgeGame) {
         _state.value = SgeViewState.SgeLoadingCharacterList(game)
-        gameCode = game.code.lowercase()
-        client.selectGame(game)
+        gameCode = game.code
+        client.selectGame(game.code)
     }
 
     fun characterSelected(game: SgeGame, character: SgeCharacter) {
         _state.value = SgeViewState.SgeConnectingToGame(game, character)
-        characterName = character.name.lowercase()
-        client.selectCharacter(character)
+        characterName = character.name
+        client.selectCharacter(character.code)
     }
 
     fun goBack() {
