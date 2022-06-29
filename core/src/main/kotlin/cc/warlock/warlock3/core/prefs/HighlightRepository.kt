@@ -11,6 +11,7 @@ import com.squareup.sqldelight.runtime.coroutines.asFlow
 import com.squareup.sqldelight.runtime.coroutines.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.*
 
@@ -24,52 +25,54 @@ class HighlightRepository(
     }
 
     fun observeForCharacter(characterId: String): Flow<List<Highlight>> {
-        return highlightQueries.transactionWithResult {
-            highlightQueries.getHighlightsByCharacter(
-                characterId
-            ) { id: UUID,
-                _: String,
-                pattern: String,
-                isRegex: Boolean,
-                matchPartialWord: Boolean,
-                ignoreCase: Boolean ->
-                val styles = highlightStyleQueries.getByHighlight(
-                    id
-                ) { _: UUID,
-                    groupNumber: Int,
-                    textColor: WarlockColor,
-                    backgroundColor: WarlockColor,
-                    entireLine: Boolean,
-                    bold: Boolean,
-                    italic: Boolean,
-                    underline: Boolean,
-                    monospace: Boolean ->
-                    Pair(
-                        groupNumber,
-                        StyleDefinition(
-                            textColor = textColor,
-                            backgroundColor = backgroundColor,
-                            entireLine = entireLine,
-                            bold = bold,
-                            italic = italic,
-                            underline = underline,
-                            monospace = monospace,
-                        )
+        return highlightQueries.getHighlightsByCharacter(
+            characterId
+        ) { id: UUID,
+            _: String,
+            pattern: String,
+            isRegex: Boolean,
+            matchPartialWord: Boolean,
+            ignoreCase: Boolean ->
+            val styles = highlightStyleQueries.getByHighlight(
+                id
+            ) { _: UUID,
+                groupNumber: Int,
+                textColor: WarlockColor,
+                backgroundColor: WarlockColor,
+                entireLine: Boolean,
+                bold: Boolean,
+                italic: Boolean,
+                underline: Boolean,
+                monospace: Boolean ->
+                Pair(
+                    groupNumber,
+                    StyleDefinition(
+                        textColor = textColor,
+                        backgroundColor = backgroundColor,
+                        entireLine = entireLine,
+                        bold = bold,
+                        italic = italic,
+                        underline = underline,
+                        monospace = monospace,
                     )
-                }.executeAsList()
-                    .toMap()
-                Highlight(
-                    id = id,
-                    pattern = pattern,
-                    styles = styles,
-                    isRegex = isRegex,
-                    matchPartialWord = matchPartialWord,
-                    ignoreCase = ignoreCase,
                 )
-            }
-                .asFlow()
-                .mapToList(ioDispatcher)
+            }.executeAsList()
+                .toMap()
+            Highlight(
+                id = id,
+                pattern = pattern,
+                styles = styles,
+                isRegex = isRegex,
+                matchPartialWord = matchPartialWord,
+                ignoreCase = ignoreCase,
+            )
         }
+            .asFlow()
+            .map {
+                highlightQueries.transactionWithResult {
+                    it.executeAsList()
+                }
+            }
     }
 
     suspend fun save(characterId: String, highlight: Highlight) {
