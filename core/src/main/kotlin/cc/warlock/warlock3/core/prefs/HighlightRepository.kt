@@ -1,19 +1,18 @@
 package cc.warlock.warlock3.core.prefs
 
 import cc.warlock.warlock3.core.prefs.models.Highlight
-import cc.warlock.warlock3.core.prefs.sql.Highlight as DatabaseHighlight
 import cc.warlock.warlock3.core.prefs.sql.HighlightQueries
 import cc.warlock.warlock3.core.prefs.sql.HighlightStyleQueries
 import cc.warlock.warlock3.core.prefs.sql.HightlightStyle
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
 import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.*
+import cc.warlock.warlock3.core.prefs.sql.Highlight as DatabaseHighlight
 
 class HighlightRepository(
     private val highlightQueries: HighlightQueries,
