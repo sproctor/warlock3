@@ -66,10 +66,10 @@ class GameViewModel(
     val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             variableRepository.observeCharacterVariables(characterId).map { list ->
-                list.associate { it.name to it.value } as Map<String, String>
+                list.associate { it.name to it.value }
             }
         } else {
-            flow { emit(emptyMap()) }
+            flow<Map<String, String>> { emit(emptyMap()) }
         }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
@@ -98,8 +98,7 @@ class GameViewModel(
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
     private var historyPosition = -1
-    private val _sendHistory = mutableStateOf<List<String>>(emptyList())
-    val sendHistory: State<List<String>> = _sendHistory
+    private val sendHistory = mutableListOf<String>()
 
     val windows = windowRepository.windows
 
@@ -134,7 +133,7 @@ class GameViewModel(
     private fun submit() {
         val line = _entryText.value.text
         _entryText.value = TextFieldValue()
-        _sendHistory.value = listOf(line) + _sendHistory.value
+        sendHistory.add(line)
         historyPosition = -1
         viewModelScope.launch {
             if (line.startsWith(".")) {
@@ -254,12 +253,12 @@ class GameViewModel(
         _entryText.value = TextFieldValue()
     }
 
-    private fun entryAppend(text: String) {
+    fun entryAppend(text: String) {
         _entryText.value = _entryText.value.copy(text = _entryText.value.text + text)
     }
 
     fun historyPrev() {
-        val history = sendHistory.value
+        val history = sendHistory
         if (historyPosition < history.size - 1) {
             historyPosition++
             val text = history[historyPosition]
@@ -273,7 +272,7 @@ class GameViewModel(
             if (historyPosition < 0) {
                 entryClear()
             } else {
-                val text = sendHistory.value[historyPosition]
+                val text = sendHistory[historyPosition]
                 _entryText.value = TextFieldValue(text = text, selection = TextRange(text.length))
             }
         }
