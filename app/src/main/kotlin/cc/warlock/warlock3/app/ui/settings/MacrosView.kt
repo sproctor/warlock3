@@ -36,7 +36,7 @@ fun MacrosView(
     val macros by if (currentCharacter == null) {
         macroRepository.observeGlobalMacros()
     } else {
-        macroRepository.observeCharacterMacros(currentCharacter!!.id)
+        macroRepository.observeOnlyCharacterMacros(currentCharacter!!.id)
     }.collectAsState(emptyList())
     var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
     val scope = rememberCoroutineScope()

@@ -24,6 +24,17 @@ class MacroRepository(
     fun observeCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
         assert(characterId != "global")
         return macroQueries
+            .getForCharacter(characterId)
+            .asFlow()
+            .mapToList(ioDispatcher)
+            .map { list ->
+                list.map { Pair(it.key, it.value_) }
+            }
+    }
+
+    fun observeOnlyCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
+        assert(characterId != "global")
+        return macroQueries
             .getByCharacter(characterId)
             .asFlow()
             .mapToList(ioDispatcher)
