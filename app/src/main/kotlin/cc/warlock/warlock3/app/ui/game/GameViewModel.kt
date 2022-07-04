@@ -133,7 +133,7 @@ class GameViewModel(
     private fun submit() {
         val line = _entryText.value.text
         _entryText.value = TextFieldValue()
-        sendHistory.add(line)
+        sendHistory.add(0, line)
         historyPosition = -1
         viewModelScope.launch {
             if (line.startsWith(".")) {
