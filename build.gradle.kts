@@ -1,7 +1,7 @@
 buildscript {
     repositories {
         mavenCentral()
-//        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         google()
     }
     dependencies {
@@ -15,6 +15,7 @@ allprojects {
     repositories {
         mavenCentral()
         google()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 
