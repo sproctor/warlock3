@@ -176,6 +176,13 @@ class GameViewModel(
         }
     }
 
+    suspend fun repeatLastCommand() {
+        val command = sendHistory.getOrNull(0)
+        if (command != null) {
+            client.sendCommand(command)
+        }
+    }
+
     @OptIn(ExperimentalComposeUiApi::class)
     fun handleKeyPress(event: KeyEvent): Boolean {
         if (event.type != KeyEventType.KeyDown) {

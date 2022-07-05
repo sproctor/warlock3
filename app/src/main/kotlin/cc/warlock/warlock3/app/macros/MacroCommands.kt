@@ -29,4 +29,7 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
     "pausescript" to {
         it.pauseScripts()
     },
+    "repeatlast" to {
+        it.repeatLastCommand()
+    },
 )
