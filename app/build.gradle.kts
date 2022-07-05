@@ -42,7 +42,8 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "warlock3"
-            packageVersion = "1.0.11"
+            packageVersion = "1.0.12"
+            modules("java.sql")
 
             windows {
                 menu = true
