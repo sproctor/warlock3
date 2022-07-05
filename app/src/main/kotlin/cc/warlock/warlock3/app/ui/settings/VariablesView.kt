@@ -1,5 +1,6 @@
 package cc.warlock.warlock3.app.ui.settings
 
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.filled.Add
@@ -40,20 +41,32 @@ fun VariablesView(
         Text(text = "Variables", style = MaterialTheme.typography.h5)
         Spacer(Modifier.height(8.dp))
         val variables by variableRepository.observeCharacterVariables(characterId).collectAsState(emptyList())
-        Column(Modifier.weight(1f).fillMaxHeight()) {
-            variables.forEach { variable ->
-                ListItem(
-                    text = { Text(variable.name) },
-                    secondaryText = { Text(variable.value) },
-                    trailing = {
-                        IconButton(
-                            onClick = { editingVariable = variable }
-                        ) {
-                            Icon(imageVector = WarlockIcons.Edit, contentDescription = "edit")
+        Box(Modifier.weight(1f)) {
+            val scrollState = rememberScrollState()
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(end = LocalScrollbarStyle.current.thickness)
+                    .verticalScroll(scrollState)
+            ) {
+                variables.forEach { variable ->
+                    ListItem(
+                        text = { Text(variable.name) },
+                        secondaryText = { Text(variable.value) },
+                        trailing = {
+                            IconButton(
+                                onClick = { editingVariable = variable }
+                            ) {
+                                Icon(imageVector = WarlockIcons.Edit, contentDescription = "edit")
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
+            VerticalScrollbar(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                adapter = rememberScrollbarAdapter(scrollState)
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
