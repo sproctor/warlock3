@@ -1,12 +1,10 @@
 package cc.warlock.warlock3.app.ui.game
 
+import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.material.MaterialTheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -21,7 +19,6 @@ import cc.warlock.warlock3.app.views.game.WindowView
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun GameView(
     viewModel: GameViewModel,
@@ -32,13 +29,21 @@ fun GameView(
     val openWindows by viewModel.openWindows.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        GameTextWindows(
-            windows = windows,
-            openWindows = openWindows,
-            windowViewModels = windowViewModels,
-            mainWindowViewModel = mainWindowViewModel,
-        )
-        GameBottomBar(viewModel)
+        val scrollbarStyle = LocalScrollbarStyle.current
+        CompositionLocalProvider(
+            LocalScrollbarStyle provides scrollbarStyle.copy(
+                hoverColor = MaterialTheme.colors.primary,
+                unhoverColor = MaterialTheme.colors.primary.copy(alpha = 0.42f)
+            )
+        ) {
+            GameTextWindows(
+                windows = windows,
+                openWindows = openWindows,
+                windowViewModels = windowViewModels,
+                mainWindowViewModel = mainWindowViewModel,
+            )
+            GameBottomBar(viewModel)
+        }
     }
 }
 

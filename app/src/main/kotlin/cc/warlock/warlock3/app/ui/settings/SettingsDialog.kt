@@ -1,7 +1,10 @@
 package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material.Divider
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -14,7 +17,6 @@ import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
 import cc.warlock.warlock3.core.prefs.models.PresetRepository
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsDialog(
     currentCharacter: GameCharacter?,
@@ -69,33 +71,35 @@ fun SettingsDialog(
             }
             Divider(Modifier.fillMaxHeight().width(1.dp))
             val currentOrFirstCharacter = currentCharacter ?: characters.firstOrNull()
-            when (state) {
-                VariableSettingsState -> {
-                    VariablesView(
-                        initialCharacter = currentOrFirstCharacter,
+            Box(Modifier.padding(24.dp)) {
+                when (state) {
+                    VariableSettingsState -> {
+                        VariablesView(
+                            initialCharacter = currentOrFirstCharacter,
+                            characters = characters,
+                            variableRepository = variableRepository,
+                        )
+                    }
+                    MacroSettingsState -> MacrosView(
+                        initialCharacter = currentCharacter,
                         characters = characters,
-                        variableRepository = variableRepository,
+                        macroRepository = macroRepository,
                     )
-                }
-                MacroSettingsState -> MacrosView(
-                    initialCharacter = currentCharacter,
-                    characters = characters,
-                    macroRepository = macroRepository,
-                )
-                HighlightSettingsState -> HighlightsView(
-                    currentCharacter = currentCharacter,
-                    allCharacters = characters,
-                    highlightRepository = highlightRepository,
-                )
-                AppearanceSettingsState -> {
-                    AppearanceView(
-                        presetRepository = presetRepository,
-                        initialCharacter = currentOrFirstCharacter,
-                        characters = characters,
+                    HighlightSettingsState -> HighlightsView(
+                        currentCharacter = currentCharacter,
+                        allCharacters = characters,
+                        highlightRepository = highlightRepository,
                     )
-                }
-                ScriptSettingsState -> {
+                    AppearanceSettingsState -> {
+                        AppearanceView(
+                            presetRepository = presetRepository,
+                            initialCharacter = currentOrFirstCharacter,
+                            characters = characters,
+                        )
+                    }
+                    ScriptSettingsState -> {
 
+                    }
                 }
             }
         }

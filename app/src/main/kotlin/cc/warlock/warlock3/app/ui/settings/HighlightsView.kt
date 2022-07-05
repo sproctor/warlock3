@@ -44,7 +44,7 @@ fun HighlightsView(
     }
         .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
-    Column(Modifier.fillMaxSize().padding(8.dp)) {
+    Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
             characters = allCharacters,

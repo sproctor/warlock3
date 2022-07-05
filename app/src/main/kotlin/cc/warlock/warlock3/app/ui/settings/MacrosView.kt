@@ -68,7 +68,9 @@ fun MacrosView(
                     val key = Key(parts.last().toLongOrNull() ?: 0)
                     textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
                     ListItem(
-                        modifier = Modifier.clickable { },
+                        modifier = Modifier.clickable {
+                            editingMacro = macro
+                        },
                         text = { Text(textBuilder.toString()) },
                         secondaryText = { Text(macro.second) }
                     )
@@ -136,8 +138,8 @@ fun EditMacroDialog(
                     orientation = Orientation.Horizontal
                 )
         ) {
-            var selectedKey by remember { mutableStateOf<Key?>(key) }
-            var modifierKeys by remember { mutableStateOf<Set<String>>(modifiers) }
+            var selectedKey by remember { mutableStateOf(key) }
+            var modifierKeys by remember { mutableStateOf(modifiers) }
             var newValue by remember(value) { mutableStateOf(value) }
             TextField(value = newValue, label = { Text("Value") }, onValueChange = { newValue = it })
             KeyboardLayout(

@@ -1,11 +1,8 @@
 package cc.warlock.warlock3.app.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +26,8 @@ fun AppearanceView(
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
 ) {
-    val currentCharacterState = remember(initialCharacter) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
+    val currentCharacterState =
+        remember(initialCharacter) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
     val currentCharacter = currentCharacterState.value
     if (currentCharacter == null) {
         Text("no characters created")
@@ -86,41 +84,55 @@ fun AppearanceView(
         )
     )
 
-    Column(Modifier.fillMaxSize().padding(8.dp)) {
+    Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
             onSelect = { currentCharacterState.value = it },
         )
+        Spacer(Modifier.height(16.dp))
         CompositionLocalProvider(
             LocalTextStyle provides TextStyle(
                 color = presets["default"]?.textColor?.toColor() ?: Color.Unspecified
             )
         ) {
-            Column(
-                modifier = Modifier
-                    .background(presets["default"]?.backgroundColor?.toColor() ?: Color.Unspecified)
-                    .padding(vertical = 4.dp)
-                    .fillMaxWidth()
-                    .weight(1f),
-            ) {
-                previewLines.forEach { line ->
-                    val lineStyle = flattenStyles(
-                        line.text.getEntireLineStyles(
-                            variables = emptyMap(),
-                            styleMap = presets,
+            Box(Modifier.weight(1f)) {
+                val scrollbarStyle = LocalScrollbarStyle.current
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .background(presets["default"]?.backgroundColor?.toColor() ?: Color.Unspecified)
+                        .padding(end = scrollbarStyle.thickness + 1.dp)
+                        .verticalScroll(scrollState)
+                        .fillMaxWidth(),
+                ) {
+                    previewLines.forEach { line ->
+                        val lineStyle = flattenStyles(
+                            line.text.getEntireLineStyles(
+                                variables = emptyMap(),
+                                styleMap = presets,
+                            )
                         )
-                    )
-                    Box(
-                        modifier = Modifier.fillMaxWidth()
-                            .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        Text(text = line.text.toAnnotatedString(variables = emptyMap(), styleMap = presets))
+                        Box(
+                            modifier = Modifier.fillMaxWidth()
+                                .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Text(text = line.text.toAnnotatedString(variables = emptyMap(), styleMap = presets))
+                        }
                     }
                 }
+                VerticalScrollbar(
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                    adapter = rememberScrollbarAdapter(scrollState),
+                    style = scrollbarStyle.copy(
+                        hoverColor = MaterialTheme.colors.primary,
+                        unhoverColor = MaterialTheme.colors.primary.copy(alpha = 0.42f)
+                    )
+                )
             }
         }
+        Spacer(Modifier.height(16.dp))
         PresetSettings(
             styleMap = presets,
             saveStyle = { name, styleDefinition ->
@@ -133,7 +145,7 @@ fun AppearanceView(
 }
 
 @Composable
-fun PresetSettings(
+fun ColumnScope.PresetSettings(
     styleMap: Map<String, StyleDefinition>,
     saveStyle: (name: String, StyleDefinition) -> Unit,
 ) {
@@ -142,14 +154,19 @@ fun PresetSettings(
     if (editColor != null) {
         ColorPickerDialog(
             initialColor = editColor!!.first.toColor(),
-            onCloseRequest = { editColor = null},
+            onCloseRequest = { editColor = null },
             onColorSelected = { color ->
                 editColor?.second?.invoke(color?.toWarlockColor() ?: WarlockColor.Unspecified)
             }
         )
     }
-    Row {
-        Column {
+    Box(Modifier.weight(1f)) {
+        val scrollState = rememberScrollState()
+        Column(
+            Modifier
+                .verticalScroll(scrollState)
+                .padding(end = LocalScrollbarStyle.current.thickness + 4.dp)
+        ) {
             val presets = listOf("bold", "command", "roomName", "speech", "thought", "watching", "whisper", "echo")
             presets.forEach { preset ->
                 val style = styleMap[preset]
@@ -198,5 +215,9 @@ fun PresetSettings(
                 }
             }
         }
+        VerticalScrollbar(
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+            adapter = rememberScrollbarAdapter(scrollState)
+        )
     }
 }
