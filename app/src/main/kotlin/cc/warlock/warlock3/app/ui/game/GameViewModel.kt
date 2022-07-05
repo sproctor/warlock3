@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.components.CompassState
@@ -34,6 +35,7 @@ class GameViewModel(
     val variableRepository: VariableRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
     val compassTheme: CompassTheme,
+    val clipboard: ClipboardManager
 ) : AutoCloseable {
     private val viewModelScope = CoroutineScope(Dispatchers.IO)
 
@@ -208,6 +210,7 @@ class GameViewModel(
 
     private fun executeMacro(tokens: List<Token>) {
         viewModelScope.launch {
+            var movedCursor = false
             tokens.forEach { token ->
                 when (token.type) {
                     MacroLexer.Entity -> {
@@ -219,17 +222,18 @@ class GameViewModel(
                     MacroLexer.At -> {
                         _entryText.value =
                             _entryText.value.copy(selection = TextRange(_entryText.value.text.length))
+                        movedCursor = true
                     }
                     MacroLexer.Question -> {
-                        storedText.value?.let { entryAppend(it) }
+                        storedText.value?.let { entryAppend(it, !movedCursor) }
                     }
                     MacroLexer.Character -> {
-                        entryAppend(token.text)
+                        entryAppend(token.text, !movedCursor)
                     }
                     MacroLexer.VariableName -> {
                         token.text?.let { if (it.endsWith("%")) it.drop(1) else it }
                             ?.let { name ->
-                                entryAppend(variables.value[name] ?: "")
+                                entryAppend(variables.value[name] ?: "", !movedCursor)
                             }
                     }
                     MacroLexer.CommandText -> {
@@ -260,8 +264,23 @@ class GameViewModel(
         _entryText.value = TextFieldValue()
     }
 
-    fun entryAppend(text: String) {
-        _entryText.value = _entryText.value.copy(text = _entryText.value.text + text)
+    private fun entryAppend(text: String, moveCursor: Boolean) {
+        val newText = _entryText.value.text + text
+        val selection = if (moveCursor) {
+            TextRange(newText.length)
+        } else {
+            _entryText.value.selection
+        }
+        _entryText.value = _entryText.value.copy(text = newText, selection = selection)
+    }
+
+    fun entryInsert(text: String) {
+        val currentTextField = _entryText.value
+        val prefix = currentTextField.text.substring(0, currentTextField.selection.start)
+        val postfix = currentTextField.text.substring(currentTextField.selection.end, currentTextField.text.length)
+        val newText = prefix + text + postfix
+        val pos = prefix.length + text.length
+        _entryText.value = currentTextField.copy(text = newText, selection = TextRange(pos))
     }
 
     fun historyPrev() {

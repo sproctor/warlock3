@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.app.views.game
+package cc.warlock.warlock3.app.ui.window
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -21,7 +21,6 @@ import cc.warlock.warlock3.app.util.getEntireLineStyles
 import cc.warlock.warlock3.app.util.highlight
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
-import cc.warlock.warlock3.app.ui.window.WindowViewModel
 import cc.warlock.warlock3.core.text.flattenStyles
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

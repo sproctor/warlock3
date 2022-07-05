@@ -15,7 +15,7 @@ import cc.warlock.warlock3.app.ui.components.HandsView
 import cc.warlock.warlock3.app.ui.components.IndicatorView
 import cc.warlock.warlock3.app.ui.components.VitalBars
 import cc.warlock.warlock3.app.ui.window.WindowViewModel
-import cc.warlock.warlock3.app.views.game.WindowView
+import cc.warlock.warlock3.app.ui.window.WindowView
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
 

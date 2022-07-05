@@ -1,5 +1,6 @@
 package cc.warlock.warlock3.app.di
 
+import androidx.compose.ui.platform.ClipboardManager
 import cc.warlock.warlock3.app.GameState
 import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
@@ -34,7 +35,7 @@ object AppContainer {
         )
     }
     val compassTheme: CompassTheme by lazy { loadCompassTheme() }
-    val gameViewModelFactory = { client: StormfrontClient ->
+    val gameViewModelFactory = { client: StormfrontClient, clipboard: ClipboardManager ->
         GameViewModel(
             client = client,
             windowRepository = windowRepository,
@@ -42,6 +43,7 @@ object AppContainer {
             variableRepository = variableRepository,
             scriptEngineRegistry = scriptEngineRegistry,
             compassTheme = compassTheme,
+            clipboard = clipboard,
         )
     }
     val dashboardViewModelFactory = { readyToPlay: (GameState) -> Unit ->

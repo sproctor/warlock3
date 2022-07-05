@@ -8,6 +8,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.app.ui.dashboard.DashboardView
 import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
@@ -75,7 +76,10 @@ fun WarlockApp(
                     return
                 }
             }
-            val viewModel = remember(client) { AppContainer.gameViewModelFactory(client) }
+            val clipboard = LocalClipboardManager.current
+            val viewModel = remember(client) {
+                AppContainer.gameViewModelFactory(client, clipboard)
+            }
             val windowViewModels = remember { mutableStateOf(emptyMap<String, WindowViewModel>()) }
             val windows by AppContainer.windowRepository.windows.collectAsState()
             windows.keys.forEach { name ->
