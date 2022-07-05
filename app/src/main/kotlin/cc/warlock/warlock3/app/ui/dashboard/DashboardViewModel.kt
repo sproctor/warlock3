@@ -1,18 +1,23 @@
 package cc.warlock.warlock3.app.ui.dashboard
 
+import androidx.compose.ui.platform.ClipboardManager
 import cc.warlock.warlock3.app.GameState
+import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.CharacterRepository
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
 import cc.warlock.warlock3.stormfront.network.SgeClient
 import cc.warlock.warlock3.stormfront.network.SgeEvent
+import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.net.UnknownHostException
 
 class DashboardViewModel(
     characterRepository: CharacterRepository,
     private val accountRepository: AccountRepository,
-    private val readyToPlay: (GameState) -> Unit,
+    private val updateGameState: (GameState) -> Unit,
+    private val clipboardManager: ClipboardManager,
 ) {
     val characters = characterRepository.observeAllCharacters()
 
@@ -60,11 +65,23 @@ class DashboardViewModel(
                                 val key = properties["KEY"]!!
                                 val host = properties["GAMEHOST"]!!
                                 val port = properties["GAMEPORT"]!!.toInt()
-                                readyToPlay(
-                                    GameState.ConnectedGameState(host = host, port = port, key = key, character = character)
-                                )
+                                try {
+                                    val sfClient = StormfrontClient(
+                                        host = host,
+                                        port = port,
+                                        windowRepository = AppContainer.windowRepository,
+                                        maxTypeAhead = 1,
+                                    )
+                                    sfClient.connect(key)
+                                    val gameViewModel = AppContainer.gameViewModelFactory(sfClient, clipboardManager)
+                                    updateGameState(
+                                        GameState.ConnectedGameState(gameViewModel, character)
+                                    )
+                                } catch (e: UnknownHostException) {
+                                    updateGameState(GameState.ErrorState("Unknown host: ${e.message}"))
+                                }
                                 client.close()
-                                connectJob?.cancel()
+                                cancelConnect()
                             }
                             is SgeEvent.SgeErrorEvent -> {
                                 _message.value = "Error code (${event.errorCode})"

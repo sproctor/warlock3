@@ -12,14 +12,16 @@ import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.components.CompassState
 import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.macros.macroCommands
+import cc.warlock.warlock3.app.model.ViewHighlight
+import cc.warlock.warlock3.app.ui.window.WindowUiState
+import cc.warlock.warlock3.app.util.toSpanStyle
 import cc.warlock.warlock3.core.client.ClientCompassEvent
 import cc.warlock.warlock3.core.client.ClientProgressBarEvent
 import cc.warlock.warlock3.core.client.ProgressBarData
 import cc.warlock.warlock3.core.parser.MacroLexer
-import cc.warlock.warlock3.core.prefs.MacroRepository
-import cc.warlock.warlock3.core.prefs.VariableRepository
-import cc.warlock.warlock3.core.prefs.WindowRepository
+import cc.warlock.warlock3.core.prefs.*
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
+import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.*
@@ -33,6 +35,8 @@ class GameViewModel(
     val client: StormfrontClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
+    highlightRepository: HighlightRepository,
+    presetRepository: PresetRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
     val compassTheme: CompassTheme,
     val clipboard: ClipboardManager
@@ -63,6 +67,15 @@ class GameViewModel(
             .map { it.toMap() }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val presets: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            presetRepository.observePresetsForCharacter(characterId)
+        } else {
+            flow { emit(emptyMap()) }
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
@@ -102,10 +115,42 @@ class GameViewModel(
     private var historyPosition = -1
     private val sendHistory = mutableListOf<String>()
 
-    val windows = windowRepository.windows
+    private val windows = windowRepository.windows
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val openWindows = client.characterId.flatMapLatest {
+    private val highlights = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            highlightRepository.observeForCharacter(characterId)
+                .map { highlights ->
+                    highlights.map { highlight ->
+                        val pattern = if (highlight.isRegex) {
+                            highlight.pattern
+                        } else {
+                            val subpattern = Regex.escape(highlight.pattern)
+                            if (highlight.matchPartialWord) {
+                                subpattern
+                            } else {
+                                "\\b$subpattern\\b"
+                            }
+                        }
+                        ViewHighlight(
+                            regex = Regex(
+                                pattern = pattern,
+                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                            ),
+                            styles = highlight.styles.mapValues { it.value.toSpanStyle() }
+                        )
+                    }
+                }
+        } else {
+            flow {
+                emit(emptyList())
+            }
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val openWindows = client.characterId.flatMapLatest {
         if (it != null) {
             windowRepository.observeOpenWindows(it)
         } else {
@@ -113,6 +158,35 @@ class GameViewModel(
         }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptySet())
+
+    val windowUiStates: Flow<List<WindowUiState>> = combine(
+        highlights, presets, openWindows, windows, client.components
+    ) { highlights, presets, openWindows, windows, components ->
+        openWindows.map { name ->
+            WindowUiState(
+                name = name,
+                lines = client.getStream(name).lines,
+                window = windows[name],
+                components = components,
+                highlights = highlights,
+                presets = presets,
+            )
+        }
+    }
+
+    val mainWindowUiState: Flow<WindowUiState> = combine(
+        highlights, presets, windows, client.components
+    ) { highlights, presets, windows, components ->
+        val name = "main"
+        WindowUiState(
+            name = name,
+            lines = client.getStream(name).lines,
+            window = windows[name],
+            components = components,
+            highlights = highlights,
+            presets = presets,
+        )
+    }
 
     init {
         client.eventFlow

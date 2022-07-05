@@ -7,7 +7,6 @@ import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
 import cc.warlock.warlock3.app.ui.game.GameViewModel
 import cc.warlock.warlock3.app.util.loadCompassTheme
 import cc.warlock.warlock3.core.prefs.*
-import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.prefs.sql.Database
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -44,13 +43,19 @@ object AppContainer {
             scriptEngineRegistry = scriptEngineRegistry,
             compassTheme = compassTheme,
             clipboard = clipboard,
+            highlightRepository = highlightRepository,
+            presetRepository = presetRepository,
         )
     }
-    val dashboardViewModelFactory = { readyToPlay: (GameState) -> Unit ->
-        DashboardViewModel(
+    fun dashboardViewModelFactory(
+        updateGameState: (GameState) -> Unit,
+        clipboardManager: ClipboardManager,
+    ): DashboardViewModel {
+        return DashboardViewModel(
             characterRepository = characterRepository,
             accountRepository = accountRepository,
-            readyToPlay = readyToPlay
+            updateGameState = updateGameState,
+            clipboardManager = clipboardManager,
         )
     }
 }

@@ -3,7 +3,9 @@ package cc.warlock.warlock3.app.ui.sge
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.ClipboardManager
 import cc.warlock.warlock3.app.GameState
+import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.ClientSettingRepository
 import cc.warlock.warlock3.core.prefs.models.Account
@@ -14,12 +16,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
 class SgeViewModel(
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
-    readyToPlay: (GameState) -> Unit,
+    private val clipboardManager: ClipboardManager,
+    updateGameState: (GameState) -> Unit,
 ) : AutoCloseable {
 
     // TODO: Make these configurable?
@@ -84,11 +88,33 @@ class SgeViewModel(
                         val host = properties["GAMEHOST"]!!
                         val port = properties["GAMEPORT"]!!.toInt()
                         val character =
-                            GameCharacter(accountId!!, "$gameCode:$characterName".lowercase(), gameCode!!, characterName!!)
+                            GameCharacter(
+                                accountId!!,
+                                "$gameCode:$characterName".lowercase(),
+                                gameCode!!,
+                                characterName!!
+                            )
 
-                        readyToPlay(
-                            GameState.ConnectedGameState(host = host, port = port, key = key, character = character)
-                        )
+                        scope.launch {
+                            AppContainer.characterRepository.saveCharacter(character)
+                            AppContainer.clientSettings.put("lastUsername", character.accountId)
+                        }
+
+                        try {
+                            val client = StormfrontClient(
+                                host = host,
+                                port = port,
+                                windowRepository = AppContainer.windowRepository,
+                                maxTypeAhead = 1,
+                            )
+                            client.connect(key)
+                            val gameViewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
+                            updateGameState(
+                                GameState.ConnectedGameState(gameViewModel, character)
+                            )
+                        } catch (e: UnknownHostException) {
+                            updateGameState(GameState.ErrorState("Unknown host: ${e.message}"))
+                        }
                         close()
                     }
                 }
