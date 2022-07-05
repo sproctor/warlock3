@@ -16,6 +16,7 @@ import androidx.compose.ui.window.DialogState
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toHexString
 import cc.warlock.warlock3.app.util.toWarlockColor
+import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.util.toWarlockColor
 import com.godaddy.android.colorpicker.ClassicColorPicker
 import com.godaddy.android.colorpicker.HsvColor
@@ -25,7 +26,7 @@ fun ColorPickerDialog(
     initialColor: Color?,
     state: DialogState = DialogState(size = DpSize(300.dp, height = 400.dp)),
     onCloseRequest: () -> Unit,
-    onColorSelected: (color: Color?) -> Unit,
+    onColorSelected: (color: WarlockColor?) -> Unit,
 ) {
     var currentColor by remember { mutableStateOf(initialColor?.let { HsvColor.from(it) }) }
     var currentText by remember(currentColor) {
@@ -42,7 +43,7 @@ fun ColorPickerDialog(
                 onValueChange = {
                     currentText = it
                     "#$it".toWarlockColor()?.toColor()?.let { color ->
-                        HsvColor.from(color)
+                        currentColor = HsvColor.from(color)
                     }
                 }
             )
@@ -52,7 +53,7 @@ fun ColorPickerDialog(
             ) { color ->
                 currentColor = color
             }
-            Button(onClick = { onColorSelected(currentColor?.toColor()) }) {
+            Button(onClick = { onColorSelected("#$currentText".toWarlockColor()) }) {
                 Text("OK")
             }
         }

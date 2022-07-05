@@ -15,7 +15,7 @@ import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.MacroRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
-import cc.warlock.warlock3.core.prefs.models.PresetRepository
+import cc.warlock.warlock3.core.prefs.PresetRepository
 
 @Composable
 fun SettingsDialog(
@@ -89,6 +89,7 @@ fun SettingsDialog(
                         currentCharacter = currentCharacter,
                         allCharacters = characters,
                         highlightRepository = highlightRepository,
+                        presetRepository = presetRepository,
                     )
                     AppearanceSettingsState -> {
                         AppearanceView(

@@ -6,7 +6,7 @@ import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
 import cc.warlock.warlock3.app.ui.game.GameViewModel
 import cc.warlock.warlock3.app.util.loadCompassTheme
 import cc.warlock.warlock3.core.prefs.*
-import cc.warlock.warlock3.core.prefs.models.PresetRepository
+import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.prefs.sql.Database
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.stormfront.network.StormfrontClient

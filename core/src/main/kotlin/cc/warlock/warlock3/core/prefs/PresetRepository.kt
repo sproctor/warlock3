@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.core.prefs.models
+package cc.warlock.warlock3.core.prefs
 
 import cc.warlock.warlock3.core.prefs.sql.PresetStyle
 import cc.warlock.warlock3.core.prefs.sql.PresetStyleQueries
@@ -27,15 +27,17 @@ class PresetRepository(
             italic: Boolean,
             underline: Boolean,
             monospace: Boolean ->
-            Pair(presetId, StyleDefinition(
-                textColor = textColor,
-                backgroundColor = backgroundColor,
-                entireLine = entireLine,
-                bold = bold,
-                italic = italic,
-                underline = underline,
-                monospace = monospace,
-            ))
+            Pair(
+                presetId, StyleDefinition(
+                    textColor = textColor,
+                    backgroundColor = backgroundColor,
+                    entireLine = entireLine,
+                    bold = bold,
+                    italic = italic,
+                    underline = underline,
+                    monospace = monospace,
+                )
+            )
         }.asFlow()
             .mapToList(ioDispatcher)
             .map { defaultStyles + it.toMap() }
@@ -60,7 +62,7 @@ class PresetRepository(
     }
 }
 
-private val defaultStyles =
+val defaultStyles =
     mapOf(
         "bold" to StyleDefinition(
             textColor = WarlockColor("#FFFF00"),

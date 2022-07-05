@@ -15,7 +15,7 @@ import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
-import cc.warlock.warlock3.core.prefs.models.PresetRepository
+import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.text.*
 import cc.warlock.warlock3.stormfront.StreamLine
 import kotlinx.coroutines.runBlocking
@@ -156,7 +156,7 @@ fun ColumnScope.PresetSettings(
             initialColor = editColor!!.first.toColor(),
             onCloseRequest = { editColor = null },
             onColorSelected = { color ->
-                editColor?.second?.invoke(color?.toWarlockColor() ?: WarlockColor.Unspecified)
+                editColor?.second?.invoke(color ?: WarlockColor.Unspecified)
             }
         )
     }
@@ -165,7 +165,7 @@ fun ColumnScope.PresetSettings(
         Column(
             Modifier
                 .verticalScroll(scrollState)
-                .padding(end = LocalScrollbarStyle.current.thickness + 4.dp)
+                .padding(end = LocalScrollbarStyle.current.thickness)
         ) {
             val presets = listOf("bold", "command", "roomName", "speech", "thought", "watching", "whisper", "echo")
             presets.forEach { preset ->
@@ -193,6 +193,7 @@ fun ColumnScope.PresetSettings(
                                 )
                             }
                         }
+                        Spacer(Modifier.width(16.dp))
                         OutlinedButton(
                             onClick = {
                                 editColor = Pair(style.backgroundColor) { color ->
@@ -211,6 +212,7 @@ fun ColumnScope.PresetSettings(
                                 )
                             }
                         }
+                        Spacer(Modifier.width(8.dp))
                     }
                 }
             }

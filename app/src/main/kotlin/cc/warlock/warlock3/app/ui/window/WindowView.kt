@@ -1,13 +1,10 @@
 package cc.warlock.warlock3.app.views.game
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.LocalTextStyle
@@ -42,7 +39,7 @@ fun WindowView(modifier: Modifier, viewModel: WindowViewModel) {
                 val window by viewModel.window.collectAsState(null)
                 Box(
                     Modifier.background(MaterialTheme.colors.primary).fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .padding(4.dp)
                 ) {
                     Text(
                         text = (window?.title ?: "") + (window?.subtitle ?: ""),
@@ -68,16 +65,14 @@ private fun WindowViewContent(viewModel: WindowViewModel) {
     val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
-
         CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
             SelectionContainer {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(end = 12.dp),
+                        .padding(end = LocalScrollbarStyle.current.thickness),
                     state = scrollState
                 ) {
-
                     items(lines) { line ->
                         val annotatedString =
                             line.text.toAnnotatedString(variables = components.value, styleMap = styleMap)

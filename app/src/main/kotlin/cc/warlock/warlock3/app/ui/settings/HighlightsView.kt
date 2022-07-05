@@ -12,10 +12,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.toColor
@@ -23,9 +22,13 @@ import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
 import cc.warlock.warlock3.core.prefs.models.Highlight
+import cc.warlock.warlock3.core.prefs.PresetRepository
+import cc.warlock.warlock3.core.prefs.defaultStyles
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.text.isUnspecified
+import cc.warlock.warlock3.core.text.specifiedOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import java.util.*
 
@@ -35,6 +38,7 @@ fun HighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     highlightRepository: HighlightRepository,
+    presetRepository: PresetRepository,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val highlights by if (currentCharacter == null) {
@@ -44,6 +48,16 @@ fun HighlightsView(
     }
         .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
+    val currentCharacterId = currentCharacter?.id
+    var defaultStyle by remember { mutableStateOf(defaultStyles["default"]) }
+    LaunchedEffect(currentCharacterId) {
+        if (currentCharacterId != null) {
+            presetRepository.observePresetsForCharacter(currentCharacterId).map { it["default"] }
+                .collect {
+                    defaultStyle = it
+                }
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
@@ -51,16 +65,28 @@ fun HighlightsView(
             onSelect = { selectedCharacter = it },
             allowGlobal = true,
         )
+        Spacer(Modifier.height(16.dp))
+        Text(text = "Highlights", style = MaterialTheme.typography.h5)
+        Spacer(Modifier.height(8.dp))
         Column(Modifier.fillMaxWidth().weight(1f)) {
             highlights.forEach { highlight ->
+                val color = highlight.styles[0]?.textColor?.specifiedOrNull()?.toColor()
+                    ?: defaultStyle?.textColor?.specifiedOrNull()?.toColor() ?: Color.Unspecified
+                val background = highlight.styles[0]?.backgroundColor?.toColor()
+                    ?: defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
                 ListItem(
                     modifier = Modifier.clickable { editingHighlight = highlight },
-                    text = { Text(highlight.pattern) },
+                    text = {
+                        Text(text = highlight.pattern, style = TextStyle(color = color, background = background))
+                    },
                 )
             }
         }
-        Row(Modifier.fillMaxWidth()) {
-            Button(onClick = {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(onClick = {
                 editingHighlight = Highlight(
                     id = UUID.randomUUID(),
                     pattern = "",
@@ -108,7 +134,7 @@ fun EditHighlightDialog(
 
     Dialog(
         onCloseRequest = onClose,
-        state = rememberDialogState(size = DpSize(width = 1200.dp, height = 500.dp))
+        title = "Edit Highlight"
     ) {
         Column(
             modifier = Modifier
@@ -116,6 +142,7 @@ fun EditHighlightDialog(
                     state = rememberScrollState(),
                     orientation = Orientation.Horizontal
                 )
+                .padding(24.dp)
         ) {
             TextField(value = pattern, label = { Text("Pattern") }, onValueChange = { pattern = it })
             // Add | to match empty string, then match and see how many groups there are
@@ -136,6 +163,7 @@ fun EditHighlightDialog(
                                 }
                             }
                         }
+                        Spacer(Modifier.width(16.dp))
                         OutlinedButton({ editColor = i to false }) {
                             Row {
                                 Text("Background: ")
@@ -151,7 +179,14 @@ fun EditHighlightDialog(
                     Text("Match partial words")
                 }
             }
-            Row {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = onClose) {
+                    Text("CANCEL")
+                }
+                Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
                         saveHighlight(
@@ -168,9 +203,6 @@ fun EditHighlightDialog(
                 ) {
                     Text("OK")
                 }
-                Button(onClick = onClose) {
-                    Text("CANCEL")
-                }
             }
         }
     }
@@ -183,7 +215,7 @@ fun EditHighlightDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },
             onColorSelected = { color ->
-                val warlockColor = color?.toWarlockColor() ?: WarlockColor.Unspecified
+                val warlockColor = color ?: WarlockColor.Unspecified
                 val newStyle =
                     if (content)
                         currentStyle.copy(textColor = warlockColor)

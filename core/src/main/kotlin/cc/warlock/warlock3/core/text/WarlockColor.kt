@@ -14,3 +14,6 @@ data class WarlockColor(val argb: Long) {
 
 fun WarlockColor.isUnspecified(): Boolean = !isSpecified()
 fun WarlockColor.isSpecified(): Boolean = argb != -1L
+
+fun WarlockColor.specifiedOrNull(): WarlockColor? =
+    if (isSpecified()) this else null

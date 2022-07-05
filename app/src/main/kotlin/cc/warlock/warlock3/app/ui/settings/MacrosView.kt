@@ -48,14 +48,17 @@ fun MacrosView(
             onSelect = { currentCharacter = it },
             allowGlobal = true,
         )
-        val scrollState = rememberScrollState(0)
+        Spacer(Modifier.height(16.dp))
+        Text(text = "Macros", style = MaterialTheme.typography.h5)
+        Spacer(Modifier.height(8.dp))
+        val scrollState = rememberScrollState()
         Box(
             Modifier.fillMaxWidth()
                 .weight(1f)
         ) {
             Column(
                 Modifier.fillMaxSize()
-                    .padding(end = 12.dp)
+                    .padding(end = LocalScrollbarStyle.current.thickness)
                     .verticalScroll(scrollState)
             ) {
                 macros.forEach { macro ->
@@ -82,8 +85,11 @@ fun MacrosView(
                 adapter = rememberScrollbarAdapter(scrollState)
             )
         }
-        Row(Modifier.fillMaxWidth()) {
-            Button(onClick = { editingMacro = Pair(null, "") }) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(onClick = { editingMacro = Pair(null, "") }) {
                 Icon(imageVector = WarlockIcons.Add, contentDescription = null)
             }
         }
@@ -129,10 +135,12 @@ fun EditMacroDialog(
 ) {
     Dialog(
         onCloseRequest = onClose,
-        state = rememberDialogState(size = DpSize(width = 1500.dp, height = 500.dp))
+        state = rememberDialogState(size = DpSize(width = 1520.dp, height = 540.dp)),
+        title = "Edit Macro"
     ) {
         Column(
             modifier = Modifier
+                .padding(24.dp)
                 .scrollable(
                     state = rememberScrollState(),
                     orientation = Orientation.Horizontal
@@ -142,6 +150,7 @@ fun EditMacroDialog(
             var modifierKeys by remember { mutableStateOf(modifiers) }
             var newValue by remember(value) { mutableStateOf(value) }
             TextField(value = newValue, label = { Text("Value") }, onValueChange = { newValue = it })
+            Spacer(Modifier.height(16.dp))
             KeyboardLayout(
                 selectedKey = selectedKey,
                 modifierKeys = modifierKeys,
@@ -150,7 +159,14 @@ fun EditMacroDialog(
                     modifierKeys = if (!modifierKeys.contains(it)) modifierKeys + it else modifierKeys - it
                 },
             )
-            Row {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = onClose) {
+                    Text("CANCEL")
+                }
+                Spacer(Modifier.width(8.dp))
                 Button(
                     enabled = selectedKey != null,
                     onClick = {
@@ -165,9 +181,6 @@ fun EditMacroDialog(
                     }
                 ) {
                     Text("OK")
-                }
-                Button(onClick = onClose) {
-                    Text("CANCEL")
                 }
             }
         }

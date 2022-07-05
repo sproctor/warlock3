@@ -1,14 +1,13 @@
 package cc.warlock.warlock3.app.ui.settings
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.core.prefs.VariableRepository
@@ -37,6 +36,9 @@ fun VariablesView(
             characters = characters,
             onSelect = { currentCharacterState.value = it }
         )
+        Spacer(Modifier.height(16.dp))
+        Text(text = "Variables", style = MaterialTheme.typography.h5)
+        Spacer(Modifier.height(8.dp))
         val variables by variableRepository.observeCharacterVariables(characterId).collectAsState(emptyList())
         Column(Modifier.weight(1f).fillMaxHeight()) {
             variables.forEach { variable ->
@@ -53,7 +55,10 @@ fun VariablesView(
                 )
             }
         }
-        Row {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
             IconButton(
                 onClick = { editingVariable = Variable("", "") }
             ) {
@@ -86,16 +91,25 @@ fun EditVariableDialog(
     saveVariable: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
-    Dialog(onCloseRequest = onClose) {
-        Column {
+    Dialog(
+        onCloseRequest = onClose,
+        title = "Edit Variable"
+    ) {
+        Column(Modifier.padding(24.dp)) {
             var newName by remember(name) { mutableStateOf(name) }
             var newValue by remember(value) { mutableStateOf(value) }
             TextField(value = newName, label = { Text("Name") }, onValueChange = { newName = it })
+            Spacer(Modifier.height(16.dp))
             TextField(value = newValue, label = { Text("Value") }, onValueChange = { newValue = it })
-            Row {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
                 Button(onClick = { saveVariable(newName, newValue) }) {
                     Text("OK")
                 }
+                Spacer(Modifier.width(16.dp))
                 Button(onClick = onClose) {
                     Text("CANCEL")
                 }
