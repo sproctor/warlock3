@@ -70,9 +70,12 @@ fun WarlockEntryContent(
 
         RoundTimeBar(roundTime, castTime)
 
-        LaunchedEffect(Unit) {
+        DisposableEffect(Unit) {
             focusRequester.requestFocus()
             focusRequester.captureFocus()
+            onDispose {
+                focusRequester.freeFocus()
+            }
         }
     }
 }
