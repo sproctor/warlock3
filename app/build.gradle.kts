@@ -44,6 +44,10 @@ compose.desktop {
             packageName = "warlock3"
             packageVersion = "1.0.12"
             modules("java.sql")
+            copyright = "Copyright 2022 Sean Proctor"
+            licenseFile.set(project.file("gpl-2.0.txt"))
+            description = "Warlock Front-end"
+            vendor = "Warlock Project"
 
             windows {
                 menu = true
