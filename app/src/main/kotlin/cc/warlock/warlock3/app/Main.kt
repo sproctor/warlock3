@@ -12,6 +12,7 @@ import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.app.views.AppMenuBar
 import cc.warlock.warlock3.core.prefs.adapters.UUIDAdapter
 import cc.warlock.warlock3.core.prefs.adapters.WarlockColorAdapter
+import cc.warlock.warlock3.core.prefs.insertDefaultsIfNeeded
 import cc.warlock.warlock3.core.prefs.migrateIfNeeded
 import cc.warlock.warlock3.core.prefs.sql.Database
 import cc.warlock.warlock3.core.prefs.sql.Highlight
@@ -44,6 +45,9 @@ fun main() {
             backgroundColorAdapter = WarlockColorAdapter,
         )
     )
+    runBlocking {
+        insertDefaultsIfNeeded(AppContainer.database)
+    }
 
     val clientSettings = AppContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
