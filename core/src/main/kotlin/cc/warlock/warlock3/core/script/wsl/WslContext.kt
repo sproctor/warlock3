@@ -290,7 +290,7 @@ class WslContext(
         while (true) {
             val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: return
             val currentTime = client.time
-            if (roundEnd < currentTime) {
+            if (roundEnd <= currentTime) {
                 break
             }
             val duration = roundEnd - currentTime
