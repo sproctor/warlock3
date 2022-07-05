@@ -288,7 +288,7 @@ class WslContext(
     suspend fun waitForRoundTime() {
         log(5, "waiting for round time")
         while (true) {
-            val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: return
+            val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: 0
             val currentTime = client.time
             if (roundEnd <= currentTime) {
                 break
