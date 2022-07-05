@@ -20,5 +20,8 @@ DELETE FROM Highlight WHERE pattern = :pattern AND characterId = :characterId;
 deleteGlobalByPattern:
 DELETE FROM Highlight WHERE pattern = :pattern AND characterId = "global";
 
+deleteById:
+DELETE FROM Highlight WHERE id = :id;
+
 save:
 INSERT OR REPLACE INTO Highlight VALUES ?;

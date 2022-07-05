@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,10 +23,12 @@ import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.core.prefs.MacroRepository
 import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.awt.event.KeyEvent
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, DelicateCoroutinesApi::class)
 @Composable
 fun MacrosView(
     initialCharacter: GameCharacter?,
@@ -71,11 +74,27 @@ fun MacrosView(
                     val key = Key(parts.last().toLongOrNull() ?: 0)
                     textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
                     ListItem(
-                        modifier = Modifier.clickable {
-                            editingMacro = macro
-                        },
                         text = { Text(textBuilder.toString()) },
-                        secondaryText = { Text(macro.second) }
+                        secondaryText = { Text(macro.second) },
+                        trailing = {
+                            Row {
+                                IconButton(
+                                    onClick = { editingMacro = macro}
+                                ) {
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        GlobalScope.launch {
+                                            macroRepository.delete(currentCharacter?.id ?: "global", macro.first)
+                                        }
+                                    }
+                                ) {
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -104,7 +123,6 @@ fun MacrosView(
                 scope.launch {
                     if (key != macro.first) {
                         macro.first?.let {
-
                             if (currentCharacter != null) {
                                 macroRepository.delete(currentCharacter!!.id, it)
                             } else {

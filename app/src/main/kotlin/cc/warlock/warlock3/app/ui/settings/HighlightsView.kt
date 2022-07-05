@@ -2,13 +2,15 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,21 +20,23 @@ import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.toColor
-import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.prefs.HighlightRepository
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
-import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.prefs.defaultStyles
+import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.text.isUnspecified
 import cc.warlock.warlock3.core.text.specifiedOrNull
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.*
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, DelicateCoroutinesApi::class)
 @Composable
 fun HighlightsView(
     currentCharacter: GameCharacter?,
@@ -75,10 +79,26 @@ fun HighlightsView(
                 val background = highlight.styles[0]?.backgroundColor?.toColor()
                     ?: defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
                 ListItem(
-                    modifier = Modifier.clickable { editingHighlight = highlight },
                     text = {
                         Text(text = highlight.pattern, style = TextStyle(color = color, background = background))
                     },
+                    trailing = {
+                        Row {
+                            IconButton(
+                                onClick = { editingHighlight = highlight }
+                            ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                onClick = {
+                                    GlobalScope.launch { highlightRepository.deleteById(highlight.id) }
+                                }
+                            ) {
+                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                            }
+                        }
+                    }
                 )
             }
         }

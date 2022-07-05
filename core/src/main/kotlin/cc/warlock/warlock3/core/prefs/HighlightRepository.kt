@@ -117,4 +117,10 @@ class HighlightRepository(
             highlightQueries.deleteByPattern(pattern = pattern, characterId = characterId)
         }
     }
+
+    suspend fun deleteById(id: UUID) {
+        withContext(ioDispatcher) {
+            highlightQueries.deleteById(id)
+        }
+    }
 }
