@@ -3,14 +3,18 @@ package cc.warlock.warlock3.app.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.consumeAllChanges
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -52,7 +56,6 @@ fun ResizablePanel(
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ResizablePanelHandle(
     isHorizontal: Boolean,
@@ -60,7 +63,6 @@ fun ResizablePanelHandle(
     state: ResizablePanelState,
 ) {
     val modifier = Modifier
-        .background(Color.Black)
         .pointerInput(state) {
             detectDragGestures { change, _ ->
                 change.consumeAllChanges()
@@ -73,13 +75,29 @@ fun ResizablePanelHandle(
         .pointerHoverIcon(
             icon = PointerIcon(Cursor(if (isHorizontal) Cursor.E_RESIZE_CURSOR else Cursor.S_RESIZE_CURSOR))
         )
-    Box(
-        modifier = if (isHorizontal) {
-            modifier.width(5.dp).fillMaxHeight()
-        } else {
-            modifier.fillMaxWidth().height(5.dp)
+    if (isHorizontal) {
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colors.primary))
+            Spacer(Modifier.width(1.dp))
+            Spacer(Modifier.fillMaxHeight().width(2.dp).background(Color.Black))
+            Spacer(Modifier.width(1.dp))
+            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colors.primary))
         }
-    )
+    } else {
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colors.primary))
+            Spacer(Modifier.height(1.dp))
+            Spacer(Modifier.fillMaxWidth().height(2.dp).background(Color.Black))
+            Spacer(Modifier.height(1.dp))
+            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colors.primary))
+        }
+    }
 }
 
 class ResizablePanelState(
