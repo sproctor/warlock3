@@ -85,8 +85,8 @@ fun BoxScope.RoundTimeBar(
     roundTime: Int,
     castTime: Int,
 ) {
-    val rtColor = Color(139, 0, 0, 0xC0)
-    val stColor = Color(0, 0, 139, 0xC0)
+    val rtColor = Color(139, 0, 0, 0x80)
+    val stColor = Color(0, 0, 139, 0x80)
     Canvas(Modifier.matchParentSize().padding(2.dp)) {
         for (i in castTime until min(100, roundTime)) {
             drawRect(
