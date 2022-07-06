@@ -374,7 +374,8 @@ enum class WslInfixOperator {
     CONTAINS {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
             if (value1.isMap()) {
-                return WslBoolean(value1.getProperty(value2.toString()) != WslNull)
+                val property = value1.getProperty(value2.toString())
+                return WslBoolean(!property.isNull())
             }
             return WslBoolean(value1.toString().contains(value2.toString()))
         }

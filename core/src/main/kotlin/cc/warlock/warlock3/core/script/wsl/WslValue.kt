@@ -152,7 +152,11 @@ data class WslNumber(val value: BigDecimal) : WslValue {
 
 object WslNull : WslValue {
     override fun equals(other: Any?): Boolean {
-        return other == null
+        return when (other) {
+            WslNull -> true
+            null -> true
+            else -> false
+        }
     }
 
     override fun toString(): String {

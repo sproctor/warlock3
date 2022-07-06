@@ -9,6 +9,7 @@ import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
@@ -155,7 +156,7 @@ class WslContext(
     }
 
     suspend fun echo(message: String) {
-        client.print(StyledString(message))
+        client.print(StyledString(message, listOf(WarlockStyle.Echo)))
     }
 
     fun log(level: Int, message: String) {

@@ -12,6 +12,7 @@ import kotlin.random.Random
 
 // stolen from python
 val loggingLevels = mapOf(
+    "verbose" to 0,
     "debug" to 10,
     "info" to 20,
     "warning" to 30,

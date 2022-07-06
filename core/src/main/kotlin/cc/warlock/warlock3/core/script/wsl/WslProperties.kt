@@ -23,7 +23,8 @@ class WslProperties(
     }
 
     override fun getProperty(key: String): WslValue {
-        return client.properties.value[key]?.let { WslString(it) } ?: WslNull
+        val value = client.properties.value[key]
+        return value?.let { WslString(it) } ?: WslNull
     }
 
     override fun setProperty(key: String, value: WslValue) {
