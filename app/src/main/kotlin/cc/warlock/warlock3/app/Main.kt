@@ -95,6 +95,7 @@ fun main(args: Array<String>) {
                         windowRepository = AppContainer.windowRepository,
                         characterRepository = AppContainer.characterRepository,
                     )
+                    client.connect(credentials.key)
                     val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
                     GameState.ConnectedGameState(viewModel)
                 } else {
