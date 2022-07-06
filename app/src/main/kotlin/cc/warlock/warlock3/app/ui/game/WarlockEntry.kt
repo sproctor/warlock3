@@ -52,6 +52,8 @@ fun WarlockEntryContent(
             .border(width = 1.dp, color = Color.DarkGray, shape = MaterialTheme.shapes.small)
             .padding(4.dp)
     ) {
+        RoundTimeBar(roundTime, castTime)
+
         val focusRequester = remember { FocusRequester() }
         BasicTextField(
             value = textField,
@@ -67,8 +69,6 @@ fun WarlockEntryContent(
             onValueChange = onValueChange,
             maxLines = 1,
         )
-
-        RoundTimeBar(roundTime, castTime)
 
         DisposableEffect(Unit) {
             focusRequester.requestFocus()
