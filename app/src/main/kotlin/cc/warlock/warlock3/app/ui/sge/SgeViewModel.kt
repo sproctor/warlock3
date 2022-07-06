@@ -9,7 +9,7 @@ import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.ClientSettingRepository
 import cc.warlock.warlock3.core.prefs.models.Account
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.stormfront.network.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,10 +83,7 @@ class SgeViewModel(
                         navigate(SgeViewState.SgeError(errorMessage))
                     }
                     is SgeEvent.SgeReadyToPlayEvent -> {
-                        val properties = event.loginProperties
-                        val key = properties["KEY"]!!
-                        val host = properties["GAMEHOST"]!!
-                        val port = properties["GAMEPORT"]!!.toInt()
+                        val credentials = event.credentials
                         val character =
                             GameCharacter(
                                 accountId!!,
@@ -97,20 +94,20 @@ class SgeViewModel(
 
                         scope.launch {
                             AppContainer.characterRepository.saveCharacter(character)
-                            AppContainer.clientSettings.put("lastUsername", character.accountId)
+                            AppContainer.clientSettings.put("lastUsername", accountId!!)
                         }
 
                         try {
                             val client = StormfrontClient(
-                                host = host,
-                                port = port,
+                                host = credentials.host,
+                                port = credentials.port,
                                 windowRepository = AppContainer.windowRepository,
-                                maxTypeAhead = 1,
+                                characterRepository = AppContainer.characterRepository,
                             )
-                            client.connect(key)
+                            client.connect(credentials.key)
                             val gameViewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
                             updateGameState(
-                                GameState.ConnectedGameState(gameViewModel, character)
+                                GameState.ConnectedGameState(gameViewModel)
                             )
                         } catch (e: UnknownHostException) {
                             updateGameState(GameState.ErrorState("Unknown host: ${e.message}"))

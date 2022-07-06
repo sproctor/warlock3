@@ -23,6 +23,7 @@ dependencies {
     // implementation("org.jetbrains.compose.components:components-splitpane:_")
     implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
     implementation("com.squareup.sqldelight:sqlite-driver:_")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:_")
 }
 
 java {

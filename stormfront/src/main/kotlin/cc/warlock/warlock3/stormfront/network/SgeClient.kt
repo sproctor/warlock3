@@ -80,7 +80,13 @@ class SgeClient(
             is SgeResponse.SgeCharacterListResponse -> _eventFlow.emit(SgeEvent.SgeCharactersReadyEvent(response.characters))
             is SgeResponse.SgeReadyToPlayResponse -> {
                 stopped = true
-                _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(response.properties))
+                val properties = response.properties
+                val credentials = SimuGameCredentials(
+                    host = properties["GAMEHOST"]!!,
+                    port = properties["GAMEPORT"]!!.toInt(),
+                    key = properties["KEY"]!!
+                )
+                _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(credentials))
             }
             SgeResponse.SgeUnrecognizedResponse -> Unit // TODO: implement?
         }
@@ -216,6 +222,8 @@ sealed class SgeEvent {
     data class SgeGamesReadyEvent(val games: List<SgeGame>) : SgeEvent()
     object SgeGameSelectedEvent : SgeEvent()
     data class SgeCharactersReadyEvent(val characters: List<SgeCharacter>) : SgeEvent()
-    data class SgeReadyToPlayEvent(val loginProperties: Map<String, String>) : SgeEvent()
+    data class SgeReadyToPlayEvent(val credentials: SimuGameCredentials) : SgeEvent()
     data class SgeErrorEvent(val errorCode: SgeError) : SgeEvent()
 }
+
+data class SimuGameCredentials(val host: String, val port: Int, val key: String)

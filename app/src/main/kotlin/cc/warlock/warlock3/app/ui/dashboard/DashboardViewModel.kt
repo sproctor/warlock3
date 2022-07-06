@@ -5,7 +5,7 @@ import cc.warlock.warlock3.app.GameState
 import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.CharacterRepository
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.stormfront.network.SgeClient
 import cc.warlock.warlock3.stormfront.network.SgeEvent
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -61,21 +61,18 @@ class DashboardViewModel(
                                 }
                             }
                             is SgeEvent.SgeReadyToPlayEvent -> {
-                                val properties = event.loginProperties
-                                val key = properties["KEY"]!!
-                                val host = properties["GAMEHOST"]!!
-                                val port = properties["GAMEPORT"]!!.toInt()
+                                val credentials = event.credentials
                                 try {
                                     val sfClient = StormfrontClient(
-                                        host = host,
-                                        port = port,
+                                        host = credentials.host,
+                                        port = credentials.port,
                                         windowRepository = AppContainer.windowRepository,
-                                        maxTypeAhead = 1,
+                                        characterRepository = AppContainer.characterRepository,
                                     )
-                                    sfClient.connect(key)
+                                    sfClient.connect(credentials.key)
                                     val gameViewModel = AppContainer.gameViewModelFactory(sfClient, clipboardManager)
                                     updateGameState(
-                                        GameState.ConnectedGameState(gameViewModel, character)
+                                        GameState.ConnectedGameState(gameViewModel)
                                     )
                                 } catch (e: UnknownHostException) {
                                     updateGameState(GameState.ErrorState("Unknown host: ${e.message}"))
@@ -91,7 +88,7 @@ class DashboardViewModel(
                         }
                     }
                     .launchIn(GlobalScope)
-                val account = accountRepository.getByUsername(character.accountId)
+                val account = character.accountId?.let { accountRepository.getByUsername(it) }
                 if (account == null) {
                     _message.value = "Invalid account"
                     return@launch

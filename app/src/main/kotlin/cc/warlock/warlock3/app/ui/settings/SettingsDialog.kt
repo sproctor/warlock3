@@ -14,7 +14,7 @@ import cc.warlock.warlock3.core.prefs.CharacterRepository
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.MacroRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.PresetRepository
 
 @Composable

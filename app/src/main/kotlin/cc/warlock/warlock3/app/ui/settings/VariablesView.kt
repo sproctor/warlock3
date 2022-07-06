@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.core.prefs.VariableRepository
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.models.Variable
 import kotlinx.coroutines.runBlocking
 

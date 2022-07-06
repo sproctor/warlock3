@@ -20,6 +20,7 @@ import cc.warlock.warlock3.core.client.ClientProgressBarEvent
 import cc.warlock.warlock3.core.client.ProgressBarData
 import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
@@ -56,6 +57,16 @@ class GameViewModel(
     private val storedText = mutableStateOf<String?>(null)
 
     val properties: StateFlow<Map<String, String>> = client.properties
+
+    val character = combine(client.characterId, properties) { characterId, properties ->
+        val game = properties["game"]
+        val name = properties["character"]
+        if (characterId != null && game != null && name != null) {
+            GameCharacter(accountId = null, id = characterId, gameCode = game, name = name)
+        } else {
+            null
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val macros = client.characterId.flatMapLatest { characterId ->

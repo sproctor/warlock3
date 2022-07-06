@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.core.prefs
 
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.sql.Character
 import cc.warlock.warlock3.core.prefs.sql.CharacterQueries
 import com.squareup.sqldelight.runtime.coroutines.asFlow
@@ -28,6 +28,14 @@ class CharacterRepository(
                     )
                 }
             }
+    }
+
+    suspend fun getCharacter(id: String): GameCharacter? {
+        return withContext(ioDispatcher) {
+            characterQueries.getById(id).executeAsOneOrNull()?.let {
+                GameCharacter(accountId = it.accountId, id = it.id, gameCode = it.gameCode, name = it.name)
+            }
+        }
     }
 
     suspend fun saveCharacter(character: GameCharacter) {

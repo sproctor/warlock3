@@ -23,7 +23,7 @@ import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.prefs.defaultStyles
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor

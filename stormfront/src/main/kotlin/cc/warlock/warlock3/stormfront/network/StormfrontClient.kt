@@ -2,6 +2,7 @@ package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
+import cc.warlock.warlock3.core.prefs.CharacterRepository
 import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
@@ -22,10 +23,13 @@ import java.util.concurrent.ConcurrentHashMap
 class StormfrontClient(
     host: String,
     port: Int,
-    override val maxTypeAhead: Int,
     private val windowRepository: WindowRepository,
+    private val characterRepository: CharacterRepository,
 ) : WarlockClient {
     private val scope = CoroutineScope(Dispatchers.Default)
+
+    override var maxTypeAhead: Int = 1
+        private set
 
     private val socket = Socket(host, port)
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
@@ -126,7 +130,18 @@ class StormfrontClient(
                                         val game = event.game
                                         val character = event.character
                                         _characterId.value = if (game != null && character != null) {
-                                            "${event.game}:${event.character}".lowercase()
+                                            val characterId = "${event.game}:${event.character}".lowercase()
+                                            if (characterRepository.getCharacter(characterId) == null) {
+                                                characterRepository.saveCharacter(
+                                                    GameCharacter(
+                                                        accountId = null,
+                                                        id = characterId,
+                                                        gameCode = game,
+                                                        name = character
+                                                    )
+                                                )
+                                            }
+                                            characterId
                                         } else {
                                             null
                                         }

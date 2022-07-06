@@ -16,7 +16,7 @@ import cc.warlock.warlock3.app.ui.game.GameViewModel
 import cc.warlock.warlock3.app.ui.settings.SettingsDialog
 import cc.warlock.warlock3.app.ui.sge.SgeViewModel
 import cc.warlock.warlock3.app.ui.sge.SgeWizard
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 
 @Composable
 fun WarlockApp(
@@ -56,8 +56,9 @@ fun WarlockApp(
             SgeWizard(viewModel = viewModel, onCancel = { state.value = GameState.Dashboard })
         }
         is GameState.ConnectedGameState -> {
-            if (currentCharacter != currentState.character) {
-                currentCharacter = currentState.character
+            val character = currentState.viewModel.character.collectAsState(null).value
+            if (currentCharacter != character) {
+                currentCharacter = character
             }
             GameView(
                 viewModel = currentState.viewModel,
@@ -94,15 +95,10 @@ fun WarlockApp(
     }
 }
 
-@Composable
-fun rememberGameState(): MutableState<GameState> {
-    return remember { mutableStateOf(GameState.Dashboard) }
-}
-
 sealed class GameState {
     object Dashboard : GameState()
     object NewGameState : GameState()
-    data class ConnectedGameState(val viewModel: GameViewModel, val character: GameCharacter) : GameState()
+    data class ConnectedGameState(val viewModel: GameViewModel) : GameState()
 
     data class ErrorState(val message: String) : GameState()
 }

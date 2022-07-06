@@ -13,8 +13,7 @@ import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.getEntireLineStyles
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
-import cc.warlock.warlock3.app.util.toWarlockColor
-import cc.warlock.warlock3.core.prefs.models.GameCharacter
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.text.*
 import cc.warlock.warlock3.stormfront.StreamLine

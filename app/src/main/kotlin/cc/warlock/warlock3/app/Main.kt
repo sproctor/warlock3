@@ -2,6 +2,7 @@ package cc.warlock.warlock3.app
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.res.useResource
 import androidx.compose.ui.unit.dp
@@ -18,14 +19,36 @@ import cc.warlock.warlock3.core.prefs.sql.Database
 import cc.warlock.warlock3.core.prefs.sql.Highlight
 import cc.warlock.warlock3.core.prefs.sql.HightlightStyle
 import cc.warlock.warlock3.core.prefs.sql.PresetStyle
+import cc.warlock.warlock3.stormfront.network.SimuGameCredentials
+import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.squareup.sqldelight.sqlite.driver.JdbcSqliteDriver
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import kotlin.math.roundToInt
 
-fun main() {
+fun main(args: Array<String>) {
+
+    val parser = ArgParser("warlock3")
+    val port by parser.option(ArgType.Int, fullName = "port", shortName = "p", description = "Port to connect to")
+    val host by parser.option(ArgType.String, fullName = "host", shortName = "H", description = "Host to connect to")
+    val key by parser.option(ArgType.String, fullName = "key", shortName = "k", description = "Character key to connect with")
+    parser.parse(args)
+
+    val credentials = when {
+        port == null && host == null && key == null -> null
+        port != null && host != null && key != null -> {
+            println("Connecting to $host:$port with $key")
+            SimuGameCredentials(host = host!!, port = port!!, key = key!!)
+        }
+        else -> {
+            println("Host, port, and key must have all or none specified")
+            return
+        }
+    }
 
     val configDir = System.getProperty("user.home") + "/.warlock3"
     File(configDir).mkdirs()
@@ -63,9 +86,24 @@ fun main() {
             icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
             onCloseRequest = ::exitApplication,
         ) {
-            val gameState = rememberGameState()
+            val clipboardManager = LocalClipboardManager.current
+            val gameState = remember {
+                val initialGameState = if (credentials != null) {
+                    val client = StormfrontClient(
+                        host = credentials.host,
+                        port = credentials.port,
+                        windowRepository = AppContainer.windowRepository,
+                        characterRepository = AppContainer.characterRepository,
+                    )
+                    val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
+                    GameState.ConnectedGameState(viewModel)
+                } else {
+                    GameState.Dashboard
+                }
+                mutableStateOf(initialGameState)
+            }
             val characterId = when (val currentState = gameState.value) {
-                is GameState.ConnectedGameState -> currentState.character.id
+                is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
                 else -> null
             }
             AppMenuBar(
