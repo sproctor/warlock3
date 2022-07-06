@@ -1,5 +1,6 @@
 package cc.warlock.warlock3.core.util
 
+import cc.warlock.warlock3.core.script.wsl.WslString
 import java.util.*
 
 class CaseInsensitiveMap<T> constructor() : TreeMap<String, T>(String.CASE_INSENSITIVE_ORDER) {
@@ -14,4 +15,13 @@ class CaseInsensitiveMap<T> constructor() : TreeMap<String, T>(String.CASE_INSEN
 
 fun <T> Map<String, T>.toCaseInsensitiveMap(): Map<String, T> {
     return CaseInsensitiveMap(this)
+}
+
+fun <T> Map<String, T>.getIgnoringCase(key: String): T? {
+    entries.forEach { entry ->
+        if (entry.key.equals(key, true)) {
+            return entry.value
+        }
+    }
+    return null
 }

@@ -98,14 +98,8 @@ class WslContext(
     }
 
     fun lookupVariable(name: String): WslValue? {
-        frameStack.reversed().forEach { frame ->
-            val value = frame.lookupVariable(name)
-            if (value != null)
-                return value
-        }
-        val scriptValue = scriptVariables[name]
-        if (scriptValue != null)
-            return scriptValue
+        currentFrame.lookupVariable(name)?.let { return it }
+        scriptVariables[name]?.let { return it }
         return getGlobalVariable(name)?.let { WslString(it) }
     }
 

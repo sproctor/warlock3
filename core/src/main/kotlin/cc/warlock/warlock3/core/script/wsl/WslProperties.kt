@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.core.script.wsl
 
 import cc.warlock.warlock3.core.client.WarlockClient
+import cc.warlock.warlock3.core.util.getIgnoringCase
 import java.math.BigDecimal
 
 class WslProperties(
@@ -23,8 +24,7 @@ class WslProperties(
     }
 
     override fun getProperty(key: String): WslValue {
-        val value = client.properties.value[key]
-        return value?.let { WslString(it) } ?: WslNull
+        return client.properties.value.getIgnoringCase(key)?.let { WslString(it) } ?: WslNull
     }
 
     override fun setProperty(key: String, value: WslValue) {
