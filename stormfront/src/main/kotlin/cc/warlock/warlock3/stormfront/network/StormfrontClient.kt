@@ -315,7 +315,7 @@ class StormfrontClient(
 
     override suspend fun print(message: StyledString) {
         scope.launch {
-            _eventFlow.emit(ClientTextEvent(message.toPlainString()))
+            _eventFlow.emit(ClientTextEvent(message.toString()))
         }
         val style = outputStyle
         mainStream.appendMessage(if (style != null) message.applyStyle(style) else message)

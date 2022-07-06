@@ -7,7 +7,7 @@ class WslComponents(
     private val client: WarlockClient
 ) : WslValue {
     override fun toString(): String {
-        return ""
+        return client.components.value.toString()
     }
 
     override fun toBoolean(): Boolean {
@@ -23,7 +23,7 @@ class WslComponents(
     }
 
     override fun getProperty(key: String): WslValue {
-        return client.components.value[key]?.toPlainString()?.let { WslString(it) } ?: WslNull
+        return client.components.value[key]?.toString()?.let { WslString(it) } ?: WslNull
     }
 
     override fun setProperty(key: String, value: WslValue) {

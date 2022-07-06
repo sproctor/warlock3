@@ -82,7 +82,7 @@ class TextStream(
             )
             buffer = null
             isPrompting = false
-            return text.toPlainString()
+            return text.toString()
         }
     }
 

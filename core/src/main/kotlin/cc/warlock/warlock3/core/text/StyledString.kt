@@ -10,7 +10,11 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
         return StyledString(substrings + string.substrings)
     }
 
-    fun toPlainString(): String {
+    fun applyStyle(style: WarlockStyle): StyledString {
+        return copy(substrings = substrings.map { it.applyStyle(style) })
+    }
+
+    override fun toString(): String {
         val builder = StringBuilder()
         substrings.forEach { substring ->
             if (substring is StyledStringSubstring) {
@@ -18,10 +22,6 @@ data class StyledString(val substrings: List<StyledStringLeaf>) {
             }
         }
         return builder.toString()
-    }
-
-    fun applyStyle(style: WarlockStyle): StyledString {
-        return copy(substrings = substrings.map { it.applyStyle(style) })
     }
 }
 
