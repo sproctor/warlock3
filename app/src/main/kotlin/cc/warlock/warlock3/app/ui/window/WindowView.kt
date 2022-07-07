@@ -6,8 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.LocalTextStyle
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -30,7 +29,11 @@ import kotlinx.coroutines.delay
 import java.lang.Integer.max
 
 @Composable
-fun WindowView(modifier: Modifier, uiState: WindowUiState) {
+fun WindowView(
+    modifier: Modifier,
+    uiState: WindowUiState,
+    onActionClicked: (String) -> Unit,
+) {
     Box(modifier.padding(2.dp)) {
         Surface(
             shape = RoundedCornerShape(4.dp),
@@ -52,7 +55,8 @@ fun WindowView(modifier: Modifier, uiState: WindowUiState) {
                     lines = lines,
                     components = uiState.components,
                     highlights = uiState.highlights,
-                    styleMap = uiState.presets
+                    styleMap = uiState.presets,
+                    onActionClicked = onActionClicked
                 )
             }
         }
@@ -64,7 +68,8 @@ private fun WindowViewContent(
     lines: List<StreamLine>,
     components: Map<String, StyledString>,
     highlights: List<ViewHighlight>,
-    styleMap: Map<String, StyleDefinition>
+    styleMap: Map<String, StyleDefinition>,
+    onActionClicked: (String) -> Unit
 ) {
     val scrollState = rememberLazyListState()
     var lastSerial by remember { mutableStateOf(0L) }
@@ -72,41 +77,46 @@ private fun WindowViewContent(
     val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
-        CompositionLocalProvider(LocalTextStyle provides TextStyle(color = textColor)) {
-            SelectionContainer {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(end = LocalScrollbarStyle.current.thickness),
-                    state = scrollState
-                ) {
-                    items(lines) { line ->
-                        val annotatedString =
-                            line.text.toAnnotatedString(variables = components, styleMap = styleMap)
-                        val lineStyle = flattenStyles(
-                            line.text.getEntireLineStyles(
-                                variables = components,
-                                styleMap = styleMap,
-                            )
-                        )
-                        if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
-                            val highlightedLine = annotatedString.highlight(highlights)
-                            Box(
-                                modifier = Modifier.fillParentMaxWidth()
-                                    .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
-                                    .padding(horizontal = 4.dp)
-                            ) {
-                                Text(text = highlightedLine)
-                            }
+        // TODO: reimplement this in a way that passes clicks through to clickable text
+//        SelectionContainer {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(end = LocalScrollbarStyle.current.thickness),
+            state = scrollState
+        ) {
+            items(lines) { line ->
+                val annotatedString = line.text.toAnnotatedString(variables = components, styleMap = styleMap)
+                val lineStyle = flattenStyles(
+                    line.text.getEntireLineStyles(
+                        variables = components,
+                        styleMap = styleMap,
+                    )
+                )
+                if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
+                    val highlightedLine = annotatedString.highlight(highlights)
+                    Box(
+                        modifier = Modifier.fillParentMaxWidth()
+                            .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        ClickableText(text = highlightedLine, style = TextStyle(color = textColor)) { offset ->
+                            println("handling click: offset")
+                            highlightedLine.getStringAnnotations(tag = "action", start = offset, end = offset)
+                                .forEach { action ->
+                                    println("action clicked: ${action.item}")
+                                    onActionClicked(action.item)
+                                }
                         }
                     }
                 }
             }
-            VerticalScrollbar(
-                modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
-                adapter = rememberScrollbarAdapter(scrollState),
-            )
+//            }
         }
+        VerticalScrollbar(
+            modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
+            adapter = rememberScrollbarAdapter(scrollState),
+        )
     }
 
     LaunchedEffect(lines) {
@@ -115,7 +125,8 @@ private fun WindowViewContent(
             delay(5)
         }
         // If we're at the spot we last scrolled to
-        val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
+        val lastVisibleSerial =
+            scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
         if (lastVisibleSerial >= lastSerial) {
             // scroll to the end, and remember it
             lastSerial = lines.lastOrNull()?.serialNumber ?: -1L

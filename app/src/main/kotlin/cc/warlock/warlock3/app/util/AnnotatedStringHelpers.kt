@@ -4,7 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import cc.warlock.warlock3.app.model.ViewHighlight
 
 fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedString {
-    val text = text
+    val text = text // FIXME: is this useful?
     return with(AnnotatedString.Builder(this)) {
         highlights.forEach { highlight ->
             highlight.regex.find(text)?.let { result ->

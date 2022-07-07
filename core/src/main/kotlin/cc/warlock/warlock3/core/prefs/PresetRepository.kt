@@ -81,6 +81,10 @@ val defaultStyles =
         "error" to StyleDefinition(
             textColor = WarlockColor(red = 0xFF, green = 0, blue = 0)
         ),
+        "link" to StyleDefinition(
+            textColor = WarlockColor("#ADD8E6"),
+            underline = true
+        ),
         "mono" to StyleDefinition(monospace = true),
         "roomName" to StyleDefinition(
             textColor = WarlockColor("#FFFFFF"),

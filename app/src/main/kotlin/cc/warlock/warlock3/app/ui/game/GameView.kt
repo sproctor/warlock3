@@ -66,6 +66,9 @@ fun GameView(
             GameTextWindows(
                 subWindowUiStates = subWindows.value,
                 mainWindowUiState = mainWindow.value,
+                onActionClicked = {
+                    viewModel.sendCommand(it)
+                }
             )
             GameBottomBar(viewModel)
         }
@@ -76,6 +79,7 @@ fun GameView(
 fun ColumnScope.GameTextWindows(
     subWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState,
+    onActionClicked: (String) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -89,17 +93,18 @@ fun ColumnScope.GameTextWindows(
                 state = panelState,
             ) {
                 Column {
-                    WindowViews(windowStates = leftWindows)
+                    WindowViews(windowStates = leftWindows, onActionClicked = onActionClicked)
                 }
             }
         }
         // Center column
         val topWindows = subWindowUiStates.filter { it.window?.location == WindowLocation.TOP }
         Column(modifier = Modifier.weight(1f)) {
-            WindowViews(windowStates = topWindows)
+            WindowViews(windowStates = topWindows, onActionClicked = onActionClicked)
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                uiState = mainWindowUiState
+                uiState = mainWindowUiState,
+                onActionClicked = onActionClicked
             )
         }
         // Right Column
@@ -113,7 +118,7 @@ fun ColumnScope.GameTextWindows(
                 state = panelState,
             ) {
                 Column {
-                    WindowViews(windowStates = rightWindows)
+                    WindowViews(windowStates = rightWindows, onActionClicked = onActionClicked)
                 }
             }
         }
@@ -152,6 +157,7 @@ fun GameBottomBar(viewModel: GameViewModel) {
 @Composable
 fun WindowViews(
     windowStates: List<WindowUiState>,
+    onActionClicked: (String) -> Unit,
 ) {
     windowStates.forEach { uiState ->
         val panelState = remember(uiState.name) { ResizablePanelState(initialSize = 160.dp, minSize = 16.dp) }
@@ -160,7 +166,7 @@ fun WindowViews(
             isHorizontal = false,
             state = panelState,
         ) {
-            WindowView(modifier = Modifier.matchParentSize(), uiState = uiState)
+            WindowView(modifier = Modifier.matchParentSize(), uiState = uiState, onActionClicked = onActionClicked)
         }
     }
 }

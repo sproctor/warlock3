@@ -7,7 +7,7 @@ data class StyleDefinition(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
-    val monospace: Boolean = false
+    val monospace: Boolean = false,
 ) {
     fun mergeWith(other: StyleDefinition): StyleDefinition {
         return StyleDefinition(

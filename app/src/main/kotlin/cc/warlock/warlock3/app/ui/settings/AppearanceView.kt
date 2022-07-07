@@ -174,7 +174,7 @@ fun ColumnScope.PresetSettings(
                 .verticalScroll(scrollState)
                 .padding(end = LocalScrollbarStyle.current.thickness)
         ) {
-            val presets = listOf("bold", "command", "roomName", "speech", "thought", "watching", "whisper", "echo")
+            val presets = listOf("default", "bold", "command", "link", "roomName", "speech", "thought", "watching", "whisper", "echo")
             presets.forEach { preset ->
                 val style = styleMap[preset]
                 if (style != null) {

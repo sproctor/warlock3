@@ -1,10 +1,11 @@
 package cc.warlock.warlock3.stormfront
 
 import cc.warlock.warlock3.core.prefs.defaultMaxScrollLines
-import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.StyledStringVariable
+import cc.warlock.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -23,13 +24,9 @@ class TextStream(
     private val mutex = Mutex()
     private var nextSerialNumber = 0L
 
-    suspend fun append(text: String, styles: List<WarlockStyle>) {
-        val newString = StyledString(
-            text = text,
-            styles = styles
-        )
+    suspend fun append(text: StyledString) {
         mutex.withLock {
-            buffer = buffer?.plus(newString) ?: newString
+            buffer = buffer?.plus(text) ?: text
             isPrompting = false
         }
     }

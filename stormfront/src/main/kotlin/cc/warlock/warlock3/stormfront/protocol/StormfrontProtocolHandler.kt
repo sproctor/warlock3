@@ -16,6 +16,7 @@ class StormfrontProtocolHandler {
         "compass" to CompassHandler(),
         "compdef" to CompDefHandler(),
         "component" to ComponentHandler(),
+        "d" to DHandler(),
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),
         "indicator" to IndicatorHandler(),
@@ -78,14 +79,19 @@ class StormfrontProtocolHandler {
                     }
                 }
                 is CharData -> {
-                    val charEvents = elementStack.mapNotNull {
-                        elementListeners[it.name.lowercase()]?.characters(content.data)
-                    }
+                    var charEvent: StormfrontEvent? = null
 
-                    // call the character handlers on the CharData
-                    // if none returned true (handled) then call the global handlers
-                    if (charEvents.isNotEmpty()) {
-                        events.addAll(charEvents)
+                    // Go through the stack until someone handles these characters,
+                    //   otherwise use the default handler
+                    for (element in elementStack) {
+                        val event = elementListeners[element.name.lowercase()]?.characters(content.data)
+                        if (event != null) {
+                            charEvent = event
+                            break
+                        }
+                    }
+                    if (charEvent != null) {
+                        events.add(charEvent)
                     } else {
                         events.add(StormfrontDataReceivedEvent(content.data))
                     }

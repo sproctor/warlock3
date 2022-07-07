@@ -121,19 +121,10 @@ class StormfrontClient(
                                             mainStream
                                         }
                                     is StormfrontDataReceivedEvent -> {
-                                        val styles = listOfNotNull(currentStyle)
-                                        currentStream.append(event.text, styles = styles)
-                                        doIfClosed(currentStream.name) { targetStream ->
-                                            val currentWindow = windowRepository.getWindow(currentStream.name)
-                                            targetStream.append(
-                                                event.text,
-                                                styles = styles + listOfNotNull(currentWindow?.styleIfClosed?.let {
-                                                    WarlockStyle(it)
-                                                })
-                                            )
-                                        }
+                                        appendText(StyledString(event.text))
                                     }
                                     is StormfrontEolEvent -> {
+                                        // We're working under the assumption that an end tag is always on the same line as the start tag
                                         currentStream.appendEol(event.ignoreWhenBlank)?.let { text ->
                                             _eventFlow.emit(ClientTextEvent(text))
                                         }
@@ -238,26 +229,25 @@ class StormfrontClient(
                                         componentId = event.id
                                         componentText = null
                                     }
-                                    is StormfrontComponentTextEvent -> {
-                                        val string = StyledString(
-                                            text = event.text,
-                                            styles = listOfNotNull(currentStyle)
-                                        )
-                                        componentText = componentText?.plus(string) ?: string
-                                    }
                                     StormfrontComponentEndEvent -> {
                                         if (componentId != null) {
+                                            // Either replace the component in the map with the new value
+                                            //  or remove the component from the map (if we got an empty one)
                                             if (componentText?.substrings.isNullOrEmpty()) {
                                                 _components.value -= componentId!!
                                             } else {
                                                 _components.value += (componentId!! to componentText!!)
                                             }
                                         }
+                                        componentId = null
                                         componentText = null
                                     }
                                     StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
                                     is StormfrontStreamWindowEvent -> {
                                         windowRepository.addWindow(event.window)
+                                    }
+                                    is StormfrontActionEvent -> {
+                                        appendText(StyledString(event.text, WarlockStyle.Link(Pair("action", event.command))))
                                     }
                                 }
                             }
@@ -285,7 +275,7 @@ class StormfrontClient(
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    mainStream.append(text = line, styles = listOf(WarlockStyle.Mono))
+                                    mainStream.append(StyledString(line, WarlockStyle.Mono))
                                 }
                             } else {
                                 while (reader.ready()) {
@@ -293,8 +283,7 @@ class StormfrontClient(
                                 }
                                 print(buffer.toString())
                                 mainStream.append(
-                                    text = buffer.toString(),
-                                    styles = listOf(WarlockStyle.Mono)
+                                    StyledString(buffer.toString(), WarlockStyle.Mono)
                                 )
                             }
                         }
@@ -306,6 +295,21 @@ class StormfrontClient(
                     println("Socket timeout: " + e.message)
                     disconnect()
                 }
+            }
+        }
+    }
+
+    private suspend fun appendText(text: StyledString) {
+        val styledText = currentStyle?.let { text.applyStyle(it) } ?: text
+        if (componentId != null) {
+            componentText = componentText?.plus(styledText) ?: styledText
+        } else {
+            currentStream.append(text)
+            doIfClosed(currentStream.name) { targetStream ->
+                val currentWindow = windowRepository.getWindow(currentStream.name)
+                targetStream.append(
+                    currentWindow?.styleIfClosed?.let { text.applyStyle(WarlockStyle(it)) } ?: styledText
+                )
             }
         }
     }
