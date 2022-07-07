@@ -222,12 +222,16 @@ class GameViewModel(
         _entryText.value = TextFieldValue()
         sendHistory.add(0, line)
         historyPosition = -1
+        sendCommand(line)
+    }
+
+    fun sendCommand(command: String) {
         viewModelScope.launch {
-            if (line.startsWith(".")) {
-                val scriptCommand = line.drop(1)
+            if (command.startsWith(".")) {
+                val scriptCommand = command.drop(1)
                 scriptEngineRegistry.startScript(client, scriptCommand)
             } else {
-                client.sendCommand(line)
+                client.sendCommand(command)
             }
         }
     }

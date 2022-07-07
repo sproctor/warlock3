@@ -142,6 +142,9 @@ fun GameBottomBar(viewModel: GameViewModel) {
         CompassView(
             state = viewModel.compassState.value,
             theme = viewModel.compassTheme,
+            onClick = {
+                viewModel.sendCommand(it.abbreviation)
+            }
         )
     }
 }

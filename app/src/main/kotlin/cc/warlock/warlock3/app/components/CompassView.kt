@@ -2,6 +2,7 @@ package cc.warlock.warlock3.app.components
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -13,7 +14,11 @@ import cc.warlock.warlock3.app.util.loadCompassTheme
 import cc.warlock.warlock3.core.compass.DirectionType
 
 @Composable
-fun CompassView(state: CompassState, theme: CompassTheme) {
+fun CompassView(
+    state: CompassState,
+    theme: CompassTheme,
+    onClick: (DirectionType) -> Unit
+) {
     Box(
         modifier = Modifier.padding(4.dp)
     ) {
@@ -21,7 +26,12 @@ fun CompassView(state: CompassState, theme: CompassTheme) {
         state.directions.forEach {
             val direction = theme.directions[it]!!
             Image(
-                modifier = Modifier.offset(direction.position.first.dp, direction.position.second.dp),
+                modifier = Modifier
+                    .offset(direction.position.first.dp, direction.position.second.dp)
+                    .clickable {
+                        println("Clicked on direction: ${direction.direction}")
+                        onClick(direction.direction)
+                    },
                 bitmap = direction.image,
                 contentDescription = it.value
             )
@@ -50,7 +60,8 @@ data class CompassDirection(
 fun EmptyCompassPreview() {
     CompassView(
         state = CompassState(directions = emptySet()),
-        theme = loadCompassTheme()
+        theme = loadCompassTheme(),
+        onClick = {}
     )
 }
 
@@ -59,6 +70,7 @@ fun EmptyCompassPreview() {
 fun CompassPreview() {
     CompassView(
         state = CompassState(directions = setOf(DirectionType.North, DirectionType.West)),
-        theme = loadCompassTheme()
+        theme = loadCompassTheme(),
+        onClick = {}
     )
 }
