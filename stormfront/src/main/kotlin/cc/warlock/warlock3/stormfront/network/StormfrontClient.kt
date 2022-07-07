@@ -91,6 +91,7 @@ class StormfrontClient(
             } catch (e: IOException) {
                 e.printStackTrace()
                 _connected.value = false
+                return@launch
             }
             sendCommand(key, echo = false)
             sendCommand("/FE:STORMFRONT /XML", echo = false)
