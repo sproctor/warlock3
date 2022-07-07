@@ -65,7 +65,7 @@ fun ResizablePanelHandle(
     val modifier = Modifier
         .pointerInput(state) {
             detectDragGestures { change, _ ->
-                change.consumeAllChanges()
+                change.consume()
                 val delta = if (isHorizontal) change.position.x.toDp() else change.position.y.toDp()
                 state.dispatchRawMovement(
                     if (isBefore) -delta else delta

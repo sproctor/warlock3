@@ -5,28 +5,28 @@ import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript.ScriptableObject
 import org.mozilla.javascript.Symbol
 
-class JsStateMap<T>(
-    private val map: StateFlow<MutableMap<String, T>>,
-    private val onPut: (name: String, value: T) -> Unit,
+class JsStateMap(
+    private val map: StateFlow<MutableMap<String, String>>,
+    private val onPut: (name: String, value: String) -> Unit,
     private val onDelete: (name: String) -> Unit,
 ) : ScriptableObject() {
 
     override fun getClassName(): String = "VariablesMap"
 
-    override fun get(name: String?, start: Scriptable?): T? {
+    override fun get(name: String?, start: Scriptable?): String? {
         println("getting $name")
         return name?.let { map.value[it] }
     }
 
-    override fun get(index: Int, start: Scriptable?): T? {
+    override fun get(index: Int, start: Scriptable?): String? {
         return get(index.toString(), start)
     }
 
-    override fun get(key: Symbol?, start: Scriptable?): T? {
+    override fun get(key: Symbol?, start: Scriptable?): String? {
         return get(key?.toString(), start)
     }
 
-    override fun get(key: Any?): T? {
+    override fun get(key: Any?): String? {
         return get(key?.toString(), null)
     }
 
@@ -45,9 +45,11 @@ class JsStateMap<T>(
     override fun put(name: String?, start: Scriptable?, value: Any?) {
         if (name != null) {
             println("saving $name = $value")
-            map.value[name] = value as T
-            onPut(name, value as T)
-            println("saved")
+            if (value is String) {
+                map.value[name] = value
+                onPut(name, value)
+                println("saved")
+            }
         }
     }
 
