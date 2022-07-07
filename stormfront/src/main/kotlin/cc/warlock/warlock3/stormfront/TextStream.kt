@@ -1,8 +1,10 @@
 package cc.warlock.warlock3.stormfront
 
+import cc.warlock.warlock3.core.prefs.defaultMaxScrollLines
 import cc.warlock.warlock3.core.text.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -12,6 +14,8 @@ class TextStream(
     // Line state variables
     private var buffer: StyledString? = null
     private var isPrompting = false
+
+    private var maxLines = defaultMaxScrollLines
 
     private val _lines = MutableStateFlow<List<StreamLine>>(emptyList())
     val lines = _lines.asStateFlow()
@@ -46,7 +50,7 @@ class TextStream(
 
     suspend fun appendMessage(text: StyledString) {
         mutex.withLock {
-            _lines.value += StreamLine(ignoreWhenBlank = false, text = text)
+            appendLine(StreamLine(ignoreWhenBlank = false, text = text))
             isPrompting = false
         }
     }
@@ -63,9 +67,11 @@ class TextStream(
                         lastLine.copy(text = lastLine.text + StyledString(" ") + commandString)
                 isPrompting = false
             } else {
-                _lines.value += StreamLine(
-                    ignoreWhenBlank = false,
-                    text = commandString,
+                appendLine(
+                    StreamLine(
+                        ignoreWhenBlank = false,
+                        text = commandString,
+                    )
                 )
             }
         }
@@ -76,9 +82,11 @@ class TextStream(
             if (ignoreWhenBlank && buffer == null)
                 return null
             val text = buffer ?: StyledString("")
-            _lines.value = _lines.value + StreamLine(
-                ignoreWhenBlank = ignoreWhenBlank,
-                text = text,
+            appendLine(
+                StreamLine(
+                    ignoreWhenBlank = ignoreWhenBlank,
+                    text = text,
+                )
             )
             buffer = null
             isPrompting = false
@@ -90,12 +98,24 @@ class TextStream(
         mutex.withLock {
             if (!isPrompting) {
                 isPrompting = true
-                _lines.value += StreamLine(
-                    ignoreWhenBlank = false,
-                    text = StyledString(prompt),
+                appendLine(
+                    StreamLine(
+                        ignoreWhenBlank = false,
+                        text = StyledString(prompt),
+                    )
                 )
             }
         }
+    }
+
+    private fun appendLine(line: StreamLine) {
+        val curLines = _lines.value
+        _lines.value =
+            if (curLines.size >= maxLines) {
+                curLines.drop(1)
+            } else {
+                curLines
+            } + line
     }
 }
 

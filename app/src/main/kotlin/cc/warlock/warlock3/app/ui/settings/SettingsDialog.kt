@@ -10,12 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import cc.warlock.warlock3.core.prefs.CharacterRepository
-import cc.warlock.warlock3.core.prefs.HighlightRepository
-import cc.warlock.warlock3.core.prefs.MacroRepository
-import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.client.GameCharacter
-import cc.warlock.warlock3.core.prefs.PresetRepository
+import cc.warlock.warlock3.core.prefs.*
 
 @Composable
 fun SettingsDialog(
@@ -25,18 +21,25 @@ fun SettingsDialog(
     macroRepository: MacroRepository,
     presetRepository: PresetRepository,
     highlightRepository: HighlightRepository,
+    characterSettingsRepository: CharacterSettingsRepository,
     closeDialog: () -> Unit,
 ) {
     Window(
         title = "Settings",
         onCloseRequest = closeDialog,
     ) {
-        var state: SettingsState by remember { mutableStateOf(AppearanceSettingsState) }
+        var state: SettingsState by remember { mutableStateOf(GeneralSettingsState) }
         val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
         Row(Modifier.fillMaxSize()) {
             Surface(Modifier.padding(8.dp).width(160.dp)) {
                 Column(Modifier.fillMaxSize()) {
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = GeneralSettingsState },
+                    ) {
+                        Text("General")
+                    }
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { state = AppearanceSettingsState },
@@ -61,21 +64,21 @@ fun SettingsDialog(
                     ) {
                         Text("Highlights")
                     }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = ScriptSettingsState },
-                    ) {
-                        Text("Scripting")
-                    }
                 }
             }
             Divider(Modifier.fillMaxHeight().width(1.dp))
-            val currentOrFirstCharacter = currentCharacter ?: characters.firstOrNull()
             Box(Modifier.padding(24.dp)) {
                 when (state) {
+                    GeneralSettingsState -> {
+                        GeneralSettingsView(
+                            characterSettingsRepository = characterSettingsRepository,
+                            initialCharacter = currentCharacter,
+                            characters = characters,
+                        )
+                    }
                     VariableSettingsState -> {
                         VariablesView(
-                            initialCharacter = currentOrFirstCharacter,
+                            initialCharacter = currentCharacter,
                             characters = characters,
                             variableRepository = variableRepository,
                         )
@@ -94,12 +97,9 @@ fun SettingsDialog(
                     AppearanceSettingsState -> {
                         AppearanceView(
                             presetRepository = presetRepository,
-                            initialCharacter = currentOrFirstCharacter,
+                            initialCharacter = currentCharacter,
                             characters = characters,
                         )
-                    }
-                    ScriptSettingsState -> {
-
                     }
                 }
             }
@@ -112,4 +112,4 @@ object VariableSettingsState : SettingsState()
 object MacroSettingsState : SettingsState()
 object HighlightSettingsState : SettingsState()
 object AppearanceSettingsState : SettingsState()
-object ScriptSettingsState : SettingsState()
+object GeneralSettingsState : SettingsState()

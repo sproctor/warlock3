@@ -33,6 +33,12 @@ object AppContainer {
             clientSettingRepository = clientSettings,
         )
     }
+    val characterSettingsRepository by lazy {
+        CharacterSettingsRepository(
+            characterSettingsQueries = database.characterSettingQueries,
+            ioDispatcher = Dispatchers.IO
+        )
+    }
     val compassTheme: CompassTheme by lazy { loadCompassTheme() }
     val gameViewModelFactory = { client: StormfrontClient, clipboard: ClipboardManager ->
         GameViewModel(

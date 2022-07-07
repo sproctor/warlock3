@@ -23,7 +23,8 @@ fun VariablesView(
     characters: List<GameCharacter>,
     variableRepository: VariableRepository,
 ) {
-    val currentCharacterState = remember(initialCharacter) { mutableStateOf(initialCharacter) }
+    val currentCharacterState =
+        remember(initialCharacter, characters) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
     val currentCharacter = currentCharacterState.value
     if (currentCharacter == null) {
         Text("no characters created")

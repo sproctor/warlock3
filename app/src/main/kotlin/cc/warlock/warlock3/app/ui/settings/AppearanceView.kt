@@ -26,10 +26,10 @@ fun AppearanceView(
     characters: List<GameCharacter>,
 ) {
     val currentCharacterState =
-        remember(initialCharacter) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
+        remember(initialCharacter, characters) { mutableStateOf(initialCharacter ?: characters.firstOrNull()) }
     val currentCharacter = currentCharacterState.value
     if (currentCharacter == null) {
-        Text("no characters created")
+        Text("No characters created")
         return
     }
     val presetFlow = remember(currentCharacter.id) { presetRepository.observePresetsForCharacter(currentCharacter.id) }

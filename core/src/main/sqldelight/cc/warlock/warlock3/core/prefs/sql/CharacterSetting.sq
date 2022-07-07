@@ -5,14 +5,10 @@ CREATE TABLE CharacterSetting (
     PRIMARY KEY (characterId, key)
 );
 
-getAll:
-SELECT *
-FROM CharacterSetting;
-
 getByKey:
 SELECT value
 FROM CharacterSetting
-WHERE key = :key;
+WHERE key = :key AND characterId = :characterId;
 
 save:
 INSERT OR REPLACE INTO CharacterSetting VALUES ?;

@@ -91,6 +91,7 @@ fun WarlockApp(
             presetRepository = AppContainer.presetRepository,
             characterRepository = AppContainer.characterRepository,
             highlightRepository = AppContainer.highlightRepository,
+            characterSettingsRepository = AppContainer.characterSettingsRepository,
         )
     }
 }

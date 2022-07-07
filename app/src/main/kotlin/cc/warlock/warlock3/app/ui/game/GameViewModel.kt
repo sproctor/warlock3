@@ -40,9 +40,9 @@ class GameViewModel(
     presetRepository: PresetRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
     val compassTheme: CompassTheme,
-    val clipboard: ClipboardManager
+    val clipboard: ClipboardManager,
 ) : AutoCloseable {
-    private val viewModelScope = CoroutineScope(Dispatchers.IO)
+    private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
     private val _entryText = mutableStateOf(TextFieldValue())
     val entryText: State<TextFieldValue> = _entryText
