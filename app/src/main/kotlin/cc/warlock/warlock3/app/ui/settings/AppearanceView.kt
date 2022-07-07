@@ -38,6 +38,7 @@ fun AppearanceView(
         StreamLine(
             text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString(
@@ -45,6 +46,7 @@ fun AppearanceView(
                 style = WarlockStyle("roomdescription")
             ),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString("You also see a ") + StyledString(
@@ -52,22 +54,27 @@ fun AppearanceView(
                 style = WarlockStyle.Bold
             ) + StyledString("."),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString("say Hello", style = WarlockStyle.Command),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString("You say", style = WarlockStyle.Speech) + StyledString(", \"Hello.\""),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString("Someone whispers", style = WarlockStyle.Whisper) + StyledString(", \"Hi\""),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString("Your mind hears Someone thinking, \"hello everyone\"", style = WarlockStyle.Thought),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString(
@@ -80,6 +87,7 @@ fun AppearanceView(
                 style = WarlockStyle.Mono
             ),
             ignoreWhenBlank = false,
+            serialNumber = 0L,
         )
     )
 

@@ -21,6 +21,7 @@ class TextStream(
     val lines = _lines.asStateFlow()
 
     private val mutex = Mutex()
+    private var nextSerialNumber = 0L
 
     suspend fun append(text: String, styles: List<WarlockStyle>) {
         val newString = StyledString(
@@ -50,7 +51,7 @@ class TextStream(
 
     suspend fun appendMessage(text: StyledString) {
         mutex.withLock {
-            appendLine(StreamLine(ignoreWhenBlank = false, text = text))
+            appendLine(ignoreWhenBlank = false, text = text)
             isPrompting = false
         }
     }
@@ -68,10 +69,8 @@ class TextStream(
                 isPrompting = false
             } else {
                 appendLine(
-                    StreamLine(
-                        ignoreWhenBlank = false,
-                        text = commandString,
-                    )
+                    ignoreWhenBlank = false,
+                    text = commandString,
                 )
             }
         }
@@ -83,10 +82,8 @@ class TextStream(
                 return null
             val text = buffer ?: StyledString("")
             appendLine(
-                StreamLine(
-                    ignoreWhenBlank = ignoreWhenBlank,
-                    text = text,
-                )
+                ignoreWhenBlank = ignoreWhenBlank,
+                text = text,
             )
             buffer = null
             isPrompting = false
@@ -99,27 +96,26 @@ class TextStream(
             if (!isPrompting) {
                 isPrompting = true
                 appendLine(
-                    StreamLine(
-                        ignoreWhenBlank = false,
-                        text = StyledString(prompt),
-                    )
+                    ignoreWhenBlank = false,
+                    text = StyledString(prompt),
                 )
             }
         }
     }
 
-    private fun appendLine(line: StreamLine) {
+    private fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
         val curLines = _lines.value
         _lines.value =
             if (curLines.size >= maxLines) {
                 curLines.drop(1)
             } else {
                 curLines
-            } + line
+            } + StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++)
     }
 }
 
 data class StreamLine(
     val ignoreWhenBlank: Boolean,
     val text: StyledString,
+    val serialNumber: Long,
 )

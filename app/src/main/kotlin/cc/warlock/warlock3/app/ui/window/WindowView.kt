@@ -27,7 +27,6 @@ import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.flattenStyles
 import cc.warlock.warlock3.stormfront.StreamLine
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.lang.Integer.max
 
 @Composable
@@ -68,8 +67,7 @@ private fun WindowViewContent(
     styleMap: Map<String, StyleDefinition>
 ) {
     val scrollState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var lastIndex by remember { mutableStateOf(0) }
+    var lastSerial by remember { mutableStateOf(0L) }
     val backgroundColor = styleMap["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
     val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
 
@@ -114,16 +112,14 @@ private fun WindowViewContent(
     LaunchedEffect(lines) {
         // Wait for the current scroll to complete
         while (scrollState.isScrollInProgress) {
-            delay(15)
+            delay(5)
         }
         // If we're at the spot we last scrolled to
-        val lastVisibleIndex = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        if (lastVisibleIndex >= lastIndex) {
-            scope.launch {
-                // scroll to the end, and remember it
-                scrollState.scrollToItem(max(0, lines.lastIndex))
-                lastIndex = lines.lastIndex
-            }
+        val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
+        if (lastVisibleSerial >= lastSerial) {
+            // scroll to the end, and remember it
+            lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
+            scrollState.scrollToItem(max(0, lines.lastIndex))
         }
     }
 }
