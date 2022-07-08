@@ -24,6 +24,7 @@ import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -230,6 +231,7 @@ class GameViewModel(
             if (command.startsWith(".")) {
                 val scriptCommand = command.drop(1)
                 scriptEngineRegistry.startScript(client, scriptCommand)
+                client.print(StyledString(command, WarlockStyle.Command))
             } else {
                 client.sendCommand(command)
             }
