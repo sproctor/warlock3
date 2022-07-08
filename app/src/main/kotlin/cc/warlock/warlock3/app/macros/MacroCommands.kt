@@ -1,7 +1,5 @@
 package cc.warlock.warlock3.app.macros
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import cc.warlock.warlock3.app.ui.game.GameViewModel
 
@@ -29,6 +27,16 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
         it.pauseScripts()
     },
     "repeatlast" to {
-        it.repeatLastCommand()
+        it.repeatCommand(0)
     },
+    "returnorrepeatlast" to {
+        if (it.entryText.value.text.isBlank()) {
+            it.repeatCommand(0)
+        } else {
+            it.submit()
+        }
+    },
+    "repeatsecondtolast" to {
+        it.repeatCommand(1)
+    }
 )

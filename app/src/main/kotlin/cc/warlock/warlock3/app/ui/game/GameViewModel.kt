@@ -218,7 +218,7 @@ class GameViewModel(
             .launchIn(viewModelScope)
     }
 
-    private fun submit() {
+    fun submit() {
         val line = _entryText.value.text
         _entryText.value = TextFieldValue()
         sendHistory.add(0, line)
@@ -269,8 +269,8 @@ class GameViewModel(
         }
     }
 
-    suspend fun repeatLastCommand() {
-        val command = sendHistory.getOrNull(0)
+    suspend fun repeatCommand(index: Int) {
+        val command = sendHistory.getOrNull(index)
         if (command != null) {
             client.sendCommand(command)
         }
