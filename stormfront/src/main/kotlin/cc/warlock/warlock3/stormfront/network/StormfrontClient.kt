@@ -320,11 +320,11 @@ class StormfrontClient(
         if (componentId != null) {
             componentText = componentText?.plus(styledText) ?: styledText
         } else {
-            currentStream.append(text)
+            currentStream.append(styledText)
             doIfClosed(currentStream.name) { targetStream ->
                 val currentWindow = windowRepository.getWindow(currentStream.name)
                 targetStream.append(
-                    currentWindow?.styleIfClosed?.let { text.applyStyle(WarlockStyle(it)) } ?: styledText
+                    currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText
                 )
             }
         }

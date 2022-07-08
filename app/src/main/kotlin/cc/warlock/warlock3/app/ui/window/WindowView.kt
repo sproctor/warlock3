@@ -101,7 +101,7 @@ private fun WindowViewContent(
                             .padding(horizontal = 4.dp)
                     ) {
                         ClickableText(text = highlightedLine, style = TextStyle(color = textColor)) { offset ->
-                            println("handling click: offset")
+                            println("handling click: $offset")
                             highlightedLine.getStringAnnotations(tag = "action", start = offset, end = offset)
                                 .forEach { action ->
                                     println("action clicked: ${action.item}")
