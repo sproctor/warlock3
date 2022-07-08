@@ -9,6 +9,7 @@ sealed interface StormfrontEvent
 data class StormfrontEolEvent(val ignoreWhenBlank: Boolean) : StormfrontEvent
 data class StormfrontDataReceivedEvent(val text: String) : StormfrontEvent
 data class StormfrontStreamEvent(val id: String?) : StormfrontEvent
+data class StormfrontClearStreamEvent(val id: String) : StormfrontEvent
 data class StormfrontModeEvent(val id: String?) : StormfrontEvent
 data class StormfrontAppEvent(val character: String?, val game: String?) : StormfrontEvent
 data class StormfrontOutputEvent(val style: WarlockStyle?) : StormfrontEvent
@@ -36,3 +37,5 @@ object StormfrontHandledEvent : StormfrontEvent
 data class StormfrontStreamWindowEvent(val window: Window) : StormfrontEvent
 object StormfrontNavEvent : StormfrontEvent
 data class StormfrontActionEvent(val text: String, val command: String) : StormfrontEvent
+data class StormfrontParseErrorEvent(val text: String) : StormfrontEvent
+data class StormfrontUnhandledTagEvent(val tag: String) : StormfrontEvent

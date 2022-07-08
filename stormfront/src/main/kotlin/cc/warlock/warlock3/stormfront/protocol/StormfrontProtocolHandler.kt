@@ -14,6 +14,7 @@ class StormfrontProtocolHandler {
         "app" to AppHandler(),
         "b" to BHandler(),
         "casttime" to CastTimeHandler(),
+        "clearstream" to ClearStreamHandler(),
         "compass" to CompassHandler(),
         "compdef" to CompDefHandler(),
         "component" to ComponentHandler(),
@@ -50,32 +51,39 @@ class StormfrontProtocolHandler {
             val contents = StormfrontNodeVisitor.visitDocument(parser.document())
             handleContent(contents)
         } catch (e: Exception) {
-            println("Encountered a parse error")
-            emptyList()
+            e.printStackTrace()
+            listOf(StormfrontParseErrorEvent(line))
         }
     }
 
     private fun handleContent(contents: List<Content>): List<StormfrontEvent> {
         // open/close tags must occur on the same line
         var lineHasTags = false
-        val elementStack = LinkedList<StartElement>()
+        val tagStack = LinkedList<String>()
         val events = LinkedList<StormfrontEvent>()
         for (content in contents) {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
-                    elementStack.push(content)
-                    elementListeners[content.name.lowercase()]?.startElement(content)?.let {
-                        events.add(it)
+                    val tagName = content.name.lowercase()
+                    tagStack.push(tagName)
+                    val listener = elementListeners[tagName]
+                    if (listener != null) {
+                        listener.startElement(content)?.let {
+                            events.add(it)
+                        }
+                    } else {
+                        events.add(StormfrontUnhandledTagEvent(content.name))
                     }
                 }
                 is EndElement -> {
                     lineHasTags = true
-                    val topOfStack = elementStack.pop()
-                    if (!topOfStack.name.equals(content.name, true)) {
-                        println("ERROR: Received end element (${content.name}) does not match element on the top of the stack ($topOfStack)!")
+                    val topOfStack = tagStack.pop()
+                    val tagName = content.name.lowercase()
+                    if (topOfStack != tagName) {
+                        println("ERROR: Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!")
                     }
-                    elementListeners[content.name.lowercase()]?.endElement(content)?.let {
+                    elementListeners[tagName]?.endElement(content)?.let {
                         events.add(it)
                     }
                 }
@@ -84,8 +92,8 @@ class StormfrontProtocolHandler {
 
                     // Go through the stack until someone handles these characters,
                     //   otherwise use the default handler
-                    for (element in elementStack) {
-                        val event = elementListeners[element.name.lowercase()]?.characters(content.data)
+                    for (tagName in tagStack) {
+                        val event = elementListeners[tagName]?.characters(content.data)
                         if (event != null) {
                             charEvent = event
                             break

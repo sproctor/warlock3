@@ -129,9 +129,10 @@ class StormfrontClient(
                                         } else {
                                             mainStream
                                         }
-                                    is StormfrontDataReceivedEvent -> {
+                                    is StormfrontClearStreamEvent ->
+                                        getStream(event.id).clear()
+                                    is StormfrontDataReceivedEvent ->
                                         appendText(StyledString(event.text))
-                                    }
                                     is StormfrontEolEvent -> {
                                         // We're working under the assumption that an end tag is always on the same line as the start tag
                                         currentStream.appendEol(event.ignoreWhenBlank)?.let { text ->
@@ -264,6 +265,12 @@ class StormfrontClient(
                                                 WarlockStyle.Link(Pair("action", event.command))
                                             )
                                         )
+                                    }
+                                    is StormfrontUnhandledTagEvent -> {
+                                        // mainStream.append(StyledString("Unhandled tag: ${event.tag}", WarlockStyle.Error))
+                                    }
+                                    is StormfrontParseErrorEvent -> {
+                                        mainStream.append(StyledString("parse error: ${event.text}", WarlockStyle.Error))
                                     }
                                 }
                             }

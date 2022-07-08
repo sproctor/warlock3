@@ -100,6 +100,10 @@ class TextStream(
         }
     }
 
+    fun clear() {
+        _lines.value = emptyList()
+    }
+
     private fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
         val curLines = _lines.value
         _lines.value =
