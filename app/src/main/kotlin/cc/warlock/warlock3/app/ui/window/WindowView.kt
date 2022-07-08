@@ -26,7 +26,9 @@ import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.flattenStyles
 import cc.warlock.warlock3.stormfront.StreamLine
 import kotlinx.coroutines.delay
+import java.awt.Desktop
 import java.lang.Integer.max
+import java.net.URI
 
 @Composable
 fun WindowView(
@@ -102,21 +104,32 @@ private fun WindowViewContent(
                     ) {
                         ClickableText(text = highlightedLine, style = TextStyle(color = textColor)) { offset ->
                             println("handling click: $offset")
-                            highlightedLine.getStringAnnotations(tag = "action", start = offset, end = offset)
-                                .forEach { action ->
-                                    println("action clicked: ${action.item}")
-                                    onActionClicked(action.item)
+                            highlightedLine.getStringAnnotations(start = offset, end = offset)
+                                .forEach { annotation ->
+                                    when (annotation.tag) {
+                                        "action" -> {
+                                            println("action clicked: ${annotation.item}")
+                                            onActionClicked(annotation.item)
+                                        }
+                                        "url" -> {
+                                            try {
+                                                Desktop.getDesktop().browse(URI(annotation.item))
+                                            } catch (e: Exception) {
+                                                // TODO: add some error handling here
+                                            }
+                                        }
+                                    }
                                 }
                         }
                     }
                 }
             }
-//            }
         }
         VerticalScrollbar(
             modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
             adapter = rememberScrollbarAdapter(scrollState),
         )
+//        }
     }
 
     LaunchedEffect(lines) {

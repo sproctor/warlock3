@@ -10,6 +10,7 @@ import java.util.*
 class StormfrontProtocolHandler {
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
+        "a" to AHandler(),
         "app" to AppHandler(),
         "b" to BHandler(),
         "casttime" to CastTimeHandler(),

@@ -6,7 +6,7 @@ data class WarlockStyle(val name: String, val annotations: List<Pair<String, Str
         val Command = WarlockStyle("command")
         val Echo = WarlockStyle("echo")
         val Error = WarlockStyle("error")
-        val Link = { annotation: Pair<String, String> -> WarlockStyle("link", listOf(annotation)) }
+        val Link = { annotation: Pair<String, String>? -> WarlockStyle("link", listOfNotNull(annotation)) }
         val Mono = WarlockStyle("mono")
         val RoomName = WarlockStyle("roomName")
         val Speech = WarlockStyle("speech")
