@@ -8,6 +8,7 @@ import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.stormfront.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
+import cc.warlock.warlock3.stormfront.util.FileLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,6 +29,9 @@ class StormfrontClient(
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
 ) : WarlockClient {
+
+    private var logger: FileLogger
+
     private val scope = CoroutineScope(Dispatchers.Default)
 
     override var maxTypeAhead: Int = 1
@@ -49,6 +53,11 @@ class StormfrontClient(
 
     private val mainStream = TextStream("main")
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
+
+    init {
+        val path = System.getProperty("WARLOCK_LOG_DIR")
+        logger = FileLogger(path, "unknown")
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val openWindows = characterId.flatMapLatest { characterId ->
@@ -105,7 +114,7 @@ class StormfrontClient(
                         // This is the standard Stormfront parser
                         val line: String? = reader.readLine()
                         if (line != null) {
-                            println(line)
+                            logger.write(line)
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
                                 when (event) {
@@ -137,6 +146,8 @@ class StormfrontClient(
                                         val character = event.character
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
+                                            val path = System.getProperty("WARLOCK_LOG_DIR")
+                                            logger = FileLogger(path, "${event.game}_${event.character}")
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -247,7 +258,12 @@ class StormfrontClient(
                                         windowRepository.addWindow(event.window)
                                     }
                                     is StormfrontActionEvent -> {
-                                        appendText(StyledString(event.text, WarlockStyle.Link(Pair("action", event.command))))
+                                        appendText(
+                                            StyledString(
+                                                event.text,
+                                                WarlockStyle.Link(Pair("action", event.command))
+                                            )
+                                        )
                                     }
                                 }
                             }
@@ -269,7 +285,7 @@ class StormfrontClient(
                             if (char == '<') {
                                 buffer.append(reader.readLine())
                                 val line = buffer.toString()
-                                println(line)
+                                logger.write(line)
                                 if (buffer.contains("<mode")) {
                                     // if the line starts with a mode tag, drop back to the normal parser
                                     parseText = true
@@ -341,7 +357,7 @@ class StormfrontClient(
     }
 
     private fun send(toSend: String) {
-        println(toSend)
+        logger.write(toSend)
         if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
         }

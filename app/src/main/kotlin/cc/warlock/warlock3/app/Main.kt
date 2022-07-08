@@ -77,6 +77,11 @@ fun main(args: Array<String>) {
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
 
+    val logDir = "$configDir/logs"
+//    File(logDir).mkdirs()
+    System.setProperty("WARLOCK_LOG_DIR", logDir)
+    System.setProperty("WARLOCK_CHARACTER_ID", "unknown")
+
     application {
         var showSettings by remember { mutableStateOf(false) }
 
