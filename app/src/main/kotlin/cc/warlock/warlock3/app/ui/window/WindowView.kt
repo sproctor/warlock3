@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -148,46 +149,47 @@ private fun WindowViewContent(
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         // TODO: reimplement this in a way that passes clicks through to clickable text
-//        SelectionContainer {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(end = LocalScrollbarStyle.current.thickness),
-            state = scrollState
-        ) {
-            items(lines) { line ->
-                val annotatedString = line.text.toAnnotatedString(variables = components, styleMap = styleMap)
-                val lineStyle = flattenStyles(
-                    line.text.getEntireLineStyles(
-                        variables = components,
-                        styleMap = styleMap,
+        SelectionContainer {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(end = LocalScrollbarStyle.current.thickness),
+                state = scrollState
+            ) {
+                items(lines) { line ->
+                    val annotatedString = line.text.toAnnotatedString(variables = components, styleMap = styleMap)
+                    val lineStyle = flattenStyles(
+                        line.text.getEntireLineStyles(
+                            variables = components,
+                            styleMap = styleMap,
+                        )
                     )
-                )
-                if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
-                    val highlightedLine = annotatedString.highlight(highlights)
-                    Box(
-                        modifier = Modifier.fillParentMaxWidth()
-                            .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        ClickableText(text = highlightedLine, style = TextStyle(color = textColor)) { offset ->
-                            println("handling click: $offset")
-                            highlightedLine.getStringAnnotations(start = offset, end = offset)
-                                .forEach { annotation ->
-                                    when (annotation.tag) {
-                                        "action" -> {
-                                            println("action clicked: ${annotation.item}")
-                                            onActionClicked(annotation.item)
-                                        }
-                                        "url" -> {
-                                            try {
-                                                Desktop.getDesktop().browse(URI(annotation.item))
-                                            } catch (e: Exception) {
-                                                // TODO: add some error handling here
+                    if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
+                        val highlightedLine = annotatedString.highlight(highlights)
+                        Box(
+                            modifier = Modifier.fillParentMaxWidth()
+                                .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            ClickableText(text = highlightedLine, style = TextStyle(color = textColor)) { offset ->
+                                println("handling click: $offset")
+                                highlightedLine.getStringAnnotations(start = offset, end = offset)
+                                    .forEach { annotation ->
+                                        when (annotation.tag) {
+                                            "action" -> {
+                                                println("action clicked: ${annotation.item}")
+                                                onActionClicked(annotation.item)
+                                            }
+                                            "url" -> {
+                                                try {
+                                                    Desktop.getDesktop().browse(URI(annotation.item))
+                                                } catch (e: Exception) {
+                                                    // TODO: add some error handling here
+                                                }
                                             }
                                         }
                                     }
-                                }
+                            }
                         }
                     }
                 }
@@ -197,7 +199,6 @@ private fun WindowViewContent(
             modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
             adapter = rememberScrollbarAdapter(scrollState),
         )
-//        }
     }
 
     LaunchedEffect(lines) {
