@@ -11,8 +11,10 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -31,7 +33,7 @@ import java.awt.Desktop
 import java.lang.Integer.max
 import java.net.URI
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun WindowView(
     modifier: Modifier,
@@ -44,11 +46,12 @@ fun WindowView(
     var showContextMenu by remember { mutableStateOf(false) }
     Box(modifier.padding(2.dp)) {
         Surface(
-            modifier.mouseClickable {
-                if (buttons.isSecondaryPressed) {
+            Modifier.onClick(
+                matcher = PointerMatcher.mouse(PointerButton.Secondary),
+                onClick = {
                     showContextMenu = true
                 }
-            },
+            ),
             shape = RoundedCornerShape(4.dp),
             border = BorderStroke(1.dp, Color.Black),
             elevation = 4.dp
