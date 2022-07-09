@@ -1,23 +1,21 @@
 package cc.warlock.warlock3.core.prefs
 
-import cc.warlock.warlock3.core.prefs.sql.OpenWindow
-import cc.warlock.warlock3.core.prefs.sql.OpenWindowQueries
+import cc.warlock.warlock3.core.prefs.sql.WindowSettingsQueries
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
 import com.squareup.sqldelight.runtime.coroutines.asFlow
 import com.squareup.sqldelight.runtime.coroutines.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-@OptIn(DelicateCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class WindowRepository(
-    private val openWindowQueries: OpenWindowQueries,
+    private val windowSettingsQueries: WindowSettingsQueries,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    private val defaultLocations = mapOf("main" to WindowLocation.MAIN)
 
     private val _windows = MutableStateFlow(
         mapOf(
@@ -25,47 +23,138 @@ class WindowRepository(
                 name = "main",
                 title = "Main",
                 subtitle = "",
-                styleIfClosed = null,
-                ifClosed = null,
                 location = WindowLocation.MAIN,
+                position = 0,
+                width = null,
+                height = null,
             )
         )
     )
     val windows = _windows.asStateFlow()
 
-    fun getWindow(name: String): Window? {
-        return windows.value[name]
+    private val characterId = MutableStateFlow<String?>(null)
+
+    init {
+        characterId.flatMapLatest { characterId ->
+            if (characterId != null) {
+                windowSettingsQueries.getByCharacter(characterId)
+                    .asFlow()
+                    .mapToList()
+            } else {
+                flow {
+
+                }
+            }
+        }
+            .onEach { windowSettings ->
+                windowSettings.forEach {
+                    val existingWindow = windows.value[it.name]
+
+                    _windows.value += Pair(
+                        it.name,
+                        existingWindow?.copy(location = it.location, position = it.position)
+                            ?: Window(
+                                name = it.name,
+                                title = it.name,
+                                subtitle = null,
+                                location = it.location,
+                                position = it.position,
+                                width = it.width,
+                                height = it.height,
+                            )
+                    )
+                }
+
+            }
+            .launchIn(CoroutineScope(ioDispatcher))
     }
 
-    fun addWindow(window: Window) {
-        _windows.value = windows.value +
-                (window.name to window.copy(location = defaultLocations[window.name] ?: window.location))
+    fun setCharacterId(characterId: String) {
+        this.characterId.value = characterId
+    }
+
+    fun setWindowTitle(name: String, title: String, subtitle: String?) {
+        val existingWindow = windows.value[name]
+        _windows.value += Pair(
+            name,
+            existingWindow?.copy(title = title, subtitle = subtitle) ?: Window(
+                name = name,
+                title = title,
+                subtitle = subtitle,
+                location = null,
+                position = null,
+                width = null,
+                height = null,
+            )
+        )
     }
 
     fun observeOpenWindows(characterId: String): Flow<Set<String>> {
-        return openWindowQueries.getByCharacter(characterId)
+        return windowSettingsQueries.getOpenWindows(characterId)
             .asFlow()
             .mapToList(ioDispatcher)
             .map { it.toSet() }
     }
 
-    fun openWindow(characterId: String, name: String) {
-        GlobalScope.launch {
-            openWindowQueries.put(
-                OpenWindow(
-                    characterId = characterId,
-                    name = name,
-                )
-            )
+    suspend fun openWindow(characterId: String, name: String) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.transaction {
+                val openWindows =
+                    windowSettingsQueries.getByLocation(characterId, location = WindowLocation.TOP).executeAsList()
+                // Ignore this if the window is already open (can accidentally double up in a new location still)
+                if (openWindows.none { it.name == name }) {
+                    windowSettingsQueries.openWindow(
+                        characterId = characterId,
+                        name = name,
+                        location = WindowLocation.TOP,
+                        position = openWindows.size
+                    )
+                }
+            }
         }
     }
 
-    fun closeWindow(characterId: String, name: String) {
-        GlobalScope.launch {
-            openWindowQueries.delete(
-                characterId = characterId,
-                name = name,
-            )
+    suspend fun closeWindow(characterId: String, name: String) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.transaction {
+                windowSettingsQueries.getByName(characterId = characterId, name = name)
+                    .executeAsOneOrNull()?.let { window ->
+                        check(window.location != null)
+                        check(window.position != null)
+                        windowSettingsQueries.closeWindow(
+                            characterId = characterId,
+                            name = name,
+                        )
+                        windowSettingsQueries.closeGap(
+                            characterId = characterId,
+                            location = window.location,
+                            position = window.position
+                        )
+                    }
+            }
+        }
+    }
+
+    suspend fun moveWindow(characterId: String, name: String, location: WindowLocation) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.transaction {
+                val oldWindow = windowSettingsQueries.getByName(characterId = characterId, name = name).executeAsOne()
+                val newPosition = windowSettingsQueries.getByLocation(characterId = characterId, location = location).executeAsList().size
+                windowSettingsQueries.openWindow(characterId, name, location = location, position = newPosition)
+                windowSettingsQueries.closeGap(characterId, oldWindow.location, oldWindow.position)
+            }
+        }
+    }
+
+    suspend fun setWindowWidth(characterId: String, name: String, width: Int) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.updateWidth(characterId = characterId, name = name, width = width)
+        }
+    }
+
+    suspend fun setWindowHeight(characterId: String, name: String, height: Int) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.updateHeight(characterId = characterId, name = name, height = height)
         }
     }
 }

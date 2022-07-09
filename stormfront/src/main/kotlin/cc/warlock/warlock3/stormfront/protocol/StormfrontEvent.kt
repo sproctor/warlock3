@@ -4,6 +4,7 @@ import cc.warlock.warlock3.core.client.Percentage
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.window.Window
+import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 
 sealed interface StormfrontEvent
 data class StormfrontEolEvent(val ignoreWhenBlank: Boolean) : StormfrontEvent
@@ -34,7 +35,7 @@ data class StormfrontComponentStartEvent(val id: String) : StormfrontEvent
 object StormfrontComponentEndEvent : StormfrontEvent
 data class StormfrontComponentDefinitionEvent(val id: String) : StormfrontEvent
 object StormfrontHandledEvent : StormfrontEvent
-data class StormfrontStreamWindowEvent(val window: Window) : StormfrontEvent
+data class StormfrontStreamWindowEvent(val window: StormfrontWindow) : StormfrontEvent
 object StormfrontNavEvent : StormfrontEvent
 data class StormfrontActionEvent(val text: String, val command: String) : StormfrontEvent
 data class StormfrontParseErrorEvent(val text: String) : StormfrontEvent

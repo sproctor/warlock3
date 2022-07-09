@@ -66,9 +66,24 @@ fun GameView(
             GameTextWindows(
                 subWindowUiStates = subWindows.value,
                 mainWindowUiState = mainWindow.value,
+                topHeight = viewModel.topHeight.collectAsState(null).value,
+                leftWidth = viewModel.leftWidth.collectAsState(null).value,
+                rightWidth = viewModel.rightWidth.collectAsState(null).value,
                 onActionClicked = {
                     viewModel.sendCommand(it)
-                }
+                },
+                onMoveClicked = { name, location ->
+                    viewModel.moveWindow(name = name, location = location)
+                },
+                onWidthChanged = { name, width ->
+                    viewModel.setWindowWidth(name, width)
+                },
+                onHeightChanged = { name, height ->
+                    viewModel.setWindowHeight(name, height)
+                },
+                onLeftChanged = viewModel::setLeftWidth,
+                onRightChanged = viewModel::setRightWidth,
+                onTopChanged = viewModel::setTopHeight,
             )
             GameBottomBar(viewModel)
         }
@@ -79,46 +94,109 @@ fun GameView(
 fun ColumnScope.GameTextWindows(
     subWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState,
+    topHeight: Int?,
+    leftWidth: Int?,
+    rightWidth: Int?,
     onActionClicked: (String) -> Unit,
+    onMoveClicked: (name: String, WindowLocation) -> Unit,
+    onHeightChanged: (String, Int) -> Unit,
+    onWidthChanged: (String, Int) -> Unit,
+    onTopChanged: (Int) -> Unit,
+    onLeftChanged: (Int) -> Unit,
+    onRightChanged: (Int) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
         // Left column
-        val leftWindows = subWindowUiStates.filter { it.window?.location == WindowLocation.LEFT }
+        val leftWindows =
+            subWindowUiStates.filter { it.window?.location == WindowLocation.LEFT }.sortedBy { it.window?.position }
         if (leftWindows.isNotEmpty()) {
-            val panelState = remember { ResizablePanelState(initialSize = 200.dp, minSize = 8.dp) }
+            val panelState = remember(leftWidth == null) {
+                ResizablePanelState(initialSize = leftWidth?.dp ?: 0.dp, minSize = 16.dp)
+            }
             ResizablePanel(
-                modifier = Modifier,
                 isHorizontal = true,
                 state = panelState,
             ) {
                 Column {
-                    WindowViews(windowStates = leftWindows, onActionClicked = onActionClicked)
+                    WindowViews(
+                        windowStates = leftWindows,
+                        onActionClicked = onActionClicked,
+                        isHorizontal = false,
+                        onMoveClicked = onMoveClicked,
+                        onHeightChanged = onHeightChanged,
+                        onWidthChanged = onWidthChanged,
+                    )
+                }
+            }
+            LaunchedEffect(panelState.currentSize) {
+                if (leftWidth != null) {
+                    onLeftChanged(panelState.currentSize.value.toInt())
                 }
             }
         }
         // Center column
-        val topWindows = subWindowUiStates.filter { it.window?.location == WindowLocation.TOP }
         Column(modifier = Modifier.weight(1f)) {
-            WindowViews(windowStates = topWindows, onActionClicked = onActionClicked)
+            val topWindows =
+                subWindowUiStates.filter { it.window?.location == WindowLocation.TOP }.sortedBy { it.window?.position }
+            if (topWindows.isNotEmpty()) {
+                val panelState = remember(topHeight == null) {
+                    ResizablePanelState(initialSize = topHeight?.dp ?: 0.dp, minSize = 16.dp)
+                }
+                ResizablePanel(
+                    isHorizontal = false,
+                    state = panelState,
+                ) {
+                    Row {
+                        WindowViews(
+                            windowStates = topWindows,
+                            onActionClicked = onActionClicked,
+                            isHorizontal = true,
+                            onMoveClicked = onMoveClicked,
+                            onHeightChanged = onHeightChanged,
+                            onWidthChanged = onWidthChanged,
+                        )
+                    }
+                }
+                LaunchedEffect(panelState.currentSize) {
+                    if (topHeight != null) {
+                        onTopChanged(panelState.currentSize.value.toInt())
+                    }
+                }
+            }
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 uiState = mainWindowUiState,
-                onActionClicked = onActionClicked
+                onActionClicked = onActionClicked,
+                onMoveClicked = {},
             )
         }
         // Right Column
-        val rightWindows = subWindowUiStates.filter { it.window?.location == WindowLocation.RIGHT }
+        val rightWindows =
+            subWindowUiStates.filter { it.window?.location == WindowLocation.RIGHT }.sortedBy { it.window?.position }
         if (rightWindows.isNotEmpty()) {
-            val panelState = remember { ResizablePanelState(initialSize = 200.dp, minSize = 8.dp) }
+            val panelState = remember(rightWidth == null) {
+                ResizablePanelState(initialSize = rightWidth?.dp ?: 0.dp, minSize = 16.dp)
+            }
             ResizablePanel(
-                modifier = Modifier,
                 isHorizontal = true,
                 handleBefore = true,
                 state = panelState,
             ) {
                 Column {
-                    WindowViews(windowStates = rightWindows, onActionClicked = onActionClicked)
+                    WindowViews(
+                        windowStates = rightWindows,
+                        onActionClicked = onActionClicked,
+                        isHorizontal = false,
+                        onMoveClicked = onMoveClicked,
+                        onHeightChanged = onHeightChanged,
+                        onWidthChanged = onWidthChanged,
+                    )
+                }
+            }
+            LaunchedEffect(panelState.currentSize) {
+                if (rightWidth != null) {
+                    onRightChanged(panelState.currentSize.value.toInt())
                 }
             }
         }
@@ -158,15 +236,35 @@ fun GameBottomBar(viewModel: GameViewModel) {
 fun WindowViews(
     windowStates: List<WindowUiState>,
     onActionClicked: (String) -> Unit,
+    onMoveClicked: (String, WindowLocation) -> Unit,
+    onWidthChanged: (String, Int) -> Unit,
+    onHeightChanged: (String, Int) -> Unit,
+    isHorizontal: Boolean,
 ) {
     windowStates.forEach { uiState ->
-        val panelState = remember(uiState.name) { ResizablePanelState(initialSize = 160.dp, minSize = 16.dp) }
+        val panelState = remember(uiState.name) {
+            val size = if (isHorizontal) uiState.window?.width else uiState.window?.height
+            ResizablePanelState(initialSize = size?.dp ?: 160.dp, minSize = 16.dp)
+        }
         ResizablePanel(
-            modifier = Modifier.fillMaxWidth(),
-            isHorizontal = false,
+            modifier = if (isHorizontal) Modifier.fillMaxHeight() else Modifier.fillMaxWidth(),
+            isHorizontal = isHorizontal,
             state = panelState,
         ) {
-            WindowView(modifier = Modifier.matchParentSize(), uiState = uiState, onActionClicked = onActionClicked)
+            WindowView(
+                modifier = Modifier.matchParentSize(),
+                uiState = uiState,
+                onActionClicked = onActionClicked,
+                onMoveClicked = { onMoveClicked(uiState.name, it) },
+            )
+        }
+        LaunchedEffect(panelState.currentSize) {
+            val size = panelState.currentSize.value.toInt()
+            if (isHorizontal) {
+                onWidthChanged(uiState.name, size)
+            } else {
+                onHeightChanged(uiState.name, size)
+            }
         }
     }
 }

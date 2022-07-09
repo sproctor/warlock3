@@ -1,0 +1,52 @@
+import cc.warlock.warlock3.core.window.WindowLocation;
+
+CREATE TABLE WindowSettings (
+    characterId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    width INTEGER AS Int,
+    height INTEGER AS Int,
+    location TEXT AS WindowLocation,
+    position INTEGER AS Int,
+    PRIMARY KEY (characterId, name)
+);
+
+getOpenWindows:
+SELECT name
+FROM WindowSettings
+WHERE characterId = :characterId AND location IS NOT NULL;
+
+getByCharacter:
+SELECT * FROM WindowSettings WHERE characterId = :characterId;
+
+save:
+INSERT OR REPLACE INTO WindowSettings VALUES ?;
+
+openWindow:
+INSERT OR REPLACE INTO WindowSettings (characterId, name, location, position)
+VALUES (:characterId, :name, :location, :position);
+
+closeWindow:
+UPDATE WindowSettings
+SET location = NULL, position = NULL
+WHERE characterId = :characterId AND name = :name;
+
+getByLocation:
+SELECT * FROM WindowSettings WHERE characterId = :characterId AND location = :location;
+
+getByName:
+SELECT * FROM WindowSettings WHERE characterId = :characterId AND name = :name;
+
+closeGap:
+UPDATE WindowSettings
+SET position = position - 1
+WHERE characterId = :characterId AND location = :location AND position > :position;
+
+updateWidth:
+UPDATE WindowSettings
+SET width = :width
+WHERE characterId = :characterId AND name = :name;
+
+updateHeight:
+UPDATE WindowSettings
+SET height = :height
+WHERE characterId = :characterId AND name = :name;

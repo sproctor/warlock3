@@ -7,7 +7,7 @@ import java.util.*
 
 object StormfrontNodeVisitor : StormfrontParserBaseVisitor<List<Content>>() {
     override fun visitDocument(ctx: StormfrontParser.DocumentContext?): List<Content> {
-        return visit(ctx?.content())
+        return ctx?.let { visit(it.content()) } ?: emptyList()
     }
 
     override fun visitContent(ctx: StormfrontParser.ContentContext?): List<Content> {

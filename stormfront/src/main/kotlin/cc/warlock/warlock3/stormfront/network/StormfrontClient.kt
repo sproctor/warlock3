@@ -6,8 +6,9 @@ import cc.warlock.warlock3.core.prefs.CharacterRepository
 import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
-import cc.warlock.warlock3.stormfront.TextStream
+import cc.warlock.warlock3.stormfront.stream.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
+import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 import cc.warlock.warlock3.stormfront.util.FileLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +54,7 @@ class StormfrontClient(
 
     private val mainStream = TextStream("main")
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
+    private val windows = ConcurrentHashMap<String, StormfrontWindow>()
 
     init {
         val path = System.getProperty("WARLOCK_LOG_DIR")
@@ -147,6 +149,7 @@ class StormfrontClient(
                                         val character = event.character
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
+                                            windowRepository.setCharacterId(characterId)
                                             val path = System.getProperty("WARLOCK_LOG_DIR")
                                             logger = FileLogger(path, "${event.game}_${event.character}")
                                             if (characterRepository.getCharacter(characterId) == null) {
@@ -256,7 +259,13 @@ class StormfrontClient(
                                     }
                                     StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
                                     is StormfrontStreamWindowEvent -> {
-                                        windowRepository.addWindow(event.window)
+                                        val window = event.window
+                                        windows[window.name] = window
+                                        windowRepository.setWindowTitle(
+                                            name = window.name,
+                                            title = window.title,
+                                            subtitle = window.subtitle
+                                        )
                                     }
                                     is StormfrontActionEvent -> {
                                         appendText(
@@ -270,7 +279,12 @@ class StormfrontClient(
                                         // mainStream.append(StyledString("Unhandled tag: ${event.tag}", WarlockStyle.Error))
                                     }
                                     is StormfrontParseErrorEvent -> {
-                                        mainStream.append(StyledString("parse error: ${event.text}", WarlockStyle.Error))
+                                        mainStream.append(
+                                            StyledString(
+                                                "parse error: ${event.text}",
+                                                WarlockStyle.Error
+                                            )
+                                        )
                                     }
                                 }
                             }
@@ -329,7 +343,7 @@ class StormfrontClient(
         } else {
             currentStream.append(styledText)
             doIfClosed(currentStream.name) { targetStream ->
-                val currentWindow = windowRepository.getWindow(currentStream.name)
+                val currentWindow = windows[currentStream.name]
                 targetStream.append(
                     currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText
                 )
@@ -338,7 +352,7 @@ class StormfrontClient(
     }
 
     private suspend fun doIfClosed(streamName: String, action: suspend (TextStream) -> Unit) {
-        val currentWindow = windowRepository.getWindow(streamName)
+        val currentWindow = windows[streamName]
         val ifClosed = currentWindow?.ifClosed ?: "main"
         if (ifClosed != streamName && ifClosed.isNotBlank() && !openWindows.value.contains(streamName)) {
             action(getStream(ifClosed))

@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
@@ -23,36 +22,51 @@ import java.awt.Cursor
 
 @Composable
 fun ResizablePanel(
-    modifier: Modifier,
+    state: ResizablePanelState,
+    modifier: Modifier = Modifier,
     isHorizontal: Boolean = true,
     handleBefore: Boolean = false,
-    state: ResizablePanelState,
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (isHorizontal) {
         Row(modifier.width(state.currentSize)) {
-            if (handleBefore) {
-                ResizablePanelHandle(isHorizontal, handleBefore, state)
-            }
-            Box(Modifier.fillMaxHeight().weight(1f)) {
-                content()
-            }
-            if (!handleBefore) {
-                ResizablePanelHandle(isHorizontal, handleBefore, state)
-            }
+            PanelContent(
+                modifier = Modifier.fillMaxHeight().weight(1f),
+                state = state,
+                isHorizontal = true,
+                handleBefore = handleBefore,
+                content = content
+            )
         }
     } else {
         Column(modifier.height(state.currentSize)) {
-            if (handleBefore) {
-                ResizablePanelHandle(isHorizontal, handleBefore, state)
-            }
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                content()
-            }
-            if (!handleBefore) {
-                ResizablePanelHandle(isHorizontal, handleBefore, state)
-            }
+            PanelContent(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                state = state,
+                isHorizontal = false,
+                handleBefore = handleBefore,
+                content = content
+            )
         }
+    }
+}
+
+@Composable
+private fun PanelContent(
+    modifier: Modifier,
+    state: ResizablePanelState,
+    isHorizontal: Boolean,
+    handleBefore: Boolean,
+    content: @Composable BoxScope.() -> Unit
+) {
+    if (handleBefore) {
+        ResizablePanelHandle(isHorizontal, true, state)
+    }
+    Box(modifier) {
+        content()
+    }
+    if (!handleBefore) {
+        ResizablePanelHandle(isHorizontal, false, state)
     }
 }
 

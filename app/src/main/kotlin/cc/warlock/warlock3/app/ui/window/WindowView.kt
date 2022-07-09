@@ -7,13 +7,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.model.ViewHighlight
@@ -24,20 +23,29 @@ import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.flattenStyles
-import cc.warlock.warlock3.stormfront.StreamLine
+import cc.warlock.warlock3.core.window.WindowLocation
+import cc.warlock.warlock3.stormfront.stream.StreamLine
 import kotlinx.coroutines.delay
 import java.awt.Desktop
 import java.lang.Integer.max
 import java.net.URI
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WindowView(
     modifier: Modifier,
     uiState: WindowUiState,
     onActionClicked: (String) -> Unit,
+    onMoveClicked: (WindowLocation) -> Unit,
 ) {
+    var showContextMenu by remember { mutableStateOf(false) }
     Box(modifier.padding(2.dp)) {
         Surface(
+            modifier.mouseClickable {
+                if (buttons.isSecondaryPressed) {
+                    showContextMenu = true
+                }
+            },
             shape = RoundedCornerShape(4.dp),
             border = BorderStroke(1.dp, Color.Black),
             elevation = 4.dp
@@ -60,6 +68,43 @@ fun WindowView(
                     styleMap = uiState.presets,
                     onActionClicked = onActionClicked
                 )
+            }
+        }
+    }
+    CursorDropdownMenu(
+        expanded = showContextMenu,
+        onDismissRequest = {
+            showContextMenu = false
+        }
+    ) {
+        Column {
+            uiState.window?.location?.let { location ->
+                if (location != WindowLocation.MAIN) {
+                    if (location != WindowLocation.LEFT) {
+                        Text(
+                            text = "Move to left column",
+                            modifier = Modifier.clickable {
+                                onMoveClicked(WindowLocation.LEFT)
+                            }
+                        )
+                    }
+                    if (location != WindowLocation.TOP) {
+                        Text(
+                            text = "Move to center column",
+                            modifier = Modifier.clickable {
+                                onMoveClicked(WindowLocation.TOP)
+                            }
+                        )
+                    }
+                    if (location != WindowLocation.RIGHT) {
+                        Text(
+                            text = "Move to right column",
+                            modifier = Modifier.clickable {
+                                onMoveClicked(WindowLocation.RIGHT)
+                            }
+                        )
+                    }
+                }
             }
         }
     }

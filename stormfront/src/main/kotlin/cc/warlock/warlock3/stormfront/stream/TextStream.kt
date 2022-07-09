@@ -1,4 +1,4 @@
-package cc.warlock.warlock3.stormfront
+package cc.warlock.warlock3.stormfront.stream
 
 import cc.warlock.warlock3.core.prefs.defaultMaxScrollLines
 import cc.warlock.warlock3.core.text.StyledString

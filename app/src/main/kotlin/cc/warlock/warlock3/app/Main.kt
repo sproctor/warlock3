@@ -10,15 +10,13 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import cc.warlock.warlock3.app.di.AppContainer
-import cc.warlock.warlock3.app.views.AppMenuBar
+import cc.warlock.warlock3.app.ui.components.AppMenuBar
+import cc.warlock.warlock3.core.prefs.adapters.LocationAdapter
 import cc.warlock.warlock3.core.prefs.adapters.UUIDAdapter
 import cc.warlock.warlock3.core.prefs.adapters.WarlockColorAdapter
 import cc.warlock.warlock3.core.prefs.insertDefaultsIfNeeded
 import cc.warlock.warlock3.core.prefs.migrateIfNeeded
-import cc.warlock.warlock3.core.prefs.sql.Database
-import cc.warlock.warlock3.core.prefs.sql.Highlight
-import cc.warlock.warlock3.core.prefs.sql.HightlightStyle
-import cc.warlock.warlock3.core.prefs.sql.PresetStyle
+import cc.warlock.warlock3.core.prefs.sql.*
 import cc.warlock.warlock3.stormfront.network.SimuGameCredentials
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import com.squareup.sqldelight.sqlite.driver.JdbcSqliteDriver
@@ -66,6 +64,9 @@ fun main(args: Array<String>) {
         PresetStyleAdapter = PresetStyle.Adapter(
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
+        ),
+        WindowSettingsAdapter = WindowSettings.Adapter(
+            locationAdapter = LocationAdapter,
         )
     )
     runBlocking {

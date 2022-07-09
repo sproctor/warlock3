@@ -25,6 +25,7 @@ import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.window.WindowLocation
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -32,8 +33,9 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.Token
 import kotlin.math.max
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
-    windowRepository: WindowRepository,
+    private val windowRepository: WindowRepository,
     val client: StormfrontClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
@@ -42,6 +44,7 @@ class GameViewModel(
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
     val compassTheme: CompassTheme,
     val clipboard: ClipboardManager,
+    private val characterSettingsRepository: CharacterSettingsRepository,
 ) : AutoCloseable {
     private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
@@ -69,7 +72,33 @@ class GameViewModel(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    val topHeight = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            characterSettingsRepository.observe(characterId = characterId, "topHeight")
+                .map { it?.toIntOrNull() ?: 200 }
+        } else {
+            flow { }
+        }
+    }
+
+    val leftWidth = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            characterSettingsRepository.observe(characterId = characterId, "leftWidth")
+                .map { it?.toIntOrNull() ?: 200 }
+        } else {
+            flow { }
+        }
+    }
+
+    val rightWidth = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            characterSettingsRepository.observe(characterId = characterId, "rightWidth")
+                .map { it?.toIntOrNull() ?: 200 }
+        } else {
+            flow { }
+        }
+    }
+
     private val macros = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             macroRepository.observeCharacterMacros(characterId)
@@ -80,7 +109,6 @@ class GameViewModel(
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private val presets: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             presetRepository.observePresetsForCharacter(characterId)
@@ -89,7 +117,6 @@ class GameViewModel(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             variableRepository.observeCharacterVariables(characterId).map { list ->
@@ -129,7 +156,6 @@ class GameViewModel(
 
     private val windows = windowRepository.windows
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private val highlights = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             highlightRepository.observeForCharacter(characterId)
@@ -161,7 +187,6 @@ class GameViewModel(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private val openWindows = client.characterId.flatMapLatest {
         if (it != null) {
             windowRepository.observeOpenWindows(it)
@@ -421,6 +446,54 @@ class GameViewModel(
 
     fun setEntryText(value: TextFieldValue) {
         _entryText.value = value
+    }
+
+    fun moveWindow(name: String, location: WindowLocation) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                windowRepository.moveWindow(characterId = characterId, name = name, location = location)
+            }
+        }
+    }
+
+    fun setWindowWidth(name: String, width: Int) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                windowRepository.setWindowWidth(characterId = characterId, name = name, width = width)
+            }
+        }
+    }
+
+    fun setWindowHeight(name: String, height: Int) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                windowRepository.setWindowHeight(characterId = characterId, name = name, height = height)
+            }
+        }
+    }
+
+    fun setLeftWidth(width: Int) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                characterSettingsRepository.save(characterId, "leftWidth", width.toString())
+            }
+        }
+    }
+
+    fun setRightWidth(width: Int) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                characterSettingsRepository.save(characterId, "rightWidth", width.toString())
+            }
+        }
+    }
+
+    fun setTopHeight(height: Int) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                characterSettingsRepository.save(characterId, "topHeight", height.toString())
+            }
+        }
     }
 
     override fun close() {
