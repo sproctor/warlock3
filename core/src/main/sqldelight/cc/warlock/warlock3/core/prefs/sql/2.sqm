@@ -8,8 +8,4 @@ CREATE TABLE WindowSettings (
     PRIMARY KEY (characterId, name)
 );
 
-INSERT INTO WindowSettings (characterId, name, open)
-    SELECT characterId, name, 1
-    FROM OpenWindow;
-
 DROP TABLE OpenWindow;

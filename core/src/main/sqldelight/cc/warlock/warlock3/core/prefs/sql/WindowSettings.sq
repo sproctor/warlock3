@@ -13,7 +13,7 @@ CREATE TABLE WindowSettings (
 getOpenWindows:
 SELECT name
 FROM WindowSettings
-WHERE characterId = :characterId AND location IS NOT NULL;
+WHERE characterId = :characterId AND location IS NOT NULL AND position IS NOT NULL;
 
 getByCharacter:
 SELECT * FROM WindowSettings WHERE characterId = :characterId;
@@ -50,3 +50,13 @@ updateHeight:
 UPDATE WindowSettings
 SET height = :height
 WHERE characterId = :characterId AND name = :name;
+
+switchPositions:
+UPDATE WindowSettings
+SET position =
+    CASE
+        WHEN position = :curpos THEN :newpos
+        WHEN position = :newpos THEN :curpos
+        ELSE position
+    END
+WHERE characterId = :characterId AND location = :location;

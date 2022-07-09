@@ -84,6 +84,7 @@ fun GameView(
                 onLeftChanged = viewModel::setLeftWidth,
                 onRightChanged = viewModel::setRightWidth,
                 onTopChanged = viewModel::setTopHeight,
+                onSwapWindows = viewModel::changeWindowPositions
             )
             GameBottomBar(viewModel)
         }
@@ -104,6 +105,7 @@ fun ColumnScope.GameTextWindows(
     onTopChanged: (Int) -> Unit,
     onLeftChanged: (Int) -> Unit,
     onRightChanged: (Int) -> Unit,
+    onSwapWindows: (WindowLocation, Int, Int) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -126,6 +128,7 @@ fun ColumnScope.GameTextWindows(
                         onMoveClicked = onMoveClicked,
                         onHeightChanged = onHeightChanged,
                         onWidthChanged = onWidthChanged,
+                        onSwapWindows = onSwapWindows,
                     )
                 }
             }
@@ -155,6 +158,7 @@ fun ColumnScope.GameTextWindows(
                             onMoveClicked = onMoveClicked,
                             onHeightChanged = onHeightChanged,
                             onWidthChanged = onWidthChanged,
+                            onSwapWindows = onSwapWindows,
                         )
                     }
                 }
@@ -169,6 +173,8 @@ fun ColumnScope.GameTextWindows(
                 uiState = mainWindowUiState,
                 onActionClicked = onActionClicked,
                 onMoveClicked = {},
+                onMoveTowardsStart = null,
+                onMoveTowardsEnd = null,
             )
         }
         // Right Column
@@ -191,6 +197,7 @@ fun ColumnScope.GameTextWindows(
                         onMoveClicked = onMoveClicked,
                         onHeightChanged = onHeightChanged,
                         onWidthChanged = onWidthChanged,
+                        onSwapWindows = onSwapWindows,
                     )
                 }
             }
@@ -235,13 +242,14 @@ fun GameBottomBar(viewModel: GameViewModel) {
 @Composable
 fun WindowViews(
     windowStates: List<WindowUiState>,
+    isHorizontal: Boolean,
     onActionClicked: (String) -> Unit,
     onMoveClicked: (String, WindowLocation) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
-    isHorizontal: Boolean,
+    onSwapWindows: (WindowLocation, Int, Int) -> Unit,
 ) {
-    windowStates.forEach { uiState ->
+    windowStates.forEachIndexed { index, uiState ->
         val panelState = remember(uiState.name) {
             val size = if (isHorizontal) uiState.window?.width else uiState.window?.height
             ResizablePanelState(initialSize = size?.dp ?: 160.dp, minSize = 16.dp)
@@ -256,6 +264,12 @@ fun WindowViews(
                 uiState = uiState,
                 onActionClicked = onActionClicked,
                 onMoveClicked = { onMoveClicked(uiState.name, it) },
+                onMoveTowardsStart = if (index > 0) {
+                    { onSwapWindows(uiState.window!!.location!!, index, index - 1) }
+                } else null,
+                onMoveTowardsEnd = if (index < windowStates.lastIndex) {
+                    { onSwapWindows(uiState.window!!.location!!, index, index + 1) }
+                } else null,
             )
         }
         LaunchedEffect(panelState.currentSize) {

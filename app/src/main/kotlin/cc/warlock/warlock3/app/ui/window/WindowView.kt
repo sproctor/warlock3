@@ -37,6 +37,8 @@ fun WindowView(
     uiState: WindowUiState,
     onActionClicked: (String) -> Unit,
     onMoveClicked: (WindowLocation) -> Unit,
+    onMoveTowardsStart: (() -> Unit)?,
+    onMoveTowardsEnd: (() -> Unit)?,
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
     Box(modifier.padding(2.dp)) {
@@ -84,6 +86,7 @@ fun WindowView(
                         Text(
                             text = "Move to left column",
                             modifier = Modifier.clickable {
+                                showContextMenu = false
                                 onMoveClicked(WindowLocation.LEFT)
                             }
                         )
@@ -92,6 +95,7 @@ fun WindowView(
                         Text(
                             text = "Move to center column",
                             modifier = Modifier.clickable {
+                                showContextMenu = false
                                 onMoveClicked(WindowLocation.TOP)
                             }
                         )
@@ -100,10 +104,29 @@ fun WindowView(
                         Text(
                             text = "Move to right column",
                             modifier = Modifier.clickable {
+                                showContextMenu = false
                                 onMoveClicked(WindowLocation.RIGHT)
                             }
                         )
                     }
+                }
+                if (onMoveTowardsStart != null) {
+                    Text(
+                        text = "Move towards start",
+                        modifier = Modifier.clickable {
+                            showContextMenu = false
+                            onMoveTowardsStart()
+                        }
+                    )
+                }
+                if (onMoveTowardsEnd != null) {
+                    Text(
+                        text = "Move towards end",
+                        modifier = Modifier.clickable {
+                            showContextMenu = false
+                            onMoveTowardsEnd()
+                        }
+                    )
                 }
             }
         }

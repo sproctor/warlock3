@@ -496,6 +496,15 @@ class GameViewModel(
         }
     }
 
+    fun changeWindowPositions(location: WindowLocation, curPos: Int, newPos: Int) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                println("Swapping $curPos and $newPos")
+                windowRepository.switchPositions(characterId, location, curPos, newPos)
+            }
+        }
+    }
+
     override fun close() {
         viewModelScope.cancel()
     }

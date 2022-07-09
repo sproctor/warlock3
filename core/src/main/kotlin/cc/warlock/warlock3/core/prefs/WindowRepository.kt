@@ -101,15 +101,12 @@ class WindowRepository(
             windowSettingsQueries.transaction {
                 val openWindows =
                     windowSettingsQueries.getByLocation(characterId, location = WindowLocation.TOP).executeAsList()
-                // Ignore this if the window is already open (can accidentally double up in a new location still)
-                if (openWindows.none { it.name == name }) {
-                    windowSettingsQueries.openWindow(
-                        characterId = characterId,
-                        name = name,
-                        location = WindowLocation.TOP,
-                        position = openWindows.size
-                    )
-                }
+                windowSettingsQueries.openWindow(
+                    characterId = characterId,
+                    name = name,
+                    location = WindowLocation.TOP,
+                    position = openWindows.size
+                )
             }
         }
     }
@@ -139,7 +136,8 @@ class WindowRepository(
         withContext(ioDispatcher) {
             windowSettingsQueries.transaction {
                 val oldWindow = windowSettingsQueries.getByName(characterId = characterId, name = name).executeAsOne()
-                val newPosition = windowSettingsQueries.getByLocation(characterId = characterId, location = location).executeAsList().size
+                val newPosition = windowSettingsQueries.getByLocation(characterId = characterId, location = location)
+                    .executeAsList().size
                 windowSettingsQueries.openWindow(characterId, name, location = location, position = newPosition)
                 windowSettingsQueries.closeGap(characterId, oldWindow.location, oldWindow.position)
             }
@@ -155,6 +153,17 @@ class WindowRepository(
     suspend fun setWindowHeight(characterId: String, name: String, height: Int) {
         withContext(ioDispatcher) {
             windowSettingsQueries.updateHeight(characterId = characterId, name = name, height = height)
+        }
+    }
+
+    suspend fun switchPositions(characterId: String, location: WindowLocation, pos1: Int, pos2: Int) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.switchPositions(
+                characterId = characterId,
+                location = location,
+                curpos = pos1,
+                newpos = pos2,
+            )
         }
     }
 }
