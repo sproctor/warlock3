@@ -42,7 +42,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "warlock3"
-            packageVersion = "1.0.14"
+            packageVersion = "1.0.15"
             modules("java.sql")
             copyright = "Copyright 2022 Sean Proctor"
             licenseFile.set(project.file("gpl-2.0.txt"))
