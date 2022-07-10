@@ -2,10 +2,7 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.LocalTextStyle
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -243,10 +240,11 @@ fun ColumnScope.PresetSettings(
                             onClick = {
                                 editFont = Pair(style.fontFamily) { fontFamily ->
                                     println("Picked: $fontFamily")
+                                    saveStyle(preset, style.copy(fontFamily = fontFamily))
                                 }
                             }
                         ) {
-                            Text("Font: ")
+                            Text("Font: ${style.fontFamily ?: "Default"}")
                         }
                         Spacer(Modifier.width(8.dp))
                     }
@@ -260,6 +258,7 @@ fun ColumnScope.PresetSettings(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun FontPickerDialog(
     initialFont: String?,
@@ -271,7 +270,11 @@ fun FontPickerDialog(
     ) {
         Column {
             fontFamilyMap.forEach { (name, fontFamily) ->
-                Text(text = name, fontFamily = fontFamily)
+                ListItem(
+                    modifier = Modifier.clickable { onFontSelected(name) },
+                    icon = { Text(text = "aA", fontFamily = fontFamily) },
+                    text = { Text(text = name) }
+                )
             }
         }
     }
@@ -282,5 +285,4 @@ val fontFamilyMap = mapOf(
     "Serif" to FontFamily.Serif,
     "SansSerif" to FontFamily.SansSerif,
     "Monospace" to FontFamily.Monospace,
-    "Cursive" to FontFamily.Cursive,
 )

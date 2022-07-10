@@ -35,7 +35,7 @@ class PresetRepository(
                     bold = bold,
                     italic = italic,
                     underline = underline,
-                    fontFamily = null, // FIXME
+                    fontFamily = fontFamily,
                 )
             )
         }.asFlow()

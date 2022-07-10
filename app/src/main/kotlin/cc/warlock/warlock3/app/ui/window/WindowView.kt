@@ -20,9 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.model.ViewHighlight
+import cc.warlock.warlock3.app.ui.settings.fontFamilyMap
 import cc.warlock.warlock3.app.util.*
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
@@ -148,8 +148,10 @@ private fun WindowViewContent(
 ) {
     val scrollState = rememberLazyListState()
     var lastSerial by remember { mutableStateOf(0L) }
-    val backgroundColor = styleMap["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
-    val textColor = styleMap["default"]?.textColor?.toColor() ?: Color.Unspecified
+    val defaultStyle = styleMap["default"]
+    val backgroundColor = defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
+    val textColor = defaultStyle?.textColor?.toColor() ?: Color.Unspecified
+    val fontFamily = defaultStyle?.fontFamily?.let { fontFamilyMap[it] }
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         // TODO: reimplement this in a way that passes clicks through to clickable text
@@ -179,7 +181,10 @@ private fun WindowViewContent(
                                 .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
                                 .padding(horizontal = 4.dp)
                         ) {
-                            ClickableText(text = highlightedLine, style = TextStyle(color = textColor)) { offset ->
+                            ClickableText(
+                                text = highlightedLine,
+                                style = TextStyle(color = textColor, fontFamily = fontFamily),
+                            ) { offset ->
                                 println("handling click: $offset")
                                 highlightedLine.getStringAnnotations(start = offset, end = offset)
                                     .forEach { annotation ->
