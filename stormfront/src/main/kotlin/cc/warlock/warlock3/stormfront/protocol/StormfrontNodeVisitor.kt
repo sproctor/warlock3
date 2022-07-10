@@ -16,7 +16,12 @@ object StormfrontNodeVisitor : StormfrontParserBaseVisitor<List<Content>>() {
         }
         val result = LinkedList<Content>()
         for (child in ctx.children) {
-            result.addAll(visit(child))
+            val content = visit(child)
+            if (content != null) {
+                result.addAll(content)
+            } else {
+                throw Exception("Parse failed?")
+            }
         }
         return result
     }

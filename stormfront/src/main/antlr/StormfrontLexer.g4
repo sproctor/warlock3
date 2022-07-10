@@ -19,8 +19,8 @@ CLOSE       :   '>'                     -> popMode ;
 SLASH_CLOSE :   '/>'                    -> popMode ;
 SLASH       :   '/' ;
 EQUALS      :   '=' ;
-STRING      :   '"' ~[<"]* '"'
-            |   '\'' ~[<']* '\''
+STRING      :   '"' ~'"'* ('"' ~["=>]*)* '"' // handles strings in elements. accepts non-xml strings like: " - ["Kertigen's Honor"]" by reading too much an not taking an > or = from the next attribute or end of the tag
+            |   '\'' ~'\''* ('\'' ~['=>]*)* '\''
             ;
 Name        :   NameStartChar NameChar* ;
 S           :   [ \t\r\n]               -> skip ;

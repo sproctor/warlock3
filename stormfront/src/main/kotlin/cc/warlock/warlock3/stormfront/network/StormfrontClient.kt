@@ -279,7 +279,7 @@ class StormfrontClient(
                                         // mainStream.append(StyledString("Unhandled tag: ${event.tag}", WarlockStyle.Error))
                                     }
                                     is StormfrontParseErrorEvent -> {
-                                        mainStream.append(
+                                        mainStream.appendMessage(
                                             StyledString(
                                                 "parse error: ${event.text}",
                                                 WarlockStyle.Error
