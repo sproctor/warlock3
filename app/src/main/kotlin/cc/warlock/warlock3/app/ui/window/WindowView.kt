@@ -16,8 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,137 +52,126 @@ fun WindowView(
     saveStyle: (StyleDefinition) -> Unit,
 ) {
     val window = uiState.window
-    var showContextMenu by remember { mutableStateOf(false) }
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
 
-    Box(modifier.padding(2.dp)) {
-        Surface(
-            Modifier.onClick(
-                matcher = PointerMatcher.mouse(PointerButton.Secondary),
-                onClick = {
-                    showContextMenu = true
-                }
-            ),
-            shape = RoundedCornerShape(4.dp),
-            border = BorderStroke(1.dp, Color.Black),
-            elevation = 4.dp
-        ) {
-            Column {
-                Row(
-                    Modifier.background(MaterialTheme.colors.primary).fillMaxWidth()
-                        .padding(4.dp)
-                ) {
-                    Box(Modifier.weight(1f)) {
-                        Text(
-                            text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
-                            color = MaterialTheme.colors.onPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    IconButton(
-                        modifier = Modifier.size(16.dp),
-                        onClick = { showContextMenu = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colors.onPrimary,
-                        )
-                    }
-                    if (uiState.window?.location != WindowLocation.MAIN) {
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(
-                            modifier = Modifier.size(16.dp),
-                            onClick = onCloseClicked
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = MaterialTheme.colors.onPrimary,
-                            )
-                        }
-                    }
-                }
-                if (window != null) {
-                    val lines by uiState.lines.collectAsState()
-                    WindowViewContent(
-                        lines = lines,
-                        window = window,
-                        components = uiState.components,
-                        highlights = uiState.highlights,
-                        styleMap = uiState.presets,
-                        onActionClicked = onActionClicked
-                    )
-                }
-            }
-        }
-    }
-    CursorDropdownMenu(
-        expanded = showContextMenu,
-        onDismissRequest = {
-            showContextMenu = false
-        }
-    ) {
-        Column {
-            Text(
-                modifier = Modifier.clickable {
-                    showWindowSettingsDialog = true
-                    showContextMenu = false
-                },
-                text = "Window Settings ..."
+    val contextMenuItems = {
+        buildList {
+            add(
+                ContextMenuItem(
+                    onClick = {
+                        showWindowSettingsDialog = true
+                    },
+                    label = "Window Settings ..."
+                )
             )
             uiState.window?.location?.let { location ->
                 if (location != WindowLocation.MAIN) {
                     if (location != WindowLocation.LEFT) {
-                        Text(
-                            text = "Move to left column",
-                            modifier = Modifier.clickable {
-                                showContextMenu = false
-                                onMoveClicked(WindowLocation.LEFT)
-                            }
+                        add(
+                            ContextMenuItem(
+                                label = "Move to left column",
+                                onClick = {
+                                    onMoveClicked(WindowLocation.LEFT)
+                                }
+                            )
                         )
                     }
                     if (location != WindowLocation.TOP) {
-                        Text(
-                            text = "Move to center column",
-                            modifier = Modifier.clickable {
-                                showContextMenu = false
-                                onMoveClicked(WindowLocation.TOP)
-                            }
+                        add(
+                            ContextMenuItem(
+                                label = "Move to center column",
+                                onClick = {
+                                    onMoveClicked(WindowLocation.TOP)
+                                }
+                            )
                         )
                     }
                     if (location != WindowLocation.RIGHT) {
-                        Text(
-                            text = "Move to right column",
-                            modifier = Modifier.clickable {
-                                showContextMenu = false
-                                onMoveClicked(WindowLocation.RIGHT)
-                            }
+                        add(
+                            ContextMenuItem(
+                                label = "Move to right column",
+                                onClick = {
+                                    onMoveClicked(WindowLocation.RIGHT)
+                                }
+                            )
                         )
                     }
                 }
                 if (onMoveTowardsStart != null) {
-                    Text(
-                        text = "Move towards start",
-                        modifier = Modifier.clickable {
-                            showContextMenu = false
-                            onMoveTowardsStart()
-                        }
+                    add(
+                        ContextMenuItem(
+                            label = "Move towards start",
+                            onClick = {
+                                onMoveTowardsStart()
+                            }
+                        )
                     )
                 }
                 if (onMoveTowardsEnd != null) {
-                    Text(
-                        text = "Move towards end",
-                        modifier = Modifier.clickable {
-                            showContextMenu = false
-                            onMoveTowardsEnd()
-                        }
+                    add(
+                        ContextMenuItem(
+                            label = "Move towards end",
+                            onClick = {
+                                onMoveTowardsEnd()
+                            }
+                        )
                     )
                 }
             }
         }
     }
+    ContextMenuDataProvider(
+        items = contextMenuItems
+    ) {
+        Box(modifier.padding(2.dp)) {
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(1.dp, Color.Black),
+                elevation = 4.dp
+            ) {
+                Column {
+                    Row(
+                        Modifier.background(MaterialTheme.colors.primary).fillMaxWidth()
+                            .padding(4.dp)
+                    ) {
+                        Box(Modifier.weight(1f)) {
+                            Text(
+                                text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
+                                color = MaterialTheme.colors.onPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (uiState.window?.location != WindowLocation.MAIN) {
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                modifier = Modifier.size(16.dp),
+                                onClick = onCloseClicked
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = MaterialTheme.colors.onPrimary,
+                                )
+                            }
+                        }
+                    }
+                    if (window != null) {
+                        val lines by uiState.lines.collectAsState()
+                        WindowViewContent(
+                            lines = lines,
+                            window = window,
+                            components = uiState.components,
+                            highlights = uiState.highlights,
+                            styleMap = uiState.presets,
+                            onActionClicked = onActionClicked
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (showWindowSettingsDialog && window != null) {
         WindowSettingsDialog(
             onCloseRequest = { showWindowSettingsDialog = false },
@@ -210,8 +199,10 @@ private fun WindowViewContent(
     var lastSerial by remember { mutableStateOf(0L) }
     val defaultStyle = styleMap["default"]
     val backgroundColor =
-        (window.backgroundColor.specifiedOrNull() ?: defaultStyle?.backgroundColor)?.toColor() ?: Color.Unspecified
-    val textColor = (window.textColor.specifiedOrNull() ?: defaultStyle?.textColor)?.toColor() ?: Color.Unspecified
+        (window.backgroundColor.specifiedOrNull() ?: defaultStyle?.backgroundColor)?.toColor()
+            ?: Color.Unspecified
+    val textColor =
+        (window.textColor.specifiedOrNull() ?: defaultStyle?.textColor)?.toColor() ?: Color.Unspecified
     val fontFamily = (window.fontFamily ?: defaultStyle?.fontFamily)?.let { fontFamilyMap[it] }
     val fontSize = (window.fontSize ?: defaultStyle?.fontSize)?.sp ?: defaultFontSize
 
@@ -245,7 +236,11 @@ private fun WindowViewContent(
                         ) {
                             ClickableText(
                                 text = highlightedLine,
-                                style = TextStyle(color = textColor, fontFamily = fontFamily, fontSize = fontSize),
+                                style = TextStyle(
+                                    color = textColor,
+                                    fontFamily = fontFamily,
+                                    fontSize = fontSize
+                                ),
                             ) { offset ->
                                 println("handling click: $offset")
                                 highlightedLine.getStringAnnotations(start = offset, end = offset)

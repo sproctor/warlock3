@@ -119,7 +119,8 @@ fun main(args: Array<String>) {
                 AppMenuBar(
                     characterId = characterId,
                     windowRepository = AppContainer.windowRepository,
-                    showSettings = { showSettings = true }
+                    showSettings = { showSettings = true },
+                    disconnect = null,
                 )
                 WarlockApp(
                     state = gameState,
