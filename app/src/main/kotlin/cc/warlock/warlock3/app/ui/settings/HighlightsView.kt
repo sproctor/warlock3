@@ -45,14 +45,14 @@ fun HighlightsView(
     presetRepository: PresetRepository,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val highlights by if (currentCharacter == null) {
+    val currentCharacterId = selectedCharacter?.id
+    val highlights by if (currentCharacterId == null) {
         highlightRepository.observeGlobal()
     } else {
-        highlightRepository.observeForCharacter(currentCharacter.id)
+        highlightRepository.observeByCharacter(currentCharacterId)
     }
         .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
-    val currentCharacterId = currentCharacter?.id
     var defaultStyle by remember { mutableStateOf(defaultStyles["default"]) }
     LaunchedEffect(currentCharacterId) {
         if (currentCharacterId != null) {

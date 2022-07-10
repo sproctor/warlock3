@@ -70,6 +70,9 @@ fun main(args: Array<String>) {
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
         ),
+        AliasAdapter = Alias.Adapter(
+            idAdapter = UUIDAdapter,
+        ),
     )
     runBlocking {
         insertDefaultsIfNeeded(AppContainer.database)

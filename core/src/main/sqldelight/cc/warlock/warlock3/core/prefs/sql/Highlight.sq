@@ -14,6 +14,11 @@ SELECT *
 FROM Highlight
 WHERE characterId = :characterId;
 
+getHighlightsForCharacter:
+SELECT *
+FROM Highlight
+WHERE characterId = :characterId OR characterId = "global";
+
 deleteByPattern:
 DELETE FROM Highlight WHERE pattern = :pattern AND characterId = :characterId;
 

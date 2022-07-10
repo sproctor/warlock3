@@ -22,6 +22,7 @@ import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.prefs.*
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
+import cc.warlock.warlock3.core.text.Alias
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
@@ -45,6 +46,7 @@ class GameViewModel(
     val compassTheme: CompassTheme,
     val clipboard: ClipboardManager,
     private val characterSettingsRepository: CharacterSettingsRepository,
+    aliasRepository: AliasRepository,
 ) : AutoCloseable {
     private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
@@ -117,16 +119,25 @@ class GameViewModel(
         }
     }
 
-    val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
+    private val variables: StateFlow<Map<String, String>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             variableRepository.observeCharacterVariables(characterId).map { list ->
                 list.associate { it.name to it.value }
             }
         } else {
-            flow<Map<String, String>> { emit(emptyMap()) }
+            flow<Map<String, String>> {  }
         }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
+    private val aliases: StateFlow<List<Alias>> = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            aliasRepository.observeForCharacter(characterId)
+        } else {
+            flow { }
+        }
+    }
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     private var scriptsPaused = false
 
@@ -244,8 +255,11 @@ class GameViewModel(
     }
 
     fun submit() {
-        val line = _entryText.value.text
+        var line = _entryText.value.text
         _entryText.value = TextFieldValue()
+        aliases.value.forEach { alias ->
+            line = alias.replace(line)
+        }
         sendHistory.add(0, line)
         historyPosition = -1
         sendCommand(line)

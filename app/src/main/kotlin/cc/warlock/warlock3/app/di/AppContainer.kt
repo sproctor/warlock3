@@ -39,6 +39,12 @@ object AppContainer {
             ioDispatcher = Dispatchers.IO
         )
     }
+    val aliasRepository by lazy {
+        AliasRepository(
+            database.aliasQueries,
+            ioDispatcher = Dispatchers.IO
+        )
+    }
     val compassTheme: CompassTheme by lazy { loadCompassTheme() }
     val gameViewModelFactory = { client: StormfrontClient, clipboard: ClipboardManager ->
         GameViewModel(
@@ -52,6 +58,7 @@ object AppContainer {
             highlightRepository = highlightRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
+            aliasRepository = aliasRepository,
         )
     }
     fun dashboardViewModelFactory(

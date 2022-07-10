@@ -20,10 +20,10 @@ class HighlightRepository(
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun observeGlobal(): Flow<List<Highlight>> {
-        return observeForCharacter("global")
+        return observeByCharacter("global")
     }
 
-    fun observeForCharacter(characterId: String): Flow<List<Highlight>> {
+    fun observeByCharacter(characterId: String): Flow<List<Highlight>> {
         return highlightQueries.getHighlightsByCharacter(
             characterId
         ) { id: UUID,
@@ -32,41 +32,26 @@ class HighlightRepository(
             isRegex: Boolean,
             matchPartialWord: Boolean,
             ignoreCase: Boolean ->
-            val styles = highlightStyleQueries.getByHighlight(
-                id
-            ) { _: UUID,
-                groupNumber: Int,
-                textColor: WarlockColor,
-                backgroundColor: WarlockColor,
-                entireLine: Boolean,
-                bold: Boolean,
-                italic: Boolean,
-                underline: Boolean,
-                fontFamily: String?,
-                fontSize: Double? ->
-                Pair(
-                    groupNumber,
-                    StyleDefinition(
-                        textColor = textColor,
-                        backgroundColor = backgroundColor,
-                        entireLine = entireLine,
-                        bold = bold,
-                        italic = italic,
-                        underline = underline,
-                        fontFamily = fontFamily,
-                        fontSize = fontSize,
-                    )
-                )
-            }.executeAsList()
-                .toMap()
-            Highlight(
-                id = id,
-                pattern = pattern,
-                styles = styles,
-                isRegex = isRegex,
-                matchPartialWord = matchPartialWord,
-                ignoreCase = ignoreCase,
-            )
+            sqlToHighlight(id, pattern, isRegex, matchPartialWord, ignoreCase)
+        }
+            .asFlow()
+            .map {
+                highlightQueries.transactionWithResult {
+                    it.executeAsList()
+                }
+            }
+    }
+
+    fun observeForCharacter(characterId: String): Flow<List<Highlight>> {
+        return highlightQueries.getHighlightsForCharacter(
+            characterId
+        ) { id: UUID,
+            _: String,
+            pattern: String,
+            isRegex: Boolean,
+            matchPartialWord: Boolean,
+            ignoreCase: Boolean ->
+            sqlToHighlight(id, pattern, isRegex, matchPartialWord, ignoreCase)
         }
             .asFlow()
             .map {
@@ -125,5 +110,49 @@ class HighlightRepository(
         withContext(ioDispatcher) {
             highlightQueries.deleteById(id)
         }
+    }
+
+    private fun sqlToHighlight(
+        id: UUID,
+        pattern: String,
+        isRegex: Boolean,
+        matchPartialWord: Boolean,
+        ignoreCase: Boolean,
+    ): Highlight {
+        val styles = highlightStyleQueries.getByHighlight(
+            id
+        ) { _: UUID,
+            groupNumber: Int,
+            textColor: WarlockColor,
+            backgroundColor: WarlockColor,
+            entireLine: Boolean,
+            bold: Boolean,
+            italic: Boolean,
+            underline: Boolean,
+            fontFamily: String?,
+            fontSize: Double? ->
+            Pair(
+                groupNumber,
+                StyleDefinition(
+                    textColor = textColor,
+                    backgroundColor = backgroundColor,
+                    entireLine = entireLine,
+                    bold = bold,
+                    italic = italic,
+                    underline = underline,
+                    fontFamily = fontFamily,
+                    fontSize = fontSize,
+                )
+            )
+        }.executeAsList()
+            .toMap()
+        return Highlight(
+            id = id,
+            pattern = pattern,
+            styles = styles,
+            isRegex = isRegex,
+            matchPartialWord = matchPartialWord,
+            ignoreCase = ignoreCase,
+        )
     }
 }

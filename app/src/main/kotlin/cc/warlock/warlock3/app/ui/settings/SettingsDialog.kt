@@ -22,13 +22,14 @@ fun SettingsDialog(
     presetRepository: PresetRepository,
     highlightRepository: HighlightRepository,
     characterSettingsRepository: CharacterSettingsRepository,
+    aliasRepository: AliasRepository,
     closeDialog: () -> Unit,
 ) {
     Window(
         title = "Settings",
         onCloseRequest = closeDialog,
     ) {
-        var state: SettingsState by remember { mutableStateOf(GeneralSettingsState) }
+        var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
         val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
         Row(Modifier.fillMaxSize()) {
@@ -36,69 +37,82 @@ fun SettingsDialog(
                 Column(Modifier.fillMaxSize()) {
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = GeneralSettingsState },
+                        onClick = { state = SettingsPage.General },
                     ) {
                         Text("General")
                     }
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = AppearanceSettingsState },
+                        onClick = { state = SettingsPage.Appearance },
                     ) {
                         Text(text = "Appearance", textAlign = TextAlign.Start)
                     }
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = VariableSettingsState },
+                        onClick = { state = SettingsPage.Variables },
                     ) {
                         Text(text = "Variables", textAlign = TextAlign.Start)
                     }
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = MacroSettingsState },
+                        onClick = { state = SettingsPage.Macros },
                     ) {
                         Text("Macros")
                     }
                     TextButton(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = HighlightSettingsState },
+                        onClick = { state = SettingsPage.Highlights },
                     ) {
                         Text("Highlights")
+                    }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = SettingsPage.Aliases }
+                    ) {
+                        Text("Aliases")
                     }
                 }
             }
             Divider(Modifier.fillMaxHeight().width(1.dp))
             Box(Modifier.padding(24.dp)) {
                 when (state) {
-                    GeneralSettingsState -> {
+                    SettingsPage.General -> {
                         GeneralSettingsView(
                             characterSettingsRepository = characterSettingsRepository,
                             initialCharacter = currentCharacter,
                             characters = characters,
                         )
                     }
-                    VariableSettingsState -> {
+                    SettingsPage.Variables -> {
                         VariablesView(
                             initialCharacter = currentCharacter,
                             characters = characters,
                             variableRepository = variableRepository,
                         )
                     }
-                    MacroSettingsState -> MacrosView(
+                    SettingsPage.Macros -> MacrosView(
                         initialCharacter = currentCharacter,
                         characters = characters,
                         macroRepository = macroRepository,
                     )
-                    HighlightSettingsState -> HighlightsView(
+                    SettingsPage.Highlights -> HighlightsView(
                         currentCharacter = currentCharacter,
                         allCharacters = characters,
                         highlightRepository = highlightRepository,
                         presetRepository = presetRepository,
                     )
-                    AppearanceSettingsState -> {
+                    SettingsPage.Appearance -> {
                         AppearanceView(
                             presetRepository = presetRepository,
                             initialCharacter = currentCharacter,
                             characters = characters,
+                        )
+                    }
+                    SettingsPage.Aliases -> {
+                        AliasView(
+                            currentCharacter = currentCharacter,
+                            allCharacters = characters,
+                            aliasRepository = aliasRepository,
                         )
                     }
                 }
@@ -107,9 +121,11 @@ fun SettingsDialog(
     }
 }
 
-sealed class SettingsState
-object VariableSettingsState : SettingsState()
-object MacroSettingsState : SettingsState()
-object HighlightSettingsState : SettingsState()
-object AppearanceSettingsState : SettingsState()
-object GeneralSettingsState : SettingsState()
+enum class SettingsPage {
+    Variables,
+    Macros,
+    Highlights,
+    Appearance,
+    General,
+    Aliases,
+}
