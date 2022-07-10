@@ -6,10 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.ContentAlpha
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -19,6 +22,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -96,33 +101,40 @@ fun BoxScope.RoundTimeBar(
     roundTime: Int,
     castTime: Int,
 ) {
-    val rtColor = Color(139, 0, 0, 0x80)
-    val stColor = Color(0, 0, 139, 0x80)
-    Canvas(Modifier.matchParentSize().padding(2.dp)) {
-        for (i in castTime until min(100, roundTime)) {
+    val rtColor = Color(0xe0, 0x3c, 0x31, 189)
+    val stColor = Color(0x31, 0x3c, 0xe0, 189)
+    Canvas(Modifier.matchParentSize().padding(horizontal = 2.dp).clipToBounds()) {
+        for (i in 0 until min(100, roundTime)) {
             drawRect(
                 color = rtColor,
-                topLeft = Offset(x = i * 16f, y = 0f),
-                size = Size(width = 12f, height = size.height)
+                topLeft = Offset(x = i * 16.dp.toPx(), y = size.height - 3.dp.toPx()),
+                size = Size(width = 12.dp.toPx(), height = 3.dp.toPx())
             )
         }
-        for (i in roundTime until min(100, castTime)) {
+        for (i in 0 until min(100, castTime)) {
             drawRect(
                 color = stColor,
-                topLeft = Offset(x = i * 16f, y = 0f),
-                size = Size(width = 12f, height = size.height)
+                topLeft = Offset(x = i * 16.dp.toPx(), y = 0f),
+                size = Size(width = 12.dp.toPx(), height = 3.dp.toPx())
             )
         }
-        for (i in 0 until min(min(castTime, roundTime), 100)) {
-            drawRect(
-                color = rtColor,
-                topLeft = Offset(x = i * 16f, y = 0f),
-                size = Size(width = 12f, height = size.height / 2f)
+    }
+    Row(Modifier.align(Alignment.CenterEnd)) {
+        if (castTime > 0) {
+            Text(
+                text = castTime.toString(),
+                color = Color(0x31, 0x3c, 0xe0),
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
             )
-            drawRect(
-                color = stColor,
-                topLeft = Offset(x = i * 16f, y = size.height / 2f),
-                size = Size(width = 12f, height = size.height / 2f)
+        }
+        if (roundTime > 0) {
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = roundTime.toString(),
+                color = Color(0xe0, 0x3c, 0x31),
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
             )
         }
     }
