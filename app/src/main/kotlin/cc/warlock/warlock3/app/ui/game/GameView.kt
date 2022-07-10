@@ -19,6 +19,7 @@ import cc.warlock.warlock3.app.ui.components.IndicatorView
 import cc.warlock.warlock3.app.ui.components.VitalBars
 import cc.warlock.warlock3.app.ui.window.WindowUiState
 import cc.warlock.warlock3.app.ui.window.WindowView
+import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.window.WindowLocation
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -84,7 +85,9 @@ fun GameView(
                 onLeftChanged = viewModel::setLeftWidth,
                 onRightChanged = viewModel::setRightWidth,
                 onTopChanged = viewModel::setTopHeight,
-                onSwapWindows = viewModel::changeWindowPositions
+                onSwapWindows = viewModel::changeWindowPositions,
+                onCloseClicked = viewModel::closeWindow,
+                saveStyle = viewModel::saveWindowStyle
             )
             GameBottomBar(viewModel)
         }
@@ -106,6 +109,8 @@ fun ColumnScope.GameTextWindows(
     onLeftChanged: (Int) -> Unit,
     onRightChanged: (Int) -> Unit,
     onSwapWindows: (WindowLocation, Int, Int) -> Unit,
+    onCloseClicked: (String) -> Unit,
+    saveStyle: (String, StyleDefinition) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -129,6 +134,8 @@ fun ColumnScope.GameTextWindows(
                         onHeightChanged = onHeightChanged,
                         onWidthChanged = onWidthChanged,
                         onSwapWindows = onSwapWindows,
+                        onCloseClicked = onCloseClicked,
+                        saveStyle = saveStyle,
                     )
                 }
             }
@@ -159,6 +166,8 @@ fun ColumnScope.GameTextWindows(
                             onHeightChanged = onHeightChanged,
                             onWidthChanged = onWidthChanged,
                             onSwapWindows = onSwapWindows,
+                            onCloseClicked = onCloseClicked,
+                            saveStyle = saveStyle,
                         )
                     }
                 }
@@ -175,6 +184,10 @@ fun ColumnScope.GameTextWindows(
                 onMoveClicked = {},
                 onMoveTowardsStart = null,
                 onMoveTowardsEnd = null,
+                onCloseClicked = {},
+                saveStyle = {
+                    saveStyle(mainWindowUiState.name, it)
+                }
             )
         }
         // Right Column
@@ -198,6 +211,8 @@ fun ColumnScope.GameTextWindows(
                         onHeightChanged = onHeightChanged,
                         onWidthChanged = onWidthChanged,
                         onSwapWindows = onSwapWindows,
+                        onCloseClicked = onCloseClicked,
+                        saveStyle = saveStyle,
                     )
                 }
             }
@@ -248,6 +263,8 @@ fun WindowViews(
     onWidthChanged: (String, Int) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
     onSwapWindows: (WindowLocation, Int, Int) -> Unit,
+    onCloseClicked: (String) -> Unit,
+    saveStyle: (String, StyleDefinition) -> Unit,
 ) {
     windowStates.forEachIndexed { index, uiState ->
         val panelState = remember(uiState.name) {
@@ -270,6 +287,8 @@ fun WindowViews(
                 onMoveTowardsEnd = if (index < windowStates.lastIndex) {
                     { onSwapWindows(uiState.window!!.location!!, index, index + 1) }
                 } else null,
+                onCloseClicked = { onCloseClicked(uiState.name) },
+                saveStyle = { saveStyle(uiState.name, it) }
             )
         }
         LaunchedEffect(panelState.currentSize) {

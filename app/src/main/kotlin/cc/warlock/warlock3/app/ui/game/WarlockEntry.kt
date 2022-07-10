@@ -15,21 +15,28 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cc.warlock.warlock3.app.util.toColor
+import cc.warlock.warlock3.core.prefs.defaultStyles
 import kotlin.math.min
 
 @Composable
 fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
     val roundTime by viewModel.roundTime.collectAsState()
     val castTime by viewModel.castTime.collectAsState()
+    val presets by viewModel.presets.collectAsState(emptyMap())
 
+    val style = presets["default"] ?: defaultStyles["default"]
     WarlockEntryContent(
         modifier = modifier,
+        backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified,
+        textColor = style?.textColor?.toColor() ?: MaterialTheme.colors.onBackground,
         textField = viewModel.entryText.value,
         onValueChange = viewModel::setEntryText,
         onKeyPress = viewModel::handleKeyPress,
@@ -41,6 +48,8 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
 @Composable
 fun WarlockEntryContent(
     modifier: Modifier,
+    backgroundColor: Color,
+    textColor: Color,
     textField: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     onKeyPress: (KeyEvent) -> Boolean,
@@ -50,6 +59,7 @@ fun WarlockEntryContent(
     Box(
         modifier = modifier
             .border(width = 1.dp, color = Color.DarkGray, shape = MaterialTheme.shapes.small)
+            .background(backgroundColor)
             .padding(4.dp)
     ) {
         RoundTimeBar(roundTime, castTime)
@@ -65,7 +75,8 @@ fun WarlockEntryContent(
                     val result = onKeyPress(event)
                     result
                 },
-            textStyle = TextStyle.Default.copy(fontSize = 16.sp),
+            textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
+            cursorBrush = SolidColor(textColor),
             onValueChange = onValueChange,
             maxLines = 1,
         )
@@ -127,6 +138,8 @@ fun WarlockEntryPreview() {
         castTime = 4,
         onKeyPress = { true },
         onValueChange = {},
+        backgroundColor = Color.Unspecified,
+        textColor = Color.Black,
     )
 }
 

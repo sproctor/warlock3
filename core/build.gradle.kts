@@ -26,7 +26,7 @@ dependencies {
 sqldelight {
     database("Database") {
         packageName = "cc.warlock.warlock3.core.prefs.sql"
-        // dialect = "sqlite:3.24"
+        dialect = "sqlite:3.24"
         // verifyMigrations = true
     }
 }

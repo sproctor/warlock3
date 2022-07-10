@@ -8,10 +8,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.CursorDropdownMenu
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -20,14 +20,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.model.ViewHighlight
+import cc.warlock.warlock3.app.ui.settings.FontPickerDialog
+import cc.warlock.warlock3.app.ui.settings.FontUpdate
 import cc.warlock.warlock3.app.ui.settings.fontFamilyMap
 import cc.warlock.warlock3.app.util.*
-import cc.warlock.warlock3.core.text.StyleDefinition
-import cc.warlock.warlock3.core.text.StyledString
-import cc.warlock.warlock3.core.text.flattenStyles
+import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
 import cc.warlock.warlock3.stormfront.stream.StreamLine
 import kotlinx.coroutines.delay
@@ -44,8 +48,13 @@ fun WindowView(
     onMoveClicked: (WindowLocation) -> Unit,
     onMoveTowardsStart: (() -> Unit)?,
     onMoveTowardsEnd: (() -> Unit)?,
+    onCloseClicked: () -> Unit,
+    saveStyle: (StyleDefinition) -> Unit,
 ) {
+    val window = uiState.window
     var showContextMenu by remember { mutableStateOf(false) }
+    var showWindowSettingsDialog by remember { mutableStateOf(false) }
+
     Box(modifier.padding(2.dp)) {
         Surface(
             Modifier.onClick(
@@ -59,23 +68,53 @@ fun WindowView(
             elevation = 4.dp
         ) {
             Column {
-                Box(
+                Row(
                     Modifier.background(MaterialTheme.colors.primary).fillMaxWidth()
                         .padding(4.dp)
                 ) {
-                    Text(
-                        text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
-                        color = MaterialTheme.colors.onPrimary,
+                    Box(Modifier.weight(1f)) {
+                        Text(
+                            text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
+                            color = MaterialTheme.colors.onPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    IconButton(
+                        modifier = Modifier.size(16.dp),
+                        onClick = { showContextMenu = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colors.onPrimary,
+                        )
+                    }
+                    if (uiState.window?.location != WindowLocation.MAIN) {
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            modifier = Modifier.size(16.dp),
+                            onClick = onCloseClicked
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colors.onPrimary,
+                            )
+                        }
+                    }
+                }
+                if (window != null) {
+                    val lines by uiState.lines.collectAsState()
+                    WindowViewContent(
+                        lines = lines,
+                        window = window,
+                        components = uiState.components,
+                        highlights = uiState.highlights,
+                        styleMap = uiState.presets,
+                        onActionClicked = onActionClicked
                     )
                 }
-                val lines by uiState.lines.collectAsState()
-                WindowViewContent(
-                    lines = lines,
-                    components = uiState.components,
-                    highlights = uiState.highlights,
-                    styleMap = uiState.presets,
-                    onActionClicked = onActionClicked
-                )
             }
         }
     }
@@ -86,6 +125,13 @@ fun WindowView(
         }
     ) {
         Column {
+            Text(
+                modifier = Modifier.clickable {
+                    showWindowSettingsDialog = true
+                    showContextMenu = false
+                },
+                text = "Window Settings ..."
+            )
             uiState.window?.location?.let { location ->
                 if (location != WindowLocation.MAIN) {
                     if (location != WindowLocation.LEFT) {
@@ -137,11 +183,24 @@ fun WindowView(
             }
         }
     }
+    if (showWindowSettingsDialog && window != null) {
+        WindowSettingsDialog(
+            onCloseRequest = { showWindowSettingsDialog = false },
+            style = StyleDefinition(
+                textColor = window.textColor,
+                backgroundColor = window.backgroundColor,
+                fontFamily = window.fontFamily,
+                fontSize = window.fontSize
+            ),
+            saveStyle = saveStyle,
+        )
+    }
 }
 
 @Composable
 private fun WindowViewContent(
     lines: List<StreamLine>,
+    window: Window,
     components: Map<String, StyledString>,
     highlights: List<ViewHighlight>,
     styleMap: Map<String, StyleDefinition>,
@@ -150,10 +209,11 @@ private fun WindowViewContent(
     val scrollState = rememberLazyListState()
     var lastSerial by remember { mutableStateOf(0L) }
     val defaultStyle = styleMap["default"]
-    val backgroundColor = defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
-    val textColor = defaultStyle?.textColor?.toColor() ?: Color.Unspecified
-    val fontFamily = defaultStyle?.fontFamily?.let { fontFamilyMap[it] }
-    val fontSize = defaultStyle?.fontSize?.sp ?: defaultFontSize
+    val backgroundColor =
+        (window.backgroundColor.specifiedOrNull() ?: defaultStyle?.backgroundColor)?.toColor() ?: Color.Unspecified
+    val textColor = (window.textColor.specifiedOrNull() ?: defaultStyle?.textColor)?.toColor() ?: Color.Unspecified
+    val fontFamily = (window.fontFamily ?: defaultStyle?.fontFamily)?.let { fontFamilyMap[it] }
+    val fontSize = (window.fontSize ?: defaultStyle?.fontSize)?.sp ?: defaultFontSize
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         // TODO: reimplement this in a way that passes clicks through to clickable text
@@ -172,7 +232,7 @@ private fun WindowViewContent(
                         )
                     )
                     val annotatedString = buildAnnotatedString {
-                        lineStyle?.let {pushStyle(it.toSpanStyle()) }
+                        lineStyle?.let { pushStyle(it.toSpanStyle()) }
                         append(line.text.toAnnotatedString(variables = components, styleMap = styleMap))
                         if (lineStyle != null) pop()
                     }
@@ -228,6 +288,96 @@ private fun WindowViewContent(
             // scroll to the end, and remember it
             lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
             scrollState.scrollToItem(max(0, lines.lastIndex))
+        }
+    }
+}
+
+@Composable
+fun WindowSettingsDialog(
+    onCloseRequest: () -> Unit,
+    style: StyleDefinition,
+    saveStyle: (StyleDefinition) -> Unit,
+) {
+    var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
+    var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
+
+    if (editColor != null) {
+        ColorPickerDialog(
+            initialColor = editColor!!.first.toColor(),
+            onCloseRequest = { editColor = null },
+            onColorSelected = { color ->
+                editColor?.second?.invoke(color ?: WarlockColor.Unspecified)
+                editColor = null
+            }
+        )
+    }
+    if (editFont != null) {
+        FontPickerDialog(
+            currentStyle = editFont!!.first,
+            onCloseRequest = { editFont = null },
+            onSaveClicked = { fontUpdate ->
+                editFont?.second?.invoke(fontUpdate)
+                editFont = null
+            }
+        )
+    }
+
+    Dialog(
+        title = "Window Settings",
+        onCloseRequest = onCloseRequest
+    ) {
+        Column {
+            OutlinedButton(
+                onClick = {
+                    editColor = Pair(style.textColor) { color ->
+                        saveStyle(
+                            style.copy(textColor = color)
+                        )
+                    }
+                }
+            ) {
+                Row {
+                    Text("Content: ")
+                    Box(
+                        Modifier.size(16.dp).background(style.textColor.toColor()).border(1.dp, Color.Black)
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            OutlinedButton(
+                onClick = {
+                    editColor = Pair(style.backgroundColor) { color ->
+                        saveStyle(
+                            style.copy(backgroundColor = color)
+                        )
+                    }
+                }
+            ) {
+                Row {
+                    Text("Background: ")
+                    Box(
+                        Modifier.size(16.dp).background(style.backgroundColor.toColor())
+                            .border(1.dp, Color.Black)
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            OutlinedButton(
+                onClick = {
+                    editFont = Pair(style) { fontUpdate ->
+                        saveStyle(style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size))
+                    }
+                }
+            ) {
+                Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
+            }
+            Spacer(Modifier.width(16.dp))
+            Button(onClick = {
+                saveStyle(StyleDefinition())
+            }) {
+                Text("Revert to defaults")
+            }
+            Spacer(Modifier.width(8.dp))
         }
     }
 }

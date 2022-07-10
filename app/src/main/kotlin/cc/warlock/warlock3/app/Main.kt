@@ -67,7 +67,9 @@ fun main(args: Array<String>) {
         ),
         WindowSettingsAdapter = WindowSettings.Adapter(
             locationAdapter = LocationAdapter,
-        )
+            textColorAdapter = WarlockColorAdapter,
+            backgroundColorAdapter = WarlockColorAdapter,
+        ),
     )
     runBlocking {
         insertDefaultsIfNeeded(AppContainer.database)
@@ -86,50 +88,52 @@ fun main(args: Array<String>) {
     application {
         var showSettings by remember { mutableStateOf(false) }
 
-        Window(
-            title = "Warlock 3",
-            state = windowState,
-            icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
-            onCloseRequest = ::exitApplication,
-        ) {
-            val clipboardManager = LocalClipboardManager.current
-            val gameState = remember {
-                val initialGameState = if (credentials != null) {
-                    val client = StormfrontClient(
-                        host = credentials.host,
-                        port = credentials.port,
-                        windowRepository = AppContainer.windowRepository,
-                        characterRepository = AppContainer.characterRepository,
-                    )
-                    client.connect(credentials.key)
-                    val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
-                    GameState.ConnectedGameState(viewModel)
-                } else {
-                    GameState.Dashboard
-                }
-                mutableStateOf(initialGameState)
-            }
-            val characterId = when (val currentState = gameState.value) {
-                is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
-                else -> null
-            }
-            AppMenuBar(
-                characterId = characterId,
-                windowRepository = AppContainer.windowRepository,
-                showSettings = { showSettings = true }
-            )
-            WarlockApp(
-                state = gameState,
-                showSettings = showSettings,
-                closeSettings = { showSettings = false },
-            )
-            LaunchedEffect(windowState) {
-                snapshotFlow { windowState.size }
-                    .onEach { size ->
-                        clientSettings.putWidth(size.width.value.roundToInt())
-                        clientSettings.putHeight(size.height.value.roundToInt())
+        WarlockTheme {
+            Window(
+                title = "Warlock 3",
+                state = windowState,
+                icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
+                onCloseRequest = ::exitApplication,
+            ) {
+                val clipboardManager = LocalClipboardManager.current
+                val gameState = remember {
+                    val initialGameState = if (credentials != null) {
+                        val client = StormfrontClient(
+                            host = credentials.host,
+                            port = credentials.port,
+                            windowRepository = AppContainer.windowRepository,
+                            characterRepository = AppContainer.characterRepository,
+                        )
+                        client.connect(credentials.key)
+                        val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
+                        GameState.ConnectedGameState(viewModel)
+                    } else {
+                        GameState.Dashboard
                     }
-                    .launchIn(this)
+                    mutableStateOf(initialGameState)
+                }
+                val characterId = when (val currentState = gameState.value) {
+                    is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
+                    else -> null
+                }
+                AppMenuBar(
+                    characterId = characterId,
+                    windowRepository = AppContainer.windowRepository,
+                    showSettings = { showSettings = true }
+                )
+                WarlockApp(
+                    state = gameState,
+                    showSettings = showSettings,
+                    closeSettings = { showSettings = false },
+                )
+                LaunchedEffect(windowState) {
+                    snapshotFlow { windowState.size }
+                        .onEach { size ->
+                            clientSettings.putWidth(size.width.value.roundToInt())
+                            clientSettings.putHeight(size.height.value.roundToInt())
+                        }
+                        .launchIn(this)
+                }
             }
         }
     }

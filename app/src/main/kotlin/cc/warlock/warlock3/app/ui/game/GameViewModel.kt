@@ -109,7 +109,7 @@ class GameViewModel(
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
-    private val presets: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
+    val presets: Flow<Map<String, StyleDefinition>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             presetRepository.observePresetsForCharacter(characterId)
         } else {
@@ -501,6 +501,22 @@ class GameViewModel(
             viewModelScope.launch {
                 println("Swapping $curPos and $newPos")
                 windowRepository.switchPositions(characterId, location, curPos, newPos)
+            }
+        }
+    }
+
+    fun closeWindow(name: String) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                windowRepository.closeWindow(characterId = characterId, name = name)
+            }
+        }
+    }
+
+    fun saveWindowStyle(name: String, style: StyleDefinition) {
+        client.characterId.value?.let { characterId ->
+            viewModelScope.launch {
+                windowRepository.setStyle(characterId = characterId, name = name, style = style)
             }
         }
     }

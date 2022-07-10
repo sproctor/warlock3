@@ -18,7 +18,7 @@ import kotlin.math.min
 @Composable
 fun VitalBars(vitalBars: Map<String, ProgressBarData>) {
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)
     ) {
         val maxWidth = maxWidth
         vitalBars.forEach { (_, progressBarData) ->

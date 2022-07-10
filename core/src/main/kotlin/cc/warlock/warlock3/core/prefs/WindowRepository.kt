@@ -1,6 +1,8 @@
 package cc.warlock.warlock3.core.prefs
 
 import cc.warlock.warlock3.core.prefs.sql.WindowSettingsQueries
+import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
 import com.squareup.sqldelight.runtime.coroutines.asFlow
@@ -27,6 +29,10 @@ class WindowRepository(
                 position = 0,
                 width = null,
                 height = null,
+                textColor = WarlockColor.Unspecified,
+                backgroundColor = WarlockColor.Unspecified,
+                fontFamily = null,
+                fontSize = null,
             )
         )
     )
@@ -52,7 +58,16 @@ class WindowRepository(
 
                     _windows.value += Pair(
                         it.name,
-                        existingWindow?.copy(location = it.location, position = it.position)
+                        existingWindow?.copy(
+                            location = it.location,
+                            position = it.position,
+                            width = it.width,
+                            height = it.height,
+                            textColor = it.textColor,
+                            backgroundColor = it.backgroundColor,
+                            fontFamily = it.fontFamily,
+                            fontSize = it.fontSize,
+                        )
                             ?: Window(
                                 name = it.name,
                                 title = it.name,
@@ -61,6 +76,10 @@ class WindowRepository(
                                 position = it.position,
                                 width = it.width,
                                 height = it.height,
+                                textColor = it.textColor,
+                                backgroundColor = it.backgroundColor,
+                                fontFamily = it.fontFamily,
+                                fontSize = it.fontSize,
                             )
                     )
                 }
@@ -85,6 +104,10 @@ class WindowRepository(
                 position = null,
                 width = null,
                 height = null,
+                textColor = WarlockColor.Unspecified,
+                backgroundColor = WarlockColor.Unspecified,
+                fontFamily = null,
+                fontSize = null,
             )
         )
     }
@@ -153,6 +176,19 @@ class WindowRepository(
     suspend fun setWindowHeight(characterId: String, name: String, height: Int) {
         withContext(ioDispatcher) {
             windowSettingsQueries.updateHeight(characterId = characterId, name = name, height = height)
+        }
+    }
+
+    suspend fun setStyle(characterId: String, name: String, style: StyleDefinition) {
+        withContext(ioDispatcher) {
+            windowSettingsQueries.setStyle(
+                characterId = characterId,
+                name = name,
+                textColor = style.textColor,
+                backgroundColor = style.backgroundColor,
+                fontFamily = style.fontFamily,
+                fontSize = style.fontSize,
+            )
         }
     }
 

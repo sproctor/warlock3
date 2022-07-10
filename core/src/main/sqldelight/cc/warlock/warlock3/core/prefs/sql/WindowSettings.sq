@@ -1,3 +1,4 @@
+import cc.warlock.warlock3.core.text.WarlockColor;
 import cc.warlock.warlock3.core.window.WindowLocation;
 
 CREATE TABLE WindowSettings (
@@ -7,6 +8,10 @@ CREATE TABLE WindowSettings (
     height INTEGER AS Int,
     location TEXT AS WindowLocation,
     position INTEGER AS Int,
+    textColor INTEGER AS WarlockColor NOT NULL DEFAULT -1,
+    backgroundColor INTEGER AS WarlockColor NOT NULL DEFAULT -1,
+    fontFamily TEXT,
+    fontSize REAL,
     PRIMARY KEY (characterId, name)
 );
 
@@ -21,9 +26,37 @@ SELECT * FROM WindowSettings WHERE characterId = :characterId;
 save:
 INSERT OR REPLACE INTO WindowSettings VALUES ?;
 
+setStyle:
+INSERT INTO WindowSettings (
+    characterId,
+    name,
+    textColor,
+    backgroundColor,
+    fontFamily,
+    fontSize
+)
+VALUES (
+    :characterId,
+    :name,
+    :textColor,
+    :backgroundColor,
+    :fontFamily,
+    :fontSize
+)
+ON CONFLICT(characterId, name) DO
+UPDATE SET
+    textColor = :textColor,
+    backgroundColor = :backgroundColor,
+    fontFamily = :fontFamily,
+    fontSize = :fontSize;
+
 openWindow:
-INSERT OR REPLACE INTO WindowSettings (characterId, name, location, position)
-VALUES (:characterId, :name, :location, :position);
+INSERT INTO WindowSettings (characterId, name, location, position)
+VALUES (:characterId, :name, :location, :position)
+ON CONFLICT(characterId, name) DO
+UPDATE SET
+    location = :location,
+    position = :position;
 
 closeWindow:
 UPDATE WindowSettings
