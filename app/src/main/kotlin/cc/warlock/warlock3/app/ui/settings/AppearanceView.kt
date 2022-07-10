@@ -2,6 +2,7 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +13,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.components.ColorPickerDialog
+import cc.warlock.warlock3.app.util.defaultFontSize
 import cc.warlock.warlock3.app.util.getEntireLineStyles
 import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toColor
@@ -162,7 +164,7 @@ fun ColumnScope.PresetSettings(
     saveStyle: (name: String, StyleDefinition) -> Unit,
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
-    var editFont by remember { mutableStateOf<Pair<String?, (String?) -> Unit>?>(null) }
+    var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
 
     if (editColor != null) {
         ColorPickerDialog(
@@ -175,10 +177,10 @@ fun ColumnScope.PresetSettings(
     }
     if (editFont != null) {
         FontPickerDialog(
-            initialFont = editFont?.first,
+            currentStyle = editFont!!.first,
             onCloseRequest = { editFont = null },
-            onFontSelected = { familyName ->
-                editFont?.second?.invoke(familyName)
+            onSaveClicked = { fontUpdate ->
+                editFont?.second?.invoke(fontUpdate)
                 editFont = null
             }
         )
@@ -238,13 +240,12 @@ fun ColumnScope.PresetSettings(
                         Spacer(Modifier.width(16.dp))
                         OutlinedButton(
                             onClick = {
-                                editFont = Pair(style.fontFamily) { fontFamily ->
-                                    println("Picked: $fontFamily")
-                                    saveStyle(preset, style.copy(fontFamily = fontFamily))
+                                editFont = Pair(style) { fontUpdate ->
+                                    saveStyle(preset, style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size))
                                 }
                             }
                         ) {
-                            Text("Font: ${style.fontFamily ?: "Default"}")
+                            Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
                         }
                         Spacer(Modifier.width(8.dp))
                     }
@@ -261,24 +262,53 @@ fun ColumnScope.PresetSettings(
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun FontPickerDialog(
-    initialFont: String?,
+    currentStyle: StyleDefinition,
     onCloseRequest: () -> Unit,
-    onFontSelected: (String?) -> Unit,
+    onSaveClicked: (FontUpdate) -> Unit,
 ) {
     Dialog(
         onCloseRequest = onCloseRequest
     ) {
-        Column {
-            fontFamilyMap.forEach { (name, fontFamily) ->
-                ListItem(
-                    modifier = Modifier.clickable { onFontSelected(name) },
-                    icon = { Text(text = "aA", fontFamily = fontFamily) },
-                    text = { Text(text = name) }
-                )
+        Column(Modifier.padding(16.dp)) {
+            var size by remember(currentStyle.fontSize) {
+                mutableStateOf((currentStyle.fontSize ?: defaultFontSize.value).toString())
+            }
+            OutlinedTextField(value = size, onValueChange = { size = it })
+            var newFontFamily by remember(currentStyle.fontFamily) {
+                mutableStateOf(currentStyle.fontFamily ?: "Default")
+            }
+            Spacer(Modifier.height(16.dp))
+            Column(
+                modifier = Modifier
+                    .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(8.dp))
+                    .padding(8.dp)
+            ) {
+                fontFamilyMap.forEach { (name, fontFamily) ->
+                    ListItem(
+                        modifier = Modifier
+                            .clickable { newFontFamily = name }
+                            .then(if (name == newFontFamily) Modifier.background(MaterialTheme.colors.primary.copy(.2f)) else Modifier),
+                        icon = { Text(text = "aA", fontFamily = fontFamily) },
+                        text = { Text(text = name) }
+                    )
+                }
+            }
+            Row {
+                OutlinedButton(onClick = { onSaveClicked(FontUpdate(null, null)) }) {
+                    Text("Reset to defaults")
+                }
+                OutlinedButton(onClick = onCloseRequest) {
+                    Text("Cancel")
+                }
+                Button(onClick = { onSaveClicked(FontUpdate(size.toDoubleOrNull(), newFontFamily)) }) {
+                    Text("Save")
+                }
             }
         }
     }
 }
+
+data class FontUpdate(val size: Double?, val fontFamily: String?)
 
 val fontFamilyMap = mapOf(
     "Default" to FontFamily.Default,

@@ -8,6 +8,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import cc.warlock.warlock3.app.ui.settings.fontFamilyMap
 import cc.warlock.warlock3.core.text.*
 
@@ -30,6 +32,7 @@ fun StyleDefinition.toSpanStyle(): SpanStyle {
         textDecoration = if (underline) TextDecoration.Underline else null,
         fontWeight = if (bold) FontWeight.Bold else null,
         fontStyle = if (italic) FontStyle.Italic else null,
+        fontSize = fontSize?.sp ?: TextUnit.Unspecified
     )
 }
 
@@ -85,3 +88,5 @@ fun StyledStringLeaf.getEntireLineStyles(
             ?: emptyList())
     }
 }
+
+val defaultFontSize = 14.sp

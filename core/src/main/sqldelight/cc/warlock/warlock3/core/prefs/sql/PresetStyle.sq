@@ -10,6 +10,7 @@ CREATE TABLE PresetStyle (
     italic INTEGER AS Boolean NOT NULL,
     underline INTEGER AS Boolean NOT NULL,
     fontFamily TEXT,
+    fontSize REAL,
     PRIMARY KEY (presetId, characterId)
 );
 

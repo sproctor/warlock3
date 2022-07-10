@@ -11,6 +11,7 @@ CREATE TABLE HighlightStyle (
     italic INTEGER AS Boolean NOT NULL,
     underline INTEGER AS Boolean NOT NULL,
     fontFamily TEXT,
+    fontSize REAL,
     PRIMARY KEY (highlightId, groupNumber),
     FOREIGN KEY (highlightId) REFERENCES Highlight(id) ON DELETE CASCADE
 );

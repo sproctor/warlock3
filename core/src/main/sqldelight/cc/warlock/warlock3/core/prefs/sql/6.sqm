@@ -10,16 +10,17 @@ CREATE TABLE PresetStyle (
     italic INTEGER NOT NULL,
     underline INTEGER NOT NULL,
     fontFamily TEXT,
+    fontSize REAL,
     PRIMARY KEY (presetId, characterId)
 );
 
-INSERT INTO PresetStyle (presetId, characterId, textColor, backgroundColor, entireLine, bold, italic, underline)
-    SELECT presetId, characterId, textColor, backgroundColor, entireLine, bold, italic, underline
+INSERT INTO PresetStyle (presetId, characterId, textColor, backgroundColor, entireLine, bold, italic, underline, fontFamily)
+    SELECT presetId, characterId, textColor, backgroundColor, entireLine, bold, italic, underline, fontFamily
     FROM PresetStyleOld;
 
 DROP TABLE PresetStyleOld;
 
-ALTER TABLE HightlightStyle RENAME TO HighlightStyleOld;
+ALTER TABLE HighlightStyle RENAME TO HighlightStyleOld;
 
 CREATE TABLE HighlightStyle (
     highlightId BLOB NOT NULL,
@@ -31,12 +32,13 @@ CREATE TABLE HighlightStyle (
     italic INTEGER NOT NULL,
     underline INTEGER NOT NULL,
     fontFamily TEXT,
+    fontSize REAL,
     PRIMARY KEY (highlightId, groupNumber),
     FOREIGN KEY (highlightId) REFERENCES Highlight(id) ON DELETE CASCADE
 );
 
-INSERT INTO HighlightStyle (highlightId, groupNumber, textColor, backgroundColor, entireLine, bold, italic, underline)
-    SELECT highlightId, groupNumber, textColor, backgroundColor, entireLine, bold, italic, underline
+INSERT INTO HighlightStyle (highlightId, groupNumber, textColor, backgroundColor, entireLine, bold, italic, underline, fontFamily)
+    SELECT highlightId, groupNumber, textColor, backgroundColor, entireLine, bold, italic, underline, fontFamily
     FROM HighlightStyleOld;
 
 DROP TABLE HighlightStyleOld;

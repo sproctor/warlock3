@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.ui.settings.fontFamilyMap
 import cc.warlock.warlock3.app.util.*
@@ -152,6 +153,7 @@ private fun WindowViewContent(
     val backgroundColor = defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
     val textColor = defaultStyle?.textColor?.toColor() ?: Color.Unspecified
     val fontFamily = defaultStyle?.fontFamily?.let { fontFamilyMap[it] }
+    val fontSize = defaultStyle?.fontSize?.sp ?: defaultFontSize
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         // TODO: reimplement this in a way that passes clicks through to clickable text
@@ -183,7 +185,7 @@ private fun WindowViewContent(
                         ) {
                             ClickableText(
                                 text = highlightedLine,
-                                style = TextStyle(color = textColor, fontFamily = fontFamily),
+                                style = TextStyle(color = textColor, fontFamily = fontFamily, fontSize = fontSize),
                             ) { offset ->
                                 println("handling click: $offset")
                                 highlightedLine.getStringAnnotations(start = offset, end = offset)

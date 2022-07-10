@@ -42,7 +42,8 @@ class HighlightRepository(
                 bold: Boolean,
                 italic: Boolean,
                 underline: Boolean,
-                fontFamily: String? ->
+                fontFamily: String?,
+                fontSize: Double? ->
                 Pair(
                     groupNumber,
                     StyleDefinition(
@@ -53,6 +54,7 @@ class HighlightRepository(
                         italic = italic,
                         underline = underline,
                         fontFamily = fontFamily,
+                        fontSize = fontSize,
                     )
                 )
             }.executeAsList()
@@ -101,6 +103,7 @@ class HighlightRepository(
                             italic = style.italic,
                             underline = style.underline,
                             fontFamily = style.fontFamily,
+                            fontSize = style.fontSize,
                         )
                     )
                 }

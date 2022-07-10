@@ -26,7 +26,8 @@ class PresetRepository(
             bold: Boolean,
             italic: Boolean,
             underline: Boolean,
-            fontFamily: String? ->
+            fontFamily: String?,
+            fontSize: Double? ->
             Pair(
                 presetId, StyleDefinition(
                     textColor = textColor,
@@ -36,6 +37,7 @@ class PresetRepository(
                     italic = italic,
                     underline = underline,
                     fontFamily = fontFamily,
+                    fontSize = fontSize,
                 )
             )
         }.asFlow()
@@ -56,6 +58,7 @@ class PresetRepository(
                     italic = style.italic,
                     underline = style.underline,
                     fontFamily = style.fontFamily,
+                    fontSize = style.fontSize,
                 )
             )
         }
