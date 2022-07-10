@@ -26,7 +26,7 @@ class PresetRepository(
             bold: Boolean,
             italic: Boolean,
             underline: Boolean,
-            monospace: Boolean ->
+            fontFamily: String? ->
             Pair(
                 presetId, StyleDefinition(
                     textColor = textColor,
@@ -35,7 +35,7 @@ class PresetRepository(
                     bold = bold,
                     italic = italic,
                     underline = underline,
-                    monospace = monospace,
+                    fontFamily = null, // FIXME
                 )
             )
         }.asFlow()
@@ -55,7 +55,7 @@ class PresetRepository(
                     bold = style.bold,
                     italic = style.italic,
                     underline = style.underline,
-                    monospace = style.monospace,
+                    fontFamily = style.fontFamily,
                 )
             )
         }
@@ -85,7 +85,7 @@ val defaultStyles =
             textColor = WarlockColor("#ADD8E6"),
             underline = true
         ),
-        "mono" to StyleDefinition(monospace = true),
+        "mono" to StyleDefinition(fontFamily = "Monospace"),
         "roomName" to StyleDefinition(
             textColor = WarlockColor("#FFFFFF"),
             backgroundColor = WarlockColor("#0000FF"),

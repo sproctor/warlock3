@@ -9,7 +9,7 @@ CREATE TABLE PresetStyle (
     bold INTEGER AS Boolean NOT NULL,
     italic INTEGER AS Boolean NOT NULL,
     underline INTEGER AS Boolean NOT NULL,
-    monospace INTEGER AS Boolean NOT NULL,
+    fontFamily TEXT,
     PRIMARY KEY (presetId, characterId)
 );
 

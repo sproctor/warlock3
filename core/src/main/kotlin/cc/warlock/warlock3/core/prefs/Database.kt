@@ -5,10 +5,11 @@ import cc.warlock.warlock3.core.prefs.sql.Macro
 import com.squareup.sqldelight.sqlite.driver.JdbcSqliteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 private const val versionPragma = "user_version"
 
-fun migrateIfNeeded(driver: JdbcSqliteDriver) {
+fun migrateIfNeeded(driver: JdbcSqliteDriver, fileName: String) {
     val oldVersion =
         driver.executeQuery(null, "PRAGMA $versionPragma", 0).use { cursor ->
             if (cursor.next()) {
@@ -26,8 +27,18 @@ fun migrateIfNeeded(driver: JdbcSqliteDriver) {
         driver.execute(null, "PRAGMA $versionPragma=$newVersion", 0)
     } else if (oldVersion < newVersion) {
         println("Migrating DB from version $oldVersion to $newVersion!")
+        var i = 0
+        var backupFile: File
+        while (true) {
+            backupFile = File(fileName + if (i > 0) ".bak.$i" else ".bak")
+            i++
+            if (!backupFile.exists()) break
+        }
+        File(fileName).copyTo(backupFile)
         Database.Schema.migrate(driver, oldVersion, newVersion)
         driver.execute(null, "PRAGMA $versionPragma=$newVersion", 0)
+    } else if (oldVersion > newVersion) {
+        throw RuntimeException("preferences DB file is from a newer version of warlock")
     }
 }
 

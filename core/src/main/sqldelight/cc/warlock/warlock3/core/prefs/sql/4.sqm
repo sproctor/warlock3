@@ -1,0 +1,44 @@
+import cc.warlock.warlock3.core.text.WarlockColor;
+
+ALTER TABLE PresetStyle RENAME TO PresetStyleOld;
+
+CREATE TABLE PresetStyle (
+    presetId TEXT NOT NULL,
+    characterId TEXT NOT NULL,
+    textColor INTEGER NOT NULL,
+    backgroundColor INTEGER NOT NULL,
+    entireLine INTEGER NOT NULL,
+    bold INTEGER NOT NULL,
+    italic INTEGER NOT NULL,
+    underline INTEGER NOT NULL,
+    fontFamily TEXT,
+    PRIMARY KEY (presetId, characterId)
+);
+
+INSERT INTO PresetStyle (presetId, characterId, textColor, backgroundColor, entireLine, bold, italic, underline)
+    SELECT presetId, characterId, textColor, backgroundColor, entireLine, bold, italic, underline
+    FROM PresetStyleOld;
+
+DROP TABLE PresetStyleOld;
+
+ALTER TABLE HightlightStyle RENAME TO HighlightStyleOld;
+
+CREATE TABLE HighlightStyle (
+    highlightId BLOB NOT NULL,
+    groupNumber INTEGER NOT NULL,
+    textColor INTEGER NOT NULL,
+    backgroundColor INTEGER NOT NULL,
+    entireLine INTEGER NOT NULL,
+    bold INTEGER NOT NULL,
+    italic INTEGER NOT NULL,
+    underline INTEGER NOT NULL,
+    fontFamily TEXT,
+    PRIMARY KEY (highlightId, groupNumber),
+    FOREIGN KEY (highlightId) REFERENCES Highlight(id) ON DELETE CASCADE
+);
+
+INSERT INTO HighlightStyle (highlightId, groupNumber, textColor, backgroundColor, entireLine, bold, italic, underline)
+    SELECT highlightId, groupNumber, textColor, backgroundColor, entireLine, bold, italic, underline
+    FROM HighlightStyleOld;
+
+DROP TABLE HighlightStyleOld;

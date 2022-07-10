@@ -3,7 +3,7 @@ package cc.warlock.warlock3.core.prefs
 import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.prefs.sql.HighlightQueries
 import cc.warlock.warlock3.core.prefs.sql.HighlightStyleQueries
-import cc.warlock.warlock3.core.prefs.sql.HightlightStyle
+import cc.warlock.warlock3.core.prefs.sql.HighlightStyle
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
 import com.squareup.sqldelight.runtime.coroutines.asFlow
@@ -42,7 +42,7 @@ class HighlightRepository(
                 bold: Boolean,
                 italic: Boolean,
                 underline: Boolean,
-                monospace: Boolean ->
+                fontFamily: String? ->
                 Pair(
                     groupNumber,
                     StyleDefinition(
@@ -52,7 +52,7 @@ class HighlightRepository(
                         bold = bold,
                         italic = italic,
                         underline = underline,
-                        monospace = monospace,
+                        fontFamily = fontFamily,
                     )
                 )
             }.executeAsList()
@@ -91,7 +91,7 @@ class HighlightRepository(
                 highlight.styles.forEach { entry ->
                     val style = entry.value
                     highlightStyleQueries.save(
-                        HightlightStyle(
+                        HighlightStyle(
                             highlightId = highlight.id,
                             groupNumber = entry.key,
                             textColor = style.textColor,
@@ -100,7 +100,7 @@ class HighlightRepository(
                             bold = style.bold,
                             italic = style.italic,
                             underline = style.underline,
-                            monospace = style.monospace,
+                            fontFamily = style.fontFamily,
                         )
                     )
                 }

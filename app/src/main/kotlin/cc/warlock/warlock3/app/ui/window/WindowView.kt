@@ -8,21 +8,22 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.*
+import androidx.compose.material.CursorDropdownMenu
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerButton
-import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.app.model.ViewHighlight
-import cc.warlock.warlock3.app.util.getEntireLineStyles
-import cc.warlock.warlock3.app.util.highlight
-import cc.warlock.warlock3.app.util.toAnnotatedString
-import cc.warlock.warlock3.app.util.toColor
+import cc.warlock.warlock3.app.util.*
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.flattenStyles
@@ -160,13 +161,17 @@ private fun WindowViewContent(
                 state = scrollState
             ) {
                 items(lines) { line ->
-                    val annotatedString = line.text.toAnnotatedString(variables = components, styleMap = styleMap)
                     val lineStyle = flattenStyles(
                         line.text.getEntireLineStyles(
                             variables = components,
                             styleMap = styleMap,
                         )
                     )
+                    val annotatedString = buildAnnotatedString {
+                        lineStyle?.let {pushStyle(it.toSpanStyle()) }
+                        append(line.text.toAnnotatedString(variables = components, styleMap = styleMap))
+                        if (lineStyle != null) pop()
+                    }
                     if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
                         val highlightedLine = annotatedString.highlight(highlights)
                         Box(

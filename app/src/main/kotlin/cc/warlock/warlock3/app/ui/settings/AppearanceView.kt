@@ -2,13 +2,18 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material.LocalTextStyle
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.getEntireLineStyles
 import cc.warlock.warlock3.app.util.toAnnotatedString
@@ -17,8 +22,11 @@ import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.text.*
 import cc.warlock.warlock3.stormfront.stream.StreamLine
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun AppearanceView(
     presetRepository: PresetRepository,
@@ -143,7 +151,7 @@ fun AppearanceView(
         PresetSettings(
             styleMap = presets,
             saveStyle = { name, styleDefinition ->
-                runBlocking {
+                GlobalScope.launch {
                     presetRepository.save(currentCharacter.id, name, styleDefinition)
                 }
             },
@@ -157,6 +165,7 @@ fun ColumnScope.PresetSettings(
     saveStyle: (name: String, StyleDefinition) -> Unit,
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
+    var editFont by remember { mutableStateOf<Pair<String?, (String?) -> Unit>?>(null) }
 
     if (editColor != null) {
         ColorPickerDialog(
@@ -164,6 +173,16 @@ fun ColumnScope.PresetSettings(
             onCloseRequest = { editColor = null },
             onColorSelected = { color ->
                 editColor?.second?.invoke(color ?: WarlockColor.Unspecified)
+            }
+        )
+    }
+    if (editFont != null) {
+        FontPickerDialog(
+            initialFont = editFont?.first,
+            onCloseRequest = { editFont = null },
+            onFontSelected = { familyName ->
+                editFont?.second?.invoke(familyName)
+                editFont = null
             }
         )
     }
@@ -219,6 +238,16 @@ fun ColumnScope.PresetSettings(
                                 )
                             }
                         }
+                        Spacer(Modifier.width(16.dp))
+                        OutlinedButton(
+                            onClick = {
+                                editFont = Pair(style.fontFamily) { fontFamily ->
+                                    println("Picked: $fontFamily")
+                                }
+                            }
+                        ) {
+                            Text("Font: ")
+                        }
                         Spacer(Modifier.width(8.dp))
                     }
                 }
@@ -230,3 +259,28 @@ fun ColumnScope.PresetSettings(
         )
     }
 }
+
+@Composable
+fun FontPickerDialog(
+    initialFont: String?,
+    onCloseRequest: () -> Unit,
+    onFontSelected: (String?) -> Unit,
+) {
+    Dialog(
+        onCloseRequest = onCloseRequest
+    ) {
+        Column {
+            fontFamilyMap.forEach { (name, fontFamily) ->
+                Text(text = name, fontFamily = fontFamily)
+            }
+        }
+    }
+}
+
+val fontFamilyMap = mapOf(
+    "Default" to FontFamily.Default,
+    "Serif" to FontFamily.Serif,
+    "SansSerif" to FontFamily.SansSerif,
+    "Monospace" to FontFamily.Monospace,
+    "Cursive" to FontFamily.Cursive,
+)

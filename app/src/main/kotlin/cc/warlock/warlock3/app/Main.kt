@@ -52,11 +52,11 @@ fun main(args: Array<String>) {
     File(configDir).mkdirs()
     val dbFilename = "$configDir/prefs.db"
     val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename")
-    migrateIfNeeded(driver)
+    migrateIfNeeded(driver, dbFilename)
     AppContainer.database = Database(
         driver = driver,
         HighlightAdapter = Highlight.Adapter(idAdapter = UUIDAdapter),
-        HightlightStyleAdapter = HightlightStyle.Adapter(
+        HighlightStyleAdapter = HighlightStyle.Adapter(
             highlightIdAdapter = UUIDAdapter,
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
