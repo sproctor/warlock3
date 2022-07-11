@@ -1,34 +1,35 @@
 package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.toColor
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.prefs.defaultStyles
-import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.models.Highlight
-import cc.warlock.warlock3.core.text.StyleDefinition
-import cc.warlock.warlock3.core.text.WarlockColor
-import cc.warlock.warlock3.core.text.isUnspecified
-import cc.warlock.warlock3.core.text.specifiedOrNull
+import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.core.util.toWarlockColor
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.map
@@ -54,6 +55,8 @@ fun HighlightsView(
         .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     var defaultStyle by remember { mutableStateOf(defaultStyles["default"]) }
+    val defaultTextColor = defaultStyle?.textColor?.specifiedOrNull()?.toColor() ?: Color.Unspecified
+    val defaultBackgroundColor = defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
     LaunchedEffect(currentCharacterId) {
         if (currentCharacterId != null) {
             presetRepository.observePresetsForCharacter(currentCharacterId).map { it["default"] }
@@ -72,12 +75,12 @@ fun HighlightsView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Highlights", style = MaterialTheme.typography.h5)
         Spacer(Modifier.height(8.dp))
-        Column(Modifier.fillMaxWidth().weight(1f)) {
+        Column(
+            Modifier.fillMaxWidth().weight(1f).background(defaultBackgroundColor).clip(MaterialTheme.shapes.medium)
+        ) {
             highlights.forEach { highlight ->
-                val color = highlight.styles[0]?.textColor?.specifiedOrNull()?.toColor()
-                    ?: defaultStyle?.textColor?.specifiedOrNull()?.toColor() ?: Color.Unspecified
-                val background = highlight.styles[0]?.backgroundColor?.toColor()
-                    ?: defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
+                val color = highlight.styles[0]?.textColor?.specifiedOrNull()?.toColor() ?: defaultTextColor
+                val background = highlight.styles[0]?.backgroundColor?.toColor() ?: defaultBackgroundColor
                 ListItem(
                     text = {
                         Text(text = highlight.pattern, style = TextStyle(color = color, background = background))
@@ -87,7 +90,11 @@ fun HighlightsView(
                             IconButton(
                                 onClick = { editingHighlight = highlight }
                             ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = defaultTextColor
+                                )
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -95,7 +102,11 @@ fun HighlightsView(
                                     GlobalScope.launch { highlightRepository.deleteById(highlight.id) }
                                 }
                             ) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = defaultTextColor
+                                )
                             }
                         }
                     }
@@ -145,7 +156,6 @@ fun EditHighlightDialog(
     saveHighlight: (Highlight) -> Unit,
     onClose: () -> Unit,
 ) {
-    var editColor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
     var pattern by remember { mutableStateOf(highlight.pattern) }
     val styles = remember { mutableListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
@@ -153,6 +163,7 @@ fun EditHighlightDialog(
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
 
     Dialog(
+        state = rememberDialogState(width = 600.dp, height = 300.dp),
         onCloseRequest = onClose,
         title = "Edit Highlight"
     ) {
@@ -171,27 +182,41 @@ fun EditHighlightDialog(
             } catch (e: Throwable) {
                 null
             }?.find("")?.groups?.size ?: 1 else 1
+            if (styles.size < groupCount + 1) {
+                for (i in styles.size..groupCount) {
+                    styles.add(StyleDefinition())
+                }
+            }
             Column {
                 for (i in 0 until groupCount) {
-                    val style = styles.getOrNull(i)
+                    val style = styles[i]
                     Row {
-                        OutlinedButton({ editColor = i to true }) {
-                            Row {
-                                Text("Text: ")
-                                style?.textColor?.let {
-                                    Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
+                        var textColorValue by remember { mutableStateOf(style.textColor.toHexString() ?: "") }
+                        ColorTextField(
+                            label = "Text color",
+                            value = textColorValue,
+                            onValueChanged = {
+                                textColorValue = it
+                                it.toWarlockColor()?.let { color ->
+                                    styles[i] = style.copy(textColor = color)
                                 }
                             }
-                        }
+                        )
+
                         Spacer(Modifier.width(16.dp))
-                        OutlinedButton({ editColor = i to false }) {
-                            Row {
-                                Text("Background: ")
-                                style?.backgroundColor?.let {
-                                    Box(Modifier.size(16.dp).background(it.toColor()).border(1.dp, Color.Black))
+                        var backgroundColorValue by remember {
+                            mutableStateOf(style.backgroundColor.toHexString() ?: "")
+                        }
+                        ColorTextField(
+                            label = "Background color",
+                            value = backgroundColorValue,
+                            onValueChanged = {
+                                backgroundColorValue = it
+                                it.toWarlockColor()?.let { color ->
+                                    styles[i] = style.copy(backgroundColor = color)
                                 }
                             }
-                        }
+                        )
                     }
                 }
                 Row {
@@ -226,27 +251,56 @@ fun EditHighlightDialog(
             }
         }
     }
-    editColor?.let { (group, content) ->
-        val currentStyle = styles.getOrNull(group) ?: StyleDefinition()
-        val initialColor = (if (content) currentStyle.textColor else currentStyle.backgroundColor).let { color ->
-            if (color.isUnspecified()) Color.Black else color.toColor()
-        }
+}
+
+@Composable
+fun ColorTextField(
+    label: String,
+    value: String,
+    onValueChanged: (String) -> Unit,
+) {
+    var editColor by remember { mutableStateOf<Pair<String, (WarlockColor) -> Unit>?>(null) }
+    var invalidColor by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        label = {
+            Text(
+                if (invalidColor) {
+                    "Invalid color string"
+                } else {
+                    label
+                }
+            )
+        },
+        modifier = Modifier.width(250.dp),
+        value = value,
+        onValueChange = {
+            onValueChanged(it)
+            invalidColor = it.toWarlockColor() == null
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = {
+                    editColor = value to {
+                        onValueChanged(it.toHexString() ?: "")
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = "Color picker"
+                )
+            }
+        },
+        isError = invalidColor
+    )
+    editColor?.let { (colorText, setColor) ->
+        val color = colorText.toWarlockColor() ?: WarlockColor.Unspecified
+        val initialColor = if (color.isUnspecified()) Color.Black else color.toColor()
         ColorPickerDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },
             onColorSelected = { color ->
-                val warlockColor = color ?: WarlockColor.Unspecified
-                val newStyle =
-                    if (content)
-                        currentStyle.copy(textColor = warlockColor)
-                    else
-                        currentStyle.copy(backgroundColor = warlockColor)
-                if (styles.size < group + 1) {
-                    for (i in styles.size..group) {
-                        styles.add(StyleDefinition())
-                    }
-                }
-                styles[group] = newStyle
+                setColor(color ?: WarlockColor.Unspecified)
                 editColor = null
             }
         )

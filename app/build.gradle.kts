@@ -19,6 +19,7 @@ dependencies {
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
+    implementation(compose.materialIconsExtended)
     implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
     implementation("com.squareup.sqldelight:sqlite-driver:_")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:_")

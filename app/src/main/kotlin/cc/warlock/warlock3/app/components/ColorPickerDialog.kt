@@ -29,31 +29,18 @@ fun ColorPickerDialog(
     onColorSelected: (color: WarlockColor?) -> Unit,
 ) {
     var currentColor by remember { mutableStateOf(initialColor?.let { HsvColor.from(it) }) }
-    var currentText by remember(currentColor) {
-        mutableStateOf(currentColor?.toColor()?.toWarlockColor()?.argb?.toHexString() ?: "")
-    }
     Dialog(
         state = state,
         onCloseRequest = onCloseRequest,
     ) {
         Column(Modifier.fillMaxSize().padding(8.dp)) {
-            OutlinedTextField(
-                modifier = Modifier.padding(bottom = 8.dp),
-                value = currentText,
-                onValueChange = {
-                    currentText = it
-                    "#$it".toWarlockColor()?.toColor()?.let { color ->
-                        currentColor = HsvColor.from(color)
-                    }
-                }
-            )
             ClassicColorPicker(
                 modifier = Modifier.padding(bottom = 8.dp).weight(1f),
                 color = initialColor ?: Color.Unspecified,
             ) { color ->
                 currentColor = color
             }
-            Button(onClick = { onColorSelected("#$currentText".toWarlockColor()) }) {
+            Button(onClick = { onColorSelected(currentColor?.toColor()?.toWarlockColor()) }) {
                 Text("OK")
             }
         }

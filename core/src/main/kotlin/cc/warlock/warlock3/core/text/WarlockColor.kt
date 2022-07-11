@@ -12,8 +12,13 @@ data class WarlockColor(val argb: Long) {
     }
 }
 
-fun WarlockColor.isUnspecified(): Boolean = !isSpecified()
+fun WarlockColor.isUnspecified(): Boolean = argb == -1L
 fun WarlockColor.isSpecified(): Boolean = argb != -1L
 
 fun WarlockColor.specifiedOrNull(): WarlockColor? =
     if (isSpecified()) this else null
+
+fun WarlockColor.toHexString(): String? {
+    if (isUnspecified()) return null
+    return "#" + argb.toString(16)
+}

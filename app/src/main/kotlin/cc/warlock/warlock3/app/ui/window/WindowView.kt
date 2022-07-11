@@ -214,7 +214,10 @@ private fun WindowViewContent(
                     .padding(end = LocalScrollbarStyle.current.thickness),
                 state = scrollState
             ) {
-                items(lines) { line ->
+                items(
+                    items = lines,
+                    key = { it.serialNumber }
+                ) { line ->
                     val lineStyle = flattenStyles(
                         line.text.getEntireLineStyles(
                             variables = components,
