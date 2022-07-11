@@ -196,7 +196,6 @@ private fun WindowViewContent(
     onActionClicked: (String) -> Unit
 ) {
     val scrollState = rememberLazyListState()
-    var lastSerial by remember { mutableStateOf(0L) }
     val defaultStyle = styleMap["default"]
     val backgroundColor =
         (window.backgroundColor.specifiedOrNull() ?: defaultStyle?.backgroundColor)?.toColor()
@@ -271,6 +270,9 @@ private fun WindowViewContent(
         )
     }
 
+    var lastSerial by remember { mutableStateOf(-1L) }
+    var firstVisibleSerial by remember { mutableStateOf(-1L) }
+    var firstVisibleIndex by remember { mutableStateOf(-1) }
     LaunchedEffect(lines) {
         // Wait for the current scroll to complete
         while (scrollState.isScrollInProgress) {
@@ -279,10 +281,26 @@ private fun WindowViewContent(
         // If we're at the spot we last scrolled to
         val lastVisibleSerial =
             scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
-        if (lastVisibleSerial >= lastSerial) {
-            // scroll to the end, and remember it
-            lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
-            scrollState.scrollToItem(max(0, lines.lastIndex))
+        val oldLastSerial = lastSerial
+        // remember the last serial
+        lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
+
+        val oldFirstVisibleIndex = firstVisibleIndex
+        firstVisibleIndex = scrollState.firstVisibleItemIndex
+        val oldFirstVisibleSerial = firstVisibleSerial
+        val currentFirstVisibleSerial = lines.getOrNull(scrollState.firstVisibleItemIndex)?.serialNumber ?: -1L
+
+        if (lastVisibleSerial >= oldLastSerial) { // scroll to the end if we were at the end
+            if (lines.lastIndex > 0)
+                scrollState.scrollToItem(lines.lastIndex)
+        } else { // Maintain scroll position when items are removed from the front of the list
+            if (oldFirstVisibleIndex == firstVisibleIndex
+                && oldFirstVisibleSerial != currentFirstVisibleSerial) {
+                firstVisibleIndex = max(0, oldFirstVisibleIndex + (oldFirstVisibleSerial - currentFirstVisibleSerial).toInt())
+                scrollState.scrollToItem(firstVisibleIndex)
+            } else {
+                firstVisibleSerial = currentFirstVisibleSerial
+            }
         }
     }
 }
