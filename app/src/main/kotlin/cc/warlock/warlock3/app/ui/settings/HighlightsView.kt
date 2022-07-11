@@ -1,11 +1,7 @@
 package cc.warlock.warlock3.app.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -13,10 +9,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
@@ -25,14 +20,11 @@ import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.HighlightRepository
-import cc.warlock.warlock3.core.prefs.PresetRepository
-import cc.warlock.warlock3.core.prefs.defaultStyles
 import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.text.*
 import cc.warlock.warlock3.core.util.toWarlockColor
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.*
@@ -43,7 +35,6 @@ fun HighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     highlightRepository: HighlightRepository,
-    presetRepository: PresetRepository,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
@@ -54,17 +45,7 @@ fun HighlightsView(
     }
         .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
-    var defaultStyle by remember { mutableStateOf(defaultStyles["default"]) }
-    val defaultTextColor = defaultStyle?.textColor?.specifiedOrNull()?.toColor() ?: Color.Unspecified
-    val defaultBackgroundColor = defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
-    LaunchedEffect(currentCharacterId) {
-        if (currentCharacterId != null) {
-            presetRepository.observePresetsForCharacter(currentCharacterId).map { it["default"] }
-                .collect {
-                    defaultStyle = it
-                }
-        }
-    }
+
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
@@ -76,14 +57,12 @@ fun HighlightsView(
         Text(text = "Highlights", style = MaterialTheme.typography.h5)
         Spacer(Modifier.height(8.dp))
         Column(
-            Modifier.fillMaxWidth().weight(1f).background(defaultBackgroundColor).clip(MaterialTheme.shapes.medium)
+            Modifier.fillMaxWidth().weight(1f)
         ) {
             highlights.forEach { highlight ->
-                val color = highlight.styles[0]?.textColor?.specifiedOrNull()?.toColor() ?: defaultTextColor
-                val background = highlight.styles[0]?.backgroundColor?.toColor() ?: defaultBackgroundColor
                 ListItem(
                     text = {
-                        Text(text = highlight.pattern, style = TextStyle(color = color, background = background))
+                        Text(text = highlight.pattern)
                     },
                     trailing = {
                         Row {
@@ -93,7 +72,6 @@ fun HighlightsView(
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Edit",
-                                    tint = defaultTextColor
                                 )
                             }
                             Spacer(Modifier.width(8.dp))
@@ -105,7 +83,6 @@ fun HighlightsView(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete",
-                                    tint = defaultTextColor
                                 )
                             }
                         }
@@ -136,9 +113,8 @@ fun HighlightsView(
             highlight = highlight,
             saveHighlight = { newHighlight ->
                 runBlocking {
-                    val characterId = currentCharacter?.id
-                    if (characterId != null) {
-                        highlightRepository.save(characterId, newHighlight)
+                    if (currentCharacterId != null) {
+                        highlightRepository.save(currentCharacterId, newHighlight)
                     } else {
                         highlightRepository.saveGlobal(newHighlight)
                     }
@@ -163,18 +139,30 @@ fun EditHighlightDialog(
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
 
     Dialog(
-        state = rememberDialogState(width = 600.dp, height = 300.dp),
+        state = rememberDialogState(width = 640.dp, height = 480.dp),
         onCloseRequest = onClose,
         title = "Edit Highlight"
     ) {
         Column(
-            modifier = Modifier
-                .scrollable(
-                    state = rememberScrollState(),
-                    orientation = Orientation.Horizontal
-                )
-                .padding(24.dp)
+            modifier = Modifier.padding(24.dp)
         ) {
+            Row {
+                Row(Modifier.clickable { isRegex = false }) {
+                    RadioButton(
+                        selected = !isRegex,
+                        onClick = { isRegex = false },
+                    )
+                    Text(text = "Text highlight", modifier = Modifier.align(Alignment.CenterVertically))
+                }
+                Spacer(Modifier.width(16.dp))
+                Row(Modifier.clickable { isRegex = true }) {
+                    RadioButton(
+                        selected = isRegex,
+                        onClick = { isRegex = true }
+                    )
+                    Text(text = "Regex highlight", modifier = Modifier.align(Alignment.CenterVertically))
+                }
+            }
             TextField(value = pattern, label = { Text("Pattern") }, onValueChange = { pattern = it })
             // Add | to match empty string, then match and see how many groups there are
             val groupCount = if (isRegex) try {
@@ -187,42 +175,61 @@ fun EditHighlightDialog(
                     styles.add(StyleDefinition())
                 }
             }
-            Column {
-                for (i in 0 until groupCount) {
-                    val style = styles[i]
-                    Row {
-                        var textColorValue by remember { mutableStateOf(style.textColor.toHexString() ?: "") }
-                        ColorTextField(
-                            label = "Text color",
-                            value = textColorValue,
-                            onValueChanged = {
-                                textColorValue = it
-                                it.toWarlockColor()?.let { color ->
-                                    styles[i] = style.copy(textColor = color)
-                                }
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                val showScrollbar = groupCount > 1
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = if (showScrollbar) Modifier.verticalScroll(scrollState).padding(end = LocalScrollbarStyle.current.thickness) else Modifier
+                ) {
+                    for (i in 0 until groupCount) {
+                        val style = styles[i]
+                        Row {
+                            if (isRegex) {
+                                Text("$i:", Modifier.align(Alignment.CenterVertically))
+                                Spacer(Modifier.width(8.dp))
                             }
-                        )
+                            var textColorValue by remember { mutableStateOf(style.textColor.toHexString() ?: "") }
+                            ColorTextField(
+                                label = "Text color",
+                                value = textColorValue,
+                                onValueChanged = {
+                                    textColorValue = it
+                                    styles[i] = style.copy(textColor = it.toWarlockColor() ?: WarlockColor.Unspecified)
+                                }
+                            )
 
-                        Spacer(Modifier.width(16.dp))
-                        var backgroundColorValue by remember {
-                            mutableStateOf(style.backgroundColor.toHexString() ?: "")
-                        }
-                        ColorTextField(
-                            label = "Background color",
-                            value = backgroundColorValue,
-                            onValueChanged = {
-                                backgroundColorValue = it
-                                it.toWarlockColor()?.let { color ->
-                                    styles[i] = style.copy(backgroundColor = color)
-                                }
+                            Spacer(Modifier.width(16.dp))
+                            var backgroundColorValue by remember {
+                                mutableStateOf(style.backgroundColor.toHexString() ?: "")
                             }
-                        )
+                            ColorTextField(
+                                label = "Background color",
+                                value = backgroundColorValue,
+                                onValueChanged = {
+                                    backgroundColorValue = it
+                                    styles[i] =
+                                        style.copy(backgroundColor = it.toWarlockColor() ?: WarlockColor.Unspecified)
+                                }
+                            )
+                        }
                     }
                 }
+                if (showScrollbar) {
+                    VerticalScrollbar(
+                        adapter = rememberScrollbarAdapter(scrollState),
+                        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+                    )
+                }
+            }
+            if (!isRegex) {
                 Row {
                     Checkbox(checked = matchPartialWord, onCheckedChange = { matchPartialWord = it })
-                    Text("Match partial words")
+                    Text(text = "Match partial words", modifier = Modifier.align(Alignment.CenterVertically))
                 }
+            }
+            Row {
+                Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
+                Text(text = "Ignore case", modifier = Modifier.align(Alignment.CenterVertically))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -275,7 +282,7 @@ fun ColorTextField(
         value = value,
         onValueChange = {
             onValueChanged(it)
-            invalidColor = it.toWarlockColor() == null
+            invalidColor = it.toWarlockColor() == null && it.isNotEmpty()
         },
         trailingIcon = {
             IconButton(
@@ -294,8 +301,7 @@ fun ColorTextField(
         isError = invalidColor
     )
     editColor?.let { (colorText, setColor) ->
-        val color = colorText.toWarlockColor() ?: WarlockColor.Unspecified
-        val initialColor = if (color.isUnspecified()) Color.Black else color.toColor()
+        val initialColor = colorText.toWarlockColor()?.specifiedOrNull()?.toColor() ?: Color.Black
         ColorPickerDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },

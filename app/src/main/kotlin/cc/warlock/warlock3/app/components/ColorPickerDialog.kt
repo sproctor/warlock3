@@ -30,6 +30,7 @@ fun ColorPickerDialog(
 ) {
     var currentColor by remember { mutableStateOf(initialColor?.let { HsvColor.from(it) }) }
     Dialog(
+        title = "Choose color",
         state = state,
         onCloseRequest = onCloseRequest,
     ) {

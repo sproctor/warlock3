@@ -99,7 +99,6 @@ fun SettingsDialog(
                         currentCharacter = currentCharacter,
                         allCharacters = characters,
                         highlightRepository = highlightRepository,
-                        presetRepository = presetRepository,
                     )
                     SettingsPage.Appearance -> {
                         AppearanceView(
