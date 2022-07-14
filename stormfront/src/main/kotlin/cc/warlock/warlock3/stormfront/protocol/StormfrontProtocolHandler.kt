@@ -78,7 +78,7 @@ class StormfrontProtocolHandler {
                 }
                 is EndElement -> {
                     lineHasTags = true
-                    val topOfStack = tagStack.pop()
+                    val topOfStack = tagStack.removeFirstOrNull()
                     val tagName = content.name.lowercase()
                     if (topOfStack != tagName) {
                         println("ERROR: Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!")
