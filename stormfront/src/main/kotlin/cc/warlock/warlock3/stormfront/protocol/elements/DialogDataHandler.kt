@@ -7,7 +7,7 @@ class DialogDataHandler : BaseElementListener() {
         return StormfrontDialogDataEvent(element.attributes["id"])
     }
 
-    override fun endElement(element: EndElement): StormfrontEvent {
+    override fun endElement(): StormfrontEvent {
         return StormfrontDialogDataEvent(null)
     }
 }

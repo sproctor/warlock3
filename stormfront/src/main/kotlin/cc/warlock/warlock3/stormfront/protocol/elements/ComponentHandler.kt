@@ -7,7 +7,7 @@ class ComponentHandler : BaseElementListener() {
         return StormfrontComponentStartEvent(element.attributes["id"] ?: "")
     }
 
-    override fun endElement(element: EndElement): StormfrontEvent {
+    override fun endElement(): StormfrontEvent {
         return StormfrontComponentEndEvent
     }
 }

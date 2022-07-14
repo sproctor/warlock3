@@ -15,7 +15,7 @@ class AHandler : BaseElementListener() {
         return StormfrontStyleEvent(WarlockStyle.Link(action))
     }
 
-    override fun endElement(element: EndElement): StormfrontEvent {
+    override fun endElement(): StormfrontEvent {
         return StormfrontStyleEvent(null)
     }
 }

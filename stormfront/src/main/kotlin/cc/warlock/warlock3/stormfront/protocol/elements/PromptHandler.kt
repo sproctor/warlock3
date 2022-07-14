@@ -17,7 +17,7 @@ class PromptHandler : ElementListener {
         return StormfrontHandledEvent
     }
 
-    override fun endElement(element: EndElement): StormfrontEvent {
+    override fun endElement(): StormfrontEvent {
         return StormfrontPromptEvent(prompt.toString())
     }
 }

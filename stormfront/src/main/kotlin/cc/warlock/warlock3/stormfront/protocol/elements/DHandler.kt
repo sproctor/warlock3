@@ -14,7 +14,7 @@ class DHandler : BaseElementListener() {
         return StormfrontHandledEvent
     }
 
-    override fun endElement(element: EndElement): StormfrontEvent {
+    override fun endElement(): StormfrontEvent {
         val text = stringBuilder.toString()
         stringBuilder.clear()
         return StormfrontActionEvent(text, text)

@@ -8,7 +8,7 @@ class BHandler : BaseElementListener() {
         return StormfrontStyleEvent(WarlockStyle.Bold)
     }
 
-    override fun endElement(element: EndElement): StormfrontEvent {
+    override fun endElement(): StormfrontEvent {
         return StormfrontStyleEvent(null)
     }
 }

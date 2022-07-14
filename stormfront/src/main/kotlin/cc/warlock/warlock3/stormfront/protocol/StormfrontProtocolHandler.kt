@@ -77,13 +77,37 @@ class StormfrontProtocolHandler {
                     }
                 }
                 is EndElement -> {
+                    // This is ugly. It's inherently a bit complicated because we're working around protocol bugs.
+                    // 0: <tag></tag> - all good! - <tag></tag>
+                    // 1: </tag> - ignored
+                    // 2: <foo></bar></foo> - </bar> is ignored: <foo></foo>
+                    // 3: <foo><bar></foo> - <bar> is closed (ha!): <foo><bar></bar></foo>
+                    // 4: <foo><bar></foo></bar> - first rule 3 is applied, then rule 1
+                    // 5: <foo> - handled after the event loop: <foo></foo>
                     lineHasTags = true
-                    val topOfStack = tagStack.removeFirstOrNull()
+                    val topOfStack = tagStack.firstOrNull()
+                        ?: continue // rule #1
                     val tagName = content.name.lowercase()
                     if (topOfStack != tagName) {
                         println("ERROR: Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!")
+                        if (tagStack.contains(tagName)) {
+                            while (tagName != tagStack.first()) {
+                                // close excess tags - rule #3
+                                val unbalancedTag = tagStack.removeFirst()
+                                elementListeners[unbalancedTag]?.endElement()?.let {
+                                    events.add(it)
+                                }
+                            }
+                        } else {
+                            // ignore unmatched end tag - rule #2
+                            continue
+                        }
+                    } else {
+                        // remove the matched tag from the stack - rule #0
+                        tagStack.removeFirst()
                     }
-                    elementListeners[tagName]?.endElement(content)?.let {
+                    // rules 0, and 3
+                    elementListeners[tagName]?.endElement()?.let {
                         events.add(it)
                     }
                 }
@@ -107,6 +131,11 @@ class StormfrontProtocolHandler {
                 }
             }
         }
+        // Close remaining open tags
+        while (tagStack.isNotEmpty()) {
+            val topOfStack = tagStack.removeFirst()
+            elementListeners[topOfStack]?.endElement()
+        }
         // If a line has tags, ignore it when it has no text
         events.add(StormfrontEolEvent(ignoreWhenBlank = lineHasTags))
         return events
@@ -116,11 +145,11 @@ class StormfrontProtocolHandler {
 interface ElementListener {
     fun startElement(element: StartElement): StormfrontEvent?
     fun characters(data: String): StormfrontEvent?
-    fun endElement(element: EndElement): StormfrontEvent?
+    fun endElement(): StormfrontEvent?
 }
 
 abstract class BaseElementListener : ElementListener {
     override fun startElement(element: StartElement): StormfrontEvent? = null
     override fun characters(data: String): StormfrontEvent? = null
-    override fun endElement(element: EndElement): StormfrontEvent? = null
+    override fun endElement(): StormfrontEvent? = null
 }
