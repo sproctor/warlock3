@@ -274,8 +274,6 @@ private fun WindowViewContent(
     }
 
     var lastSerial by remember { mutableStateOf(-1L) }
-    var firstVisibleSerial by remember { mutableStateOf(-1L) }
-    var firstVisibleIndex by remember { mutableStateOf(-1) }
     LaunchedEffect(lines) {
         // Wait for the current scroll to complete
         while (scrollState.isScrollInProgress) {
@@ -288,22 +286,9 @@ private fun WindowViewContent(
         // remember the last serial
         lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
 
-        val oldFirstVisibleIndex = firstVisibleIndex
-        firstVisibleIndex = scrollState.firstVisibleItemIndex
-        val oldFirstVisibleSerial = firstVisibleSerial
-        val currentFirstVisibleSerial = lines.getOrNull(scrollState.firstVisibleItemIndex)?.serialNumber ?: -1L
-
         if (lastVisibleSerial >= oldLastSerial) { // scroll to the end if we were at the end
             if (lines.lastIndex > 0)
                 scrollState.scrollToItem(lines.lastIndex)
-        } else { // Maintain scroll position when items are removed from the front of the list
-            if (oldFirstVisibleIndex == firstVisibleIndex
-                && oldFirstVisibleSerial != currentFirstVisibleSerial) {
-                firstVisibleIndex = max(0, oldFirstVisibleIndex + (oldFirstVisibleSerial - currentFirstVisibleSerial).toInt())
-                scrollState.scrollToItem(firstVisibleIndex)
-            } else {
-                firstVisibleSerial = currentFirstVisibleSerial
-            }
         }
     }
 }
