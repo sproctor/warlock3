@@ -1,17 +1,21 @@
 package cc.warlock.warlock3.core.text
 
-data class StyledString(val substrings: List<StyledStringLeaf>) {
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
+
+data class StyledString(val substrings: ImmutableList<StyledStringLeaf>) {
     constructor(text: String, styles: List<WarlockStyle> = emptyList())
-            : this(listOf(StyledStringSubstring(text, styles)))
+            : this(persistentListOf<StyledStringSubstring>(StyledStringSubstring(text, styles)))
     constructor(text: String, style: WarlockStyle)
     : this(text, listOf(style))
 
     operator fun plus(string: StyledString): StyledString {
-        return StyledString(substrings + string.substrings)
+        return StyledString((substrings + string.substrings).toPersistentList())
     }
 
     fun applyStyle(style: WarlockStyle): StyledString {
-        return copy(substrings = substrings.map { it.applyStyle(style) })
+        return copy(substrings = substrings.map { it.applyStyle(style) }.toPersistentList())
     }
 
     override fun toString(): String {

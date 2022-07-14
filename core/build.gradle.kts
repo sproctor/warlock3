@@ -9,6 +9,7 @@ dependencies {
     implementation(Kotlin.stdlib.jdk8)
     implementation("org.jetbrains.kotlin:kotlin-reflect:_")
     implementation(KotlinX.coroutines.core)
+    api("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:_")
 
     // Parsing
     antlr("org.antlr:antlr4:_")

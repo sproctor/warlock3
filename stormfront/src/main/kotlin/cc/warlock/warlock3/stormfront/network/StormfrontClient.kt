@@ -10,6 +10,7 @@ import cc.warlock.warlock3.stormfront.stream.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 import cc.warlock.warlock3.stormfront.util.FileLogger
+import kotlinx.collections.immutable.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +23,7 @@ import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.LinkedList
 import java.util.concurrent.ConcurrentHashMap
 
 class StormfrontClient(
@@ -46,11 +48,11 @@ class StormfrontClient(
     private val _characterId = MutableStateFlow<String?>(null)
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
 
-    private val _properties = MutableStateFlow<Map<String, String>>(emptyMap())
-    override val properties: StateFlow<Map<String, String>> = _properties.asStateFlow()
+    private val _properties = MutableStateFlow<PersistentMap<String, String>>(persistentMapOf())
+    override val properties: StateFlow<ImmutableMap<String, String>> = _properties.asStateFlow()
 
-    private val _components = MutableStateFlow<Map<String, StyledString>>(emptyMap())
-    override val components: StateFlow<Map<String, StyledString>> = _components.asStateFlow()
+    private val _components = MutableStateFlow<PersistentMap<String, StyledString>>(persistentMapOf())
+    override val components: StateFlow<ImmutableMap<String, StyledString>> = _components.asStateFlow()
 
     private val mainStream = TextStream("main")
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
@@ -79,7 +81,7 @@ class StormfrontClient(
     // Output style is for echo style! Not receieved text
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
-    private var directions: List<DirectionType> = emptyList()
+    private val directions: HashSet<DirectionType> = hashSetOf()
     private var componentId: String? = null
     private var componentText: StyledString? = null
 
@@ -166,7 +168,7 @@ class StormfrontClient(
                                         } else {
                                             null
                                         }
-                                        val newProperties = properties.value
+                                        val newProperties = _properties.value
                                             .plus("character" to (event.character ?: ""))
                                             .plus("game" to (event.game ?: ""))
                                         _properties.value = newProperties
@@ -224,20 +226,20 @@ class StormfrontClient(
                                                 (event.id + "text" to event.text)
                                     }
                                     is StormfrontCompassEndEvent -> {
-                                        _eventFlow.emit(ClientCompassEvent(directions))
-                                        directions = emptyList()
+                                        _eventFlow.emit(ClientCompassEvent(directions.toPersistentHashSet()))
+                                        directions.clear()
                                     }
                                     is StormfrontDirectionEvent -> {
-                                        directions = directions + event.direction
+                                        directions += event.direction
                                     }
                                     is StormfrontPropertyEvent -> {
                                         if (event.value != null)
-                                            _properties.value = _properties.value.plus(event.key to event.value)
+                                            _properties.value += event.key to event.value
                                         else
-                                            _properties.value = _properties.value.minus(event.key)
+                                            _properties.value -= event.key
                                     }
                                     is StormfrontComponentDefinitionEvent -> {
-                                        val styles = listOfNotNull(currentStyle)
+                                        val styles = currentStyle?.let { persistentListOf(it) } ?: persistentListOf()
                                         currentStream.appendVariable(name = event.id, styles = styles)
                                     }
                                     is StormfrontComponentStartEvent -> {

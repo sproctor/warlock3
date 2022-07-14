@@ -4,6 +4,10 @@ import cc.warlock.warlock3.core.prefs.defaultMaxScrollLines
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.StyledStringVariable
 import cc.warlock.warlock3.core.text.WarlockStyle
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -18,7 +22,7 @@ class TextStream(
 
     private var maxLines = defaultMaxScrollLines
 
-    private val _lines = MutableStateFlow<List<StreamLine>>(emptyList())
+    private val _lines = MutableStateFlow<PersistentList<StreamLine>>(persistentListOf())
     val lines = _lines.asStateFlow()
 
     private val mutex = Mutex()
@@ -31,9 +35,9 @@ class TextStream(
         }
     }
 
-    suspend fun appendVariable(name: String, styles: List<WarlockStyle>) {
+    suspend fun appendVariable(name: String, styles: ImmutableList<WarlockStyle>) {
         val newString = StyledString(
-            listOf(
+            persistentListOf(
                 StyledStringVariable(
                     name = name,
                     styles = styles
@@ -61,8 +65,8 @@ class TextStream(
         mutex.withLock {
             if (isPrompting) {
                 val lastLine = _lines.value.last().copy()
-                _lines.value = _lines.value.dropLast(1) +
-                        lastLine.copy(text = lastLine.text + StyledString(" ") + commandString)
+                _lines.value = (_lines.value.dropLast(1) +
+                        lastLine.copy(text = lastLine.text + StyledString(" ") + commandString)).toPersistentList()
                 isPrompting = false
             } else {
                 appendLine(
@@ -101,17 +105,18 @@ class TextStream(
     }
 
     fun clear() {
-        _lines.value = emptyList()
+        _lines.value = persistentListOf()
     }
 
     private fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
         val curLines = _lines.value
         _lines.value =
-            if (curLines.size >= maxLines) {
+            (if (curLines.size >= maxLines) {
                 curLines.drop(1)
             } else {
                 curLines
-            } + StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++)
+            } + StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++))
+                .toPersistentList()
     }
 }
 

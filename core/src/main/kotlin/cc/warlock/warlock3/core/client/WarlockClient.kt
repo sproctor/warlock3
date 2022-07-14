@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.core.client
 
 import cc.warlock.warlock3.core.text.StyledString
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -10,9 +11,9 @@ interface WarlockClient {
 
     val eventFlow: SharedFlow<ClientEvent>
 
-    val properties: StateFlow<Map<String, String>>
+    val properties: StateFlow<ImmutableMap<String, String>>
 
-    val components: StateFlow<Map<String, StyledString>>
+    val components: StateFlow<ImmutableMap<String, StyledString>>
 
     val characterId: StateFlow<String?>
 
