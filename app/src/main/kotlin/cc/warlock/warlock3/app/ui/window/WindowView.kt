@@ -11,35 +11,32 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.components.ColorPickerDialog
-import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.ui.settings.FontPickerDialog
 import cc.warlock.warlock3.app.ui.settings.FontUpdate
 import cc.warlock.warlock3.app.ui.settings.fontFamilyMap
-import cc.warlock.warlock3.app.util.*
-import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.app.util.defaultFontSize
+import cc.warlock.warlock3.app.util.toColor
+import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.WarlockColor
+import cc.warlock.warlock3.core.text.specifiedOrNull
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
-import cc.warlock.warlock3.stormfront.stream.StreamLine
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import java.awt.Desktop
-import java.lang.Integer.max
 import java.net.URI
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun WindowView(
     modifier: Modifier,
@@ -156,17 +153,13 @@ fun WindowView(
                             }
                         }
                     }
-                    if (window != null) {
-                        val lines by uiState.lines.collectAsState()
-                        WindowViewContent(
-                            lines = lines,
-                            window = window,
-                            components = uiState.components,
-                            highlights = uiState.highlights,
-                            styleMap = uiState.presets,
-                            onActionClicked = onActionClicked
-                        )
-                    }
+                    val lines by uiState.lines.collectAsState(persistentListOf())
+                    WindowViewContent(
+                        lines = lines,
+                        window = window,
+                        defaultStyle = uiState.defaultStyle,
+                        onActionClicked = onActionClicked
+                    )
                 }
             }
         }
@@ -188,22 +181,16 @@ fun WindowView(
 
 @Composable
 private fun WindowViewContent(
-    lines: List<StreamLine>,
-    window: Window,
-    components: Map<String, StyledString>,
-    highlights: List<ViewHighlight>,
-    styleMap: Map<String, StyleDefinition>,
+    lines: ImmutableList<WindowLine>,
+    window: Window?,
+    defaultStyle: StyleDefinition,
     onActionClicked: (String) -> Unit
 ) {
     val scrollState = rememberLazyListState()
-    val defaultStyle = styleMap["default"]
-    val backgroundColor =
-        (window.backgroundColor.specifiedOrNull() ?: defaultStyle?.backgroundColor)?.toColor()
-            ?: Color.Unspecified
-    val textColor =
-        (window.textColor.specifiedOrNull() ?: defaultStyle?.textColor)?.toColor() ?: Color.Unspecified
-    val fontFamily = (window.fontFamily ?: defaultStyle?.fontFamily)?.let { fontFamilyMap[it] }
-    val fontSize = (window.fontSize ?: defaultStyle?.fontSize)?.sp ?: defaultFontSize
+    val backgroundColor = (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
+    val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
+    val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
+    val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: defaultFontSize
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         // TODO: reimplement this in a way that passes clicks through to clickable text
@@ -218,50 +205,36 @@ private fun WindowViewContent(
                     items = lines,
                     key = { it.serialNumber }
                 ) { line ->
-                    val lineStyle = flattenStyles(
-                        line.text.getEntireLineStyles(
-                            variables = components,
-                            styleMap = styleMap,
-                        )
-                    )
-                    val annotatedString = buildAnnotatedString {
-                        lineStyle?.let { pushStyle(it.toSpanStyle()) }
-                        append(line.text.toAnnotatedString(variables = components, styleMap = styleMap))
-                        if (lineStyle != null) pop()
-                    }
-                    if (!line.ignoreWhenBlank || annotatedString.isNotBlank()) {
-                        val highlightedLine = annotatedString.highlight(highlights)
-                        Box(
-                            modifier = Modifier.fillParentMaxWidth()
-                                .background(lineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            ClickableText(
-                                text = highlightedLine,
-                                style = TextStyle(
-                                    color = textColor,
-                                    fontFamily = fontFamily,
-                                    fontSize = fontSize
-                                ),
-                            ) { offset ->
-                                println("handling click: $offset")
-                                highlightedLine.getStringAnnotations(start = offset, end = offset)
-                                    .forEach { annotation ->
-                                        when (annotation.tag) {
-                                            "action" -> {
-                                                println("action clicked: ${annotation.item}")
-                                                onActionClicked(annotation.item)
-                                            }
-                                            "url" -> {
-                                                try {
-                                                    Desktop.getDesktop().browse(URI(annotation.item))
-                                                } catch (e: Exception) {
-                                                    // TODO: add some error handling here
-                                                }
+                    Box(
+                        modifier = Modifier.fillParentMaxWidth()
+                            .background(line.entireLineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        ClickableText(
+                            text = line.text,
+                            style = TextStyle(
+                                color = textColor,
+                                fontFamily = fontFamily,
+                                fontSize = fontSize
+                            ),
+                        ) { offset ->
+                            println("handling click: $offset")
+                            line.text.getStringAnnotations(start = offset, end = offset)
+                                .forEach { annotation ->
+                                    when (annotation.tag) {
+                                        "action" -> {
+                                            println("action clicked: ${annotation.item}")
+                                            onActionClicked(annotation.item)
+                                        }
+                                        "url" -> {
+                                            try {
+                                                Desktop.getDesktop().browse(URI(annotation.item))
+                                            } catch (e: Exception) {
+                                                // TODO: add some error handling here
                                             }
                                         }
                                     }
-                            }
+                                }
                         }
                     }
                 }

@@ -8,26 +8,30 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import cc.warlock.warlock3.app.components.CompassState
 import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.macros.macroCommands
 import cc.warlock.warlock3.app.model.ViewHighlight
+import cc.warlock.warlock3.app.ui.window.WindowLine
 import cc.warlock.warlock3.app.ui.window.WindowUiState
+import cc.warlock.warlock3.app.util.getEntireLineStyles
+import cc.warlock.warlock3.app.util.highlight
+import cc.warlock.warlock3.app.util.toAnnotatedString
 import cc.warlock.warlock3.app.util.toSpanStyle
 import cc.warlock.warlock3.core.client.ClientCompassEvent
 import cc.warlock.warlock3.core.client.ClientProgressBarEvent
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.client.ProgressBarData
 import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.prefs.*
-import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
-import cc.warlock.warlock3.core.text.Alias
-import cc.warlock.warlock3.core.text.StyleDefinition
-import cc.warlock.warlock3.core.text.StyledString
-import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.text.*
 import cc.warlock.warlock3.core.window.WindowLocation
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
+import cc.warlock.warlock3.stormfront.stream.StreamLine
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.antlr.v4.runtime.CharStreams
@@ -125,7 +129,7 @@ class GameViewModel(
                 list.associate { it.name to it.value }
             }
         } else {
-            flow<Map<String, String>> {  }
+            flow<Map<String, String>> { }
         }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
@@ -207,32 +211,37 @@ class GameViewModel(
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptySet())
 
-    val windowUiStates: Flow<List<WindowUiState>> = combine(
-        highlights, presets, openWindows, windows, client.components
-    ) { highlights, presets, openWindows, windows, components ->
+    //    private val cachedLines: HashMap<String, HashMap<Int, Pair<StreamLine, WindowLine>> = HashMap()
+    val windowUiStates: Flow<List<WindowUiState>> = combine(openWindows, windows, presets) { openWindows, windows, presets ->
         openWindows.map { name ->
             WindowUiState(
                 name = name,
-                lines = client.getStream(name).lines,
+                lines = combine(
+                    client.getStream(name).lines,
+                    highlights,
+                    client.components
+                ) { lines, highlights, components ->
+                    lines.mapNotNull { line ->
+                        translateLine(line, highlights, presets, components)
+                    }.toPersistentList()
+                },
                 window = windows[name],
-                components = components,
-                highlights = highlights,
-                presets = presets,
+                defaultStyle = presets["default"] ?: defaultStyles["default"]!!
             )
         }
     }
 
-    val mainWindowUiState: Flow<WindowUiState> = combine(
-        highlights, presets, windows, client.components
-    ) { highlights, presets, windows, components ->
+    val mainWindowUiState: Flow<WindowUiState> = combine(windows, presets) { windows, presets ->
         val name = "main"
         WindowUiState(
             name = name,
-            lines = client.getStream(name).lines,
+            lines = combine(client.getStream(name).lines, highlights) { lines, highlights ->
+                lines.mapNotNull { line ->
+                    translateLine(line, highlights, presets, emptyMap())
+                }.toPersistentList()
+            },
             window = windows[name],
-            components = components,
-            highlights = highlights,
-            presets = presets,
+            defaultStyle = presets["default"] ?: defaultStyles["default"]!!
         )
     }
 
@@ -538,4 +547,38 @@ class GameViewModel(
     override fun close() {
         viewModelScope.cancel()
     }
+
+    private fun translateLine(
+        line: StreamLine,
+        highlights: List<ViewHighlight>,
+        presets: Map<String, StyleDefinition>,
+        components: Map<String, StyledString>
+    ): WindowLine? {
+        val lineStyle = flattenStyles(
+            line.text.getEntireLineStyles(
+                variables = components,
+                styleMap = presets,
+            )
+        )
+        val annotatedString = buildAnnotatedString {
+            lineStyle?.let { pushStyle(it.toSpanStyle()) }
+            append(line.text.toAnnotatedString(variables = components, styleMap = presets))
+            if (lineStyle != null) pop()
+        }
+        if (line.ignoreWhenBlank && annotatedString.isBlank()) {
+            return null
+        }
+        return WindowLine(
+            text = annotatedString.highlight(highlights),
+            serialNumber = line.serialNumber,
+            entireLineStyle = lineStyle
+        )
+    }
 }
+
+// Use to track changes in important values in lines
+//data class CacheLine(
+//    val highlights: ImmutableList<Highlight>,
+//    val presets: ImmutableList<PresetStyle>,
+//    val components: ImmutableList<Pair<String, StyledString>>,
+//    )
