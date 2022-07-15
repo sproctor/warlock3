@@ -34,6 +34,7 @@ import cc.warlock.warlock3.core.window.WindowLocation
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import java.awt.Desktop
 import java.net.URI
 
@@ -153,9 +154,8 @@ fun WindowView(
                             }
                         }
                     }
-                    val lines by uiState.lines.collectAsState(persistentListOf())
                     WindowViewContent(
-                        lines = lines,
+                        linesFlow = uiState.lines,
                         window = window,
                         defaultStyle = uiState.defaultStyle,
                         onActionClicked = onActionClicked
@@ -181,18 +181,20 @@ fun WindowView(
 
 @Composable
 private fun WindowViewContent(
-    lines: ImmutableList<WindowLine>,
+    linesFlow: Flow<ImmutableList<WindowLine>>,
     window: Window?,
     defaultStyle: StyleDefinition,
     onActionClicked: (String) -> Unit
 ) {
-    val scrollState = rememberLazyListState()
+    val lines by linesFlow.collectAsState(persistentListOf())
     val backgroundColor = (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
     val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: defaultFontSize
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
+        val scrollState = rememberLazyListState()
+
         // TODO: reimplement this in a way that passes clicks through to clickable text
         SelectionContainer {
             LazyColumn(
@@ -244,24 +246,24 @@ private fun WindowViewContent(
             modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
             adapter = rememberScrollbarAdapter(scrollState),
         )
-    }
 
-    var lastSerial by remember { mutableStateOf(-1L) }
-    LaunchedEffect(lines) {
-        // Wait for the current scroll to complete
-        while (scrollState.isScrollInProgress) {
-            delay(5)
-        }
-        // If we're at the spot we last scrolled to
-        val lastVisibleSerial =
-            scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
-        val oldLastSerial = lastSerial
-        // remember the last serial
-        lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
+        var lastSerial by remember { mutableStateOf(-1L) }
+        LaunchedEffect(lines.lastOrNull()?.serialNumber) {
+            // Wait for the current scroll to complete
+            while (scrollState.isScrollInProgress) {
+                delay(5)
+            }
+            // If we're at the spot we last scrolled to
+            val lastVisibleSerial =
+                scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
+            val oldLastSerial = lastSerial
+            // remember the last serial
+            lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
 
-        if (lastVisibleSerial >= oldLastSerial) { // scroll to the end if we were at the end
-            if (lines.lastIndex > 0)
-                scrollState.scrollToItem(lines.lastIndex)
+            if (lastVisibleSerial >= oldLastSerial) { // scroll to the end if we were at the end
+                if (lines.lastIndex > 0)
+                    scrollState.scrollToItem(lines.lastIndex)
+            }
         }
     }
 }
