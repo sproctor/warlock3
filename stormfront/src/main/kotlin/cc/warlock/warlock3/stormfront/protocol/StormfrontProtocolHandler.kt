@@ -21,6 +21,7 @@ class StormfrontProtocolHandler {
         "d" to DHandler(),
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),
+        "dynastream" to DynaStreamHandler(),
         "indicator" to IndicatorHandler(),
         "inv" to InvHandler(),
         "left" to LeftHandler(),

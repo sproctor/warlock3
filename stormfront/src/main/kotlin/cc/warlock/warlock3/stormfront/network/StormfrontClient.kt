@@ -6,9 +6,9 @@ import cc.warlock.warlock3.core.prefs.CharacterRepository
 import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
-import cc.warlock.warlock3.stormfront.stream.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
+import cc.warlock.warlock3.stormfront.stream.TextStream
 import cc.warlock.warlock3.stormfront.util.FileLogger
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +23,6 @@ import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
-import java.util.LinkedList
 import java.util.concurrent.ConcurrentHashMap
 
 class StormfrontClient(
@@ -355,9 +354,11 @@ class StormfrontClient(
 
     private suspend fun doIfClosed(streamName: String, action: suspend (TextStream) -> Unit) {
         val currentWindow = windows[streamName]
-        val ifClosed = currentWindow?.ifClosed ?: "main"
-        if (ifClosed != streamName && ifClosed.isNotBlank() && !openWindows.value.contains(streamName)) {
-            action(getStream(ifClosed))
+        if (currentWindow != null) {
+            val ifClosed = currentWindow.ifClosed ?: "main"
+            if (ifClosed != streamName && ifClosed.isNotBlank() && !openWindows.value.contains(streamName)) {
+                action(getStream(ifClosed))
+            }
         }
     }
 
