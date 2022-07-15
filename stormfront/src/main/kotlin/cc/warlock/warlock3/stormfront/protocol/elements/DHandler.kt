@@ -4,8 +4,10 @@ import cc.warlock.warlock3.stormfront.protocol.*
 
 class DHandler : BaseElementListener() {
     private val stringBuilder = StringBuilder()
+    private var command: String? = null
 
     override fun startElement(element: StartElement): StormfrontEvent {
+        command = element.attributes["cmd"]
         return StormfrontHandledEvent
     }
 
@@ -17,6 +19,6 @@ class DHandler : BaseElementListener() {
     override fun endElement(): StormfrontEvent {
         val text = stringBuilder.toString()
         stringBuilder.clear()
-        return StormfrontActionEvent(text, text)
+        return StormfrontActionEvent(text, command ?: text)
     }
 }
