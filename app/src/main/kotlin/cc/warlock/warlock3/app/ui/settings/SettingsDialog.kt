@@ -23,6 +23,7 @@ fun SettingsDialog(
     highlightRepository: HighlightRepository,
     characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
+    scriptDirRepository: ScriptDirRepository,
     closeDialog: () -> Unit,
 ) {
     Window(
@@ -81,6 +82,7 @@ fun SettingsDialog(
                             characterSettingsRepository = characterSettingsRepository,
                             initialCharacter = currentCharacter,
                             characters = characters,
+                            scriptDirRepository = scriptDirRepository,
                         )
                     }
                     SettingsPage.Variables -> {

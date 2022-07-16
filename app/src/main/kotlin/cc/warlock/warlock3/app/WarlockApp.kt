@@ -93,6 +93,7 @@ fun WarlockApp(
             highlightRepository = AppContainer.highlightRepository,
             characterSettingsRepository = AppContainer.characterSettingsRepository,
             aliasRepository = AppContainer.aliasRepository,
+            scriptDirRepository = AppContainer.scriptDirRepository,
         )
     }
 }
