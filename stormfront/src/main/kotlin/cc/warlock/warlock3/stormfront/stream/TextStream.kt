@@ -1,9 +1,9 @@
 package cc.warlock.warlock3.stormfront.stream
 
-import cc.warlock.warlock3.core.prefs.defaultMaxScrollLines
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.StyledStringVariable
 import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -15,12 +15,14 @@ import kotlinx.coroutines.sync.withLock
 
 class TextStream(
     val name: String,
+    val client: StormfrontClient
 ) {
     // Line state variables
     private var buffer: StyledString? = null
     private var isPrompting = false
 
-    private var maxLines = defaultMaxScrollLines
+    private val maxLines: Int
+        get() = client.scrollback.value
 
     private val _lines = MutableStateFlow<PersistentList<StreamLine>>(persistentListOf())
     val lines = _lines.asStateFlow()

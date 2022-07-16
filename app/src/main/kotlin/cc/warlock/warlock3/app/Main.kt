@@ -106,6 +106,7 @@ fun main(args: Array<String>) {
                             port = credentials.port,
                             windowRepository = AppContainer.windowRepository,
                             characterRepository = AppContainer.characterRepository,
+                            characterSettingsRepository = AppContainer.characterSettingsRepository,
                         )
                         client.connect(credentials.key)
                         val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)

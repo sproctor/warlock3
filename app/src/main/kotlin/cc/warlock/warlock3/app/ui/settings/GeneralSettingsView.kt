@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.CharacterSettingsRepository
 import cc.warlock.warlock3.core.prefs.defaultMaxScrollLines
+import cc.warlock.warlock3.core.prefs.scrollbackKey
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -50,14 +51,14 @@ fun GeneralSettingsView(
                     .fillMaxWidth(),
             ) {
                 val maxLines by characterSettingsRepository.observe(
-                    characterId = currentCharacter.id, key = "maxLines"
+                    characterId = currentCharacter.id, key = scrollbackKey
                 ).collectAsState(null)
                 TextField(
                     value = maxLines ?: defaultMaxScrollLines.toString(),
                     onValueChange = {
                         GlobalScope.launch {
                             characterSettingsRepository.save(
-                                characterId = currentCharacter.id, key = "maxLines", value = it
+                                characterId = currentCharacter.id, key = scrollbackKey, value = it
                             )
                         }
                     },

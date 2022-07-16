@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 const val defaultMaxScrollLines = 5_000
+const val scrollbackKey = "scrollback"
 
 class CharacterSettingsRepository(
     private val characterSettingsQueries: CharacterSettingQueries,

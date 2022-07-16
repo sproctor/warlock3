@@ -68,6 +68,7 @@ class DashboardViewModel(
                                         port = credentials.port,
                                         windowRepository = AppContainer.windowRepository,
                                         characterRepository = AppContainer.characterRepository,
+                                        characterSettingsRepository = AppContainer.characterSettingsRepository,
                                     )
                                     sfClient.connect(credentials.key)
                                     val gameViewModel = AppContainer.gameViewModelFactory(sfClient, clipboardManager)

@@ -103,6 +103,7 @@ class SgeViewModel(
                                 port = credentials.port,
                                 windowRepository = AppContainer.windowRepository,
                                 characterRepository = AppContainer.characterRepository,
+                                characterSettingsRepository = AppContainer.characterSettingsRepository,
                             )
                             client.connect(credentials.key)
                             val gameViewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
