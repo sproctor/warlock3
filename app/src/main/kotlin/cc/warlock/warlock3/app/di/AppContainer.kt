@@ -26,11 +26,12 @@ object AppContainer {
     val presetRepository by lazy { PresetRepository(database.presetStyleQueries, Dispatchers.IO) }
     val clientSettings by lazy { ClientSettingRepository(database.clientSettingQueries, Dispatchers.IO) }
     val windowRepository by lazy { WindowRepository(database.windowSettingsQueries, Dispatchers.IO) }
+    val scriptDirRepository by lazy { ScriptDirRepository(database.scriptDirQueries, Dispatchers.IO) }
     val scriptEngineRegistry by lazy {
         WarlockScriptEngineRegistry(
             highlightRepository = highlightRepository,
             variableRepository = variableRepository,
-            clientSettingRepository = clientSettings,
+            scriptDirRepository = scriptDirRepository,
         )
     }
     val characterSettingsRepository by lazy {

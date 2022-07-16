@@ -6,7 +6,6 @@ import com.squareup.sqldelight.runtime.coroutines.asFlow
 import com.squareup.sqldelight.runtime.coroutines.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class ScriptDirRepository(
@@ -23,18 +22,18 @@ class ScriptDirRepository(
         return observeScriptDirs("global")
     }
 
-    fun observeMappedScriptDirs(characterId: String): Flow<List<String>> {
-        return scriptDirQueries.getByCharacterWithGlobal(characterId)
-            .asFlow()
-            .mapToList(ioDispatcher)
-            .map { list ->
-                (listOf("%home%/.warlock3/") + list).map {
+    suspend fun getMappedScriptDirs(characterId: String): List<String> {
+        return withContext(ioDispatcher) {
+            (listOf("%config%/scripts/") +
+                    scriptDirQueries.getByCharacterWithGlobal(characterId)
+                        .executeAsList()
+                    ).map {
                     val home = System.getProperty("user.home")
                     val config = "$home/.warlock3"
                     it.replace(oldValue = "%home%", newValue = home, ignoreCase = true)
                         .replace(oldValue = "%config%", newValue = config, ignoreCase = true)
                 }
-            }
+        }
     }
 
     suspend fun save(characterId: String, path: String) {

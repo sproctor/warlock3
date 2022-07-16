@@ -21,16 +21,6 @@ class ClientSettingRepository(
         return getInt("height")
     }
 
-    fun observeScriptDirs(): Flow<List<String>> {
-        return observe("scriptDirs").map {
-            it?.split(",") ?: emptyList()
-        }
-    }
-
-    suspend fun getScriptDirs(): List<String> {
-        return get("scriptDirs")?.split(",") ?: emptyList()
-    }
-
     suspend fun get(key: String): String? {
         return withContext(ioDispatcher) {
             clientSettingQueries.getByKey(key).executeAsOneOrNull()?.value_
@@ -54,10 +44,6 @@ class ClientSettingRepository(
 
     suspend fun putHeight(value: Int) {
         putInt("height", value)
-    }
-
-    suspend fun putScriptDirs(value: List<String>) {
-        put("scriptDirs", value.joinToString(","))
     }
 
     suspend fun putInt(key: String, value: Int) {

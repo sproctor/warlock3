@@ -1,8 +1,8 @@
 package cc.warlock.warlock3.core.script
 
 import cc.warlock.warlock3.core.client.WarlockClient
-import cc.warlock.warlock3.core.prefs.ClientSettingRepository
 import cc.warlock.warlock3.core.prefs.HighlightRepository
+import cc.warlock.warlock3.core.prefs.ScriptDirRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.js.JsEngine
 import cc.warlock.warlock3.core.script.wsl.WslEngine
@@ -16,7 +16,7 @@ import java.io.File
 class WarlockScriptEngineRegistry(
     highlightRepository: HighlightRepository,
     variableRepository: VariableRepository,
-    private val clientSettingRepository: ClientSettingRepository,
+    private val scriptDirRepository: ScriptDirRepository,
 ) {
 
     private val _runningScripts = MutableStateFlow<List<ScriptInstance>>(emptyList())
@@ -30,7 +30,7 @@ class WarlockScriptEngineRegistry(
     suspend fun startScript(client: WarlockClient, command: String) {
         val (name, argString) = command.splitFirstWord()
 
-        val instance = findInstance(name)
+        val instance = findInstance(name, client.characterId.value ?: "")
         if (instance != null) {
             client.print(StyledString("Starting script: $name", style = WarlockStyle.Echo))
             _runningScripts.value += instance
@@ -45,11 +45,11 @@ class WarlockScriptEngineRegistry(
         }
     }
 
-    private suspend fun findInstance(name: String): ScriptInstance? {
+    private suspend fun findInstance(name: String, characterId: String): ScriptInstance? {
         for (engine in engines) {
             for (extension in engine.extensions) {
-                for (scriptDir in (clientSettingRepository.getScriptDirs() + "\$HOME/.warlock3/scripts")) {
-                    val file = File(scriptDir.replace("\$HOME", System.getProperty("user.home")) + "/$name.$extension")
+                for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
+                    val file = File("$scriptDir/$name.$extension")
                     if (file.exists()) {
                         return engine.createInstance(name, file)
                     }
