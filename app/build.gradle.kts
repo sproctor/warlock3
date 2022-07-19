@@ -75,7 +75,12 @@ compose.desktop {
                 iconFile.set(project.file("src/main/resources/images/icon.png"))
             }
             macOS {
+                bundleID = "cc.warlock.warlock3"
                 iconFile.set(project.file("src/main/resources/images/icon.icns"))
+                signing {
+                    sign.set(true)
+                    identity.set("Sean Proctor")
+                }
             }
         }
     }
