@@ -81,6 +81,10 @@ compose.desktop {
                     sign.set(true)
                     identity.set("Sean Proctor")
                 }
+                notarization {
+                    appleID.set("sproctor@gmail.com")
+                    password.set("@keychain:NOTARY_PWD")
+                }
             }
         }
     }
