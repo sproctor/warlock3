@@ -66,13 +66,17 @@ jobs:
       - name: Make package
         run: ./gradlew package
 
+      - name: Notarize package
+        if: runner.os == 'macOS'
+        run: ./gradlew notarizeDmg
+
       - name: Archive artifacts
         uses: actions/upload-artifact@v2
         with:
           name: distributable-${{ matrix.os }}
           if-no-files-found: ignore
           path: |
-            app/build/**/*.dmg
+            app/build/compose/notarization/**/*.dmg
             app/build/**/*.msi
             app/build/**/*.deb
 
@@ -81,7 +85,7 @@ jobs:
         with:
           prerelease: ${{ contains(github.event.inputs.version, '-rc') || contains(github.event.inputs.version, '-b') || contains(github.event.inputs.version, '-a') }}
           files: |
-            app/build/**/*.dmg
+            app/build/compose/notarization/**/*.dmg
             app/build/**/*.msi
             app/build/**/*.deb
         env:
