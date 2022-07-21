@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.*
 import org.mozilla.javascript.*
 import java.io.File
 import java.io.InputStreamReader
+import java.util.*
 import kotlin.concurrent.thread
 import kotlin.reflect.jvm.javaMethod
 
@@ -19,6 +20,8 @@ class JsInstance(
     private val file: File,
     private val variableRepository: VariableRepository,
 ) : ScriptInstance {
+
+    override val id: UUID = UUID.randomUUID()
 
     private var _isRunning = false
     override val isRunning: Boolean

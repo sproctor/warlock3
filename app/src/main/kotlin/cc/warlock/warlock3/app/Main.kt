@@ -107,6 +107,7 @@ fun main(args: Array<String>) {
                             windowRepository = AppContainer.windowRepository,
                             characterRepository = AppContainer.characterRepository,
                             characterSettingsRepository = AppContainer.characterSettingsRepository,
+                            scriptEngineRegistry = AppContainer.scriptEngineRegistry,
                         )
                         client.connect(credentials.key)
                         val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)

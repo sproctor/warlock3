@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.util.*
 
 class WslScriptInstance(
     override val name: String,
@@ -21,6 +22,8 @@ class WslScriptInstance(
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
 ) : ScriptInstance {
+
+    override val id: UUID = UUID.randomUUID()
 
     private var _isRunning = false
     override val isRunning: Boolean

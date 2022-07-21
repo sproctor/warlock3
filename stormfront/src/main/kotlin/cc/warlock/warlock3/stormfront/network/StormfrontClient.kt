@@ -3,8 +3,11 @@ package cc.warlock.warlock3.stormfront.network
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
+import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.util.toUuidOrNull
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 import cc.warlock.warlock3.stormfront.stream.TextStream
@@ -24,12 +27,16 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 
+const val scriptCommandPrefix = '.'
+const val clientCommandPrefix = '/'
+
 class StormfrontClient(
     private val host: String,
     private val port: Int,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
     private val characterSettingsRepository: CharacterSettingsRepository,
+    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) : WarlockClient {
 
     private var logger: FileLogger
@@ -115,8 +122,8 @@ class StormfrontClient(
                 _connected.value = false
                 return@launch
             }
-            sendCommand(key, echo = false)
-            sendCommand("/FE:STORMFRONT /XML", echo = false)
+            doSendCommand(key)
+            doSendCommand("/FE:STORMFRONT /XML")
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), "windows-1252"))
             val protocolHandler = StormfrontProtocolHandler()
@@ -214,7 +221,7 @@ class StormfrontClient(
                                         // Not 100% where this belongs. connections hang until and empty command is sent
                                         // This must be in response to either mode, playerId, or settingsInfo, so
                                         // we put it here until someone discovers something else
-                                        sendCommand("")
+                                        doSendCommand("")
                                     }
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
                                     is StormfrontProgressBarEvent -> {
@@ -373,13 +380,58 @@ class StormfrontClient(
     }
 
     override suspend fun sendCommand(line: String, echo: Boolean) {
-        send("<c>$line\n")
-        if (echo) {
-            mainStream.appendCommand(line)
-            scope.launch {
-                _eventFlow.emit(ClientTextEvent(line))
+        if (line.startsWith(scriptCommandPrefix)) {
+            val scriptCommand = line.drop(1)
+            scriptEngineRegistry.startScript(this, scriptCommand)
+            print(StyledString(line, WarlockStyle.Command))
+        } else if (line.startsWith(clientCommandPrefix)) {
+            print(StyledString(line, WarlockStyle.Command))
+            val clientCommand = line.drop(1)
+            val (command, args) = clientCommand.splitFirstWord()
+            when (command) {
+                "kill" -> {
+                    args?.split(' ')?.forEach { name ->
+                        scriptEngineRegistry.findScriptInstance(name)?.stop()
+                    }
+                }
+                "pause" -> {
+                    args?.split(' ')?.forEach { name ->
+                        scriptEngineRegistry.findScriptInstance(name)?.suspend()
+                    }
+                }
+                "resume" -> {
+                    args?.split(' ')?.forEach { name ->
+                        scriptEngineRegistry.findScriptInstance(name)?.resume()
+                    }
+                }
+                "list" -> {
+                    val scripts = scriptEngineRegistry.runningScripts.value
+                    if (scripts.isEmpty()) {
+                        print(StyledString("No scripts are running", WarlockStyle.Echo))
+                    } else {
+                        print(StyledString("Running scripts:", WarlockStyle.Echo))
+                        scripts.forEach {
+                            print(StyledString("${it.name} - ${it.id}", WarlockStyle.Echo))
+                        }
+                    }
+                }
+                else -> {
+                    print(StyledString("Invalid command.", WarlockStyle.Error))
+                }
+            }
+        } else {
+            doSendCommand(line)
+            if (echo) {
+                mainStream.appendCommand(line)
+                scope.launch {
+                    _eventFlow.emit(ClientTextEvent(line))
+                }
             }
         }
+    }
+
+    private fun doSendCommand(line: String) {
+        send("<c>$line\n")
     }
 
     override suspend fun disconnect() {

@@ -39,8 +39,6 @@ import org.antlr.v4.runtime.Token
 import java.io.File
 import kotlin.math.max
 
-const val scriptCommandPrefix = '.'
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
     private val windowRepository: WindowRepository,
@@ -280,13 +278,7 @@ class GameViewModel(
 
     fun sendCommand(command: String) {
         viewModelScope.launch {
-            if (command.startsWith(scriptCommandPrefix)) {
-                val scriptCommand = command.drop(1)
-                scriptEngineRegistry.startScript(client, scriptCommand)
-                client.print(StyledString(command, WarlockStyle.Command))
-            } else {
-                client.sendCommand(command)
-            }
+            client.sendCommand(command)
         }
     }
 

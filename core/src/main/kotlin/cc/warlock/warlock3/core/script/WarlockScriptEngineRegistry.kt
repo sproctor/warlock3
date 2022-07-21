@@ -9,6 +9,7 @@ import cc.warlock.warlock3.core.script.wsl.WslEngine
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.util.toUuidOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -81,6 +82,16 @@ class WarlockScriptEngineRegistry(
                 if (extension == validExtension) {
                     return engine
                 }
+            }
+        }
+        return null
+    }
+
+    fun findScriptInstance(description: String): ScriptInstance? {
+        val uuid = description.toUuidOrNull()
+        runningScripts.value.forEach { instance ->
+            if (instance.name.startsWith(description, true) || instance.id == uuid) {
+                return instance
             }
         }
         return null
