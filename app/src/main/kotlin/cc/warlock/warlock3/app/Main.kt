@@ -123,8 +123,15 @@ fun main(args: Array<String>) {
                 AppMenuBar(
                     characterId = characterId,
                     windowRepository = AppContainer.windowRepository,
+                    scriptEngineRegistry = AppContainer.scriptEngineRegistry,
                     showSettings = { showSettings = true },
                     disconnect = null,
+                    runScript = {
+                        val currentGameState = gameState.value
+                        if (currentGameState is GameState.ConnectedGameState) {
+                            currentGameState.viewModel.runScript(it)
+                        }
+                    }
                 )
                 WarlockApp(
                     state = gameState,

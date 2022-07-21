@@ -32,16 +32,32 @@ class WarlockScriptEngineRegistry(
 
         val instance = findInstance(name, client.characterId.value ?: "")
         if (instance != null) {
-            client.print(StyledString("Starting script: $name", style = WarlockStyle.Echo))
-            _runningScripts.value += instance
-            instance.start(client = client, argumentString = argString ?: "") {
-                _runningScripts.value -= instance
-                runBlocking {
-                    client.print(StyledString("Script has finished: $name", style = WarlockStyle.Echo))
-                }
-            }
+            startInstance(client, instance, argString)
         } else {
             client.print(StyledString("Could not find a script with that name", style = WarlockStyle.Error))
+        }
+    }
+
+    suspend fun startScript(client: WarlockClient, file: File) {
+        if (file.exists()) {
+            val engine = getEngineForExtension(file.extension)
+            if (engine == null) {
+                client.print(StyledString("That extension is not supported"))
+            } else {
+                val instance = engine.createInstance(file.name, file)
+                startInstance(client, instance, null)
+            }
+        }
+    }
+
+    private suspend fun startInstance(client: WarlockClient, instance: ScriptInstance, argString: String?) {
+        client.print(StyledString("Starting script: ${instance.name}", style = WarlockStyle.Echo))
+        _runningScripts.value += instance
+        instance.start(client = client, argumentString = argString ?: "") {
+            _runningScripts.value -= instance
+            runBlocking {
+                client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
+            }
         }
     }
 
@@ -53,6 +69,17 @@ class WarlockScriptEngineRegistry(
                     if (file.exists()) {
                         return engine.createInstance(name, file)
                     }
+                }
+            }
+        }
+        return null
+    }
+
+    fun getEngineForExtension(extension: String): WarlockScriptEngine? {
+        for (engine in engines) {
+            for (validExtension in engine.extensions) {
+                if (extension == validExtension) {
+                    return engine
                 }
             }
         }

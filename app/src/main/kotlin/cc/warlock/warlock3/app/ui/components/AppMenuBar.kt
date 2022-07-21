@@ -1,40 +1,58 @@
 package cc.warlock.warlock3.app.ui.components
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.Divider
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.toComposeImageBitmap
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
-import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.components.AboutDialog
 import cc.warlock.warlock3.core.prefs.WindowRepository
-import cc.warlock.warlock3.core.window.WindowLocation
+import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.io.File
 
-@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterialApi::class)
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun FrameWindowScope.AppMenuBar(
     characterId: String?,
     windowRepository: WindowRepository,
+    scriptEngineRegistry: WarlockScriptEngineRegistry,
+    runScript: (File) -> Unit,
     showSettings: () -> Unit,
     disconnect: (() -> Unit)?
 ) {
     val windows by windowRepository.windows.collectAsState()
     val openWindows by windowRepository.observeOpenWindows(characterId ?: "").collectAsState(emptyList())
     var showAbout by remember { mutableStateOf(false) }
-
+    var scriptDirectory by remember { mutableStateOf<String?>(null) }
     MenuBar {
         Menu("File") {
             Item("Settings", onClick = showSettings)
+            if (characterId != null) {
+                Item(
+                    text = "Run script...",
+                    onClick = {
+                        val dialog = java.awt.FileDialog(window, "Run script")
+                        if (scriptDirectory != null) {
+                            dialog.directory = scriptDirectory
+                        }
+                        dialog.setFilenameFilter { _, name ->
+                            val extension = File(name).extension
+                            scriptEngineRegistry.getEngineForExtension(extension) != null
+                        }
+                        dialog.isVisible = true
+                        val fileName = dialog.file
+                        if (fileName != null) {
+                            scriptDirectory = dialog.directory
+                            val file = File(dialog.directory, fileName)
+                            runScript(file)
+                        }
+                    }
+                )
+            }
             if (disconnect != null) {
                 Divider(Modifier.fillMaxWidth())
                 Item("Disconnect", onClick = disconnect)

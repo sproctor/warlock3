@@ -36,6 +36,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.Token
+import java.io.File
 import kotlin.math.max
 
 const val scriptCommandPrefix = '.'
@@ -214,24 +215,25 @@ class GameViewModel(
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptySet())
 
     //    private val cachedLines: HashMap<String, HashMap<Int, Pair<StreamLine, WindowLine>> = HashMap()
-    val windowUiStates: Flow<List<WindowUiState>> = combine(openWindows, windows, presets) { openWindows, windows, presets ->
-        openWindows.map { name ->
-            WindowUiState(
-                name = name,
-                lines = combine(
-                    client.getStream(name).lines,
-                    highlights,
-                    client.components
-                ) { lines, highlights, components ->
-                    lines.mapNotNull { line ->
-                        translateLine(line, highlights, presets, components)
-                    }.toPersistentList()
-                },
-                window = windows[name],
-                defaultStyle = presets["default"] ?: defaultStyles["default"]!!
-            )
+    val windowUiStates: Flow<List<WindowUiState>> =
+        combine(openWindows, windows, presets) { openWindows, windows, presets ->
+            openWindows.map { name ->
+                WindowUiState(
+                    name = name,
+                    lines = combine(
+                        client.getStream(name).lines,
+                        highlights,
+                        client.components
+                    ) { lines, highlights, components ->
+                        lines.mapNotNull { line ->
+                            translateLine(line, highlights, presets, components)
+                        }.toPersistentList()
+                    },
+                    window = windows[name],
+                    defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+                )
+            }
         }
-    }
 
     val mainWindowUiState: Flow<WindowUiState> = combine(windows, presets) { windows, presets ->
         val name = "main"
@@ -323,6 +325,12 @@ class GameViewModel(
         val command = sendHistory.getOrNull(index)
         if (command != null) {
             client.sendCommand(command)
+        }
+    }
+
+    fun runScript(file: File) {
+        viewModelScope.launch {
+            scriptEngineRegistry.startScript(client, file)
         }
     }
 
