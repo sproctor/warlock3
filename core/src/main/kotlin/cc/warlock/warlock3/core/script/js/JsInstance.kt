@@ -3,6 +3,7 @@ package cc.warlock.warlock3.core.script.js
 import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.ScriptInstance
+import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
@@ -23,13 +24,8 @@ class JsInstance(
 
     override val id: UUID = UUID.randomUUID()
 
-    private var _isRunning = false
-    override val isRunning: Boolean
-        get() = _isRunning
-
-    private var _isSuspended = false
-    override val isSuspended: Boolean
-        get() = _isSuspended
+    override var status: ScriptStatus = ScriptStatus.NotStarted
+        private set
 
     private lateinit var thread: Thread
 
@@ -43,7 +39,7 @@ class JsInstance(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
-        _isRunning = true
+        status = ScriptStatus.Running
         this.client = client
         thread = thread {
             context = Context.enter()
@@ -144,7 +140,7 @@ class JsInstance(
                     client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
                 }
             } finally {
-                _isRunning = false
+                status = ScriptStatus.Stopped
                 Context.exit()
                 onStop()
             }
@@ -152,31 +148,31 @@ class JsInstance(
     }
 
     override fun stop() {
-        _isRunning = false
+        status = ScriptStatus.Stopped
         thread.interrupt()
         scope.cancel()
     }
 
     override fun suspend() {
-        _isSuspended = true
+        status = ScriptStatus.Suspended
         thread.interrupt()
     }
 
     override fun resume() {
-        _isSuspended = false
+        status = ScriptStatus.Running
         thread.interrupt()
     }
 
     fun checkStatus() {
         // Check suspend first, so if we're stopped while suspended, we immediately throw StopException
-        while (isSuspended && isRunning) {
+        while (status == ScriptStatus.Suspended) {
             try {
                 Thread.sleep(1000)
             } catch (e: InterruptedException) {
                 // don't care
             }
         }
-        if (!isRunning) {
+        if (status == ScriptStatus.Stopped) {
             throw StopException()
         }
     }

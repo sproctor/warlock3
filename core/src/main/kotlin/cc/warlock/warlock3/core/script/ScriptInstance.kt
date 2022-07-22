@@ -6,8 +6,7 @@ import java.util.UUID
 interface ScriptInstance {
     val id: UUID
     val name: String
-    val isRunning: Boolean
-    val isSuspended: Boolean
+    val status: ScriptStatus
 
     fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit)
 
@@ -17,4 +16,20 @@ interface ScriptInstance {
 
     fun resume()
 
+}
+
+enum class ScriptStatus {
+    NotStarted,
+    Running,
+    Suspended,
+    Stopped;
+
+    override fun toString(): String {
+        return when (this) {
+            NotStarted -> "not started"
+            Running -> "running"
+            Suspended -> "paused"
+            Stopped -> "stopped"
+        }
+    }
 }

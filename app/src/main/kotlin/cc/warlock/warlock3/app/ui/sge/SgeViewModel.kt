@@ -14,6 +14,7 @@ import cc.warlock.warlock3.stormfront.network.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import java.net.UnknownHostException
@@ -42,7 +43,7 @@ class SgeViewModel(
     private var characterName: String? = null
     private var gameCode: String? = null
 
-    val lastAccount = flow<Account?> {
+    val lastAccount: Flow<Account?> = flow {
         emit(
             clientSettingRepository.get("lastUsername")?.let { username ->
                 accountRepository.getByUsername(username)

@@ -4,6 +4,8 @@ import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.ScriptInstance
+import cc.warlock.warlock3.core.script.ScriptStatus
+import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.parseArguments
@@ -21,17 +23,13 @@ class WslScriptInstance(
     private val script: WslScript,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
+    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) : ScriptInstance {
 
     override val id: UUID = UUID.randomUUID()
 
-    private var _isRunning = false
-    override val isRunning: Boolean
-        get() = _isRunning
-
-    private var _isSuspended = false
-    override val isSuspended: Boolean
-        get() = _isSuspended
+    override var status: ScriptStatus = ScriptStatus.NotStarted
+        private set
 
     private lateinit var lines: List<WslLine>
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -41,7 +39,7 @@ class WslScriptInstance(
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         val arguments = parseArguments(argumentString)
-        _isRunning = true
+        updateStatus(ScriptStatus.Running)
         scope.launch {
             try {
                 client.sendCommand("_state scripting on", echo = false)
@@ -73,23 +71,21 @@ class WslScriptInstance(
                 arguments.forEachIndexed { index, arg ->
                     context.setScriptVariable((index + 1).toString(), WslString(arg))
                 }
-                while (isRunning) {
+                while (status == ScriptStatus.Running || status == ScriptStatus.Suspended) {
                     val line = context.getNextLine()
                     if (line == null) {
-                        _isRunning = false
+                        updateStatus(ScriptStatus.Stopped)
                         client.print(StyledString("Script \"$name\" ended"))
                         break
                     }
-                    while (isSuspended) {
-                        suspendedChannel.receive()
-                    }
+                    waitWhenSuspended()
                     line.statement.execute(context)
                 }
             } catch (e: WslParseException) {
-                _isRunning = false
+                updateStatus(ScriptStatus.Stopped)
                 client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
             } catch (e: WslRuntimeException) {
-                _isRunning = false
+                updateStatus(ScriptStatus.Stopped)
                 client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
             } finally {
                 client.sendCommand("_state scripting off", echo = false)
@@ -99,16 +95,28 @@ class WslScriptInstance(
     }
 
     override fun stop() {
-        _isRunning = false
+        updateStatus(ScriptStatus.Stopped)
         scope.cancel()
     }
 
     override fun suspend() {
-        _isSuspended = true
+        updateStatus(ScriptStatus.Suspended)
     }
 
     override fun resume() {
-        _isSuspended = false
+        updateStatus(ScriptStatus.Running)
         suspendedChannel.trySend(Unit)
+    }
+
+    private fun updateStatus(newStatus: ScriptStatus) {
+        status = newStatus
+        // TODO: change this to a listener
+        scriptEngineRegistry.scriptStateChanged(this)
+    }
+
+    suspend fun waitWhenSuspended() {
+        while (status == ScriptStatus.Suspended) {
+            suspendedChannel.receive()
+        }
     }
 }

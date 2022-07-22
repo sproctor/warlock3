@@ -7,6 +7,7 @@ import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.VariableRepository
+import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
@@ -238,6 +239,7 @@ class WslContext(
     suspend fun waitForPrompt() {
         log(5, "waiting for next prompt")
         promptChannel.receive()
+        scriptInstance.waitWhenSuspended()
     }
 
     suspend fun waitForText(text: String, ignoreCase: Boolean) {
@@ -264,7 +266,7 @@ class WslContext(
         }
 
         client.eventFlow.first { event ->
-            if (event is ClientTextEvent) {
+            if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
                 matches.firstOrNull { match ->
                     match.match(event.text)?.let { text ->
                         log(5, "matched \"${match.label}\": $text")
@@ -291,6 +293,7 @@ class WslContext(
             val duration = roundEnd - currentTime
             log(0, "wait duration: ${duration}ms")
             delay(duration)
+            scriptInstance.waitWhenSuspended()
         }
         log(5, "done waiting for round time")
     }

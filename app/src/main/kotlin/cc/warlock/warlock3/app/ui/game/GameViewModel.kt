@@ -228,7 +228,8 @@ class GameViewModel(
                         }.toPersistentList()
                     },
                     window = windows[name],
-                    defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+                    defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
+                    allowSelection = !name.equals("warlockscripts", true)
                 )
             }
         }
@@ -243,7 +244,8 @@ class GameViewModel(
                 }.toPersistentList()
             },
             window = windows[name],
-            defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+            defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
+            allowSelection = true,
         )
     }
 
@@ -283,7 +285,7 @@ class GameViewModel(
     }
 
     suspend fun stopScripts() {
-        val scriptInstances = scriptEngineRegistry.runningScripts.value
+        val scriptInstances = scriptEngineRegistry.runningScripts
         val count = scriptInstances.size
         if (count > 0) {
             scriptInstances.forEach { scriptInstance ->
@@ -296,7 +298,7 @@ class GameViewModel(
     suspend fun pauseScripts() {
         val paused = this.scriptsPaused
         this.scriptsPaused = !paused
-        val scriptInstances = scriptEngineRegistry.runningScripts.value
+        val scriptInstances = scriptEngineRegistry.runningScripts
         if (scriptInstances.isNotEmpty()) {
             if (paused) {
                 client.print(StyledString("Resumed script(s)"))

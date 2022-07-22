@@ -155,10 +155,12 @@ fun WindowView(
                         }
                     }
                     WindowViewContent(
+                        contextMenuItems = contextMenuItems,
                         linesFlow = uiState.lines,
                         window = window,
                         defaultStyle = uiState.defaultStyle,
-                        onActionClicked = onActionClicked
+                        onActionClicked = onActionClicked,
+                        selectable = uiState.allowSelection,
                     )
                 }
             }
@@ -181,9 +183,11 @@ fun WindowView(
 
 @Composable
 private fun WindowViewContent(
+    contextMenuItems: () -> List<ContextMenuItem>,
     linesFlow: Flow<ImmutableList<WindowLine>>,
     window: Window?,
     defaultStyle: StyleDefinition,
+    selectable: Boolean,
     onActionClicked: (String) -> Unit
 ) {
     val lines by linesFlow.collectAsState(persistentListOf())
@@ -196,7 +200,7 @@ private fun WindowViewContent(
         val scrollState = rememberLazyListState()
 
         // TODO: reimplement this in a way that passes clicks through to clickable text
-        SelectionContainer {
+        SelectionContainer(items = contextMenuItems, enabled = selectable) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -264,6 +268,17 @@ private fun WindowViewContent(
                 if (lines.lastIndex > 0)
                     scrollState.scrollToItem(lines.lastIndex)
             }
+        }
+    }
+}
+
+@Composable
+fun SelectionContainer(items: () -> List<ContextMenuItem>, enabled: Boolean, content: @Composable () -> Unit) {
+    if (enabled) {
+        SelectionContainer(content = content)
+    } else {
+        ContextMenuArea(items) {
+            content()
         }
     }
 }

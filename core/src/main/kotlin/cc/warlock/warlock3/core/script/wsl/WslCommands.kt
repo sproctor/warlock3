@@ -117,10 +117,11 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             context.setLoggingLevel(it)
         } ?: throw WslRuntimeException("Invalid logging level")
     },
-    "delay" to { _, args ->
+    "delay" to { context, args ->
         val (arg, _) = args.splitFirstWord()
         val duration = arg.toBigDecimalOrNull() ?: BigDecimal.ONE
         delay((duration * BigDecimal(1000)).toLong())
+        context.scriptInstance.waitWhenSuspended()
     },
     "deletefromhighlightstrings" to { context, argString ->
         val args = parseArguments(argString)
@@ -218,6 +219,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         val duration = arg.toBigDecimalOrNull() ?: BigDecimal.ONE
         context.waitForRoundTime()
         delay((duration * BigDecimal(1000)).toLong())
+        context.scriptInstance.waitWhenSuspended()
     },
     "put" to { context, args ->
         context.putCommand(args)

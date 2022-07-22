@@ -11,8 +11,10 @@ import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.toUuidOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.util.*
 
 class WarlockScriptEngineRegistry(
     highlightRepository: HighlightRepository,
@@ -20,11 +22,13 @@ class WarlockScriptEngineRegistry(
     private val scriptDirRepository: ScriptDirRepository,
 ) {
 
-    private val _runningScripts = MutableStateFlow<List<ScriptInstance>>(emptyList())
-    val runningScripts = _runningScripts
+    private val _scriptInfo = MutableStateFlow<Map<UUID, ScriptInfo>>(emptyMap())
+    val scriptInfo = _scriptInfo.asStateFlow()
+
+    val runningScripts = mutableSetOf<ScriptInstance>()
 
     private val engines = listOf(
-        WslEngine(highlightRepository = highlightRepository, variableRepository = variableRepository),
+        WslEngine(highlightRepository = highlightRepository, variableRepository = variableRepository, scriptEngineRegistry = this),
         JsEngine(variableRepository, this)
     )
 
@@ -53,9 +57,11 @@ class WarlockScriptEngineRegistry(
 
     private suspend fun startInstance(client: WarlockClient, instance: ScriptInstance, argString: String?) {
         client.print(StyledString("Starting script: ${instance.name}", style = WarlockStyle.Echo))
-        _runningScripts.value += instance
+        runningScripts += instance
+        scriptStateChanged(instance)
         instance.start(client = client, argumentString = argString ?: "") {
-            _runningScripts.value -= instance
+            runningScripts -= instance
+            scriptStateChanged(instance)
             runBlocking {
                 client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
             }
@@ -89,11 +95,21 @@ class WarlockScriptEngineRegistry(
 
     fun findScriptInstance(description: String): ScriptInstance? {
         val uuid = description.toUuidOrNull()
-        runningScripts.value.forEach { instance ->
+        runningScripts.forEach { instance ->
             if (instance.name.startsWith(description, true) || instance.id == uuid) {
                 return instance
             }
         }
         return null
     }
+
+    fun scriptStateChanged(instance: ScriptInstance) {
+        if (instance.status == ScriptStatus.Stopped) {
+            _scriptInfo.value -= instance.id
+        } else {
+            _scriptInfo.value += instance.id to ScriptInfo(instance.name, instance.status)
+        }
+    }
 }
+
+data class ScriptInfo(val name: String, val status: ScriptStatus)

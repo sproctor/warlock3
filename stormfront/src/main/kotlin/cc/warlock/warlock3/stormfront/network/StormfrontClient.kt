@@ -3,11 +3,11 @@ package cc.warlock.warlock3.stormfront.network
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
-import cc.warlock.warlock3.core.util.toUuidOrNull
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 import cc.warlock.warlock3.stormfront.stream.TextStream
@@ -77,6 +77,32 @@ class StormfrontClient(
     init {
         val path = System.getProperty("WARLOCK_LOG_DIR")
         logger = FileLogger(path, "unknown")
+        windows["warlockscripts"] = StormfrontWindow(
+            name = "warlockscripts",
+            title = "Running scripts",
+            subtitle = null,
+            ifClosed = "",
+            styleIfClosed = null,
+        )
+        windowRepository.setWindowTitle("warlockscripts", "Running scripts", null)
+        scope.launch {
+            val scriptStream = getStream("warlockscripts")
+            scriptEngineRegistry.scriptInfo.collect { scripts ->
+                scriptStream.clear()
+                scripts.forEach {
+                    val info = it.value
+                    var text = StyledString("${info.name}: ${info.status} ")
+                    when (info.status) {
+                        ScriptStatus.Running -> text += StyledString("pause", WarlockStyle.Link("action" to "/pause ${it.key}"))
+                        ScriptStatus.Suspended -> text += StyledString("resume", WarlockStyle.Link("action" to "/resume ${it.key}"))
+                        else -> { /* do nothing */ }
+                    }
+                    text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
+                    scriptStream.append(text)
+                    scriptStream.appendEol(false)
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -289,7 +315,7 @@ class StormfrontClient(
                                         appendText(
                                             StyledString(
                                                 event.text,
-                                                WarlockStyle.Link(Pair("action", event.command))
+                                                WarlockStyle.Link("action" to event.command)
                                             )
                                         )
                                     }
@@ -405,7 +431,7 @@ class StormfrontClient(
                     }
                 }
                 "list" -> {
-                    val scripts = scriptEngineRegistry.runningScripts.value
+                    val scripts = scriptEngineRegistry.runningScripts
                     if (scripts.isEmpty()) {
                         print(StyledString("No scripts are running", WarlockStyle.Echo))
                     } else {

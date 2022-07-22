@@ -60,7 +60,8 @@ fun GameView(
                     name = "main",
                     lines = flow { },
                     window = null,
-                    defaultStyle = defaultStyles["default"]!!
+                    defaultStyle = defaultStyles["default"]!!,
+                    allowSelection = true,
                 )
             )
             GameTextWindows(

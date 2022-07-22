@@ -12,4 +12,5 @@ class WindowUiState(
     val lines: Flow<ImmutableList<WindowLine>>,
     val window: Window?,
     val defaultStyle: StyleDefinition,
+    val allowSelection: Boolean,
 )

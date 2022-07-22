@@ -26,7 +26,7 @@ class InterruptableContextFactory(
     }
 
     fun getInstance(cx: Context): JsInstance {
-        for (instance in scriptEngineRegistry.runningScripts.value) {
+        for (instance in scriptEngineRegistry.runningScripts) {
             if (instance is JsInstance && instance.context == cx) {
                 return instance
             }

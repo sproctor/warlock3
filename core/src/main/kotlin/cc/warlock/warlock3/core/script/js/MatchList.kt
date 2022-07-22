@@ -1,6 +1,7 @@
 package cc.warlock.warlock3.core.script.js
 
 import cc.warlock.warlock3.core.client.ClientTextEvent
+import cc.warlock.warlock3.core.script.ScriptStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.mozilla.javascript.Context
@@ -36,7 +37,7 @@ class MatchList : ScriptableObject() {
         try {
             runBlocking(instance.scope.coroutineContext) {
                 client.eventFlow.first { event ->
-                    if (!instance.isSuspended && event is ClientTextEvent) {
+                    if (instance.status == ScriptStatus.Running && event is ClientTextEvent) {
                         val match = matches.firstOrNull { it.matches(event.text) }
                         if (match != null) {
                             result = match.obj
