@@ -4,6 +4,7 @@ import cc.warlock.warlock3.core.client.WarlockClient
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.script.ScriptInstance
 import cc.warlock.warlock3.core.script.ScriptStatus
+import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.core.util.toCaseInsensitiveMap
@@ -20,12 +21,16 @@ class JsInstance(
     override val name: String,
     private val file: File,
     private val variableRepository: VariableRepository,
+    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) : ScriptInstance {
 
     override val id: UUID = UUID.randomUUID()
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
-        private set
+        private set(newStatus) {
+            field = newStatus
+            scriptEngineRegistry.scriptStateChanged(this)
+        }
 
     private lateinit var thread: Thread
 
@@ -175,5 +180,9 @@ class JsInstance(
         if (status == ScriptStatus.Stopped) {
             throw StopException()
         }
+    }
+
+    private fun updateStatus(newStatus: ScriptStatus) {
+        status = newStatus
     }
 }

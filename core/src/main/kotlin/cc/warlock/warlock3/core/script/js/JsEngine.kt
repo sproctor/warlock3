@@ -9,7 +9,7 @@ import java.io.File
 
 class JsEngine(
     private val variableRepository: VariableRepository,
-    scriptEngineRegistry: WarlockScriptEngineRegistry
+    private val scriptEngineRegistry: WarlockScriptEngineRegistry
 ) : WarlockScriptEngine {
 
     override val extensions: List<String> = listOf("js")
@@ -19,6 +19,6 @@ class JsEngine(
     }
 
     override fun createInstance(name: String, file: File): ScriptInstance {
-        return JsInstance(name, file, variableRepository)
+        return JsInstance(name, file, variableRepository, scriptEngineRegistry)
     }
 }
