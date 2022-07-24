@@ -4,10 +4,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +24,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-@OptIn(DelicateCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun GeneralSettingsView(
     characterSettingsRepository: CharacterSettingsRepository,
@@ -75,13 +74,32 @@ fun GeneralSettingsView(
                     )
                 }
                 Text("Script directories", style = MaterialTheme.typography.h5)
-                Text("\$HOME/.warlock3/scripts is always added to this list")
                 Spacer(Modifier.height(8.dp))
-                val scriptDirs by scriptDirRepository.observeScriptDirs(characterId = currentCharacter?.id ?: "global")
+                val scriptDirs by scriptDirRepository.observeScriptDirs(characterId = currentCharacterId)
                     .collectAsState(emptyList())
-                Column(Modifier.border(1.dp, Color.Black, RoundedCornerShape(8.dp)).padding(8.dp)) {
+                Column(Modifier.border(1.dp, Color.Black, RoundedCornerShape(8.dp)).padding(8.dp).fillMaxWidth()) {
+                    ListItem {
+                        Text("%config%/scripts")
+                    }
                     scriptDirs.forEach { scriptDir ->
-                        Text(scriptDir)
+                        ListItem(
+                            trailing = {
+                                IconButton(
+                                    onClick = {
+                                        GlobalScope.launch {
+                                            scriptDirRepository.delete(
+                                                characterId = currentCharacterId,
+                                                path = scriptDir
+                                            )
+                                        }
+                                    }
+                                ) {
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                                }
+                            }
+                        ) {
+                            Text(scriptDir)
+                        }
                     }
                 }
                 var showAddDirDialog by remember { mutableStateOf(false) }
