@@ -112,7 +112,7 @@ fun GeneralSettingsView(
                         onCloseRequest = { showAddDirDialog = false },
                         state = rememberDialogState()
                     ) {
-                        Column {
+                        Column(Modifier.padding(16.dp).fillMaxSize()) {
                             var value by remember { mutableStateOf("") }
                             Text("Use %home% for the home directory and %config% for the Warlock config directory")
                             TextField(value = value, onValueChange = { value = it }, label = { Text("Directory path") })

@@ -12,6 +12,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.defaultFontSize
 import cc.warlock.warlock3.app.util.getEntireLineStyles
@@ -267,9 +268,11 @@ fun FontPickerDialog(
     onSaveClicked: (FontUpdate) -> Unit,
 ) {
     Dialog(
-        onCloseRequest = onCloseRequest
+        onCloseRequest = onCloseRequest,
+        title = "Choose a font",
+        state = rememberDialogState(width = 400.dp, height = 500.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(16.dp).fillMaxSize()) {
             var size by remember(currentStyle.fontSize) {
                 mutableStateOf((currentStyle.fontSize ?: defaultFontSize.value).toString())
             }
@@ -282,6 +285,7 @@ fun FontPickerDialog(
                 modifier = Modifier
                     .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(8.dp))
                     .padding(8.dp)
+                    .fillMaxWidth()
             ) {
                 fontFamilyMap.forEach { (name, fontFamily) ->
                     ListItem(
@@ -293,13 +297,15 @@ fun FontPickerDialog(
                     )
                 }
             }
-            Row {
+            Row(Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = { onSaveClicked(FontUpdate(null, null)) }) {
                     Text("Reset to defaults")
                 }
+                Spacer(Modifier.width(16.dp))
                 OutlinedButton(onClick = onCloseRequest) {
                     Text("Cancel")
                 }
+                Spacer(Modifier.width(16.dp))
                 Button(onClick = { onSaveClicked(FontUpdate(size.toDoubleOrNull(), newFontFamily)) }) {
                     Text("Save")
                 }

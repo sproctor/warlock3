@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.rememberWindowState
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.*
 
@@ -29,6 +30,7 @@ fun SettingsDialog(
     Window(
         title = "Settings",
         onCloseRequest = closeDialog,
+        state = rememberWindowState(width = 900.dp, height = 600.dp)
     ) {
         var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
         val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
