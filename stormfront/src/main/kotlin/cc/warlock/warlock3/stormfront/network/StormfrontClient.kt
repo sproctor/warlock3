@@ -84,7 +84,15 @@ class StormfrontClient(
             ifClosed = "",
             styleIfClosed = null,
         )
+        windows["debug"] = StormfrontWindow(
+            name = "debug",
+            title = "Debug",
+            subtitle = null,
+            ifClosed = "main",
+            styleIfClosed = "echo",
+        )
         windowRepository.setWindowTitle("warlockscripts", "Running scripts", null)
+        windowRepository.setWindowTitle("debug", "Debug", null)
         scope.launch {
             val scriptStream = getStream("warlockscripts")
             scriptEngineRegistry.scriptInfo.collect { scripts ->
@@ -222,7 +230,8 @@ class StormfrontClient(
                                     is StormfrontPromptEvent -> {
                                         _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
-                                        currentStream.appendPrompt(event.text)
+                                        currentStream = mainStream
+                                        mainStream.appendPrompt(event.text)
                                     }
                                     is StormfrontTimeEvent -> {
                                         val newTime = event.time.toLong() * 1000L
@@ -381,17 +390,23 @@ class StormfrontClient(
     }
 
     private suspend fun appendText(text: StyledString) {
-        val styledText = currentStyle?.let { text.applyStyle(it) } ?: text
+        var styledText = text
+        currentStyle?.let { styledText = styledText.applyStyle(it) }
+        outputStyle?.let { styledText = styledText.applyStyle(it) }
         if (componentId != null) {
             componentText = componentText?.plus(styledText) ?: styledText
         } else {
-            currentStream.append(styledText)
-            doIfClosed(currentStream.name) { targetStream ->
-                val currentWindow = windows[currentStream.name]
-                targetStream.append(
-                    currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText
-                )
-            }
+            appendToStream(styledText, currentStream)
+        }
+    }
+
+    private suspend fun appendToStream(styledText: StyledString, stream: TextStream) {
+        stream.append(styledText)
+        doIfClosed(stream.name) { targetStream ->
+            val currentWindow = windows[stream.name]
+            targetStream.append(
+                currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText
+            )
         }
     }
 
@@ -448,7 +463,7 @@ class StormfrontClient(
         } else {
             doSendCommand(line)
             if (echo) {
-                mainStream.appendCommand(line)
+                mainStream.appendCommand(StyledString(line, listOfNotNull(outputStyle)))
                 scope.launch {
                     _eventFlow.emit(ClientTextEvent(line))
                 }
@@ -484,7 +499,7 @@ class StormfrontClient(
     }
 
     override suspend fun debug(message: String) {
-        mainStream.appendMessage(StyledString(message, WarlockStyle.Echo))
+        appendToStream(StyledString(message, listOfNotNull(outputStyle, WarlockStyle.Echo)), getStream("debug"))
     }
 
     @Synchronized

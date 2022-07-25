@@ -59,16 +59,13 @@ class TextStream(
         }
     }
 
-    suspend fun appendCommand(command: String) {
-        val commandString = StyledString(
-            text = command,
-            styles = listOf(WarlockStyle.Command),
-        )
+    suspend fun appendCommand(command: StyledString) {
+        val commandString = command.applyStyle(WarlockStyle.Command)
         mutex.withLock {
             if (isPrompting) {
                 val lastLine = _lines.value.last().copy()
                 _lines.value = (_lines.value.dropLast(1) +
-                        lastLine.copy(text = lastLine.text + StyledString(" ") + commandString)).toPersistentList()
+                        lastLine.copy(text = lastLine.text + commandString)).toPersistentList()
                 isPrompting = false
             } else {
                 appendLine(
