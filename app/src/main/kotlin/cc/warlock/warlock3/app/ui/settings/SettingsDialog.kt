@@ -22,6 +22,7 @@ fun SettingsDialog(
     macroRepository: MacroRepository,
     presetRepository: PresetRepository,
     highlightRepository: HighlightRepository,
+    alterationRepository: AlterationRepository,
     characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
     scriptDirRepository: ScriptDirRepository,
@@ -74,6 +75,12 @@ fun SettingsDialog(
                     ) {
                         Text("Aliases")
                     }
+                    TextButton(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { state = SettingsPage.Alterations }
+                    ) {
+                        Text("Text Alterations")
+                    }
                 }
             }
             Divider(Modifier.fillMaxHeight().width(1.dp))
@@ -118,6 +125,13 @@ fun SettingsDialog(
                             aliasRepository = aliasRepository,
                         )
                     }
+                    SettingsPage.Alterations -> {
+                        AlterationsView(
+                            currentCharacter = currentCharacter,
+                            allCharacters = characters,
+                            alterationRepository = alterationRepository,
+                        )
+                    }
                 }
             }
         }
@@ -131,4 +145,5 @@ enum class SettingsPage {
     Appearance,
     General,
     Aliases,
+    Alterations,
 }

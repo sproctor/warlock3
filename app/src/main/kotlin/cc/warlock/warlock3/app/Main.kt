@@ -73,6 +73,9 @@ fun main(args: Array<String>) {
         AliasAdapter = Alias.Adapter(
             idAdapter = UUIDAdapter,
         ),
+        AlterationAdapter = Alteration.Adapter(
+            idAdapter = UUIDAdapter,
+        )
     )
     runBlocking {
         insertDefaultsIfNeeded(AppContainer.database)

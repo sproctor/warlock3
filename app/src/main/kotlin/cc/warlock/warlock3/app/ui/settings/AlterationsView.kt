@@ -1,0 +1,172 @@
+package cc.warlock.warlock3.app.ui.settings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.rememberDialogState
+import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.core.client.GameCharacter
+import cc.warlock.warlock3.core.prefs.AlterationRepository
+import cc.warlock.warlock3.core.prefs.models.Alteration
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.util.*
+
+@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterialApi::class)
+@Composable
+fun AlterationsView(
+    currentCharacter: GameCharacter?,
+    allCharacters: List<GameCharacter>,
+    alterationRepository: AlterationRepository,
+) {
+    var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
+    val currentCharacterId = selectedCharacter?.id ?: "global"
+    val alterations by alterationRepository.observeByCharacter(currentCharacterId)
+        .collectAsState(emptyList())
+    var editingAlteration by remember { mutableStateOf<Alteration?>(null) }
+
+    Column(Modifier.fillMaxSize()) {
+        SettingsCharacterSelector(
+            selectedCharacter = selectedCharacter,
+            characters = allCharacters,
+            onSelect = { selectedCharacter = it },
+            allowGlobal = true,
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(text = "Alterations", style = MaterialTheme.typography.h5)
+        Spacer(Modifier.height(8.dp))
+        Column(
+            Modifier.fillMaxWidth().weight(1f)
+        ) {
+            alterations.forEach { alteration ->
+                ListItem(
+                    text = {
+                        Text(text = alteration.pattern)
+                    },
+                    trailing = {
+                        Row {
+                            IconButton(
+                                onClick = { editingAlteration = alteration }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            IconButton(
+                                onClick = {
+                                    GlobalScope.launch { alterationRepository.deleteById(alteration.id) }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(onClick = {
+                editingAlteration = Alteration(
+                    id = UUID.randomUUID(),
+                    pattern = "",
+                    sourceStream = null,
+                    destinationStream = null,
+                    result = null,
+                    ignoreCase = true,
+                    entireLine = false,
+                )
+            }) {
+                Icon(imageVector = WarlockIcons.Add, contentDescription = null)
+            }
+        }
+    }
+    editingAlteration?.let { alteration ->
+        EditAlterationDialog(
+            alteration = alteration,
+            saveAlteration = { newAlteration ->
+                runBlocking {
+                    alterationRepository.save(currentCharacterId, newAlteration)
+                    editingAlteration = null
+                }
+            },
+            onClose = { editingAlteration = null }
+        )
+    }
+}
+
+@Composable
+fun EditAlterationDialog(
+    alteration: Alteration,
+    saveAlteration: (Alteration) -> Unit,
+    onClose: () -> Unit,
+) {
+    var pattern by remember { mutableStateOf(alteration.pattern) }
+    var entireLine by remember { mutableStateOf(alteration.entireLine) }
+    var ignoreCase by remember { mutableStateOf(alteration.ignoreCase) }
+
+    Dialog(
+        state = rememberDialogState(width = 640.dp, height = 480.dp),
+        onCloseRequest = onClose,
+        title = "Edit Highlight"
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp)
+        ) {
+            TextField(value = pattern, label = { Text("Pattern") }, onValueChange = { pattern = it })
+            Spacer(Modifier.height(16.dp))
+            Row {
+                Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
+                Text(text = "Ignore case", modifier = Modifier.align(Alignment.CenterVertically))
+            }
+            Spacer(Modifier.height(16.dp))
+            Row {
+                Checkbox(checked = entireLine, onCheckedChange = { entireLine = it })
+                Text(text = "Alter entire line", modifier = Modifier.align(Alignment.CenterVertically))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(onClick = onClose) {
+                    Text("CANCEL")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        saveAlteration(
+                            Alteration(
+                                id = alteration.id,
+                                pattern = pattern,
+                                sourceStream = null,
+                                destinationStream = null,
+                                result = null,
+                                ignoreCase = ignoreCase,
+                                entireLine = entireLine
+                            )
+                        )
+                    }
+                ) {
+                    Text("OK")
+                }
+            }
+        }
+    }
+}

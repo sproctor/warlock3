@@ -46,6 +46,12 @@ object AppContainer {
             ioDispatcher = Dispatchers.IO
         )
     }
+    val alterationRepository by lazy {
+        AlterationRepository(
+            database.alterationQueries,
+            ioDispatcher = Dispatchers.IO
+        )
+    }
     val compassTheme: CompassTheme by lazy { loadCompassTheme() }
     val gameViewModelFactory = { client: StormfrontClient, clipboard: ClipboardManager ->
         GameViewModel(
