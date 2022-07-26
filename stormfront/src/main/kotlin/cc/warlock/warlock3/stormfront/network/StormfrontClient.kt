@@ -3,7 +3,6 @@ package cc.warlock.warlock3.stormfront.network
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.core.prefs.*
-import cc.warlock.warlock3.core.prefs.models.Alteration
 import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
@@ -74,6 +73,7 @@ class StormfrontClient(
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
         if (characterId != null)
             alterationRepository.observeForCharacter(characterId).map { list ->
@@ -113,8 +113,8 @@ class StormfrontClient(
             name = "debug",
             title = "Debug",
             subtitle = null,
-            ifClosed = "main",
-            styleIfClosed = "echo",
+            ifClosed = "",
+            styleIfClosed = null,
         )
         windowRepository.setWindowTitle("warlockscripts", "Running scripts", null)
         windowRepository.setWindowTitle("debug", "Debug", null)
@@ -199,6 +199,7 @@ class StormfrontClient(
                         val line: String? = reader.readLine()
                         if (line != null) {
                             logger.write(line)
+                            debug(line)
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
                                 when (event) {
@@ -323,13 +324,12 @@ class StormfrontClient(
                                     is StormfrontComponentDefinitionEvent -> {
                                         // Should not happen on main stream, so don't clear prompt
                                         val styles = currentStyle?.let { persistentListOf(it) } ?: persistentListOf()
-                                        appendToStream(
-                                            StyledString(
+                                        bufferText(
+                                            text = StyledString(
                                                 persistentListOf(
                                                     StyledStringVariable(name = event.id, styles = styles)
                                                 )
                                             ),
-                                            currentStream
                                         )
                                     }
                                     is StormfrontComponentStartEvent -> {
@@ -435,27 +435,28 @@ class StormfrontClient(
         buffer = buffer?.plus(styledText) ?: styledText
     }
 
-    private suspend fun appendToStream(styledText: StyledString, stream: TextStream) {
+    private suspend fun appendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
         val alteration = findAlteration(styledText.toString(), stream.name)
         if (alteration != null) {
             if (alteration.alteration.keepOriginal) {
-                doAppendToStream(styledText, stream)
+                doAppendToStream(styledText, stream, ignoreWhenBlank)
             }
             val alteredText = alteration.text?.let { StyledString(it) } ?: styledText
             val destinationStream = alteration.alteration.destinationStream?.let { getStream(it) } ?: stream
-            doAppendToStream(alteredText, destinationStream)
+            doAppendToStream(alteredText, destinationStream, ignoreWhenBlank)
         } else {
-            doAppendToStream(styledText, stream)
+            doAppendToStream(styledText, stream, ignoreWhenBlank)
         }
     }
 
-    private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream) {
-        stream.appendLine(styledText)
+    private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
+        stream.appendLine(styledText, ignoreWhenBlank)
         if (stream == mainStream) isPrompting = false
         doIfClosed(stream.name) { targetStream ->
             val currentWindow = windows[stream.name]
             targetStream.appendLine(
-                currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText
+                text = currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
+                ignoreWhenBlank = ignoreWhenBlank
             )
             if (stream == mainStream) isPrompting = false
         }
@@ -471,10 +472,8 @@ class StormfrontClient(
 
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
-        if (buffer?.substrings.isNullOrEmpty() && ignoreWhenBlank)
-            return
         assert(componentId == null)
-        appendToStream(buffer ?: StyledString(""), currentStream)
+        appendToStream(buffer ?: StyledString(""), currentStream, ignoreWhenBlank)
         buffer = null
     }
 
@@ -578,7 +577,7 @@ class StormfrontClient(
     }
 
     override suspend fun debug(message: String) {
-        appendToStream(StyledString(message, listOfNotNull(outputStyle, WarlockStyle.Echo)), getStream("debug"))
+        doAppendToStream(StyledString(message), getStream("debug"), false)
     }
 
     @Synchronized

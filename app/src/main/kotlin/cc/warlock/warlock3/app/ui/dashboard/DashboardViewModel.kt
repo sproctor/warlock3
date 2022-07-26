@@ -3,15 +3,20 @@ package cc.warlock.warlock3.app.ui.dashboard
 import androidx.compose.ui.platform.ClipboardManager
 import cc.warlock.warlock3.app.GameState
 import cc.warlock.warlock3.app.di.AppContainer
+import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.CharacterRepository
-import cc.warlock.warlock3.core.client.GameCharacter
-import cc.warlock.warlock3.core.prefs.AlterationRepository
 import cc.warlock.warlock3.stormfront.network.SgeClient
 import cc.warlock.warlock3.stormfront.network.SgeEvent
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import java.net.UnknownHostException
 
 class DashboardViewModel(
