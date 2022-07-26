@@ -3,6 +3,7 @@ package cc.warlock.warlock3.stormfront.network
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.prefs.models.Alteration
 import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
@@ -12,6 +13,8 @@ import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 import cc.warlock.warlock3.stormfront.stream.TextStream
+import cc.warlock.warlock3.stormfront.util.AlterationResult
+import cc.warlock.warlock3.stormfront.util.CompiledAlteration
 import cc.warlock.warlock3.stormfront.util.FileLogger
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +44,7 @@ class StormfrontClient(
     private val characterRepository: CharacterRepository,
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
+    private val alterationRepository: AlterationRepository,
 ) : WarlockClient {
 
     private val newLinePattern = Regex("\r?\n")
@@ -69,6 +73,16 @@ class StormfrontClient(
     private val mainStream = TextStream("main", this)
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
+
+    private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
+        if (characterId != null)
+            alterationRepository.observeForCharacter(characterId).map { list ->
+                list.map { CompiledAlteration(it) }
+            }
+        else
+            flow { }
+    }
+        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     // Line state variables
     private var isPrompting = false
@@ -422,6 +436,20 @@ class StormfrontClient(
     }
 
     private suspend fun appendToStream(styledText: StyledString, stream: TextStream) {
+        val alteration = findAlteration(styledText.toString(), stream.name)
+        if (alteration != null) {
+            if (alteration.alteration.keepOriginal) {
+                doAppendToStream(styledText, stream)
+            }
+            val alteredText = alteration.text?.let { StyledString(it) } ?: styledText
+            val destinationStream = alteration.alteration.destinationStream?.let { getStream(it) } ?: stream
+            doAppendToStream(alteredText, destinationStream)
+        } else {
+            doAppendToStream(styledText, stream)
+        }
+    }
+
+    private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream) {
         stream.appendLine(styledText)
         if (stream == mainStream) isPrompting = false
         doIfClosed(stream.name) { targetStream ->
@@ -431,6 +459,14 @@ class StormfrontClient(
             )
             if (stream == mainStream) isPrompting = false
         }
+    }
+
+    private fun findAlteration(text: String, streamName: String): AlterationResult? {
+        alterations.value.forEach { alteration ->
+            val result = alteration.match(text, streamName)
+            if (result != null) return result
+        }
+        return null
     }
 
     // TODO: separate buffer into its own class

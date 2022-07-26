@@ -5,6 +5,6 @@ CREATE TABLE Alteration (
     sourceStream TEXT,
     destinationStream TEXT,
     result TEXT,
-    ignoreCase INTEGER AS Boolean NOT NULL,
-    entireLine INTEGER NOT NULL
+    ignoreCase INTEGER NOT NULL,
+    keepOriginal INTEGER NOT NULL
 );

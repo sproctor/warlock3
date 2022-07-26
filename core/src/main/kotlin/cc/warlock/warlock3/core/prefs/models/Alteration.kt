@@ -9,5 +9,5 @@ data class Alteration(
     val destinationStream: String?,
     val result: String?,
     val ignoreCase: Boolean,
-    val entireLine: Boolean,
+    val keepOriginal: Boolean,
 )

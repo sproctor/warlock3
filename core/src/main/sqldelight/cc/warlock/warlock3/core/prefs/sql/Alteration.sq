@@ -8,7 +8,7 @@ CREATE TABLE Alteration (
     destinationStream TEXT,
     result TEXT,
     ignoreCase INTEGER AS Boolean NOT NULL,
-    entireLine INTEGER AS Boolean NOT NULL
+    keepOriginal INTEGER AS Boolean NOT NULL
 );
 
 getAlterationsByCharacter:

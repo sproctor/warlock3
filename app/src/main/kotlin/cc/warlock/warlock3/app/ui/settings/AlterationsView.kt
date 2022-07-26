@@ -91,7 +91,7 @@ fun AlterationsView(
                     destinationStream = null,
                     result = null,
                     ignoreCase = true,
-                    entireLine = false,
+                    keepOriginal = false,
                 )
             }) {
                 Icon(imageVector = WarlockIcons.Add, contentDescription = null)
@@ -119,7 +119,10 @@ fun EditAlterationDialog(
     onClose: () -> Unit,
 ) {
     var pattern by remember { mutableStateOf(alteration.pattern) }
-    var entireLine by remember { mutableStateOf(alteration.entireLine) }
+    var sourceStream by remember { mutableStateOf(alteration.sourceStream ?: "") }
+    var destinationStream by remember { mutableStateOf(alteration.destinationStream ?: "") }
+    var replacement by remember { mutableStateOf(alteration.result ?: "") }
+    var keepOriginal by remember { mutableStateOf(alteration.keepOriginal) }
     var ignoreCase by remember { mutableStateOf(alteration.ignoreCase) }
 
     Dialog(
@@ -132,14 +135,31 @@ fun EditAlterationDialog(
         ) {
             TextField(value = pattern, label = { Text("Pattern") }, onValueChange = { pattern = it })
             Spacer(Modifier.height(16.dp))
+            TextField(value = replacement, label = { Text("Replacement") }, onValueChange = { replacement = it })
+            Spacer(Modifier.height(16.dp))
+            TextField(value = sourceStream, label = { Text("Source stream (leave blank for any)") }, onValueChange = { sourceStream = it })
+            Spacer(Modifier.height(16.dp))
+            TextField(
+                value = destinationStream,
+                label = { Text("Destination stream (leave blank to leave text on the source stream)") },
+                onValueChange = {
+                    destinationStream = it
+                    if (it.isBlank()) {
+                        keepOriginal = false
+                    }
+                }
+            )
+            Spacer(Modifier.height(16.dp))
             Row {
                 Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
                 Text(text = "Ignore case", modifier = Modifier.align(Alignment.CenterVertically))
             }
-            Spacer(Modifier.height(16.dp))
-            Row {
-                Checkbox(checked = entireLine, onCheckedChange = { entireLine = it })
-                Text(text = "Alter entire line", modifier = Modifier.align(Alignment.CenterVertically))
+            if (destinationStream.isNotBlank()) {
+                Spacer(Modifier.height(16.dp))
+                Row {
+                    Checkbox(checked = keepOriginal, onCheckedChange = { keepOriginal = it })
+                    Text(text = "Keep original text", modifier = Modifier.align(Alignment.CenterVertically))
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -155,11 +175,11 @@ fun EditAlterationDialog(
                             Alteration(
                                 id = alteration.id,
                                 pattern = pattern,
-                                sourceStream = null,
-                                destinationStream = null,
-                                result = null,
+                                sourceStream = sourceStream,
+                                destinationStream = destinationStream,
+                                result = replacement.ifBlank { null },
                                 ignoreCase = ignoreCase,
-                                entireLine = entireLine
+                                keepOriginal = keepOriginal
                             )
                         )
                     }

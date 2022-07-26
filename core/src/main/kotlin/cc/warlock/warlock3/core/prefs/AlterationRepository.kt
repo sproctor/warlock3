@@ -59,7 +59,7 @@ class AlterationRepository(
                     destinationStream = alteration.destinationStream,
                     result = alteration.result,
                     ignoreCase = alteration.ignoreCase,
-                    entireLine = alteration.entireLine,
+                    keepOriginal = alteration.keepOriginal,
                 )
             )
         }

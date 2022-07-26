@@ -6,6 +6,7 @@ import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.core.prefs.AccountRepository
 import cc.warlock.warlock3.core.prefs.CharacterRepository
 import cc.warlock.warlock3.core.client.GameCharacter
+import cc.warlock.warlock3.core.prefs.AlterationRepository
 import cc.warlock.warlock3.stormfront.network.SgeClient
 import cc.warlock.warlock3.stormfront.network.SgeEvent
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
@@ -70,6 +71,7 @@ class DashboardViewModel(
                                         characterRepository = AppContainer.characterRepository,
                                         characterSettingsRepository = AppContainer.characterSettingsRepository,
                                         scriptEngineRegistry = AppContainer.scriptEngineRegistry,
+                                        alterationRepository = AppContainer.alterationRepository,
                                     )
                                     sfClient.connect(credentials.key)
                                     val gameViewModel = AppContainer.gameViewModelFactory(sfClient, clipboardManager)

@@ -111,6 +111,7 @@ fun main(args: Array<String>) {
                             characterRepository = AppContainer.characterRepository,
                             characterSettingsRepository = AppContainer.characterSettingsRepository,
                             scriptEngineRegistry = AppContainer.scriptEngineRegistry,
+                            alterationRepository = AppContainer.alterationRepository,
                         )
                         client.connect(credentials.key)
                         val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
