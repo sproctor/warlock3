@@ -259,12 +259,12 @@ private fun WindowViewContent(
             }
             // If we're at the spot we last scrolled to
             val lastVisibleSerial =
-                scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines[it].serialNumber } ?: -1L
+                scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines.getOrNull(it)?.serialNumber } ?: -1L
             val oldLastSerial = lastSerial
             // remember the last serial
             lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
 
-            if (lastVisibleSerial >= oldLastSerial) { // scroll to the end if we were at the end
+            if (lastVisibleSerial >= oldLastSerial || lastVisibleSerial == -1L) { // scroll to the end if we were at the end
                 if (lines.lastIndex > 0)
                     scrollState.scrollToItem(lines.lastIndex)
             }
