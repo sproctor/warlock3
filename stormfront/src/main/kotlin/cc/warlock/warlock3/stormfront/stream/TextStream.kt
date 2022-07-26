@@ -1,10 +1,7 @@
 package cc.warlock.warlock3.stormfront.stream
 
 import cc.warlock.warlock3.core.text.StyledString
-import cc.warlock.warlock3.core.text.StyledStringVariable
-import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
@@ -17,10 +14,6 @@ class TextStream(
     val name: String,
     val client: StormfrontClient
 ) {
-    // Line state variables
-    private var buffer: StyledString? = null
-    private var isPrompting = false
-
     private val maxLines: Int
         get() = client.scrollback.value
 
@@ -30,84 +23,48 @@ class TextStream(
     private val mutex = Mutex()
     private var nextSerialNumber = 0L
 
-    suspend fun append(text: StyledString) {
-        mutex.withLock {
-            buffer = buffer?.plus(text) ?: text
-            isPrompting = false
-        }
-    }
+    private var isPartial = false
 
-    suspend fun appendVariable(name: String, styles: ImmutableList<WarlockStyle>) {
-        val newString = StyledString(
-            persistentListOf(
-                StyledStringVariable(
-                    name = name,
-                    styles = styles
-                )
-            )
-        )
+    suspend fun appendPartial(text: StyledString) {
+        // TODO: Check max lines
         mutex.withLock {
-            buffer = buffer?.plus(newString) ?: newString
-            isPrompting = false
-        }
-    }
-
-    suspend fun appendMessage(text: StyledString) {
-        mutex.withLock {
-            appendLine(ignoreWhenBlank = false, text = text)
-            isPrompting = false
-        }
-    }
-
-    suspend fun appendCommand(command: StyledString) {
-        val commandString = command.applyStyle(WarlockStyle.Command)
-        mutex.withLock {
-            if (isPrompting) {
+            if (isPartial) {
                 val lastLine = _lines.value.last().copy()
                 _lines.value = (_lines.value.dropLast(1) +
-                        lastLine.copy(text = lastLine.text + commandString)).toPersistentList()
-                isPrompting = false
+                        lastLine.copy(text = lastLine.text + text)).toPersistentList()
             } else {
-                appendLine(
+                isPartial = true
+                appendLineLocked(
                     ignoreWhenBlank = false,
-                    text = commandString,
+                    text = text,
                 )
             }
         }
     }
 
-    suspend fun appendEol(ignoreWhenBlank: Boolean): String? {
+    suspend fun appendEol() {
         mutex.withLock {
-            if (ignoreWhenBlank && buffer == null)
-                return null
-            val text = buffer ?: StyledString("")
-            appendLine(
-                ignoreWhenBlank = ignoreWhenBlank,
-                text = text,
-            )
-            buffer = null
-            isPrompting = false
-            return text.toString()
+            if (!isPartial)
+                appendLineLocked(StyledString(""), false)
+            isPartial = false
         }
     }
 
-    suspend fun appendPrompt(prompt: String) {
+    suspend fun clear() {
         mutex.withLock {
-            if (!isPrompting) {
-                isPrompting = true
-                appendLine(
-                    ignoreWhenBlank = false,
-                    text = StyledString(prompt),
-                )
-            }
+            _lines.value = persistentListOf()
+            isPartial = false
         }
     }
 
-    fun clear() {
-        _lines.value = persistentListOf()
+    suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false) {
+        mutex.withLock {
+            isPartial = false
+            appendLineLocked(text, ignoreWhenBlank)
+        }
     }
 
-    private fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
+    private fun appendLineLocked(text: StyledString, ignoreWhenBlank: Boolean) {
         val curLines = _lines.value
         _lines.value =
             (if (curLines.size >= maxLines) {

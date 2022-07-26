@@ -7,6 +7,7 @@ import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.StyledStringVariable
 import cc.warlock.warlock3.core.text.WarlockStyle
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
@@ -25,10 +26,13 @@ import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
 
 const val scriptCommandPrefix = '.'
 const val clientCommandPrefix = '/'
+private const val charsetName = "windows-1252"
+private val charset = Charset.forName(charsetName)
 
 class StormfrontClient(
     private val host: String,
@@ -38,6 +42,8 @@ class StormfrontClient(
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) : WarlockClient {
+
+    private val newLinePattern = Regex("\r?\n")
 
     private var logger: FileLogger
 
@@ -64,10 +70,15 @@ class StormfrontClient(
     private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
 
+    // Line state variables
+    private var isPrompting = false
+    private var buffer: StyledString? = null
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val scrollback = characterId.flatMapLatest { characterId ->
         if (characterId != null) {
-            characterSettingsRepository.observe(characterId, scrollbackKey).map { it?.toIntOrNull() ?: defaultMaxScrollLines }
+            characterSettingsRepository.observe(characterId, scrollbackKey)
+                .map { it?.toIntOrNull() ?: defaultMaxScrollLines }
         } else {
             flow { emit(defaultMaxScrollLines) }
         }
@@ -101,13 +112,19 @@ class StormfrontClient(
                     val info = it.value
                     var text = StyledString("${info.name}: ${info.status} ")
                     when (info.status) {
-                        ScriptStatus.Running -> text += StyledString("pause", WarlockStyle.Link("action" to "/pause ${it.key}"))
-                        ScriptStatus.Suspended -> text += StyledString("resume", WarlockStyle.Link("action" to "/resume ${it.key}"))
-                        else -> { /* do nothing */ }
+                        ScriptStatus.Running -> text += StyledString(
+                            "pause",
+                            WarlockStyle.Link("action" to "/pause ${it.key}")
+                        )
+                        ScriptStatus.Suspended -> text += StyledString(
+                            "resume",
+                            WarlockStyle.Link("action" to "/resume ${it.key}")
+                        )
+                        else -> { /* do nothing */
+                        }
                     }
                     text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
-                    scriptStream.append(text)
-                    scriptStream.appendEol(false)
+                    scriptStream.appendLine(text, false)
                 }
             }
         }
@@ -133,7 +150,6 @@ class StormfrontClient(
     private var dialogDataId: String? = null
     private val directions: HashSet<DirectionType> = hashSetOf()
     private var componentId: String? = null
-    private var componentText: StyledString? = null
 
     private val _connected = MutableStateFlow(true)
     val connected = _connected.asStateFlow()
@@ -159,7 +175,7 @@ class StormfrontClient(
             doSendCommand(key)
             doSendCommand("/FE:STORMFRONT /XML")
 
-            val reader = BufferedReader(InputStreamReader(socket.getInputStream(), "windows-1252"))
+            val reader = BufferedReader(InputStreamReader(socket.getInputStream(), charsetName))
             val protocolHandler = StormfrontProtocolHandler()
 
             while (!socket.isClosed) {
@@ -185,16 +201,12 @@ class StormfrontClient(
                                         }
                                     is StormfrontClearStreamEvent ->
                                         getStream(event.id).clear()
-                                    is StormfrontDataReceivedEvent ->
-                                        appendText(StyledString(event.text))
+                                    is StormfrontDataReceivedEvent -> {
+                                        bufferText(StyledString(event.text))
+                                    }
                                     is StormfrontEolEvent -> {
                                         // We're working under the assumption that an end tag is always on the same line as the start tag
-                                        currentStream.appendEol(event.ignoreWhenBlank)?.let { text ->
-                                            _eventFlow.emit(ClientTextEvent(text))
-                                        }
-                                        doIfClosed(currentStream.name) { targetStream ->
-                                            targetStream.appendEol(event.ignoreWhenBlank)
-                                        }
+                                        flushBuffer(event.ignoreWhenBlank)
                                     }
                                     is StormfrontAppEvent -> {
                                         val game = event.game
@@ -231,7 +243,12 @@ class StormfrontClient(
                                         _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
                                         currentStream = mainStream
-                                        mainStream.appendPrompt(event.text)
+                                        if (!isPrompting) {
+                                            mainStream.appendPartial(
+                                                StyledString(event.text, listOfNotNull(outputStyle))
+                                            )
+                                        }
+                                        isPrompting = true
                                     }
                                     is StormfrontTimeEvent -> {
                                         val newTime = event.time.toLong() * 1000L
@@ -290,25 +307,35 @@ class StormfrontClient(
                                             _properties.value -= event.key
                                     }
                                     is StormfrontComponentDefinitionEvent -> {
+                                        // Should not happen on main stream, so don't clear prompt
                                         val styles = currentStyle?.let { persistentListOf(it) } ?: persistentListOf()
-                                        currentStream.appendVariable(name = event.id, styles = styles)
+                                        appendToStream(
+                                            StyledString(
+                                                persistentListOf(
+                                                    StyledStringVariable(name = event.id, styles = styles)
+                                                )
+                                            ),
+                                            currentStream
+                                        )
                                     }
                                     is StormfrontComponentStartEvent -> {
+                                        flushBuffer(true)
                                         componentId = event.id
-                                        componentText = null
                                     }
                                     StormfrontComponentEndEvent -> {
                                         if (componentId != null) {
                                             // Either replace the component in the map with the new value
                                             //  or remove the component from the map (if we got an empty one)
-                                            if (componentText?.substrings.isNullOrEmpty()) {
+                                            if (buffer?.substrings.isNullOrEmpty()) {
                                                 _components.value -= componentId!!
                                             } else {
-                                                _components.value += (componentId!! to componentText!!)
+                                                _components.value += (componentId!! to buffer!!)
                                             }
+                                            buffer = null
+                                            componentId = null
+                                        } else {
+                                            // mismatched component tags?
                                         }
-                                        componentId = null
-                                        componentText = null
                                     }
                                     StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
                                     is StormfrontStreamWindowEvent -> {
@@ -321,7 +348,7 @@ class StormfrontClient(
                                         )
                                     }
                                     is StormfrontActionEvent -> {
-                                        appendText(
+                                        bufferText(
                                             StyledString(
                                                 event.text,
                                                 WarlockStyle.Link("action" to event.command)
@@ -332,7 +359,7 @@ class StormfrontClient(
                                         // mainStream.append(StyledString("Unhandled tag: ${event.tag}", WarlockStyle.Error))
                                     }
                                     is StormfrontParseErrorEvent -> {
-                                        mainStream.appendMessage(
+                                        mainStream.appendLine(
                                             StyledString(
                                                 "parse error: ${event.text}",
                                                 WarlockStyle.Error
@@ -365,16 +392,14 @@ class StormfrontClient(
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    mainStream.append(StyledString(line, WarlockStyle.Mono))
+                                    rawPrint(line)
                                 }
                             } else {
                                 while (reader.ready()) {
                                     buffer.append(reader.read().toChar())
                                 }
                                 print(buffer.toString())
-                                mainStream.append(
-                                    StyledString(buffer.toString(), WarlockStyle.Mono)
-                                )
+                                rawPrint(buffer.toString())
                             }
                         }
                     }
@@ -389,25 +414,32 @@ class StormfrontClient(
         }
     }
 
-    private suspend fun appendText(text: StyledString) {
+    private fun bufferText(text: StyledString) {
         var styledText = text
         currentStyle?.let { styledText = styledText.applyStyle(it) }
         outputStyle?.let { styledText = styledText.applyStyle(it) }
-        if (componentId != null) {
-            componentText = componentText?.plus(styledText) ?: styledText
-        } else {
-            appendToStream(styledText, currentStream)
-        }
+        buffer = buffer?.plus(styledText) ?: styledText
     }
 
     private suspend fun appendToStream(styledText: StyledString, stream: TextStream) {
-        stream.append(styledText)
+        stream.appendLine(styledText)
+        if (stream == mainStream) isPrompting = false
         doIfClosed(stream.name) { targetStream ->
             val currentWindow = windows[stream.name]
-            targetStream.append(
+            targetStream.appendLine(
                 currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText
             )
+            if (stream == mainStream) isPrompting = false
         }
+    }
+
+    // TODO: separate buffer into its own class
+    private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
+        if (buffer?.substrings.isNullOrEmpty() && ignoreWhenBlank)
+            return
+        assert(componentId == null)
+        appendToStream(buffer ?: StyledString(""), currentStream)
+        buffer = null
     }
 
     private suspend fun doIfClosed(streamName: String, action: suspend (TextStream) -> Unit) {
@@ -463,7 +495,8 @@ class StormfrontClient(
         } else {
             doSendCommand(line)
             if (echo) {
-                mainStream.appendCommand(StyledString(line, listOfNotNull(outputStyle)))
+                mainStream.appendPartial(StyledString(line, listOfNotNull(WarlockStyle.Command, outputStyle)))
+                mainStream.appendEol()
                 scope.launch {
                     _eventFlow.emit(ClientTextEvent(line))
                 }
@@ -479,15 +512,25 @@ class StormfrontClient(
         runCatching {
             socket.close()
         }
-        mainStream.appendMessage(StyledString("Connection closed by server."))
+        mainStream.appendLine(StyledString("Connection closed by server."))
         _connected.value = false
     }
 
     private fun send(toSend: String) {
         logger.write(toSend)
         if (!socket.isOutputShutdown) {
-            socket.getOutputStream().write(toSend.toByteArray(Charsets.US_ASCII))
+            socket.getOutputStream().write(toSend.toByteArray(charset))
         }
+    }
+
+    private suspend fun rawPrint(text: String) {
+        isPrompting = false
+        val lines = text.split(newLinePattern)
+        lines.dropLast(1).forEach { fullLine ->
+            mainStream.appendPartial(StyledString(fullLine, WarlockStyle.Mono))
+            mainStream.appendEol()
+        }
+        mainStream.appendPartial(StyledString(lines.last(), WarlockStyle.Mono))
     }
 
     override suspend fun print(message: StyledString) {
@@ -495,7 +538,7 @@ class StormfrontClient(
             _eventFlow.emit(ClientTextEvent(message.toString()))
         }
         val style = outputStyle
-        mainStream.appendMessage(if (style != null) message.applyStyle(style) else message)
+        mainStream.appendLine(if (style != null) message.applyStyle(style) else message)
     }
 
     override suspend fun debug(message: String) {
