@@ -23,6 +23,10 @@ class WslProperties(
         return false
     }
 
+    override fun isBoolean(): Boolean {
+        return false
+    }
+
     override fun getProperty(key: String): WslValue {
         return client.properties.value.getIgnoringCase(key)?.let { WslString(it) } ?: WslNull
     }

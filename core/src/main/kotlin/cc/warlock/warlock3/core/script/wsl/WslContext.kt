@@ -37,6 +37,7 @@ class WslContext(
 
     private val scriptVariables = CaseInsensitiveMap(
         "components" to WslComponents(client),
+        "monstercount" to WslMonsterCount(client),
         "properties" to WslProperties(client),
         "variables" to WslVariables(this),
     )

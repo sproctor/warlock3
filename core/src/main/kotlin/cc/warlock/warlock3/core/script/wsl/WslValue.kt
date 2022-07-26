@@ -6,6 +6,7 @@ interface WslValue {
     fun toBoolean(): Boolean
     fun toNumber(): BigDecimal
     fun isNumeric(): Boolean
+    fun isBoolean(): Boolean
     fun getProperty(key: String): WslValue
     fun setProperty(key: String, value: WslValue)
     fun isMap(): Boolean
@@ -18,7 +19,10 @@ interface WslValue {
     }
 }
 
-data class WslBoolean(val value: Boolean) : WslValue {
+class WslBoolean(val value: Boolean) : WslValue {
+
+    override fun isBoolean(): Boolean = true
+
     override fun toBoolean(): Boolean {
         return value
     }
@@ -57,7 +61,9 @@ data class WslBoolean(val value: Boolean) : WslValue {
     }
 }
 
-data class WslString(val value: String) : WslValue {
+class WslString(val value: String) : WslValue {
+    override fun isBoolean(): Boolean = false
+
     override fun toBoolean(): Boolean {
         return when (value.lowercase()) {
             "true" -> true
@@ -88,11 +94,11 @@ data class WslString(val value: String) : WslValue {
     override fun setProperty(key: String, value: WslValue) {}
 
     override fun equals(other: Any?): Boolean {
-        return when (other) {
-            is WslBoolean -> value.toBoolean() == other.value
-            is WslString -> value.equals(other = other.value, ignoreCase = true)
-            is WslNumber -> value.toBigDecimal() == other.value
-            else -> false
+        return when {
+            other !is WslValue -> false
+            other.isBoolean() -> toBoolean() == other.toBoolean()
+            other.isNumeric() -> toNumber() == other.toNumber()
+            else -> value.equals(other = other.toString(), ignoreCase = true)
         }
     }
 
@@ -109,45 +115,8 @@ data class WslString(val value: String) : WslValue {
     }
 }
 
-data class WslNumber(val value: BigDecimal) : WslValue {
-    override fun toBoolean(): Boolean {
-        throw WslRuntimeException("Attempted to use number as a boolean")
-    }
-
-    override fun toNumber(): BigDecimal {
-        return value
-    }
-
-    override fun getProperty(key: String): WslValue {
-        return WslNull
-    }
-
-    override fun setProperty(key: String, value: WslValue) {}
-
-    override fun toString(): String {
-        return value.toPlainString()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        return when (other) {
-            is WslBoolean -> toBoolean() == other.value
-            is WslString -> value == other.toNumber()
-            is WslNumber -> value == other.value
-            else -> false
-        }
-    }
-
-    override fun hashCode(): Int {
-        return value.hashCode()
-    }
-
-    override fun isNumeric(): Boolean {
-        return true
-    }
-
-    override fun isMap(): Boolean {
-        return false
-    }
+class WslNumber(private val value: BigDecimal) : WslNumeric() {
+    override fun toNumber(): BigDecimal = value
 }
 
 object WslNull : WslValue {
@@ -181,6 +150,10 @@ object WslNull : WslValue {
         return false
     }
 
+    override fun isBoolean(): Boolean {
+        return false
+    }
+
     override fun isMap(): Boolean {
         return false
     }
@@ -200,6 +173,10 @@ class WslMap(initialValues: Map<String, WslValue>) : WslValue {
     }
 
     override fun isNumeric(): Boolean {
+        return false
+    }
+
+    override fun isBoolean(): Boolean {
         return false
     }
 

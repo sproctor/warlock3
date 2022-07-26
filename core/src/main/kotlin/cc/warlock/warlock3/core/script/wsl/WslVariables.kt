@@ -21,6 +21,10 @@ class WslVariables(
         return false
     }
 
+    override fun isBoolean(): Boolean {
+        return false
+    }
+
     override fun getProperty(key: String): WslValue {
         return context.lookupVariable(key) ?: WslNull
     }
