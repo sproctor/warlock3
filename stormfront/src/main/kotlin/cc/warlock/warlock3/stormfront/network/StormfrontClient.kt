@@ -262,8 +262,8 @@ class StormfrontClient(
                                             mainStream.appendPartial(
                                                 StyledString(event.text, listOfNotNull(outputStyle))
                                             )
+                                            isPrompting = true
                                         }
-                                        isPrompting = true
                                     }
                                     is StormfrontTimeEvent -> {
                                         val newTime = event.time.toLong() * 1000L
@@ -451,14 +451,15 @@ class StormfrontClient(
 
     private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
         stream.appendLine(styledText, ignoreWhenBlank)
-        if (stream == mainStream) isPrompting = false
+        val isBlank = styledText.toString().isBlank()
+        if (stream == mainStream && (!ignoreWhenBlank || !isBlank)) isPrompting = false
         doIfClosed(stream.name) { targetStream ->
             val currentWindow = windows[stream.name]
             targetStream.appendLine(
                 text = currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
                 ignoreWhenBlank = ignoreWhenBlank
             )
-            if (stream == mainStream) isPrompting = false
+            if (stream == mainStream && (!ignoreWhenBlank || !isBlank)) isPrompting = false
         }
     }
 
