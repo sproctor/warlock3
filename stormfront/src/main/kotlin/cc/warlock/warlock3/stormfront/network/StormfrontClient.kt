@@ -208,12 +208,14 @@ class StormfrontClient(
                                         if (event.id.equals("cmgr", true)) {
                                             parseText = false
                                         }
-                                    is StormfrontStreamEvent ->
+                                    is StormfrontStreamEvent -> {
+                                        flushBuffer(true)
                                         currentStream = if (event.id != null) {
                                             getStream(event.id)
                                         } else {
                                             mainStream
                                         }
+                                    }
                                     is StormfrontClearStreamEvent ->
                                         getStream(event.id).clear()
                                     is StormfrontDataReceivedEvent -> {

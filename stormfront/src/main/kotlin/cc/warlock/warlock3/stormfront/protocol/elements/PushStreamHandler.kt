@@ -6,7 +6,9 @@ import cc.warlock.warlock3.stormfront.protocol.StormfrontEvent
 import cc.warlock.warlock3.stormfront.protocol.StormfrontStreamEvent
 
 class PushStreamHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): StormfrontEvent {
-        return StormfrontStreamEvent(id = element.attributes["id"])
+    override fun startElement(element: StartElement): StormfrontEvent? {
+        return element.attributes["id"]?.let { id ->
+            StormfrontStreamEvent(id = id)
+        }
     }
 }
