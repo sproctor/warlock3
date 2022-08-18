@@ -5,6 +5,7 @@ import cc.warlock.warlock3.app.GameState
 import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.ui.dashboard.DashboardViewModel
 import cc.warlock.warlock3.app.ui.game.GameViewModel
+import cc.warlock.warlock3.app.ui.window.StreamRegistryImpl
 import cc.warlock.warlock3.app.util.loadCompassTheme
 import cc.warlock.warlock3.core.prefs.*
 import cc.warlock.warlock3.core.prefs.sql.Database
@@ -40,6 +41,7 @@ object AppContainer {
             ioDispatcher = Dispatchers.IO
         )
     }
+    val streamRegistry by lazy { StreamRegistryImpl(characterSettingsRepository) }
     val aliasRepository by lazy {
         AliasRepository(
             database.aliasQueries,
@@ -66,6 +68,7 @@ object AppContainer {
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
+            streamRegistry = streamRegistry,
         )
     }
     fun dashboardViewModelFactory(

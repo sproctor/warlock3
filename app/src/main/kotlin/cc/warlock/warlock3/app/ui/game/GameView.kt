@@ -19,10 +19,8 @@ import cc.warlock.warlock3.app.ui.components.IndicatorView
 import cc.warlock.warlock3.app.ui.components.VitalBars
 import cc.warlock.warlock3.app.ui.window.WindowUiState
 import cc.warlock.warlock3.app.ui.window.WindowView
-import cc.warlock.warlock3.core.prefs.defaultStyles
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.window.WindowLocation
-import kotlinx.coroutines.flow.flow
 
 @Composable
 fun GameView(
@@ -55,15 +53,7 @@ fun GameView(
             )
         ) {
             val subWindows = viewModel.windowUiStates.collectAsState(emptyList())
-            val mainWindow = viewModel.mainWindowUiState.collectAsState(
-                WindowUiState(
-                    name = "main",
-                    lines = flow { },
-                    window = null,
-                    defaultStyle = defaultStyles["default"]!!,
-                    allowSelection = true,
-                )
-            )
+            val mainWindow = viewModel.mainWindowUiState.collectAsState()
             GameTextWindows(
                 subWindowUiStates = subWindows.value,
                 mainWindowUiState = mainWindow.value,

@@ -23,8 +23,6 @@ interface WarlockClient {
 
     suspend fun sendCommand(line: String, echo: Boolean = true)
 
-    // fun send(toSend: String)
-
     suspend fun print(message: StyledString)
 
     suspend fun debug(message: String)

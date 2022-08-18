@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import cc.warlock.warlock3.app.components.ColorPickerDialog
+import cc.warlock.warlock3.app.model.ViewHighlight
+import cc.warlock.warlock3.app.ui.game.toWindowLine
 import cc.warlock.warlock3.app.ui.settings.FontPickerDialog
 import cc.warlock.warlock3.app.ui.settings.FontUpdate
 import cc.warlock.warlock3.app.ui.settings.fontFamilyMap
@@ -31,10 +33,7 @@ import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.text.specifiedOrNull
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import java.awt.Desktop
 import java.net.URI
 
@@ -156,8 +155,10 @@ fun WindowView(
                     }
                     WindowViewContent(
                         contextMenuItems = contextMenuItems,
-                        linesFlow = uiState.lines,
+                        stream = uiState.stream,
                         window = window,
+                        highlights = uiState.highlights,
+                        presets = uiState.presets,
                         defaultStyle = uiState.defaultStyle,
                         onActionClicked = onActionClicked,
                         selectable = uiState.allowSelection,
@@ -184,17 +185,22 @@ fun WindowView(
 @Composable
 private fun WindowViewContent(
     contextMenuItems: () -> List<ContextMenuItem>,
-    linesFlow: Flow<ImmutableList<WindowLine>>,
+    stream: ComposeTextStream,
     window: Window?,
+    highlights: List<ViewHighlight>,
+    presets: Map<String, StyleDefinition>,
     defaultStyle: StyleDefinition,
     selectable: Boolean,
     onActionClicked: (String) -> Unit
 ) {
-    val lines by linesFlow.collectAsState(persistentListOf())
     val backgroundColor = (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
     val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: defaultFontSize
+
+    val snapshot by stream.snapshot
+    val lines = snapshot.lines
+    val components = snapshot.components
 
     Box(Modifier.background(backgroundColor).padding(vertical = 4.dp)) {
         val scrollState = rememberLazyListState()
@@ -210,37 +216,45 @@ private fun WindowViewContent(
                 items(
                     items = lines,
                     key = { it.serialNumber }
-                ) { line ->
-                    Box(
-                        modifier = Modifier.fillParentMaxWidth()
-                            .background(line.entireLineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        ClickableText(
-                            text = line.text,
-                            style = TextStyle(
-                                color = textColor,
-                                fontFamily = fontFamily,
-                                fontSize = fontSize
-                            ),
-                        ) { offset ->
-                            println("handling click: $offset")
-                            line.text.getStringAnnotations(start = offset, end = offset)
-                                .forEach { annotation ->
-                                    when (annotation.tag) {
-                                        "action" -> {
-                                            println("action clicked: ${annotation.item}")
-                                            onActionClicked(annotation.item)
-                                        }
-                                        "url" -> {
-                                            try {
-                                                Desktop.getDesktop().browse(URI(annotation.item))
-                                            } catch (e: Exception) {
-                                                // TODO: add some error handling here
+                ) { streamLine ->
+                    val line = streamLine.toWindowLine(
+                        highlights = highlights,
+                        presets = presets,
+                        components = components,
+                    )
+                    if (line != null) {
+                        Box(
+                            modifier = Modifier.fillParentMaxWidth()
+                                .background(line.entireLineStyle?.backgroundColor?.toColor() ?: Color.Unspecified)
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            ClickableText(
+                                text = line.text,
+                                style = TextStyle(
+                                    color = textColor,
+                                    fontFamily = fontFamily,
+                                    fontSize = fontSize
+                                ),
+                            ) { offset ->
+                                println("handling click: $offset")
+                                line.text.getStringAnnotations(start = offset, end = offset)
+                                    .forEach { annotation ->
+                                        when (annotation.tag) {
+                                            "action" -> {
+                                                println("action clicked: ${annotation.item}")
+                                                onActionClicked(annotation.item)
+                                            }
+
+                                            "url" -> {
+                                                try {
+                                                    Desktop.getDesktop().browse(URI(annotation.item))
+                                                } catch (e: Exception) {
+                                                    // TODO: add some error handling here
+                                                }
                                             }
                                         }
                                     }
-                                }
+                            }
                         }
                     }
                 }

@@ -2,16 +2,19 @@ package cc.warlock.warlock3.stormfront.network
 
 import cc.warlock.warlock3.core.client.*
 import cc.warlock.warlock3.core.compass.DirectionType
-import cc.warlock.warlock3.core.prefs.*
+import cc.warlock.warlock3.core.prefs.AlterationRepository
+import cc.warlock.warlock3.core.prefs.CharacterRepository
+import cc.warlock.warlock3.core.prefs.WindowRepository
 import cc.warlock.warlock3.core.script.ScriptStatus
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
 import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.StyledStringVariable
 import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.window.StreamRegistry
+import cc.warlock.warlock3.core.window.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
-import cc.warlock.warlock3.stormfront.stream.TextStream
 import cc.warlock.warlock3.stormfront.util.AlterationResult
 import cc.warlock.warlock3.stormfront.util.CompiledAlteration
 import cc.warlock.warlock3.stormfront.util.FileLogger
@@ -41,9 +44,9 @@ class StormfrontClient(
     private val port: Int,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
-    private val characterSettingsRepository: CharacterSettingsRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
     private val alterationRepository: AlterationRepository,
+    private val streamRegistry: StreamRegistry,
 ) : WarlockClient {
 
     private val newLinePattern = Regex("\r?\n")
@@ -69,8 +72,7 @@ class StormfrontClient(
     private val _components = MutableStateFlow<PersistentMap<String, StyledString>>(persistentMapOf())
     override val components: StateFlow<ImmutableMap<String, StyledString>> = _components.asStateFlow()
 
-    private val mainStream = TextStream("main", this)
-    private val streams = ConcurrentHashMap(mapOf("main" to mainStream))
+    private val mainStream = getStream("main")
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -87,17 +89,6 @@ class StormfrontClient(
     // Line state variables
     private var isPrompting = false
     private var buffer: StyledString? = null
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val scrollback = characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            characterSettingsRepository.observe(characterId, scrollbackKey)
-                .map { it?.toIntOrNull() ?: defaultMaxScrollLines }
-        } else {
-            flow { emit(defaultMaxScrollLines) }
-        }
-    }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = defaultMaxScrollLines)
 
     init {
         val path = System.getProperty("WARLOCK_LOG_DIR")
@@ -585,6 +576,6 @@ class StormfrontClient(
 
     @Synchronized
     fun getStream(name: String): TextStream {
-        return streams.getOrPut(name) { TextStream(name, this) }
+        return streamRegistry.getOrCreateStream(name)
     }
 }

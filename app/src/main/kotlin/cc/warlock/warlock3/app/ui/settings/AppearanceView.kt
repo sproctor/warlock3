@@ -21,7 +21,7 @@ import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.PresetRepository
 import cc.warlock.warlock3.core.text.*
-import cc.warlock.warlock3.stormfront.stream.StreamLine
+import cc.warlock.warlock3.core.window.StreamLine
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch

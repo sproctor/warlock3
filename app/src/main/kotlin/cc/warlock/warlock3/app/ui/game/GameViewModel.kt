@@ -14,6 +14,7 @@ import cc.warlock.warlock3.app.components.CompassState
 import cc.warlock.warlock3.app.components.CompassTheme
 import cc.warlock.warlock3.app.macros.macroCommands
 import cc.warlock.warlock3.app.model.ViewHighlight
+import cc.warlock.warlock3.app.ui.window.ComposeTextStream
 import cc.warlock.warlock3.app.ui.window.WindowLine
 import cc.warlock.warlock3.app.ui.window.WindowUiState
 import cc.warlock.warlock3.app.util.getEntireLineStyles
@@ -27,11 +28,14 @@ import cc.warlock.warlock3.core.client.ProgressBarData
 import cc.warlock.warlock3.core.parser.MacroLexer
 import cc.warlock.warlock3.core.prefs.*
 import cc.warlock.warlock3.core.script.WarlockScriptEngineRegistry
-import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.core.text.Alias
+import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.StyledString
+import cc.warlock.warlock3.core.text.flattenStyles
+import cc.warlock.warlock3.core.window.StreamLine
+import cc.warlock.warlock3.core.window.StreamRegistry
 import cc.warlock.warlock3.core.window.WindowLocation
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import cc.warlock.warlock3.stormfront.stream.StreamLine
-import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.antlr.v4.runtime.CharStreams
@@ -52,6 +56,7 @@ class GameViewModel(
     val clipboard: ClipboardManager,
     private val characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
+    private val streamRegistry: StreamRegistry,
 ) : AutoCloseable {
     private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
@@ -212,42 +217,62 @@ class GameViewModel(
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptySet())
 
-    //    private val cachedLines: HashMap<String, HashMap<Int, Pair<StreamLine, WindowLine>> = HashMap()
     val windowUiStates: Flow<List<WindowUiState>> =
-        combine(openWindows, windows, presets) { openWindows, windows, presets ->
+        combine(openWindows, windows, presets, highlights) { openWindows, windows, presets, highlights ->
             openWindows.map { name ->
                 WindowUiState(
                     name = name,
-                    lines = combine(
-                        client.getStream(name).lines,
-                        highlights,
-                        client.components
-                    ) { lines, highlights, components ->
-                        lines.mapNotNull { line ->
-                            translateLine(line, highlights, presets, components)
-                        }.toPersistentList()
-                    },
+                    stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
+//                    lines = combine(
+//                        client.getStream(name).lines,
+//                        highlights,
+//                        client.components
+//                    ) { lines, highlights, components ->
+//                        lines.mapNotNull { line ->
+//                            translateLine(line, highlights, presets, components)
+//                        }.toPersistentList()
+//                    },
                     window = windows[name],
+                    highlights = highlights,
+                    presets = presets,
                     defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
                     allowSelection = !name.equals("warlockscripts", true)
                 )
             }
         }
 
-    val mainWindowUiState: Flow<WindowUiState> = combine(windows, presets) { windows, presets ->
-        val name = "main"
-        WindowUiState(
-            name = name,
-            lines = combine(client.getStream(name).lines, highlights) { lines, highlights ->
-                lines.mapNotNull { line ->
-                    translateLine(line, highlights, presets, emptyMap())
-                }.toPersistentList()
-            },
-            window = windows[name],
-            defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-            allowSelection = true,
-        )
-    }
+    val mainWindowUiState: StateFlow<WindowUiState> =
+        combine(windows, presets, highlights) { windows, presets, highlights ->
+            val name = "main"
+            WindowUiState(
+                name = name,
+                stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
+//            lines = combine(client.getStream(name).lines, highlights) { lines, highlights ->
+//                lines.mapNotNull { line ->
+//                    translateLine(line, highlights, presets, emptyMap())
+//                }.toPersistentList()
+//            },
+                window = windows[name],
+                highlights = highlights,
+                presets = presets,
+                defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
+                allowSelection = true,
+            )
+        }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue =
+                WindowUiState(
+                    name = "main",
+                    stream = streamRegistry.getOrCreateStream("main") as ComposeTextStream,
+                    window = null,
+                    highlights = emptyList(),
+                    presets = emptyMap(),
+                    defaultStyle = defaultStyles["default"]!!,
+                    allowSelection = true,
+                )
+            )
 
     init {
         client.eventFlow
@@ -256,9 +281,11 @@ class GameViewModel(
                     is ClientProgressBarEvent -> {
                         _vitalBars += event.progressBarData.id to event.progressBarData
                     }
+
                     is ClientCompassEvent -> {
                         _compassState.value = CompassState(directions = event.directions.toSet())
                     }
+
                     else -> {
                         // don't care
                     }
@@ -362,23 +389,28 @@ class GameViewModel(
                         assert(entity[0] == '\\')
                         handleEntity(entity[1])
                     }
+
                     MacroLexer.At -> {
                         _entryText.value =
                             _entryText.value.copy(selection = TextRange(_entryText.value.text.length))
                         movedCursor = true
                     }
+
                     MacroLexer.Question -> {
                         storedText.value?.let { entryAppend(it, !movedCursor) }
                     }
+
                     MacroLexer.Character -> {
                         entryAppend(token.text, !movedCursor)
                     }
+
                     MacroLexer.VariableName -> {
                         token.text?.let { if (it.endsWith("%")) it.drop(1) else it }
                             ?.let { name ->
                                 entryAppend(variables.value[name] ?: "", !movedCursor)
                             }
                     }
+
                     MacroLexer.CommandText -> {
                         val command = macroCommands[token.text.lowercase()]
                         command?.invoke(this@GameViewModel)
@@ -394,9 +426,11 @@ class GameViewModel(
                 storedText.value = _entryText.value.text
                 entryClear()
             }
+
             'r' -> {
                 submit()
             }
+
             'p' -> {
                 delay(1_000L)
             }
@@ -551,33 +585,31 @@ class GameViewModel(
     override fun close() {
         viewModelScope.cancel()
     }
+}
 
-    private fun translateLine(
-        line: StreamLine,
-        highlights: List<ViewHighlight>,
-        presets: Map<String, StyleDefinition>,
-        components: Map<String, StyledString>
-    ): WindowLine? {
-        val lineStyle = flattenStyles(
-            line.text.getEntireLineStyles(
-                variables = components,
-                styleMap = presets,
-            )
+fun StreamLine.toWindowLine(
+    highlights: List<ViewHighlight>,
+    presets: Map<String, StyleDefinition>,
+    components: Map<String, StyledString>
+): WindowLine? {
+    val lineStyle = flattenStyles(
+        text.getEntireLineStyles(
+            variables = components,
+            styleMap = presets,
         )
-        val annotatedString = buildAnnotatedString {
-            lineStyle?.let { pushStyle(it.toSpanStyle()) }
-            append(line.text.toAnnotatedString(variables = components, styleMap = presets))
-            if (lineStyle != null) pop()
-        }
-        if (line.ignoreWhenBlank && annotatedString.isBlank()) {
-            return null
-        }
-        return WindowLine(
-            text = annotatedString.highlight(highlights),
-            serialNumber = line.serialNumber,
-            entireLineStyle = lineStyle
-        )
+    )
+    val annotatedString = buildAnnotatedString {
+        lineStyle?.let { pushStyle(it.toSpanStyle()) }
+        append(text.toAnnotatedString(variables = components, styleMap = presets))
+        if (lineStyle != null) pop()
     }
+    if (ignoreWhenBlank && annotatedString.isBlank()) {
+        return null
+    }
+    return WindowLine(
+        text = annotatedString.highlight(highlights),
+        entireLineStyle = lineStyle
+    )
 }
 
 // Use to track changes in important values in lines
