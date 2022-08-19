@@ -18,6 +18,8 @@ interface TextStream {
     suspend fun clear()
 
     suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false)
+
+    suspend fun updateComponent(name: String, value: StyledString)
 }
 
 fun StyledString.getComponents(): PersistentSet<String> {

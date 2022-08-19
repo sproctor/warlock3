@@ -338,6 +338,10 @@ class StormfrontClient(
                                             } else {
                                                 _components.value += (componentId!! to buffer!!)
                                             }
+                                            val newValue = buffer ?: StyledString("")
+                                            streamRegistry.getStreams().forEach { stream ->
+                                                stream.updateComponent(componentId!!, newValue)
+                                            }
                                             buffer = null
                                             componentId = null
                                         } else {

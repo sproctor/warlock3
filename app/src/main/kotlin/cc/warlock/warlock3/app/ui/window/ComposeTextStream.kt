@@ -88,7 +88,7 @@ class ComposeTextStream(
         )
     }
 
-    suspend fun updateComponent(name: String, value: StyledString) {
+    override suspend fun updateComponent(name: String, value: StyledString) {
         mutex.withLock {
             if (usedComponents.contains(name)) {
                 components[name] = value

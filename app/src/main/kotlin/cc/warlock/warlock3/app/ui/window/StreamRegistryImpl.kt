@@ -15,4 +15,8 @@ class StreamRegistryImpl(
         return ComposeTextStream(name, 5000)
             .also { streams[name] = it }
     }
+
+    override fun getStreams(): Collection<TextStream> {
+        return streams.values
+    }
 }
