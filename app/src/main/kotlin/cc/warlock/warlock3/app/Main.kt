@@ -37,15 +37,11 @@ fun main(args: Array<String>) {
     parser.parse(args)
 
     val credentials = when {
-        port == null && host == null && key == null -> null
         port != null && host != null && key != null -> {
             println("Connecting to $host:$port with $key")
             SimuGameCredentials(host = host!!, port = port!!, key = key!!)
         }
-        else -> {
-            println("Host, port, and key must have all or none specified")
-            return
-        }
+        else -> null
     }
 
     val configDir = System.getProperty("user.home") + "/.warlock3"
