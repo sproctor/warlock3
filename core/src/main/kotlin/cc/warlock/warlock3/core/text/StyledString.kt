@@ -39,3 +39,14 @@ fun StyledStringLeaf.applyStyle(style: WarlockStyle): StyledStringLeaf {
         is StyledStringVariable -> StyledStringVariable(name = name, styles = styles + style)
     }
 }
+
+fun StyledString.isBlank(): Boolean {
+    return substrings.all { it.isBlank() }
+}
+
+fun StyledStringLeaf.isBlank(): Boolean {
+    return when (this) {
+        is StyledStringVariable -> false
+        is StyledStringSubstring -> text.isBlank()
+    }
+}

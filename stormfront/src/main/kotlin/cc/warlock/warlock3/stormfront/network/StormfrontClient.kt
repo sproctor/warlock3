@@ -11,6 +11,7 @@ import cc.warlock.warlock3.core.script.wsl.splitFirstWord
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.text.StyledStringVariable
 import cc.warlock.warlock3.core.text.WarlockStyle
+import cc.warlock.warlock3.core.text.isBlank
 import cc.warlock.warlock3.core.window.StreamRegistry
 import cc.warlock.warlock3.core.window.TextStream
 import cc.warlock.warlock3.stormfront.protocol.*
@@ -447,16 +448,19 @@ class StormfrontClient(
     }
 
     private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
+        if (ignoreWhenBlank && styledText.isBlank())
+            return
         stream.appendLine(styledText, ignoreWhenBlank)
-        val isBlank = styledText.toString().isBlank()
-        if (stream == mainStream && (!ignoreWhenBlank || !isBlank)) isPrompting = false
+        if (stream == mainStream)
+            isPrompting = false
         doIfClosed(stream.name) { targetStream ->
             val currentWindow = windows[stream.name]
             targetStream.appendLine(
                 text = currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
                 ignoreWhenBlank = ignoreWhenBlank
             )
-            if (stream == mainStream && (!ignoreWhenBlank || !isBlank)) isPrompting = false
+            if (stream == mainStream)
+                isPrompting = false
         }
     }
 
@@ -489,7 +493,7 @@ class StormfrontClient(
         if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
             scriptEngineRegistry.startScript(this, scriptCommand)
-            print(StyledString(line, WarlockStyle.Command))
+            printCommand(line)
         } else if (line.startsWith(clientCommandPrefix)) {
             print(StyledString(line, WarlockStyle.Command))
             val clientCommand = line.drop(1)
@@ -528,11 +532,7 @@ class StormfrontClient(
         } else {
             doSendCommand(line)
             if (echo) {
-                mainStream.appendPartial(StyledString(line, listOfNotNull(WarlockStyle.Command, outputStyle)))
-                mainStream.appendEol()
-                scope.launch {
-                    _eventFlow.emit(ClientTextEvent(line))
-                }
+                printCommand(line)
             }
         }
     }
@@ -572,6 +572,15 @@ class StormfrontClient(
         }
         val style = outputStyle
         mainStream.appendLine(if (style != null) message.applyStyle(style) else message)
+    }
+
+    private suspend fun printCommand(command: String) {
+        scope.launch {
+            _eventFlow.emit(ClientTextEvent(command))
+        }
+        val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
+        mainStream.appendPartial(StyledString(command, styles))
+        mainStream.appendEol()
     }
 
     override suspend fun debug(message: String) {
