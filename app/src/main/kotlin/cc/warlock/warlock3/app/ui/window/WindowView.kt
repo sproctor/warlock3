@@ -198,7 +198,7 @@ private fun WindowViewContent(
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: defaultFontSize
 
-    val snapshot by stream.snapshot
+    val snapshot by stream.snapshot.collectAsState()
     val lines = snapshot.lines
     val components = snapshot.components
 

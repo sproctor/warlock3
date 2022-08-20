@@ -1,14 +1,11 @@
 package cc.warlock.warlock3.app.ui.window
 
-import androidx.compose.runtime.mutableStateOf
 import cc.warlock.warlock3.core.text.StyledString
 import cc.warlock.warlock3.core.window.StreamLine
 import cc.warlock.warlock3.core.window.TextStream
 import cc.warlock.warlock3.core.window.getComponents
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.collections.immutable.toPersistentList
-import kotlinx.collections.immutable.toPersistentMap
+import kotlinx.collections.immutable.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.*
@@ -18,8 +15,8 @@ class ComposeTextStream(
     private var maxLines: Int
 ) : TextStream {
 
-    private val lines = ArrayList<StreamLine>(maxLines)
-    private val components = HashMap<String, StyledString>()
+    private var lines: PersistentList<StreamLine> = persistentListOf()
+    private var components: PersistentMap<String, StyledString> = persistentMapOf()
 
     private val mutex = Mutex()
     private var nextSerialNumber = 0L
@@ -28,7 +25,7 @@ class ComposeTextStream(
 
     private val usedComponents = HashSet<String>()
 
-    val snapshot = mutableStateOf(
+    val snapshot = MutableStateFlow(
         StreamSnapshot(
             id = UUID.randomUUID(),
             lines = persistentListOf(),
@@ -40,7 +37,7 @@ class ComposeTextStream(
         mutex.withLock {
             if (isPartial) {
                 val lastLine = lines.last()
-                lines[lines.lastIndex] = lastLine.copy(text = lastLine.text + text)
+                lines += lastLine.copy(text = lastLine.text + text)
             } else {
                 isPartial = true
                 doAppendLine(
@@ -77,10 +74,12 @@ class ComposeTextStream(
     // Must be called with lock held
     private fun doAppendLine(text: StyledString, ignoreWhenBlank: Boolean) {
         usedComponents += text.getComponents()
-        if (maxLines > 0 && lines.size >= maxLines) {
-            lines.removeFirst()
+        val currentLines = if (maxLines > 0 && lines.size >= maxLines) {
+            lines.removeAt(0)
+        } else {
+            lines
         }
-        lines += StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++)
+        lines = currentLines + StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++)
         snapshot.value = StreamSnapshot(
             id = UUID.randomUUID(),
             lines = lines.toPersistentList(),
@@ -91,11 +90,11 @@ class ComposeTextStream(
     override suspend fun updateComponent(name: String, value: StyledString) {
         mutex.withLock {
             if (usedComponents.contains(name)) {
-                components[name] = value
+                components += name to value
                 snapshot.value = StreamSnapshot(
                     id = UUID.randomUUID(),
-                    lines = lines.toPersistentList(),
-                    components = components.toPersistentMap()
+                    lines = lines,
+                    components = components
                 )
             }
         }
