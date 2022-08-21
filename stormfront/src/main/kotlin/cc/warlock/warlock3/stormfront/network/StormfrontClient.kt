@@ -265,11 +265,9 @@ class StormfrontClient(
                                         if (newTime > currentTime + 1000L) {
                                             // We're more than 1s slow
                                             delta = newTime - System.currentTimeMillis() - 1000L
-                                            println("adjusted delta ahead to $delta")
                                         } else if (newTime < currentTime - 1000L) {
                                             // We're more than 1s fast
                                             delta = newTime - System.currentTimeMillis() + 1000L
-                                            println("adjusted delta back to $delta")
                                         }
                                     }
                                     is StormfrontRoundTimeEvent ->
