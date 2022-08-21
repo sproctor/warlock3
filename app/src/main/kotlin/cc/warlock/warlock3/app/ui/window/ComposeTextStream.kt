@@ -58,13 +58,15 @@ class ComposeTextStream(
 
     override suspend fun clear() {
         mutex.withLock {
-            lines.clear()
+            lines = persistentListOf()
             isPartial = false
             usedComponents.clear()
         }
     }
 
     override suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
+        // It's possible a component is added that is set prior
+        // I don't think this happens in DR, so it's probably OK that we don't handle that case.
         mutex.withLock {
             isPartial = false
             doAppendLine(text, ignoreWhenBlank)
