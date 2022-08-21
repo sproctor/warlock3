@@ -31,7 +31,6 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":stormfront"))
 
-    implementation(KotlinX.coroutines.core)
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)

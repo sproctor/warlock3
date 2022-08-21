@@ -7,20 +7,21 @@ plugins {
 dependencies {
     // Standard libraries
     implementation(Kotlin.stdlib.jdk8)
-    implementation("org.jetbrains.kotlin:kotlin-reflect:_")
-    implementation(KotlinX.coroutines.core)
+    api(KotlinX.coroutines.core)
     api("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:_")
 
     // Parsing
     antlr("org.antlr:antlr4:_")
     implementation("org.mozilla:rhino:_")
 
+    // Needed for JS scripting implementation
+    implementation("org.jetbrains.kotlin:kotlin-reflect:_")
+
     // Preferences
     implementation("com.squareup.sqldelight:sqlite-driver:_")
     implementation("com.squareup.sqldelight:coroutines-extensions-jvm:_")
 
     // Testing
-    // testImplementation(Testing.junit4)
     testImplementation(kotlin("test"))
 }
 
