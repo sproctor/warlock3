@@ -37,7 +37,7 @@ class ComposeTextStream(
         mutex.withLock {
             if (isPartial) {
                 val lastLine = lines.last()
-                lines += lastLine.copy(text = lastLine.text + text)
+                lines = lines.set(lines.lastIndex, lastLine.copy(text = lastLine.text + text))
             } else {
                 isPartial = true
                 doAppendLine(
