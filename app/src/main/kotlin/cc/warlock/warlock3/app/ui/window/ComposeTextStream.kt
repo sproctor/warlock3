@@ -81,7 +81,8 @@ class ComposeTextStream(
         } else {
             lines
         }
-        lines = currentLines + StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++)
+        lines = currentLines +
+                StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++)
         snapshot.value = StreamSnapshot(
             id = UUID.randomUUID(),
             lines = lines.toPersistentList(),

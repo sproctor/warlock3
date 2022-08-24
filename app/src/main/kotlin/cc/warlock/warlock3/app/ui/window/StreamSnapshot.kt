@@ -8,4 +8,8 @@ import kotlinx.collections.immutable.PersistentMap
 import java.util.*
 
 @Immutable
-data class StreamSnapshot(val id: UUID, val lines: ImmutableList<StreamLine>, val components: PersistentMap<String, StyledString>)
+data class StreamSnapshot(
+    val id: UUID,
+    val lines: ImmutableList<StreamLine>,
+    val components: PersistentMap<String, StyledString>,
+)

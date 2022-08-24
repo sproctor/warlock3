@@ -223,15 +223,6 @@ class GameViewModel(
                 WindowUiState(
                     name = name,
                     stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-//                    lines = combine(
-//                        client.getStream(name).lines,
-//                        highlights,
-//                        client.components
-//                    ) { lines, highlights, components ->
-//                        lines.mapNotNull { line ->
-//                            translateLine(line, highlights, presets, components)
-//                        }.toPersistentList()
-//                    },
                     window = windows[name],
                     highlights = highlights,
                     presets = presets,
@@ -247,11 +238,6 @@ class GameViewModel(
             WindowUiState(
                 name = name,
                 stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-//            lines = combine(client.getStream(name).lines, highlights) { lines, highlights ->
-//                lines.mapNotNull { line ->
-//                    translateLine(line, highlights, presets, emptyMap())
-//                }.toPersistentList()
-//            },
                 window = windows[name],
                 highlights = highlights,
                 presets = presets,
