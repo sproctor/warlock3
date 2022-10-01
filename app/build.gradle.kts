@@ -47,7 +47,6 @@ java {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.jvmTarget = "11"
-    kotlinOptions.freeCompilerArgs += listOf("-opt-in=kotlin.RequiresOptIn")
 }
 
 compose.desktop {
@@ -85,6 +84,11 @@ compose.desktop {
                     password.set("@keychain:NOTARY_PWD")
                 }
             }
+        }
+
+        buildTypes.release.proguard {
+            isEnabled.set(true)
+            configurationFiles.from("rules.pro")
         }
     }
 }
