@@ -3,10 +3,10 @@ package cc.warlock.warlock3.stormfront.protocol
 import cc.warlock.warlock3.core.client.Percentage
 import cc.warlock.warlock3.core.compass.DirectionType
 import cc.warlock.warlock3.core.text.WarlockStyle
-import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.stormfront.stream.StormfrontWindow
 
 sealed interface StormfrontEvent
+
 data class StormfrontEolEvent(val ignoreWhenBlank: Boolean) : StormfrontEvent
 data class StormfrontDataReceivedEvent(val text: String) : StormfrontEvent
 data class StormfrontStreamEvent(val id: String?) : StormfrontEvent
