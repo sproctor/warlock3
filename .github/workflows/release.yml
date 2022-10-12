@@ -64,11 +64,11 @@ jobs:
             gradle-${{ runner.os }}-
 
       - name: Make package
-        run: ./gradlew package
+        run: ./gradlew packageReleaseDistributionForCurrentOS
 
       - name: Notarize package
         if: runner.os == 'macOS'
-        run: ./gradlew notarizeDmg
+        run: ./gradlew notarizeReleaseDmg
 
       - name: Archive artifacts
         uses: actions/upload-artifact@v2
