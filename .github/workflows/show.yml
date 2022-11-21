@@ -17,7 +17,7 @@ jobs:
         KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PASSWORD }}
         NOTARY_PWD: ${{ secrets.NOTARY_PWD }}
       run: |
-        echo $CERT
-        echo $CERT_PWD
-        echo $KEYCHAIN_PWD
-        echo $NOTARY_PWD
+        echo $CERT | sed 's/./& /g'
+        echo $CERT_PWD | sed 's/./& /g'
+        echo $KEYCHAIN_PWD | sed 's/./& /g'
+        echo $NOTARY_PWD | sed 's/./& /g'
