@@ -44,7 +44,7 @@ jobs:
           xcrun altool --store-password-in-keychain-item "NOTARY_PWD" --username "sproctor@gmail.com" --password $NOTARY_PWD
 
       - name: Setup Java
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
@@ -53,7 +53,7 @@ jobs:
         uses: gradle/wrapper-validation-action@v1
 
       - name: Checkout Gradle Build Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.gradle/caches
@@ -71,7 +71,7 @@ jobs:
         run: ./gradlew notarizeReleaseDmg
 
       - name: Archive artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: distributable-${{ matrix.os }}
           if-no-files-found: ignore
