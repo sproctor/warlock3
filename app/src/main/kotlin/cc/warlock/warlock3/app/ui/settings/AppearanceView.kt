@@ -172,7 +172,8 @@ fun ColumnScope.PresetSettings(
             initialColor = editColor!!.first.toColor(),
             onCloseRequest = { editColor = null },
             onColorSelected = { color ->
-                editColor?.second?.invoke(color ?: WarlockColor.Unspecified)
+                editColor?.second?.invoke(color)
+                editColor = null
             }
         )
     }
