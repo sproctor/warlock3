@@ -2,7 +2,7 @@ package cc.warlock.warlock3.app.ui.game
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,17 +29,17 @@ fun GameView(
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (!connected) {
-            Box(
-                modifier = Modifier
-                    .background(color = Color(red = 0xff, green = 0xcc, blue = 0))
+            Column(
+                Modifier
                     .fillMaxWidth()
+                    .background(color = Color(red = 0xff, green = 0xcc, blue = 0))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(Modifier.align(Alignment.Center).padding(16.dp)) {
-                    Text("You have been disconnected from the server")
-                    Spacer(Modifier.width(16.dp))
-                    OutlinedButton(onClick = navigateToDashboard) {
-                        Text("Back to dashboard")
-                    }
+                Text("You have been disconnected from the server")
+                FilledTonalButton(onClick = navigateToDashboard) {
+                    Text("Back to dashboard")
                 }
             }
         }

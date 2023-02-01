@@ -119,49 +119,49 @@ fun WindowView(
     ContextMenuDataProvider(
         items = contextMenuItems
     ) {
-        Box(modifier.padding(2.dp)) {
-            Surface(
-                shape = MaterialTheme.shapes.extraSmall,
-                shadowElevation = 2.dp
-            ) {
-                Column {
-                    Row(
-                        Modifier.background(MaterialTheme.colorScheme.primary).fillMaxWidth()
-                            .padding(4.dp)
-                    ) {
-                        Box(Modifier.weight(1f)) {
-                            Text(
-                                text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+        Surface(
+            modifier.padding(2.dp),
+            shape = MaterialTheme.shapes.extraSmall,
+            shadowElevation = 2.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        ) {
+            Column {
+                Row(
+                    Modifier.background(MaterialTheme.colorScheme.primary).fillMaxWidth()
+                        .padding(4.dp)
+                ) {
+                    Box(Modifier.weight(1f)) {
+                        Text(
+                            text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (uiState.window?.location != WindowLocation.MAIN) {
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            modifier = Modifier.size(16.dp),
+                            onClick = onCloseClicked
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
-                        if (uiState.window?.location != WindowLocation.MAIN) {
-                            Spacer(Modifier.width(8.dp))
-                            IconButton(
-                                modifier = Modifier.size(16.dp),
-                                onClick = onCloseClicked
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                )
-                            }
-                        }
                     }
-                    WindowViewContent(
-                        contextMenuItems = contextMenuItems,
-                        stream = uiState.stream,
-                        window = window,
-                        highlights = uiState.highlights,
-                        presets = uiState.presets,
-                        defaultStyle = uiState.defaultStyle,
-                        onActionClicked = onActionClicked,
-                        selectable = uiState.allowSelection,
-                    )
                 }
+                WindowViewContent(
+                    contextMenuItems = contextMenuItems,
+                    stream = uiState.stream,
+                    window = window,
+                    highlights = uiState.highlights,
+                    presets = uiState.presets,
+                    defaultStyle = uiState.defaultStyle,
+                    onActionClicked = onActionClicked,
+                    selectable = uiState.allowSelection,
+                )
             }
         }
     }
@@ -271,7 +271,8 @@ private fun WindowViewContent(
             }
             // If we're at the spot we last scrolled to
             val lastVisibleSerial =
-                scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines.getOrNull(it)?.serialNumber } ?: -1L
+                scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines.getOrNull(it)?.serialNumber }
+                    ?: -1L
             val oldLastSerial = lastSerial
             // remember the last serial
             lastSerial = lines.lastOrNull()?.serialNumber ?: -1L

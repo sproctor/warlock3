@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Divider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -22,7 +23,7 @@ private val status3Keys = listOf("hidden", "webbed")
 
 @Composable
 fun IndicatorView(modifier: Modifier, properties: Map<String, String>) {
-    val dividerColor = Color.DarkGray
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Row(modifier = modifier) {
         val invis = if (properties.containsKey("invisible")) "invis" else ""
         val position = positionKeys.firstOrNull { properties.containsKey(it) }?.let { listOf(it + invis) } ?: emptyList()

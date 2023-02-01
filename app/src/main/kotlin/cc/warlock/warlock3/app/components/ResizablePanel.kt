@@ -96,7 +96,7 @@ fun ResizablePanelHandle(
         ) {
             Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colorScheme.primary))
             Spacer(Modifier.width(1.dp))
-            Spacer(Modifier.fillMaxHeight().width(2.dp).background(Color.Black))
+            Spacer(Modifier.fillMaxHeight().width(2.dp).background(MaterialTheme.colorScheme.outline))
             Spacer(Modifier.width(1.dp))
             Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colorScheme.primary))
         }
@@ -107,7 +107,7 @@ fun ResizablePanelHandle(
         ) {
             Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colorScheme.primary))
             Spacer(Modifier.height(1.dp))
-            Spacer(Modifier.fillMaxWidth().height(2.dp).background(Color.Black))
+            Spacer(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outline))
             Spacer(Modifier.height(1.dp))
             Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colorScheme.primary))
         }

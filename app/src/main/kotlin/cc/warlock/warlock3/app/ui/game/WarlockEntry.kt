@@ -1,12 +1,14 @@
 package cc.warlock.warlock3.app.ui.game
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,36 +62,40 @@ fun WarlockEntryContent(
     roundTime: Int,
     castTime: Int,
 ) {
-    Box(
-        modifier = modifier
-            .border(width = 1.dp, color = Color.DarkGray, shape = MaterialTheme.shapes.small)
-            .background(backgroundColor)
-            .padding(4.dp)
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.extraSmall,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        color = backgroundColor,
     ) {
-        RoundTimeBar(roundTime, castTime)
+        Box(
+            modifier = Modifier.padding(4.dp)
+        ) {
+            RoundTimeBar(roundTime, castTime)
 
-        val focusRequester = remember { FocusRequester() }
-        BasicTextField(
-            value = textField,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .focusRequester(focusRequester)
-                .fillMaxWidth()
-                .onPreviewKeyEvent { event ->
-                    val result = onKeyPress(event)
-                    result
-                },
-            textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
-            cursorBrush = SolidColor(textColor),
-            onValueChange = onValueChange,
-            maxLines = 1,
-        )
+            val focusRequester = remember { FocusRequester() }
+            BasicTextField(
+                value = textField,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .focusRequester(focusRequester)
+                    .fillMaxWidth()
+                    .onPreviewKeyEvent { event ->
+                        val result = onKeyPress(event)
+                        result
+                    },
+                textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
+                cursorBrush = SolidColor(textColor),
+                onValueChange = onValueChange,
+                maxLines = 1,
+            )
 
-        DisposableEffect(Unit) {
-            focusRequester.requestFocus()
-            focusRequester.captureFocus()
-            onDispose {
-                focusRequester.freeFocus()
+            DisposableEffect(Unit) {
+                focusRequester.requestFocus()
+                focusRequester.captureFocus()
+                onDispose {
+                    focusRequester.freeFocus()
+                }
             }
         }
     }
