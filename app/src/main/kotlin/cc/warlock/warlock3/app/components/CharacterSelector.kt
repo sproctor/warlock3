@@ -1,9 +1,9 @@
 package cc.warlock.warlock3.app.components
 
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.*
@@ -24,9 +24,12 @@ fun CharacterSelector(
         onDismissRequest = { showMenu = false }
     ) {
         characters.forEach { (characterId, name) ->
-            DropdownMenuItem(onClick = { onCharacterSelect(characterId) }) {
-                Text(name)
-            }
+            DropdownMenuItem(
+                onClick = { onCharacterSelect(characterId) },
+                text = {
+                    Text(name)
+                }
+            )
         }
     }
 }

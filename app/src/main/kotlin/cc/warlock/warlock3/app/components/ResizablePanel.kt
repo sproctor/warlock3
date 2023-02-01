@@ -3,7 +3,7 @@ package cc.warlock.warlock3.app.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,22 +94,22 @@ fun ResizablePanelHandle(
             modifier = modifier,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colors.primary))
+            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colorScheme.primary))
             Spacer(Modifier.width(1.dp))
             Spacer(Modifier.fillMaxHeight().width(2.dp).background(Color.Black))
             Spacer(Modifier.width(1.dp))
-            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colors.primary))
+            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colorScheme.primary))
         }
     } else {
         Column(
             modifier = modifier,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colors.primary))
+            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colorScheme.primary))
             Spacer(Modifier.height(1.dp))
             Spacer(Modifier.fillMaxWidth().height(2.dp).background(Color.Black))
             Spacer(Modifier.height(1.dp))
-            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colors.primary))
+            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colorScheme.primary))
         }
     }
 }

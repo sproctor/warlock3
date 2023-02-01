@@ -1,7 +1,7 @@
 package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -10,7 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.AliasRepository
 import cc.warlock.warlock3.core.prefs.sql.Alias
@@ -19,7 +19,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*
 
-@OptIn(ExperimentalMaterialApi::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun AliasView(
     currentCharacter: GameCharacter?,
@@ -39,15 +39,15 @@ fun AliasView(
             allowGlobal = true,
         )
         Spacer(Modifier.height(16.dp))
-        Text(text = "Aliases", style = MaterialTheme.typography.h5)
+        Text(text = "Aliases", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         Column(Modifier.fillMaxWidth().weight(1f)) {
             aliases.forEach { alias ->
                 ListItem(
-                    text = {
+                    headlineText = {
                         Text(text = alias.pattern)
                     },
-                    trailing = {
+                    trailingContent = {
                         Row {
                             IconButton(
                                 onClick = { editingAlias = alias }
@@ -97,6 +97,7 @@ fun AliasView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditAliasDialog(
     alias: Alias,

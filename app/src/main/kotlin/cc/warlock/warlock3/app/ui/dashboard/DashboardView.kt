@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
@@ -14,7 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardView(
     viewModel: DashboardViewModel,
@@ -23,21 +23,21 @@ fun DashboardView(
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
     ) {
-        Text(text = "Characters", style = MaterialTheme.typography.h4)
+        Text(text = "Characters", style = MaterialTheme.typography.headlineMedium)
         val characters = viewModel.characters.collectAsState(emptyList())
         LazyColumn {
             item {
                 ListItem(
                     modifier = Modifier.clickable { connectToSGE() },
-                    text = { Text("Connect to SGE") },
-                    icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
+                    headlineText = { Text("Connect to SGE") },
+                    leadingContent = { Icon(imageVector = Icons.Default.Add, contentDescription = null) }
                 )
             }
             items(characters.value) { character ->
                 ListItem(
                     modifier = Modifier.clickable { viewModel.connectCharacter(character) },
-                    text = { Text(character.name) },
-                    secondaryText = { Text(character.gameCode) },
+                    headlineText = { Text(character.name) },
+                    supportingText = { Text(character.gameCode) },
                 )
             }
         }

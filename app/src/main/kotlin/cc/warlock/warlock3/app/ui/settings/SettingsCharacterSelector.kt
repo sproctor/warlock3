@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.app.ui.settings
 
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import cc.warlock.warlock3.app.components.DropdownSelect
 import cc.warlock.warlock3.core.client.GameCharacter

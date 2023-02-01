@@ -1,7 +1,7 @@
 package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
-import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.AlterationRepository
 import cc.warlock.warlock3.core.prefs.models.Alteration
@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.*
 
-@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterialApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AlterationsView(
     currentCharacter: GameCharacter?,
@@ -43,17 +43,17 @@ fun AlterationsView(
             allowGlobal = true,
         )
         Spacer(Modifier.height(16.dp))
-        Text(text = "Alterations", style = MaterialTheme.typography.h5)
+        Text(text = "Alterations", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         Column(
             Modifier.fillMaxWidth().weight(1f)
         ) {
             alterations.forEach { alteration ->
                 ListItem(
-                    text = {
+                    headlineText = {
                         Text(text = alteration.pattern)
                     },
-                    trailing = {
+                    trailingContent = {
                         Row {
                             IconButton(
                                 onClick = { editingAlteration = alteration }
@@ -112,6 +112,7 @@ fun AlterationsView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditAlterationDialog(
     alteration: Alteration,

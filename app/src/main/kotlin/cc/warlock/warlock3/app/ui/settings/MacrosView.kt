@@ -5,9 +5,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -20,15 +20,15 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
-import cc.warlock.warlock3.app.WarlockIcons
-import cc.warlock.warlock3.core.prefs.MacroRepository
+import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.core.client.GameCharacter
+import cc.warlock.warlock3.core.prefs.MacroRepository
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.awt.event.KeyEvent
 
-@OptIn(ExperimentalMaterialApi::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun MacrosView(
     initialCharacter: GameCharacter?,
@@ -52,7 +52,7 @@ fun MacrosView(
             allowGlobal = true,
         )
         Spacer(Modifier.height(16.dp))
-        Text(text = "Macros", style = MaterialTheme.typography.h5)
+        Text(text = "Macros", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         val scrollState = rememberScrollState()
         Box(
@@ -74,9 +74,9 @@ fun MacrosView(
                     val key = Key(parts.last().toLongOrNull() ?: 0)
                     textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
                     ListItem(
-                        text = { Text(textBuilder.toString()) },
-                        secondaryText = { Text(macro.second) },
-                        trailing = {
+                        headlineText = { Text(textBuilder.toString()) },
+                        supportingText = { Text(macro.second) },
+                        trailingContent = {
                             Row {
                                 IconButton(
                                     onClick = { editingMacro = macro}
@@ -143,6 +143,7 @@ fun MacrosView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditMacroDialog(
     key: Key?,
@@ -498,15 +499,15 @@ fun KeyButton(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val backgroundColor = if (isSelected) MaterialTheme.colors.secondary else MaterialTheme.colors.surface
-    val contentColor = MaterialTheme.colors.contentColorFor(backgroundColor)
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface
+    val contentColor = MaterialTheme.colorScheme.contentColorFor(backgroundColor)
     OutlinedButton(
         modifier = modifier.padding(4.dp).width(width).height(48.dp),
         onClick = onClick,
         enabled = enabled,
-        colors = ButtonDefaults.outlinedButtonColors(backgroundColor = backgroundColor, contentColor = contentColor)
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = backgroundColor, contentColor = contentColor)
     ) {
-        key?.let { Text(text = it, style = MaterialTheme.typography.body2) }
+        key?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
         icon?.let { Icon(imageVector = it, contentDescription = null, modifier = Modifier.size(48.dp)) }
     }
 }

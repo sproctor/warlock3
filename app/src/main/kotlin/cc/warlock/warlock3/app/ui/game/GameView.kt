@@ -1,11 +1,9 @@
 package cc.warlock.warlock3.app.ui.game
 
-import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
-import androidx.compose.material.Text
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,42 +43,35 @@ fun GameView(
                 }
             }
         }
-        val scrollbarStyle = LocalScrollbarStyle.current
-        CompositionLocalProvider(
-            LocalScrollbarStyle provides scrollbarStyle.copy(
-                hoverColor = MaterialTheme.colors.primary,
-                unhoverColor = MaterialTheme.colors.primary.copy(alpha = 0.42f)
-            )
-        ) {
-            val subWindows = viewModel.windowUiStates.collectAsState(emptyList())
-            val mainWindow = viewModel.mainWindowUiState.collectAsState()
-            GameTextWindows(
-                subWindowUiStates = subWindows.value,
-                mainWindowUiState = mainWindow.value,
-                topHeight = viewModel.topHeight.collectAsState(null).value,
-                leftWidth = viewModel.leftWidth.collectAsState(null).value,
-                rightWidth = viewModel.rightWidth.collectAsState(null).value,
-                onActionClicked = {
-                    viewModel.sendCommand(it)
-                },
-                onMoveClicked = { name, location ->
-                    viewModel.moveWindow(name = name, location = location)
-                },
-                onWidthChanged = { name, width ->
-                    viewModel.setWindowWidth(name, width)
-                },
-                onHeightChanged = { name, height ->
-                    viewModel.setWindowHeight(name, height)
-                },
-                onLeftChanged = viewModel::setLeftWidth,
-                onRightChanged = viewModel::setRightWidth,
-                onTopChanged = viewModel::setTopHeight,
-                onSwapWindows = viewModel::changeWindowPositions,
-                onCloseClicked = viewModel::closeWindow,
-                saveStyle = viewModel::saveWindowStyle
-            )
-            GameBottomBar(viewModel)
-        }
+
+        val subWindows = viewModel.windowUiStates.collectAsState(emptyList())
+        val mainWindow = viewModel.mainWindowUiState.collectAsState()
+        GameTextWindows(
+            subWindowUiStates = subWindows.value,
+            mainWindowUiState = mainWindow.value,
+            topHeight = viewModel.topHeight.collectAsState(null).value,
+            leftWidth = viewModel.leftWidth.collectAsState(null).value,
+            rightWidth = viewModel.rightWidth.collectAsState(null).value,
+            onActionClicked = {
+                viewModel.sendCommand(it)
+            },
+            onMoveClicked = { name, location ->
+                viewModel.moveWindow(name = name, location = location)
+            },
+            onWidthChanged = { name, width ->
+                viewModel.setWindowWidth(name, width)
+            },
+            onHeightChanged = { name, height ->
+                viewModel.setWindowHeight(name, height)
+            },
+            onLeftChanged = viewModel::setLeftWidth,
+            onRightChanged = viewModel::setRightWidth,
+            onTopChanged = viewModel::setTopHeight,
+            onSwapWindows = viewModel::changeWindowPositions,
+            onCloseClicked = viewModel::closeWindow,
+            saveStyle = viewModel::saveWindowStyle
+        )
+        GameBottomBar(viewModel)
     }
 }
 

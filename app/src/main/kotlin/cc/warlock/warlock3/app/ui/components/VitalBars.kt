@@ -3,8 +3,8 @@ package cc.warlock.warlock3.app.ui.components
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +79,7 @@ fun VitalBar(modifier: Modifier, progressBarData: ProgressBarData) {
             modifier = Modifier.align(Alignment.Center),
             text = progressBarData.text,
             color = colors.text,
-            style = MaterialTheme.typography.caption
+            style = MaterialTheme.typography.bodySmall
         )
     }
 }

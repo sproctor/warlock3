@@ -1,5 +1,7 @@
 package cc.warlock.warlock3.app
 
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -11,6 +13,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.app.ui.components.AppMenuBar
+import cc.warlock.warlock3.app.ui.theme.AppTheme
 import cc.warlock.warlock3.core.prefs.adapters.LocationAdapter
 import cc.warlock.warlock3.core.prefs.adapters.UUIDAdapter
 import cc.warlock.warlock3.core.prefs.adapters.WarlockColorAdapter
@@ -90,62 +93,69 @@ fun main(args: Array<String>) {
     application {
         var showSettings by remember { mutableStateOf(false) }
 
-        WarlockTheme {
-            Window(
-                title = "Warlock 3",
-                state = windowState,
-                icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
-                onCloseRequest = ::exitApplication,
+        AppTheme {
+            CompositionLocalProvider(
+                LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
+                    hoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f),
+                    unhoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
+                )
             ) {
-                val clipboardManager = LocalClipboardManager.current
-                val gameState = remember {
-                    val initialGameState = if (credentials != null) {
-                        val client = StormfrontClient(
-                            host = credentials.host,
-                            port = credentials.port,
-                            windowRepository = AppContainer.windowRepository,
-                            characterRepository = AppContainer.characterRepository,
-                            scriptEngineRegistry = AppContainer.scriptEngineRegistry,
-                            alterationRepository = AppContainer.alterationRepository,
-                            streamRegistry = AppContainer.streamRegistry,
-                        )
-                        client.connect(credentials.key)
-                        val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
-                        GameState.ConnectedGameState(viewModel)
-                    } else {
-                        GameState.Dashboard
-                    }
-                    mutableStateOf(initialGameState)
-                }
-                val characterId = when (val currentState = gameState.value) {
-                    is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
-                    else -> null
-                }
-                AppMenuBar(
-                    characterId = characterId,
-                    windowRepository = AppContainer.windowRepository,
-                    scriptEngineRegistry = AppContainer.scriptEngineRegistry,
-                    showSettings = { showSettings = true },
-                    disconnect = null,
-                    runScript = {
-                        val currentGameState = gameState.value
-                        if (currentGameState is GameState.ConnectedGameState) {
-                            currentGameState.viewModel.runScript(it)
+                Window(
+                    title = "Warlock 3",
+                    state = windowState,
+                    icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
+                    onCloseRequest = ::exitApplication,
+                ) {
+                    val clipboardManager = LocalClipboardManager.current
+                    val gameState = remember {
+                        val initialGameState = if (credentials != null) {
+                            val client = StormfrontClient(
+                                host = credentials.host,
+                                port = credentials.port,
+                                windowRepository = AppContainer.windowRepository,
+                                characterRepository = AppContainer.characterRepository,
+                                scriptEngineRegistry = AppContainer.scriptEngineRegistry,
+                                alterationRepository = AppContainer.alterationRepository,
+                                streamRegistry = AppContainer.streamRegistry,
+                            )
+                            client.connect(credentials.key)
+                            val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
+                            GameState.ConnectedGameState(viewModel)
+                        } else {
+                            GameState.Dashboard
                         }
+                        mutableStateOf(initialGameState)
                     }
-                )
-                WarlockApp(
-                    state = gameState,
-                    showSettings = showSettings,
-                    closeSettings = { showSettings = false },
-                )
-                LaunchedEffect(windowState) {
-                    snapshotFlow { windowState.size }
-                        .onEach { size ->
-                            clientSettings.putWidth(size.width.value.roundToInt())
-                            clientSettings.putHeight(size.height.value.roundToInt())
+                    val characterId = when (val currentState = gameState.value) {
+                        is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
+                        else -> null
+                    }
+                    AppMenuBar(
+                        characterId = characterId,
+                        windowRepository = AppContainer.windowRepository,
+                        scriptEngineRegistry = AppContainer.scriptEngineRegistry,
+                        showSettings = { showSettings = true },
+                        disconnect = null,
+                        runScript = {
+                            val currentGameState = gameState.value
+                            if (currentGameState is GameState.ConnectedGameState) {
+                                currentGameState.viewModel.runScript(it)
+                            }
                         }
-                        .launchIn(this)
+                    )
+                    WarlockApp(
+                        state = gameState,
+                        showSettings = showSettings,
+                        closeSettings = { showSettings = false },
+                    )
+                    LaunchedEffect(windowState) {
+                        snapshotFlow { windowState.size }
+                            .onEach { size ->
+                                clientSettings.putWidth(size.width.value.roundToInt())
+                                clientSettings.putHeight(size.height.value.roundToInt())
+                            }
+                            .launchIn(this)
+                    }
                 }
             }
         }

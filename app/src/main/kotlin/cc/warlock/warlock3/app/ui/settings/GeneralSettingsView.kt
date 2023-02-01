@@ -4,7 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
@@ -24,7 +24,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterialApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun GeneralSettingsView(
     characterSettingsRepository: CharacterSettingsRepository,
@@ -73,17 +73,20 @@ fun GeneralSettingsView(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
-                Text("Script directories", style = MaterialTheme.typography.h5)
+                Text("Script directories", style = MaterialTheme.typography.headlineSmall)
                 Spacer(Modifier.height(8.dp))
                 val scriptDirs by scriptDirRepository.observeScriptDirs(characterId = currentCharacterId)
                     .collectAsState(emptyList())
                 Column(Modifier.border(1.dp, Color.Black, RoundedCornerShape(8.dp)).padding(8.dp).fillMaxWidth()) {
-                    ListItem {
-                        Text("%config%/scripts")
-                    }
+                    ListItem(
+                        headlineText = { Text("%config%/scripts") }
+                    )
                     scriptDirs.forEach { scriptDir ->
                         ListItem(
-                            trailing = {
+                            headlineText = {
+                                Text(scriptDir)
+                            },
+                            trailingContent = {
                                 IconButton(
                                     onClick = {
                                         GlobalScope.launch {
@@ -96,10 +99,8 @@ fun GeneralSettingsView(
                                 ) {
                                     Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
                                 }
-                            }
-                        ) {
-                            Text(scriptDir)
-                        }
+                            },
+                        )
                     }
                 }
                 var showAddDirDialog by remember { mutableStateOf(false) }
@@ -132,10 +133,11 @@ fun GeneralSettingsView(
             VerticalScrollbar(
                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
                 adapter = rememberScrollbarAdapter(scrollState),
-                style = scrollbarStyle.copy(
-                    hoverColor = MaterialTheme.colors.primary,
-                    unhoverColor = MaterialTheme.colors.primary.copy(alpha = 0.42f)
-                )
+                // FIXME
+//                style = scrollbarStyle.copy(
+//                    hoverColor = MaterialTheme.colorScheme.primary,
+//                    unhoverColor = MaterialTheme.colors.primary.copy(alpha = 0.42f)
+//                )
             )
         }
     }

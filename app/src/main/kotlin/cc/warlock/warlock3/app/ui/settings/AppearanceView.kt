@@ -3,7 +3,7 @@ package cc.warlock.warlock3.app.ui.settings
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,13 +106,13 @@ fun AppearanceView(
             onSelect = { currentCharacterState.value = it },
         )
         Spacer(Modifier.height(16.dp))
+        val scrollbarStyle = LocalScrollbarStyle.current
         CompositionLocalProvider(
             LocalTextStyle provides TextStyle(
                 color = presets["default"]?.textColor?.toColor() ?: Color.Unspecified
-            )
+            ),
         ) {
             Box(Modifier.weight(1f)) {
-                val scrollbarStyle = LocalScrollbarStyle.current
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -140,10 +140,6 @@ fun AppearanceView(
                 VerticalScrollbar(
                     modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
                     adapter = rememberScrollbarAdapter(scrollState),
-                    style = scrollbarStyle.copy(
-                        hoverColor = MaterialTheme.colors.primary,
-                        unhoverColor = MaterialTheme.colors.primary.copy(alpha = 0.42f)
-                    )
                 )
             }
         }
@@ -194,7 +190,18 @@ fun ColumnScope.PresetSettings(
                 .verticalScroll(scrollState)
                 .padding(end = LocalScrollbarStyle.current.thickness)
         ) {
-            val presets = listOf("default", "bold", "command", "link", "roomName", "speech", "thought", "watching", "whisper", "echo")
+            val presets = listOf(
+                "default",
+                "bold",
+                "command",
+                "link",
+                "roomName",
+                "speech",
+                "thought",
+                "watching",
+                "whisper",
+                "echo"
+            )
             presets.forEach { preset ->
                 val style = styleMap[preset]
                 if (style != null) {
@@ -243,7 +250,10 @@ fun ColumnScope.PresetSettings(
                         OutlinedButton(
                             onClick = {
                                 editFont = Pair(style) { fontUpdate ->
-                                    saveStyle(preset, style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size))
+                                    saveStyle(
+                                        preset,
+                                        style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size)
+                                    )
                                 }
                             }
                         ) {
@@ -261,7 +271,7 @@ fun ColumnScope.PresetSettings(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FontPickerDialog(
     currentStyle: StyleDefinition,
@@ -292,9 +302,15 @@ fun FontPickerDialog(
                     ListItem(
                         modifier = Modifier
                             .clickable { newFontFamily = name }
-                            .then(if (name == newFontFamily) Modifier.background(MaterialTheme.colors.primary.copy(.2f)) else Modifier),
-                        icon = { Text(text = "aA", fontFamily = fontFamily) },
-                        text = { Text(text = name) }
+                            .then(
+                                if (name == newFontFamily) Modifier.background(
+                                    MaterialTheme.colorScheme.primary.copy(
+                                        .2f
+                                    )
+                                ) else Modifier
+                            ),
+                        leadingContent = { Text(text = "aA", fontFamily = fontFamily) },
+                        headlineText = { Text(text = name) }
                     )
                 }
             }

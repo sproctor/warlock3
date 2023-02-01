@@ -1,19 +1,15 @@
 package cc.warlock.warlock3.app.ui.components
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
@@ -53,17 +49,21 @@ fun HandsViewContent(left: String, right: String, spell: String) {
 
 @Composable
 fun RowScope.HandBox(image: ImageBitmap, value: String) {
-    val shape = MaterialTheme.shapes.medium
-    Row(
+    Surface(
+        shape = MaterialTheme.shapes.small,
         modifier = Modifier
             .weight(1f)
-            .padding(4.dp)
-            .border(width = 1.dp, shape = shape, color = Color.Black)
-            .background(color = Color.LightGray, shape = shape)
-            .padding(4.dp)
+            .padding(4.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
-        Image(bitmap = image, contentDescription = "left hand")
-        Text(value)
+        Row(
+            modifier = Modifier.padding(4.dp)
+        ) {
+            Image(bitmap = image, contentDescription = "left hand")
+            Spacer(Modifier.width(8.dp))
+            Text(value)
+        }
     }
 }
 

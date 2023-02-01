@@ -2,7 +2,7 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
@@ -10,13 +10,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import cc.warlock.warlock3.app.WarlockIcons
+import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.models.Variable
 import kotlinx.coroutines.runBlocking
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VariablesView(
     initialCharacter: GameCharacter?,
@@ -39,7 +39,7 @@ fun VariablesView(
             onSelect = { currentCharacterState.value = it }
         )
         Spacer(Modifier.height(16.dp))
-        Text(text = "Variables", style = MaterialTheme.typography.h5)
+        Text(text = "Variables", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         val variables by variableRepository.observeCharacterVariables(characterId).collectAsState(emptyList())
         Box(Modifier.weight(1f)) {
@@ -52,9 +52,9 @@ fun VariablesView(
             ) {
                 variables.forEach { variable ->
                     ListItem(
-                        text = { Text(variable.name) },
-                        secondaryText = { Text(variable.value) },
-                        trailing = {
+                        headlineText = { Text(variable.name) },
+                        supportingText = { Text(variable.value) },
+                        trailingContent = {
                             IconButton(
                                 onClick = { editingVariable = variable }
                             ) {
@@ -98,6 +98,7 @@ fun VariablesView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditVariableDialog(
     name: String,

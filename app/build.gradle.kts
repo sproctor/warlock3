@@ -5,12 +5,6 @@ plugins {
     id("org.jetbrains.compose")
 }
 
-repositories {
-    google()
-    mavenCentral()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-}
-
 val buildConfigDir
     get() = project.layout.buildDirectory.dir("generated/buildconfig")
 val buildConfig = tasks.register("buildConfig", GenerateBuildConfig::class.java) {
@@ -34,20 +28,15 @@ dependencies {
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
+    @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+    implementation(compose.material3)
     implementation(compose.materialIconsExtended)
     implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
     implementation("com.squareup.sqldelight:sqlite-driver:_")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:_")
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-}
+kotlin.jvmToolchain(17)
 
 compose.desktop {
     application {
@@ -58,7 +47,7 @@ compose.desktop {
             packageName = "warlock3"
             packageVersion = project.version.toString()
             modules("java.sql")
-            copyright = "Copyright 2022 Sean Proctor"
+            copyright = "Copyright 2023 Sean Proctor"
             licenseFile.set(project.file("gpl-2.0.txt"))
             description = "Warlock Front-end"
             vendor = "Warlock Project"
