@@ -3,10 +3,8 @@ package cc.warlock.warlock3.app
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.res.loadImageBitmap
-import androidx.compose.ui.res.useResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
@@ -103,7 +101,7 @@ fun main(args: Array<String>) {
                 Window(
                     title = "Warlock 3",
                     state = windowState,
-                    icon = BitmapPainter(useResource("images/icon.png", ::loadImageBitmap)),
+                    icon = painterResource("images/icon.png"),
                     onCloseRequest = ::exitApplication,
                 ) {
                     val clipboardManager = LocalClipboardManager.current
