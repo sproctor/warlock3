@@ -28,7 +28,6 @@ dependencies {
     implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
-    @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
     implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
