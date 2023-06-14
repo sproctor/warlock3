@@ -90,12 +90,9 @@ fun WarlockEntryContent(
                 maxLines = 1,
             )
 
-            DisposableEffect(Unit) {
+            LaunchedEffect(Unit) {
                 focusRequester.requestFocus()
                 focusRequester.captureFocus()
-                onDispose {
-                    focusRequester.freeFocus()
-                }
             }
         }
     }
