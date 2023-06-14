@@ -41,7 +41,7 @@ object AppContainer {
             ioDispatcher = Dispatchers.IO
         )
     }
-    val streamRegistry by lazy { StreamRegistryImpl(characterSettingsRepository) }
+    val streamRegistry by lazy { StreamRegistryImpl() }
     val aliasRepository by lazy {
         AliasRepository(
             database.aliasQueries,
