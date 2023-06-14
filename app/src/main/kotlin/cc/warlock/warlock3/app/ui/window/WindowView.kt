@@ -263,23 +263,20 @@ private fun WindowViewContent(
             adapter = rememberScrollbarAdapter(scrollState),
         )
 
-        var lastSerial by remember { mutableStateOf(-1L) }
-        LaunchedEffect(lines.lastOrNull()?.serialNumber) {
-            // Wait for the current scroll to complete
-            while (scrollState.isScrollInProgress) {
-                delay(5)
-            }
-            // If we're at the spot we last scrolled to
-            val lastVisibleSerial =
-                scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { lines.getOrNull(it)?.serialNumber }
+        // This probably shouldn't cause a recomposition
+        var prevLastSerial by remember { mutableStateOf(-1L) }
+        val lastSerial = lines.lastOrNull()?.serialNumber
+        LaunchedEffect(lastSerial) {
+            if (lastSerial != null) {
+                // If we're at the spot we last scrolled to
+                val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    ?.let { lines.getOrNull(it)?.serialNumber }
                     ?: -1L
-            val oldLastSerial = lastSerial
-            // remember the last serial
-            lastSerial = lines.lastOrNull()?.serialNumber ?: -1L
-
-            if (lastVisibleSerial >= oldLastSerial || lastVisibleSerial == -1L) { // scroll to the end if we were at the end
-                if (lines.lastIndex > 0)
+                if ((lastVisibleSerial >= prevLastSerial || lastVisibleSerial == -1L) && lines.lastIndex > 0) { // scroll to the end if we were at the end
                     scrollState.scrollToItem(lines.lastIndex)
+                }
+                // remember the last serial
+                prevLastSerial = lastSerial
             }
         }
     }
