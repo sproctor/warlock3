@@ -1,19 +1,20 @@
 package cc.warlock.warlock3.app.ui.settings
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
+import cc.warlock.warlock3.app.ui.components.DrawerMenuItem
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsDialog(
     currentCharacter: GameCharacter?,
@@ -36,55 +37,48 @@ fun SettingsDialog(
         var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
         val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
-        Row(Modifier.fillMaxSize()) {
-            Surface(Modifier.padding(8.dp).width(160.dp)) {
-                Column(Modifier.fillMaxSize()) {
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
+        PermanentNavigationDrawer(
+            drawerContent = {
+                PermanentDrawerSheet {
+                    DrawerMenuItem(
+                        title = "General",
                         onClick = { state = SettingsPage.General },
-                    ) {
-                        Text("General")
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
+                        selected = state == SettingsPage.General
+                    )
+                    DrawerMenuItem(
+                        title = "Appearance",
                         onClick = { state = SettingsPage.Appearance },
-                    ) {
-                        Text(text = "Appearance", textAlign = TextAlign.Start)
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
+                        selected = state == SettingsPage.Appearance
+                    )
+                    DrawerMenuItem(
+                        title = "Variables",
                         onClick = { state = SettingsPage.Variables },
-                    ) {
-                        Text(text = "Variables", textAlign = TextAlign.Start)
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
+                        selected = state == SettingsPage.Variables
+                    )
+                    DrawerMenuItem(
+                        title = "Macros",
                         onClick = { state = SettingsPage.Macros },
-                    ) {
-                        Text("Macros")
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
+                        selected = state == SettingsPage.Macros
+                    )
+                    DrawerMenuItem(
+                        title = "Highlights",
                         onClick = { state = SettingsPage.Highlights },
-                    ) {
-                        Text("Highlights")
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = SettingsPage.Aliases }
-                    ) {
-                        Text("Aliases")
-                    }
-                    TextButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { state = SettingsPage.Alterations }
-                    ) {
-                        Text("Text Alterations")
-                    }
+                        selected = state == SettingsPage.Highlights
+                    )
+                    DrawerMenuItem(
+                        title = "Aliases",
+                        onClick = { state = SettingsPage.Aliases },
+                        selected = state == SettingsPage.Aliases
+                    )
+                    DrawerMenuItem(
+                        title = "Text Alterations",
+                        onClick = { state = SettingsPage.Alterations },
+                        selected = state == SettingsPage.Alterations
+                    )
                 }
             }
-            Divider(Modifier.fillMaxHeight().width(1.dp))
-            Box(Modifier.padding(24.dp)) {
+        ) {
+            Box(Modifier.padding(16.dp)) {
                 when (state) {
                     SettingsPage.General -> {
                         GeneralSettingsView(
@@ -94,6 +88,7 @@ fun SettingsDialog(
                             scriptDirRepository = scriptDirRepository,
                         )
                     }
+
                     SettingsPage.Variables -> {
                         VariablesView(
                             initialCharacter = currentCharacter,
@@ -101,16 +96,19 @@ fun SettingsDialog(
                             variableRepository = variableRepository,
                         )
                     }
+
                     SettingsPage.Macros -> MacrosView(
                         initialCharacter = currentCharacter,
                         characters = characters,
                         macroRepository = macroRepository,
                     )
+
                     SettingsPage.Highlights -> HighlightsView(
                         currentCharacter = currentCharacter,
                         allCharacters = characters,
                         highlightRepository = highlightRepository,
                     )
+
                     SettingsPage.Appearance -> {
                         AppearanceView(
                             presetRepository = presetRepository,
@@ -118,6 +116,7 @@ fun SettingsDialog(
                             characters = characters,
                         )
                     }
+
                     SettingsPage.Aliases -> {
                         AliasView(
                             currentCharacter = currentCharacter,
@@ -125,6 +124,7 @@ fun SettingsDialog(
                             aliasRepository = aliasRepository,
                         )
                     }
+
                     SettingsPage.Alterations -> {
                         AlterationsView(
                             currentCharacter = currentCharacter,
