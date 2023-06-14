@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.rememberDialogState
@@ -55,15 +56,18 @@ fun GeneralSettingsView(
                     .fillMaxWidth(),
             ) {
                 if (currentCharacter != null) {
-                    val maxLines by characterSettingsRepository.observe(
+                    val initialMaxLines by characterSettingsRepository.observe(
                         characterId = currentCharacter.id, key = scrollbackKey
                     ).collectAsState(null)
+                    var maxLinesValue by remember(initialMaxLines == null) { mutableStateOf(TextFieldValue(initialMaxLines ?: defaultMaxScrollLines.toString())) }
                     TextField(
-                        value = maxLines ?: defaultMaxScrollLines.toString(),
+                        value = maxLinesValue,
                         onValueChange = {
+                            maxLinesValue = it
+                            // TODO: use a view model here to handle scope
                             GlobalScope.launch {
                                 characterSettingsRepository.save(
-                                    characterId = currentCharacter.id, key = scrollbackKey, value = it
+                                    characterId = currentCharacter.id, key = scrollbackKey, value = it.text
                                 )
                             }
                         },
