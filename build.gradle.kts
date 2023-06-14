@@ -23,3 +23,7 @@ subprojects {
     version = "3.0.6"
     group = "cc.warlock.warlock3"
 }
+
+tasks.wrapper {
+    gradleVersion = "8.1.1"
+}
