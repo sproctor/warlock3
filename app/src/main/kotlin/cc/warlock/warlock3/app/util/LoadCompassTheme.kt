@@ -14,7 +14,7 @@ fun loadCompassTheme(): CompassTheme {
     properties.load(stream)
     stream.close()
 
-    val directions = DirectionType.values().associateWith { direction ->
+    val directions = DirectionType.entries.associateWith { direction ->
         val xy = properties.getProperty("position.${direction.value}").split(",")
         val position = Pair(xy[0].toInt(), xy[1].toInt())
         val imageStream = object {}.javaClass.getResourceAsStream("/images/compass/${direction.value}_on.png")

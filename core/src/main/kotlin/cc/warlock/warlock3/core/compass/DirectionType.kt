@@ -15,7 +15,7 @@ enum class DirectionType(val value: String, val abbreviation: String) {
 
     companion object {
         fun fromAbbreviation(abbreviation: String): DirectionType? {
-            values().forEach {
+            entries.forEach {
                 if (it.abbreviation == abbreviation) {
                     return it
                 }
