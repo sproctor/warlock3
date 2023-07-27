@@ -9,6 +9,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import cc.warlock.warlock3.app.di.AppContainer
 import cc.warlock.warlock3.app.ui.components.AppMenuBar
 import cc.warlock.warlock3.app.ui.theme.AppTheme
@@ -20,7 +22,6 @@ import cc.warlock.warlock3.core.prefs.migrateIfNeeded
 import cc.warlock.warlock3.core.prefs.sql.*
 import cc.warlock.warlock3.stormfront.network.SimuGameCredentials
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
-import com.squareup.sqldelight.sqlite.driver.JdbcSqliteDriver
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.flow.launchIn
@@ -49,12 +50,15 @@ fun main(args: Array<String>) {
     File(configDir).mkdirs()
     val dbFilename = "$configDir/prefs.db"
     val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename")
-    migrateIfNeeded(driver, dbFilename)
+    runBlocking {
+        migrateIfNeeded(driver, dbFilename)
+    }
     AppContainer.database = Database(
         driver = driver,
         HighlightAdapter = Highlight.Adapter(idAdapter = UUIDAdapter),
         HighlightStyleAdapter = HighlightStyle.Adapter(
             highlightIdAdapter = UUIDAdapter,
+            groupNumberAdapter = IntColumnAdapter,
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
         ),
@@ -63,7 +67,10 @@ fun main(args: Array<String>) {
             backgroundColorAdapter = WarlockColorAdapter,
         ),
         WindowSettingsAdapter = WindowSettings.Adapter(
+            widthAdapter = IntColumnAdapter,
+            heightAdapter = IntColumnAdapter,
             locationAdapter = LocationAdapter,
+            positionAdapter = IntColumnAdapter,
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
         ),

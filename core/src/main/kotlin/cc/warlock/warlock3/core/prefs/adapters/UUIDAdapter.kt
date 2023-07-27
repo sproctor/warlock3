@@ -1,6 +1,6 @@
 package cc.warlock.warlock3.core.prefs.adapters
 
-import com.squareup.sqldelight.ColumnAdapter
+import app.cash.sqldelight.ColumnAdapter
 import java.nio.ByteBuffer
 import java.util.*
 

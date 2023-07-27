@@ -31,7 +31,8 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
     implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
-    implementation("com.squareup.sqldelight:sqlite-driver:_")
+    implementation("app.cash.sqldelight:sqlite-driver:_")
+    implementation("app.cash.sqldelight:primitive-adapters:_")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:_")
 }
 

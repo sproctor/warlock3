@@ -1,27 +1,30 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.db.SqlDriver
 import cc.warlock.warlock3.core.prefs.sql.Database
 import cc.warlock.warlock3.core.prefs.sql.Macro
-import com.squareup.sqldelight.sqlite.driver.JdbcSqliteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val versionPragma = "user_version"
 
-fun migrateIfNeeded(driver: JdbcSqliteDriver, fileName: String) {
+suspend fun migrateIfNeeded(driver: SqlDriver, fileName: String) {
     val oldVersion =
-        driver.executeQuery(null, "PRAGMA $versionPragma", 0).use { cursor ->
-            if (cursor.next()) {
-                cursor.getLong(0)?.toInt()
-            } else {
-                null
-            }
-        } ?: 0
+        driver.executeQuery(null, "PRAGMA $versionPragma", { cursor ->
+            QueryResult.Value(
+                if (cursor.next().value) {
+                    cursor.getLong(0)
+                } else {
+                    null
+                } ?: 0L
+            )
+        }, 0).await()
 
     val newVersion = Database.Schema.version
 
-    if (oldVersion == 0) {
+    if (oldVersion == 0L) {
         println("Creating DB version $newVersion!")
         Database.Schema.create(driver)
         driver.execute(null, "PRAGMA $versionPragma=$newVersion", 0)

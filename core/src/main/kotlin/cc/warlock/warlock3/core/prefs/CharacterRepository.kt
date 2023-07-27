@@ -1,12 +1,13 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.sql.Character
 import cc.warlock.warlock3.core.prefs.sql.CharacterQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
+import cc.warlock.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -17,7 +18,7 @@ class CharacterRepository(
     fun observeAllCharacters(): Flow<List<GameCharacter>> {
         return characterQueries.getAll()
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
             .map { dbCharacters ->
                 dbCharacters.map {
                     GameCharacter(
@@ -28,6 +29,7 @@ class CharacterRepository(
                     )
                 }
             }
+            .flowOn(ioDispatcher)
     }
 
     suspend fun getCharacter(id: String): GameCharacter? {

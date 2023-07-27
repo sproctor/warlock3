@@ -1,12 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.WindowSettingsQueries
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
+import cc.warlock.warlock3.core.util.mapToList
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -115,8 +115,9 @@ class WindowRepository(
     fun observeOpenWindows(characterId: String): Flow<Set<String>> {
         return windowSettingsQueries.getOpenWindows(characterId)
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
             .map { it.toSet() }
+            .flowOn(ioDispatcher)
     }
 
     suspend fun openWindow(characterId: String, name: String) {

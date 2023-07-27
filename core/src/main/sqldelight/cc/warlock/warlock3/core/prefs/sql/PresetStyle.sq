@@ -1,4 +1,5 @@
 import cc.warlock.warlock3.core.text.WarlockColor;
+import kotlin.Boolean;
 
 CREATE TABLE PresetStyle (
     presetId TEXT NOT NULL,

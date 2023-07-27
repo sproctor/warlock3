@@ -1,5 +1,6 @@
 import cc.warlock.warlock3.core.text.WarlockColor;
 import cc.warlock.warlock3.core.window.WindowLocation;
+import kotlin.Int;
 
 CREATE TABLE WindowSettings (
     characterId TEXT NOT NULL,

@@ -1,11 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.CharacterSetting
 import cc.warlock.warlock3.core.prefs.sql.CharacterSettingQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToOneOrNull
+import cc.warlock.warlock3.core.util.mapToOneOrNull
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
 const val defaultMaxScrollLines = 5_000
@@ -30,6 +31,9 @@ class CharacterSettingsRepository(
     }
 
     fun observe(characterId: String, key: String): Flow<String?> {
-        return characterSettingsQueries.getByKey(characterId = characterId, key = key).asFlow().mapToOneOrNull()
+        return characterSettingsQueries.getByKey(characterId = characterId, key = key)
+            .asFlow()
+            .mapToOneOrNull()
+            .flowOn(ioDispatcher)
     }
 }

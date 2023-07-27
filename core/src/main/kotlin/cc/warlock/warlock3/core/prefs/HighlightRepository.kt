@@ -1,14 +1,15 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.models.Highlight
 import cc.warlock.warlock3.core.prefs.sql.HighlightQueries
 import cc.warlock.warlock3.core.prefs.sql.HighlightStyleQueries
 import cc.warlock.warlock3.core.prefs.sql.HighlightStyle
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
-import com.squareup.sqldelight.runtime.coroutines.asFlow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -40,6 +41,7 @@ class HighlightRepository(
                     it.executeAsList()
                 }
             }
+            .flowOn(ioDispatcher)
     }
 
     fun observeForCharacter(characterId: String): Flow<List<Highlight>> {

@@ -1,12 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
-import cc.warlock.warlock3.core.prefs.models.Highlight
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.Alias
 import cc.warlock.warlock3.core.prefs.sql.AliasQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
+import cc.warlock.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -24,12 +24,14 @@ class AliasRepository(
                     cc.warlock.warlock3.core.text.Alias(it.pattern, it.replacement)
                 }
             }
+            .flowOn(ioDispatcher)
     }
 
     fun observeByCharacter(characterId: String): Flow<List<Alias>> {
         return aliasQueries.getByCharacter(characterId)
             .asFlow()
             .mapToList()
+            .flowOn(ioDispatcher)
     }
 
     fun observeGlobal(): Flow<List<Alias>> {

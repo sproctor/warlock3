@@ -1,11 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.ScriptDir
 import cc.warlock.warlock3.core.prefs.sql.ScriptDirQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
+import cc.warlock.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
 class ScriptDirRepository(
@@ -15,7 +16,8 @@ class ScriptDirRepository(
     fun observeScriptDirs(characterId: String): Flow<List<String>> {
         return scriptDirQueries.getByCharacter(characterId)
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
+            .flowOn(ioDispatcher)
     }
 
     fun observeGlobalScriptDirs(): Flow<List<String>> {

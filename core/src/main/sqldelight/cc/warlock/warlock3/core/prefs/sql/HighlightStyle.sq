@@ -1,5 +1,7 @@
 import cc.warlock.warlock3.core.text.WarlockColor;
 import java.util.UUID;
+import kotlin.Boolean;
+import kotlin.Int;
 
 CREATE TABLE HighlightStyle (
     highlightId BLOB AS UUID NOT NULL,

@@ -1,11 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.ClientSetting
 import cc.warlock.warlock3.core.prefs.sql.ClientSettingQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToOneOrNull
+import cc.warlock.warlock3.core.util.mapToOneOrNull
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -30,8 +31,9 @@ class ClientSettingRepository(
     fun observe(key: String): Flow<String?> {
         return clientSettingQueries.getByKey(key)
             .asFlow()
-            .mapToOneOrNull(ioDispatcher)
+            .mapToOneOrNull()
             .map { it?.value_ }
+            .flowOn(ioDispatcher)
     }
 
     suspend fun getInt(key: String): Int? {

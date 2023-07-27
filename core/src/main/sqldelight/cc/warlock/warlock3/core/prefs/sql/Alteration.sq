@@ -1,3 +1,4 @@
+import kotlin.Boolean;
 import java.util.UUID;
 
 CREATE TABLE Alteration (

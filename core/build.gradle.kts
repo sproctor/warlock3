@@ -1,7 +1,7 @@
 plugins {
     kotlin("jvm")
     antlr
-    id("com.squareup.sqldelight")
+    id("app.cash.sqldelight")
 }
 
 dependencies {
@@ -18,18 +18,21 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect:_")
 
     // Preferences
-    implementation("com.squareup.sqldelight:sqlite-driver:_")
-    implementation("com.squareup.sqldelight:coroutines-extensions-jvm:_")
+    implementation("app.cash.sqldelight:sqlite-driver:_")
+    implementation("app.cash.sqldelight:async-extensions:_")
+    implementation("app.cash.sqldelight:coroutines-extensions-jvm:_")
 
     // Testing
     testImplementation(kotlin("test"))
 }
 
 sqldelight {
-    database("Database") {
-        packageName = "cc.warlock.warlock3.core.prefs.sql"
-        dialect = "sqlite:3.24"
-        // verifyMigrations = true
+    databases {
+        create("Database") {
+            packageName.set("cc.warlock.warlock3.core.prefs.sql")
+            dialect("app.cash.sqldelight:sqlite-3-24-dialect:_")
+            // verifyMigrations = true
+        }
     }
 }
 

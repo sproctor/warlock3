@@ -1,9 +1,7 @@
 package cc.warlock.warlock3.core.prefs.adapters
 
+import app.cash.sqldelight.ColumnAdapter
 import cc.warlock.warlock3.core.text.WarlockColor
-import cc.warlock.warlock3.core.text.isUnspecified
-import cc.warlock.warlock3.core.util.toWarlockColor
-import com.squareup.sqldelight.ColumnAdapter
 
 object WarlockColorAdapter : ColumnAdapter<WarlockColor, Long> {
     override fun decode(databaseValue: Long): WarlockColor {

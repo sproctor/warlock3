@@ -1,4 +1,5 @@
 import java.util.UUID;
+import kotlin.Boolean;
 
 CREATE TABLE Highlight (
     id BLOB AS UUID NOT NULL PRIMARY KEY,

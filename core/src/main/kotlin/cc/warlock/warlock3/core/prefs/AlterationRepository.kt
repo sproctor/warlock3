@@ -1,11 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.models.Alteration
 import cc.warlock.warlock3.core.prefs.sql.AlterationQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
+import cc.warlock.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.util.*
 
@@ -28,7 +29,8 @@ class AlterationRepository(
             Alteration(id, pattern, sourceStream, destinationStream, result, ignoreCase, entireLine)
         }
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
+            .flowOn(ioDispatcher)
     }
 
     fun observeForCharacter(characterId: String): Flow<List<Alteration>> {
@@ -45,7 +47,8 @@ class AlterationRepository(
             Alteration(id, pattern, sourceStream, destinationStream, result, ignoreCase, entireLine)
         }
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
+            .flowOn(ioDispatcher)
     }
 
     suspend fun save(characterId: String, alteration: Alteration) {

@@ -1,11 +1,12 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.Macro
 import cc.warlock.warlock3.core.prefs.sql.MacroQueries
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
+import cc.warlock.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -17,8 +18,9 @@ class MacroRepository(
         return macroQueries
             .getGlobals()
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
             .map { list -> list.map { Pair(it.key, it.value_) } }
+            .flowOn(ioDispatcher)
     }
 
     fun observeCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
@@ -26,10 +28,11 @@ class MacroRepository(
         return macroQueries
             .getForCharacter(characterId)
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
             .map { list ->
                 list.map { Pair(it.key, it.value_) }
             }
+            .flowOn(ioDispatcher)
     }
 
     fun observeOnlyCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
@@ -37,10 +40,11 @@ class MacroRepository(
         return macroQueries
             .getByCharacter(characterId)
             .asFlow()
-            .mapToList(ioDispatcher)
+            .mapToList()
             .map { list ->
                 list.map { Pair(it.key, it.value_) }
             }
+            .flowOn(ioDispatcher)
     }
 
     suspend fun delete(characterId: String, key: String) {

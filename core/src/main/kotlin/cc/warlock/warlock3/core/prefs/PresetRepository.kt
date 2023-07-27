@@ -1,13 +1,14 @@
 package cc.warlock.warlock3.core.prefs
 
+import app.cash.sqldelight.coroutines.asFlow
 import cc.warlock.warlock3.core.prefs.sql.PresetStyle
 import cc.warlock.warlock3.core.prefs.sql.PresetStyleQueries
 import cc.warlock.warlock3.core.text.StyleDefinition
 import cc.warlock.warlock3.core.text.WarlockColor
-import com.squareup.sqldelight.runtime.coroutines.asFlow
-import com.squareup.sqldelight.runtime.coroutines.mapToList
+import cc.warlock.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -40,9 +41,11 @@ class PresetRepository(
                     fontSize = fontSize,
                 )
             )
-        }.asFlow()
-            .mapToList(ioDispatcher)
+        }
+            .asFlow()
+            .mapToList()
             .map { defaultStyles + it.toMap() }
+            .flowOn(ioDispatcher)
     }
 
     suspend fun save(characterId: String, key: String, style: StyleDefinition) {
