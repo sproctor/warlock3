@@ -18,7 +18,7 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.core.client.GameCharacter
@@ -28,7 +28,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.awt.event.KeyEvent
 
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun MacrosView(
     initialCharacter: GameCharacter?,
@@ -74,8 +74,8 @@ fun MacrosView(
                     val key = Key(parts.last().toLongOrNull() ?: 0)
                     textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
                     ListItem(
-                        headlineText = { Text(textBuilder.toString()) },
-                        supportingText = { Text(macro.second) },
+                        headlineContent = { Text(textBuilder.toString()) },
+                        supportingContent = { Text(macro.second) },
                         trailingContent = {
                             Row {
                                 IconButton(
@@ -143,7 +143,6 @@ fun MacrosView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditMacroDialog(
     key: Key?,
@@ -152,7 +151,7 @@ fun EditMacroDialog(
     saveMacro: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
-    Dialog(
+    DialogWindow(
         onCloseRequest = onClose,
         state = rememberDialogState(size = DpSize(width = 1520.dp, height = 540.dp)),
         title = "Edit Macro"
@@ -512,7 +511,6 @@ fun KeyButton(
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Preview
 @Composable
 fun KeyboardLayoutPreview() {

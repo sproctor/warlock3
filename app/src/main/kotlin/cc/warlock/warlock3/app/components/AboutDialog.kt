@@ -10,7 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.WarlockBuildConfig
 import org.jetbrains.skia.Image
@@ -19,7 +19,7 @@ import org.jetbrains.skia.Image
 fun AboutDialog(
     onCloseRequest: () -> Unit,
 ) {
-    Dialog(
+    DialogWindow(
         state = rememberDialogState(width = 400.dp, height = 300.dp),
         onCloseRequest = onCloseRequest,
         title = "About Warlock 3",

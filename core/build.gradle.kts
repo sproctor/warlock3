@@ -52,7 +52,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 tasks.generateGrammarSource {
     // maxHeapSize = "64m"
     arguments = arguments + listOf("-visitor", "-long-messages", "-package", "cc.warlock.warlock3.core.parser")
-    outputDirectory = File("$buildDir/generated-src/antlr/main/cc/warlock/warlock3/core/parser/")
+    outputDirectory = File("${layout.buildDirectory.get()}/generated-src/antlr/main/cc/warlock/warlock3/core/parser/")
 }
 
 tasks.compileKotlin {

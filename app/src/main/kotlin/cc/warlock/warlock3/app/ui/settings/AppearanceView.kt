@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.util.defaultFontSize
@@ -271,14 +271,13 @@ fun ColumnScope.PresetSettings(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FontPickerDialog(
     currentStyle: StyleDefinition,
     onCloseRequest: () -> Unit,
     onSaveClicked: (FontUpdate) -> Unit,
 ) {
-    Dialog(
+    DialogWindow(
         onCloseRequest = onCloseRequest,
         title = "Choose a font",
         state = rememberDialogState(width = 400.dp, height = 500.dp)
@@ -310,7 +309,7 @@ fun FontPickerDialog(
                                 ) else Modifier
                             ),
                         leadingContent = { Text(text = "aA", fontFamily = fontFamily) },
-                        headlineText = { Text(text = name) }
+                        headlineContent = { Text(text = name) }
                     )
                 }
             }

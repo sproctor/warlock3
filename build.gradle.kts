@@ -1,22 +1,8 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        google()
-    }
-    dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:_")
-        classpath("org.jetbrains.compose:compose-gradle-plugin:_")
-        classpath(Square.sqlDelight.gradlePlugin)
-    }
-}
-
-allprojects {
-    repositories {
-        mavenCentral()
-        google()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-    }
+plugins{
+    kotlin("jvm") apply false
+    id("org.jetbrains.compose") apply false
+    kotlin("plugin.serialization") apply false
+    id("app.cash.sqldelight") apply false
 }
 
 subprojects {

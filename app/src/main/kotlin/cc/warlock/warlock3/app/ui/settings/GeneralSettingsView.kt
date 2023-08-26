@@ -4,9 +4,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.CharacterSettingsRepository
@@ -25,7 +25,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-@OptIn(DelicateCoroutinesApi::class, ExperimentalMaterial3Api::class)
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun GeneralSettingsView(
     characterSettingsRepository: CharacterSettingsRepository,
@@ -83,11 +83,11 @@ fun GeneralSettingsView(
                     .collectAsState(emptyList())
                 Column(Modifier.border(1.dp, Color.Black, RoundedCornerShape(8.dp)).padding(8.dp).fillMaxWidth()) {
                     ListItem(
-                        headlineText = { Text("%config%/scripts") }
+                        headlineContent = { Text("%config%/scripts") }
                     )
                     scriptDirs.forEach { scriptDir ->
                         ListItem(
-                            headlineText = {
+                            headlineContent = {
                                 Text(scriptDir)
                             },
                             trailingContent = {
@@ -112,7 +112,7 @@ fun GeneralSettingsView(
                     Text("Add a directory")
                 }
                 if (showAddDirDialog) {
-                    Dialog(
+                    DialogWindow(
                         title = "Add a script directory",
                         onCloseRequest = { showAddDirDialog = false },
                         state = rememberDialogState()

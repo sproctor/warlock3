@@ -2,21 +2,20 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import cc.warlock.warlock3.app.ui.theme.WarlockIcons
-import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.client.GameCharacter
+import cc.warlock.warlock3.core.prefs.VariableRepository
 import cc.warlock.warlock3.core.prefs.models.Variable
 import kotlinx.coroutines.runBlocking
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VariablesView(
     initialCharacter: GameCharacter?,
@@ -52,8 +51,8 @@ fun VariablesView(
             ) {
                 variables.forEach { variable ->
                     ListItem(
-                        headlineText = { Text(variable.name) },
-                        supportingText = { Text(variable.value) },
+                        headlineContent = { Text(variable.name) },
+                        supportingContent = { Text(variable.value) },
                         trailingContent = {
                             IconButton(
                                 onClick = { editingVariable = variable }
@@ -98,7 +97,6 @@ fun VariablesView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditVariableDialog(
     name: String,
@@ -106,7 +104,7 @@ fun EditVariableDialog(
     saveVariable: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
-    Dialog(
+    DialogWindow(
         onCloseRequest = onClose,
         title = "Edit Variable"
     ) {

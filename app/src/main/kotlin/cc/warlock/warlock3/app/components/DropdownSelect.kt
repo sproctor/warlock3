@@ -8,7 +8,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> DropdownSelect(
     items: List<T>,

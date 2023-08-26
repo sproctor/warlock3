@@ -2,26 +2,29 @@ package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
-import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.app.components.ColorPickerDialog
+import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.app.util.toColor
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.HighlightRepository
 import cc.warlock.warlock3.core.prefs.models.Highlight
-import cc.warlock.warlock3.core.text.*
+import cc.warlock.warlock3.core.text.StyleDefinition
+import cc.warlock.warlock3.core.text.WarlockColor
+import cc.warlock.warlock3.core.text.specifiedOrNull
+import cc.warlock.warlock3.core.text.toHexString
 import cc.warlock.warlock3.core.util.toWarlockColor
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -29,7 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun HighlightsView(
     currentCharacter: GameCharacter?,
@@ -61,7 +64,7 @@ fun HighlightsView(
         ) {
             highlights.forEach { highlight ->
                 ListItem(
-                    headlineText = {
+                    headlineContent = {
                         Text(text = highlight.pattern)
                     },
                     trailingContent = {
@@ -126,7 +129,6 @@ fun HighlightsView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditHighlightDialog(
     highlight: Highlight,
@@ -139,7 +141,7 @@ fun EditHighlightDialog(
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
 
-    Dialog(
+    DialogWindow(
         state = rememberDialogState(width = 640.dp, height = 480.dp),
         onCloseRequest = onClose,
         title = "Edit Highlight"

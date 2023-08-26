@@ -37,11 +37,10 @@ fun SgeCharacterView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CharacterListItem(character: SgeCharacter, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        headlineText = { Text(character.name) },
+        headlineContent = { Text(character.name) },
     )
 }

@@ -18,7 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import cc.warlock.warlock3.app.components.ColorPickerDialog
 import cc.warlock.warlock3.app.model.ViewHighlight
 import cc.warlock.warlock3.app.ui.game.toWindowLine
@@ -32,7 +32,6 @@ import cc.warlock.warlock3.core.text.WarlockColor
 import cc.warlock.warlock3.core.text.specifiedOrNull
 import cc.warlock.warlock3.core.window.Window
 import cc.warlock.warlock3.core.window.WindowLocation
-import kotlinx.coroutines.delay
 import java.awt.Desktop
 import java.net.URI
 
@@ -323,7 +322,7 @@ fun WindowSettingsDialog(
         )
     }
 
-    Dialog(
+    DialogWindow(
         title = "Window Settings",
         onCloseRequest = onCloseRequest
     ) {

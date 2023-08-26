@@ -1,15 +1,15 @@
 package cc.warlock.warlock3.app.ui.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindow
 import cc.warlock.warlock3.app.ui.theme.WarlockIcons
 import cc.warlock.warlock3.core.client.GameCharacter
 import cc.warlock.warlock3.core.prefs.AliasRepository
@@ -19,7 +19,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun AliasView(
     currentCharacter: GameCharacter?,
@@ -44,7 +44,7 @@ fun AliasView(
         Column(Modifier.fillMaxWidth().weight(1f)) {
             aliases.forEach { alias ->
                 ListItem(
-                    headlineText = {
+                    headlineContent = {
                         Text(text = alias.pattern)
                     },
                     trailingContent = {
@@ -97,7 +97,6 @@ fun AliasView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditAliasDialog(
     alias: Alias,
@@ -107,9 +106,9 @@ fun EditAliasDialog(
     var pattern by remember(alias.pattern) { mutableStateOf(alias.pattern) }
     var replacement by remember(alias.replacement) { mutableStateOf(alias.replacement) }
 
-    Dialog(
+    DialogWindow(
         onCloseRequest = onClose,
-        title = "Edit Alias"
+        title = "Edit Alias",
     ) {
         Column(
             modifier = Modifier

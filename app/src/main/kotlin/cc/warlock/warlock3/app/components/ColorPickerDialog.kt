@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogState
+import androidx.compose.ui.window.DialogWindow
 import cc.warlock.warlock3.app.util.toWarlockColor
 import cc.warlock.warlock3.core.text.WarlockColor
 import com.godaddy.android.colorpicker.ClassicColorPicker
@@ -25,7 +25,7 @@ fun ColorPickerDialog(
     onColorSelected: (color: WarlockColor) -> Unit,
 ) {
     var currentColor by remember { mutableStateOf(HsvColor.from(initialColor ?: Color.Unspecified)) }
-    Dialog(
+    DialogWindow(
         title = "Choose color",
         state = state,
         onCloseRequest = onCloseRequest,
