@@ -1,8 +1,6 @@
 package cc.warlock.warlock3.app.ui.game
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.input.key.*
@@ -60,8 +58,8 @@ class GameViewModel(
 ) : AutoCloseable {
     private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
-    private val _entryText = mutableStateOf(TextFieldValue())
-    val entryText: State<TextFieldValue> = _entryText
+    var entryText by mutableStateOf(TextFieldValue())
+        private set
 
     private val _compassState = mutableStateOf(CompassState(emptySet()))
     val compassState: State<CompassState> = _compassState
@@ -70,7 +68,7 @@ class GameViewModel(
     val vitalBars: SnapshotStateMap<String, ProgressBarData> = _vitalBars
 
     // Saved by macros
-    private val storedText = mutableStateOf<String?>(null)
+    private var storedText: String? = null
 
     val properties: StateFlow<Map<String, String>> = client.properties
 
@@ -281,8 +279,8 @@ class GameViewModel(
     }
 
     fun submit() {
-        var line = _entryText.value.text
-        _entryText.value = TextFieldValue()
+        var line = entryText.text
+        entryText = TextFieldValue()
         aliases.value.forEach { alias ->
             line = alias.replace(line)
         }
@@ -377,13 +375,12 @@ class GameViewModel(
                     }
 
                     MacroLexer.At -> {
-                        _entryText.value =
-                            _entryText.value.copy(selection = TextRange(_entryText.value.text.length))
+                        entryText = entryText.copy(selection = TextRange(entryText.text.length))
                         movedCursor = true
                     }
 
                     MacroLexer.Question -> {
-                        storedText.value?.let { entryAppend(it, !movedCursor) }
+                        storedText?.let { entryAppend(it, !movedCursor) }
                     }
 
                     MacroLexer.Character -> {
@@ -409,7 +406,7 @@ class GameViewModel(
     private suspend fun handleEntity(entity: Char) {
         when (entity) {
             'x' -> {
-                storedText.value = _entryText.value.text
+                storedText = entryText.text
                 entryClear()
             }
 
@@ -424,26 +421,26 @@ class GameViewModel(
     }
 
     private fun entryClear() {
-        _entryText.value = TextFieldValue()
+        entryText = TextFieldValue()
     }
 
     private fun entryAppend(text: String, moveCursor: Boolean) {
-        val newText = _entryText.value.text + text
+        val newText = entryText.text + text
         val selection = if (moveCursor) {
             TextRange(newText.length)
         } else {
-            _entryText.value.selection
+            entryText.selection
         }
-        _entryText.value = _entryText.value.copy(text = newText, selection = selection)
+        entryText = entryText.copy(text = newText, selection = selection)
     }
 
     fun entryInsert(text: String) {
-        val currentTextField = _entryText.value
+        val currentTextField = entryText
         val prefix = currentTextField.text.substring(0, currentTextField.selection.start)
         val postfix = currentTextField.text.substring(currentTextField.selection.end, currentTextField.text.length)
         val newText = prefix + text + postfix
         val pos = prefix.length + text.length
-        _entryText.value = currentTextField.copy(text = newText, selection = TextRange(pos))
+        entryText = currentTextField.copy(text = newText, selection = TextRange(pos))
     }
 
     fun historyPrev() {
@@ -451,7 +448,7 @@ class GameViewModel(
         if (historyPosition < history.size - 1) {
             historyPosition++
             val text = history[historyPosition]
-            _entryText.value = TextFieldValue(text = text, selection = TextRange(text.length))
+            entryText = TextFieldValue(text = text, selection = TextRange(text.length))
         }
     }
 
@@ -462,7 +459,7 @@ class GameViewModel(
                 entryClear()
             } else {
                 val text = sendHistory[historyPosition]
-                _entryText.value = TextFieldValue(text = text, selection = TextRange(text.length))
+                entryText = TextFieldValue(text = text, selection = TextRange(text.length))
             }
         }
     }
@@ -492,7 +489,7 @@ class GameViewModel(
     }
 
     fun setEntryText(value: TextFieldValue) {
-        _entryText.value = value
+        entryText = value
     }
 
     fun moveWindow(name: String, location: WindowLocation) {

@@ -42,7 +42,7 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
         modifier = modifier,
         backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified,
         textColor = style?.textColor?.toColor() ?: MaterialTheme.colorScheme.onBackground,
-        textField = viewModel.entryText.value,
+        textField = viewModel.entryText,
         onValueChange = viewModel::setEntryText,
         onKeyPress = viewModel::handleKeyPress,
         roundTime = roundTime,
