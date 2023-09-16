@@ -8,8 +8,7 @@ sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 
 [versions]
 
-kotlin = "1.9.0"
-##  ⬆ = "1.9.10"
+kotlin = "1.9.10"
 ##  ⬆ = "1.9.20-Beta"
 sqldelight = "2.0.0"
 kotlinx-cli = "0.3.6"
@@ -17,8 +16,7 @@ kotlinx-coroutines = "1.7.3"
 kotlinx-collections-immutable = "0.3.5"
 okio = "3.5.0"
 rhino = "1.7.14"
-compose = "1.5.0"
-##   ⬆ = "1.5.1"
+compose = "1.5.1"
 ##   ⬆ = "1.5.10-dev1177"
 ##   ⬆ = "1.5.10-dev1184"
 ##   ⬆ = "1.5.10-dev1191"
