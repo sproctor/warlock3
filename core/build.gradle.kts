@@ -1,36 +1,34 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.sqldelight)
     antlr
-    id("app.cash.sqldelight")
 }
 
 dependencies {
-    // Standard libraries
-    implementation(Kotlin.stdlib.jdk8)
-    api(KotlinX.coroutines.core)
-    api("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:_")
+    api(libs.kotlinx.coroutines.core)
+    api(libs.kotlinx.collections.immutable.jvm)
 
     // Parsing
-    antlr("org.antlr:antlr4:_")
-    implementation("org.mozilla:rhino:_")
+    antlr(libs.antlr4)
+    implementation(libs.rhino)
 
     // Needed for JS scripting implementation
-    implementation("org.jetbrains.kotlin:kotlin-reflect:_")
+    implementation(libs.kotlin.reflect)
 
     // Preferences
-    implementation("app.cash.sqldelight:sqlite-driver:_")
-    implementation("app.cash.sqldelight:async-extensions:_")
-    implementation("app.cash.sqldelight:coroutines-extensions-jvm:_")
+    implementation(libs.sqlite.driver)
+    implementation(libs.sqldelight.async)
+    implementation(libs.sqldelight.coroutines)
 
     // Testing
-    testImplementation(kotlin("test"))
+    testImplementation(libs.kotlin.test)
 }
 
 sqldelight {
     databases {
         create("Database") {
             packageName.set("cc.warlock.warlock3.core.prefs.sql")
-            dialect("app.cash.sqldelight:sqlite-3-24-dialect:_")
+            dialect(libs.sqlite.dialect)
             // verifyMigrations = true
         }
     }
@@ -40,14 +38,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-}
+kotlin.jvmToolchain(17)
 
 tasks.generateGrammarSource {
     // maxHeapSize = "64m"

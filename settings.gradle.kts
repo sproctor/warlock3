@@ -26,3 +26,8 @@ plugins {
     // See https://jmfayard.github.io/refreshVersions
     id("de.fayard.refreshVersions") version "0.60.2"
 }
+
+refreshVersions {
+    file("build/tmp/refreshVersions").mkdirs()
+    versionsPropertiesFile = file("build/tmp/refreshVersions/versions.properties")
+}

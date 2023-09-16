@@ -1,15 +1,14 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
     antlr
 }
 
 dependencies {
     implementation(project(":core"))
-    implementation(Kotlin.stdlib.jdk8)
-    implementation(KotlinX.coroutines.core)
-    antlr("org.antlr:antlr4:_")
-    implementation(Square.okio)
-    implementation("org.apache.commons:commons-text:_")
+    implementation(libs.kotlinx.coroutines.core)
+    antlr(libs.antlr4)
+    implementation(libs.okio)
+    implementation(libs.apache.commons.text)
 }
 
 tasks.generateGrammarSource {
@@ -21,11 +20,4 @@ tasks.compileKotlin {
     dependsOn.add(tasks.generateGrammarSource)
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
-}
+kotlin.jvmToolchain(17)

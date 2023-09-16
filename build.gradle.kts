@@ -1,8 +1,7 @@
 plugins{
-    kotlin("jvm") apply false
-    id("org.jetbrains.compose") apply false
-    kotlin("plugin.serialization") apply false
-    id("app.cash.sqldelight") apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.compose) apply false
+    alias(libs.plugins.sqldelight) apply false
 }
 
 subprojects {

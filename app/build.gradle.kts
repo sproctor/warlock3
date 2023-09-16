@@ -1,8 +1,8 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
-    kotlin("jvm")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.compose)
 }
 
 val buildConfigDir
@@ -25,15 +25,14 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":stormfront"))
 
-    implementation(Kotlin.stdlib.jdk8)
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
-    implementation("com.godaddy.android.colorpicker:compose-color-picker-jvm:_")
-    implementation("app.cash.sqldelight:sqlite-driver:_")
-    implementation("app.cash.sqldelight:primitive-adapters:_")
-    implementation("org.jetbrains.kotlinx:kotlinx-cli:_")
+    implementation(libs.compose.color.picker)
+    implementation(libs.sqlite.driver)
+    implementation(libs.sqldelight.primitive.adapters)
+    implementation(libs.kotlinx.cli)
 }
 
 kotlin.jvmToolchain(17)
