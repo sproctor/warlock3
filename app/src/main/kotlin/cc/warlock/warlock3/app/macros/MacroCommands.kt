@@ -5,7 +5,7 @@ import cc.warlock.warlock3.app.ui.game.GameViewModel
 
 val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
     "copy" to {
-        val textField = it.entryText.value
+        val textField = it.entryText
         val text = textField.text.substring(textField.selection.start, textField.selection.end)
         it.clipboard.setText(AnnotatedString(text))
     },
@@ -30,7 +30,7 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
         it.repeatCommand(0)
     },
     "returnorrepeatlast" to {
-        if (it.entryText.value.text.isBlank()) {
+        if (it.entryText.text.isBlank()) {
             it.repeatCommand(0)
         } else {
             it.submit()

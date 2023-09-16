@@ -488,7 +488,7 @@ class GameViewModel(
         return lexer.allTokens
     }
 
-    fun setEntryText(value: TextFieldValue) {
+    fun updateEntryText(value: TextFieldValue) {
         entryText = value
     }
 
