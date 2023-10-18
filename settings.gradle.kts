@@ -24,9 +24,10 @@ dependencyResolutionManagement {
 
 plugins {
     // See https://jmfayard.github.io/refreshVersions
-    id("de.fayard.refreshVersions") version "0.60.2"
+    id("de.fayard.refreshVersions") version "0.60.3"
 }
 
+// work-around https://github.com/Splitties/refreshVersions/issues/640
 refreshVersions {
     file("build/tmp/refreshVersions").mkdirs()
     versionsPropertiesFile = file("build/tmp/refreshVersions/versions.properties")
