@@ -70,6 +70,7 @@ compose.desktop {
                 notarization {
                     appleID.set("sproctor@gmail.com")
                     password.set("@keychain:NOTARY_PWD")
+                    teamID.set("DBNJ4AR55X")
                 }
             }
         }
