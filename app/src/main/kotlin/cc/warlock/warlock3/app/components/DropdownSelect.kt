@@ -1,13 +1,10 @@
 package cc.warlock.warlock3.app.components
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> DropdownSelect(
     items: List<T>,
@@ -18,39 +15,39 @@ fun <T> DropdownSelect(
     onSelect: (T) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Box(modifier) {
+    ExposedDropdownMenuBox(
+        modifier = modifier,
+        expanded = expanded,
+        onExpandedChange = {
+            expanded = it
+        }
+    ) {
         OutlinedTextField(
-            value = itemLabelBuilder(selected),
-            label = label,
-            onValueChange = {},
+            modifier = Modifier.menuAnchor(),
             readOnly = true,
+            value = itemLabelBuilder(selected),
+            onValueChange = { },
+            label = label,
             trailingIcon = {
-                IconButton(
-                    onClick = { expanded = true },
-                    enabled = !expanded,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "select",
-                        Modifier.rotate(
-                            if (expanded) 180f else 0f
-                        ),
-                    )
-                }
+                ExposedDropdownMenuDefaults.TrailingIcon(
+                    expanded = expanded
+                )
             },
         )
-        DropdownMenu(
+        ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
+            onDismissRequest = {
+                expanded = false
+            }
         ) {
-            items.forEach { item: T ->
+            items.forEach { item ->
                 DropdownMenuItem(
+                    text = {
+                        Text(text = itemLabelBuilder(item))
+                    },
                     onClick = {
                         onSelect(item)
                         expanded = false
-                    },
-                    text = {
-                        Text(text = itemLabelBuilder(item))
                     }
                 )
             }
