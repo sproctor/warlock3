@@ -5,7 +5,7 @@ plugins{
 }
 
 subprojects {
-    version = "3.0.9"
+    version = "3.0.10"
     group = "cc.warlock.warlock3"
 }
 
