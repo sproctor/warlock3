@@ -35,7 +35,10 @@ dependencies {
     implementation(libs.kotlinx.cli)
 }
 
-kotlin.jvmToolchain(17)
+kotlin {
+    val jvmToolchainVersion: String by project
+    jvmToolchain(jvmToolchainVersion.toInt())
+}
 
 compose.desktop {
     application {

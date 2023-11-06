@@ -20,4 +20,7 @@ tasks.compileKotlin {
     dependsOn.add(tasks.generateGrammarSource)
 }
 
-kotlin.jvmToolchain(17)
+kotlin {
+    val jvmToolchainVersion: String by project
+    jvmToolchain(jvmToolchainVersion.toInt())
+}
