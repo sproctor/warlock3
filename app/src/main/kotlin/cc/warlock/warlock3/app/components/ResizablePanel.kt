@@ -89,26 +89,24 @@ fun ResizablePanelHandle(
             icon = PointerIcon(Cursor(if (isHorizontal) Cursor.E_RESIZE_CURSOR else Cursor.S_RESIZE_CURSOR))
         )
     if (isHorizontal) {
-        Row(
-            modifier = modifier,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colorScheme.primary))
-            Spacer(Modifier.width(1.dp))
-            Spacer(Modifier.fillMaxHeight().width(2.dp).background(MaterialTheme.colorScheme.outline))
-            Spacer(Modifier.width(1.dp))
-            Spacer(Modifier.size(width = 2.dp, height = 16.dp).background(MaterialTheme.colorScheme.primary))
+        Box(modifier.width(4.dp).fillMaxHeight()) {
+            Spacer(
+                Modifier
+                    .size(width = 2.dp, height = 24.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .align(Alignment.Center)
+            )
         }
     } else {
-        Column(
-            modifier = modifier,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = modifier.height(4.dp).fillMaxWidth(),
         ) {
-            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colorScheme.primary))
-            Spacer(Modifier.height(1.dp))
-            Spacer(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outline))
-            Spacer(Modifier.height(1.dp))
-            Spacer(Modifier.size(height = 2.dp, width = 16.dp).background(MaterialTheme.colorScheme.primary))
+            Spacer(
+                Modifier
+                    .size(height = 2.dp, width = 24.dp)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .align(Alignment.Center)
+            )
         }
     }
 }
