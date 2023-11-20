@@ -90,7 +90,7 @@ fun ResizablePanelHandle(
         )
     val handleColor = MaterialTheme.colorScheme.onBackground
     if (isHorizontal) {
-        Box(modifier.width(4.dp).fillMaxHeight()) {
+        Box(modifier.width(separatorThickness).fillMaxHeight()) {
             Spacer(
                 Modifier
                     .size(width = handleThickness, height = handleSize)
@@ -100,7 +100,7 @@ fun ResizablePanelHandle(
         }
     } else {
         Box(
-            modifier = modifier.height(4.dp).fillMaxWidth(),
+            modifier = modifier.height(separatorThickness).fillMaxWidth(),
         ) {
             Spacer(
                 Modifier
@@ -124,5 +124,6 @@ class ResizablePanelState(
     }
 }
 
+private val separatorThickness = 4.dp
 private val handleThickness = 2.dp
 private val handleSize = 24.dp
