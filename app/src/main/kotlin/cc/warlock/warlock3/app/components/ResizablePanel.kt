@@ -88,12 +88,13 @@ fun ResizablePanelHandle(
         .pointerHoverIcon(
             icon = PointerIcon(Cursor(if (isHorizontal) Cursor.E_RESIZE_CURSOR else Cursor.S_RESIZE_CURSOR))
         )
+    val handleColor = MaterialTheme.colorScheme.onBackground
     if (isHorizontal) {
         Box(modifier.width(4.dp).fillMaxHeight()) {
             Spacer(
                 Modifier
-                    .size(width = 2.dp, height = 24.dp)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .size(width = handleThickness, height = handleSize)
+                    .background(handleColor)
                     .align(Alignment.Center)
             )
         }
@@ -103,8 +104,8 @@ fun ResizablePanelHandle(
         ) {
             Spacer(
                 Modifier
-                    .size(height = 2.dp, width = 24.dp)
-                    .background(MaterialTheme.colorScheme.primary)
+                    .size(height = handleThickness, width = handleSize)
+                    .background(handleColor)
                     .align(Alignment.Center)
             )
         }
@@ -122,3 +123,6 @@ class ResizablePanelState(
         currentSize = min(max(minSize, currentSize + delta), maxSize)
     }
 }
+
+private val handleThickness = 2.dp
+private val handleSize = 24.dp
