@@ -78,17 +78,17 @@ jobs:
           name: distributable-${{ matrix.os }}
           if-no-files-found: ignore
           path: |
-            app/build/compose/notarization/**/*.dmg
-            app/build/**/*.msi
-            app/build/**/*.deb
+            app/build/compose/binaries/**/*.dmg
+            app/build/compose/binaries/**/*.msi
+            app/build/compose/binaries/**/*.deb
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.event.inputs.version, '-rc') || contains(github.event.inputs.version, '-b') || contains(github.event.inputs.version, '-a') }}
           files: |
-            app/build/compose/notarization/**/*.dmg
-            app/build/**/*.msi
-            app/build/**/*.deb
+            app/build/compose/binaries/**/*.dmg
+            app/build/compose/binaries/**/*.msi
+            app/build/compose/binaries/**/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
