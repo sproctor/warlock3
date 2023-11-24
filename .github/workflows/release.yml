@@ -68,6 +68,8 @@ jobs:
 
       - name: Notarize package
         if: runner.os == 'macOS'
+        env:
+          NOTARY_PWD: ${{ secrets.NOTARY_PWD }}
         run: ./gradlew notarizeReleaseDmg
 
       - name: Archive artifacts
