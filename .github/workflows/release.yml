@@ -41,7 +41,7 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
           
           # save notarization password
-          xcrun altool --store-password-in-keychain-item "NOTARY_PWD" --username "sproctor@gmail.com" --password $NOTARY_PWD
+          # xcrun altool --store-password-in-keychain-item "NOTARY_PWD" --username "sproctor@gmail.com" --password $NOTARY_PWD
 
       - name: Setup Java
         uses: actions/setup-java@v3
