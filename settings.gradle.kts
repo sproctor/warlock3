@@ -3,6 +3,7 @@ include(":core")
 include(":stormfront")
 include(":app")
 include(":android")
+include(":compose")
 
 pluginManagement {
     repositories {
