@@ -1,49 +1,9 @@
 package cc.warlock.warlock3.core.prefs
 
-import app.cash.sqldelight.db.QueryResult
-import app.cash.sqldelight.db.SqlDriver
 import cc.warlock.warlock3.core.prefs.sql.Database
 import cc.warlock.warlock3.core.prefs.sql.Macro
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-
-private const val versionPragma = "user_version"
-
-suspend fun migrateIfNeeded(driver: SqlDriver, fileName: String) {
-    val oldVersion =
-        driver.executeQuery(null, "PRAGMA $versionPragma", { cursor ->
-            QueryResult.Value(
-                if (cursor.next().value) {
-                    cursor.getLong(0)
-                } else {
-                    null
-                } ?: 0L
-            )
-        }, 0).await()
-
-    val newVersion = Database.Schema.version
-
-    if (oldVersion == 0L) {
-        println("Creating DB version $newVersion!")
-        Database.Schema.create(driver)
-        driver.execute(null, "PRAGMA $versionPragma=$newVersion", 0)
-    } else if (oldVersion < newVersion) {
-        println("Migrating DB from version $oldVersion to $newVersion!")
-        var i = 0
-        var backupFile: File
-        while (true) {
-            backupFile = File(fileName + if (i > 0) ".bak.$i" else ".bak")
-            i++
-            if (!backupFile.exists()) break
-        }
-        File(fileName).copyTo(backupFile)
-        Database.Schema.migrate(driver, oldVersion, newVersion)
-        driver.execute(null, "PRAGMA $versionPragma=$newVersion", 0)
-    } else if (oldVersion > newVersion) {
-        throw RuntimeException("preferences DB file is from a newer version of warlock")
-    }
-}
 
 private const val globalId = "global"
 

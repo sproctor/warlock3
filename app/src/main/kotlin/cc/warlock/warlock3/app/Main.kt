@@ -2,7 +2,14 @@ package cc.warlock.warlock3.app
 
 import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -18,8 +25,13 @@ import cc.warlock.warlock3.core.prefs.adapters.LocationAdapter
 import cc.warlock.warlock3.core.prefs.adapters.UUIDAdapter
 import cc.warlock.warlock3.core.prefs.adapters.WarlockColorAdapter
 import cc.warlock.warlock3.core.prefs.insertDefaultsIfNeeded
-import cc.warlock.warlock3.core.prefs.migrateIfNeeded
-import cc.warlock.warlock3.core.prefs.sql.*
+import cc.warlock.warlock3.core.prefs.sql.Alias
+import cc.warlock.warlock3.core.prefs.sql.Alteration
+import cc.warlock.warlock3.core.prefs.sql.Database
+import cc.warlock.warlock3.core.prefs.sql.Highlight
+import cc.warlock.warlock3.core.prefs.sql.HighlightStyle
+import cc.warlock.warlock3.core.prefs.sql.PresetStyle
+import cc.warlock.warlock3.core.prefs.sql.WindowSettings
 import cc.warlock.warlock3.stormfront.network.SimuGameCredentials
 import cc.warlock.warlock3.stormfront.network.StormfrontClient
 import kotlinx.cli.ArgParser
@@ -49,10 +61,7 @@ fun main(args: Array<String>) {
     val configDir = System.getProperty("user.home") + "/.warlock3"
     File(configDir).mkdirs()
     val dbFilename = "$configDir/prefs.db"
-    val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename")
-    runBlocking {
-        migrateIfNeeded(driver, dbFilename)
-    }
+    val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename", schema = Database.Schema)
     AppContainer.database = Database(
         driver = driver,
         HighlightAdapter = Highlight.Adapter(idAdapter = UUIDAdapter),
