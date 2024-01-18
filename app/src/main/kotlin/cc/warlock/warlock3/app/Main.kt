@@ -46,19 +46,19 @@ fun main(args: Array<String>) {
 
     val parser = ArgParser("warlock3")
     val port by parser.option(
-        ArgType.Int,
+        type = ArgType.Int,
         fullName = "port",
         shortName = "p",
         description = "Port to connect to"
     )
     val host by parser.option(
-        ArgType.String,
+        type = ArgType.String,
         fullName = "host",
         shortName = "H",
         description = "Host to connect to"
     )
     val key by parser.option(
-        ArgType.String,
+        type = ArgType.String,
         fullName = "key",
         shortName = "k",
         description = "Character key to connect with"
