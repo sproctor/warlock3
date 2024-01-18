@@ -45,18 +45,33 @@ import kotlin.math.roundToInt
 fun main(args: Array<String>) {
 
     val parser = ArgParser("warlock3")
-    val port by parser.option(ArgType.Int, fullName = "port", shortName = "p", description = "Port to connect to")
-    val host by parser.option(ArgType.String, fullName = "host", shortName = "H", description = "Host to connect to")
-    val key by parser.option(ArgType.String, fullName = "key", shortName = "k", description = "Character key to connect with")
+    val port by parser.option(
+        ArgType.Int,
+        fullName = "port",
+        shortName = "p",
+        description = "Port to connect to"
+    )
+    val host by parser.option(
+        ArgType.String,
+        fullName = "host",
+        shortName = "H",
+        description = "Host to connect to"
+    )
+    val key by parser.option(
+        ArgType.String,
+        fullName = "key",
+        shortName = "k",
+        description = "Character key to connect with"
+    )
     parser.parse(args)
 
-    val credentials = when {
-        port != null && host != null && key != null -> {
+    val credentials =
+        if (port != null && host != null && key != null) {
             println("Connecting to $host:$port with $key")
             SimuGameCredentials(host = host!!, port = port!!, key = key!!)
+        } else {
+            null
         }
-        else -> null
-    }
 
     val configDir = System.getProperty("user.home") + "/.warlock3"
     File(configDir).mkdirs()
@@ -90,9 +105,7 @@ fun main(args: Array<String>) {
             idAdapter = UUIDAdapter,
         )
     )
-    runBlocking {
-        insertDefaultsIfNeeded(AppContainer.database)
-    }
+    insertDefaultsIfNeeded(AppContainer.database)
 
     val clientSettings = AppContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
@@ -133,7 +146,8 @@ fun main(args: Array<String>) {
                                 streamRegistry = AppContainer.streamRegistry,
                             )
                             client.connect(credentials.key)
-                            val viewModel = AppContainer.gameViewModelFactory(client, clipboardManager)
+                            val viewModel =
+                                AppContainer.gameViewModelFactory(client, clipboardManager)
                             GameState.ConnectedGameState(viewModel)
                         } else {
                             GameState.Dashboard
