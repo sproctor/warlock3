@@ -15,6 +15,9 @@ hs_err_pid*.log
 .idea/**/dictionaries
 .idea/**/shelf
 .idea/misc.xml
+.idea/appInsightsSettings.xml
+.idea/assetWizardSettings.xml
+.idea/deploymentTargetDropDown.xml
 
 # AWS User-specific
 .idea/**/aws.xml
