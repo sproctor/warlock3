@@ -1,5 +1,5 @@
-import cc.warlock.warlock3.core.util.findArgumentBreak
-import cc.warlock.warlock3.core.util.parseArguments
+import warlockfe.warlock3.core.util.findArgumentBreak
+import warlockfe.warlock3.core.util.parseArguments
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 

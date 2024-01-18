@@ -1,7 +1,7 @@
 -dontobfuscate
 -ignorewarnings
 
--keepclasseswithmembers public class cc.warlock.warlock3.app.MainKt {
+-keepclasseswithmembers public class warlockfe.warlock3.app.MainKt {
     public static void main(java.lang.String[]);
 }
 
@@ -47,4 +47,4 @@
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
 # Just keep everything from Warlock
--keep class cc.warlock.warlock3.** { *; }
+-keep class warlockfe.warlock3.** { *; }

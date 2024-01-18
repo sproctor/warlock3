@@ -10,7 +10,7 @@ plugins{
 
 subprojects {
     version = project.findProperty("warlock.version")!!.toString()
-    group = "cc.warlock.warlock3"
+    group = "warlockfe.warlock3"
 }
 
 tasks.wrapper {

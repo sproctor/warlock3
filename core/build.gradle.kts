@@ -27,7 +27,7 @@ dependencies {
 sqldelight {
     databases {
         create("Database") {
-            packageName.set("cc.warlock.warlock3.core.prefs.sql")
+            packageName.set("warlockfe.warlock3.core.prefs.sql")
             dialect(libs.sqlite.dialect)
             // verifyMigrations = true
         }
@@ -46,8 +46,8 @@ tasks {
 
     generateGrammarSource {
         // maxHeapSize = "64m"
-        arguments = arguments + listOf("-visitor", "-long-messages", "-package", "cc.warlock.warlock3.core.parser")
-        outputDirectory = File("${layout.buildDirectory.get()}/generated-src/antlr/main/cc/warlock/warlock3/core/parser/")
+        arguments = arguments + listOf("-visitor", "-long-messages", "-package", "warlockfe.warlock3.core.parser")
+        outputDirectory = File("${layout.buildDirectory.get()}/generated-src/antlr/main/warlockfe/warlock3/core/parser/")
     }
 
     compileKotlin {

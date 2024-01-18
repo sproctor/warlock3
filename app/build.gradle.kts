@@ -8,10 +8,8 @@ plugins {
 val buildConfigDir
     get() = project.layout.buildDirectory.dir("generated/buildconfig")
 val buildConfig = tasks.register("buildConfig", GenerateBuildConfig::class.java) {
-    classFqName.set("cc.warlock.warlock3.WarlockBuildConfig")
+    classFqName.set("warlockfe.warlock3.WarlockBuildConfig")
     generatedOutputDir.set(buildConfigDir)
-//    fieldsToGenerate.put("composeVersion", BuildProperties.composeVersion(project))
-//    fieldsToGenerate.put("composeGradlePluginVersion", BuildProperties.deployVersion(project))
     fieldsToGenerate.put("warlockVersion", project.version)
 }
 tasks.named("compileKotlin") {
@@ -42,7 +40,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "cc.warlock.warlock3.app.MainKt"
+        mainClass = "warlockfe.warlock3.app.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
@@ -64,7 +62,7 @@ compose.desktop {
                 iconFile.set(project.file("src/main/resources/images/icon.png"))
             }
             macOS {
-                bundleID = "cc.warlock.warlock3"
+                bundleID = "warlockfe.warlock3"
                 iconFile.set(project.file("src/main/resources/images/icon.icns"))
                 signing {
                     sign.set(true)
