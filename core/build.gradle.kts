@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
     api(libs.kotlinx.coroutines.core)
-    api(libs.kotlinx.collections.immutable.jvm)
+    api(libs.kotlinx.collections.immutable)
 
     // Parsing
     antlr(libs.antlr4)
@@ -16,7 +16,7 @@ dependencies {
     implementation(libs.kotlin.reflect)
 
     // Preferences
-    implementation(libs.sqlite.driver)
+    implementation(libs.sqldelight.runtime)
     implementation(libs.sqldelight.async)
     implementation(libs.sqldelight.coroutines)
 

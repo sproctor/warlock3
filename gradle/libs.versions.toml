@@ -8,14 +8,14 @@ sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 
 [versions]
 
-kotlin = "1.9.20"
+kotlin = "1.9.21"
 sqldelight = "2.0.0"
 kotlinx-cli = "0.3.6"
 kotlinx-coroutines = "1.7.3"
-kotlinx-collections-immutable = "0.3.6"
-okio = "3.6.0"
+kotlinx-collections-immutable = "0.3.7"
+okio = "3.7.0"
 rhino = "1.7.14"
-compose = "1.5.10"
+compose = "1.5.11"
 antlr = "4.13.1"
 compose-color-picker = "0.7.0"
 apache-commons-text = "1.11.0"
@@ -29,7 +29,7 @@ kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.r
 sqlite-dialect = { group = "app.cash.sqldelight", name = "sqlite-3-24-dialect", version.ref = "sqldelight" }
 antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
-kotlinx-collections-immutable-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable-jvm", version.ref = "kotlinx-collections-immutable" }
+kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
