@@ -2,6 +2,7 @@ rootProject.name = "warlock3"
 include(":core")
 include(":stormfront")
 include(":app")
+include(":android")
 
 pluginManagement {
     repositories {
