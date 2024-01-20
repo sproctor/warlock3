@@ -22,15 +22,18 @@ sourceSets.main.configure {
 dependencies {
     implementation(project(":core"))
     implementation(project(":stormfront"))
+    implementation(project(":scripting"))
+    implementation(project(":compose"))
 
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
     implementation(libs.compose.color.picker)
-    implementation(libs.sqlite.driver)
+    implementation(libs.sqldelight.driver.jvm)
     implementation(libs.sqldelight.primitive.adapters)
     implementation(libs.kotlinx.cli)
+    implementation(libs.moko.resources)
 }
 
 kotlin {

@@ -18,9 +18,14 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.app.di.AppContainer
-import warlockfe.warlock3.app.ui.components.AppMenuBar
-import warlockfe.warlock3.app.ui.theme.AppTheme
+import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.prefs.adapters.LocationAdapter
 import warlockfe.warlock3.core.prefs.adapters.UUIDAdapter
 import warlockfe.warlock3.core.prefs.adapters.WarlockColorAdapter
@@ -32,13 +37,7 @@ import warlockfe.warlock3.core.prefs.sql.Highlight
 import warlockfe.warlock3.core.prefs.sql.HighlightStyle
 import warlockfe.warlock3.core.prefs.sql.PresetStyle
 import warlockfe.warlock3.core.prefs.sql.WindowSettings
-import warlockfe.warlock3.stormfront.network.SimuGameCredentials
-import warlockfe.warlock3.stormfront.network.StormfrontClient
-import kotlinx.cli.ArgParser
-import kotlinx.cli.ArgType
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.runBlocking
+import warlockfe.warlock3.core.sge.SimuGameCredentials
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -77,7 +76,7 @@ fun main(args: Array<String>) {
     File(configDir).mkdirs()
     val dbFilename = "$configDir/prefs.db"
     val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename", schema = Database.Schema)
-    AppContainer.database = Database(
+    val database = Database(
         driver = driver,
         HighlightAdapter = Highlight.Adapter(idAdapter = UUIDAdapter),
         HighlightStyleAdapter = HighlightStyle.Adapter(
@@ -105,9 +104,10 @@ fun main(args: Array<String>) {
             idAdapter = UUIDAdapter,
         )
     )
-    insertDefaultsIfNeeded(AppContainer.database)
+    insertDefaultsIfNeeded(database)
 
-    val clientSettings = AppContainer.clientSettings
+    val appContainer = AppContainer(database)
+    val clientSettings = appContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
@@ -136,18 +136,10 @@ fun main(args: Array<String>) {
                     val clipboardManager = LocalClipboardManager.current
                     val gameState = remember {
                         val initialGameState = if (credentials != null) {
-                            val client = StormfrontClient(
-                                host = credentials.host,
-                                port = credentials.port,
-                                windowRepository = AppContainer.windowRepository,
-                                characterRepository = AppContainer.characterRepository,
-                                scriptEngineRegistry = AppContainer.scriptEngineRegistry,
-                                alterationRepository = AppContainer.alterationRepository,
-                                streamRegistry = AppContainer.streamRegistry,
-                            )
-                            client.connect(credentials.key)
+                            val client = appContainer.warlockClientFactory.createStormFrontClient(credentials)
+                            client.connect()
                             val viewModel =
-                                AppContainer.gameViewModelFactory(client, clipboardManager)
+                                appContainer.gameViewModelFactory.create(client, clipboardManager)
                             GameState.ConnectedGameState(viewModel)
                         } else {
                             GameState.Dashboard
@@ -160,8 +152,8 @@ fun main(args: Array<String>) {
                     }
                     AppMenuBar(
                         characterId = characterId,
-                        windowRepository = AppContainer.windowRepository,
-                        scriptEngineRegistry = AppContainer.scriptEngineRegistry,
+                        windowRepository = appContainer.windowRepository,
+                        scriptEngineRegistry = appContainer.scriptEngineRegistry,
                         showSettings = { showSettings = true },
                         disconnect = null,
                         runScript = {
@@ -172,6 +164,7 @@ fun main(args: Array<String>) {
                         }
                     )
                     WarlockApp(
+                        appContainer = appContainer,
                         state = gameState,
                         showSettings = showSettings,
                         closeSettings = { showSettings = false },

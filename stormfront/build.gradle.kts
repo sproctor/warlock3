@@ -5,9 +5,9 @@ plugins {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":scripting"))
     implementation(libs.kotlinx.coroutines.core)
     antlr(libs.antlr4)
-    implementation(libs.okio)
     implementation(libs.apache.commons.text)
 }
 

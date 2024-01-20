@@ -1,28 +1,30 @@
 package warlockfe.warlock3.stormfront.util
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import okio.Path
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class FileLogger(
-    private val path: String,
-    private val id: String
+    private val directory: Path,
 ) {
 
-    private var cachedFilename = ""
-    private lateinit var logFile: File
+    private val mutex = Mutex()
 
     init {
-        File("$path/$id").mkdirs()
+        directory.toFile().mkdirs()
     }
 
-    @Synchronized
-    fun write(message: String) {
+    suspend fun write(message: String) {
         val now = LocalDateTime.now()
         val filename = formatFilename(now)
-        val logFile = File("$path/$id/$filename")
+        val logFile = (directory / filename).toFile()
         val dateString = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS"))
-        logFile.appendText("[$dateString] $message\n")
+        mutex.withLock {
+            logFile.appendText("[$dateString] $message\n")
+        }
     }
 
     private fun formatFilename(datetime: LocalDateTime): String {

@@ -12,7 +12,7 @@ android {
     namespace = "warlockfe.warlock3.android"
     compileSdk = 34
     defaultConfig {
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         applicationId = "warlockfe.warlock3"
         versionCode = 1
@@ -66,11 +66,16 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":compose"))
     implementation(project(":stormfront"))
+    implementation(project(":scripting"))
 
     // Compose dependencies
     implementation(compose.runtime)
     implementation(compose.foundation)
+    implementation(compose.material3)
+
+    implementation(libs.moko.resources)
 
     // Android presentation components
     implementation(libs.androidx.activity.compose)
@@ -79,7 +84,8 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
 
     // SQL dependencies
-//    implementation(libs.sqldelight.drivers.android)
+    implementation(libs.sqldelight.driver.android)
+    implementation(libs.sqldelight.primitive.adapters)
 //    implementation(libs.sqlite.framework)
 
     // Leak detection

@@ -1,6 +1,0 @@
-CREATE TABLE Alias (
-    id BLOB NOT NULL PRIMARY KEY,
-    characterId TEXT NOT NULL,
-    pattern TEXT NOT NULL,
-    replacement TEXT NOT NULL
-);

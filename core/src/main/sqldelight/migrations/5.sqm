@@ -1,2 +1,0 @@
-ALTER TABLE PresetStyle ADD COLUMN fontSize INTEGER;
-ALTER TABLE HighlightStyle ADD COLUMN fontSize INTEGER;

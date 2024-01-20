@@ -9,6 +9,7 @@ compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+moko-resources = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko-resources" }
 
 [versions]
 
@@ -26,11 +27,14 @@ compose-color-picker = "0.7.0"
 apache-commons-text = "1.11.0"
 androidx-activity = "1.8.2"
 androidx-core-splashscreen = "1.0.1"
+coil = "2.5.0"
+moko-resources = "0.24.0-alpha-1"
 
 [libraries]
 
 compose-color-picker = { group = "com.godaddy.android.colorpicker", name = "compose-color-picker", version.ref = "compose-color-picker" }
-sqlite-driver = { group = "app.cash.sqldelight", name = "sqlite-driver", version.ref = "sqldelight" }
+sqldelight-driver-jvm = { group = "app.cash.sqldelight", name = "sqlite-driver", version.ref = "sqldelight" }
+sqldelight-driver-android = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
 sqldelight-primitive-adapters = { group = "app.cash.sqldelight", name = "primitive-adapters", version.ref = "sqldelight" }
 kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
 sqlite-dialect = { group = "app.cash.sqldelight", name = "sqlite-3-24-dialect", version.ref = "sqldelight" }
@@ -48,3 +52,7 @@ apache-commons-text = { group = "org.apache.commons", name = "commons-text", ver
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "androidx-activity" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
+moko-resources = { group = "dev.icerock.moko", name = "resources", version.ref = "moko-resources" }
+moko-resources-compose = { group = "dev.icerock.moko", name = "resources-compose", version.ref = "moko-resources" }

@@ -1,29 +1,28 @@
 package warlockfe.warlock3.stormfront.network
 
-import warlockfe.warlock3.core.compass.DirectionType
-import warlockfe.warlock3.core.prefs.AlterationRepository
-import warlockfe.warlock3.core.prefs.CharacterRepository
-import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.script.ScriptStatus
-import warlockfe.warlock3.core.script.WarlockScriptEngineRegistry
-import warlockfe.warlock3.core.script.wsl.splitFirstWord
-import warlockfe.warlock3.core.text.StyledString
-import warlockfe.warlock3.core.text.StyledStringVariable
-import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.text.isBlank
-import warlockfe.warlock3.core.window.StreamRegistry
-import warlockfe.warlock3.core.window.TextStream
-import warlockfe.warlock3.stormfront.protocol.*
-import warlockfe.warlock3.stormfront.stream.StormfrontWindow
-import warlockfe.warlock3.stormfront.util.AlterationResult
-import warlockfe.warlock3.stormfront.util.CompiledAlteration
-import warlockfe.warlock3.stormfront.util.FileLogger
-import kotlinx.collections.immutable.*
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.minus
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.plus
+import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import okio.Path
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -33,6 +32,19 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.ProgressBarData
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.compass.DirectionType
+import warlockfe.warlock3.core.prefs.AlterationRepository
+import warlockfe.warlock3.core.prefs.CharacterRepository
+import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.script.ScriptManager
+import warlockfe.warlock3.core.script.ScriptStatus
+import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.StyledStringVariable
+import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.isBlank
+import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.window.TextStream
+import warlockfe.warlock3.scripting.wsl.splitFirstWord
 import warlockfe.warlock3.stormfront.protocol.StormfrontActionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontAppEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontCastTimeEvent
@@ -53,6 +65,7 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontParseErrorEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontProgressBarEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPromptEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPropertyEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontProtocolHandler
 import warlockfe.warlock3.stormfront.protocol.StormfrontRoundTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontSettingsInfoEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamEvent
@@ -60,6 +73,10 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontStreamWindowEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUnhandledTagEvent
+import warlockfe.warlock3.stormfront.stream.StormfrontWindow
+import warlockfe.warlock3.stormfront.util.AlterationResult
+import warlockfe.warlock3.stormfront.util.CompiledAlteration
+import warlockfe.warlock3.stormfront.util.FileLogger
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -78,9 +95,11 @@ private val charset = Charset.forName(charsetName)
 class StormfrontClient(
     private val host: String,
     private val port: Int,
+    private val key: String,
+    private val logPath: Path,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
-    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
+    private val scriptManager: ScriptManager,
     private val alterationRepository: AlterationRepository,
     private val streamRegistry: StreamRegistry,
 ) : WarlockClient {
@@ -128,7 +147,7 @@ class StormfrontClient(
 
     init {
         val path = System.getProperty("WARLOCK_LOG_DIR")
-        logger = FileLogger(path, "unknown")
+        logger = FileLogger(logPath / "unknown")
         windows["warlockscripts"] = StormfrontWindow(
             name = "warlockscripts",
             title = "Running scripts",
@@ -147,7 +166,7 @@ class StormfrontClient(
         windowRepository.setWindowTitle("debug", "Debug", null)
         scope.launch {
             val scriptStream = getStream("warlockscripts")
-            scriptEngineRegistry.scriptInfo.collect { scripts ->
+            scriptManager.scriptInfo.collect { scripts ->
                 scriptStream.clear()
                 scripts.forEach {
                     val info = it.value
@@ -193,13 +212,13 @@ class StormfrontClient(
     private var componentId: String? = null
 
     private val _connected = MutableStateFlow(true)
-    val connected = _connected.asStateFlow()
+    override val connected = _connected.asStateFlow()
 
     private var delta = 0L
     override val time: Long
         get() = System.currentTimeMillis() + delta
 
-    fun connect(key: String) {
+    override fun connect() {
         scope.launch(Dispatchers.IO) {
             try {
                 println("Opening connection to $host:$port")
@@ -259,7 +278,7 @@ class StormfrontClient(
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
                                             val path = System.getProperty("WARLOCK_LOG_DIR")
-                                            logger = FileLogger(path, "${event.game}_${event.character}")
+                                            logger = FileLogger(logPath / "${event.game}_${event.character}")
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -525,7 +544,7 @@ class StormfrontClient(
     override suspend fun sendCommand(line: String, echo: Boolean) {
         if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
-            scriptEngineRegistry.startScript(this, scriptCommand)
+            scriptManager.startScript(this, scriptCommand)
             printCommand(line)
         } else if (line.startsWith(clientCommandPrefix)) {
             print(StyledString(line, WarlockStyle.Command))
@@ -534,21 +553,21 @@ class StormfrontClient(
             when (command) {
                 "kill" -> {
                     args?.split(' ')?.forEach { name ->
-                        scriptEngineRegistry.findScriptInstance(name)?.stop()
+                        scriptManager.findScriptInstance(name)?.stop()
                     }
                 }
                 "pause" -> {
                     args?.split(' ')?.forEach { name ->
-                        scriptEngineRegistry.findScriptInstance(name)?.suspend()
+                        scriptManager.findScriptInstance(name)?.suspend()
                     }
                 }
                 "resume" -> {
                     args?.split(' ')?.forEach { name ->
-                        scriptEngineRegistry.findScriptInstance(name)?.resume()
+                        scriptManager.findScriptInstance(name)?.resume()
                     }
                 }
                 "list" -> {
-                    val scripts = scriptEngineRegistry.runningScripts
+                    val scripts = scriptManager.runningScripts
                     if (scripts.isEmpty()) {
                         print(StyledString("No scripts are running", WarlockStyle.Echo))
                     } else {
@@ -570,7 +589,7 @@ class StormfrontClient(
         }
     }
 
-    private fun doSendCommand(line: String) {
+    private suspend fun doSendCommand(line: String) {
         send("<c>$line\n")
     }
 
@@ -582,7 +601,7 @@ class StormfrontClient(
         _connected.value = false
     }
 
-    private fun send(toSend: String) {
+    private suspend fun send(toSend: String) {
         logger.write(toSend)
         if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(charset))
