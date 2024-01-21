@@ -1,88 +1,134 @@
 package warlockfe.warlock3.android
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import warlockfe.warlock3.android.di.AppContainer
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.MainScreen
+import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.ui.dashboard.DashboardView
-import warlockfe.warlock3.compose.ui.game.GameView
-import warlockfe.warlock3.compose.ui.sge.SgeWizard
+import warlockfe.warlock3.compose.ui.settings.SettingsContent
+import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.core.client.GameCharacter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WarlockApp(
     appContainer: AppContainer,
-    state: MutableState<GameState>,
-    showSettings: Boolean,
-    closeSettings: () -> Unit,
 ) {
-
+    var gameState by remember { mutableStateOf<GameState>(GameState.Dashboard) }
+    var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
     var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 
-    when (val currentState = state.value) {
-        GameState.Dashboard -> {
-            val clipboardManager = LocalClipboardManager.current
-            val viewModel = remember {
-                appContainer.dashboardViewModelFactory(
-                    updateGameState = { state.value = it },
-                    clipboardManager = clipboardManager,
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                DrawerContent(
+                    navigate = {
+                        scope.launch {
+                            drawerState.close()
+                        }
+                        settingsPage = it
+                    },
+                    currentPage = settingsPage,
                 )
             }
-            DashboardView(
-                viewModel = viewModel,
-                connectToSGE = { state.value = GameState.NewGameState }
-            )
-        }
-        GameState.NewGameState -> {
-            val clipboardManager = LocalClipboardManager.current
-            val viewModel = remember {
-                appContainer.sgeViewModelFactory.create(
-                    clipboardManager = clipboardManager,
-                    updateGameState = { gameState ->
-                        state.value = gameState
-                    }
+        },
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = "Warlock 3", maxLines = 1) },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    drawerState.open()
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = WarlockIcons.Menu,
+                                contentDescription = null
+                            )
+                        }
+                    },
                 )
-            }
-            SgeWizard(viewModel = viewModel, onCancel = { state.value = GameState.Dashboard })
-        }
-        is GameState.ConnectedGameState -> {
-            val character = currentState.viewModel.character.collectAsState(null).value
-            if (currentCharacter != character) {
-                currentCharacter = character
-            }
-            GameView(
-                viewModel = currentState.viewModel,
-                navigateToDashboard = {
-                    state.value = GameState.Dashboard
+            },
+        ) { padding ->
+            Box(Modifier.padding(padding)) {
+                if (settingsPage == null) {
+                    MainScreen(
+                        sgeViewModelFactory = appContainer.sgeViewModelFactory,
+                        dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
+                        gameState = gameState,
+                        updateGameState = { gameState = it },
+                        updateCurrentCharacter = { currentCharacter = it },
+                    )
+                } else {
+                    SettingsContent(
+                        page = settingsPage!!,
+                        currentCharacter = currentCharacter,
+                        variableRepository = appContainer.variableRepository,
+                        macroRepository = appContainer.macroRepository,
+                        presetRepository = appContainer.presetRepository,
+                        highlightRepository = appContainer.highlightRepository,
+                        characterSettingsRepository = appContainer.characterSettingsRepository,
+                        aliasRepository = appContainer.aliasRepository,
+                        scriptDirRepository = appContainer.scriptDirRepository,
+                        alterationRepository = appContainer.alterationRepository,
+                        characterRepository = appContainer.characterRepository,
+                    )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DrawerContent(
+    navigate: (SettingsPage?) -> Unit,
+    currentPage: SettingsPage?,
+) {
+    ScrollableColumn {
+        NavigationDrawerItem(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            label = { Text("Main") },
+            onClick = { navigate(null) },
+            selected = currentPage == null,
+        )
+        SettingsPage.entries.forEach { settingsPage ->
+            NavigationDrawerItem(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                label = { Text(settingsPage.title) },
+                onClick = { navigate(settingsPage) },
+                selected = currentPage == settingsPage,
             )
-        }
-        is GameState.ErrorState -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(text = currentState.message)
-                Button(
-                    onClick = { state.value = GameState.NewGameState }
-                ) {
-                    Text("OK")
-                }
-            }
         }
     }
 }

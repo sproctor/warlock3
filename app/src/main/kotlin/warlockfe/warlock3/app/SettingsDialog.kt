@@ -15,13 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import warlockfe.warlock3.compose.ui.components.DrawerMenuItem
-import warlockfe.warlock3.compose.ui.settings.AliasView
-import warlockfe.warlock3.compose.ui.settings.AlterationsView
-import warlockfe.warlock3.compose.ui.settings.AppearanceView
-import warlockfe.warlock3.compose.ui.settings.GeneralSettingsView
-import warlockfe.warlock3.compose.ui.settings.HighlightsView
-import warlockfe.warlock3.compose.ui.settings.MacrosView
-import warlockfe.warlock3.compose.ui.settings.VariablesView
+import warlockfe.warlock3.compose.ui.settings.SettingsContent
+import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.AlterationRepository
@@ -53,115 +48,35 @@ fun SettingsDialog(
         state = rememberWindowState(width = 900.dp, height = 600.dp)
     ) {
         var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
-        val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
         PermanentNavigationDrawer(
             drawerContent = {
                 PermanentDrawerSheet {
-                    DrawerMenuItem(
-                        title = "General",
-                        onClick = { state = SettingsPage.General },
-                        selected = state == SettingsPage.General
-                    )
-                    DrawerMenuItem(
-                        title = "Appearance",
-                        onClick = { state = SettingsPage.Appearance },
-                        selected = state == SettingsPage.Appearance
-                    )
-                    DrawerMenuItem(
-                        title = "Variables",
-                        onClick = { state = SettingsPage.Variables },
-                        selected = state == SettingsPage.Variables
-                    )
-                    DrawerMenuItem(
-                        title = "Macros",
-                        onClick = { state = SettingsPage.Macros },
-                        selected = state == SettingsPage.Macros
-                    )
-                    DrawerMenuItem(
-                        title = "Highlights",
-                        onClick = { state = SettingsPage.Highlights },
-                        selected = state == SettingsPage.Highlights
-                    )
-                    DrawerMenuItem(
-                        title = "Aliases",
-                        onClick = { state = SettingsPage.Aliases },
-                        selected = state == SettingsPage.Aliases
-                    )
-                    DrawerMenuItem(
-                        title = "Text Alterations",
-                        onClick = { state = SettingsPage.Alterations },
-                        selected = state == SettingsPage.Alterations
-                    )
+                    SettingsPage.entries.forEach { settingsPage ->
+                        DrawerMenuItem(
+                            title = settingsPage.title,
+                            onClick = { state = settingsPage },
+                            selected = state == settingsPage,
+                        )
+                    }
                 }
             }
         ) {
             Box(Modifier.padding(16.dp)) {
-                when (state) {
-                    SettingsPage.General -> {
-                        GeneralSettingsView(
-                            characterSettingsRepository = characterSettingsRepository,
-                            initialCharacter = currentCharacter,
-                            characters = characters,
-                            scriptDirRepository = scriptDirRepository,
-                        )
-                    }
-
-                    SettingsPage.Variables -> {
-                        VariablesView(
-                            initialCharacter = currentCharacter,
-                            characters = characters,
-                            variableRepository = variableRepository,
-                        )
-                    }
-
-                    SettingsPage.Macros -> MacrosView(
-                        initialCharacter = currentCharacter,
-                        characters = characters,
-                        macroRepository = macroRepository,
-                    )
-
-                    SettingsPage.Highlights -> HighlightsView(
-                        currentCharacter = currentCharacter,
-                        allCharacters = characters,
-                        highlightRepository = highlightRepository,
-                    )
-
-                    SettingsPage.Appearance -> {
-                        AppearanceView(
-                            presetRepository = presetRepository,
-                            initialCharacter = currentCharacter,
-                            characters = characters,
-                        )
-                    }
-
-                    SettingsPage.Aliases -> {
-                        AliasView(
-                            currentCharacter = currentCharacter,
-                            allCharacters = characters,
-                            aliasRepository = aliasRepository,
-                        )
-                    }
-
-                    SettingsPage.Alterations -> {
-                        AlterationsView(
-                            currentCharacter = currentCharacter,
-                            allCharacters = characters,
-                            alterationRepository = alterationRepository,
-                        )
-                    }
-                }
+                SettingsContent(
+                    page = state,
+                    currentCharacter = currentCharacter,
+                    variableRepository = variableRepository,
+                    macroRepository = macroRepository,
+                    presetRepository = presetRepository,
+                    highlightRepository = highlightRepository,
+                    characterSettingsRepository = characterSettingsRepository,
+                    aliasRepository = aliasRepository,
+                    scriptDirRepository = scriptDirRepository,
+                    alterationRepository = alterationRepository,
+                    characterRepository = characterRepository,
+                )
             }
         }
     }
-}
-
-enum class SettingsPage {
-    Variables,
-    Macros,
-    Highlights,
-    Appearance,
-    General,
-    Aliases,
-    Alterations,
 }

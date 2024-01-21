@@ -22,26 +22,12 @@ class MainActivity : ComponentActivity() {
 
         installSplashScreen()
 
-        setContent {
-            var showSettings by remember { mutableStateOf(false) }
+        val warlockApplication = application as WarlockApplication
+        val appContainer = warlockApplication.appContainer
 
-            val warlockApplication = application as WarlockApplication
-            val appContainer = warlockApplication.appContainer
+        setContent {
             AppTheme {
-                val clipboardManager = LocalClipboardManager.current
-                val gameState = remember {
-                    mutableStateOf<GameState>(GameState.Dashboard)
-                }
-                val characterId = when (val currentState = gameState.value) {
-                    is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
-                    else -> null
-                }
-                WarlockApp(
-                    appContainer = appContainer,
-                    state = gameState,
-                    showSettings = showSettings,
-                    closeSettings = { showSettings = false },
-                )
+                WarlockApp(appContainer = appContainer)
             }
         }
     }

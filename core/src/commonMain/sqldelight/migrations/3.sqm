@@ -1,0 +1,11 @@
+DROP TABLE WindowSettings;
+
+CREATE TABLE WindowSettings (
+    characterId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    location TEXT,
+    position INTEGER,
+    PRIMARY KEY (characterId, name)
+);

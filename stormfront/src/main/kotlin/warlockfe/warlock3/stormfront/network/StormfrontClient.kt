@@ -146,7 +146,6 @@ class StormfrontClient(
     private var buffer: StyledString? = null
 
     init {
-        val path = System.getProperty("WARLOCK_LOG_DIR")
         logger = FileLogger(logPath / "unknown")
         windows["warlockscripts"] = StormfrontWindow(
             name = "warlockscripts",
@@ -277,7 +276,6 @@ class StormfrontClient(
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
-                                            val path = System.getProperty("WARLOCK_LOG_DIR")
                                             logger = FileLogger(logPath / "${event.game}_${event.character}")
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(

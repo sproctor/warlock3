@@ -1,0 +1,22 @@
+import java.util.UUID;
+
+CREATE TABLE Alias (
+    id BLOB AS UUID NOT NULL PRIMARY KEY,
+    characterId TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    replacement TEXT NOT NULL
+);
+
+getForCharacter:
+SELECT * FROM Alias
+WHERE characterId = :characterId OR characterId = "global";
+
+getByCharacter:
+SELECT * FROM Alias
+WHERE characterId = :characterId;
+
+save:
+INSERT OR REPLACE INTO Alias VALUES ?;
+
+delete:
+DELETE FROM Alias WHERE id = :id;

@@ -97,6 +97,10 @@ class WarlockScriptEngineRegistry(
         return null
     }
 
+    override fun supportsExtension(extension: String): Boolean {
+        return getEngineForExtension(extension) != null
+    }
+
     override fun findScriptInstance(description: String): ScriptInstance? {
         val id = description.toLongOrNull()
         runningScripts.forEach { instance ->

@@ -1,0 +1,14 @@
+CREATE TABLE CharacterSetting (
+    characterId TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (characterId, key)
+);
+
+getByKey:
+SELECT value
+FROM CharacterSetting
+WHERE key = :key AND characterId = :characterId;
+
+save:
+INSERT OR REPLACE INTO CharacterSetting VALUES ?;

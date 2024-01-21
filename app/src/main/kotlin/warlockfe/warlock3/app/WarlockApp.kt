@@ -1,103 +1,94 @@
 package warlockfe.warlock3.app
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
-import warlockfe.warlock3.app.di.AppContainer
+import androidx.compose.ui.window.FrameWindowScope
+import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.ui.dashboard.DashboardView
-import warlockfe.warlock3.compose.ui.game.GameView
-import warlockfe.warlock3.compose.ui.sge.SgeWizard
+import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.sge.SimuGameCredentials
 
 @Composable
-fun WarlockApp(
+fun FrameWindowScope.WarlockApp(
     appContainer: AppContainer,
-    state: MutableState<GameState>,
-    showSettings: Boolean,
-    closeSettings: () -> Unit,
+    credentials: SimuGameCredentials?,
 ) {
+    var showSettings by remember { mutableStateOf(false) }
 
-    var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
-
-    when (val currentState = state.value) {
-        GameState.Dashboard -> {
-            val clipboardManager = LocalClipboardManager.current
-            val viewModel = remember {
-                appContainer.dashboardViewModelFactory(
-                    updateGameState = { state.value = it },
-                    clipboardManager = clipboardManager,
-                )
-            }
-            DashboardView(
-                viewModel = viewModel,
-                connectToSGE = { state.value = GameState.NewGameState }
+    AppTheme {
+        CompositionLocalProvider(
+            LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
+                hoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f),
+                unhoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
             )
-        }
-        GameState.NewGameState -> {
+        ) {
             val clipboardManager = LocalClipboardManager.current
-            val viewModel = remember {
-                appContainer.sgeViewModelFactory.create(
-                    clipboardManager = clipboardManager,
-                    updateGameState = { gameState ->
-                        state.value = gameState
+            val gameState = remember {
+                val initialGameState = if (credentials != null) {
+                    val client =
+                        appContainer.warlockClientFactory.createStormFrontClient(credentials)
+                    client.connect()
+                    val viewModel =
+                        appContainer.gameViewModelFactory.create(client, clipboardManager)
+                    GameState.ConnectedGameState(viewModel)
+                } else {
+                    GameState.Dashboard
+                }
+                mutableStateOf(initialGameState)
+            }
+            val characterId = when (val currentState = gameState.value) {
+                is GameState.ConnectedGameState -> currentState.viewModel.client.characterId.collectAsState().value
+                else -> null
+            }
+            AppMenuBar(
+                characterId = characterId,
+                windowRepository = appContainer.windowRepository,
+                scriptEngineRegistry = appContainer.scriptManager,
+                showSettings = { showSettings = true },
+                disconnect = null,
+                runScript = {
+                    val currentGameState = gameState.value
+                    if (currentGameState is GameState.ConnectedGameState) {
+                        currentGameState.viewModel.runScript(it)
                     }
-                )
-            }
-            SgeWizard(viewModel = viewModel, onCancel = { state.value = GameState.Dashboard })
-        }
-        is GameState.ConnectedGameState -> {
-            val character = currentState.viewModel.character.collectAsState(null).value
-            if (currentCharacter != character) {
-                currentCharacter = character
-            }
-            GameView(
-                viewModel = currentState.viewModel,
-                navigateToDashboard = {
-                    state.value = GameState.Dashboard
                 }
             )
-        }
-        is GameState.ErrorState -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(text = currentState.message)
-                Button(
-                    onClick = { state.value = GameState.NewGameState }
-                ) {
-                    Text("OK")
-                }
+
+            var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
+
+            MainScreen(
+                sgeViewModelFactory = appContainer.sgeViewModelFactory,
+                dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
+                gameState = gameState.value,
+                updateGameState = { gameState.value = it },
+                updateCurrentCharacter = { currentCharacter = it }
+            )
+
+            if (showSettings) {
+                SettingsDialog(
+                    currentCharacter = currentCharacter,
+                    closeDialog = { showSettings = false },
+                    variableRepository = appContainer.variableRepository,
+                    macroRepository = appContainer.macroRepository,
+                    presetRepository = appContainer.presetRepository,
+                    characterRepository = appContainer.characterRepository,
+                    highlightRepository = appContainer.highlightRepository,
+                    characterSettingsRepository = appContainer.characterSettingsRepository,
+                    aliasRepository = appContainer.aliasRepository,
+                    scriptDirRepository = appContainer.scriptDirRepository,
+                    alterationRepository = appContainer.alterationRepository,
+                )
             }
         }
-    }
-    if (showSettings) {
-        SettingsDialog(
-            currentCharacter = currentCharacter,
-            closeDialog = closeSettings,
-            variableRepository = appContainer.variableRepository,
-            macroRepository = appContainer.macroRepository,
-            presetRepository = appContainer.presetRepository,
-            characterRepository = appContainer.characterRepository,
-            highlightRepository = appContainer.highlightRepository,
-            characterSettingsRepository = appContainer.characterSettingsRepository,
-            aliasRepository = appContainer.aliasRepository,
-            scriptDirRepository = appContainer.scriptDirRepository,
-            alterationRepository = appContainer.alterationRepository,
-        )
     }
 }

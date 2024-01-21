@@ -1,0 +1,10 @@
+CREATE TABLE Alteration (
+    id BLOB PRIMARY KEY,
+    characterId TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    sourceStream TEXT,
+    destinationStream TEXT,
+    result TEXT,
+    ignoreCase INTEGER NOT NULL,
+    keepOriginal INTEGER NOT NULL
+);

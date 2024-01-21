@@ -3,7 +3,8 @@ package warlockfe.warlock3.android
 import android.app.Application
 import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
-import warlockfe.warlock3.android.di.AppContainer
+import warlockfe.warlock3.android.di.AndroidAppContainer
+import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.prefs.adapters.LocationAdapter
 import warlockfe.warlock3.core.prefs.adapters.UUIDAdapter
 import warlockfe.warlock3.core.prefs.adapters.WarlockColorAdapter
@@ -15,7 +16,6 @@ import warlockfe.warlock3.core.prefs.sql.Highlight
 import warlockfe.warlock3.core.prefs.sql.HighlightStyle
 import warlockfe.warlock3.core.prefs.sql.PresetStyle
 import warlockfe.warlock3.core.prefs.sql.WindowSettings
-import java.io.File
 
 class WarlockApplication : Application() {
 
@@ -57,6 +57,6 @@ class WarlockApplication : Application() {
             )
         )
         insertDefaultsIfNeeded(database)
-        appContainer = AppContainer(this, database)
+        appContainer = AndroidAppContainer(this, database)
     }
 }

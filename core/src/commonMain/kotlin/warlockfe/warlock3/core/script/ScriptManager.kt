@@ -15,4 +15,6 @@ interface ScriptManager {
     suspend fun startScript(client: WarlockClient, file: File)
 
     fun findScriptInstance(description: String): ScriptInstance?
+
+    fun supportsExtension(extension: String): Boolean
 }

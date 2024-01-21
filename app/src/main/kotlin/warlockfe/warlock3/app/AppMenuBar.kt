@@ -16,6 +16,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.WarlockBuildConfig
 import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 import java.io.File
 
@@ -24,7 +25,7 @@ import java.io.File
 fun FrameWindowScope.AppMenuBar(
     characterId: String?,
     windowRepository: WindowRepository,
-    scriptEngineRegistry: WarlockScriptEngineRegistry,
+    scriptEngineRegistry: ScriptManager,
     runScript: (File) -> Unit,
     showSettings: () -> Unit,
     disconnect: (() -> Unit)?
@@ -46,7 +47,7 @@ fun FrameWindowScope.AppMenuBar(
                         }
                         dialog.setFilenameFilter { _, name ->
                             val extension = File(name).extension
-                            scriptEngineRegistry.getEngineForExtension(extension) != null
+                            scriptEngineRegistry.supportsExtension(extension)
                         }
                         dialog.isVisible = true
                         val fileName = dialog.file

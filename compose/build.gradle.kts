@@ -27,6 +27,7 @@ kotlin {
             dependencies {
                 implementation(compose.preview)
                 implementation(project(":macro"))
+                implementation(project(":stormfront")) // TODO: remove when abstracting DI
                 implementation(libs.coil.compose)
                 implementation(libs.coil.svg)
 //                implementation(libs.androidx.core.ktx)
@@ -43,6 +44,7 @@ kotlin {
             dependencies {
                 implementation(compose.preview)
                 implementation(project(":macro"))
+                implementation(project(":stormfront")) // TODO: remove when abstracting DI
             }
         }
     }
