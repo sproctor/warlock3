@@ -91,19 +91,21 @@ fun WarlockApp(
                         updateCurrentCharacter = { currentCharacter = it },
                     )
                 } else {
-                    SettingsContent(
-                        page = settingsPage!!,
-                        currentCharacter = currentCharacter,
-                        variableRepository = appContainer.variableRepository,
-                        macroRepository = appContainer.macroRepository,
-                        presetRepository = appContainer.presetRepository,
-                        highlightRepository = appContainer.highlightRepository,
-                        characterSettingsRepository = appContainer.characterSettingsRepository,
-                        aliasRepository = appContainer.aliasRepository,
-                        scriptDirRepository = appContainer.scriptDirRepository,
-                        alterationRepository = appContainer.alterationRepository,
-                        characterRepository = appContainer.characterRepository,
-                    )
+                    Box(Modifier.padding(16.dp)) {
+                        SettingsContent(
+                            page = settingsPage!!,
+                            currentCharacter = currentCharacter,
+                            variableRepository = appContainer.variableRepository,
+                            macroRepository = appContainer.macroRepository,
+                            presetRepository = appContainer.presetRepository,
+                            highlightRepository = appContainer.highlightRepository,
+                            characterSettingsRepository = appContainer.characterSettingsRepository,
+                            aliasRepository = appContainer.aliasRepository,
+                            scriptDirRepository = appContainer.scriptDirRepository,
+                            alterationRepository = appContainer.alterationRepository,
+                            characterRepository = appContainer.characterRepository,
+                        )
+                    }
                 }
             }
         }

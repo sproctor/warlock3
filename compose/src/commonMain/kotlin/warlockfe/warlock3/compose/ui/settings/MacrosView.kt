@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -63,7 +62,6 @@ fun MacrosView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Macros", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        val scrollState = rememberScrollState()
         ScrollableColumn(
             Modifier.fillMaxWidth()
                 .weight(1f)
