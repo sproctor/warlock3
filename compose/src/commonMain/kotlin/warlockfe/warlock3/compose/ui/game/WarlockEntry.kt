@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.isTypedEvent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -17,7 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -81,6 +84,7 @@ fun WarlockEntryContent(
             RoundTimeBar(roundTime, castTime)
 
             val focusRequester = remember { FocusRequester() }
+            var skipNextKey by remember { mutableStateOf(false) }
             BasicTextField(
                 value = textField,
                 modifier = Modifier
@@ -88,7 +92,16 @@ fun WarlockEntryContent(
                     .focusRequester(focusRequester)
                     .fillMaxWidth()
                     .onPreviewKeyEvent { event ->
+                        if (skipNextKey && event.isTypedEvent) {
+                            skipNextKey = false
+                            return@onPreviewKeyEvent true
+                        }
                         val result = onKeyPress(event)
+                        // We're catching KEY_DOWN in AWT, KEY_TYPED gets through
+                        // When we match a key (and it's not a typed event), skip the next typed event
+                        if (result && !event.isTypedEvent) {
+                            skipNextKey = true
+                        }
                         result
                     },
                 textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
