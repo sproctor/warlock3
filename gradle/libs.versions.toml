@@ -13,22 +13,22 @@ moko-resources = { id = "dev.icerock.mobile.multiplatform-resources", version.re
 
 [versions]
 
-kotlin = "1.9.21"
-agp = "8.2.1"
-sqldelight = "2.0.0"
+kotlin = "1.9.22"
+agp = "8.2.2"
+sqldelight = "2.0.1"
 kotlinx-cli = "0.3.6"
 kotlinx-coroutines = "1.7.3"
 kotlinx-collections-immutable = "0.3.7"
 okio = "3.7.0"
 rhino = "1.7.14"
-compose = "1.5.11"
+compose = "1.5.12"
 antlr = "4.13.1"
 compose-color-picker = "0.7.0"
 apache-commons-text = "1.11.0"
 androidx-activity = "1.8.2"
 androidx-core-splashscreen = "1.0.1"
 coil = "2.5.0"
-moko-resources = "0.24.0-alpha-1"
+moko-resources = "0.24.0-alpha-2"
 
 [libraries]
 
@@ -49,7 +49,6 @@ sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-exte
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
-androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "androidx-activity" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
