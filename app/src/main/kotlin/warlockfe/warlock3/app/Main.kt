@@ -15,10 +15,10 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.adapters.LocationAdapter
 import warlockfe.warlock3.core.prefs.adapters.UUIDAdapter
 import warlockfe.warlock3.core.prefs.adapters.WarlockColorAdapter
-import warlockfe.warlock3.core.prefs.insertDefaultsIfNeeded
 import warlockfe.warlock3.core.prefs.sql.Alias
 import warlockfe.warlock3.core.prefs.sql.Alteration
 import warlockfe.warlock3.core.prefs.sql.Database
@@ -93,7 +93,7 @@ fun main(args: Array<String>) {
             idAdapter = UUIDAdapter,
         )
     )
-    insertDefaultsIfNeeded(database)
+    database.insertDefaultMacrosIfNeeded()
 
     val appContainer = JvmAppContainer(database, configDir)
     val clientSettings = appContainer.clientSettings

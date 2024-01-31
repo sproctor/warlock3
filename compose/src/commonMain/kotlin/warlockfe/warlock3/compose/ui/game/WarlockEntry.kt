@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.isTypedEvent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,8 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -92,14 +90,17 @@ fun WarlockEntryContent(
                     .focusRequester(focusRequester)
                     .fillMaxWidth()
                     .onPreviewKeyEvent { event ->
-                        if (skipNextKey && event.isTypedEvent) {
+                        // skipNextKey only has an effect on desktop
+                        // We're catching KEY_DOWN in AWT, KEY_TYPED gets through
+                        // When we match a key, skip the next key event if it's not a KEY_DOWN
+                        if (skipNextKey && event.type != KeyEventType.KeyDown) {
                             skipNextKey = false
                             return@onPreviewKeyEvent true
                         }
+                        // Only skip the immediately following event
+                        skipNextKey = false
                         val result = onKeyPress(event)
-                        // We're catching KEY_DOWN in AWT, KEY_TYPED gets through
-                        // When we match a key (and it's not a typed event), skip the next typed event
-                        if (result && !event.isTypedEvent) {
+                        if (result) {
                             skipNextKey = true
                         }
                         result

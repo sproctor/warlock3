@@ -25,16 +25,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.macros.getLabel
 import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.MacroRepository
-import java.awt.event.KeyEvent
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -74,7 +73,7 @@ fun MacrosView(
                     textBuilder.append("+")
                 }
                 val key = Key(parts.last().toLongOrNull() ?: 0)
-                textBuilder.append(KeyEvent.getKeyText(key.nativeKeyCode))
+                textBuilder.append(key.getLabel())
                 ListItem(
                     headlineContent = { Text(textBuilder.toString()) },
                     supportingContent = { Text(macro.second) },

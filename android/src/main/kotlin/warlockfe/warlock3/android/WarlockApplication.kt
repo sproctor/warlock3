@@ -5,10 +5,10 @@ import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import warlockfe.warlock3.android.di.AndroidAppContainer
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.adapters.LocationAdapter
 import warlockfe.warlock3.core.prefs.adapters.UUIDAdapter
 import warlockfe.warlock3.core.prefs.adapters.WarlockColorAdapter
-import warlockfe.warlock3.core.prefs.insertDefaultsIfNeeded
 import warlockfe.warlock3.core.prefs.sql.Alias
 import warlockfe.warlock3.core.prefs.sql.Alteration
 import warlockfe.warlock3.core.prefs.sql.Database
@@ -56,7 +56,7 @@ class WarlockApplication : Application() {
                 idAdapter = UUIDAdapter,
             )
         )
-        insertDefaultsIfNeeded(database)
+        database.insertDefaultMacrosIfNeeded()
         appContainer = AndroidAppContainer(this, database)
     }
 }

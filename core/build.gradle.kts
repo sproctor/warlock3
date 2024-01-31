@@ -1,16 +1,15 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.android.library)
 }
 
 kotlin {
     jvm()
+    androidTarget()
 
     sourceSets {
         val commonMain by getting {
-            kotlin {
-                srcDir(layout.buildDirectory.dir("generated/antlr"))
-            }
             dependencies {
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.collections.immutable)
@@ -26,6 +25,17 @@ kotlin {
     }
     val jvmToolchainVersion: String by project
     jvmToolchain(jvmToolchainVersion.toInt())
+}
+
+android {
+    namespace = "warlockfe.warlock3.core"
+    compileSdk = 34
+
+    defaultConfig {
+        minSdk = 26
+
+        consumerProguardFiles("consumer-rules.pro")
+    }
 }
 
 sqldelight {
