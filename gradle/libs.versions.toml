@@ -28,7 +28,7 @@ apache-commons-text = "1.11.0"
 androidx-activity = "1.8.2"
 androidx-core-splashscreen = "1.0.1"
 coil = "2.5.0"
-moko-resources = "0.24.0-alpha-2"
+moko-resources = "0.24.0-alpha-3"
 
 [libraries]
 

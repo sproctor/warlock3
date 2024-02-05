@@ -28,7 +28,7 @@ dependencyResolutionManagement {
 
 plugins {
     // See https://jmfayard.github.io/refreshVersions
-    id("de.fayard.refreshVersions") version "0.60.3"
+    id("de.fayard.refreshVersions") version "0.60.4"
 }
 
 // work-around https://github.com/Splitties/refreshVersions/issues/640
