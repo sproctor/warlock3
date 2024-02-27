@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -88,5 +87,3 @@ fun AppTheme(
     content = content
   )
 }
-
-val WarlockIcons = Icons.Filled

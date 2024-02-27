@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +29,7 @@ fun SgeCharacterView(
             itemsIndexed(characters) { index, character ->
                 CharacterListItem(character = character, onClick = { onCharacterSelected(character) })
                 if (index < characters.size - 1)
-                    Divider()
+                    HorizontalDivider()
             }
         }
         Row(

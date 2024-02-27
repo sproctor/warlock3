@@ -44,7 +44,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.HighlightRepository
@@ -54,7 +53,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.text.toHexString
 import warlockfe.warlock3.core.util.toWarlockColor
-import java.util.UUID
+import java.util.*
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -131,7 +130,7 @@ fun HighlightsView(
                     matchPartialWord = true,
                 )
             }) {
-                Icon(imageVector = WarlockIcons.Add, contentDescription = null)
+                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
             }
         }
     }

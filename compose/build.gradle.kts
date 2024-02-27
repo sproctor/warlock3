@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose)
@@ -32,7 +34,6 @@ kotlin {
                 implementation(project(":stormfront")) // TODO: remove when abstracting DI
                 implementation(libs.coil.compose)
                 implementation(libs.coil.svg)
-//                implementation(libs.androidx.core.ktx)
             }
         }
 //        val commonTest by getting {
@@ -52,6 +53,12 @@ kotlin {
     }
 
     jvmToolchain(jvmToolchainVersion.toInt())
+
+    // suppress warning for moko resources
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 }
 
 android {

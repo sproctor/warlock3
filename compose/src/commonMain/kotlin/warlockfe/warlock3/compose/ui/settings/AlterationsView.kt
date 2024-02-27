@@ -35,11 +35,10 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.models.Alteration
-import java.util.UUID
+import java.util.*
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -113,7 +112,7 @@ fun AlterationsView(
                     keepOriginal = false,
                 )
             }) {
-                Icon(imageVector = WarlockIcons.Add, contentDescription = null)
+                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
             }
         }
     }

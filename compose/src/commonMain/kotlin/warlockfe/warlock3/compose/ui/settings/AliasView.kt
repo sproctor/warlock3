@@ -32,11 +32,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.sql.Alias
-import java.util.UUID
+import java.util.*
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -98,7 +97,7 @@ fun AliasView(
                     replacement = "",
                 )
             }) {
-                Icon(imageVector = WarlockIcons.Add, contentDescription = null)
+                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
             }
         }
     }

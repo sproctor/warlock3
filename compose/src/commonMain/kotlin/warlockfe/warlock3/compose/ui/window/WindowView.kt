@@ -42,7 +42,6 @@ import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.ui.settings.fontFamilyMap
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.compose.util.defaultFontSize
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -93,7 +92,7 @@ fun WindowView(
                     onClick = { showDropdown = true }
                 ) {
                     Icon(
-                        imageVector = WarlockIcons.Settings,
+                        imageVector = Icons.Filled.Settings,
                         contentDescription = "Settings",
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )

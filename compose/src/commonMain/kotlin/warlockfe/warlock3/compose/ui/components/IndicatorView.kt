@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -41,7 +43,6 @@ private val status3Keys = mapOf(
 
 @Composable
 fun IndicatorView(modifier: Modifier, properties: Map<String, String>) {
-    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Row(modifier = modifier) {
         val positionMap =
             if (properties.containsKey("invisible")) invisiblePositionKeys else positionKeys
@@ -49,19 +50,19 @@ fun IndicatorView(modifier: Modifier, properties: Map<String, String>) {
         IndicatorImage(
             images = position?.let { listOf(it) } ?: emptyList()
         )
-        Divider(modifier = Modifier.width(1.dp).fillMaxHeight(), color = dividerColor)
+        VerticalDivider()
         IndicatorImage(
             images = status1Keys.filter { properties.containsKey(it.key) }.map { it.value }
         )
-        Divider(modifier = Modifier.width(1.dp).fillMaxHeight(), color = dividerColor)
+        VerticalDivider()
         IndicatorImage(
             images = if (properties.containsKey("joined")) listOf(MR.images.joined) else emptyList()
         )
-        Divider(modifier = Modifier.width(1.dp).fillMaxHeight(), color = dividerColor)
+        VerticalDivider()
         IndicatorImage(
             images = status2Keys.filter { properties.containsKey(it.key) }.map { it.value }
         )
-        Divider(modifier = Modifier.width(1.dp).fillMaxHeight(), color = dividerColor)
+        VerticalDivider()
         IndicatorImage(
             images = status3Keys.filter { properties.containsKey(it.key) }.map { it.value }
         )

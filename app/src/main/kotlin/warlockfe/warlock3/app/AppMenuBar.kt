@@ -1,14 +1,12 @@
 package warlockfe.warlock3.app
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -17,7 +15,6 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.WarlockBuildConfig
 import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.script.ScriptManager
-import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 import java.io.File
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -60,7 +57,7 @@ fun FrameWindowScope.AppMenuBar(
                 )
             }
             if (disconnect != null) {
-                Divider(Modifier.fillMaxWidth())
+                HorizontalDivider()
                 Item("Disconnect", onClick = disconnect)
             }
         }

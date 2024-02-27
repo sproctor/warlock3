@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -38,7 +39,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import java.awt.event.KeyEvent
 
 @Composable
@@ -421,7 +421,7 @@ private fun KeyboardLayout(
             )
 
             KeyButton(
-                icon = WarlockIcons.KeyboardArrowUp,
+                icon = Icons.Filled.KeyboardArrowUp,
                 isSelected = selectedKey == Key.DirectionUp,
                 onClick = { onClickKey(Key.DirectionUp) },
                 modifier = Modifier.padding(end = 76.dp)
@@ -480,15 +480,15 @@ private fun KeyboardLayout(
             )
 
             KeyButton(
-                icon = WarlockIcons.KeyboardArrowLeft,
+                icon = Icons.Filled.KeyboardArrowLeft,
                 isSelected = selectedKey == Key.DirectionLeft,
                 onClick = { onClickKey(Key.DirectionLeft) })
             KeyButton(
-                icon = WarlockIcons.KeyboardArrowDown,
+                icon = Icons.Filled.KeyboardArrowDown,
                 isSelected = selectedKey == Key.DirectionDown,
                 onClick = { onClickKey(Key.DirectionDown) })
             KeyButton(
-                icon = WarlockIcons.KeyboardArrowRight,
+                icon = Icons.Filled.KeyboardArrowRight,
                 isSelected = selectedKey == Key.DirectionRight,
                 onClick = { onClickKey(Key.DirectionRight) },
                 modifier = Modifier.padding(end = 8.dp)

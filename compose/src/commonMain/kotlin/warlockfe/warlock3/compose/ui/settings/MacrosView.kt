@@ -31,7 +31,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.macros.getLabel
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.MacroRepository
 
@@ -110,7 +109,7 @@ fun MacrosView(
             horizontalArrangement = Arrangement.End
         ) {
             IconButton(onClick = { editingMacro = Pair(null, "") }) {
-                Icon(imageVector = WarlockIcons.Add, contentDescription = null)
+                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
             }
         }
     }
