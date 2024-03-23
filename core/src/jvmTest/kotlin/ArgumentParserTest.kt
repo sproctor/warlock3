@@ -1,6 +1,6 @@
 import warlockfe.warlock3.core.util.findArgumentBreak
 import warlockfe.warlock3.core.util.parseArguments
-import org.junit.jupiter.api.Test
+import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ArgumentParserTest {

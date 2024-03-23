@@ -22,6 +22,11 @@ kotlin {
                 api(libs.okio)
             }
         }
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
     val jvmToolchainVersion: String by project
     jvmToolchain(jvmToolchainVersion.toInt())
