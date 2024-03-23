@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -480,7 +480,7 @@ private fun KeyboardLayout(
             )
 
             KeyButton(
-                icon = Icons.Filled.KeyboardArrowLeft,
+                icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 isSelected = selectedKey == Key.DirectionLeft,
                 onClick = { onClickKey(Key.DirectionLeft) })
             KeyButton(
@@ -488,7 +488,7 @@ private fun KeyboardLayout(
                 isSelected = selectedKey == Key.DirectionDown,
                 onClick = { onClickKey(Key.DirectionDown) })
             KeyButton(
-                icon = Icons.Filled.KeyboardArrowRight,
+                icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 isSelected = selectedKey == Key.DirectionRight,
                 onClick = { onClickKey(Key.DirectionRight) },
                 modifier = Modifier.padding(end = 8.dp)
