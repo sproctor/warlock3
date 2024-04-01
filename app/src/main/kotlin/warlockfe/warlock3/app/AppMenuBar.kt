@@ -12,7 +12,6 @@ import androidx.compose.ui.window.MenuBar
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import warlockfe.warlock3.WarlockBuildConfig
 import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.script.ScriptManager
 import java.io.File
@@ -25,7 +24,8 @@ fun FrameWindowScope.AppMenuBar(
     scriptEngineRegistry: ScriptManager,
     runScript: (File) -> Unit,
     showSettings: () -> Unit,
-    disconnect: (() -> Unit)?
+    disconnect: (() -> Unit)?,
+    warlockVersion: String,
 ) {
     val windows by windowRepository.windows.collectAsState()
     val openWindows by windowRepository.observeOpenWindows(characterId ?: "").collectAsState(emptyList())
@@ -90,6 +90,6 @@ fun FrameWindowScope.AppMenuBar(
         }
     }
     if (showAbout) {
-        AboutDialog(WarlockBuildConfig.warlockVersion) { showAbout = false }
+        AboutDialog(warlockVersion) { showAbout = false }
     }
 }

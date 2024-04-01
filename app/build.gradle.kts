@@ -6,20 +6,6 @@ plugins {
     alias(libs.plugins.hydraulic.conveyor)
 }
 
-val buildConfigDir
-    get() = project.layout.buildDirectory.dir("generated/buildconfig")
-val buildConfig = tasks.register("buildConfig", GenerateBuildConfig::class.java) {
-    classFqName.set("warlockfe.warlock3.WarlockBuildConfig")
-    generatedOutputDir.set(buildConfigDir)
-    fieldsToGenerate.put("warlockVersion", project.version)
-}
-tasks.named("compileKotlin") {
-    dependsOn(buildConfig)
-}
-sourceSets.main.configure {
-    java.srcDir(buildConfigDir)
-}
-
 dependencies {
     implementation(project(":core"))
     implementation(project(":stormfront"))

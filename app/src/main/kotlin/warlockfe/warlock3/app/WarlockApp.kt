@@ -61,7 +61,8 @@ fun FrameWindowScope.WarlockApp(
                     if (currentGameState is GameState.ConnectedGameState) {
                         currentGameState.viewModel.runScript(it)
                     }
-                }
+                },
+                warlockVersion = System.getProperty("app.version", "development")
             )
 
             var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
