@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose
 
+import ca.gosyer.appdirs.AppDirs
 import kotlinx.coroutines.CoroutineDispatcher
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
@@ -30,6 +31,7 @@ abstract class AppContainer(
     database: Database,
     ioDispatcher: CoroutineDispatcher,
     private val themeText: String,
+    appDirs: AppDirs,
 ) {
 
     val variableRepository = VariableRepository(database.variableQueries, ioDispatcher)
@@ -59,8 +61,9 @@ abstract class AppContainer(
         )
     val scriptDirRepository =
         ScriptDirRepository(
-            database.scriptDirQueries,
-            ioDispatcher
+            scriptDirQueries = database.scriptDirQueries,
+            ioDispatcher = ioDispatcher,
+            appDirs = appDirs
         )
     val characterSettingsRepository =
         CharacterSettingsRepository(

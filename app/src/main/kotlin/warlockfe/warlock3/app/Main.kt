@@ -9,6 +9,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import ca.gosyer.appdirs.AppDirs
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.flow.launchIn
@@ -61,9 +62,18 @@ fun main(args: Array<String>) {
             null
         }
 
-    val configDir = System.getProperty("user.home") + "/.warlock3"
+    val appDirs = AppDirs("warlock", "WarlockFE")
+    val configDir = appDirs.getUserConfigDir()
     File(configDir).mkdirs()
     val dbFilename = "$configDir/prefs.db"
+
+    // Copy old config
+    val oldConfigDir = System.getProperty("user.home") + "/.warlock3"
+    val oldDbFilename = "$oldConfigDir/prefs.db"
+    if (!File(dbFilename).exists() && File(oldDbFilename).exists()) {
+        File(oldDbFilename).copyTo(File(dbFilename))
+    }
+
     val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename", schema = Database.Schema)
     val database = Database(
         driver = driver,
@@ -95,7 +105,7 @@ fun main(args: Array<String>) {
     )
     database.insertDefaultMacrosIfNeeded()
 
-    val appContainer = JvmAppContainer(database, configDir)
+    val appContainer = JvmAppContainer(database, appDirs)
     val clientSettings = appContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480

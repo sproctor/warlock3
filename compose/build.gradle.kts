@@ -25,6 +25,7 @@ kotlin {
                 implementation(libs.kotlinx.collections.immutable)
                 implementation(libs.moko.resources)
                 implementation(libs.moko.resources.compose)
+                implementation(libs.appdirs)
             }
         }
         val androidMain by getting {

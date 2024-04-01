@@ -3,6 +3,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
+    alias(libs.plugins.hydraulic.conveyor)
 }
 
 val buildConfigDir
@@ -34,6 +35,13 @@ dependencies {
     implementation(libs.sqldelight.primitive.adapters)
     implementation(libs.kotlinx.cli)
     implementation(libs.moko.resources)
+    implementation(libs.appdirs)
+
+    // Required by conveyor
+    linuxAmd64(compose.desktop.linux_x64)
+    macAmd64(compose.desktop.macos_x64)
+    macAarch64(compose.desktop.macos_arm64)
+    windowsAmd64(compose.desktop.windows_x64)
 }
 
 kotlin {
@@ -50,8 +58,8 @@ compose.desktop {
             packageName = "warlock3"
             packageVersion = project.version.toString()
             modules("java.sql")
-            copyright = "Copyright 2023 Sean Proctor"
-            licenseFile.set(project.file("gpl-2.0.txt"))
+            copyright = "Copyright 2024 Sean Proctor"
+            licenseFile.set(project.file("../LICENSE.txt"))
             description = "Warlock Front-end"
             vendor = "Warlock Project"
 
@@ -85,3 +93,12 @@ compose.desktop {
         }
     }
 }
+
+// region Work around temporary Compose bugs.
+configurations.all {
+    attributes {
+        // https://github.com/JetBrains/compose-jb/issues/1404#issuecomment-1146894731
+        attribute(Attribute.of("ui", String::class.java), "awt")
+    }
+}
+// endregion

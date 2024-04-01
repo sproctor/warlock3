@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.prefs
 
 import app.cash.sqldelight.coroutines.asFlow
+import ca.gosyer.appdirs.AppDirs
 import warlockfe.warlock3.core.prefs.sql.ScriptDir
 import warlockfe.warlock3.core.prefs.sql.ScriptDirQueries
 import warlockfe.warlock3.core.util.mapToList
@@ -12,6 +13,7 @@ import kotlinx.coroutines.withContext
 class ScriptDirRepository(
     private val scriptDirQueries: ScriptDirQueries,
     private val ioDispatcher: CoroutineDispatcher,
+    private val appDirs: AppDirs,
 ) {
     fun observeScriptDirs(characterId: String): Flow<List<String>> {
         return scriptDirQueries.getByCharacter(characterId)
@@ -26,14 +28,16 @@ class ScriptDirRepository(
 
     suspend fun getMappedScriptDirs(characterId: String): List<String> {
         return withContext(ioDispatcher) {
-            (listOf("%config%/scripts/") +
+            (listOf("%data%/scripts/") +
                     scriptDirQueries.getByCharacterWithGlobal(characterId)
                         .executeAsList()
                     ).map {
                     val home = System.getProperty("user.home")
-                    val config = "$home/.warlock3"
+                    val config = appDirs.getUserConfigDir()
+                    val data = appDirs.getUserDataDir()
                     it.replace(oldValue = "%home%", newValue = home, ignoreCase = true)
                         .replace(oldValue = "%config%", newValue = config, ignoreCase = true)
+                        .replace(oldValue = "%data%", newValue = data, ignoreCase = true)
                 }
         }
     }

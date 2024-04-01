@@ -1,5 +1,6 @@
 package warlockfe.warlock3.app.di
 
+import ca.gosyer.appdirs.AppDirs
 import kotlinx.coroutines.Dispatchers
 import okio.Path.Companion.toPath
 import warlockfe.warlock3.compose.AppContainer
@@ -17,11 +18,12 @@ import warlockfe.warlock3.stormfront.network.StormfrontClient
 
 class JvmAppContainer(
     database: Database,
-    configDir: String,
+    appDirs: AppDirs,
 ) : AppContainer(
     database = database,
     ioDispatcher = Dispatchers.IO,
     themeText = MR.files.theme.readText(),
+    appDirs = appDirs,
 ) {
     override val scriptManager: ScriptManager =
         WarlockScriptEngineRegistry(
@@ -47,7 +49,7 @@ class JvmAppContainer(
                     scriptManager = scriptManager,
                     alterationRepository = alterationRepository,
                     streamRegistry = streamRegistry,
-                    logPath = configDir.toPath() / "logs"
+                    logPath = appDirs.getUserLogDir().toPath()
                 )
             }
         }

@@ -19,6 +19,8 @@ kotlin {
                 implementation(libs.sqldelight.async)
                 implementation(libs.sqldelight.coroutines)
 
+                implementation(libs.appdirs)
+
                 api(libs.okio)
             }
         }

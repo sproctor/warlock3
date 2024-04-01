@@ -10,6 +10,7 @@ sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 moko-resources = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko-resources" }
+hydraulic-conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 
 [versions]
 
@@ -29,6 +30,8 @@ androidx-activity = "1.8.2"
 androidx-core-splashscreen = "1.0.1"
 coil = "2.6.0"
 moko-resources = "0.24.0-alpha-5"
+conveyor = "1.9"
+appdirs = "1.2.0"
 
 [libraries]
 
@@ -55,3 +58,4 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
 moko-resources = { group = "dev.icerock.moko", name = "resources", version.ref = "moko-resources" }
 moko-resources-compose = { group = "dev.icerock.moko", name = "resources-compose", version.ref = "moko-resources" }
+appdirs = { group = "ca.gosyer", name = "kotlin-multiplatform-appdirs", version.ref="appdirs" }
