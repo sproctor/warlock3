@@ -2,6 +2,7 @@
 build
 out
 gen
+output
 
 hs_err_pid*.log
 *.hprof
