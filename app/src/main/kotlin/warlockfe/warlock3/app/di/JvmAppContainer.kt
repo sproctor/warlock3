@@ -22,7 +22,7 @@ class JvmAppContainer(
 ) : AppContainer(
     database = database,
     ioDispatcher = Dispatchers.IO,
-    themeText = MR.files.theme.readText(),
+    themeText = MR.files.theme_properties.readText(),
     appDirs = appDirs,
 ) {
     override val scriptManager: ScriptManager =
