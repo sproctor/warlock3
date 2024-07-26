@@ -16,6 +16,7 @@ import warlockfe.warlock3.core.prefs.sql.Highlight
 import warlockfe.warlock3.core.prefs.sql.HighlightStyle
 import warlockfe.warlock3.core.prefs.sql.PresetStyle
 import warlockfe.warlock3.core.prefs.sql.WindowSettings
+import warlockfe.warlock3.core.util.WarlockDirs
 
 class WarlockApplication : Application() {
 
@@ -26,6 +27,12 @@ class WarlockApplication : Application() {
         super.onCreate()
 
         val configDir = filesDir
+        val warlockDirs = WarlockDirs(
+            homeDir = filesDir.path,
+            configDir = filesDir.path,
+            dataDir = dataDir.path,
+            logDir = filesDir.path + "/logs"
+        )
         configDir.mkdirs()
         val driver = AndroidSqliteDriver(Database.Schema, this, "prefs.db")
         val database = Database(
@@ -57,6 +64,6 @@ class WarlockApplication : Application() {
             )
         )
         database.insertDefaultMacrosIfNeeded()
-        appContainer = AndroidAppContainer(this, database)
+        appContainer = AndroidAppContainer(this, database, warlockDirs)
     }
 }

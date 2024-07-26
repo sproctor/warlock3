@@ -31,6 +31,7 @@ import warlockfe.warlock3.core.prefs.sql.HighlightStyle
 import warlockfe.warlock3.core.prefs.sql.PresetStyle
 import warlockfe.warlock3.core.prefs.sql.WindowSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.exists
@@ -72,6 +73,12 @@ fun main(args: Array<String>) {
     val configDir = appDirs.getUserConfigDir()
     File(configDir).mkdirs()
     val dbFilename = "$configDir/prefs.db"
+    val warlockDirs = WarlockDirs(
+        homeDir = System.getProperty("user.home"),
+        configDir = appDirs.getUserConfigDir(),
+        dataDir = appDirs.getUserDataDir(),
+        logDir = appDirs.getUserLogDir(),
+    )
 
     // Copy old config
     val oldConfigDir = System.getProperty("user.home") + "/.warlock3"
@@ -111,7 +118,7 @@ fun main(args: Array<String>) {
     )
     database.insertDefaultMacrosIfNeeded()
 
-    val appContainer = JvmAppContainer(database, appDirs)
+    val appContainer = JvmAppContainer(database, warlockDirs)
     val clientSettings = appContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
