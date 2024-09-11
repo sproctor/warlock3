@@ -20,6 +20,9 @@ import warlockfe.warlock3.compose.ui.sge.SgeWizard
 import warlockfe.warlock3.core.client.GameCharacter
 
 @Composable
+expect fun Example()
+
+@Composable
 fun MainScreen(
     sgeViewModelFactory: SgeViewModelFactory,
     dashboardViewModelFactory: DashboardViewModelFactory,
@@ -27,7 +30,7 @@ fun MainScreen(
     updateGameState: (GameState) -> Unit,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
 ) {
-
+    Example()
     when (gameState) {
         GameState.Dashboard -> {
             val clipboardManager = LocalClipboardManager.current
