@@ -2,62 +2,61 @@
 
 [plugins]
 
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-compose = { id = "org.jetbrains.compose", version.ref = "compose" }
-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-moko-resources = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko-resources" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hydraulic-conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+moko-resources = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko-resources" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 
 [versions]
 
-kotlin = "2.0.20"
 agp = "8.5.2"
-##⬆= "8.6.0"
-sqldelight = "2.0.2"
-kotlinx-cli = "0.3.6"
-kotlinx-coroutines =  "1.8.1"
-kotlinx-collections-immutable = "0.3.8"
-okio = "3.9.0"
-rhino = "1.7.15"
-compose = "1.6.11"
-antlr = "4.13.2"
-compose-color-picker = "0.7.0"
-apache-commons-text = "1.12.0"
 androidx-activity = "1.9.2"
 androidx-core-splashscreen = "1.0.1"
-coil = "2.7.0"
-moko-resources = "0.24.2"
-conveyor = "1.11"
+antlr = "4.13.2"
+apache-commons-text = "1.12.0"
 appdirs = "1.2.0"
+coil = "2.7.0"
+compose = "1.6.11"
+compose-color-picker = "0.7.0"
+conveyor = "1.11"
+kotlin = "2.0.20"
+kotlinx-cli = "0.3.6"
+kotlinx-collections-immutable = "0.3.8"
+kotlinx-coroutines =  "1.8.1"
+moko-resources = "0.24.2"
+okio = "3.9.0"
+rhino = "1.7.15"
+sqldelight = "2.0.2"
 
 [libraries]
 
-compose-color-picker = { group = "com.godaddy.android.colorpicker", name = "compose-color-picker", version.ref = "compose-color-picker" }
-sqldelight-driver-jvm = { group = "app.cash.sqldelight", name = "sqlite-driver", version.ref = "sqldelight" }
-sqldelight-driver-android = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
-sqldelight-primitive-adapters = { group = "app.cash.sqldelight", name = "primitive-adapters", version.ref = "sqldelight" }
-kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
-sqlite-dialect = { group = "app.cash.sqldelight", name = "sqlite-3-24-dialect", version.ref = "sqldelight" }
-antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
-kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
-kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
-sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
-rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
-kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
-sqldelight-async = { group = "app.cash.sqldelight", name = "async-extensions", version.ref = "sqldelight" }
-sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
-okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
-apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
+appdirs = { group = "ca.gosyer", name = "kotlin-multiplatform-appdirs", version.ref="appdirs" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
+antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
+apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
+compose-color-picker = { group = "com.godaddy.android.colorpicker", name = "compose-color-picker", version.ref = "compose-color-picker" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
+kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
+kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 moko-resources = { group = "dev.icerock.moko", name = "resources", version.ref = "moko-resources" }
 moko-resources-compose = { group = "dev.icerock.moko", name = "resources-compose", version.ref = "moko-resources" }
-appdirs = { group = "ca.gosyer", name = "kotlin-multiplatform-appdirs", version.ref="appdirs" }
+okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
+rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
+sqldelight-async = { group = "app.cash.sqldelight", name = "async-extensions", version.ref = "sqldelight" }
+sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-driver-android = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
+sqldelight-driver-jvm = { group = "app.cash.sqldelight", name = "sqlite-driver", version.ref = "sqldelight" }
+sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
+sqldelight-primitive-adapters = { group = "app.cash.sqldelight", name = "primitive-adapters", version.ref = "sqldelight" }
+sqlite-dialect = { group = "app.cash.sqldelight", name = "sqlite-3-24-dialect", version.ref = "sqldelight" }
