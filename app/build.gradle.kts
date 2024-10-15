@@ -23,6 +23,7 @@ dependencies {
     implementation(libs.kotlinx.cli)
     implementation(libs.moko.resources)
     implementation(libs.appdirs)
+    implementation(libs.slf4j.simple)
 
     // Required by conveyor
     linuxAmd64(compose.desktop.linux_x64)
@@ -44,7 +45,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "warlock3"
             packageVersion = project.version.toString()
-            modules("java.sql")
+            modules("java.sql", "java.naming")
             copyright = "Copyright 2024 Sean Proctor"
             licenseFile.set(project.file("../LICENSE.txt"))
             description = "Warlock Front-end"
@@ -75,7 +76,6 @@ compose.desktop {
         }
 
         buildTypes.release.proguard {
-            isEnabled.set(true)
             configurationFiles.from("rules.pro")
         }
     }

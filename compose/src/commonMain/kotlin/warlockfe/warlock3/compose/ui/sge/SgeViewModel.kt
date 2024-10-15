@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ClipboardManager
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,6 +39,8 @@ class SgeViewModel(
     updateGameState: (GameState) -> Unit,
 ) : AutoCloseable {
 
+    private val logger = KotlinLogging.logger { }
+
     // TODO: Make these configurable?
     private val host = "eaccess.play.net"
     private val port = 7900
@@ -65,13 +68,13 @@ class SgeViewModel(
     init {
         job = scope.launch {
             if (client.connect().isFailure) {
-                println("Failed to connect to server")
+                logger.debug { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
                 return@launch
             }
             navigate(SgeViewState.SgeAccountSelector)
             client.eventFlow.collect { event ->
-                println("Got event: $event")
+                logger.debug { "Got event: $event" }
                 when (event) {
                     SgeEvent.SgeLoginSucceededEvent -> client.requestGameList()
                     is SgeEvent.SgeGamesReadyEvent -> navigate(SgeViewState.SgeGameSelector(event.games))
@@ -86,7 +89,7 @@ class SgeViewModel(
                                 )
                             )
                         } else {
-                            println("Got character list in unexpected state")
+                            logger.debug { "Got character list in unexpected state" }
                         }
                     }
                     is SgeEvent.SgeErrorEvent -> {
@@ -161,6 +164,7 @@ class SgeViewModel(
     }
 
     fun saveAccount(account: Account) {
+        logger.debug { "Saving account" }
         scope.launch {
             accountRepository.save(account)
         }

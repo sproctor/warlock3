@@ -1,11 +1,11 @@
 package warlockfe.warlock3.app
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.loadImageBitmap
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
@@ -13,12 +13,16 @@ import androidx.compose.ui.window.application
 import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import ca.gosyer.appdirs.AppDirs
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
+import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.adapters.LocationAdapter
 import warlockfe.warlock3.core.prefs.adapters.UUIDAdapter
@@ -59,11 +63,23 @@ fun main(args: Array<String>) {
         shortName = "k",
         description = "Character key to connect with"
     )
+    val debug by parser.option(
+        type = ArgType.Boolean,
+        fullName = "debug",
+        shortName = "d",
+        description = "Enable debug output"
+    )
     parser.parse(args)
+
+    val version = System.getProperty("app.version")
+    if (debug == true || (debug == null && version == null)) {
+        System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
+    }
+    val logger = KotlinLogging.logger("main")
 
     val credentials =
         if (port != null && host != null && key != null) {
-            println("Connecting to $host:$port with $key")
+            logger.debug { "Connecting to $host:$port with $key" }
             SimuGameCredentials(host = host!!, port = port!!, key = key!!)
         } else {
             null
@@ -125,23 +141,27 @@ fun main(args: Array<String>) {
     val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
 
     application {
-        Window(
-            title = "Warlock 3",
-            state = windowState,
-            icon = appIcon,
-            onCloseRequest = ::exitApplication,
+        CompositionLocalProvider(
+            LocalLogger provides logger
         ) {
-            WarlockApp(
-                appContainer = appContainer,
-                credentials = credentials,
-            )
-            LaunchedEffect(windowState) {
-                snapshotFlow { windowState.size }
-                    .onEach { size ->
-                        clientSettings.putWidth(size.width.value.roundToInt())
-                        clientSettings.putHeight(size.height.value.roundToInt())
-                    }
-                    .launchIn(this)
+            Window(
+                title = "Warlock 3",
+                state = windowState,
+                icon = appIcon,
+                onCloseRequest = ::exitApplication,
+            ) {
+                WarlockApp(
+                    appContainer = appContainer,
+                    credentials = credentials,
+                )
+                LaunchedEffect(windowState) {
+                    snapshotFlow { windowState.size }
+                        .onEach { size ->
+                            clientSettings.putWidth(size.width.value.roundToInt())
+                            clientSettings.putHeight(size.height.value.roundToInt())
+                        }
+                        .launchIn(this)
+                }
             }
         }
     }
@@ -150,7 +170,6 @@ fun main(args: Array<String>) {
 private val appIcon: Painter? by lazy {
     // app.dir is set when packaged to point at our collected inputs.
     val appDirProp = System.getProperty("app.dir")
-    println(appDirProp)
     val appDir = appDirProp?.let { Path.of(it) }
     // On Windows we should use the .ico file. On Linux, there's no native compound image format and Compose can't render SVG icons,
     // so we pick the 128x128 icon and let the frameworks/desktop environment rescale. On macOS we don't need to do anything.

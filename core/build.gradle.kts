@@ -13,6 +13,7 @@ kotlin {
             dependencies {
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.collections.immutable)
+                api(libs.kotlin.logging)
 
                 // Preferences
                 implementation(libs.sqldelight.runtime)

@@ -22,7 +22,6 @@ fun SgeWizard(
                 initialUsername = account?.username,
                 initialPassword = account?.password,
                 onAccountSelect = { newAccount ->
-                    println("saving username/password")
                     viewModel.saveAccount(newAccount)
                     viewModel.accountSelected(newAccount)
                 },

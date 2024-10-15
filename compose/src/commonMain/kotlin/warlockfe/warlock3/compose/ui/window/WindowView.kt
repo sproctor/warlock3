@@ -42,6 +42,7 @@ import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.ui.settings.fontFamilyMap
+import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.defaultFontSize
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -224,6 +225,8 @@ private fun WindowViewContent(
     defaultStyle: StyleDefinition,
     onActionClicked: (String) -> Unit
 ) {
+    val logger = LocalLogger.current
+
     val backgroundColor =
         (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
     val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
@@ -234,7 +237,6 @@ private fun WindowViewContent(
     val lines = snapshot.lines
     val components = snapshot.components
 
-    // TODO: reimplement this in a way that passes clicks through to clickable text
     SelectionContainer {
         val scrollState = rememberLazyListState()
         ScrollableLazyColumn(
@@ -250,7 +252,7 @@ private fun WindowViewContent(
                     presets = presets,
                     components = components,
                 ) { action ->
-                    println("action clicked: $action")
+                    logger.debug { "action clicked: $action" }
                     onActionClicked(action)
                 }
                 if (line != null) {
@@ -270,7 +272,6 @@ private fun WindowViewContent(
                                 fontSize = fontSize
                             ),
                         )
-
                     }
                 }
             }

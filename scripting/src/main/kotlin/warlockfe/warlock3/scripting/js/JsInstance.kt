@@ -1,5 +1,6 @@
 package warlockfe.warlock3.scripting.js
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,6 +36,8 @@ class JsInstance(
     private val variableRepository: VariableRepository,
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) : ScriptInstance {
+
+    private val logger = KotlinLogging.logger {}
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
@@ -76,9 +79,8 @@ class JsInstance(
                     val globalVariables = client.characterId.flatMapLatest { id ->
                         if (id != null) {
                             variableRepository.observeCharacterVariables(id).map {
-                                println("reloading variables $it")
-                                it.map { variable -> Pair(variable.name, variable.value) }
-                                    .toMap()
+                                logger.debug { "reloading variables $it" }
+                                it.associate { variable -> Pair(variable.name, variable.value) }
                                     .toCaseInsensitiveMap()
                                     .toMutableMap()
                             }

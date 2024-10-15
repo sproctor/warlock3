@@ -1,5 +1,6 @@
 package warlockfe.warlock3.stormfront.network
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -27,6 +28,8 @@ class SgeClientImpl(
     private val host: String,
     private val port: Int
 ) : SgeClient {
+
+    private val logger = KotlinLogging.logger {}
     private var sink: BufferedSink? = null
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
@@ -38,7 +41,7 @@ class SgeClientImpl(
 
     override suspend fun connect() = withContext(Dispatchers.IO) {
         runCatching {
-            println("connecting...")
+            logger.debug { "connecting..." }
 
             val socket = Socket(host, port)
             sink = socket.sink().buffer()
@@ -63,14 +66,14 @@ class SgeClientImpl(
                                 }
                             } catch (e: SocketException) {
                                 // not sure why, but let's retry!
-                                println("SGE socket exception: " + e.message)
+                                logger.debug { "SGE socket exception: " + e.message }
                             } catch (_: SocketTimeoutException) {
                                 // Timeout, let's retry!
-                                println("Timed out connecting to server")
+                                logger.debug { "Timed out connecting to server" }
                             }
                         }
                     } finally {
-                        println("Closing socket")
+                        logger.debug { "Closing socket" }
                         source.close()
                         sink?.close()
                         socket.close()
@@ -82,7 +85,7 @@ class SgeClientImpl(
     }
 
     private suspend fun handleData(line: String) {
-        println("SGE receive: $line")
+        logger.debug { "SGE receive: $line" }
 
         when (val response = parseServerResponse(line)) {
             is SgeResponse.SgeErrorResponse -> {
@@ -118,8 +121,8 @@ class SgeClientImpl(
         return when (line[0]) {
             'A' -> {
                 // response from login attempt
-                println("A line ($line)")
-                println("as bytes: ${line.toByteArray().map { it.toInt().toString(radix = 16).padStart(2, '0') }}")
+                logger.debug { "A line ($line)" }
+                logger.debug { "as bytes: ${line.toByteArray().map { it.toInt().toString(radix = 16).padStart(2, '0') }}" }
                 val tokens = line.split('\t')
                 when {
                     tokens.size < 3 -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
@@ -173,13 +176,13 @@ class SgeClientImpl(
     }
 
     private fun send(string: String) {
-        println("SGE send: $string")
+        logger.debug { "SGE send: $string" }
         sink?.writeUtf8(string)
         sink?.flush()
     }
 
     private fun send(bytes: ByteArray) {
-        println("SGE send: $bytes")
+        logger.debug { "SGE send: ${bytes.decodeToString()}" }
         sink?.write(bytes)
         sink?.flush()
     }

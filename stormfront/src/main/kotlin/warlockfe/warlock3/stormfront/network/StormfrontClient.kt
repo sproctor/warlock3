@@ -1,5 +1,6 @@
 package warlockfe.warlock3.stormfront.network
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.minus
@@ -104,9 +105,11 @@ class StormfrontClient(
     private val streamRegistry: StreamRegistry,
 ) : WarlockClient {
 
+    private val logger = KotlinLogging.logger {}
+
     private val newLinePattern = Regex("\r?\n")
 
-    private var logger: FileLogger
+    private var fileLogger: FileLogger
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -146,7 +149,7 @@ class StormfrontClient(
     private var buffer: StyledString? = null
 
     init {
-        logger = FileLogger(logPath / "unknown")
+        fileLogger = FileLogger(logPath / "unknown")
         windows["warlockscripts"] = StormfrontWindow(
             name = "warlockscripts",
             title = "Running scripts",
@@ -220,14 +223,14 @@ class StormfrontClient(
     override fun connect() {
         scope.launch(Dispatchers.IO) {
             try {
-                println("Opening connection to $host:$port")
+                logger.debug { "Opening connection to $host:$port" }
                 socket = Socket(host, port)
             } catch (e: UnknownHostException) {
-                println("Unknown host")
+                logger.debug { "Unknown host" }
                 _connected.value = false
                 return@launch
             } catch (e: IOException) {
-                e.printStackTrace()
+                logger.error(e) { "Error connecting to $host:$port" }
                 _connected.value = false
                 return@launch
             }
@@ -243,7 +246,7 @@ class StormfrontClient(
                         // This is the standard Stormfront parser
                         val line: String? = reader.readLine()
                         if (line != null) {
-                            logger.write(line)
+                            fileLogger.write(line)
                             debug(line)
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
@@ -276,7 +279,7 @@ class StormfrontClient(
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
-                                            logger = FileLogger(logPath / "${event.game}_${event.character}")
+                                            fileLogger = FileLogger(logPath / "${event.game}_${event.character}")
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -448,7 +451,7 @@ class StormfrontClient(
                             if (char == '<') {
                                 buffer.append(reader.readLine())
                                 val line = buffer.toString()
-                                logger.write(line)
+                                fileLogger.write(line)
                                 if (buffer.contains("<mode")) {
                                     // if the line starts with a mode tag, drop back to the normal parser
                                     parseText = true
@@ -466,10 +469,10 @@ class StormfrontClient(
                         }
                     }
                 } catch (e: SocketException) {
-                    println("Socket exception: " + e.message)
+                    logger.debug { "Socket exception: " + e.message }
                     disconnect()
                 } catch (e: SocketTimeoutException) {
-                    println("Socket timeout: " + e.message)
+                    logger.debug { "Socket timeout: " + e.message }
                     disconnect()
                 }
             }
@@ -600,7 +603,7 @@ class StormfrontClient(
     }
 
     private suspend fun send(toSend: String) {
-        logger.write(toSend)
+        fileLogger.write(toSend)
         if (!socket.isOutputShutdown) {
             socket.getOutputStream().write(toSend.toByteArray(charset))
         }

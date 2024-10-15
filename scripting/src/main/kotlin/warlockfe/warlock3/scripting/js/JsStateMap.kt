@@ -1,5 +1,6 @@
 package warlockfe.warlock3.scripting.js
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.StateFlow
 import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript.ScriptableObject
@@ -11,10 +12,12 @@ class JsStateMap(
     private val onDelete: (name: String) -> Unit,
 ) : ScriptableObject() {
 
+    private val logger = KotlinLogging.logger {}
+
     override fun getClassName(): String = "VariablesMap"
 
     override fun get(name: String?, start: Scriptable?): String? {
-        println("getting $name")
+        logger.debug { "getting $name" }
         return name?.let { map.value[it] }
     }
 
@@ -44,11 +47,11 @@ class JsStateMap(
 
     override fun put(name: String?, start: Scriptable?, value: Any?) {
         if (name != null) {
-            println("saving $name = $value")
+            logger.debug { "saving $name = $value" }
             if (value is String) {
                 map.value[name] = value
                 onPut(name, value)
-                println("saved")
+                logger.debug { "saved" }
             }
         }
     }

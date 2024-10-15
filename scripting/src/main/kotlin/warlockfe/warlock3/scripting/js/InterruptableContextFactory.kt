@@ -1,5 +1,6 @@
 package warlockfe.warlock3.scripting.js
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.mozilla.javascript.Context
 import org.mozilla.javascript.ContextFactory
 import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
@@ -7,6 +8,8 @@ import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 class InterruptableContextFactory(
     private val scriptEngineRegistry: WarlockScriptEngineRegistry
 ) : ContextFactory() {
+
+    private val logger = KotlinLogging.logger {}
 
     override fun makeContext(): Context {
         val cx = super.makeContext()
@@ -18,7 +21,7 @@ class InterruptableContextFactory(
     override fun observeInstructionCount(cx: Context?, instructionCount: Int) {
         if (cx == null)
             return
-        println("$instructionCount instructions executed.")
+        logger.debug { "$instructionCount instructions executed." }
         if (Thread.interrupted()) {
             val instance = getInstance(cx)
             instance.checkStatus()

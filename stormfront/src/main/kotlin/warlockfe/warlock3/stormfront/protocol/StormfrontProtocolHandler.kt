@@ -1,5 +1,6 @@
 package warlockfe.warlock3.stormfront.protocol
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import warlockfe.warlock3.stormfront.parser.StormfrontLexer
@@ -40,6 +41,9 @@ import warlockfe.warlock3.stormfront.protocol.elements.StyleHandler
 import java.util.LinkedList
 
 class StormfrontProtocolHandler {
+
+    private val logger = KotlinLogging.logger {}
+
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
         "a" to AHandler(),
@@ -124,7 +128,7 @@ class StormfrontProtocolHandler {
                         ?: continue // rule #1
                     val tagName = content.name.lowercase()
                     if (topOfStack != tagName) {
-                        println("ERROR: Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!")
+                        logger.error { "Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!" }
                         if (tagStack.contains(tagName)) {
                             while (tagName != tagStack.first()) {
                                 // close excess tags - rule #3

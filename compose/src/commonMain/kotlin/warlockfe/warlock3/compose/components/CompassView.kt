@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.icerock.moko.resources.ImageResource
 import dev.icerock.moko.resources.compose.painterResource
+import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.core.compass.DirectionType
 
 @Composable
@@ -18,6 +19,7 @@ fun CompassView(
     theme: CompassTheme,
     onClick: (DirectionType) -> Unit
 ) {
+    val logger = LocalLogger.current
     Box(
         modifier = Modifier.padding(4.dp)
     ) {
@@ -28,7 +30,7 @@ fun CompassView(
                 modifier = Modifier
                     .offset(direction.position.first.dp, direction.position.second.dp)
                     .clickable {
-                        println("Clicked on direction: ${direction.direction}")
+                        logger.debug { "Clicked on direction: ${direction.direction}" }
                         onClick(direction.direction)
                     },
                 painter = painterResource(direction.image),

@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.macros
 
 import androidx.compose.ui.input.key.Key
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val keyMappings = mapOf(
     Key.F1 to "F1",
@@ -107,7 +108,7 @@ fun Key.getLabel(): String {
         }
     }
     if (text == null) {
-        println("unassociated key: $this")
+        KotlinLogging.logger("key").debug { "unassociated key: $this" }
     }
     return text ?: "??"
 }

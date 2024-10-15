@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,6 +88,9 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
 ) : AutoCloseable {
+
+    private val logger = KotlinLogging.logger { }
+
     private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
     var entryText by mutableStateOf(TextFieldValue())
@@ -597,7 +601,7 @@ class GameViewModel(
     fun changeWindowPositions(location: WindowLocation, curPos: Int, newPos: Int) {
         client.characterId.value?.let { characterId ->
             viewModelScope.launch {
-                println("Swapping $curPos and $newPos")
+                logger.debug { "Swapping $curPos and $newPos" }
                 windowRepository.switchPositions(characterId, location, curPos, newPos)
             }
         }
