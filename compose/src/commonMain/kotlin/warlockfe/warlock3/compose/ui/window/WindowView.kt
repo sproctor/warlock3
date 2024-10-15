@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -48,8 +48,6 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
-import java.awt.Desktop
-import java.net.URI
 
 @Composable
 fun WindowView(
@@ -251,7 +249,10 @@ private fun WindowViewContent(
                     highlights = highlights,
                     presets = presets,
                     components = components,
-                )
+                ) { action ->
+                    println("action clicked: $action")
+                    onActionClicked(action)
+                }
                 if (line != null) {
                     Box(
                         modifier = Modifier.fillParentMaxWidth()
@@ -261,34 +262,15 @@ private fun WindowViewContent(
                             )
                             .padding(horizontal = 4.dp)
                     ) {
-                        ClickableText(
+                        BasicText(
                             text = line.text,
                             style = TextStyle(
                                 color = textColor,
                                 fontFamily = fontFamily,
                                 fontSize = fontSize
                             ),
-                        ) { offset ->
-                            println("handling click: $offset")
-                            line.text.getStringAnnotations(start = offset, end = offset)
-                                .forEach { annotation ->
-                                    when (annotation.tag) {
-                                        "action" -> {
-                                            println("action clicked: ${annotation.item}")
-                                            onActionClicked(annotation.item)
-                                        }
+                        )
 
-                                        "url" -> {
-                                            try {
-                                                Desktop.getDesktop()
-                                                    .browse(URI(annotation.item))
-                                            } catch (e: Exception) {
-                                                // TODO: add some error handling here
-                                            }
-                                        }
-                                    }
-                                }
-                        }
                     }
                 }
             }

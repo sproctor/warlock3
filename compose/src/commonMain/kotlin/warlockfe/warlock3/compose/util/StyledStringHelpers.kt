@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.util
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -19,10 +20,11 @@ import warlockfe.warlock3.core.text.WarlockStyle
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
+    actionHandler: (String) -> Unit,
 ): AnnotatedString {
     return buildAnnotatedString {
         substrings.forEach {
-            append(it.toAnnotatedString(variables, styleMap))
+            append(it.toAnnotatedString(variables, styleMap, actionHandler))
         }
     }
 }
@@ -46,13 +48,27 @@ fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): Styl
 fun StyledStringLeaf.toAnnotatedString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
+    actionHandler: (String) -> Unit,
 ): AnnotatedString {
     return buildAnnotatedString {
         styles.forEach { style ->
+//            if (style.annotations != null) {
+//                pushLink(
+//                    LinkAnnotation.Clickable(tag = )
+//                )
+//            }
             val styleDef = style.toStyleDefinition(styleMap)
             pushStyle(styleDef.toSpanStyle())
-            style.annotations?.forEach {
-                pushStringAnnotation(it.first, it.second)
+            style.annotation?.let { annotation ->
+                val tag = annotation.first
+                when (tag) {
+                    "action" ->
+                        pushLink(
+                            LinkAnnotation.Clickable(tag) { actionHandler(annotation.second) }
+                        )
+                    "url" -> pushLink(LinkAnnotation.Url(annotation.second))
+                    else -> error("Unsupported style annotation \"$tag\"")
+                }
             }
         }
         when (this@toAnnotatedString) {
@@ -62,13 +78,14 @@ fun StyledStringLeaf.toAnnotatedString(
                 variables[name]?.toAnnotatedString(
                     variables = variables,
                     styleMap = styleMap,
+                    actionHandler = actionHandler,
                 )?.let {
                     append(it)
                 }
         }
         styles.forEach { style ->
             pop()
-            style.annotations?.forEach { _ -> pop() }
+            style.annotation?.let { _ -> pop() }
         }
     }
 }

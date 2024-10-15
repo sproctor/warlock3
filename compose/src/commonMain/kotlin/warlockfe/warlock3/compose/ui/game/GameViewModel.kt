@@ -627,7 +627,8 @@ class GameViewModel(
 fun StreamLine.toWindowLine(
     highlights: List<ViewHighlight>,
     presets: Map<String, StyleDefinition>,
-    components: Map<String, StyledString>
+    components: Map<String, StyledString>,
+    actionHandler: (String) -> Unit,
 ): WindowLine? {
     val lineStyle = flattenStyles(
         text.getEntireLineStyles(
@@ -637,7 +638,13 @@ fun StreamLine.toWindowLine(
     )
     val annotatedString = buildAnnotatedString {
         lineStyle?.let { pushStyle(it.toSpanStyle()) }
-        append(text.toAnnotatedString(variables = components, styleMap = presets))
+        append(
+            text.toAnnotatedString(
+                variables = components,
+                styleMap = presets,
+                actionHandler = actionHandler,
+            )
+        )
         if (lineStyle != null) pop()
     }
     if (ignoreWhenBlank && annotatedString.isBlank()) {

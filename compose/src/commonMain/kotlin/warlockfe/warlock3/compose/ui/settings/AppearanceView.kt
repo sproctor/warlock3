@@ -179,7 +179,8 @@ fun AppearanceView(
                         Text(
                             text = line.text.toAnnotatedString(
                                 variables = emptyMap(),
-                                styleMap = presets
+                                styleMap = presets,
+                                actionHandler = { },
                             )
                         )
                     }
