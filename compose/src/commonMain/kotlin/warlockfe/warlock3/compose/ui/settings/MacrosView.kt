@@ -66,15 +66,16 @@ fun MacrosView(
         ) {
             macros.forEach { macro ->
                 val parts = macro.first.split("+")
-                val textBuilder = StringBuilder()
-                for (i in 0..(parts.size - 2)) {
-                    textBuilder.append(parts[i])
-                    textBuilder.append("+")
+                val text = buildString {
+                    for (i in 0..(parts.size - 2)) {
+                        append(parts[i])
+                        append("+")
+                    }
+                    val key = Key(parts.last().toLongOrNull() ?: 0)
+                    append(key.getLabel())
                 }
-                val key = Key(parts.last().toLongOrNull() ?: 0)
-                textBuilder.append(key.getLabel())
                 ListItem(
-                    headlineContent = { Text(textBuilder.toString()) },
+                    headlineContent = { Text(text) },
                     supportingContent = { Text(macro.second) },
                     trailingContent = {
                         Row {

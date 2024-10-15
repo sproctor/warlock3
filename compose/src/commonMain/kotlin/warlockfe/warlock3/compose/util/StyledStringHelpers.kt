@@ -1,5 +1,3 @@
-@file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
-
 package warlockfe.warlock3.compose.util
 
 import androidx.compose.ui.text.AnnotatedString

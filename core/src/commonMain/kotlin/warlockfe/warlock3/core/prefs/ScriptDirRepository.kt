@@ -9,17 +9,15 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.util.WarlockDirs
 
 class ScriptDirRepository(
     private val scriptDirQueries: ScriptDirQueries,
     private val ioDispatcher: CoroutineDispatcher,
-    private val appDirs: AppDirs,
+    private val warlockDirs: WarlockDirs,
 ) {
     fun observeScriptDirs(characterId: String): Flow<List<String>> {
-        return scriptDirQueries.getByCharacter(characterId)
-            .asFlow()
-            .mapToList()
-            .flowOn(ioDispatcher)
+        return scriptDirQueries.getByCharacter(characterId).asFlow().mapToList().flowOn(ioDispatcher)
     }
 
     fun observeGlobalScriptDirs(): Flow<List<String>> {
@@ -28,16 +26,10 @@ class ScriptDirRepository(
 
     suspend fun getMappedScriptDirs(characterId: String): List<String> {
         return withContext(ioDispatcher) {
-            (listOf("%data%/scripts/") +
-                    scriptDirQueries.getByCharacterWithGlobal(characterId)
-                        .executeAsList()
-                    ).map {
-                    val home = System.getProperty("user.home")
-                    val config = appDirs.getUserConfigDir()
-                    val data = appDirs.getUserDataDir()
-                    it.replace(oldValue = "%home%", newValue = home, ignoreCase = true)
-                        .replace(oldValue = "%config%", newValue = config, ignoreCase = true)
-                        .replace(oldValue = "%data%", newValue = data, ignoreCase = true)
+            (listOf("%data%/scripts/") + scriptDirQueries.getByCharacterWithGlobal(characterId).executeAsList()).map {
+                    it.replace(oldValue = "%home%", newValue = warlockDirs.homeDir, ignoreCase = true)
+                        .replace(oldValue = "%config%", newValue = warlockDirs.configDir, ignoreCase = true)
+                        .replace(oldValue = "%data%", newValue = warlockDirs.dataDir, ignoreCase = true)
                 }
         }
     }
@@ -46,8 +38,7 @@ class ScriptDirRepository(
         withContext(ioDispatcher) {
             scriptDirQueries.save(
                 ScriptDir(
-                    characterId = characterId,
-                    path = path
+                    characterId = characterId, path = path
                 )
             )
         }

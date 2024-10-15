@@ -2,6 +2,7 @@ package warlockfe.warlock3.android
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +30,6 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
-import warlockfe.warlock3.compose.ui.theme.WarlockIcons
 import warlockfe.warlock3.core.client.GameCharacter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,7 +73,7 @@ fun WarlockApp(
                             },
                         ) {
                             Icon(
-                                imageVector = WarlockIcons.Menu,
+                                imageVector = Icons.Default.Menu,
                                 contentDescription = null
                             )
                         }
