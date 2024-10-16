@@ -37,4 +37,8 @@ if [[ $1 == "" || $1 == "--conveyor" ]]; then
   conveyor --passphrase="$CONVEYOR_PASSPHRASE" make copied-site
 fi
 
+if [[ $1 == "" || $1 == "--tag" ]]; then
+  git tag "v${VERSION}"
+fi
+
 echo "Success"
