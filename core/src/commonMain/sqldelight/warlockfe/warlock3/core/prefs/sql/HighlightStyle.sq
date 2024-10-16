@@ -1,6 +1,7 @@
 import warlockfe.warlock3.core.text.WarlockColor;
 import java.util.UUID;
 import kotlin.Boolean;
+import kotlin.Float;
 import kotlin.Int;
 
 CREATE TABLE HighlightStyle (
@@ -13,7 +14,7 @@ CREATE TABLE HighlightStyle (
     italic INTEGER AS Boolean NOT NULL,
     underline INTEGER AS Boolean NOT NULL,
     fontFamily TEXT,
-    fontSize REAL,
+    fontSize REAL AS Float,
     PRIMARY KEY (highlightId, groupNumber),
     FOREIGN KEY (highlightId) REFERENCES Highlight(id) ON DELETE CASCADE
 );

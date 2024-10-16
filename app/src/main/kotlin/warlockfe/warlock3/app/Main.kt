@@ -10,10 +10,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import app.cash.sqldelight.adapter.primitive.FloatColumnAdapter
 import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import ca.gosyer.appdirs.AppDirs
-import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
@@ -112,10 +112,12 @@ fun main(args: Array<String>) {
             groupNumberAdapter = IntColumnAdapter,
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
+            fontSizeAdapter = FloatColumnAdapter,
         ),
         PresetStyleAdapter = PresetStyle.Adapter(
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
+            fontSizeAdapter = FloatColumnAdapter,
         ),
         WindowSettingsAdapter = WindowSettings.Adapter(
             widthAdapter = IntColumnAdapter,
@@ -124,6 +126,7 @@ fun main(args: Array<String>) {
             positionAdapter = IntColumnAdapter,
             textColorAdapter = WarlockColorAdapter,
             backgroundColorAdapter = WarlockColorAdapter,
+            fontSizeAdapter = FloatColumnAdapter,
         ),
         AliasAdapter = Alias.Adapter(
             idAdapter = UUIDAdapter,

@@ -28,7 +28,7 @@ class PresetRepository(
             italic: Boolean,
             underline: Boolean,
             fontFamily: String?,
-            fontSize: Double? ->
+            fontSize: Float? ->
             Pair(
                 presetId, StyleDefinition(
                     textColor = textColor,

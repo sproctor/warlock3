@@ -13,7 +13,7 @@ data class Window(
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,
     val fontFamily: String?,
-    val fontSize: Double?,
+    val fontSize: Float?,
 )
 
 enum class WindowLocation(val value: String) {

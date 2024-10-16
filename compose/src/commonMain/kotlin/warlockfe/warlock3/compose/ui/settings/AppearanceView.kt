@@ -43,7 +43,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.util.defaultFontSize
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
@@ -314,8 +313,9 @@ fun FontPickerDialog(
     onCloseRequest: () -> Unit,
     onSaveClicked: (FontUpdate) -> Unit,
 ) {
-    var size by remember(currentStyle.fontSize) {
-        mutableStateOf((currentStyle.fontSize ?: defaultFontSize.value).toString())
+    val initialFontSize = currentStyle.fontSize ?: MaterialTheme.typography.bodyMedium.fontSize.value
+    var size by remember(initialFontSize) {
+        mutableStateOf(initialFontSize.toString())
     }
     var newFontFamily by remember(currentStyle.fontFamily) {
         mutableStateOf(currentStyle.fontFamily ?: "Default")
@@ -327,7 +327,7 @@ fun FontPickerDialog(
             Button(onClick = {
                 onSaveClicked(
                     FontUpdate(
-                        size.toDoubleOrNull(),
+                        size.toFloatOrNull(),
                         newFontFamily
                     )
                 )
@@ -377,7 +377,7 @@ fun FontPickerDialog(
     )
 }
 
-data class FontUpdate(val size: Double?, val fontFamily: String?)
+data class FontUpdate(val size: Float?, val fontFamily: String?)
 
 val fontFamilyMap = mapOf(
     "Default" to FontFamily.Default,

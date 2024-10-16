@@ -132,7 +132,7 @@ class HighlightRepository(
             italic: Boolean,
             underline: Boolean,
             fontFamily: String?,
-            fontSize: Double? ->
+            fontSize: Float? ->
             Pair(
                 groupNumber,
                 StyleDefinition(

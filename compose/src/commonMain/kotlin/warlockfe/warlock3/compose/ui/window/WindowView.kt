@@ -43,7 +43,6 @@ import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.ui.settings.fontFamilyMap
 import warlockfe.warlock3.compose.util.LocalLogger
-import warlockfe.warlock3.compose.util.defaultFontSize
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.specifiedOrNull
@@ -231,7 +230,7 @@ private fun WindowViewContent(
         (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
     val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
-    val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: defaultFontSize
+    val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
     val snapshot by stream.snapshot.collectAsState()
     val lines = snapshot.lines

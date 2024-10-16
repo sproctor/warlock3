@@ -1,6 +1,7 @@
 import warlockfe.warlock3.core.text.WarlockColor;
 import warlockfe.warlock3.core.window.WindowLocation;
 import kotlin.Int;
+import kotlin.Float;
 
 CREATE TABLE WindowSettings (
     characterId TEXT NOT NULL,
@@ -12,7 +13,7 @@ CREATE TABLE WindowSettings (
     textColor INTEGER AS WarlockColor NOT NULL DEFAULT -1,
     backgroundColor INTEGER AS WarlockColor NOT NULL DEFAULT -1,
     fontFamily TEXT,
-    fontSize REAL,
+    fontSize REAL AS Float,
     PRIMARY KEY (characterId, name)
 );
 

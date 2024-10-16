@@ -52,16 +52,10 @@ fun StyledStringLeaf.toAnnotatedString(
 ): AnnotatedString {
     return buildAnnotatedString {
         styles.forEach { style ->
-//            if (style.annotations != null) {
-//                pushLink(
-//                    LinkAnnotation.Clickable(tag = )
-//                )
-//            }
             val styleDef = style.toStyleDefinition(styleMap)
             pushStyle(styleDef.toSpanStyle())
             style.annotation?.let { annotation ->
-                val tag = annotation.first
-                when (tag) {
+                when (val tag = annotation.first) {
                     "action" ->
                         pushLink(
                             LinkAnnotation.Clickable(tag) { actionHandler(annotation.second) }
@@ -108,5 +102,3 @@ fun StyledStringLeaf.getEntireLineStyles(
             ?: emptyList())
     }
 }
-
-val defaultFontSize = 14.sp
