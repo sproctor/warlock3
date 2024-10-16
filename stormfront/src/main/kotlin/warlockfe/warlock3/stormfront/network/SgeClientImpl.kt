@@ -226,11 +226,11 @@ class SgeClientImpl(
 }
 
 sealed class SgeResponse {
-    object SgeLoginSucceededResponse : SgeResponse()
+    data object SgeLoginSucceededResponse : SgeResponse()
     data class SgeGameListResponse(val games: List<SgeGame>) : SgeResponse()
-    object SgeGameDetailsResponse : SgeResponse()
+    data object SgeGameDetailsResponse : SgeResponse()
     data class SgeCharacterListResponse(val characters: List<SgeCharacter>) : SgeResponse()
     data class SgeReadyToPlayResponse(val properties: Map<String, String>) : SgeResponse()
-    object SgeUnrecognizedResponse : SgeResponse()
+    data object SgeUnrecognizedResponse : SgeResponse()
     data class SgeErrorResponse(val error: SgeError) : SgeResponse()
 }

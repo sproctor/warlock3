@@ -15,7 +15,7 @@ class JsEngine(
     override val extensions: List<String> = listOf("js")
 
     init {
-        ContextFactory.initGlobal(InterruptableContextFactory(scriptEngineRegistry))
+        ContextFactory.initGlobal(InterruptibleContextFactory(scriptEngineRegistry))
     }
 
     override fun createInstance(name: String, id: Long, file: File): ScriptInstance {

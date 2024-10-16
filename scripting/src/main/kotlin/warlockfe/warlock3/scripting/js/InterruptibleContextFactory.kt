@@ -5,7 +5,7 @@ import org.mozilla.javascript.Context
 import org.mozilla.javascript.ContextFactory
 import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 
-class InterruptableContextFactory(
+class InterruptibleContextFactory(
     private val scriptEngineRegistry: WarlockScriptEngineRegistry
 ) : ContextFactory() {
 

@@ -29,7 +29,7 @@ class MatchList : ScriptableObject() {
     @JSFunction
     fun wait(): Any? {
         val context = Context.getCurrentContext()
-        val contextFactory = context.factory as InterruptableContextFactory
+        val contextFactory = context.factory as InterruptibleContextFactory
         val instance = contextFactory.getInstance(context)
         val client = instance.client!!
         var result: Any? = null

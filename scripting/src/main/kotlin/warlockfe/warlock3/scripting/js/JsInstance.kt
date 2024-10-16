@@ -193,8 +193,4 @@ class JsInstance(
             throw StopException()
         }
     }
-
-    private fun updateStatus(newStatus: ScriptStatus) {
-        status = newStatus
-    }
 }

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okio.Path
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
@@ -603,9 +604,11 @@ class StormfrontClient(
     }
 
     private suspend fun send(toSend: String) {
-        fileLogger.write(toSend)
-        if (!socket.isOutputShutdown) {
-            socket.getOutputStream().write(toSend.toByteArray(charset))
+        withContext(Dispatchers.IO) {
+            fileLogger.write(toSend)
+            if (!socket.isOutputShutdown) {
+                socket.getOutputStream().write(toSend.toByteArray(charset))
+            }
         }
     }
 
