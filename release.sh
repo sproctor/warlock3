@@ -1,5 +1,11 @@
 #!/usr/bin/bash
 
+# Exit on errors
+set -e
+
+# Print commands
+# set -x
+
 echo "Releasing..."
 
 while IFS='=' read -r key value
