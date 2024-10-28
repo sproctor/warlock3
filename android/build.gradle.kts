@@ -86,7 +86,6 @@ dependencies {
 
     // SQL dependencies
     implementation(libs.sqldelight.driver.android)
-    implementation(libs.sqldelight.primitive.adapters)
 //    implementation(libs.sqlite.framework)
 
     // Leak detection

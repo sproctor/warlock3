@@ -19,7 +19,6 @@ dependencies {
     implementation(compose.materialIconsExtended)
     implementation(libs.compose.color.picker)
     implementation(libs.sqldelight.driver.jvm)
-    implementation(libs.sqldelight.primitive.adapters)
     implementation(libs.kotlinx.cli)
     implementation(libs.moko.resources)
     implementation(libs.appdirs)

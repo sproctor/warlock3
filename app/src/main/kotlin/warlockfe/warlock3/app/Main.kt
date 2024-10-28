@@ -10,8 +10,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
-import app.cash.sqldelight.adapter.primitive.FloatColumnAdapter
-import app.cash.sqldelight.adapter.primitive.IntColumnAdapter
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import ca.gosyer.appdirs.AppDirs
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -24,18 +22,10 @@ import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
-import warlockfe.warlock3.core.prefs.adapters.LocationAdapter
-import warlockfe.warlock3.core.prefs.adapters.UUIDAdapter
-import warlockfe.warlock3.core.prefs.adapters.WarlockColorAdapter
-import warlockfe.warlock3.core.prefs.sql.Alias
-import warlockfe.warlock3.core.prefs.sql.Alteration
 import warlockfe.warlock3.core.prefs.sql.Database
-import warlockfe.warlock3.core.prefs.sql.Highlight
-import warlockfe.warlock3.core.prefs.sql.HighlightStyle
-import warlockfe.warlock3.core.prefs.sql.PresetStyle
-import warlockfe.warlock3.core.prefs.sql.WindowSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.util.createDatabase
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.exists
@@ -104,37 +94,7 @@ fun main(args: Array<String>) {
     }
 
     val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename", schema = Database.Schema)
-    val database = Database(
-        driver = driver,
-        HighlightAdapter = Highlight.Adapter(idAdapter = UUIDAdapter),
-        HighlightStyleAdapter = HighlightStyle.Adapter(
-            highlightIdAdapter = UUIDAdapter,
-            groupNumberAdapter = IntColumnAdapter,
-            textColorAdapter = WarlockColorAdapter,
-            backgroundColorAdapter = WarlockColorAdapter,
-            fontSizeAdapter = FloatColumnAdapter,
-        ),
-        PresetStyleAdapter = PresetStyle.Adapter(
-            textColorAdapter = WarlockColorAdapter,
-            backgroundColorAdapter = WarlockColorAdapter,
-            fontSizeAdapter = FloatColumnAdapter,
-        ),
-        WindowSettingsAdapter = WindowSettings.Adapter(
-            widthAdapter = IntColumnAdapter,
-            heightAdapter = IntColumnAdapter,
-            locationAdapter = LocationAdapter,
-            positionAdapter = IntColumnAdapter,
-            textColorAdapter = WarlockColorAdapter,
-            backgroundColorAdapter = WarlockColorAdapter,
-            fontSizeAdapter = FloatColumnAdapter,
-        ),
-        AliasAdapter = Alias.Adapter(
-            idAdapter = UUIDAdapter,
-        ),
-        AlterationAdapter = Alteration.Adapter(
-            idAdapter = UUIDAdapter,
-        )
-    )
+    val database = createDatabase(driver)
     database.insertDefaultMacrosIfNeeded()
 
     val appContainer = JvmAppContainer(database, warlockDirs)

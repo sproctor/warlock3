@@ -19,6 +19,7 @@ kotlin {
                 implementation(libs.sqldelight.runtime)
                 implementation(libs.sqldelight.async)
                 implementation(libs.sqldelight.coroutines)
+                implementation(libs.sqldelight.primitive.adapters)
 
                 implementation(libs.appdirs)
 
