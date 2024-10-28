@@ -13,11 +13,13 @@
 -keep class org.jetbrains.skia.** { *; }
 -keep class org.jetbrains.skiko.** { *; }
 -keep class org.sqlite.** { *; }
--keep class java.sql.** { *; }
+-keep class java.sql.* { *; }
 
 -keep class * implements java.sql.Driver
 -keep class org.apache.commons.** { *; }
 -keep class org.mozilla.javascript.** { *; }
+-keep class org.slf4j.simple.SimpleServiceProvider { *; }
+-keep class androidx.compose.foundation.text.TextLinkScope { *; }
 
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
