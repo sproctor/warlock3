@@ -26,7 +26,7 @@ import java.io.StringReader
 import java.util.*
 
 abstract class AppContainer(
-    database: Database,
+    val database: Database,
     ioDispatcher: CoroutineDispatcher,
     private val themeText: String,
     warlockDirs: WarlockDirs,

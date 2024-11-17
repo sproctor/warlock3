@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
@@ -30,14 +31,22 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.window.StreamRegistryImpl
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.WindowRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WarlockApp(
     appContainer: AppContainer,
 ) {
-    var gameState by remember { mutableStateOf<GameState>(GameState.Dashboard) }
+    val gameState = GameState(
+        windowRepository = WindowRepository(
+            windowSettingsQueries = appContainer.database.windowSettingsQueries,
+            ioDispatcher = Dispatchers.IO,
+        ),
+        streamRegistry = StreamRegistryImpl()
+    )
     var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
     var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 
@@ -87,7 +96,6 @@ fun WarlockApp(
                         sgeViewModelFactory = appContainer.sgeViewModelFactory,
                         dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
                         gameState = gameState,
-                        updateGameState = { gameState = it },
                         updateCurrentCharacter = { currentCharacter = it },
                     )
                 } else {

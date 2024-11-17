@@ -5,7 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 
 @Composable
 actual fun StatusImage(name: String, modifier: Modifier) {

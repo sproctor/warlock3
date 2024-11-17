@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.window.FrameWindowScope
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.AlterationRepository
@@ -16,7 +15,7 @@ import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 
 @Composable
-fun FrameWindowScope.SettingsContent(
+fun SettingsContent(
     page: SettingsPage,
     currentCharacter: GameCharacter?,
     characterSettingsRepository: CharacterSettingsRepository,
