@@ -2,6 +2,8 @@ package warlockfe.warlock3.app
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
@@ -15,13 +17,18 @@ import ca.gosyer.appdirs.AppDirs
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.model.GameScreen
+import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.ui.window.StreamRegistryImpl
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
+import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -101,29 +108,61 @@ fun main(args: Array<String>) {
     val clientSettings = appContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
-    val windowState = WindowState(width = initialWidth.dp, height = initialHeight.dp)
 
+    val games = mutableStateListOf<GameState>(
+        GameState(
+            windowRepository = WindowRepository(database.windowSettingsQueries, Dispatchers.IO),
+            streamRegistry = StreamRegistryImpl()
+        ).apply {
+            if (credentials != null) {
+                val client = appContainer.warlockClientFactory.createStormFrontClient(
+                    credentials,
+                    windowRepository,
+                    streamRegistry
+                )
+                client.connect()
+                val viewModel = appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
+                screen = GameScreen.ConnectedGameState(viewModel)
+            }
+        }
+    )
     application {
         CompositionLocalProvider(
             LocalLogger provides logger
         ) {
-            Window(
-                title = "Warlock 3",
-                state = windowState,
-                icon = appIcon,
-                onCloseRequest = ::exitApplication,
-            ) {
-                WarlockApp(
-                    appContainer = appContainer,
-                    credentials = credentials,
-                )
-                LaunchedEffect(windowState) {
-                    snapshotFlow { windowState.size }
-                        .onEach { size ->
-                            clientSettings.putWidth(size.width.value.roundToInt())
-                            clientSettings.putHeight(size.height.value.roundToInt())
+            games.forEachIndexed { index, gameState ->
+                val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp) }
+                Window(
+                    title = "Warlock 3 - ${gameState.getTitle()}",
+                    state = windowState,
+                    icon = appIcon,
+                    onCloseRequest = {
+                        games.removeAt(index)
+                        if (games.isEmpty()) {
+                            exitApplication()
                         }
-                        .launchIn(this)
+                    },
+                ) {
+                    WarlockApp(
+                        appContainer = appContainer,
+                        gameState = gameState,
+                        newWindow = {
+                            games.add(
+                                GameState(
+                                    windowRepository = WindowRepository(database.windowSettingsQueries, Dispatchers.IO),
+                                    streamRegistry = StreamRegistryImpl()
+                                )
+                            )
+                        },
+                    )
+                    LaunchedEffect(windowState) {
+                        snapshotFlow { windowState.size }
+                            .onEach { size ->
+                                clientSettings.putWidth(size.width.value.roundToInt())
+                                clientSettings.putHeight(size.height.value.roundToInt())
+                            }
+                            .launchIn(this)
+                    }
                 }
             }
         }
@@ -142,5 +181,14 @@ private val appIcon: Painter? by lazy {
         BitmapPainter(iconPath.inputStream().buffered().use { loadImageBitmap(it) })
     } else {
         null
+    }
+}
+
+private fun GameState.getTitle(): String {
+    return when (val screen = this.screen) {
+        GameScreen.Dashboard -> "Dashboard"
+        is GameScreen.ConnectedGameState -> screen.viewModel.properties.value["character"] ?: "N/A"
+        is GameScreen.NewGameState -> "New game"
+        is GameScreen.ErrorState -> "Error"
     }
 }

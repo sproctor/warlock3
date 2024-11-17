@@ -83,7 +83,6 @@ class GameViewModel(
     presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
     val compassTheme: CompassTheme,
-    val clipboard: ClipboardManager,
     private val characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
@@ -397,7 +396,7 @@ class GameViewModel(
         }
     }
 
-    fun handleKeyPress(event: KeyEvent): Boolean {
+    fun handleKeyPress(event: KeyEvent, clipboard: ClipboardManager): Boolean {
         if (event.type != KeyEventType.KeyDown) {
             return false
         }
@@ -412,12 +411,12 @@ class GameViewModel(
         // TODO: notify when macro fails to parse
         val tokens = parseMacroCommand(macroString).getOrNull() ?: return false
 
-        executeMacro(tokens)
+        executeMacro(tokens, clipboard)
 
         return true
     }
 
-    private fun executeMacro(tokens: List<MacroToken>) {
+    private fun executeMacro(tokens: List<MacroToken>, clipboard: ClipboardManager) {
         viewModelScope.launch {
             var movedCursor = false
             tokens.forEach { token ->
@@ -445,7 +444,7 @@ class GameViewModel(
 
                     is MacroToken.Command -> {
                         val command = macroCommands[token.name]
-                        command?.invoke(this@GameViewModel)
+                        command?.invoke(this@GameViewModel, clipboard)
                     }
                 }
             }

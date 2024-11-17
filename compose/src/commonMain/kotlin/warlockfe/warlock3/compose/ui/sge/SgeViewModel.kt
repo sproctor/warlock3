@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose.ui.sge
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.platform.ClipboardManager
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.core.client.GameCharacter
@@ -31,12 +31,11 @@ import java.net.UnknownHostException
 class SgeViewModel(
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
-    private val clipboardManager: ClipboardManager,
     private val characterRepository: CharacterRepository,
     private val warlockClientFactory: WarlockClientFactory,
     sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
-    updateGameState: (GameState) -> Unit,
+    private val gameState: GameState,
 ) : AutoCloseable {
 
     private val logger = KotlinLogging.logger { }
@@ -118,14 +117,12 @@ class SgeViewModel(
                         }
 
                         try {
-                            val client = warlockClientFactory.createStormFrontClient(credentials)
+                            val client = warlockClientFactory.createStormFrontClient(credentials, gameState.windowRepository, gameState.streamRegistry)
                             client.connect()
-                            val gameViewModel = gameViewModelFactory.create(client, clipboardManager)
-                            updateGameState(
-                                GameState.ConnectedGameState(gameViewModel)
-                            )
+                            val gameViewModel = gameViewModelFactory.create(client, gameState.windowRepository, gameState.streamRegistry)
+                            gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
                         } catch (e: UnknownHostException) {
-                            updateGameState(GameState.ErrorState("Unknown host: ${e.message}"))
+                            gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
                         }
                         close()
                     }
@@ -181,13 +178,13 @@ class SgeViewModel(
     }
 }
 
-sealed class SgeViewState {
-    object SgeConnecting : SgeViewState()
-    object SgeAccountSelector : SgeViewState()
-    class SgeGameSelector(val games: List<SgeGame>) : SgeViewState()
-    class SgeCharacterSelector(val game: SgeGame, val characters: List<SgeCharacter>) : SgeViewState()
-    object SgeLoadingGameList : SgeViewState()
-    data class SgeLoadingCharacterList(val game: SgeGame) : SgeViewState()
-    data class SgeConnectingToGame(val game: SgeGame, val character: SgeCharacter) : SgeViewState()
-    class SgeError(val error: String) : SgeViewState()
+sealed interface SgeViewState {
+    data object SgeConnecting : SgeViewState
+    data object SgeAccountSelector : SgeViewState
+    data class SgeGameSelector(val games: List<SgeGame>) : SgeViewState
+    data class SgeCharacterSelector(val game: SgeGame, val characters: List<SgeCharacter>) : SgeViewState
+    data object SgeLoadingGameList : SgeViewState
+    data class SgeLoadingCharacterList(val game: SgeGame) : SgeViewState
+    data class SgeConnectingToGame(val game: SgeGame, val character: SgeCharacter) : SgeViewState
+    data class SgeError(val error: String) : SgeViewState
 }

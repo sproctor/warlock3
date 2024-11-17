@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
-import androidx.compose.ui.platform.ClipboardManager
 import kotlinx.coroutines.CoroutineDispatcher
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
@@ -18,14 +17,12 @@ class DashboardViewModelFactory(
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
-        updateGameState: (GameState) -> Unit,
-        clipboardManager: ClipboardManager,
+        gameState: GameState
     ): DashboardViewModel {
         return DashboardViewModel(
             characterRepository = characterRepository,
             accountRepository = accountRepository,
-            updateGameState = updateGameState,
-            clipboardManager = clipboardManager,
+            gameState = gameState,
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,

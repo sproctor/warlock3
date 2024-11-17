@@ -6,12 +6,14 @@ import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.resources.MR
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 import warlockfe.warlock3.stormfront.network.SgeClientImpl
 import warlockfe.warlock3.stormfront.network.StormfrontClient
@@ -39,7 +41,11 @@ class JvmAppContainer(
         }
     override val warlockClientFactory: WarlockClientFactory =
         object : WarlockClientFactory {
-            override fun createStormFrontClient(credentials: SimuGameCredentials): WarlockClient {
+            override fun createStormFrontClient(
+                credentials: SimuGameCredentials,
+                windowRepository: WindowRepository,
+                streamRegistry: StreamRegistry,
+            ): WarlockClient {
                 return StormfrontClient(
                     host = credentials.host,
                     port = credentials.port,

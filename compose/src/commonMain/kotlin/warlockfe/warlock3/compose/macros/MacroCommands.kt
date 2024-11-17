@@ -1,42 +1,43 @@
 package warlockfe.warlock3.compose.macros
 
+import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 
-val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
-    "copy" to {
-        val textField = it.entryText
+val macroCommands = mapOf<String, suspend (GameViewModel, ClipboardManager) -> Unit>(
+    "copy" to { viewModel, clipboard ->
+        val textField = viewModel.entryText
         val text = textField.text.substring(textField.selection.start, textField.selection.end)
-        it.clipboard.setText(AnnotatedString(text))
+        clipboard.setText(AnnotatedString(text))
     },
-    "paste" to {
-        it.clipboard.getText()?.let { text ->
-            it.entryInsert(text.text)
+    "paste" to { viewModel, clipboard ->
+        clipboard.getText()?.let { text ->
+            viewModel.entryInsert(text.text)
         }
     },
-    "prevhistory" to {
-        it.historyPrev()
+    "prevhistory" to { viewModel, _ ->
+        viewModel.historyPrev()
     },
-    "nexthistory" to {
-        it.historyNext()
+    "nexthistory" to { viewModel, _ ->
+        viewModel.historyNext()
     },
-    "stopscript" to {
-        it.stopScripts()
+    "stopscript" to { viewModel, _ ->
+        viewModel.stopScripts()
     },
-    "pausescript" to {
-        it.pauseScripts()
+    "pausescript" to { viewModel, _ ->
+        viewModel.pauseScripts()
     },
-    "repeatlast" to {
-        it.repeatCommand(0)
+    "repeatlast" to { viewModel, _ ->
+        viewModel.repeatCommand(0)
     },
-    "returnorrepeatlast" to {
-        if (it.entryText.text.isBlank()) {
-            it.repeatCommand(0)
+    "returnorrepeatlast" to { viewModel, _ ->
+        if (viewModel.entryText.text.isBlank()) {
+            viewModel.repeatCommand(0)
         } else {
-            it.submit()
+            viewModel.submit()
         }
     },
-    "repeatsecondtolast" to {
-        it.repeatCommand(1)
+    "repeatsecondtolast" to { viewModel, _ ->
+        viewModel.repeatCommand(1)
     }
 )

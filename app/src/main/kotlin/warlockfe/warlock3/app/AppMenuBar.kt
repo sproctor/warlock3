@@ -23,6 +23,7 @@ fun FrameWindowScope.AppMenuBar(
     windowRepository: WindowRepository,
     scriptEngineRegistry: ScriptManager,
     runScript: (File) -> Unit,
+    newWindow: () -> Unit,
     showSettings: () -> Unit,
     disconnect: (() -> Unit)?,
     warlockVersion: String,
@@ -33,6 +34,7 @@ fun FrameWindowScope.AppMenuBar(
     var scriptDirectory by remember { mutableStateOf<String?>(null) }
     MenuBar {
         Menu("File") {
+            Item("New window", onClick = newWindow)
             Item("Settings", onClick = showSettings)
             if (characterId != null) {
                 Item(

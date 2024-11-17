@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
-import androidx.compose.ui.platform.ClipboardManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.core.client.GameCharacter
@@ -26,8 +26,7 @@ import java.net.UnknownHostException
 class DashboardViewModel(
     characterRepository: CharacterRepository,
     private val accountRepository: AccountRepository,
-    private val updateGameState: (GameState) -> Unit,
-    private val clipboardManager: ClipboardManager,
+    private val gameState: GameState,
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
@@ -75,25 +74,30 @@ class DashboardViewModel(
                                     client.selectCharacter(sgeCharacter.code)
                                 }
                             }
+
                             is SgeEvent.SgeReadyToPlayEvent -> {
                                 val credentials = event.credentials
                                 try {
-                                    val sfClient = warlockClientFactory.createStormFrontClient(credentials)
-                                    sfClient.connect()
-                                    val gameViewModel = gameViewModelFactory.create(sfClient, clipboardManager)
-                                    updateGameState(
-                                        GameState.ConnectedGameState(gameViewModel)
+                                    val sfClient = warlockClientFactory.createStormFrontClient(
+                                        credentials,
+                                        gameState.windowRepository,
+                                        gameState.streamRegistry,
                                     )
+                                    sfClient.connect()
+                                    val gameViewModel = gameViewModelFactory.create(sfClient, gameState.windowRepository, gameState.streamRegistry)
+                                    gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
                                 } catch (e: UnknownHostException) {
-                                    updateGameState(GameState.ErrorState("Unknown host: ${e.message}"))
+                                    gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
                                 }
                                 client.close()
                                 cancelConnect()
                             }
+
                             is SgeEvent.SgeErrorEvent -> {
                                 _message.value = "Error code (${event.errorCode})"
                                 connectJob?.cancel()
                             }
+
                             else -> Unit // we don't care?
                         }
                     }

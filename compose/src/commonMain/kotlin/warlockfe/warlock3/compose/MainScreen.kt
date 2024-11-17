@@ -10,7 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.dashboard.DashboardView
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
@@ -24,56 +24,47 @@ fun MainScreen(
     sgeViewModelFactory: SgeViewModelFactory,
     dashboardViewModelFactory: DashboardViewModelFactory,
     gameState: GameState,
-    updateGameState: (GameState) -> Unit,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
 ) {
 
-    when (gameState) {
-        GameState.Dashboard -> {
-            val clipboardManager = LocalClipboardManager.current
+    when (val screen = gameState.screen) {
+        GameScreen.Dashboard -> {
             val viewModel = remember {
-                dashboardViewModelFactory.create(
-                    updateGameState = updateGameState,
-                    clipboardManager = clipboardManager,
-                )
+                dashboardViewModelFactory.create(gameState)
             }
             DashboardView(
                 viewModel = viewModel,
-                connectToSGE = { updateGameState(GameState.NewGameState) }
+                connectToSGE = { gameState.screen = GameScreen.NewGameState }
             )
         }
 
-        GameState.NewGameState -> {
-            val clipboardManager = LocalClipboardManager.current
+        GameScreen.NewGameState -> {
             val viewModel = remember {
-                sgeViewModelFactory.create(
-                    clipboardManager = clipboardManager,
-                    updateGameState = updateGameState
-                )
+                sgeViewModelFactory.create(gameState)
             }
-            SgeWizard(viewModel = viewModel, onCancel = { updateGameState(GameState.Dashboard) })
+            SgeWizard(viewModel = viewModel, onCancel = { gameState.screen = GameScreen.Dashboard })
         }
 
-        is GameState.ConnectedGameState -> {
-            val character = gameState.viewModel.character.collectAsState(null).value
+        is GameScreen.ConnectedGameState -> {
+            val character = screen.viewModel.character.collectAsState(null).value
             updateCurrentCharacter(character)
             GameView(
-                viewModel = gameState.viewModel,
+                viewModel = screen.viewModel,
                 navigateToDashboard = {
-                    updateGameState(GameState.Dashboard)
+                    gameState.screen = GameScreen.Dashboard
                 }
             )
         }
 
-        is GameState.ErrorState -> {
+        is GameScreen.ErrorState -> {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(text = gameState.message)
+                Text(text = screen.message)
                 Button(
-                    onClick = { updateGameState(GameState.NewGameState) }
+                    onClick = { gameState.screen = GameScreen.NewGameState }
                 ) {
                     Text("OK")
                 }

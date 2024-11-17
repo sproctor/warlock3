@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.ui.sge
 
-import androidx.compose.ui.platform.ClipboardManager
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
@@ -18,18 +17,16 @@ class SgeViewModelFactory(
     private val gameViewModelFactory: GameViewModelFactory,
 ) {
     fun create(
-        clipboardManager: ClipboardManager,
-        updateGameState: (GameState) -> Unit,
+        gameState: GameState,
     ): SgeViewModel {
         return SgeViewModel(
             clientSettingRepository = clientSettingRepository,
             accountRepository = accountRepository,
-            clipboardManager = clipboardManager,
             characterRepository = characterRepository,
             warlockClientFactory = warlockClientFactory,
             sgeClientFactory = sgeClientFactory,
             gameViewModelFactory = gameViewModelFactory,
-            updateGameState = updateGameState,
+            gameState = gameState,
         )
     }
 }

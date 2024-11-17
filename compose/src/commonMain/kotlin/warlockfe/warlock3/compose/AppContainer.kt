@@ -5,7 +5,6 @@ import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
-import warlockfe.warlock3.compose.ui.window.StreamRegistryImpl
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.AccountRepository
@@ -19,7 +18,6 @@ import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -54,11 +52,6 @@ abstract class AppContainer(
             database.clientSettingQueries,
             ioDispatcher
         )
-    val windowRepository =
-        WindowRepository(
-            database.windowSettingsQueries,
-            ioDispatcher
-        )
     val scriptDirRepository =
         ScriptDirRepository(
             scriptDirQueries = database.scriptDirQueries,
@@ -70,7 +63,6 @@ abstract class AppContainer(
             characterSettingsQueries = database.characterSettingQueries,
             ioDispatcher = ioDispatcher
         )
-    val streamRegistry = StreamRegistryImpl()
     val aliasRepository =
         AliasRepository(
             database.aliasQueries,
@@ -88,7 +80,6 @@ abstract class AppContainer(
     abstract val scriptManager: ScriptManager
     val gameViewModelFactory by lazy {
         GameViewModelFactory(
-            windowRepository = windowRepository,
             macroRepository = macroRepository,
             variableRepository = variableRepository,
             scriptManager = scriptManager,
@@ -97,7 +88,6 @@ abstract class AppContainer(
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
-            streamRegistry = streamRegistry,
         )
     }
 

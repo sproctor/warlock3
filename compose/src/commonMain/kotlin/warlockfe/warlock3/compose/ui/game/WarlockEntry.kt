@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -47,13 +48,14 @@ fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
     val presets by viewModel.presets.collectAsState(emptyMap())
 
     val style = presets["default"] ?: defaultStyles["default"]
+    val clipboard = LocalClipboardManager.current
     WarlockEntryContent(
         modifier = modifier,
         backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified,
         textColor = style?.textColor?.toColor() ?: MaterialTheme.colorScheme.onBackground,
         textField = viewModel.entryText,
         onValueChange = viewModel::updateEntryText,
-        onKeyPress = viewModel::handleKeyPress,
+        onKeyPress = { viewModel.handleKeyPress(it, clipboard) },
         roundTime = roundTime,
         castTime = castTime,
     )
