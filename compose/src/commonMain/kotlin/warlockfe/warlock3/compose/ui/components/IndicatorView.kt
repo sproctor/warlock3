@@ -1,9 +1,11 @@
 package warlockfe.warlock3.compose.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -91,10 +93,10 @@ private val statusKeysList: Array<Map<String, @Composable () -> Unit>> = arrayOf
             )
         },
         "hidden" to {
-            Icon(
+            Image(
+                modifier = Modifier.fillMaxSize(),
                 painter = painterResource(Res.drawable.hidden),
                 contentDescription = "hidden",
-                tint = MaterialTheme.colorScheme.secondary,
             )
         },
         "webbed" to {
