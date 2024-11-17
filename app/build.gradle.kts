@@ -17,10 +17,10 @@ dependencies {
     implementation(compose.uiTooling)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
+    implementation(compose.components.resources)
     implementation(libs.compose.color.picker)
     implementation(libs.sqldelight.driver.jvm)
     implementation(libs.kotlinx.cli)
-    implementation(libs.moko.resources)
     implementation(libs.appdirs)
     implementation(libs.slf4j.simple)
 

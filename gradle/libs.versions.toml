@@ -10,7 +10,6 @@ hydraulic-conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-moko-resources = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko-resources" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 
 [versions]
@@ -30,7 +29,6 @@ kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.3.8"
 kotlinx-coroutines =  "1.9.0"
 kotlin-logging = "7.0.0"
-moko-resources = "0.24.3"
 okio = "3.9.1"
 rhino = "1.7.15"
 slf4j = "2.0.16"
@@ -52,8 +50,6 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.ref = "kotlin-logging" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
-moko-resources = { group = "dev.icerock.moko", name = "resources", version.ref = "moko-resources" }
-moko-resources-compose = { group = "dev.icerock.moko", name = "resources-compose", version.ref = "moko-resources" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }

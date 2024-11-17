@@ -75,8 +75,7 @@ dependencies {
     implementation(compose.runtime)
     implementation(compose.foundation)
     implementation(compose.material3)
-
-    implementation(libs.moko.resources)
+    implementation(compose.components.resources)
 
     // Android presentation components
     implementation(libs.androidx.activity.compose)

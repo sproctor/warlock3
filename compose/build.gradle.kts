@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.android.library)
-    alias(libs.plugins.moko.resources)
 }
 
 val jvmToolchainVersion: String by project
@@ -18,24 +17,23 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation(project(":core"))
+                implementation(project(":macro"))
+                implementation(project(":stormfront")) // TODO: remove when abstracting DI
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
                 implementation(libs.compose.color.picker)
                 implementation(libs.kotlinx.collections.immutable)
-                implementation(libs.moko.resources)
-                implementation(libs.moko.resources.compose)
+                implementation(compose.components.resources)
                 implementation(libs.appdirs)
             }
         }
         val androidMain by getting {
             dependencies {
                 implementation(compose.preview)
-                implementation(project(":macro"))
-                implementation(project(":stormfront")) // TODO: remove when abstracting DI
-                implementation(libs.coil.compose)
-                implementation(libs.coil.svg)
+//                implementation(libs.coil.compose)
+//                implementation(libs.coil.svg)
             }
         }
 //        val commonTest by getting {
@@ -48,8 +46,6 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(compose.preview)
-                implementation(project(":macro"))
-                implementation(project(":stormfront")) // TODO: remove when abstracting DI
             }
         }
     }
@@ -74,6 +70,8 @@ android {
     }
 }
 
-multiplatformResources {
-    resourcesPackage = "warlockfe.warlock3.compose.resources" // required
+compose {
+    resources {
+        publicResClass = true
+    }
 }

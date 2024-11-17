@@ -1,86 +1,133 @@
 package warlockfe.warlock3.compose.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Divider
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import dev.icerock.moko.resources.ImageResource
-import dev.icerock.moko.resources.compose.painterResource
-import warlockfe.warlock3.compose.resources.MR
+import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.death
+import warlockfe.warlock3.compose.generated.resources.hidden
+import warlockfe.warlock3.compose.generated.resources.invisible
+import warlockfe.warlock3.compose.generated.resources.joined
+import warlockfe.warlock3.compose.generated.resources.kneeling
+import warlockfe.warlock3.compose.generated.resources.prone
+import warlockfe.warlock3.compose.generated.resources.sitting
+import warlockfe.warlock3.compose.generated.resources.standing
+import warlockfe.warlock3.compose.generated.resources.stunned
+import warlockfe.warlock3.compose.generated.resources.webbed
+import warlockfe.warlock3.compose.icons.Local_hospital
 
-private val invisiblePositionKeys = mapOf(
-    "kneeling" to MR.images.inviskneeling,
-    "prone" to MR.images.invisprone,
-    "sitting" to MR.images.invissitting,
-    "standing" to MR.images.invisstanding,
-)
-private val positionKeys = mapOf(
-    "kneeling" to MR.images.kneeling,
-    "prone" to MR.images.prone,
-    "sitting" to MR.images.sitting,
-    "standing" to MR.images.standing,
-)
-private val status1Keys = mapOf("stunned" to MR.images.stunned)
-private val status2Keys = mapOf(
-    "bleeding" to MR.images.bleeding,
-    "dead" to MR.images.dead,
-)
-private val status3Keys = mapOf(
-    "hidden" to MR.images.hidden,
-    "webbed" to MR.images.webbed,
+private val statusKeysList: Array<Map<String, @Composable () -> Unit>> = arrayOf(
+    mapOf(
+        "kneeling" to {
+            Icon(
+                painter = painterResource(Res.drawable.kneeling),
+                contentDescription = "kneeling",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+        "prone" to {
+            Icon(
+                painter = painterResource(Res.drawable.prone),
+                contentDescription = "prone",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+        "sitting" to {
+            Icon(
+                painter = painterResource(Res.drawable.sitting),
+                contentDescription = "sitting",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+        "standing" to {
+            Icon(
+                painter = painterResource(Res.drawable.standing),
+                contentDescription = "standing",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+    ),
+    mapOf(
+        "joined" to {
+            Icon(
+                painter = painterResource(Res.drawable.joined),
+                contentDescription = "joined",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        }
+    ),
+    mapOf(
+        "bleeding" to {
+            Icon(
+                imageVector = Local_hospital,
+                contentDescription = "bleeding",
+                tint = Color.Red,
+            )
+        },
+        "dead" to {
+            Icon(
+                painter = painterResource(Res.drawable.death),
+                contentDescription = "dead",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+    ),
+    mapOf(
+        "invisible" to {
+            Icon(
+                painter = painterResource(Res.drawable.invisible),
+                contentDescription = "invisible",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+        "hidden" to {
+            Icon(
+                painter = painterResource(Res.drawable.hidden),
+                contentDescription = "hidden",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+        "webbed" to {
+            Icon(
+                painter = painterResource(Res.drawable.webbed),
+                contentDescription = "standing",
+                tint = Color.LightGray,
+            )
+        },
+    ),
+    mapOf(
+        "stunned" to {
+            Icon(
+                painter = painterResource(Res.drawable.stunned),
+                contentDescription = "stunned",
+                tint = MaterialTheme.colorScheme.secondary,
+            )
+        },
+    ),
 )
 
 @Composable
 fun IndicatorView(modifier: Modifier, properties: Map<String, String>) {
     Row(modifier = modifier) {
-        val positionMap =
-            if (properties.containsKey("invisible")) invisiblePositionKeys else positionKeys
-        val position = positionMap.entries.firstOrNull { properties.containsKey(it.key) }?.value
-        IndicatorImage(
-            images = position?.let { listOf(it) } ?: emptyList()
-        )
-        VerticalDivider()
-        IndicatorImage(
-            images = status1Keys.filter { properties.containsKey(it.key) }.map { it.value }
-        )
-        VerticalDivider()
-        IndicatorImage(
-            images = if (properties.containsKey("joined")) listOf(MR.images.joined) else emptyList()
-        )
-        VerticalDivider()
-        IndicatorImage(
-            images = status2Keys.filter { properties.containsKey(it.key) }.map { it.value }
-        )
-        VerticalDivider()
-        IndicatorImage(
-            images = status3Keys.filter { properties.containsKey(it.key) }.map { it.value }
-        )
-    }
-}
-
-@Composable
-private fun IndicatorImage(images: List<ImageResource>) {
-    Box(modifier = Modifier.padding(4.dp).aspectRatio(1f).fillMaxHeight()) {
-        images.forEach { image ->
-            StatusImage(image = image, modifier = Modifier.fillMaxSize())
+        statusKeysList.forEachIndexed { index, statusKeys ->
+            Box(modifier = Modifier.padding(4.dp).aspectRatio(1f).fillMaxHeight()) {
+                statusKeys.filter { properties.containsKey(it.key) }.forEach { it.value() }
+            }
+            if (index != statusKeysList.lastIndex) {
+                VerticalDivider()
+            }
         }
     }
-}
-
-@Composable
-private fun StatusImage(image: ImageResource, modifier: Modifier) {
-    Image(painter = painterResource(image), modifier = modifier, contentDescription = null)
 }
 
 //@Preview

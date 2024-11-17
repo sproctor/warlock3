@@ -7,7 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
@@ -21,6 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.model.GameScreen
@@ -111,7 +112,7 @@ fun main(args: Array<String>) {
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
 
-    val games = mutableStateListOf<GameState>(
+    val games = mutableStateListOf(
         GameState(
             windowRepository = WindowRepository(database.windowSettingsQueries, Dispatchers.IO),
             streamRegistry = StreamRegistryImpl()
@@ -129,7 +130,7 @@ fun main(args: Array<String>) {
         }
     )
 
-    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
 
     application {
         CompositionLocalProvider(
@@ -181,6 +182,7 @@ fun main(args: Array<String>) {
     }
 }
 
+@OptIn(ExperimentalResourceApi::class)
 private val appIcon: Painter? by lazy {
     // app.dir is set when packaged to point at our collected inputs.
     val appDirProp = System.getProperty("app.dir")
@@ -190,7 +192,7 @@ private val appIcon: Painter? by lazy {
     var iconPath = appDir?.resolve("app.ico")?.takeIf { it.exists() }
     iconPath = iconPath ?: appDir?.resolve("icon-square-128.png")?.takeIf { it.exists() }
     if (iconPath?.exists() == true) {
-        BitmapPainter(iconPath.inputStream().buffered().use { loadImageBitmap(it) })
+        BitmapPainter(iconPath.inputStream().readAllBytes().decodeToImageBitmap())
     } else {
         null
     }

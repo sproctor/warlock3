@@ -1,7 +1,10 @@
 package warlockfe.warlock3.compose
 
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 import warlockfe.warlock3.compose.components.CompassTheme
+import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
@@ -28,7 +31,6 @@ import java.util.*
 abstract class AppContainer(
     val database: Database,
     ioDispatcher: CoroutineDispatcher,
-    private val themeText: String,
     warlockDirs: WarlockDirs,
 ) {
 
@@ -73,7 +75,9 @@ abstract class AppContainer(
             database.alterationQueries,
             ioDispatcher = ioDispatcher
         )
+    @OptIn(ExperimentalResourceApi::class)
     val themeProperties = Properties().apply {
+        val themeText = runBlocking { Res.readBytes("files/theme.properties").decodeToString() }
         load(StringReader(themeText))
     }
     val compassTheme: CompassTheme = loadCompassTheme(themeProperties)

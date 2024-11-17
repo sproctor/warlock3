@@ -3,7 +3,6 @@ package warlockfe.warlock3.app.di
 import kotlinx.coroutines.Dispatchers
 import okio.Path.Companion.toPath
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.compose.resources.MR
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -24,7 +23,6 @@ class JvmAppContainer(
 ) : AppContainer(
     database = database,
     ioDispatcher = Dispatchers.IO,
-    themeText = MR.files.theme_properties.readText(),
     warlockDirs = warlockDirs,
 ) {
     override val scriptManager: ScriptManager =

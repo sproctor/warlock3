@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.icerock.moko.resources.ImageResource
-import dev.icerock.moko.resources.compose.painterResource
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.core.compass.DirectionType
 
@@ -45,7 +45,7 @@ data class CompassState(
 )
 
 data class CompassTheme(
-    val background: ImageResource,
+    val background: DrawableResource,
     val description: String,
     val directions: Map<DirectionType, CompassDirection>
 )
@@ -53,7 +53,7 @@ data class CompassTheme(
 data class CompassDirection(
     val direction: DirectionType,
     val position: Pair<Int, Int>,
-    val image: ImageResource,
+    val image: DrawableResource,
 )
 
 //@Preview

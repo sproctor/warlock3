@@ -1,22 +1,23 @@
 package warlockfe.warlock3.compose.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
-import dev.icerock.moko.resources.ImageResource
-import dev.icerock.moko.resources.compose.painterResource
-import warlockfe.warlock3.compose.resources.MR
+import warlockfe.warlock3.compose.icons.Front_hand
+import warlockfe.warlock3.compose.icons.Magic_button
+import warlockfe.warlock3.compose.util.mirror
 
 @Composable
 fun HandsView(properties: Map<String, String>) {
@@ -30,14 +31,40 @@ fun HandsView(properties: Map<String, String>) {
 @Composable
 fun HandsViewContent(left: String, right: String, spell: String) {
     Row(modifier = Modifier.fillMaxWidth()) {
-        HandBox(MR.images.left_hand_small, left)
-        HandBox(MR.images.right_hand_small, right)
-        HandBox(MR.images.spell_hand_small, spell)
+        HandBox(
+            icon = {
+                Icon(
+                    modifier = Modifier.rotate(90f).mirror(),
+                    imageVector = Front_hand,
+                    contentDescription = "Left hand",
+                )
+            },
+            value = left
+        )
+        HandBox(
+            icon = {
+                Icon(
+                    modifier = Modifier.rotate(-90f),
+                    imageVector = Front_hand,
+                    contentDescription = "Right hand",
+                )
+            },
+            value = right
+        )
+        HandBox(
+            icon = {
+                Icon(
+                    imageVector = Magic_button,
+                    contentDescription = "Spell",
+                )
+            },
+            value = spell,
+        )
     }
 }
 
 @Composable
-fun RowScope.HandBox(image: ImageResource, value: String) {
+fun RowScope.HandBox(icon: @Composable () -> Unit, value: String) {
     Surface(
         shape = MaterialTheme.shapes.small,
         modifier = Modifier
@@ -49,7 +76,7 @@ fun RowScope.HandBox(image: ImageResource, value: String) {
         Row(
             modifier = Modifier.padding(4.dp)
         ) {
-            Image(painter = painterResource(image), contentDescription = "left hand")
+            icon()
             Spacer(Modifier.width(8.dp))
             Text(value)
         }
