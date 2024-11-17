@@ -1,15 +1,14 @@
 package warlockfe.warlock3.core.prefs
 
 import app.cash.sqldelight.coroutines.asFlow
-import ca.gosyer.appdirs.AppDirs
-import warlockfe.warlock3.core.prefs.sql.ScriptDir
-import warlockfe.warlock3.core.prefs.sql.ScriptDirQueries
-import warlockfe.warlock3.core.util.mapToList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.sql.ScriptDir
+import warlockfe.warlock3.core.prefs.sql.ScriptDirQueries
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.util.mapToList
 
 class ScriptDirRepository(
     private val scriptDirQueries: ScriptDirQueries,
@@ -26,12 +25,12 @@ class ScriptDirRepository(
 
     suspend fun getMappedScriptDirs(characterId: String): List<String> {
         return withContext(ioDispatcher) {
-            (listOf("%data%/scripts/") + scriptDirQueries.getByCharacterWithGlobal(characterId).executeAsList()).map {
-                    it.replace(oldValue = "%home%", newValue = warlockDirs.homeDir, ignoreCase = true)
-                        .replace(oldValue = "%config%", newValue = warlockDirs.configDir, ignoreCase = true)
-                        .replace(oldValue = "%data%", newValue = warlockDirs.dataDir, ignoreCase = true)
-                }
+            scriptDirQueries.getByCharacterWithGlobal(characterId).executeAsList() + getDefaultDir()
         }
+    }
+
+    fun getDefaultDir(): String {
+        return warlockDirs.dataDir + "/scripts/"
     }
 
     suspend fun save(characterId: String, path: String) {
