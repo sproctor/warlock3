@@ -241,6 +241,7 @@ fun GameBottomBar(viewModel: GameViewModel) {
             HandsView(viewModel.properties.collectAsState().value)
         }
         CompassView(
+            modifier = Modifier.padding(4.dp),
             state = viewModel.compassState.value,
             theme = viewModel.compassTheme,
             onClick = {

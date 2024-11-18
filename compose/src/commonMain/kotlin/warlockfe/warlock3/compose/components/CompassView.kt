@@ -4,11 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.FixedScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.util.LocalLogger
@@ -16,38 +16,37 @@ import warlockfe.warlock3.core.compass.DirectionType
 
 @Composable
 fun CompassView(
+    modifier: Modifier,
     state: CompassState,
     theme: CompassTheme,
     onClick: (DirectionType) -> Unit
 ) {
+    val scale = LocalDensity.current.density * 1.5f
     val logger = LocalLogger.current
     val backgroundPainter = painterResource(theme.background)
-//    val size = with(LocalDensity.current) {
-//        backgroundPainter.intrinsicSize.toDpSize()
-//    }
-    // TODO: Scale compass with density
+    // TODO: Scale compass to fit height instead of using density
     Box(
-        modifier = Modifier.padding(4.dp)
+        modifier = modifier
     ) {
-        //Box(Modifier.size(size * LocalDensity.current.density).scale(LocalDensity.current.density)) {
         Image(
             painter = backgroundPainter,
             contentDescription = theme.description,
+            contentScale = FixedScale(scale),
         )
         state.directions.forEach {
             val direction = theme.directions[it]!!
             Image(
                 modifier = Modifier
-                    .offset { IntOffset(direction.position.first, direction.position.second) }
+                    .offset { IntOffset(direction.position.first, direction.position.second) * scale }
                     .clickable {
                         logger.debug { "Clicked on direction: ${direction.direction}" }
                         onClick(direction.direction)
                     },
                 painter = painterResource(direction.image),
-                contentDescription = it.value
+                contentDescription = it.value,
+                contentScale = FixedScale(scale),
             )
         }
-        //}
     }
 }
 
