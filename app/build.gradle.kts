@@ -24,6 +24,9 @@ dependencies {
     implementation(libs.appdirs)
     implementation(libs.slf4j.simple)
 
+    // Control updates
+    implementation(libs.conveyor.control)
+
     // Required by conveyor
     linuxAmd64(compose.desktop.linux_x64)
     macAmd64(compose.desktop.macos_x64)

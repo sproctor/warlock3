@@ -26,6 +26,10 @@ class ClientSettingRepository(
         return getFloat("scale")
     }
 
+    suspend fun getIgnoreUpdates(): Boolean {
+        return getBoolean("ignoreUpdates") ?: false
+    }
+
     fun observeScale(): Flow<Float?> {
         return observe("scale").map { it?.toFloatOrNull() }
     }
@@ -36,7 +40,7 @@ class ClientSettingRepository(
         }
     }
 
-    fun observe(key: String): Flow<String?> {
+    private fun observe(key: String): Flow<String?> {
         return clientSettingQueries.getByKey(key)
             .asFlow()
             .mapToOneOrNull()
@@ -50,6 +54,10 @@ class ClientSettingRepository(
 
     private suspend fun getFloat(key: String): Float? {
         return get(key)?.toFloatOrNull()
+    }
+
+    private suspend fun getBoolean(key: String): Boolean? {
+        return get(key)?.toBoolean()
     }
 
     suspend fun putWidth(value: Int) {
@@ -68,11 +76,19 @@ class ClientSettingRepository(
         put("lastUsername", value)
     }
 
+    suspend fun putIgnoreUpdates(value: Boolean) {
+        putBoolean("ignoreUpdates", value)
+    }
+
     private suspend fun putInt(key: String, value: Int) {
         put(key, value.toString())
     }
 
     private suspend fun putFloat(key: String, value: Float) {
+        put(key, value.toString())
+    }
+
+    private suspend fun putBoolean(key: String, value: Boolean) {
         put(key, value.toString())
     }
 

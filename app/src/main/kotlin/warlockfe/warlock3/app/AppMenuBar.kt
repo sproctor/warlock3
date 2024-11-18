@@ -25,6 +25,7 @@ fun FrameWindowScope.AppMenuBar(
     runScript: (File) -> Unit,
     newWindow: () -> Unit,
     showSettings: () -> Unit,
+    showUpdateDialog: () -> Unit,
     disconnect: (() -> Unit)?,
     warlockVersion: String,
 ) {
@@ -86,6 +87,9 @@ fun FrameWindowScope.AppMenuBar(
             }
         }
         Menu("Help") {
+            Item("Updates") {
+                showUpdateDialog()
+            }
             Item("About") {
                 showAbout = true
             }

@@ -22,6 +22,7 @@ fun FrameWindowScope.WarlockApp(
     appContainer: AppContainer,
     gameState: GameState,
     newWindow: () -> Unit,
+    showUpdateDialog: () -> Unit,
 ) {
     var showSettings by remember { mutableStateOf(false) }
 
@@ -49,6 +50,7 @@ fun FrameWindowScope.WarlockApp(
                         screen.viewModel.runScript(it)
                     }
                 },
+                showUpdateDialog = showUpdateDialog,
                 warlockVersion = System.getProperty("app.version", "development")
             )
 

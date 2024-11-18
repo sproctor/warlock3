@@ -1,28 +1,45 @@
 package warlockfe.warlock3.app
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberDialogState
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import ca.gosyer.appdirs.AppDirs
+import dev.hydraulic.conveyor.control.SoftwareUpdateController
+import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -136,7 +153,81 @@ fun main(args: Array<String>) {
 
     UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
 
+    val controller = SoftwareUpdateController.getInstance()
+
     application {
+        var updateAvailable by remember { mutableStateOf(false) }
+        var showUpdateDialog by remember { mutableStateOf(false) }
+        var currentVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
+        var latestVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
+
+        LaunchedEffect(Unit) {
+            if (controller != null && !clientSettings.getIgnoreUpdates()) {
+                try {
+                    currentVersion = controller.currentVersion ?: return@LaunchedEffect
+                    latestVersion = controller.currentVersionFromRepository
+                        ?: return@LaunchedEffect
+
+                    // Compare versions using the compareTo method
+                    if (latestVersion!! > currentVersion!!) {
+                        // A newer version is available
+                        if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE) {
+                            updateAvailable = true
+                            showUpdateDialog = true
+                        }
+                    } else {
+                        // No update available or current version is newer
+                    }
+                } catch (e: UpdateCheckException) {
+                    // Handle exception
+                }
+            }
+        }
+        if (showUpdateDialog) {
+            DialogWindow(
+                onCloseRequest = { showUpdateDialog = false },
+                title = "Warlock update available",
+                state = rememberDialogState(width = 400.dp, height = 300.dp),
+            ) {
+                Column(Modifier.fillMaxSize().padding(8.dp)) {
+                    if (updateAvailable) {
+                        Text("An update to Warlock is available. You are currently running \"$currentVersion\" and \"$latestVersion\" is available.")
+                    } else {
+                        Text("Current version: ${currentVersion ?: "unknown"}")
+                        Text("Available version: ${latestVersion ?: "unknown"}")
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Row(Modifier.fillMaxWidth()) {
+                        Spacer(Modifier.weight(1f))
+                        val scope = rememberCoroutineScope()
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    clientSettings.putIgnoreUpdates(true)
+                                    showUpdateDialog = false
+                                }
+                            },
+                        ) {
+                            Text("Ignore updates")
+                        }
+                        TextButton(
+                            onClick = { showUpdateDialog = false },
+                        ) {
+                            Text("Close")
+                        }
+                        if (updateAvailable) {
+                            TextButton(
+                                onClick = {
+                                    controller.triggerUpdateCheckUI()
+                                }
+                            ) {
+                                Text("Update")
+                            }
+                        }
+                    }
+                }
+            }
+        }
         CompositionLocalProvider(
             LocalLogger provides logger,
         ) {
@@ -172,6 +263,7 @@ fun main(args: Array<String>) {
                                     )
                                 )
                             },
+                            showUpdateDialog = { showUpdateDialog = true },
                         )
                         LaunchedEffect(windowState) {
                             snapshotFlow { windowState.size }
