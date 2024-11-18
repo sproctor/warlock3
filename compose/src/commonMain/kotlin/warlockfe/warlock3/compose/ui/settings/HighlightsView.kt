@@ -17,12 +17,10 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -37,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -188,7 +187,7 @@ fun EditHighlightDialog(
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onClose) {
+            TextButton(onClick = onClose) {
                 Text("Cancel")
             }
         },
@@ -219,16 +218,34 @@ fun EditHighlightDialog(
                         )
                     }
                 }
+
+                var error: String? = null
+                // Add | to match empty string, then match and see how many groups there are
+                val groupCount = if (isRegex) {
+                    try {
+                        Regex("$pattern|").find("")?.groups?.size ?: 1
+                    } catch (e: Throwable) {
+                        error = e.message ?: "Invalid regex"
+                        1
+                    }
+                } else {
+                    1
+                }
+
                 TextField(
                     value = pattern,
-                    label = { Text("Pattern") },
-                    onValueChange = { pattern = it })
-                // Add | to match empty string, then match and see how many groups there are
-                val groupCount = if (isRegex) try {
-                    Regex("$pattern|")
-                } catch (e: Throwable) {
-                    null
-                }?.find("")?.groups?.size ?: 1 else 1
+                    label = {
+                        Text("Pattern")
+                    },
+                    onValueChange = { pattern = it },
+                    isError = error != null,
+                    supportingText = {
+                        if (error != null) {
+                            Text("Error: $error")
+                        }
+                    }
+                )
+
                 if (styles.size < groupCount + 1) {
                     for (i in styles.size..groupCount) {
                         styles.add(StyleDefinition())
@@ -236,18 +253,16 @@ fun EditHighlightDialog(
                 }
                 ScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     for (i in 0 until groupCount) {
-                        val style = styles[i]
-                        Row {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val style = styles[i]
                             if (isRegex) {
                                 Text("$i:", Modifier.align(Alignment.CenterVertically))
-                                Spacer(Modifier.width(8.dp))
                             }
                             var textColorValue by remember {
-                                mutableStateOf(
-                                    style.textColor.toHexString() ?: ""
-                                )
+                                mutableStateOf(style.textColor.toHexString() ?: "")
                             }
                             ColorTextField(
+                                modifier = Modifier.weight(1f),
                                 label = "Text color",
                                 value = textColorValue,
                                 onValueChanged = {
@@ -258,11 +273,11 @@ fun EditHighlightDialog(
                                 }
                             )
 
-                            Spacer(Modifier.width(16.dp))
                             var backgroundColorValue by remember {
                                 mutableStateOf(style.backgroundColor.toHexString() ?: "")
                             }
                             ColorTextField(
+                                modifier = Modifier.weight(1f),
                                 label = "Background color",
                                 value = backgroundColorValue,
                                 onValueChanged = {
@@ -300,9 +315,9 @@ fun EditHighlightDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ColorTextField(
+    modifier: Modifier,
     label: String,
     value: String,
     onValueChanged: (String) -> Unit,
@@ -312,14 +327,16 @@ fun ColorTextField(
     OutlinedTextField(
         label = {
             Text(
-                if (invalidColor) {
+                text = if (invalidColor) {
                     "Invalid color string"
                 } else {
                     label
-                }
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
-        modifier = Modifier.width(250.dp),
+        modifier = modifier,
         value = value,
         onValueChange = {
             onValueChanged(it)

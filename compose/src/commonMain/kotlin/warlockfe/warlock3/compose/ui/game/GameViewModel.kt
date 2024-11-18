@@ -223,11 +223,11 @@ class GameViewModel(
 
     private val windows = windowRepository.windows
 
-    private val highlights = client.characterId.flatMapLatest { characterId ->
+    private val highlights: Flow<List<ViewHighlight>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             highlightRepository.observeForCharacter(characterId)
                 .map { highlights ->
-                    highlights.map { highlight ->
+                    highlights.mapNotNull { highlight ->
                         val pattern = if (highlight.isRegex) {
                             highlight.pattern
                         } else {
@@ -238,13 +238,18 @@ class GameViewModel(
                                 "\\b$subpattern\\b"
                             }
                         }
-                        ViewHighlight(
-                            regex = Regex(
-                                pattern = pattern,
-                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-                            ),
-                            styles = highlight.styles.mapValues { it.value.toSpanStyle() }
-                        )
+                        try {
+                            ViewHighlight(
+                                regex = Regex(
+                                    pattern = pattern,
+                                    options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                                ),
+                                styles = highlight.styles.mapValues { it.value.toSpanStyle() }
+                            )
+                        } catch (e: Throwable) {
+                            // TODO: notify about error
+                            null
+                        }
                     }
                 }
         } else {
