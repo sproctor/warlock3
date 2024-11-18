@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -20,23 +21,32 @@ fun CompassView(
     onClick: (DirectionType) -> Unit
 ) {
     val logger = LocalLogger.current
+    val backgroundPainter = painterResource(theme.background)
+//    val size = with(LocalDensity.current) {
+//        backgroundPainter.intrinsicSize.toDpSize()
+//    }
     Box(
         modifier = Modifier.padding(4.dp)
     ) {
-        Image(painter = painterResource(theme.background), contentDescription = theme.description)
-        state.directions.forEach {
-            val direction = theme.directions[it]!!
+        //Box(Modifier.size(size * LocalDensity.current.density).scale(LocalDensity.current.density)) {
             Image(
-                modifier = Modifier
-                    .offset(direction.position.first.dp, direction.position.second.dp)
-                    .clickable {
-                        logger.debug { "Clicked on direction: ${direction.direction}" }
-                        onClick(direction.direction)
-                    },
-                painter = painterResource(direction.image),
-                contentDescription = it.value
+                painter = backgroundPainter,
+                contentDescription = theme.description,
             )
-        }
+            state.directions.forEach {
+                val direction = theme.directions[it]!!
+                Image(
+                    modifier = Modifier
+                        .offset { IntOffset(direction.position.first, direction.position.second) }
+                        .clickable {
+                            logger.debug { "Clicked on direction: ${direction.direction}" }
+                            onClick(direction.direction)
+                        },
+                    painter = painterResource(direction.image),
+                    contentDescription = it.value
+                )
+            }
+        //}
     }
 }
 
