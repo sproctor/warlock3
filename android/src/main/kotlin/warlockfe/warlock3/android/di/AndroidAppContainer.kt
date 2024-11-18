@@ -4,7 +4,6 @@ import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import okio.Path.Companion.toOkioPath
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.compose.resources.MR
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -25,7 +24,6 @@ class AndroidAppContainer(
 ) : AppContainer(
     database = database,
     ioDispatcher = Dispatchers.IO,
-    themeText = MR.files.theme_properties.readText(context),
     warlockDirs = warlockDirs,
 ) {
     override val scriptManager =

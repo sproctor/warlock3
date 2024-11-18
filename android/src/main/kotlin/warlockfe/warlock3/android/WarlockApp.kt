@@ -112,6 +112,7 @@ fun WarlockApp(
                             scriptDirRepository = appContainer.scriptDirRepository,
                             alterationRepository = appContainer.alterationRepository,
                             characterRepository = appContainer.characterRepository,
+                            clientSettingRepository = appContainer.clientSettings,
                         )
                     }
                 }
