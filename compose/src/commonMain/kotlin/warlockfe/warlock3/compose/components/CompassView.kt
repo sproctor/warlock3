@@ -25,27 +25,28 @@ fun CompassView(
 //    val size = with(LocalDensity.current) {
 //        backgroundPainter.intrinsicSize.toDpSize()
 //    }
+    // TODO: Scale compass with density
     Box(
         modifier = Modifier.padding(4.dp)
     ) {
         //Box(Modifier.size(size * LocalDensity.current.density).scale(LocalDensity.current.density)) {
+        Image(
+            painter = backgroundPainter,
+            contentDescription = theme.description,
+        )
+        state.directions.forEach {
+            val direction = theme.directions[it]!!
             Image(
-                painter = backgroundPainter,
-                contentDescription = theme.description,
+                modifier = Modifier
+                    .offset { IntOffset(direction.position.first, direction.position.second) }
+                    .clickable {
+                        logger.debug { "Clicked on direction: ${direction.direction}" }
+                        onClick(direction.direction)
+                    },
+                painter = painterResource(direction.image),
+                contentDescription = it.value
             )
-            state.directions.forEach {
-                val direction = theme.directions[it]!!
-                Image(
-                    modifier = Modifier
-                        .offset { IntOffset(direction.position.first, direction.position.second) }
-                        .clickable {
-                            logger.debug { "Clicked on direction: ${direction.direction}" }
-                            onClick(direction.direction)
-                        },
-                    painter = painterResource(direction.image),
-                    contentDescription = it.value
-                )
-            }
+        }
         //}
     }
 }
