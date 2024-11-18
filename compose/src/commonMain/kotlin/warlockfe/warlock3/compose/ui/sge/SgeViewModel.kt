@@ -105,7 +105,7 @@ class SgeViewModel(
                         val credentials = event.credentials
                         val character =
                             GameCharacter(
-                                accountId!!,
+                                accountId,
                                 "$gameCode:$characterName".lowercase(),
                                 gameCode!!,
                                 characterName!!
@@ -113,7 +113,7 @@ class SgeViewModel(
 
                         scope.launch {
                             characterRepository.saveCharacter(character)
-                            clientSettingRepository.put("lastUsername", accountId!!)
+                            clientSettingRepository.putLastUsername(accountId)
                         }
 
                         try {

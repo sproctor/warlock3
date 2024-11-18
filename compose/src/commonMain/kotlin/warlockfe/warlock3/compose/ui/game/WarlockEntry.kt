@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
@@ -29,7 +29,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -37,22 +40,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.prefs.defaultStyles
 import kotlin.math.min
 
 @Composable
-fun WarlockEntry(modifier: Modifier, viewModel: GameViewModel) {
+fun WarlockEntry(modifier: Modifier, backgroundColor: Color, textColor: Color, viewModel: GameViewModel) {
     val roundTime by viewModel.roundTime.collectAsState()
     val castTime by viewModel.castTime.collectAsState()
-    val presets by viewModel.presets.collectAsState(emptyMap())
-
-    val style = presets["default"] ?: defaultStyles["default"]
     val clipboard = LocalClipboardManager.current
     WarlockEntryContent(
         modifier = modifier,
-        backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified,
-        textColor = style?.textColor?.toColor() ?: MaterialTheme.colorScheme.onBackground,
+        backgroundColor = backgroundColor,
+        textColor = textColor,
         textField = viewModel.entryText,
         onValueChange = viewModel::updateEntryText,
         onKeyPress = { viewModel.handleKeyPress(it, clipboard) },
@@ -90,7 +88,7 @@ fun WarlockEntryContent(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .focusRequester(focusRequester)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .onPreviewKeyEvent { event ->
                         // skipNextKey only has an effect on desktop
                         // We're catching KEY_DOWN in AWT, KEY_TYPED gets through

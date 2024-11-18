@@ -3,7 +3,9 @@ package warlockfe.warlock3.compose.ui.game
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +19,8 @@ import warlockfe.warlock3.compose.ui.components.IndicatorView
 import warlockfe.warlock3.compose.ui.components.VitalBars
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
+import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -212,13 +216,24 @@ fun GameBottomBar(viewModel: GameViewModel) {
 
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
-            Row(modifier = Modifier.fillMaxWidth().padding(2.dp)) {
-                WarlockEntry(modifier = Modifier.height(32.dp).weight(1f), viewModel = viewModel)
+            Row(
+                modifier = Modifier.fillMaxWidth().height(40.dp).padding(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                val presets by viewModel.presets.collectAsState(emptyMap())
+                val style = presets["default"] ?: defaultStyles["default"]
+                val backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified
+                val textColor = style?.textColor?.toColor()
+                    ?: MaterialTheme.colorScheme.contentColorFor(backgroundColor)
+                WarlockEntry(
+                    modifier = Modifier.weight(1f),
+                    backgroundColor = backgroundColor,
+                    textColor = textColor,
+                    viewModel = viewModel,
+                )
                 IndicatorView(
-                    modifier = Modifier
-                        .padding(start = 2.dp)
-                        .height(32.dp)
-                        .background(Color(25, 25, 50)),
+                    backgroundColor = backgroundColor,
+                    defaultColor = textColor,
                     properties = properties.value,
                 )
             }

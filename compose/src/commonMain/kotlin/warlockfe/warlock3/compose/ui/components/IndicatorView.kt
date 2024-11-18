@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -28,101 +28,106 @@ import warlockfe.warlock3.compose.generated.resources.stunned
 import warlockfe.warlock3.compose.generated.resources.webbed
 import warlockfe.warlock3.compose.icons.Local_hospital
 
-private val statusKeysList: Array<Map<String, @Composable () -> Unit>> = arrayOf(
-    mapOf(
-        "kneeling" to {
-            Icon(
-                painter = painterResource(Res.drawable.kneeling),
-                contentDescription = "kneeling",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-        "prone" to {
-            Icon(
-                painter = painterResource(Res.drawable.prone),
-                contentDescription = "prone",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-        "sitting" to {
-            Icon(
-                painter = painterResource(Res.drawable.sitting),
-                contentDescription = "sitting",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-        "standing" to {
-            Icon(
-                painter = painterResource(Res.drawable.standing),
-                contentDescription = "standing",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-    ),
-    mapOf(
-        "joined" to {
-            Icon(
-                painter = painterResource(Res.drawable.joined),
-                contentDescription = "joined",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        }
-    ),
-    mapOf(
-        "bleeding" to {
-            Icon(
-                imageVector = Local_hospital,
-                contentDescription = "bleeding",
-                tint = Color.Red,
-            )
-        },
-        "dead" to {
-            Icon(
-                painter = painterResource(Res.drawable.death),
-                contentDescription = "dead",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-    ),
-    mapOf(
-        "invisible" to {
-            Icon(
-                painter = painterResource(Res.drawable.invisible),
-                contentDescription = "invisible",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-        "hidden" to {
-            Image(
-                modifier = Modifier.fillMaxSize(),
-                painter = painterResource(Res.drawable.hidden),
-                contentDescription = "hidden",
-            )
-        },
-        "webbed" to {
-            Icon(
-                painter = painterResource(Res.drawable.webbed),
-                contentDescription = "standing",
-                tint = Color.LightGray,
-            )
-        },
-    ),
-    mapOf(
-        "stunned" to {
-            Icon(
-                painter = painterResource(Res.drawable.stunned),
-                contentDescription = "stunned",
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-        },
-    ),
-)
-
 @Composable
-fun IndicatorView(modifier: Modifier, properties: Map<String, String>) {
-    Row(modifier = modifier) {
+fun IndicatorView(
+    properties: Map<String, String>,
+    backgroundColor: Color,
+    defaultColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val statusKeysList: Array<Map<String, @Composable () -> Unit>> = arrayOf(
+        mapOf(
+            "kneeling" to {
+                Icon(
+                    painter = painterResource(Res.drawable.kneeling),
+                    contentDescription = "kneeling",
+                    tint = defaultColor,
+                )
+            },
+            "prone" to {
+                Icon(
+                    painter = painterResource(Res.drawable.prone),
+                    contentDescription = "prone",
+                    tint = defaultColor,
+                )
+            },
+            "sitting" to {
+                Icon(
+                    painter = painterResource(Res.drawable.sitting),
+                    contentDescription = "sitting",
+                    tint = defaultColor,
+                )
+            },
+            "standing" to {
+                Icon(
+                    painter = painterResource(Res.drawable.standing),
+                    contentDescription = "standing",
+                    tint = defaultColor,
+                )
+            },
+        ),
+        mapOf(
+            "joined" to {
+                Icon(
+                    painter = painterResource(Res.drawable.joined),
+                    contentDescription = "joined",
+                    tint = defaultColor,
+                )
+            }
+        ),
+        mapOf(
+            "bleeding" to {
+                Icon(
+                    imageVector = Local_hospital,
+                    contentDescription = "bleeding",
+                    tint = Color.Red,
+                )
+            },
+            "dead" to {
+                Icon(
+                    painter = painterResource(Res.drawable.death),
+                    contentDescription = "dead",
+                    tint = defaultColor,
+                )
+            },
+        ),
+        mapOf(
+            "invisible" to {
+                Icon(
+                    painter = painterResource(Res.drawable.invisible),
+                    contentDescription = "invisible",
+                    tint = defaultColor,
+                )
+            },
+            "hidden" to {
+                Image(
+                    modifier = Modifier.fillMaxSize(),
+                    painter = painterResource(Res.drawable.hidden),
+                    contentDescription = "hidden",
+                )
+            },
+            "webbed" to {
+                Icon(
+                    painter = painterResource(Res.drawable.webbed),
+                    contentDescription = "standing",
+                    tint = defaultColor,
+                )
+            },
+        ),
+        mapOf(
+            "stunned" to {
+                Icon(
+                    painter = painterResource(Res.drawable.stunned),
+                    contentDescription = "stunned",
+                    tint = defaultColor,
+                )
+            },
+        ),
+    )
+
+    Row(modifier = modifier.background(backgroundColor)) {
         statusKeysList.forEachIndexed { index, statusKeys ->
-            Box(modifier = Modifier.padding(4.dp).aspectRatio(1f).fillMaxHeight()) {
+            Box(modifier = Modifier.aspectRatio(1f).fillMaxHeight().padding(4.dp)) {
                 statusKeys.filter { properties.containsKey(it.key) }.forEach { it.value() }
             }
             if (index != statusKeysList.lastIndex) {

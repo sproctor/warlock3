@@ -2,11 +2,15 @@ package warlockfe.warlock3.app
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
@@ -149,8 +153,10 @@ fun main(args: Array<String>) {
                         }
                     },
                 ) {
+                    val scale by clientSettings.observeScale().collectAsState(null)
                     CompositionLocalProvider(
-                        LocalWindowComponent provides window
+                        LocalWindowComponent provides window,
+                        LocalDensity provides Density(scale ?: 1.0f, 1.0f)
                     ) {
                         WarlockApp(
                             appContainer = appContainer,
