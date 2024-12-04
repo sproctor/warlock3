@@ -22,17 +22,17 @@ class ClientSettingRepository(
         return getInt("height")
     }
 
-    suspend fun getScale(): Float? {
-        return getFloat("scale")
-    }
+//    suspend fun getScale(): Float? {
+//        return getFloat("scale")
+//    }
 
     suspend fun getIgnoreUpdates(): Boolean {
         return getBoolean("ignoreUpdates") ?: false
     }
 
-    fun observeScale(): Flow<Float?> {
-        return observe("scale").map { it?.toFloatOrNull() }
-    }
+//    fun observeScale(): Flow<Float?> {
+//        return observe("scale").map { it?.toFloatOrNull() }
+//    }
 
     suspend fun get(key: String): String? {
         return withContext(ioDispatcher) {
@@ -68,9 +68,9 @@ class ClientSettingRepository(
         putInt("height", value)
     }
 
-    suspend fun putScale(value: Float) {
-        putFloat("scale", value)
-    }
+//    suspend fun putScale(value: Float) {
+//        putFloat("scale", value)
+//    }
 
     suspend fun putLastUsername(value: String?) {
         put("lastUsername", value)

@@ -76,7 +76,6 @@ fun SettingsDialog(
                     scriptDirRepository = scriptDirRepository,
                     alterationRepository = alterationRepository,
                     characterRepository = characterRepository,
-                    clientSettingRepository = clientSettingRepository,
                 )
             }
         }

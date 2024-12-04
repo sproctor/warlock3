@@ -8,7 +8,6 @@ import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
@@ -28,7 +27,6 @@ fun SettingsContent(
     presetRepository: PresetRepository,
     aliasRepository: AliasRepository,
     alterationRepository: AlterationRepository,
-    clientSettingRepository: ClientSettingRepository,
 ) {
     val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
@@ -39,7 +37,6 @@ fun SettingsContent(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 scriptDirRepository = scriptDirRepository,
-                clientSettingRepository = clientSettingRepository,
             )
         }
 

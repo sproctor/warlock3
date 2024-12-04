@@ -98,6 +98,8 @@ fun main(args: Array<String>) {
     }
     val logger = KotlinLogging.logger("main")
 
+    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
+
     val credentials =
         if (port != null && host != null && key != null) {
             logger.debug { "Connecting to $host:$port with $key" }
@@ -150,8 +152,6 @@ fun main(args: Array<String>) {
             }
         }
     )
-
-    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
 
     val controller = SoftwareUpdateController.getInstance()
 
@@ -244,10 +244,10 @@ fun main(args: Array<String>) {
                         }
                     },
                 ) {
-                    val scale by clientSettings.observeScale().collectAsState(null)
+                    //val scale by clientSettings.observeScale().collectAsState(null)
                     CompositionLocalProvider(
                         LocalWindowComponent provides window,
-                        LocalDensity provides Density(scale ?: 1.0f, 1.0f)
+                        //LocalDensity provides Density(scale ?: 1.0f, 1.0f)
                     ) {
                         WarlockApp(
                             appContainer = appContainer,
