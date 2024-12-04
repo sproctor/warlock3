@@ -36,7 +36,10 @@ dependencies {
 
 kotlin {
     val jvmToolchainVersion: String by project
-    jvmToolchain(jvmToolchainVersion.toInt())
+    jvmToolchain {
+        languageVersion = JavaLanguageVersion.of(jvmToolchainVersion.toInt())
+        vendor = JvmVendorSpec.JETBRAINS
+    }
 }
 
 compose.desktop {
