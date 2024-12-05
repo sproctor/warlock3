@@ -15,6 +15,7 @@
 -keep class org.sqlite.** { *; }
 -keep class androidx.compose.runtime.** { *; }
 -keep class okio.* { *; }
+-keep class dev.hydraulic.conveyor.control.* { *; }
 
 -keep class * implements java.sql.Driver
 -keep class org.apache.commons.** { *; }
