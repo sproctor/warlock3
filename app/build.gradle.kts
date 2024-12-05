@@ -81,6 +81,7 @@ compose.desktop {
         }
 
         buildTypes.release.proguard {
+            version.set("7.6.0")
             configurationFiles.from("rules.pro")
         }
     }

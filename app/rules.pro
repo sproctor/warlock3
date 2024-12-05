@@ -13,7 +13,6 @@
 -keep class org.jetbrains.skia.** { *; }
 -keep class org.jetbrains.skiko.** { *; }
 -keep class org.sqlite.** { *; }
--keep class java.sql.* { *; }
 
 -keep class * implements java.sql.Driver
 -keep class org.apache.commons.** { *; }
