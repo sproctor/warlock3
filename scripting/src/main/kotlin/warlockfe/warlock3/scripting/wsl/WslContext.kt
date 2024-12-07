@@ -43,7 +43,7 @@ class WslContext(
     )
 
     private val matches = mutableListOf<WslMatch>()
-    private val listeners = mutableMapOf<String, (String) -> Unit>()
+    private val listeners = mutableListOf<Pair<String, (String) -> Unit>>()
 
     private val frameStack = mutableListOf(
         WslFrame(0)
@@ -332,10 +332,16 @@ class WslContext(
     }
 
     fun addListener(name: String, action: (String) -> Unit) {
-        listeners[name] = action
+        listeners.add(name to action)
     }
 
     fun removeListener(name: String) {
-        listeners.remove(name)
+        listeners.removeIf { (varName, _) ->
+            varName == name
+        }
+    }
+
+    fun clearListeners() {
+        listeners.clear()
     }
 }

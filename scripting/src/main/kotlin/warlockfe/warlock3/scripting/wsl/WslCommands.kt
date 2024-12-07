@@ -87,6 +87,9 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             isRegex = isRegex,
         )
     },
+    "clearlisteners" to { context, _ ->
+        context.clearListeners()
+    },
     "counter" to { context, args ->
         val (operator, operandString) = args.splitFirstWord()
         val operand = operandString?.let {
