@@ -87,7 +87,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             isRegex = isRegex,
         )
     },
-    "clearlisteners" to { context, _ ->
+    "cleartextlisteners" to { context, _ ->
         context.clearListeners()
     },
     "counter" to { context, args ->
@@ -112,8 +112,8 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "debuglevel" to { context, args ->
         val (level, _) = args.splitFirstWord()
         level.toIntOrNull()?.let {
-            if (it > 50) {
-                throw WslRuntimeException("maximum logging level is 50")
+            if (it > 50 || it < 0) {
+                throw WslRuntimeException("debug level must be between 0 and 50")
             }
             context.setLoggingLevel(it)
         } ?: loggingLevels[level]?.let {
@@ -159,11 +159,11 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         context.stop()
     },
     "gosub" to { context, argStr ->
-        val args = parseArguments(argStr)
-        if (args.isEmpty()) {
+        val (label, args) = argStr.splitFirstWord()
+        if (label.isEmpty()) {
             throw WslRuntimeException("GOSUB with no label")
         }
-        context.gosub(args[0], args.drop(1))
+        context.gosub(label, args ?: "")
     },
     "goto" to { context, argStr ->
         val (label, _) = argStr.splitFirstWord()
@@ -301,6 +301,14 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             }
         }
     },
+    "unsetlocal" to { context, args ->
+        val (name, _) = args.splitFirstWord()
+        context.deleteLocalVariable(name)
+    },
+    "unsetvar" to { context, args ->
+        val (name, _) = args.splitFirstWord()
+        context.deleteScriptVariable(name)
+    },
     "var" to { context, args ->
         val (name, value) = args.splitFirstWord()
 
@@ -309,14 +317,6 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         }
         //cx.scriptDebug(1, "setVariable: $name=$value")
         context.setScriptVariable(name, WslString(value ?: ""))
-    },
-    "unsetvar" to { context, args ->
-        val (name, _) = args.splitFirstWord()
-        context.deleteScriptVariable(name)
-    },
-    "unsetlocal" to { context, args ->
-        val (name, _) = args.splitFirstWord()
-        context.deleteLocalVariable(name)
     },
     "wait" to { context, _ ->
         context.waitForPrompt()

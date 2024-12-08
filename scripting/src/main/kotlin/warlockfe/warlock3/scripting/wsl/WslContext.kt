@@ -23,7 +23,8 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
-import java.util.UUID
+import warlockfe.warlock3.core.util.parseArguments
+import java.util.*
 
 class WslContext(
     private val client: WarlockClient,
@@ -207,7 +208,7 @@ class WslContext(
         currentFrame.goto(index)
     }
 
-    fun gosub(label: String, args: List<String>) {
+    fun gosub(label: String, args: String) {
         val lineIndex = lines.indexOfFirst { line ->
             line.labels.any { it.equals(other = label, ignoreCase = true) }
         }
@@ -215,12 +216,10 @@ class WslContext(
             throw WslRuntimeException("Could not find label \"$label\".")
         }
         frameStack.add(WslFrame(lineIndex))
-        args.forEachIndexed { i, s ->
-            currentFrame.setVariable("arg${i + 1}", WslString(s))
-        }
+        val parsedArgs = parseArguments(args)
         currentFrame.setVariable(
             name = "args",
-            value = WslMap(args.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()),
+            value = WslMap(parsedArgs.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()),
         )
     }
 
