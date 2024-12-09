@@ -48,8 +48,8 @@ class WslScriptInstance(
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
 
-        try {
-            scope.launch {
+        scope.launch {
+            try {
                 client.sendCommand("_state scripting on", echo = false)
                 lines = script.parse()
                 val globalVariables = client.characterId.flatMapLatest { id ->
@@ -88,26 +88,26 @@ class WslScriptInstance(
                     waitWhenSuspended()
                     line.statement.execute(context)
                 }
-            }
-        } catch (e: WslParseException) {
-            status = ScriptStatus.Stopped
-            client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
-        } catch (e: WslRuntimeException) {
-            status = ScriptStatus.Stopped
-            client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
-        } finally {
-            try {
-                client.sendCommand("_state scripting off", echo = false)
-                onStop()
-            } catch (e: Throwable) {
-                logger.error(e) { "Problem terminating script: ${e.message}" }
+            } catch (e: WslParseException) {
+                status = ScriptStatus.Stopped
+                client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
+            } catch (e: WslRuntimeException) {
+                status = ScriptStatus.Stopped
+                client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
+            } finally {
+                try {
+                    client.sendCommand("_state scripting off", echo = false)
+                    onStop()
+                    scope.cancel()
+                } catch (e: Throwable) {
+                    logger.error(e) { "Problem terminating script: ${e.message}" }
+                }
             }
         }
     }
 
     override fun stop() {
         status = ScriptStatus.Stopped
-        scope.cancel()
     }
 
     override fun suspend() {

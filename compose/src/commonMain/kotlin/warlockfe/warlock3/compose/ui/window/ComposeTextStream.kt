@@ -61,6 +61,11 @@ class ComposeTextStream(
             lines = persistentListOf()
             isPartial = false
             usedComponents.clear()
+            snapshot.value = StreamSnapshot(
+                id = UUID.randomUUID(),
+                lines = lines.toPersistentList(),
+                components = components.toPersistentMap()
+            )
         }
     }
 

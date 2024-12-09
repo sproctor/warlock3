@@ -69,7 +69,7 @@ class WarlockScriptEngineRegistry(
         scriptStateChanged(instance)
         instance.start(client = client, argumentString = argString ?: "") {
             runningScripts -= instance
-            _scriptInfo.update { it - instance.id }
+            _scriptInfo.update { it.minus(instance.id) }
             client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
         }
     }
