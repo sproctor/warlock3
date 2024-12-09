@@ -22,7 +22,10 @@ dependencies {
     implementation(libs.sqldelight.driver.jvm)
     implementation(libs.kotlinx.cli)
     implementation(libs.appdirs)
+
+    // Logging and error reporting
     implementation(libs.slf4j.simple)
+    implementation(libs.sentry.kotlin)
 
     // Control updates
     implementation(libs.conveyor.control)

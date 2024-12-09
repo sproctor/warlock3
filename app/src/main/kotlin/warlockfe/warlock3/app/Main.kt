@@ -10,7 +10,6 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -21,8 +20,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
@@ -34,6 +31,7 @@ import ca.gosyer.appdirs.AppDirs
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +62,8 @@ import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
 
 fun main(args: Array<String>) {
+
+    initializeSentry()
 
     val parser = ArgParser("warlock3")
     val port by parser.option(
@@ -302,5 +302,11 @@ private fun GameState.getTitle(): String {
         is GameScreen.ConnectedGameState -> screen.viewModel.properties.value["character"] ?: "N/A"
         is GameScreen.NewGameState -> "New game"
         is GameScreen.ErrorState -> "Error"
+    }
+}
+
+fun initializeSentry() {
+    Sentry.init { options ->
+        options.dsn = "https://06169c08bd931ba4308dab95573400e2@o4508437273378816.ingest.us.sentry.io/4508437322727424"
     }
 }

@@ -33,6 +33,7 @@ kotlin-logging = "7.0.0"
 ##          ⬆ = "7.0.3"
 okio = "3.9.1"
 rhino = "1.7.15"
+sentryKotlin = "0.10.0"
 slf4j = "2.0.16"
 sqldelight = "2.0.2"
 
@@ -52,6 +53,7 @@ kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.r
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
+sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 sqldelight-async = { group = "app.cash.sqldelight", name = "async-extensions", version.ref = "sqldelight" }
