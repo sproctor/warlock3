@@ -2,6 +2,7 @@ package warlockfe.warlock3.scripting
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
@@ -68,7 +69,7 @@ class WarlockScriptEngineRegistry(
         scriptStateChanged(instance)
         instance.start(client = client, argumentString = argString ?: "") {
             runningScripts -= instance
-            scriptStateChanged(instance)
+            _scriptInfo.update { it - instance.id }
             client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
         }
     }
@@ -114,9 +115,9 @@ class WarlockScriptEngineRegistry(
 
     fun scriptStateChanged(instance: ScriptInstance) {
         if (instance.status == ScriptStatus.Stopped) {
-            _scriptInfo.value -= instance.id
+            _scriptInfo.update { it - instance.id }
         } else {
-            _scriptInfo.value += instance.id to ScriptInfo(instance.name, instance.status)
+            _scriptInfo.update { it.plus(instance.id to ScriptInfo(instance.name, instance.status)) }
         }
     }
 }

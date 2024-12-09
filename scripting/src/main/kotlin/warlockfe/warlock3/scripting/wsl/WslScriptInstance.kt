@@ -1,5 +1,6 @@
 package warlockfe.warlock3.scripting.wsl
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,6 +31,7 @@ class WslScriptInstance(
     private val scriptEngineRegistry: WarlockScriptEngineRegistry,
 ) : ScriptInstance {
 
+    private val logger = KotlinLogging.logger {}
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
             field = newStatus
@@ -42,11 +44,12 @@ class WslScriptInstance(
     private val suspendedChannel = Channel<Unit>(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun start(client: WarlockClient, argumentString: String, onStop: suspend () -> Unit) {
+    override suspend fun start(client: WarlockClient, argumentString: String, onStop: suspend () -> Unit) {
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
-        scope.launch {
-            try {
+
+        try {
+            scope.launch {
                 client.sendCommand("_state scripting on", echo = false)
                 lines = script.parse()
                 val globalVariables = client.characterId.flatMapLatest { id ->
@@ -85,15 +88,19 @@ class WslScriptInstance(
                     waitWhenSuspended()
                     line.statement.execute(context)
                 }
-            } catch (e: WslParseException) {
-                status = ScriptStatus.Stopped
-                client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
-            } catch (e: WslRuntimeException) {
-                status = ScriptStatus.Stopped
-                client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
-            } finally {
+            }
+        } catch (e: WslParseException) {
+            status = ScriptStatus.Stopped
+            client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
+        } catch (e: WslRuntimeException) {
+            status = ScriptStatus.Stopped
+            client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
+        } finally {
+            try {
                 client.sendCommand("_state scripting off", echo = false)
                 onStop()
+            } catch (e: Throwable) {
+                logger.error(e) { "Problem terminating script: ${e.message}" }
             }
         }
     }
