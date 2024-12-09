@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -43,6 +42,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.icons.Palette
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.HighlightRepository
@@ -352,7 +352,7 @@ fun ColorTextField(
                 }
             ) {
                 Icon(
-                    imageVector = Icons.Default.Palette,
+                    imageVector = Palette,
                     contentDescription = "Color picker"
                 )
             }
