@@ -529,6 +529,7 @@ class StormfrontClient(
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
         assert(componentId == null)
+        buffer?.let { _eventFlow.emit(ClientTextEvent(it.toString())) }
         appendToStream(buffer ?: StyledString(""), currentStream, ignoreWhenBlank)
         buffer = null
     }
