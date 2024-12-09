@@ -56,7 +56,7 @@ class JsInstance(
         private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
+    override fun start(client: WarlockClient, argumentString: String, onStop: suspend () -> Unit) {
         status = ScriptStatus.Running
         this.client = client
         thread = thread {
@@ -159,7 +159,9 @@ class JsInstance(
             } finally {
                 status = ScriptStatus.Stopped
                 Context.exit()
-                onStop()
+                runBlocking {
+                    onStop()
+                }
             }
         }
     }

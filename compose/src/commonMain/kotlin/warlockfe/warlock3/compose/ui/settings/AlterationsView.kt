@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.models.Alteration
@@ -116,11 +116,12 @@ fun AlterationsView(
             }
         }
     }
+    val scope = rememberCoroutineScope()
     editingAlteration?.let { alteration ->
         EditAlterationDialog(
             alteration = alteration,
             saveAlteration = { newAlteration ->
-                runBlocking {
+                scope.launch {
                     alterationRepository.save(currentCharacterId, newAlteration)
                     editingAlteration = null
                 }

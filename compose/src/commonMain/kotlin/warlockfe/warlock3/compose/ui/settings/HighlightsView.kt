@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.util.toColor
@@ -133,11 +133,12 @@ fun HighlightsView(
             }
         }
     }
+    val scope = rememberCoroutineScope()
     editingHighlight?.let { highlight ->
         EditHighlightDialog(
             highlight = highlight,
             saveHighlight = { newHighlight ->
-                runBlocking {
+                scope.launch {
                     if (currentCharacterId != null) {
                         highlightRepository.save(currentCharacterId, newHighlight)
                     } else {

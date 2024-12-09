@@ -24,10 +24,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.VariableRepository
@@ -52,6 +53,8 @@ fun VariablesView(
     }
     val characterId = currentCharacter.id
     var editingVariable by remember { mutableStateOf<Variable?>(null) }
+    val scope = rememberCoroutineScope()
+
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
@@ -94,7 +97,7 @@ fun VariablesView(
             name = variable.name,
             value = variable.value,
             saveVariable = { name, value ->
-                runBlocking {
+                scope.launch {
                     if (name != variable.name) {
                         variableRepository.delete(characterId, variable.name)
                     }

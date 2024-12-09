@@ -2,7 +2,6 @@ package warlockfe.warlock3.scripting
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
@@ -32,7 +31,11 @@ class WarlockScriptEngineRegistry(
     private var nextId = 0L
 
     private val engines = listOf(
-        WslEngine(highlightRepository = highlightRepository, variableRepository = variableRepository, scriptEngineRegistry = this),
+        WslEngine(
+            highlightRepository = highlightRepository,
+            variableRepository = variableRepository,
+            scriptEngineRegistry = this
+        ),
         JsEngine(variableRepository, this)
     )
 
@@ -66,9 +69,7 @@ class WarlockScriptEngineRegistry(
         instance.start(client = client, argumentString = argString ?: "") {
             runningScripts -= instance
             scriptStateChanged(instance)
-            runBlocking {
-                client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
-            }
+            client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
         }
     }
 
@@ -86,7 +87,7 @@ class WarlockScriptEngineRegistry(
         return null
     }
 
-    fun getEngineForExtension(extension: String): WarlockScriptEngine? {
+    private fun getEngineForExtension(extension: String): WarlockScriptEngine? {
         for (engine in engines) {
             for (validExtension in engine.extensions) {
                 if (extension == validExtension) {

@@ -8,7 +8,7 @@ interface ScriptInstance {
     val name: String
     val status: ScriptStatus
 
-    fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit)
+    fun start(client: WarlockClient, argumentString: String, onStop: suspend () -> Unit)
 
     fun stop()
 
