@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -239,7 +240,7 @@ private fun WindowViewContent(
     SelectionContainer {
         val scrollState = rememberLazyListState()
         ScrollableLazyColumn(
-            modifier = Modifier.background(backgroundColor).padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxSize().background(backgroundColor).padding(vertical = 4.dp),
             state = scrollState
         ) {
             items(
