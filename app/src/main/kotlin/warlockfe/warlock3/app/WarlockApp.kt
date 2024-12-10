@@ -76,7 +76,6 @@ fun FrameWindowScope.WarlockApp(
                     aliasRepository = appContainer.aliasRepository,
                     scriptDirRepository = appContainer.scriptDirRepository,
                     alterationRepository = appContainer.alterationRepository,
-                    clientSettingRepository = appContainer.clientSettings,
                 )
             }
         }
