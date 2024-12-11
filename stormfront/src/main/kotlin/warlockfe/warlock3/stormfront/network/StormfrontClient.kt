@@ -585,7 +585,9 @@ class StormfrontClient(
                 }
             }
         } else {
-            doSendCommand(line)
+            scope.launch {
+                doSendCommand(line)
+            }
             if (echo) {
                 printCommand(line)
             }
