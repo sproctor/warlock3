@@ -314,15 +314,15 @@ class GameViewModel(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
                 initialValue =
-                WindowUiState(
-                    name = "main",
-                    stream = streamRegistry.getOrCreateStream("main") as ComposeTextStream,
-                    window = null,
-                    highlights = emptyList(),
-                    presets = emptyMap(),
-                    defaultStyle = defaultStyles["default"]!!,
-                    allowSelection = true,
-                )
+                    WindowUiState(
+                        name = "main",
+                        stream = streamRegistry.getOrCreateStream("main") as ComposeTextStream,
+                        window = null,
+                        highlights = emptyList(),
+                        presets = emptyMap(),
+                        defaultStyle = defaultStyles["default"]!!,
+                        allowSelection = true,
+                    )
             )
 
     init {
@@ -420,20 +420,25 @@ class GameViewModel(
         if (event.type != KeyEventType.KeyDown) {
             return false
         }
+
+        val keyString = translateKeyPress(event)
+        val macroString = macros.value[keyString]
+
+        if (macroString != null) {
+            // TODO: notify when macro fails to parse
+            val tokens = parseMacroCommand(macroString).getOrNull() ?: return false
+
+            executeMacro(tokens, clipboard)
+
+            return true
+        }
+
         if (event.key.keyCode == Key.Enter.keyCode) {
             submit()
             return true
         }
 
-        val keyString = translateKeyPress(event)
-        val macroString = macros.value[keyString] ?: return false
-
-        // TODO: notify when macro fails to parse
-        val tokens = parseMacroCommand(macroString).getOrNull() ?: return false
-
-        executeMacro(tokens, clipboard)
-
-        return true
+        return false
     }
 
     private fun executeMacro(tokens: List<MacroToken>, clipboard: ClipboardManager) {
