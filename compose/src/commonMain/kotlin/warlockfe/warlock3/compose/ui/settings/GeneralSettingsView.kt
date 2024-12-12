@@ -96,7 +96,7 @@ fun GeneralSettingsView(
                 ).collectAsState(null)
                 var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
                     mutableStateOf(
-                        TextFieldValue(initialMaxLines ?: defaultMaxTypeAhead.toString())
+                        TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
                     )
                 }
                 TextField(
