@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface WarlockClient {
 
-    val maxTypeAhead: Int
+    var maxTypeAhead: Int
 
     val eventFlow: SharedFlow<ClientEvent>
 

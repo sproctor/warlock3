@@ -18,10 +18,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okio.Path
@@ -38,6 +42,7 @@ import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
@@ -114,8 +119,11 @@ class StormfrontClient(
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    override var maxTypeAhead: Int = 1
-        private set
+    override var maxTypeAhead: Int = defaultMaxTypeAhead
+        set(value) {
+            require(value >= 0)
+            field = value
+        }
 
     private lateinit var socket: Socket
 
@@ -133,6 +141,9 @@ class StormfrontClient(
 
     private val mainStream = getStream("main")
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
+
+    private val commandQueue = MutableStateFlow<List<String>>(emptyList())
+    private val currentTypeAhead = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
@@ -179,10 +190,12 @@ class StormfrontClient(
                             "pause",
                             WarlockStyle.Link("action" to "/pause ${it.key}")
                         )
+
                         ScriptStatus.Suspended -> text += StyledString(
                             "resume",
                             WarlockStyle.Link("action" to "/resume ${it.key}")
                         )
+
                         else -> { /* do nothing */
                         }
                     }
@@ -191,6 +204,17 @@ class StormfrontClient(
                 }
             }
         }
+        combine(commandQueue, currentTypeAhead) { commands, typeAhead -> commands to typeAhead }
+            .onEach { (commands, typeAhead) ->
+                if (maxTypeAhead == 0 || typeAhead < maxTypeAhead) {
+                    commands.firstOrNull()?.let { command ->
+                        currentTypeAhead.update { it + 1 }
+                        commandQueue.update { it.drop(1) }
+                        doSendCommand(command)
+                    }
+                }
+            }
+            .launchIn(scope)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -257,6 +281,7 @@ class StormfrontClient(
                                         if (event.id.equals("cmgr", true)) {
                                             parseText = false
                                         }
+
                                     is StormfrontStreamEvent -> {
                                         flushBuffer(true)
                                         currentStream = if (event.id != null) {
@@ -265,15 +290,19 @@ class StormfrontClient(
                                             mainStream
                                         }
                                     }
+
                                     is StormfrontClearStreamEvent ->
                                         getStream(event.id).clear()
+
                                     is StormfrontDataReceivedEvent -> {
                                         bufferText(StyledString(event.text))
                                     }
+
                                     is StormfrontEolEvent -> {
                                         // We're working under the assumption that an end tag is always on the same line as the start tag
                                         flushBuffer(event.ignoreWhenBlank)
                                     }
+
                                     is StormfrontAppEvent -> {
                                         val game = event.game
                                         val character = event.character
@@ -300,11 +329,17 @@ class StormfrontClient(
                                             .plus("game" to (event.game ?: ""))
                                         _properties.value = newProperties
                                     }
+
                                     is StormfrontOutputEvent ->
                                         outputStyle = event.style
+
                                     is StormfrontStyleEvent ->
                                         currentStyle = event.style
+
                                     is StormfrontPromptEvent -> {
+                                        if (currentTypeAhead.value > 0) {
+                                            currentTypeAhead.update { it - 1 }
+                                        }
                                         _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
                                         currentStream = mainStream
@@ -315,6 +350,7 @@ class StormfrontClient(
                                             isPrompting = true
                                         }
                                     }
+
                                     is StormfrontTimeEvent -> {
                                         val newTime = event.time.toLong() * 1000L
                                         val currentTime = time
@@ -326,10 +362,13 @@ class StormfrontClient(
                                             delta = newTime - System.currentTimeMillis() + 1000L
                                         }
                                     }
+
                                     is StormfrontRoundTimeEvent ->
                                         _properties.value += "roundtime" to event.time
+
                                     is StormfrontCastTimeEvent ->
                                         _properties.value += "casttime" to event.time
+
                                     is StormfrontSettingsInfoEvent -> {
                                         // We don't actually handle server settings
 
@@ -338,6 +377,7 @@ class StormfrontClient(
                                         // we put it here until someone discovers something else
                                         doSendCommand("")
                                     }
+
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
                                     is StormfrontProgressBarEvent -> {
                                         _eventFlow.emit(
@@ -356,19 +396,23 @@ class StormfrontClient(
                                                 (event.id to event.value.value.toString()) +
                                                 (event.id + "text" to event.text)
                                     }
+
                                     is StormfrontCompassEndEvent -> {
                                         _eventFlow.emit(ClientCompassEvent(directions.toPersistentHashSet()))
                                         directions.clear()
                                     }
+
                                     is StormfrontDirectionEvent -> {
                                         directions += event.direction
                                     }
+
                                     is StormfrontPropertyEvent -> {
                                         if (event.value != null)
                                             _properties.value += event.key to event.value
                                         else
                                             _properties.value -= event.key
                                     }
+
                                     is StormfrontComponentDefinitionEvent -> {
                                         // Should not happen on main stream, so don't clear prompt
                                         val styles = currentStyle?.let { persistentListOf(it) } ?: persistentListOf()
@@ -380,10 +424,12 @@ class StormfrontClient(
                                             ),
                                         )
                                     }
+
                                     is StormfrontComponentStartEvent -> {
                                         flushBuffer(true)
                                         componentId = event.id
                                     }
+
                                     StormfrontComponentEndEvent -> {
                                         if (componentId != null) {
                                             // Either replace the component in the map with the new value
@@ -403,6 +449,7 @@ class StormfrontClient(
                                             // mismatched component tags?
                                         }
                                     }
+
                                     StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
                                     is StormfrontStreamWindowEvent -> {
                                         val window = event.window
@@ -413,6 +460,7 @@ class StormfrontClient(
                                             subtitle = window.subtitle
                                         )
                                     }
+
                                     is StormfrontActionEvent -> {
                                         bufferText(
                                             StyledString(
@@ -421,9 +469,11 @@ class StormfrontClient(
                                             )
                                         )
                                     }
+
                                     is StormfrontUnhandledTagEvent -> {
                                         // mainStream.append(StyledString("Unhandled tag: ${event.tag}", WarlockStyle.Error))
                                     }
+
                                     is StormfrontParseErrorEvent -> {
                                         mainStream.appendLine(
                                             StyledString(
@@ -559,16 +609,19 @@ class StormfrontClient(
                         scriptManager.findScriptInstance(name)?.stop()
                     }
                 }
+
                 "pause" -> {
                     args?.split(' ')?.forEach { name ->
                         scriptManager.findScriptInstance(name)?.suspend()
                     }
                 }
+
                 "resume" -> {
                     args?.split(' ')?.forEach { name ->
                         scriptManager.findScriptInstance(name)?.resume()
                     }
                 }
+
                 "list" -> {
                     val scripts = scriptManager.runningScripts
                     if (scripts.isEmpty()) {
@@ -580,14 +633,13 @@ class StormfrontClient(
                         }
                     }
                 }
+
                 else -> {
                     print(StyledString("Invalid command.", WarlockStyle.Error))
                 }
             }
         } else {
-            scope.launch {
-                doSendCommand(line)
-            }
+            commandQueue.update { it + line }
             if (echo) {
                 printCommand(line)
             }

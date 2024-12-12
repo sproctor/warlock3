@@ -37,6 +37,8 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.defaultMaxScrollLines
+import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
+import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.prefs.scrollbackKey
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -85,6 +87,33 @@ fun GeneralSettingsView(
                     },
                     label = {
                         Text("Maximum lines in scroll back buffer")
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                val initialMaxTypeAhead by characterSettingsRepository.observe(
+                    characterId = currentCharacter.id, key = maxTypeAheadKey
+                ).collectAsState(null)
+                var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
+                    mutableStateOf(
+                        TextFieldValue(initialMaxLines ?: defaultMaxTypeAhead.toString())
+                    )
+                }
+                TextField(
+                    value = maxTypeAheadValue,
+                    onValueChange = {
+                        maxTypeAheadValue = it
+                        // TODO: use a view model here to handle scope
+                        GlobalScope.launch {
+                            characterSettingsRepository.save(
+                                characterId = currentCharacter.id,
+                                key = maxTypeAheadKey,
+                                value = it.text
+                            )
+                        }
+                    },
+                    label = {
+                        Text("Maximum commands to type ahead. 0 to disable buffer")
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )

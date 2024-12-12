@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 const val defaultMaxScrollLines = 5_000
 const val scrollbackKey = "scrollback"
 
+const val defaultMaxTypeAhead = 0
+const val maxTypeAheadKey = "typeahead"
+
 class CharacterSettingsRepository(
     private val characterSettingsQueries: CharacterSettingQueries,
     private val ioDispatcher: CoroutineDispatcher

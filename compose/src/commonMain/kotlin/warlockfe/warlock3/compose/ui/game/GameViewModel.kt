@@ -29,12 +29,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
@@ -61,7 +64,9 @@ import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.defaultStyles
+import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -336,6 +341,16 @@ class GameViewModel(
                         // don't care
                     }
                 }
+            }
+            .launchIn(viewModelScope)
+
+        character.transformLatest {
+            if (it != null) {
+                emitAll(characterSettingsRepository.observe(it.id, maxTypeAheadKey))
+            }
+        }
+            .onEach { maxTypeAhead ->
+                client.maxTypeAhead = maxTypeAhead?.toIntOrNull() ?: defaultMaxTypeAhead
             }
             .launchIn(viewModelScope)
     }
