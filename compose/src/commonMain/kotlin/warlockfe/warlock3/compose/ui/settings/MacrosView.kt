@@ -30,7 +30,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.macros.getLabel
+import warlockfe.warlock3.compose.macros.reverseKeyMappings
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.MacroRepository
 
@@ -65,15 +65,7 @@ fun MacrosView(
                 .weight(1f)
         ) {
             macros.forEach { macro ->
-                val parts = macro.first.split("+")
-                val text = buildString {
-                    for (i in 0..(parts.size - 2)) {
-                        append(parts[i])
-                        append("+")
-                    }
-                    val key = Key(parts.last().toLongOrNull() ?: 0)
-                    append(key.getLabel())
-                }
+                val text = macro.first
                 ListItem(
                     headlineContent = { Text(text) },
                     supportingContent = { Text(macro.second) },
@@ -150,6 +142,6 @@ fun stringToKey(value: String): Pair<Key, Set<String>> {
     for (i in 0..(parts.size - 2)) {
         modifiers.add(parts[i])
     }
-    val key = Key(parts.last().toLongOrNull() ?: 0)
+    val key = reverseKeyMappings[parts.last()] ?: Key(0)
     return key to modifiers
 }

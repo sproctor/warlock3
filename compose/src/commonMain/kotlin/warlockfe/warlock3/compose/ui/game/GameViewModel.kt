@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
+import warlockfe.warlock3.compose.macros.getLabel
 import warlockfe.warlock3.compose.macros.macroCommands
 import warlockfe.warlock3.compose.macros.parseMacroCommand
 import warlockfe.warlock3.compose.model.ViewHighlight
@@ -153,7 +154,9 @@ class GameViewModel(
         } else {
             macroRepository.observeGlobalMacros()
         }
-            .map { it.toMap() }
+            .map {
+                it.toMap()
+            }
     }
         .stateIn(
             scope = viewModelScope,
@@ -539,6 +542,7 @@ class GameViewModel(
         }
     }
 
+    // TODO: convert this into a simpler representation
     private fun translateKeyPress(event: KeyEvent): String {
         val keyString = StringBuilder()
         if (event.isCtrlPressed) {
@@ -553,7 +557,7 @@ class GameViewModel(
         if (event.isMetaPressed) {
             keyString.append("meta+")
         }
-        keyString.append(event.key.keyCode)
+        keyString.append(event.key.getLabel())
         return keyString.toString()
     }
 

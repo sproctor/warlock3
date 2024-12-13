@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
+import warlockfe.warlock3.compose.macros.getLabel
 import java.awt.event.KeyEvent
 
 @Composable
@@ -95,7 +96,7 @@ actual fun EditMacroDialog(
                             if (modifierKeys.contains("ctrl")) newKey.append("ctrl+")
                             if (modifierKeys.contains("alt")) newKey.append("alt+")
                             if (modifierKeys.contains("shift")) newKey.append("shift+")
-                            newKey.append(key.keyCode.toString())
+                            newKey.append(key.getLabel())
                             saveMacro(newKey.toString(), newValue)
                         }
                     }

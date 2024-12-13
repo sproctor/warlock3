@@ -53,8 +53,8 @@ private val keyMappings = mapOf(
     Key.Eight to "8",
     Key.Nine to "9",
     Key.Zero to "0",
-    Key.Minus to "-",
-    Key.Equals to "=",
+    Key.Minus to "Minus",
+    Key.Equals to "Equals",
     Key.A to "A",
     Key.B to "B",
     Key.C to "C",
@@ -91,13 +91,15 @@ private val keyMappings = mapOf(
     Key.NumPad7 to "NP7",
     Key.NumPad8 to "NP8",
     Key.NumPad9 to "NP9",
-    Key.NumPadDivide to "NP/",
-    Key.NumPadMultiply to "NP*",
-    Key.NumPadSubtract to "NP-",
-    Key.NumPadAdd to "NP+",
-    Key.NumPadDot to "NP.",
-    Key.NumPadEnter to "NPEnt",
+    Key.NumPadDivide to "NPDivide",
+    Key.NumPadMultiply to "NPMultiply",
+    Key.NumPadSubtract to "NPMinus",
+    Key.NumPadAdd to "NPAdd",
+    Key.NumPadDot to "NPDot",
+    Key.NumPadEnter to "NPEnter",
 )
+
+val reverseKeyMappings = keyMappings.entries.associate { (k, v) -> v to k }
 
 fun Key.getLabel(): String {
     val text = keyMappings.firstNotNullOfOrNull {
