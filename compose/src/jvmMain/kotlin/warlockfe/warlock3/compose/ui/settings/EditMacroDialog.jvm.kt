@@ -500,7 +500,7 @@ private fun KeyboardLayout(
                 onClick = { onClickKey(Key.NumPad0) },
                 width = 128.dp
             )
-            // Bug in Key.NumPadDot, workaround for https://github.com/JetBrains/compose-multiplatform/issues/4211
+            // Bug in Key.NumPadDot, workaround for https://youtrack.jetbrains.com/issue/CMP-4211
             val numpadDot = Key(KeyEvent.VK_DECIMAL, KeyEvent.KEY_LOCATION_NUMPAD)
             KeyButton(
                 key = ".",
