@@ -27,7 +27,7 @@ class WarlockApplication : Application() {
         configDir.mkdirs()
         val driver = AndroidSqliteDriver(Database.Schema, this, "prefs.db")
         val database = createDatabase(driver)
-        database.insertDefaultMacrosIfNeeded()
+        database.macroQueries.insertDefaultMacrosIfNeeded()
         appContainer = AndroidAppContainer(this, database, warlockDirs)
     }
 }
