@@ -671,8 +671,7 @@ class StormfrontClient(
         isPrompting = false
         val lines = text.split(newLinePattern)
         lines.dropLast(1).forEach { fullLine ->
-            mainStream.appendPartial(StyledString(fullLine, WarlockStyle.Mono))
-            mainStream.appendEol()
+            mainStream.appendPartialAndEol(StyledString(fullLine, WarlockStyle.Mono))
         }
         mainStream.appendPartial(StyledString(lines.last(), WarlockStyle.Mono))
     }
@@ -690,8 +689,7 @@ class StormfrontClient(
             _eventFlow.emit(ClientTextEvent(command))
         }
         val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
-        mainStream.appendPartial(StyledString(command, styles))
-        mainStream.appendEol()
+        mainStream.appendPartialAndEol(StyledString(command, styles))
     }
 
     override suspend fun debug(message: String) {

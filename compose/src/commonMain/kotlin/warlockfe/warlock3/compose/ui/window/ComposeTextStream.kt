@@ -35,24 +35,27 @@ class ComposeTextStream(
 
     override suspend fun appendPartial(text: StyledString) {
         mutex.withLock {
-            if (isPartial) {
-                val lastLine = lines.last()
-                lines = lines.set(lines.lastIndex, lastLine.copy(text = lastLine.text + text))
-            } else {
-                isPartial = true
-                doAppendLine(
-                    ignoreWhenBlank = false,
-                    text = text,
-                )
-            }
+            doAppendPartial(text)
         }
     }
 
-    override suspend fun appendEol() {
+    override suspend fun appendPartialAndEol(text: StyledString) {
         mutex.withLock {
-            if (!isPartial)
-                doAppendLine(StyledString(""), false)
+            doAppendPartial(text)
             isPartial = false
+        }
+    }
+
+    private fun doAppendPartial(text: StyledString) {
+        if (isPartial) {
+            val lastLine = lines.last()
+            lines = lines.set(lines.lastIndex, lastLine.copy(text = lastLine.text + text))
+        } else {
+            isPartial = true
+            doAppendLine(
+                ignoreWhenBlank = false,
+                text = text,
+            )
         }
     }
 

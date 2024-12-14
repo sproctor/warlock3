@@ -13,7 +13,7 @@ interface TextStream {
 
     suspend fun appendPartial(text: StyledString)
 
-    suspend fun appendEol()
+    suspend fun appendPartialAndEol(text: StyledString)
 
     suspend fun clear()
 
