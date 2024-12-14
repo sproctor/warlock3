@@ -33,6 +33,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.macros.reverseKeyMappings
+import warlockfe.warlock3.compose.ui.components.ConfirmationDialog
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.MacroRepository
@@ -52,6 +53,7 @@ fun MacrosView(
         macroRepository.observeOnlyCharacterMacros(currentCharacter!!.id)
     }.collectAsState(emptyList())
     var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
+    var confirmReset by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     Column {
@@ -106,19 +108,31 @@ fun MacrosView(
             horizontalArrangement = Arrangement.End
         ) {
             OutlinedButton(
-                onClick = {
-                    GlobalScope.launch {
-                        macroRepository.deleteAllGlobals()
-                        macroRepository.macroQueries.insertDefaultMacrosIfNeeded()
-                    }
-                }
+                onClick = { confirmReset = true}
             ) {
                 Text("Reset global macros")
             }
+            Spacer(Modifier.width(8.dp))
             Button(onClick = { editingMacro = Pair(null, "") }) {
                 Text("Create macro")
             }
         }
+    }
+    if (confirmReset) {
+        ConfirmationDialog(
+            title = "Reset global macros",
+            text = "Confirm that you want to delete all existing global macros and add the default macros",
+            onConfirm = {
+                confirmReset = false
+                GlobalScope.launch {
+                    macroRepository.deleteAllGlobals()
+                    macroRepository.macroQueries.insertDefaultMacrosIfNeeded()
+                }
+            },
+            onDismiss = {
+                confirmReset = false
+            }
+        )
     }
     editingMacro?.let { macro ->
         val (initialKey, modifiers) = macro.first?.let { stringToKey(it) } ?: Pair(null, emptySet())
