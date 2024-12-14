@@ -25,3 +25,6 @@ INSERT OR REPLACE INTO Macro VALUES ?;
 
 delete:
 DELETE FROM Macro WHERE characterId = :characterId AND key = :key;
+
+deleteAllGlobals:
+DELETE FROM Macro WHERE characterId = "global";

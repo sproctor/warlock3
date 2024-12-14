@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class MacroRepository(
-    private val macroQueries: MacroQueries,
+    val macroQueries: MacroQueries,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun observeGlobalMacros(): Flow<List<Pair<String, String>>> {
@@ -74,6 +74,12 @@ class MacroRepository(
             macroQueries.save(
                 Macro("global", key, value)
             )
+        }
+    }
+
+    suspend fun deleteAllGlobals() {
+        withContext(ioDispatcher) {
+            macroQueries.deleteAllGlobals()
         }
     }
 }

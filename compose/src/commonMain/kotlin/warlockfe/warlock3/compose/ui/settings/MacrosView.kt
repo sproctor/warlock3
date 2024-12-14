@@ -11,10 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,9 +33,11 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.macros.reverseKeyMappings
+import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.MacroRepository
 
+// TODO: use a ViewModel to handle business logic
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun MacrosView(
@@ -101,8 +105,18 @@ fun MacrosView(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            IconButton(onClick = { editingMacro = Pair(null, "") }) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
+            OutlinedButton(
+                onClick = {
+                    GlobalScope.launch {
+                        macroRepository.deleteAllGlobals()
+                        macroRepository.macroQueries.insertDefaultMacrosIfNeeded()
+                    }
+                }
+            ) {
+                Text("Reset global macros")
+            }
+            Button(onClick = { editingMacro = Pair(null, "") }) {
+                Text("Create macro")
             }
         }
     }

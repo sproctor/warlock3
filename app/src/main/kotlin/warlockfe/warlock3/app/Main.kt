@@ -128,7 +128,7 @@ fun main(args: Array<String>) {
 
     val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename", schema = Database.Schema)
     val database = createDatabase(driver)
-    database.insertDefaultMacrosIfNeeded()
+    database.macroQueries.insertDefaultMacrosIfNeeded()
 
     val appContainer = JvmAppContainer(database, warlockDirs)
     val clientSettings = appContainer.clientSettings
