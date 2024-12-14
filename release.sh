@@ -34,8 +34,8 @@ fi
 if [[ $1 == "" ]]; then
   echo "Building desktop release"
 
-  ./gradlew proguardReleaseJars
-#  ./gradlew jar
+#  ./gradlew proguardReleaseJars
+  ./gradlew jar
 fi
 
 if [[ $1 == "" || $1 == "--conveyor" ]]; then
