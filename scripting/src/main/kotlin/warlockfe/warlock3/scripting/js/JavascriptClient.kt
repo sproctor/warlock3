@@ -1,19 +1,17 @@
 package warlockfe.warlock3.scripting.js
 
-import warlockfe.warlock3.core.client.ClientNavEvent
-import warlockfe.warlock3.core.client.ClientPromptEvent
-import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.text.StyledString
-import warlockfe.warlock3.core.text.WarlockStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import warlockfe.warlock3.core.client.ClientNavEvent
+import warlockfe.warlock3.core.client.ClientPromptEvent
+import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.prefs.VariableRepository
+import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockStyle
 
 class JavascriptClient(
     val client: WarlockClient,
@@ -25,9 +23,6 @@ class JavascriptClient(
     private val promptChannel = Channel<Unit>(0)
     private val navChannel = Channel<Unit>(0)
 
-    private val mutex = Mutex()
-    private var typeAhead = 0
-
     private var loggingLevel = 30
 
     init {
@@ -35,15 +30,13 @@ class JavascriptClient(
             .onEach { event ->
                 when (event) {
                     is ClientPromptEvent -> {
-                        mutex.withLock {
-                            if (typeAhead > 0)
-                                typeAhead--
-                            promptChannel.trySend(Unit)
-                        }
+                        promptChannel.trySend(Unit)
                     }
+
                     ClientNavEvent -> {
                         navChannel.trySend(Unit)
                     }
+
                     else -> Unit
                 }
             }
@@ -126,12 +119,6 @@ class JavascriptClient(
 
     private suspend fun putCommand(command: String) {
         doWaitForRoundTime()
-        mutex.withLock {
-            typeAhead++
-        }
-        if (typeAhead > client.maxTypeAhead) {
-            waitForPrompt()
-        }
         log(5, "sending command: $command")
         client.sendCommand(command)
     }

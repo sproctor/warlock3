@@ -1,13 +1,11 @@
 package warlockfe.warlock3.core.client
 
-import warlockfe.warlock3.core.text.StyledString
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import warlockfe.warlock3.core.text.StyledString
 
 interface WarlockClient {
-
-    var maxTypeAhead: Int
 
     val eventFlow: SharedFlow<ClientEvent>
 
@@ -30,4 +28,6 @@ interface WarlockClient {
     suspend fun print(message: StyledString)
 
     suspend fun debug(message: String)
+
+    fun setMaxTypeAhead(value: Int)
 }

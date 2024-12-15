@@ -9,8 +9,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
@@ -54,10 +52,6 @@ class WslContext(
 
     private var loggingLevel = 30
 
-    private var typeAhead = 0
-
-    private val mutex = Mutex()
-
     private val navChannel = Channel<Unit>(0)
     private val promptChannel = Channel<Unit>(0)
 
@@ -66,20 +60,19 @@ class WslContext(
             .onEach { event ->
                 when (event) {
                     is ClientPromptEvent -> {
-                        mutex.withLock {
-                            if (typeAhead > 0)
-                                typeAhead--
-                            promptChannel.trySend(Unit)
-                        }
+                        promptChannel.trySend(Unit)
                     }
+
                     is ClientTextEvent -> {
                         listeners.forEach { (_, action) ->
                             action(event.text)
                         }
                     }
+
                     ClientNavEvent -> {
                         navChannel.trySend(Unit)
                     }
+
                     else -> Unit
                 }
             }
@@ -170,20 +163,10 @@ class WslContext(
 
     suspend fun putCommand(command: String) {
         waitForRoundTime()
-        mutex.withLock {
-            typeAhead++
-        }
-        if (typeAhead > client.maxTypeAhead) {
-            waitForPrompt()
-        }
-        log(5, "sending command: $command")
-        client.sendCommand(command)
+        sendCommand(command)
     }
 
     suspend fun sendCommand(command: String) {
-        mutex.withLock {
-            typeAhead++
-        }
         log(5, "sending command: $command")
         client.sendCommand(command)
     }
@@ -225,7 +208,7 @@ class WslContext(
 
     fun gosubReturn() {
         if (frameStack.size > 1) {
-            frameStack.removeLast()
+            frameStack.removeAt(frameStack.lastIndex)
         } else {
             throw WslRuntimeException("Return called outside of a subroutine")
         }

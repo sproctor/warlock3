@@ -352,7 +352,7 @@ class GameViewModel(
             }
         }
             .onEach { maxTypeAhead ->
-                client.maxTypeAhead = maxTypeAhead?.toIntOrNull() ?: defaultMaxTypeAhead
+                client.setMaxTypeAhead(maxTypeAhead?.toIntOrNull() ?: defaultMaxTypeAhead)
             }
             .launchIn(viewModelScope)
     }

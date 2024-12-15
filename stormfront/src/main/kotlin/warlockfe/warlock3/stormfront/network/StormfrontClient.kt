@@ -119,11 +119,7 @@ class StormfrontClient(
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    override var maxTypeAhead: Int = defaultMaxTypeAhead
-        set(value) {
-            require(value >= 0)
-            field = value
-        }
+    private var maxTypeAhead: Int = defaultMaxTypeAhead
 
     private lateinit var socket: Socket
 
@@ -699,5 +695,10 @@ class StormfrontClient(
     @Synchronized
     fun getStream(name: String): TextStream {
         return streamRegistry.getOrCreateStream(name)
+    }
+
+    override fun setMaxTypeAhead(value: Int) {
+        require(value >= 0)
+        maxTypeAhead = value
     }
 }
