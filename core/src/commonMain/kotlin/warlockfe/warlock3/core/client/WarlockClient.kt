@@ -23,7 +23,9 @@ interface WarlockClient {
 
     suspend fun disconnect()
 
-    suspend fun sendCommand(line: String, echo: Boolean = true)
+    suspend fun sendCommand(line: String, echo: Boolean = true): SendCommandType
+
+    suspend fun startScript(scriptCommand: String)
 
     suspend fun print(message: StyledString)
 

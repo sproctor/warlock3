@@ -233,6 +233,9 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         val max = argList.getOrNull(1)?.toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
         context.setScriptVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
     },
+    "run" to { context, args ->
+        context.runCommand(args)
+    },
     "removetextlistener" to { context, args ->
         parseArguments(args).forEach { arg ->
             context.removeListener(arg)

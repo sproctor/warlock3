@@ -37,6 +37,7 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.ProgressBarData
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.prefs.AlterationRepository
@@ -590,11 +591,12 @@ class StormfrontClient(
         }
     }
 
-    override suspend fun sendCommand(line: String, echo: Boolean) {
-        if (line.startsWith(scriptCommandPrefix)) {
+    override suspend fun sendCommand(line: String, echo: Boolean): SendCommandType {
+        return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
             scriptManager.startScript(this, scriptCommand)
             printCommand(line)
+            SendCommandType.SCRIPT
         } else if (line.startsWith(clientCommandPrefix)) {
             print(StyledString(line, WarlockStyle.Command))
             val clientCommand = line.drop(1)
@@ -634,16 +636,23 @@ class StormfrontClient(
                     print(StyledString("Invalid command.", WarlockStyle.Error))
                 }
             }
+            SendCommandType.ACTION
         } else {
             commandQueue.update { it + line }
             if (echo) {
                 printCommand(line)
             }
+            SendCommandType.COMMAND
         }
     }
 
     private suspend fun doSendCommand(line: String) {
         send("<c>$line\n")
+    }
+
+    override suspend fun startScript(scriptCommand: String) {
+        scriptManager.startScript(this, scriptCommand)
+        SendCommandType.SCRIPT
     }
 
     override suspend fun disconnect() {

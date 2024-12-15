@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
@@ -168,7 +169,13 @@ class WslContext(
 
     suspend fun sendCommand(command: String) {
         log(5, "sending command: $command")
-        client.sendCommand(command)
+        if (client.sendCommand(command) == SendCommandType.SCRIPT) {
+            stop()
+        }
+    }
+
+    suspend fun runCommand(scriptCommand: String) {
+        client.startScript(scriptCommand)
     }
 
     fun goto(label: String) {
