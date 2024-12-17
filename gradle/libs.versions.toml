@@ -10,13 +10,16 @@ hydraulic-conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room-schema = { id = "androidx.room", version.ref = "room"  }
 
 [versions]
 
 agp = "8.7.3"
 androidx-activity = "1.9.3"
 androidx-core-splashscreen = "1.0.1"
+androidxLifecycleViewmodel = "2.8.2"
+androidxSqlite = "2.5.0-alpha12"
 antlr = "4.13.2"
 apache-commons-text = "1.13.0"
 appdirs = "1.2.0"
@@ -31,18 +34,20 @@ kotlinx-coroutines =  "1.9.0"
 # 7.0.3 fails to build with proguard
 kotlin-logging = "7.0.0"
 ##          ⬆ = "7.0.3"
+ksp = "2.1.0-1.0.29"
 okio = "3.9.1"
 rhino = "1.7.15"
+room = "2.7.0-alpha12"
 sentryKotlin = "0.10.0"
 slf4j = "2.0.16"
 slf4jAndroid = "3.0.0"
-sqldelight = "2.0.2"
 
 [libraries]
 
 appdirs = { group = "ca.gosyer", name = "kotlin-multiplatform-appdirs", version.ref="appdirs" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
+androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycleViewmodel" }
 antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
 compose-color-picker = { group = "com.godaddy.android.colorpicker", name = "compose-color-picker", version.ref = "compose-color-picker" }
@@ -56,13 +61,9 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 slf4j-android = { module = "com.github.tony19:logback-android", version.ref = "slf4jAndroid" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
-sqldelight-async = { group = "app.cash.sqldelight", name = "async-extensions", version.ref = "sqldelight" }
-sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
-sqldelight-driver-android = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
-sqldelight-driver-jvm = { group = "app.cash.sqldelight", name = "sqlite-driver", version.ref = "sqldelight" }
-sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
-sqldelight-primitive-adapters = { group = "app.cash.sqldelight", name = "primitive-adapters", version.ref = "sqldelight" }
-sqlite-dialect = { group = "app.cash.sqldelight", name = "sqlite-3-24-dialect", version.ref = "sqldelight" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }

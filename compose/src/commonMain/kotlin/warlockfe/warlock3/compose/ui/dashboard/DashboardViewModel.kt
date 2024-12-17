@@ -107,7 +107,7 @@ class DashboardViewModel(
                     _message.value = "Invalid account"
                     return@launch
                 }
-                client.login(username = account.username, account.password)
+                client.login(username = account.username, account.password ?: "")
             } finally {
                 connectJob = null
                 busy = false

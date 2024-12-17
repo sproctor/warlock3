@@ -1,18 +1,13 @@
 package warlockfe.warlock3.core.prefs
 
-import app.cash.sqldelight.coroutines.asFlow
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import warlockfe.warlock3.core.prefs.sql.ClientSetting
-import warlockfe.warlock3.core.prefs.sql.ClientSettingQueries
-import warlockfe.warlock3.core.util.mapToOneOrNull
+import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
+import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 
 class ClientSettingRepository(
-    private val clientSettingQueries: ClientSettingQueries,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val clientSettingDao: ClientSettingDao,
 ) {
     suspend fun getWidth(): Int? {
         return getInt("width")
@@ -35,17 +30,11 @@ class ClientSettingRepository(
 //    }
 
     suspend fun get(key: String): String? {
-        return withContext(ioDispatcher) {
-            clientSettingQueries.getByKey(key).executeAsOneOrNull()?.value_
-        }
+        return clientSettingDao.getByKey(key)
     }
 
     private fun observe(key: String): Flow<String?> {
-        return clientSettingQueries.getByKey(key)
-            .asFlow()
-            .mapToOneOrNull()
-            .map { it?.value_ }
-            .flowOn(ioDispatcher)
+        return clientSettingDao.observeByKey(key)
     }
 
     private suspend fun getInt(key: String): Int? {
@@ -93,8 +82,8 @@ class ClientSettingRepository(
     }
 
     private suspend fun put(key: String, value: String?) {
-        withContext(ioDispatcher) {
-            clientSettingQueries.save(ClientSetting(key, value))
+        withContext(NonCancellable) {
+            clientSettingDao.save(ClientSettingEntity(key, value))
         }
     }
 }

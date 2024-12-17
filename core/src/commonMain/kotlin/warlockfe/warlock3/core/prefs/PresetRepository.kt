@@ -1,67 +1,31 @@
 package warlockfe.warlock3.core.prefs
 
-import app.cash.sqldelight.coroutines.asFlow
-import warlockfe.warlock3.core.prefs.sql.PresetStyle
-import warlockfe.warlock3.core.prefs.sql.PresetStyleQueries
-import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.util.mapToList
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
+import warlockfe.warlock3.core.prefs.mappers.toPresetStyleEntity
+import warlockfe.warlock3.core.prefs.mappers.toStyleDefinition
+import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.WarlockColor
 
 class PresetRepository(
-    private val presetStyleQueries: PresetStyleQueries,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val presetStyleQueries: PresetStyleDao,
 ) {
     fun observePresetsForCharacter(characterId: String): Flow<Map<String, StyleDefinition>> {
-        return presetStyleQueries.getByCharacter(
+        return presetStyleQueries.observeByCharacter(
             characterId = characterId
-        ) { presetId: String,
-            _: String,
-            textColor: WarlockColor,
-            backgroundColor: WarlockColor,
-            entireLine: Boolean,
-            bold: Boolean,
-            italic: Boolean,
-            underline: Boolean,
-            fontFamily: String?,
-            fontSize: Float? ->
-            Pair(
-                presetId, StyleDefinition(
-                    textColor = textColor,
-                    backgroundColor = backgroundColor,
-                    entireLine = entireLine,
-                    bold = bold,
-                    italic = italic,
-                    underline = underline,
-                    fontFamily = fontFamily,
-                    fontSize = fontSize,
-                )
-            )
-        }
-            .asFlow()
-            .mapToList()
-            .map { defaultStyles + it.toMap() }
-            .flowOn(ioDispatcher)
+        )
+            .map { preset -> defaultStyles + preset.associate { it.presetId to it.toStyleDefinition() } }
     }
 
     suspend fun save(characterId: String, key: String, style: StyleDefinition) {
-        withContext(ioDispatcher) {
+        withContext(NonCancellable) {
             presetStyleQueries.save(
-                PresetStyle(
-                    presetId = key,
+                style.toPresetStyleEntity(
+                    key = key,
                     characterId = characterId,
-                    textColor = style.textColor,
-                    backgroundColor = style.backgroundColor,
-                    entireLine = style.entireLine,
-                    bold = style.bold,
-                    italic = style.italic,
-                    underline = style.underline,
-                    fontFamily = style.fontFamily,
-                    fontSize = style.fontSize,
                 )
             )
         }

@@ -19,7 +19,7 @@ import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.AccountRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.models.Account
+import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeError
@@ -56,7 +56,7 @@ class SgeViewModel(
     private var characterName: String? = null
     private var gameCode: String? = null
 
-    val lastAccount: Flow<Account?> = flow {
+    val lastAccount: Flow<AccountEntity?> = flow {
         emit(
             clientSettingRepository.get("lastUsername")?.let { username ->
                 accountRepository.getByUsername(username)
@@ -131,11 +131,11 @@ class SgeViewModel(
         }
     }
 
-    fun accountSelected(account: Account) {
+    fun accountSelected(account: AccountEntity) {
         _state.value = SgeViewState.SgeLoadingGameList
         accountId = account.username
         scope.launch {
-            client.login(account.username, account.password)
+            client.login(account.username, account.password ?: "")
         }
     }
 
@@ -160,7 +160,7 @@ class SgeViewModel(
         _state.value = backStack.last()
     }
 
-    fun saveAccount(account: Account) {
+    fun saveAccount(account: AccountEntity) {
         logger.debug { "Saving account" }
         scope.launch {
             accountRepository.save(account)

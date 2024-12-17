@@ -12,13 +12,13 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import warlockfe.warlock3.core.prefs.models.Account
+import warlockfe.warlock3.core.prefs.models.AccountEntity
 
 @Composable
 fun AccountsView(
     initialUsername: String?,
     initialPassword: String?,
-    onAccountSelect: (Account) -> Unit,
+    onAccountSelect: (AccountEntity) -> Unit,
     onCancel: () -> Unit,
 ) {
     var username by remember(initialUsername) { mutableStateOf(initialUsername ?: "") }
@@ -87,7 +87,7 @@ fun AccountsView(
                 Text("Cancel")
             }
             Button(
-                onClick = { onAccountSelect(Account(username, password)) }
+                onClick = { onAccountSelect(AccountEntity(username, password)) }
             ) {
                 Text("Next")
             }

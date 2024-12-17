@@ -1,7 +1,8 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.sqldelight)
     alias(libs.plugins.android.library)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room.schema)
 }
 
 kotlin {
@@ -16,10 +17,7 @@ kotlin {
                 api(libs.kotlin.logging)
 
                 // Preferences
-                implementation(libs.sqldelight.runtime)
-                implementation(libs.sqldelight.async)
-                implementation(libs.sqldelight.coroutines)
-                implementation(libs.sqldelight.primitive.adapters)
+                api(libs.room.runtime)
 
                 implementation(libs.appdirs)
 
@@ -36,6 +34,12 @@ kotlin {
     jvmToolchain(jvmToolchainVersion.toInt())
 }
 
+dependencies {
+    // Room
+    add("kspAndroid", libs.room.compiler)
+    add("kspJvm", libs.room.compiler)
+}
+
 android {
     namespace = "warlockfe.warlock3.core"
     compileSdk = 34
@@ -47,12 +51,6 @@ android {
     }
 }
 
-sqldelight {
-    databases {
-        create("Database") {
-            packageName.set("warlockfe.warlock3.core.prefs.sql")
-            dialect(libs.sqlite.dialect)
-            // verifyMigrations = true
-        }
-    }
+room {
+    schemaDirectory("$projectDir/room")
 }

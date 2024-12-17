@@ -1,32 +1,22 @@
 package warlockfe.warlock3.core.prefs
 
-import app.cash.sqldelight.coroutines.asFlow
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import warlockfe.warlock3.core.prefs.sql.ScriptDir
-import warlockfe.warlock3.core.prefs.sql.ScriptDirQueries
+import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
+import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.core.util.mapToList
 
 class ScriptDirRepository(
-    private val scriptDirQueries: ScriptDirQueries,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val scriptDirDao: ScriptDirDao,
     private val warlockDirs: WarlockDirs,
 ) {
     fun observeScriptDirs(characterId: String): Flow<List<String>> {
-        return scriptDirQueries.getByCharacter(characterId).asFlow().mapToList().flowOn(ioDispatcher)
-    }
-
-    fun observeGlobalScriptDirs(): Flow<List<String>> {
-        return observeScriptDirs("global")
+        return scriptDirDao.observeByCharacter(characterId)
     }
 
     suspend fun getMappedScriptDirs(characterId: String): List<String> {
-        return withContext(ioDispatcher) {
-            scriptDirQueries.getByCharacterWithGlobal(characterId).executeAsList() + getDefaultDir()
-        }
+        return scriptDirDao.getByCharacterWithGlobal(characterId) + getDefaultDir()
     }
 
     fun getDefaultDir(): String {
@@ -34,18 +24,16 @@ class ScriptDirRepository(
     }
 
     suspend fun save(characterId: String, path: String) {
-        withContext(ioDispatcher) {
-            scriptDirQueries.save(
-                ScriptDir(
-                    characterId = characterId, path = path
-                )
+        withContext(NonCancellable) {
+            scriptDirDao.save(
+                ScriptDirEntity(characterId = characterId, path = path)
             )
         }
     }
 
     suspend fun delete(characterId: String, path: String) {
-        withContext(ioDispatcher) {
-            scriptDirQueries.delete(
+        withContext(NonCancellable) {
+            scriptDirDao.delete(
                 characterId = characterId,
                 path = path,
             )

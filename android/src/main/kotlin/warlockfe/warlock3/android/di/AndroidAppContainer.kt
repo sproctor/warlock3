@@ -6,8 +6,8 @@ import okio.Path.Companion.toOkioPath
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SimuGameCredentials
@@ -19,7 +19,7 @@ import warlockfe.warlock3.stormfront.network.StormfrontClient
 
 class AndroidAppContainer(
     context: Context,
-    database: Database,
+    database: PrefsDatabase,
     warlockDirs: WarlockDirs,
 ) : AppContainer(
     database = database,

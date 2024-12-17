@@ -1,85 +1,77 @@
 package warlockfe.warlock3.core.prefs
 
-import app.cash.sqldelight.coroutines.asFlow
-import warlockfe.warlock3.core.prefs.sql.Macro
-import warlockfe.warlock3.core.prefs.sql.MacroQueries
-import warlockfe.warlock3.core.util.mapToList
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.dao.MacroDao
+import warlockfe.warlock3.core.prefs.models.MacroEntity
 
 class MacroRepository(
-    val macroQueries: MacroQueries,
-    private val ioDispatcher: CoroutineDispatcher,
+    val macroDao: MacroDao,
 ) {
+
+    suspend fun getGlobalMacros(): List<MacroEntity> {
+        return macroDao.getGlobals()
+    }
+
     fun observeGlobalMacros(): Flow<List<Pair<String, String>>> {
-        return macroQueries
-            .getGlobals()
-            .asFlow()
-            .mapToList()
-            .map { list -> list.map { Pair(it.key, it.value_) } }
-            .flowOn(ioDispatcher)
+        return macroDao
+            .observeGlobals()
+            .map { list -> list.map { Pair(it.key, it.value) } }
     }
 
     fun observeCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
         assert(characterId != "global")
-        return macroQueries
-            .getForCharacter(characterId)
-            .asFlow()
-            .mapToList()
+        return macroDao
+            .observeByCharacterWithGlobals(characterId)
             .map { list ->
-                list.map { Pair(it.key, it.value_) }
+                list.map { Pair(it.key, it.value) }
             }
-            .flowOn(ioDispatcher)
     }
 
     fun observeOnlyCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
         assert(characterId != "global")
-        return macroQueries
-            .getByCharacter(characterId)
-            .asFlow()
-            .mapToList()
+        return macroDao
+            .observeByCharacter(characterId)
             .map { list ->
-                list.map { Pair(it.key, it.value_) }
+                list.map { Pair(it.key, it.value) }
             }
-            .flowOn(ioDispatcher)
     }
 
     suspend fun delete(characterId: String, key: String) {
         assert(characterId != "global")
-        withContext(ioDispatcher) {
-            macroQueries.delete(characterId, key)
+        withContext(NonCancellable) {
+            macroDao.delete(characterId, key)
         }
     }
 
     suspend fun deleteGlobal(key: String) {
-        withContext(ioDispatcher) {
-            macroQueries.delete("global", key)
+        withContext(NonCancellable) {
+            macroDao.delete("global", key)
         }
     }
 
     suspend fun put(characterId: String, key: String, value: String) {
         assert(characterId != "global")
-        withContext(ioDispatcher) {
-            macroQueries.save(
-                Macro(characterId, key, value)
+        withContext(NonCancellable) {
+            macroDao.save(
+                MacroEntity(characterId, key, value)
             )
         }
     }
 
     suspend fun putGlobal(key: String, value: String) {
-        withContext(ioDispatcher) {
-            macroQueries.save(
-                Macro("global", key, value)
+        withContext(NonCancellable) {
+            macroDao.save(
+                MacroEntity("global", key, value)
             )
         }
     }
 
     suspend fun deleteAllGlobals() {
-        withContext(ioDispatcher) {
-            macroQueries.deleteAllGlobals()
+        withContext(NonCancellable) {
+            macroDao.deleteAllGlobals()
         }
     }
 }

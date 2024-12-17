@@ -26,6 +26,7 @@ kotlin {
                 implementation(libs.kotlinx.collections.immutable)
                 implementation(compose.components.resources)
                 implementation(libs.appdirs)
+                implementation(libs.androidx.lifecycle.viewmodel.compose)
             }
         }
         val androidMain by getting {

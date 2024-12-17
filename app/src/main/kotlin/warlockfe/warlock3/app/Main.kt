@@ -26,7 +26,8 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import androidx.room.Room
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import ca.gosyer.appdirs.AppDirs
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
@@ -34,6 +35,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -49,11 +51,10 @@ import warlockfe.warlock3.compose.ui.window.StreamRegistryImpl
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
+import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.core.util.createDatabase
 import java.io.File
 import java.nio.file.Path
 import javax.swing.UIManager
@@ -126,18 +127,21 @@ fun main(args: Array<String>) {
         File(oldDbFilename).copyTo(File(dbFilename))
     }
 
-    val driver = JdbcSqliteDriver(url = "jdbc:sqlite:$dbFilename", schema = Database.Schema)
-    val database = createDatabase(driver)
-    database.macroQueries.insertDefaultMacrosIfNeeded()
+    val database = getPrefsDatabase(dbFilename)
 
     val appContainer = JvmAppContainer(database, warlockDirs)
+
+    runBlocking {
+        appContainer.macroRepository.insertDefaultMacrosIfNeeded()
+    }
+
     val clientSettings = appContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
 
     val games = mutableStateListOf(
         GameState(
-            windowRepository = WindowRepository(database.windowSettingsQueries, Dispatchers.IO),
+            windowRepository = WindowRepository(database.windowSettingsDao(), CoroutineScope(Dispatchers.IO)),
             streamRegistry = StreamRegistryImpl()
         ).apply {
             if (credentials != null) {
@@ -256,8 +260,8 @@ fun main(args: Array<String>) {
                                 games.add(
                                     GameState(
                                         windowRepository = WindowRepository(
-                                            database.windowSettingsQueries,
-                                            Dispatchers.IO
+                                            database.windowSettingsDao(),
+                                            CoroutineScope(Dispatchers.IO),
                                         ),
                                         streamRegistry = StreamRegistryImpl()
                                     )
@@ -309,4 +313,12 @@ fun initializeSentry() {
     Sentry.init { options ->
         options.dsn = "https://06169c08bd931ba4308dab95573400e2@o4508437273378816.ingest.us.sentry.io/4508437322727424"
     }
+}
+
+private fun getPrefsDatabase(filename: String): PrefsDatabase {
+    return Room.databaseBuilder<PrefsDatabase>(
+        name = filename,
+    )
+        .setDriver(BundledSQLiteDriver())
+        .build()
 }

@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
@@ -42,8 +43,8 @@ fun WarlockApp(
 ) {
     val gameState = GameState(
         windowRepository = WindowRepository(
-            windowSettingsQueries = appContainer.database.windowSettingsQueries,
-            ioDispatcher = Dispatchers.IO,
+            windowSettingsQueries = appContainer.database.windowSettingsDao(),
+            externalScope = CoroutineScope(Dispatchers.IO),
         ),
         streamRegistry = StreamRegistryImpl()
     )

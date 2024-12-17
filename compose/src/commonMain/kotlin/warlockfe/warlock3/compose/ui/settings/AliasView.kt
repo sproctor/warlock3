@@ -34,7 +34,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AliasRepository
-import warlockfe.warlock3.core.prefs.sql.Alias
+import warlockfe.warlock3.core.prefs.models.AliasEntity
 import java.util.*
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -47,7 +47,7 @@ fun AliasView(
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id ?: "global"
     val aliases by aliasRepository.observeByCharacter(currentCharacterId).collectAsState(emptyList())
-    var editingAlias by remember { mutableStateOf<Alias?>(null) }
+    var editingAlias by remember { mutableStateOf<AliasEntity?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -90,7 +90,7 @@ fun AliasView(
             horizontalArrangement = Arrangement.End
         ) {
             IconButton(onClick = {
-                editingAlias = Alias(
+                editingAlias = AliasEntity(
                     id = UUID.randomUUID(),
                     characterId = currentCharacterId,
                     pattern = "",
@@ -117,8 +117,8 @@ fun AliasView(
 
 @Composable
 fun EditAliasDialog(
-    alias: Alias,
-    saveAlias: (Alias) -> Unit,
+    alias: AliasEntity,
+    saveAlias: (AliasEntity) -> Unit,
     onClose: () -> Unit,
 ) {
     var pattern by remember(alias.pattern) { mutableStateOf(alias.pattern) }
@@ -130,7 +130,7 @@ fun EditAliasDialog(
             TextButton(
                 onClick = {
                     saveAlias(
-                        Alias(
+                        AliasEntity(
                             id = alias.id,
                             characterId = alias.characterId,
                             pattern = pattern,

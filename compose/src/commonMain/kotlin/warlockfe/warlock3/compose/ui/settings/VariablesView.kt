@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.prefs.models.Variable
+import warlockfe.warlock3.core.prefs.models.VariableEntity
 
 @Composable
 fun VariablesView(
@@ -52,7 +52,7 @@ fun VariablesView(
         return
     }
     val characterId = currentCharacter.id
-    var editingVariable by remember { mutableStateOf<Variable?>(null) }
+    var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
@@ -86,7 +86,7 @@ fun VariablesView(
             horizontalArrangement = Arrangement.End
         ) {
             IconButton(
-                onClick = { editingVariable = Variable("", "") }
+                onClick = { editingVariable = VariableEntity(characterId, "", "") }
             ) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = "add")
             }

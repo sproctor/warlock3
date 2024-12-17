@@ -1,22 +1,27 @@
 package warlockfe.warlock3.core.prefs
 
-import app.cash.sqldelight.coroutines.asFlow
-import warlockfe.warlock3.core.prefs.sql.WindowSettingsQueries
-import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.util.mapToList
-import warlockfe.warlock3.core.window.Window
-import warlockfe.warlock3.core.window.WindowLocation
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
+import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.window.Window
+import warlockfe.warlock3.core.window.WindowLocation
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WindowRepository(
-    private val windowSettingsQueries: WindowSettingsQueries,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val windowSettingsQueries: WindowSettingsDao,
+    externalScope: CoroutineScope,
 ) {
 
     private val _windows = MutableStateFlow(
@@ -43,9 +48,7 @@ class WindowRepository(
     init {
         characterId.flatMapLatest { characterId ->
             if (characterId != null) {
-                windowSettingsQueries.getByCharacter(characterId)
-                    .asFlow()
-                    .mapToList()
+                windowSettingsQueries.observeByCharacter(characterId)
             } else {
                 flow {
 
@@ -85,7 +88,7 @@ class WindowRepository(
                 }
 
             }
-            .launchIn(CoroutineScope(ioDispatcher))
+            .launchIn(externalScope)
     }
 
     fun setCharacterId(characterId: String) {
@@ -113,75 +116,42 @@ class WindowRepository(
     }
 
     fun observeOpenWindows(characterId: String): Flow<Set<String>> {
-        return windowSettingsQueries.getOpenWindows(characterId)
-            .asFlow()
-            .mapToList()
+        return windowSettingsQueries.observeOpenWindows(characterId)
             .map { it.toSet() }
-            .flowOn(ioDispatcher)
     }
 
     suspend fun openWindow(characterId: String, name: String) {
-        withContext(ioDispatcher) {
-            windowSettingsQueries.transaction {
-                val openWindows =
-                    windowSettingsQueries.getByLocation(characterId, location = WindowLocation.TOP).executeAsList()
-                windowSettingsQueries.openWindow(
-                    characterId = characterId,
-                    name = name,
-                    location = WindowLocation.TOP,
-                    position = openWindows.size
-                )
-            }
+        withContext(NonCancellable) {
+            windowSettingsQueries.openWindow(characterId, name)
         }
     }
 
     suspend fun closeWindow(characterId: String, name: String) {
-        withContext(ioDispatcher) {
-            windowSettingsQueries.transaction {
-                windowSettingsQueries.getByName(characterId = characterId, name = name)
-                    .executeAsOneOrNull()?.let { window ->
-                        check(window.location != null)
-                        check(window.position != null)
-                        windowSettingsQueries.closeWindow(
-                            characterId = characterId,
-                            name = name,
-                        )
-                        windowSettingsQueries.closeGap(
-                            characterId = characterId,
-                            location = window.location,
-                            position = window.position
-                        )
-                    }
-            }
+        withContext(NonCancellable) {
+            windowSettingsQueries.closeWindow(characterId, name)
         }
     }
 
     suspend fun moveWindow(characterId: String, name: String, location: WindowLocation) {
-        withContext(ioDispatcher) {
-            windowSettingsQueries.transaction {
-                val oldWindow = windowSettingsQueries.getByName(characterId = characterId, name = name).executeAsOne()
-                val newPosition = windowSettingsQueries.getByLocation(characterId = characterId, location = location)
-                    .executeAsList().size
-                windowSettingsQueries.openWindow(characterId, name, location = location, position = newPosition)
-                windowSettingsQueries.closeGap(characterId, oldWindow.location, oldWindow.position)
-            }
+        withContext(NonCancellable) {
+            windowSettingsQueries.moveWindow(characterId, name, location)
         }
     }
 
     suspend fun setWindowWidth(characterId: String, name: String, width: Int) {
-        withContext(ioDispatcher) {
+        withContext(NonCancellable) {
             windowSettingsQueries.updateWidth(characterId = characterId, name = name, width = width)
         }
     }
 
     suspend fun setWindowHeight(characterId: String, name: String, height: Int) {
-        withContext(ioDispatcher) {
+        withContext(NonCancellable) {
             windowSettingsQueries.updateHeight(characterId = characterId, name = name, height = height)
         }
     }
 
     suspend fun setStyle(characterId: String, name: String, style: StyleDefinition) {
-        withContext(ioDispatcher) {
+        withContext(NonCancellable) {
             windowSettingsQueries.setStyle(
                 characterId = characterId,
                 name = name,
@@ -194,7 +164,7 @@ class WindowRepository(
     }
 
     suspend fun switchPositions(characterId: String, location: WindowLocation, pos1: Int, pos2: Int) {
-        withContext(ioDispatcher) {
+        withContext(NonCancellable) {
             windowSettingsQueries.switchPositions(
                 characterId = characterId,
                 location = location,

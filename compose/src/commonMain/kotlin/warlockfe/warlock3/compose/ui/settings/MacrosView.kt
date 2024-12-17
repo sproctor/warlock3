@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
@@ -126,7 +125,7 @@ fun MacrosView(
                 confirmReset = false
                 GlobalScope.launch {
                     macroRepository.deleteAllGlobals()
-                    macroRepository.macroQueries.insertDefaultMacrosIfNeeded()
+                    macroRepository.insertDefaultMacrosIfNeeded()
                 }
             },
             onDismiss = {

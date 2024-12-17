@@ -5,8 +5,8 @@ import okio.Path.Companion.toPath
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -18,7 +18,7 @@ import warlockfe.warlock3.stormfront.network.SgeClientImpl
 import warlockfe.warlock3.stormfront.network.StormfrontClient
 
 class JvmAppContainer(
-    database: Database,
+    database: PrefsDatabase,
     warlockDirs: WarlockDirs,
 ) : AppContainer(
     database = database,

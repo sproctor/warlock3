@@ -1,8 +1,8 @@
 package warlockfe.warlock3.stormfront.util
 
-import warlockfe.warlock3.core.prefs.models.Alteration
+import warlockfe.warlock3.core.prefs.models.AlterationEntity
 
-class CompiledAlteration(private val alteration: Alteration) {
+class CompiledAlteration(private val alteration: AlterationEntity) {
     private val regex =
         Regex(alteration.pattern, setOfNotNull(if (alteration.ignoreCase) RegexOption.IGNORE_CASE else null))
 
@@ -22,5 +22,5 @@ class CompiledAlteration(private val alteration: Alteration) {
 
 data class AlterationResult(
     val text: String?, // null means keep original text
-    val alteration: Alteration
+    val alteration: AlterationEntity
 )

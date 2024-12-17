@@ -18,10 +18,10 @@ import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.prefs.sql.Database
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -29,51 +29,37 @@ import java.io.StringReader
 import java.util.*
 
 abstract class AppContainer(
-    val database: Database,
+    val database: PrefsDatabase,
     ioDispatcher: CoroutineDispatcher,
     warlockDirs: WarlockDirs,
 ) {
 
-    val variableRepository = VariableRepository(database.variableQueries, ioDispatcher)
+    val variableRepository = VariableRepository(database.variableDao())
     val characterRepository =
         CharacterRepository(
-            database.characterQueries,
-            ioDispatcher
+            characterDao = database.characterDao(),
         )
-    val macroRepository = MacroRepository(database.macroQueries, ioDispatcher)
-    val accountRepository = AccountRepository(database.accountQueries, ioDispatcher)
-    val highlightRepository =
-        HighlightRepository(
-            database.highlightQueries,
-            database.highlightStyleQueries,
-            ioDispatcher
-        )
-    val presetRepository = PresetRepository(database.presetStyleQueries, ioDispatcher)
-    val clientSettings =
-        ClientSettingRepository(
-            database.clientSettingQueries,
-            ioDispatcher
-        )
+    val macroRepository = MacroRepository(database.macroDao())
+    val accountRepository = AccountRepository(database.accountDao())
+    val highlightRepository = HighlightRepository(database.highlightDao())
+    val presetRepository = PresetRepository(database.presetStyleDao())
+    val clientSettings = ClientSettingRepository(database.clientSettingDao())
     val scriptDirRepository =
         ScriptDirRepository(
-            scriptDirQueries = database.scriptDirQueries,
-            ioDispatcher = ioDispatcher,
+            scriptDirDao = database.scriptDirDao(),
             warlockDirs = warlockDirs,
         )
     val characterSettingsRepository =
         CharacterSettingsRepository(
-            characterSettingsQueries = database.characterSettingQueries,
-            ioDispatcher = ioDispatcher
+            characterSettingsQueries = database.characterSettingDao(),
         )
     val aliasRepository =
         AliasRepository(
-            database.aliasQueries,
-            ioDispatcher = ioDispatcher
+            database.aliasDao(),
         )
     val alterationRepository =
         AlterationRepository(
-            database.alterationQueries,
-            ioDispatcher = ioDispatcher
+            database.alterationDao(),
         )
     @OptIn(ExperimentalResourceApi::class)
     val themeProperties = Properties().apply {

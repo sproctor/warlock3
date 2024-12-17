@@ -1,34 +1,24 @@
 package warlockfe.warlock3.core.prefs
 
-import warlockfe.warlock3.core.prefs.models.Account
-import warlockfe.warlock3.core.prefs.sql.AccountQueries
-import warlockfe.warlock3.core.prefs.sql.Account as DatabaseAccount
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.dao.AccountDao
+import warlockfe.warlock3.core.prefs.models.AccountEntity
 
 class AccountRepository(
-    private val accountQueries: AccountQueries,
-    private val ioDispatcher: CoroutineDispatcher,
+    private val accountDao: AccountDao,
 ) {
-    suspend fun getAll(): List<Account> {
-        return withContext(ioDispatcher) {
-            accountQueries.getAll()
-                .executeAsList()
-                .map { Account(it.username, it.password ?: "") }
-        }
+    suspend fun getAll(): List<AccountEntity> {
+        return accountDao.getAll()
     }
 
-    suspend fun getByUsername(username: String): Account? {
-        return withContext(ioDispatcher) {
-            accountQueries.getByUsername(username)
-                .executeAsOneOrNull()
-                ?.let { Account(it.username, it.password ?: "") }
-        }
+    suspend fun getByUsername(username: String): AccountEntity? {
+        return accountDao.getByUsername(username)
     }
 
-    suspend fun save(account: Account) {
-        withContext(ioDispatcher) {
-            accountQueries.save(DatabaseAccount(account.username, account.password))
+    suspend fun save(account: AccountEntity) {
+        withContext(NonCancellable) {
+            accountDao.save(account)
         }
     }
 }

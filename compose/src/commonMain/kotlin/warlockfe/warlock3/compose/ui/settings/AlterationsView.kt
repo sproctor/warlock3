@@ -37,7 +37,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
-import warlockfe.warlock3.core.prefs.models.Alteration
+import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import java.util.*
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -51,7 +51,7 @@ fun AlterationsView(
     val currentCharacterId = selectedCharacter?.id ?: "global"
     val alterations by alterationRepository.observeByCharacter(currentCharacterId)
         .collectAsState(emptyList())
-    var editingAlteration by remember { mutableStateOf<Alteration?>(null) }
+    var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -102,8 +102,9 @@ fun AlterationsView(
             horizontalArrangement = Arrangement.End
         ) {
             IconButton(onClick = {
-                editingAlteration = Alteration(
+                editingAlteration = AlterationEntity(
                     id = UUID.randomUUID(),
+                    characterId = currentCharacterId,
                     pattern = "",
                     sourceStream = null,
                     destinationStream = null,
@@ -122,7 +123,7 @@ fun AlterationsView(
             alteration = alteration,
             saveAlteration = { newAlteration ->
                 scope.launch {
-                    alterationRepository.save(currentCharacterId, newAlteration)
+                    alterationRepository.save(newAlteration)
                     editingAlteration = null
                 }
             },
@@ -133,8 +134,8 @@ fun AlterationsView(
 
 @Composable
 fun EditAlterationDialog(
-    alteration: Alteration,
-    saveAlteration: (Alteration) -> Unit,
+    alteration: AlterationEntity,
+    saveAlteration: (AlterationEntity) -> Unit,
     onClose: () -> Unit,
 ) {
     var pattern by remember { mutableStateOf(alteration.pattern) }
@@ -151,8 +152,9 @@ fun EditAlterationDialog(
             TextButton(
                 onClick = {
                     saveAlteration(
-                        Alteration(
+                        AlterationEntity(
                             id = alteration.id,
+                            characterId = alteration.characterId,
                             pattern = pattern,
                             sourceStream = sourceStream,
                             destinationStream = destinationStream,

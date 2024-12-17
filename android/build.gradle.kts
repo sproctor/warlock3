@@ -84,7 +84,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
 
     // SQL dependencies
-    implementation(libs.sqldelight.driver.android)
+    implementation(libs.sqlite.bundled)
 
     implementation(libs.slf4j.api)
     implementation(libs.slf4j.android)
