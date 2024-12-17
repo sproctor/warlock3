@@ -116,7 +116,8 @@ class StormfrontClient(
 
     private val newLinePattern = Regex("\r?\n")
 
-    private var fileLogger: FileLogger
+    private var completeFileLogger = FileLogger(logPath / "unknown", "complete", Dispatchers.IO)
+    private var simpleFileLogger: FileLogger? = null
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
@@ -158,7 +159,6 @@ class StormfrontClient(
     private var buffer: StyledString? = null
 
     init {
-        fileLogger = FileLogger(logPath / "unknown", Dispatchers.IO)
         windows["warlockscripts"] = StormfrontWindow(
             name = "warlockscripts",
             title = "Running scripts",
@@ -268,7 +268,7 @@ class StormfrontClient(
                         // This is the standard Stormfront parser
                         val line: String? = reader.readLine()
                         if (line != null) {
-                            fileLogger.write(line)
+                            completeFileLogger.write(line)
                             debug(line)
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
@@ -306,7 +306,9 @@ class StormfrontClient(
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
-                                            fileLogger = FileLogger(logPath / "${event.game}_${event.character}", Dispatchers.IO)
+                                            val path = logPath / "${event.game}_${event.character}"
+                                            completeFileLogger = FileLogger(path, "complete", Dispatchers.IO)
+                                            simpleFileLogger = FileLogger(path, "simple", Dispatchers.IO)
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -468,7 +470,7 @@ class StormfrontClient(
                                     }
 
                                     is StormfrontUnhandledTagEvent -> {
-                                        // mainStream.append(StyledString("Unhandled tag: ${event.tag}", WarlockStyle.Error))
+                                        debug("Unhandled tag: ${event.tag}")
                                     }
 
                                     is StormfrontParseErrorEvent -> {
@@ -504,7 +506,8 @@ class StormfrontClient(
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    fileLogger.write(line)
+                                    completeFileLogger.write(line)
+                                    simpleFileLogger?.write(line)
                                     rawPrint(line)
                                 }
                             } else {
@@ -576,7 +579,13 @@ class StormfrontClient(
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
         assert(componentId == null)
-        buffer?.let { _eventFlow.emit(ClientTextEvent(it.toString())) }
+        buffer?.let {
+            val message = it.toString() // Should this have a newline appended?
+            if (message.isNotBlank() || !ignoreWhenBlank) {
+                _eventFlow.emit(ClientTextEvent(message))
+                simpleFileLogger?.write(message)
+            }
+        }
         appendToStream(buffer ?: StyledString(""), currentStream, ignoreWhenBlank)
         buffer = null
     }
@@ -647,7 +656,14 @@ class StormfrontClient(
     }
 
     private suspend fun doSendCommand(line: String) {
-        send("<c>$line\n")
+        withContext(Dispatchers.IO) {
+            simpleFileLogger?.write(line + "\n")
+            val toSend = "<c>$line\n"
+            completeFileLogger.write(toSend)
+            if (!socket.isOutputShutdown) {
+                socket.getOutputStream().write(toSend.toByteArray(charset))
+            }
+        }
     }
 
     override suspend fun startScript(scriptCommand: String) {
@@ -661,15 +677,6 @@ class StormfrontClient(
         }
         mainStream.appendLine(StyledString("Connection closed by server."))
         _connected.value = false
-    }
-
-    private suspend fun send(toSend: String) {
-        withContext(Dispatchers.IO) {
-            fileLogger.write(toSend)
-            if (!socket.isOutputShutdown) {
-                socket.getOutputStream().write(toSend.toByteArray(charset))
-            }
-        }
     }
 
     private suspend fun rawPrint(text: String) {

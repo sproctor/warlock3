@@ -8,6 +8,7 @@ import java.time.format.DateTimeFormatter
 
 class FileLogger(
     private val directory: Path,
+    private val prefix: String,
     ioDispatcher: CoroutineDispatcher,
 ) {
 
@@ -28,6 +29,6 @@ class FileLogger(
     }
 
     private fun formatFilename(datetime: LocalDateTime): String {
-        return datetime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".log"
+        return prefix + datetime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".log"
     }
 }
