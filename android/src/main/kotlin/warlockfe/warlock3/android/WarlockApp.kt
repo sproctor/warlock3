@@ -46,7 +46,7 @@ fun WarlockApp(
             windowSettingsDao = appContainer.database.windowSettingsDao(),
             externalScope = CoroutineScope(Dispatchers.IO),
         ),
-        streamRegistry = StreamRegistryImpl()
+        streamRegistry = StreamRegistryImpl(Dispatchers.IO)
     )
     var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
     var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
