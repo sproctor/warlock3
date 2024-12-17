@@ -252,7 +252,7 @@ class GameViewModel(
                                 styles = highlight.styles.mapValues { it.value.toSpanStyle() }
                             )
                         } catch (e: Throwable) {
-                            // TODO: notify about error
+                            client.debug("Error while parsing highlight (${e.message}): $highlights")
                             null
                         }
                     }
