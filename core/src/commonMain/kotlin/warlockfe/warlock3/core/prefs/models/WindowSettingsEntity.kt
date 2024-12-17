@@ -12,10 +12,10 @@ import warlockfe.warlock3.core.window.WindowLocation
 data class WindowSettingsEntity(
     val characterId: String,
     val name: String,
-    val width: Int,
-    val height: Int,
-    val location: WindowLocation,
-    val position: Int,
+    val width: Int?,
+    val height: Int?,
+    val location: WindowLocation?,
+    val position: Int?,
     @ColumnInfo(defaultValue = "-1")
     val textColor: WarlockColor,
     @ColumnInfo(defaultValue = "-1")

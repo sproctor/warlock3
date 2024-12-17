@@ -46,7 +46,7 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         VariableEntity::class,
         WindowSettingsEntity::class,
     ],
-    version = 10,
+    version = 11,
 //    autoMigrations = [
 //        AutoMigration(from = 10, to = 11)
 //    ]

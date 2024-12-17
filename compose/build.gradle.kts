@@ -27,6 +27,7 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation(libs.appdirs)
                 implementation(libs.androidx.lifecycle.viewmodel.compose)
+                implementation(libs.sqlite.bundled)
             }
         }
         val androidMain by getting {

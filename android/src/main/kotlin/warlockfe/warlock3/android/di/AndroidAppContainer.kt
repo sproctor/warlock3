@@ -1,6 +1,7 @@
 package warlockfe.warlock3.android.di
 
 import android.content.Context
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.Dispatchers
 import okio.Path.Companion.toOkioPath
 import warlockfe.warlock3.compose.AppContainer
@@ -19,10 +20,10 @@ import warlockfe.warlock3.stormfront.network.StormfrontClient
 
 class AndroidAppContainer(
     context: Context,
-    database: PrefsDatabase,
+    databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
 ) : AppContainer(
-    database = database,
+    databaseBuilder = databaseBuilder,
     ioDispatcher = Dispatchers.IO,
     warlockDirs = warlockDirs,
 ) {

@@ -2,7 +2,7 @@ package warlockfe.warlock3.android
 
 import android.app.Application
 import androidx.room.Room
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.android.di.AndroidAppContainer
 import warlockfe.warlock3.compose.AppContainer
@@ -26,19 +26,17 @@ class WarlockApplication : Application() {
             logDir = filesDir.path + "/logs"
         )
         configDir.mkdirs()
-        val database = getPrefsDatabase(getDatabasePath("prefs.db").absolutePath)
+        val database = getPrefsDatabaseBuilder(getDatabasePath("prefs.db").absolutePath)
         appContainer = AndroidAppContainer(this, database, warlockDirs)
         runBlocking {
             appContainer.macroRepository.insertDefaultMacrosIfNeeded()
         }
     }
 
-    private fun getPrefsDatabase(filename: String): PrefsDatabase {
+    private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> {
         return Room.databaseBuilder<PrefsDatabase>(
             context = this,
             name = filename,
         )
-            .setDriver(BundledSQLiteDriver())
-            .build()
     }
 }

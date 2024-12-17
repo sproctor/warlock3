@@ -27,7 +27,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
 import androidx.room.Room
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.room.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
@@ -127,9 +127,9 @@ fun main(args: Array<String>) {
         File(oldDbFilename).copyTo(File(dbFilename))
     }
 
-    val database = getPrefsDatabase(dbFilename)
+    val databaseBuilder = getPrefsDatabaseBuilder(dbFilename)
 
-    val appContainer = JvmAppContainer(database, warlockDirs)
+    val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
 
     runBlocking {
         appContainer.macroRepository.insertDefaultMacrosIfNeeded()
@@ -141,7 +141,7 @@ fun main(args: Array<String>) {
 
     val games = mutableStateListOf(
         GameState(
-            windowRepository = WindowRepository(database.windowSettingsDao(), CoroutineScope(Dispatchers.IO)),
+            windowRepository = WindowRepository(appContainer.database.windowSettingsDao(), CoroutineScope(Dispatchers.IO)),
             streamRegistry = StreamRegistryImpl()
         ).apply {
             if (credentials != null) {
@@ -260,7 +260,7 @@ fun main(args: Array<String>) {
                                 games.add(
                                     GameState(
                                         windowRepository = WindowRepository(
-                                            database.windowSettingsDao(),
+                                            appContainer.database.windowSettingsDao(),
                                             CoroutineScope(Dispatchers.IO),
                                         ),
                                         streamRegistry = StreamRegistryImpl()
@@ -315,10 +315,8 @@ fun initializeSentry() {
     }
 }
 
-private fun getPrefsDatabase(filename: String): PrefsDatabase {
+private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> {
     return Room.databaseBuilder<PrefsDatabase>(
         name = filename,
     )
-        .setDriver(BundledSQLiteDriver())
-        .build()
 }

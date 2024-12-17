@@ -11,10 +11,10 @@ plugins {
 
 android {
     namespace = "warlockfe.warlock3.android"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         applicationId = "warlockfe.warlock3"
         versionCode = 1
         versionName = version.toString()
@@ -82,9 +82,6 @@ dependencies {
 
     // Splash screen compatibility pre-android 12
     implementation(libs.androidx.core.splashscreen)
-
-    // SQL dependencies
-    implementation(libs.sqlite.bundled)
 
     implementation(libs.slf4j.api)
     implementation(libs.slf4j.android)

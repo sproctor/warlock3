@@ -1,5 +1,10 @@
 package warlockfe.warlock3.compose
 
+import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -29,11 +34,32 @@ import java.io.StringReader
 import java.util.*
 
 abstract class AppContainer(
-    val database: PrefsDatabase,
+    databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     ioDispatcher: CoroutineDispatcher,
     warlockDirs: WarlockDirs,
 ) {
-
+    val database = databaseBuilder
+        .setDriver(BundledSQLiteDriver())
+        .addMigrations(
+            object : Migration(10, 11) {
+                override fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL("DROP TABLE Alteration")
+                    connection.execSQL("""
+                        CREATE TABLE alteration (
+                            id BLOB NOT NULL PRIMARY KEY,
+                            characterId TEXT NOT NULL,
+                            pattern TEXT NOT NULL,
+                            sourceStream TEXT,
+                            destinationStream TEXT,
+                            result TEXT,
+                            ignoreCase INTEGER NOT NULL,
+                            keepOriginal INTEGER NOT NULL
+                        );
+                    """.trimIndent())
+                }
+            }
+        )
+        .build()
     val variableRepository = VariableRepository(database.variableDao())
     val characterRepository =
         CharacterRepository(

@@ -19,7 +19,6 @@ dependencies {
     implementation(compose.materialIconsExtended)
     implementation(compose.components.resources)
     implementation(libs.compose.color.picker)
-    implementation(libs.sqlite.bundled)
     implementation(libs.kotlinx.cli)
     implementation(libs.appdirs)
 

@@ -131,7 +131,7 @@ interface WindowSettingsDao {
         WHERE characterId = :characterId AND location = :location AND position > :position;
     """
     )
-    suspend fun closeGap(characterId: String, location: WindowLocation, position: Int)
+    suspend fun closeGap(characterId: String, location: WindowLocation?, position: Int?)
 
     @Query(
         """
