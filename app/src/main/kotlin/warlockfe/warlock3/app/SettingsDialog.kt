@@ -21,6 +21,7 @@ import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
@@ -39,6 +40,7 @@ fun SettingsDialog(
     characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
     scriptDirRepository: ScriptDirRepository,
+    clientSettingRepository: ClientSettingRepository,
     closeDialog: () -> Unit,
 ) {
     Window(
@@ -74,6 +76,7 @@ fun SettingsDialog(
                     scriptDirRepository = scriptDirRepository,
                     alterationRepository = alterationRepository,
                     characterRepository = characterRepository,
+                    clientSettingRepository = clientSettingRepository,
                 )
             }
         }

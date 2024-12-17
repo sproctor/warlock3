@@ -1,6 +1,7 @@
 package warlockfe.warlock3.app
 
 import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -16,6 +17,7 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.ThemeSetting
 
 @Composable
 fun FrameWindowScope.WarlockApp(
@@ -25,11 +27,17 @@ fun FrameWindowScope.WarlockApp(
     showUpdateDialog: () -> Unit,
 ) {
     var showSettings by remember { mutableStateOf(false) }
-
-    AppTheme {
+    val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
+    AppTheme(
+        useDarkTheme = when (themeSetting) {
+            ThemeSetting.AUTO -> isSystemInDarkTheme()
+            ThemeSetting.LIGHT -> false
+            ThemeSetting.DARK -> true
+        }
+    ) {
         CompositionLocalProvider(
             LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
-                hoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f),
+                hoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                 unhoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
             )
         ) {
@@ -76,6 +84,7 @@ fun FrameWindowScope.WarlockApp(
                     aliasRepository = appContainer.aliasRepository,
                     scriptDirRepository = appContainer.scriptDirRepository,
                     alterationRepository = appContainer.alterationRepository,
+                    clientSettingRepository = appContainer.clientSettings,
                 )
             }
         }

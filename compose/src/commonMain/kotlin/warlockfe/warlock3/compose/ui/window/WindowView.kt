@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -239,58 +241,65 @@ private fun WindowViewContent(
 
     SelectionContainer {
         val scrollState = rememberLazyListState()
-        ScrollableLazyColumn(
-            modifier = Modifier.fillMaxSize().background(backgroundColor).padding(vertical = 4.dp),
-            state = scrollState
+        CompositionLocalProvider(
+            LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
+                hoverColor = textColor.copy(alpha = 0.5f),
+                unhoverColor = textColor.copy(alpha = 0.12f)
+            )
         ) {
-            items(
-                items = lines,
-                key = { it.serialNumber }
-            ) { streamLine ->
-                val line = streamLine.toWindowLine(
-                    highlights = highlights,
-                    presets = presets,
-                    components = components,
-                ) { action ->
-                    logger.debug { "action clicked: $action" }
-                    onActionClicked(action)
-                }
-                if (line != null) {
-                    Box(
-                        modifier = Modifier.fillParentMaxWidth()
-                            .background(
-                                line.entireLineStyle?.backgroundColor?.toColor()
-                                    ?: Color.Unspecified
+            ScrollableLazyColumn(
+                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(vertical = 4.dp),
+                state = scrollState
+            ) {
+                items(
+                    items = lines,
+                    key = { it.serialNumber }
+                ) { streamLine ->
+                    val line = streamLine.toWindowLine(
+                        highlights = highlights,
+                        presets = presets,
+                        components = components,
+                    ) { action ->
+                        logger.debug { "action clicked: $action" }
+                        onActionClicked(action)
+                    }
+                    if (line != null) {
+                        Box(
+                            modifier = Modifier.fillParentMaxWidth()
+                                .background(
+                                    line.entireLineStyle?.backgroundColor?.toColor()
+                                        ?: Color.Unspecified
+                                )
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            BasicText(
+                                text = line.text,
+                                style = TextStyle(
+                                    color = textColor,
+                                    fontFamily = fontFamily,
+                                    fontSize = fontSize
+                                ),
                             )
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        BasicText(
-                            text = line.text,
-                            style = TextStyle(
-                                color = textColor,
-                                fontFamily = fontFamily,
-                                fontSize = fontSize
-                            ),
-                        )
+                        }
                     }
                 }
             }
-        }
 
-        // This probably shouldn't cause a recomposition
-        var prevLastSerial by remember { mutableStateOf(-1L) }
-        val lastSerial = lines.lastOrNull()?.serialNumber
-        LaunchedEffect(lastSerial) {
-            if (lastSerial != null) {
-                // If we're at the spot we last scrolled to
-                val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                    ?.let { lines.getOrNull(it)?.serialNumber }
-                    ?: -1L
-                if ((lastVisibleSerial >= prevLastSerial || lastVisibleSerial == -1L) && lines.lastIndex > 0) { // scroll to the end if we were at the end
-                    scrollState.scrollToItem(lines.lastIndex)
+            // This probably shouldn't cause a recomposition
+            var prevLastSerial by remember { mutableStateOf(-1L) }
+            val lastSerial = lines.lastOrNull()?.serialNumber
+            LaunchedEffect(lastSerial) {
+                if (lastSerial != null) {
+                    // If we're at the spot we last scrolled to
+                    val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                        ?.let { lines.getOrNull(it)?.serialNumber }
+                        ?: -1L
+                    if ((lastVisibleSerial >= prevLastSerial || lastVisibleSerial == -1L) && lines.lastIndex > 0) { // scroll to the end if we were at the end
+                        scrollState.scrollToItem(lines.lastIndex)
+                    }
+                    // remember the last serial
+                    prevLastSerial = lastSerial
                 }
-                // remember the last serial
-                prevLastSerial = lastSerial
             }
         }
     }

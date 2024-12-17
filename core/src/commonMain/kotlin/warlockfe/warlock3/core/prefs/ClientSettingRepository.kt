@@ -2,6 +2,7 @@ package warlockfe.warlock3.core.prefs
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -23,6 +24,10 @@ class ClientSettingRepository(
 
     suspend fun getIgnoreUpdates(): Boolean {
         return getBoolean("ignoreUpdates") ?: false
+    }
+
+    fun observeTheme(): Flow<ThemeSetting> {
+        return observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
     }
 
 //    fun observeScale(): Flow<Float?> {
@@ -60,6 +65,10 @@ class ClientSettingRepository(
 //    suspend fun putScale(value: Float) {
 //        putFloat("scale", value)
 //    }
+
+    suspend fun putTheme(value: ThemeSetting) {
+        put("theme", value.name)
+    }
 
     suspend fun putLastUsername(value: String?) {
         put("lastUsername", value)

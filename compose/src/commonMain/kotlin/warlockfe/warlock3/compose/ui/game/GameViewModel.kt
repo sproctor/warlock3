@@ -22,10 +22,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -294,7 +292,6 @@ class GameViewModel(
                     highlights = highlights,
                     presets = presets,
                     defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                    allowSelection = !name.equals("warlockscripts", true)
                 )
             }
         }
@@ -309,7 +306,6 @@ class GameViewModel(
                 highlights = highlights,
                 presets = presets,
                 defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                allowSelection = true,
             )
         }
             .stateIn(
@@ -323,7 +319,6 @@ class GameViewModel(
                         highlights = emptyList(),
                         presets = emptyMap(),
                         defaultStyle = defaultStyles["default"]!!,
-                        allowSelection = true,
                     )
             )
 

@@ -13,5 +13,4 @@ class WindowUiState(
     val defaultStyle: StyleDefinition,
     val highlights: List<ViewHighlight>,
     val presets: Map<String, StyleDefinition>,
-    val allowSelection: Boolean,
 )

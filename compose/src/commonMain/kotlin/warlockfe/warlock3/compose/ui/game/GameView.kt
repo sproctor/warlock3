@@ -51,6 +51,7 @@ fun GameView(
         val subWindows = viewModel.windowUiStates.collectAsState(emptyList())
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         GameTextWindows(
+            modifier = Modifier.fillMaxWidth().weight(1f),
             subWindowUiStates = subWindows.value,
             mainWindowUiState = mainWindow.value,
             topHeight = viewModel.topHeight.collectAsState(null).value,
@@ -80,7 +81,8 @@ fun GameView(
 }
 
 @Composable
-fun ColumnScope.GameTextWindows(
+fun GameTextWindows(
+    modifier: Modifier,
     subWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState,
     topHeight: Int?,
@@ -98,7 +100,7 @@ fun ColumnScope.GameTextWindows(
     saveStyle: (String, StyleDefinition) -> Unit,
 ) {
     // Container for all window views
-    Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+    Row(modifier = modifier) {
         // Left column
         val leftWindows =
             subWindowUiStates.filter { it.window?.location == WindowLocation.LEFT }.sortedBy { it.window?.position }
