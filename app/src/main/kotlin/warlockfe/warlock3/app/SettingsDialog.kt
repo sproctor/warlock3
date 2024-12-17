@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.PermanentNavigationDrawer
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,21 +64,23 @@ fun SettingsDialog(
                 }
             }
         ) {
-            Box(Modifier.padding(16.dp)) {
-                SettingsContent(
-                    page = state,
-                    currentCharacter = currentCharacter,
-                    variableRepository = variableRepository,
-                    macroRepository = macroRepository,
-                    presetRepository = presetRepository,
-                    highlightRepository = highlightRepository,
-                    characterSettingsRepository = characterSettingsRepository,
-                    aliasRepository = aliasRepository,
-                    scriptDirRepository = scriptDirRepository,
-                    alterationRepository = alterationRepository,
-                    characterRepository = characterRepository,
-                    clientSettingRepository = clientSettingRepository,
-                )
+            Surface {
+                Box(Modifier.padding(16.dp)) {
+                    SettingsContent(
+                        page = state,
+                        currentCharacter = currentCharacter,
+                        variableRepository = variableRepository,
+                        macroRepository = macroRepository,
+                        presetRepository = presetRepository,
+                        highlightRepository = highlightRepository,
+                        characterSettingsRepository = characterSettingsRepository,
+                        aliasRepository = aliasRepository,
+                        scriptDirRepository = scriptDirRepository,
+                        alterationRepository = alterationRepository,
+                        characterRepository = characterRepository,
+                        clientSettingRepository = clientSettingRepository,
+                    )
+                }
             }
         }
     }

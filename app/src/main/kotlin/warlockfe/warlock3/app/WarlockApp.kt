@@ -37,8 +37,8 @@ fun FrameWindowScope.WarlockApp(
     ) {
         CompositionLocalProvider(
             LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
-                hoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                unhoverColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f)
+                hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
         ) {
             val characterId = when (val screen = gameState.screen) {

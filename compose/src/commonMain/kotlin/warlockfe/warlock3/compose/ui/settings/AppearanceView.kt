@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.ui.settings
 
+import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -35,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -149,9 +149,12 @@ fun AppearanceView(
             onSelect = { currentCharacterState.value = it },
         )
         Spacer(Modifier.height(16.dp))
+        val barColor = presets["default"]?.textColor?.toColor() ?: MaterialTheme.colorScheme.onSurface
         CompositionLocalProvider(
-            LocalTextStyle provides TextStyle(
-                color = presets["default"]?.textColor?.toColor() ?: Color.Unspecified
+            LocalContentColor provides (presets["default"]?.textColor?.toColor() ?: LocalContentColor.current),
+            LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
+                hoverColor = barColor.copy(alpha = 0.5f),
+                unhoverColor = barColor.copy(alpha = 0.12f)
             ),
         ) {
             ScrollableColumn(
@@ -242,9 +245,11 @@ fun ColumnScope.PresetSettings(
         presets.forEach { preset ->
             val style = styleMap[preset]
             if (style != null) {
-                Row {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(
-                        modifier = Modifier.width(160.dp).align(Alignment.CenterVertically),
+                        modifier = Modifier.width(120.dp).align(Alignment.CenterVertically),
                         text = preset.replaceFirstChar { it.uppercase() },
                     )
                     OutlinedButton(
@@ -258,14 +263,14 @@ fun ColumnScope.PresetSettings(
                         }
                     ) {
                         Row {
-                            Text("Content: ")
+                            Text("Content: ", maxLines = 1)
                             Box(
                                 Modifier.size(16.dp).background(style.textColor.toColor())
                                     .border(1.dp, Color.Black)
                             )
                         }
                     }
-                    Spacer(Modifier.width(16.dp))
+
                     OutlinedButton(
                         onClick = {
                             editColor = Pair(style.backgroundColor) { color ->
@@ -277,14 +282,14 @@ fun ColumnScope.PresetSettings(
                         }
                     ) {
                         Row {
-                            Text("Background: ")
+                            Text("Background: ", maxLines = 1)
                             Box(
                                 Modifier.size(16.dp).background(style.backgroundColor.toColor())
                                     .border(1.dp, Color.Black)
                             )
                         }
                     }
-                    Spacer(Modifier.width(16.dp))
+
                     OutlinedButton(
                         onClick = {
                             editFont = Pair(style) { fontUpdate ->
@@ -298,9 +303,8 @@ fun ColumnScope.PresetSettings(
                             }
                         }
                     ) {
-                        Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
+                        Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}", maxLines = 1)
                     }
-                    Spacer(Modifier.width(8.dp))
                 }
             }
         }
