@@ -43,7 +43,7 @@ fun WarlockApp(
 ) {
     val gameState = GameState(
         windowRepository = WindowRepository(
-            windowSettingsQueries = appContainer.database.windowSettingsDao(),
+            windowSettingsDao = appContainer.database.windowSettingsDao(),
             externalScope = CoroutineScope(Dispatchers.IO),
         ),
         streamRegistry = StreamRegistryImpl()

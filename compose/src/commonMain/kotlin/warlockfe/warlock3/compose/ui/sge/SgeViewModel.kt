@@ -3,11 +3,10 @@ package warlockfe.warlock3.compose.ui.sge
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -36,7 +35,7 @@ class SgeViewModel(
     sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
     private val gameState: GameState,
-) : AutoCloseable {
+) : ViewModel() {
 
     private val logger = KotlinLogging.logger { }
 
@@ -49,7 +48,6 @@ class SgeViewModel(
     private val backStack = mutableStateListOf<SgeViewState>()
 
     private val client = sgeClientFactory.create(host = host, port = port)
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val job: Job
 
     private var accountId: String? = null
@@ -65,7 +63,7 @@ class SgeViewModel(
     }
 
     init {
-        job = scope.launch {
+        job = viewModelScope.launch {
             if (client.connect().isFailure) {
                 logger.debug { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
@@ -111,7 +109,7 @@ class SgeViewModel(
                                 characterName!!
                             )
 
-                        scope.launch {
+                        viewModelScope.launch {
                             characterRepository.saveCharacter(character)
                             clientSettingRepository.putLastUsername(accountId)
                         }
@@ -124,7 +122,6 @@ class SgeViewModel(
                         } catch (e: UnknownHostException) {
                             gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
                         }
-                        close()
                     }
                 }
             }
@@ -134,7 +131,7 @@ class SgeViewModel(
     fun accountSelected(account: AccountEntity) {
         _state.value = SgeViewState.SgeLoadingGameList
         accountId = account.username
-        scope.launch {
+        viewModelScope.launch {
             client.login(account.username, account.password ?: "")
         }
     }
@@ -142,7 +139,7 @@ class SgeViewModel(
     fun gameSelected(game: SgeGame) {
         _state.value = SgeViewState.SgeLoadingCharacterList(game)
         gameCode = game.code
-        scope.launch {
+        viewModelScope.launch {
             client.selectGame(game.code)
         }
     }
@@ -150,7 +147,7 @@ class SgeViewModel(
     fun characterSelected(game: SgeGame, character: SgeCharacter) {
         _state.value = SgeViewState.SgeConnectingToGame(game, character)
         characterName = character.name
-        scope.launch {
+        viewModelScope.launch {
             client.selectCharacter(character.code)
         }
     }
@@ -162,7 +159,7 @@ class SgeViewModel(
 
     fun saveAccount(account: AccountEntity) {
         logger.debug { "Saving account" }
-        scope.launch {
+        viewModelScope.launch {
             accountRepository.save(account)
         }
     }
@@ -172,7 +169,8 @@ class SgeViewModel(
         _state.value = newState
     }
 
-    override fun close() {
+    override fun onCleared() {
+        super.onCleared()
         client.close()
         job.cancel()
     }

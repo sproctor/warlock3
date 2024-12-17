@@ -26,7 +26,7 @@ kotlin {
                 implementation(libs.kotlinx.collections.immutable)
                 implementation(compose.components.resources)
                 implementation(libs.appdirs)
-                implementation(libs.androidx.lifecycle.viewmodel.compose)
+                api(libs.androidx.lifecycle.viewmodel.compose)
                 implementation(libs.sqlite.bundled)
             }
         }

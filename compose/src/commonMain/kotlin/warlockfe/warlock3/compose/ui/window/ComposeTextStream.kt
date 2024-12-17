@@ -1,24 +1,31 @@
 package warlockfe.warlock3.compose.ui.window
 
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.plus
+import kotlinx.collections.immutable.toPersistentList
+import kotlinx.collections.immutable.toPersistentMap
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
-import kotlinx.collections.immutable.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.*
 
 class ComposeTextStream(
     override val name: String,
-    private var maxLines: Int
+    private var maxLines: Int,
+    ioDispatcher: CoroutineDispatcher,
 ) : TextStream {
 
     private var lines: PersistentList<StreamLine> = persistentListOf()
     private var components: PersistentMap<String, StyledString> = persistentMapOf()
 
-    private val mutex = Mutex()
+    private val context = ioDispatcher.limitedParallelism(1)
     private var nextSerialNumber = 0L
 
     private var isPartial = false
@@ -34,13 +41,13 @@ class ComposeTextStream(
     )
 
     override suspend fun appendPartial(text: StyledString) {
-        mutex.withLock {
+        withContext(context) {
             doAppendPartial(text)
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
-        mutex.withLock {
+        withContext(context) {
             doAppendPartial(text)
             isPartial = false
         }
@@ -60,7 +67,7 @@ class ComposeTextStream(
     }
 
     override suspend fun clear() {
-        mutex.withLock {
+        withContext(context) {
             lines = persistentListOf()
             isPartial = false
             usedComponents.clear()
@@ -75,7 +82,7 @@ class ComposeTextStream(
     override suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
         // It's possible a component is added that is set prior
         // I don't think this happens in DR, so it's probably OK that we don't handle that case.
-        mutex.withLock {
+        withContext(context) {
             isPartial = false
             doAppendLine(text, ignoreWhenBlank)
         }
@@ -99,7 +106,7 @@ class ComposeTextStream(
     }
 
     override suspend fun updateComponent(name: String, value: StyledString) {
-        mutex.withLock {
+        withContext(context) {
             if (usedComponents.contains(name)) {
                 components += name to value
                 snapshot.value = StreamSnapshot(

@@ -158,7 +158,7 @@ class StormfrontClient(
     private var buffer: StyledString? = null
 
     init {
-        fileLogger = FileLogger(logPath / "unknown")
+        fileLogger = FileLogger(logPath / "unknown", Dispatchers.IO)
         windows["warlockscripts"] = StormfrontWindow(
             name = "warlockscripts",
             title = "Running scripts",
@@ -229,7 +229,7 @@ class StormfrontClient(
     private var currentStream: TextStream = mainStream
     private var currentStyle: WarlockStyle? = null
 
-    // Output style is for echo style! Not receieved text
+    // Output style is for echo style! Not received text
     private var outputStyle: WarlockStyle? = null
     private var dialogDataId: String? = null
     private val directions: HashSet<DirectionType> = hashSetOf()
@@ -306,7 +306,7 @@ class StormfrontClient(
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
-                                            fileLogger = FileLogger(logPath / "${event.game}_${event.character}")
+                                            fileLogger = FileLogger(logPath / "${event.game}_${event.character}", Dispatchers.IO)
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -499,12 +499,12 @@ class StormfrontClient(
                             if (char == '<') {
                                 buffer.append(reader.readLine())
                                 val line = buffer.toString()
-                                fileLogger.write(line)
                                 if (buffer.contains("<mode")) {
                                     // if the line starts with a mode tag, drop back to the normal parser
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
+                                    fileLogger.write(line)
                                     rawPrint(line)
                                 }
                             } else {
@@ -701,8 +701,7 @@ class StormfrontClient(
         doAppendToStream(StyledString(message), getStream("debug"), false)
     }
 
-    @Synchronized
-    fun getStream(name: String): TextStream {
+    private fun getStream(name: String): TextStream {
         return streamRegistry.getOrCreateStream(name)
     }
 

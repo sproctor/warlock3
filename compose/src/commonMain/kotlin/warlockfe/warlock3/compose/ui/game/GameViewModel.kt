@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -91,11 +93,9 @@ class GameViewModel(
     private val characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
-) : AutoCloseable {
+) : ViewModel() {
 
     private val logger = KotlinLogging.logger { }
-
-    private val viewModelScope = CoroutineScope(Dispatchers.Default)
 
     var entryText by mutableStateOf(TextFieldValue())
         private set
@@ -369,7 +369,7 @@ class GameViewModel(
     }
 
     fun sendCommand(command: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             client.sendCommand(command)
         }
     }
@@ -413,7 +413,7 @@ class GameViewModel(
     }
 
     fun runScript(file: File) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             scriptManager.startScript(client, file)
         }
     }
@@ -648,10 +648,6 @@ class GameViewModel(
                 windowRepository.setStyle(characterId = characterId, name = name, style = style)
             }
         }
-    }
-
-    override fun close() {
-        viewModelScope.cancel()
     }
 }
 

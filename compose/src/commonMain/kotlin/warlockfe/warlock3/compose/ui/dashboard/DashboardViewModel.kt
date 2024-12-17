@@ -1,12 +1,11 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -31,8 +30,7 @@ class DashboardViewModel(
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
     private val ioDispatcher: CoroutineDispatcher,
-) {
-    val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+): ViewModel() {
     val characters = characterRepository.observeAllCharacters()
 
     var busy = false
@@ -51,7 +49,7 @@ class DashboardViewModel(
         if (busy) return
         busy = true
         connectJob?.cancel()
-        connectJob = scope.launch(ioDispatcher) {
+        connectJob = viewModelScope.launch(ioDispatcher) {
             try {
                 _message.value = "Connecting..."
                 val client = sgeClientFactory.create(host = host, port = port)

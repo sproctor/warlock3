@@ -142,7 +142,7 @@ fun main(args: Array<String>) {
     val games = mutableStateListOf(
         GameState(
             windowRepository = WindowRepository(appContainer.database.windowSettingsDao(), CoroutineScope(Dispatchers.IO)),
-            streamRegistry = StreamRegistryImpl()
+            streamRegistry = StreamRegistryImpl(Dispatchers.IO)
         ).apply {
             if (credentials != null) {
                 val client = appContainer.warlockClientFactory.createStormFrontClient(
@@ -263,7 +263,7 @@ fun main(args: Array<String>) {
                                             appContainer.database.windowSettingsDao(),
                                             CoroutineScope(Dispatchers.IO),
                                         ),
-                                        streamRegistry = StreamRegistryImpl()
+                                        streamRegistry = StreamRegistryImpl(Dispatchers.IO)
                                     )
                                 )
                             },
