@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,8 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -354,21 +357,26 @@ fun FontPickerDialog(
 
                 Column(
                     modifier = Modifier
-                        .border(width = 1.dp, color = Color.Black, shape = RoundedCornerShape(8.dp))
-                        .padding(8.dp)
+                        .border(
+                            width = Dp.Hairline,
+                            color = MaterialTheme.colorScheme.outline,
+                            shape = MaterialTheme.shapes.medium,
+                        )
+                        .clip(MaterialTheme.shapes.medium)
                         .fillMaxWidth()
                 ) {
                     fontFamilyMap.forEach { (name, fontFamily) ->
                         ListItem(
                             modifier = Modifier
-                                .clickable { newFontFamily = name }
-                                .then(
-                                    if (name == newFontFamily) Modifier.background(
-                                        MaterialTheme.colorScheme.primary.copy(
-                                            .2f
-                                        )
-                                    ) else Modifier
-                                ),
+                                .clickable { newFontFamily = name },
+                            colors =
+                                if (name == newFontFamily) {
+                                    ListItemDefaults.colors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                                    )
+                                } else {
+                                    ListItemDefaults.colors()
+                                },
                             leadingContent = { Text(text = "aA", fontFamily = fontFamily) },
                             headlineContent = { Text(text = name) }
                         )
