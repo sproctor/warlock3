@@ -119,7 +119,7 @@ class StormfrontClient(
     private var completeFileLogger = FileLogger(logPath / "unknown", "complete", Dispatchers.IO)
     private var simpleFileLogger: FileLogger? = null
 
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private val scope = CoroutineScope(Dispatchers.IO)
 
     private var maxTypeAhead: Int = defaultMaxTypeAhead
 
@@ -243,7 +243,7 @@ class StormfrontClient(
         get() = System.currentTimeMillis() + delta
 
     override fun connect() {
-        scope.launch(Dispatchers.IO) {
+        scope.launch {
             try {
                 logger.debug { "Opening connection to $host:$port" }
                 socket = Socket(host, port)

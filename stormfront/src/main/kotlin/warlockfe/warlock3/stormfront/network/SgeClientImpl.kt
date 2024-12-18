@@ -3,6 +3,7 @@ package warlockfe.warlock3.stormfront.network
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -39,50 +40,49 @@ class SgeClientImpl(
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    override suspend fun connect() = withContext(Dispatchers.IO) {
-        runCatching {
-            logger.debug { "connecting..." }
+    override suspend fun connect(): Result<Job> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                logger.debug { "connecting..." }
 
-            val socket = Socket(host, port)
-            sink = socket.sink().buffer()
-            val source = socket.source().buffer()
+                val socket = Socket(host, port)
+                sink = socket.sink().buffer()
+                val source = socket.source().buffer()
 
-            // request password hash
-            send("K\n")
-            passwordHash = source.readUtf8Line()?.toByteArray(Charsets.US_ASCII)
-                ?: throw IOException("Error getting password hash")
+                // request password hash
+                send("K\n")
+                passwordHash = source.readUtf8Line()?.toByteArray(Charsets.US_ASCII)
+                    ?: throw IOException("Error getting password hash")
 
-            scope.launch {
-                runCatching {
+                scope.launch {
                     try {
                         while (!stopped) {
-                            try {
-                                val line = source.readUtf8Line()
-                                if (line != null) {
-                                    handleData(line)
-                                } else {
-                                    // connection closed by server
-                                    stopped = true
-                                }
-                            } catch (e: SocketException) {
-                                // not sure why, but let's retry!
-                                logger.debug { "SGE socket exception: " + e.message }
-                            } catch (_: SocketTimeoutException) {
-                                // Timeout, let's retry!
-                                logger.debug { "Timed out connecting to server" }
+                            val line = source.readUtf8Line()
+                            if (line != null) {
+                                handleData(line)
+                            } else {
+                                // connection closed by server
+                                stopped = true
                             }
                         }
+                    } catch (e: SocketException) {
+                        // not sure why, but let's retry!
+                        logger.debug { "SGE socket exception: " + e.message }
+                    } catch (_: SocketTimeoutException) {
+                        // Timeout, let's retry!
+                        logger.debug { "Timed out connecting to server" }
+                    } catch (e: Exception) {
+                        logger.error(e) { "SGE exception" }
                     } finally {
                         logger.debug { "Closing socket" }
                         source.close()
                         sink?.close()
                         socket.close()
                     }
+                    _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                 }
-                _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
             }
         }
-    }
 
     private suspend fun handleData(line: String) {
         logger.debug { "SGE receive: $line" }
@@ -91,18 +91,21 @@ class SgeClientImpl(
             is SgeResponse.SgeErrorResponse -> {
                 _eventFlow.emit(SgeEvent.SgeErrorEvent(response.error))
             }
+
             SgeResponse.SgeLoginSucceededResponse -> _eventFlow.emit(SgeEvent.SgeLoginSucceededEvent)
             is SgeResponse.SgeGameListResponse -> _eventFlow.emit(
                 SgeEvent.SgeGamesReadyEvent(
                     response.games
                 )
             )
+
             SgeResponse.SgeGameDetailsResponse -> _eventFlow.emit(SgeEvent.SgeGameSelectedEvent)
             is SgeResponse.SgeCharacterListResponse -> _eventFlow.emit(
                 SgeEvent.SgeCharactersReadyEvent(
                     response.characters
                 )
             )
+
             is SgeResponse.SgeReadyToPlayResponse -> {
                 stopped = true
                 val properties = response.properties
@@ -113,6 +116,7 @@ class SgeClientImpl(
                 )
                 _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(credentials))
             }
+
             SgeResponse.SgeUnrecognizedResponse -> Unit // TODO: implement?
         }
     }
@@ -122,7 +126,11 @@ class SgeClientImpl(
             'A' -> {
                 // response from login attempt
                 logger.debug { "A line ($line)" }
-                logger.debug { "as bytes: ${line.toByteArray().map { it.toInt().toString(radix = 16).padStart(2, '0') }}" }
+                logger.debug {
+                    val bytes = line.toByteArray()
+                        .map { it.toInt().toString(radix = 16).padStart(2, '0') }
+                    "as bytes: $bytes"
+                }
                 val tokens = line.split('\t')
                 when {
                     tokens.size < 3 -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
@@ -155,6 +163,7 @@ class SgeClientImpl(
                 }
                 SgeResponse.SgeCharacterListResponse(characters)
             }
+
             'L' -> {
                 // status\tproperties
                 val tokens = line.split("\t")
@@ -167,10 +176,12 @@ class SgeClientImpl(
                         }
                         SgeResponse.SgeReadyToPlayResponse(properties)
                     }
+
                     "PROBLEM" -> SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_EXPIRED)
                     else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
                 }
             }
+
             else -> SgeResponse.SgeUnrecognizedResponse
         }
     }

@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.compose.color.picker)
     implementation(libs.kotlinx.cli)
     implementation(libs.appdirs)
+    implementation(libs.kotlinx.coroutines.swing)
 
     // Logging and error reporting
     implementation(libs.slf4j.simple)
@@ -52,9 +53,9 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "warlock3"
             packageVersion = project.version.toString()
-            modules("java.sql", "java.naming")
+            modules("java.naming")
             copyright = "Copyright 2024 Sean Proctor"
-            licenseFile.set(project.file("../LICENSE.txt"))
+            licenseFile.set(project.file("../LICENSE"))
             description = "Warlock Front-end"
             vendor = "Warlock Project"
 

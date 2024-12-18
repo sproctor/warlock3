@@ -2,14 +2,12 @@ package warlockfe.warlock3.compose.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
@@ -30,10 +28,13 @@ class DashboardViewModel(
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
     private val ioDispatcher: CoroutineDispatcher,
-): ViewModel() {
+) : ViewModel() {
+
     val characters = characterRepository.observeAllCharacters()
 
-    var busy = false
+    private val logger = KotlinLogging.logger { }
+
+    private var busy = false
 
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
@@ -44,8 +45,8 @@ class DashboardViewModel(
 
     private var connectJob: Job? = null
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun connectCharacter(character: GameCharacter) {
+        // TODO: display message when connecting character
         if (busy) return
         busy = true
         connectJob?.cancel()
@@ -55,51 +56,60 @@ class DashboardViewModel(
                 val client = sgeClientFactory.create(host = host, port = port)
                 val result = client.connect()
                 if (result.isFailure) {
+                    logger.error(result.exceptionOrNull()) { "Unable to connect to server" }
                     _message.value = "Could not connect to SGE"
                     return@launch
                 }
-                client.eventFlow
-                    .onEach { event ->
-                        when (event) {
-                            is SgeEvent.SgeLoginSucceededEvent -> client.selectGame(character.gameCode)
-                            is SgeEvent.SgeGameSelectedEvent -> client.requestCharacterList()
-                            is SgeEvent.SgeCharactersReadyEvent -> {
-                                val characters = event.characters
-                                val sgeCharacter = characters.firstOrNull { it.name.equals(character.name, true) }
-                                if (sgeCharacter == null) {
-                                    _message.value = "Could not find character: ${character.name}"
-                                } else {
-                                    client.selectCharacter(sgeCharacter.code)
+                viewModelScope.launch(Dispatchers.IO) {
+                    client.eventFlow
+                        .collect { event ->
+                            when (event) {
+                                is SgeEvent.SgeLoginSucceededEvent -> client.selectGame(character.gameCode)
+                                is SgeEvent.SgeGameSelectedEvent -> client.requestCharacterList()
+                                is SgeEvent.SgeCharactersReadyEvent -> {
+                                    val characters = event.characters
+                                    val sgeCharacter = characters.firstOrNull { it.name.equals(character.name, true) }
+                                    if (sgeCharacter == null) {
+                                        _message.value = "Could not find character: ${character.name}"
+                                    } else {
+                                        client.selectCharacter(sgeCharacter.code)
+                                    }
                                 }
-                            }
 
-                            is SgeEvent.SgeReadyToPlayEvent -> {
-                                val credentials = event.credentials
-                                try {
-                                    val sfClient = warlockClientFactory.createStormFrontClient(
-                                        credentials,
-                                        gameState.windowRepository,
-                                        gameState.streamRegistry,
-                                    )
-                                    sfClient.connect()
-                                    val gameViewModel = gameViewModelFactory.create(sfClient, gameState.windowRepository, gameState.streamRegistry)
-                                    gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
-                                } catch (e: UnknownHostException) {
-                                    gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
+                                is SgeEvent.SgeReadyToPlayEvent -> {
+                                    val credentials = event.credentials
+                                    try {
+                                        val sfClient = warlockClientFactory.createStormFrontClient(
+                                            credentials,
+                                            gameState.windowRepository,
+                                            gameState.streamRegistry,
+                                        )
+                                        sfClient.connect()
+                                        val gameViewModel = gameViewModelFactory.create(
+                                            sfClient,
+                                            gameState.windowRepository,
+                                            gameState.streamRegistry
+                                        )
+                                        gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
+                                    } catch (e: UnknownHostException) {
+                                        gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
+                                    } catch (e: Exception) {
+                                        logger.error(e) { "Error connecting to server" }
+                                        gameState.screen = GameScreen.ErrorState("Error: ${e.message}")
+                                    }
+                                    client.close()
+                                    cancelConnect()
                                 }
-                                client.close()
-                                cancelConnect()
-                            }
 
-                            is SgeEvent.SgeErrorEvent -> {
-                                _message.value = "Error code (${event.errorCode})"
-                                connectJob?.cancel()
-                            }
+                                is SgeEvent.SgeErrorEvent -> {
+                                    _message.value = "Error code (${event.errorCode})"
+                                    connectJob?.cancel()
+                                }
 
-                            else -> Unit // we don't care?
+                                else -> Unit // we don't care?
+                            }
                         }
-                    }
-                    .launchIn(GlobalScope)
+                }
                 val account = character.accountId?.let { accountRepository.getByUsername(it) }
                 if (account == null) {
                     _message.value = "Invalid account"
