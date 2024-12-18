@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +39,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import warlockfe.warlock3.compose.components.LocalScrollbarStyle
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
+import warlockfe.warlock3.compose.components.ScrollbarStyle
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
@@ -242,7 +243,7 @@ private fun WindowViewContent(
     SelectionContainer {
         val scrollState = rememberLazyListState()
         CompositionLocalProvider(
-            LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
+            LocalScrollbarStyle provides ScrollbarStyle(
                 hoverColor = textColor.copy(alpha = 0.5f),
                 unhoverColor = textColor.copy(alpha = 0.12f)
             )

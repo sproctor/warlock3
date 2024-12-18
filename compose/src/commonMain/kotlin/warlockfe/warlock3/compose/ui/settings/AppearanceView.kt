@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.ui.settings
 
-import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +41,9 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.components.LocalScrollbarStyle
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.ScrollbarStyle
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
@@ -152,7 +153,7 @@ fun AppearanceView(
         val barColor = presets["default"]?.textColor?.toColor() ?: MaterialTheme.colorScheme.onSurface
         CompositionLocalProvider(
             LocalContentColor provides (presets["default"]?.textColor?.toColor() ?: LocalContentColor.current),
-            LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
+            LocalScrollbarStyle provides ScrollbarStyle(
                 hoverColor = barColor.copy(alpha = 0.5f),
                 unhoverColor = barColor.copy(alpha = 0.12f)
             ),
