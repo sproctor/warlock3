@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.flatMapLatest
@@ -39,7 +40,8 @@ class WslScriptInstance(
         }
 
     private lateinit var lines: List<WslLine>
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private val scope = CoroutineScope(Dispatchers.IO)
+    private var job: Job? = null
 
     private val suspendedChannel = Channel<Unit>(0)
 
@@ -48,7 +50,7 @@ class WslScriptInstance(
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
 
-        scope.launch {
+        job = scope.launch {
             try {
                 client.sendCommand("_state scripting on", echo = false)
                 lines = script.parse()
@@ -108,6 +110,7 @@ class WslScriptInstance(
 
     override fun stop() {
         status = ScriptStatus.Stopped
+        job?.cancel()
     }
 
     override fun suspend() {
