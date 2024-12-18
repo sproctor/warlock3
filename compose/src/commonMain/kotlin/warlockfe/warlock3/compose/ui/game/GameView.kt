@@ -31,7 +31,7 @@ fun GameView(
 ) {
     val connected by viewModel.client.connected.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         if (!connected) {
             Column(
                 Modifier
