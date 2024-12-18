@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.settings
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +58,7 @@ actual fun EditMacroDialog(
     ) {
         Column(
             modifier = Modifier
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(24.dp)
                 .scrollable(
                     state = rememberScrollState(),
