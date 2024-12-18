@@ -10,6 +10,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +38,11 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -141,7 +146,10 @@ fun main(args: Array<String>) {
 
     val games = mutableStateListOf(
         GameState(
-            windowRepository = WindowRepository(appContainer.database.windowSettingsDao(), CoroutineScope(Dispatchers.IO)),
+            windowRepository = WindowRepository(
+                windowSettingsDao = appContainer.database.windowSettingsDao(),
+                externalScope = CoroutineScope(Dispatchers.IO)
+            ),
             streamRegistry = StreamRegistryImpl(Dispatchers.IO)
         ).apply {
             if (credentials != null) {
@@ -237,8 +245,9 @@ fun main(args: Array<String>) {
         ) {
             games.forEachIndexed { index, gameState ->
                 val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp) }
+                val title by gameState.getTitle().collectAsState("Loading...")
                 Window(
-                    title = "Warlock 3 - ${gameState.getTitle()}",
+                    title = "Warlock 3 - $title",
                     state = windowState,
                     icon = appIcon,
                     onCloseRequest = {
@@ -300,12 +309,19 @@ private val appIcon: Painter? by lazy {
     }
 }
 
-private fun GameState.getTitle(): String {
+private fun GameState.getTitle(): Flow<String> {
     return when (val screen = this.screen) {
-        GameScreen.Dashboard -> "Dashboard"
-        is GameScreen.ConnectedGameState -> screen.viewModel.properties.value["character"] ?: "N/A"
-        is GameScreen.NewGameState -> "New game"
-        is GameScreen.ErrorState -> "Error"
+        GameScreen.Dashboard ->
+            flow { emit("Dashboard") }
+
+        is GameScreen.ConnectedGameState ->
+            screen.viewModel.properties.map { value -> value["character"] ?: "Loading..." }.distinctUntilChanged()
+
+        is GameScreen.NewGameState ->
+            flow { emit("New game") }
+
+        is GameScreen.ErrorState ->
+            flow { emit("Error") }
     }
 }
 
