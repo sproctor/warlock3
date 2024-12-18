@@ -1,6 +1,7 @@
 package warlockfe.warlock3.scripting.wsl
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -101,6 +102,8 @@ class WslScriptInstance(
                     client.sendCommand("_state scripting off", echo = false)
                     onStop()
                     scope.cancel()
+                } catch (e: CancellationException) {
+                    // Ignore cancellation exceptions
                 } catch (e: Throwable) {
                     logger.error(e) { "Problem terminating script: ${e.message}" }
                 }
