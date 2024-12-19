@@ -559,7 +559,7 @@ class StormfrontClient(
         } else {
             doAppendToStream(styledText, stream, ignoreWhenBlank)
         }
-        if (stream == mainStream || windows[stream.name]?.styleIfClosed == "main") {
+        if (stream == mainStream || ifClosedStream(stream) == mainStream) {
             isPrompting = false
             val text = styledText.toString()
             if (text.isNotBlank()) {
@@ -573,10 +573,10 @@ class StormfrontClient(
         if (ignoreWhenBlank && styledText.isBlank())
             return
         stream.appendLine(styledText, ignoreWhenBlank)
-        doIfClosed(stream.name) { targetStream ->
-            val currentWindow = windows[stream.name]
+        doIfClosed(stream) { targetStream ->
+            val style = windows[stream.name]?.styleIfClosed
             targetStream.appendLine(
-                text = currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
+                text = style?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
                 ignoreWhenBlank = ignoreWhenBlank
             )
         }
@@ -598,13 +598,21 @@ class StormfrontClient(
         buffer = null
     }
 
-    private suspend fun doIfClosed(streamName: String, action: suspend (TextStream) -> Unit) {
-        val currentWindow = windows[streamName]
-        if (currentWindow != null) {
-            val ifClosed = currentWindow.ifClosed ?: "main"
-            if (ifClosed != streamName && ifClosed.isNotBlank() && !openWindows.value.contains(streamName)) {
-                action(getStream(ifClosed))
+    private suspend fun doIfClosed(stream: TextStream, action: suspend (TextStream) -> Unit) {
+        if (!openWindows.value.contains(stream.name)) {
+            ifClosedStream(stream)?.let { closedStream ->
+                action(closedStream)
             }
+        }
+    }
+
+    private fun ifClosedStream(stream: TextStream): TextStream? {
+        val window = windows[stream.name] ?: return null
+        val ifClosedName = window.ifClosed ?: "main"
+        return if (stream.name != ifClosedName && ifClosedName.isNotBlank()) {
+            getStream(ifClosedName)
+        } else {
+            null
         }
     }
 
