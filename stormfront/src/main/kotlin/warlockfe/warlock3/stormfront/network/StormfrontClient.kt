@@ -565,16 +565,16 @@ class StormfrontClient(
         if (ignoreWhenBlank && styledText.isBlank())
             return
         stream.appendLine(styledText, ignoreWhenBlank)
-        if (stream == mainStream)
-            isPrompting = false
         doIfClosed(stream.name) { targetStream ->
             val currentWindow = windows[stream.name]
             targetStream.appendLine(
                 text = currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
                 ignoreWhenBlank = ignoreWhenBlank
             )
-            if (stream == mainStream)
-                isPrompting = false
+        }
+        if (stream == mainStream || windows[stream.name]?.styleIfClosed == "main") {
+            isPrompting = false
+            simpleFileLogger?.write(styledText.toString())
         }
     }
 
@@ -594,7 +594,6 @@ class StormfrontClient(
             val message = it.toString() // Should this have a newline appended?
             if (message.isNotBlank() || !ignoreWhenBlank) {
                 notifyListeners(ClientTextEvent(message))
-                simpleFileLogger?.write(message)
             }
         }
         buffer = null
