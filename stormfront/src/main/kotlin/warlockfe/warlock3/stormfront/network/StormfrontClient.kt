@@ -559,6 +559,14 @@ class StormfrontClient(
         } else {
             doAppendToStream(styledText, stream, ignoreWhenBlank)
         }
+        if (stream == mainStream || windows[stream.name]?.styleIfClosed == "main") {
+            isPrompting = false
+            val text = styledText.toString()
+            if (text.isNotBlank()) {
+                simpleFileLogger?.write(text)
+                notifyListeners(ClientTextEvent(text))
+            }
+        }
     }
 
     private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
@@ -571,10 +579,6 @@ class StormfrontClient(
                 text = currentWindow?.styleIfClosed?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
                 ignoreWhenBlank = ignoreWhenBlank
             )
-        }
-        if (stream == mainStream || windows[stream.name]?.styleIfClosed == "main") {
-            isPrompting = false
-            simpleFileLogger?.write(styledText.toString())
         }
     }
 
@@ -589,13 +593,8 @@ class StormfrontClient(
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
         assert(componentId == null)
-        appendToStream(buffer ?: StyledString(""), currentStream, ignoreWhenBlank)
-        buffer?.let {
-            val message = it.toString() // Should this have a newline appended?
-            if (message.isNotBlank() || !ignoreWhenBlank) {
-                notifyListeners(ClientTextEvent(message))
-            }
-        }
+        val styledText = buffer ?: StyledString("")
+        appendToStream(styledText, currentStream, ignoreWhenBlank)
         buffer = null
     }
 
@@ -610,13 +609,14 @@ class StormfrontClient(
     }
 
     override suspend fun sendCommand(line: String, echo: Boolean): SendCommandType {
+        if (echo) {
+            printCommand(line)
+        }
         return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
             scriptManager.startScript(this, scriptCommand)
-            printCommand(line)
             SendCommandType.SCRIPT
         } else if (line.startsWith(clientCommandPrefix)) {
-            print(StyledString(line, WarlockStyle.Command))
             val clientCommand = line.drop(1)
             val (command, args) = clientCommand.splitFirstWord()
             when (command) {
@@ -657,9 +657,6 @@ class StormfrontClient(
             SendCommandType.ACTION
         } else {
             commandQueue.update { it + line }
-            if (echo) {
-                printCommand(line)
-            }
             SendCommandType.COMMAND
         }
     }

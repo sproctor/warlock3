@@ -7,6 +7,5 @@ sealed interface ClientEvent
 data class ClientTextEvent(val text: String) : ClientEvent
 data class ClientProgressBarEvent(val progressBarData: ProgressBarData) : ClientEvent
 data class ClientCompassEvent(val directions: ImmutableSet<DirectionType>) : ClientEvent
-object ClientNavEvent : ClientEvent
-object ClientPromptEvent : ClientEvent
-data class ClientActionEvent(val text: String, val command: () -> String) : ClientEvent
+data object ClientNavEvent : ClientEvent
+data object ClientPromptEvent : ClientEvent

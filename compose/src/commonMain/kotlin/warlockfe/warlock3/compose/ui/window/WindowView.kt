@@ -268,6 +268,7 @@ private fun WindowViewContent(
                         logger.debug { "action clicked: $action" }
                         onActionClicked(action)
                     }
+                    // FIXME: if line is null, I think we can screw up the scrolling
                     if (line != null) {
                         Box(
                             modifier = Modifier.fillParentMaxWidth()
