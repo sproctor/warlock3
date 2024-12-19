@@ -662,8 +662,10 @@ class StormfrontClient(
             simpleFileLogger?.write(line + "\n")
             val toSend = "<c>$line\n"
             completeFileLogger.write(toSend)
-            if (!socket.isOutputShutdown) {
+            try {
                 socket.getOutputStream().write(toSend.toByteArray(charset))
+            } catch (e: SocketException) {
+                print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
             }
         }
     }
