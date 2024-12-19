@@ -7,18 +7,9 @@ import warlockfe.warlock3.core.util.findArgumentBreak
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.toWarlockColor
 import kotlinx.coroutines.delay
+import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.math.BigDecimal
 import kotlin.random.Random
-
-// stolen from python
-val loggingLevels = mapOf(
-    "verbose" to 0,
-    "debug" to 10,
-    "info" to 20,
-    "warning" to 30,
-    "error" to 40,
-    "critical" to 50
-)
 
 val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "addtextlistener" to { context, argString ->
@@ -107,7 +98,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         context.setScriptVariable("c", WslNumber(result))
     },
     "debug" to { context, args ->
-        context.log(10, args)
+        context.log(ScriptLoggingLevel.DEBUG, args)
     },
     "debuglevel" to { context, args ->
         val (level, _) = args.splitFirstWord()
@@ -116,8 +107,8 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
                 throw WslRuntimeException("debug level must be between 0 and 50")
             }
             context.setLoggingLevel(it)
-        } ?: loggingLevels[level]?.let {
-            context.setLoggingLevel(it)
+        } ?: ScriptLoggingLevel.fromString(level)?.let {
+            context.setLoggingLevel(it.level)
         } ?: throw WslRuntimeException("Invalid logging level")
     },
     "delay" to { context, args ->
@@ -153,7 +144,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         context.echo(args)
     },
     "error" to { context, args ->
-        context.log(40, args)
+        context.log(ScriptLoggingLevel.ERROR, args)
     },
     "exit" to { context, _ ->
         context.stop()
@@ -173,7 +164,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         context.goto(label)
     },
     "info" to { context, args ->
-        context.log(20, args)
+        context.log(ScriptLoggingLevel.INFO, args)
     },
     "local" to { context, args ->
         val (name, value) = args.splitFirstWord()
@@ -181,8 +172,14 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         if (name.isBlank()) {
             throw WslRuntimeException("Invalid arguments to var")
         }
-        //cx.scriptDebug(1, "setVariable: $name=$value")
         context.setLocalVariable(name, WslString(value ?: ""))
+    },
+    "log" to { context, args ->
+        val (levelStr, rest) = args.splitFirstWord()
+        val level = levelStr.toIntOrNull()
+            ?: ScriptLoggingLevel.fromString(levelStr)?.level
+            ?: throw WslRuntimeException("Invalid logging level")
+        context.log(level, rest ?: "")
     },
     "mapadd" to { context, argString ->
         val (name, rest) = argString.splitFirstWord()
@@ -291,6 +288,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             "start" -> {
                 context.setScriptVariable("t", WslTimer())
             }
+
             "stop" -> {
                 val timer = context.lookupVariable("t")
                 if (timer is WslTimer) {
@@ -299,6 +297,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
                     // TODO warn that timer isn't running
                 }
             }
+
             "clear" -> {
                 context.deleteScriptVariable("t")
             }

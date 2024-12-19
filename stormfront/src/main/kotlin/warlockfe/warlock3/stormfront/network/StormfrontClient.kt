@@ -166,6 +166,13 @@ class StormfrontClient(
             ifClosed = "",
             styleIfClosed = null,
         )
+        windows["scriptoutput"] = StormfrontWindow(
+            name = "scriptoutput",
+            title = "Script output",
+            subtitle = null,
+            ifClosed = "main",
+            styleIfClosed = "echo",
+        )
         windows["debug"] = StormfrontWindow(
             name = "debug",
             title = "Debug",
@@ -174,6 +181,7 @@ class StormfrontClient(
             styleIfClosed = null,
         )
         windowRepository.setWindowTitle("warlockscripts", "Running scripts", null)
+        windowRepository.setWindowTitle("scriptoutput", "Script output", null)
         windowRepository.setWindowTitle("debug", "Debug", null)
         scope.launch {
             val scriptStream = getStream("warlockscripts")
@@ -706,6 +714,10 @@ class StormfrontClient(
 
     override suspend fun debug(message: String) {
         doAppendToStream(StyledString(message), getStream("debug"), false)
+    }
+
+    override suspend fun scriptDebug(message: String) {
+        doAppendToStream(StyledString(message), getStream("scriptoutput"), false)
     }
 
     private fun getStream(name: String): TextStream {

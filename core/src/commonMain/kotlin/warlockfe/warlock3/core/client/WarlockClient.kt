@@ -31,5 +31,7 @@ interface WarlockClient {
 
     suspend fun debug(message: String)
 
+    suspend fun scriptDebug(message: String)
+
     fun setMaxTypeAhead(value: Int)
 }

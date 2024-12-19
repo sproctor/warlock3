@@ -23,6 +23,7 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.parseArguments
+import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.util.*
 
 class WslContext(
@@ -51,7 +52,7 @@ class WslContext(
     private val currentFrame: WslFrame
         get() = frameStack.last()
 
-    private var loggingLevel = 30
+    private var loggingLevel = 20
 
     private val navChannel = Channel<Unit>(0)
     private val promptChannel = Channel<Unit>(0)
@@ -82,7 +83,7 @@ class WslContext(
 
     suspend fun executeCommand(commandLine: String) {
         val lineNumber = currentFrame.lineNumber
-        log(5, "Line $lineNumber: $commandLine")
+        log(ScriptLoggingLevel.VERBOSE, "Line $lineNumber: $commandLine")
 
         val (commandName, args) = commandLine.splitFirstWord()
         val command = wslCommands[commandName.lowercase()]
@@ -105,33 +106,33 @@ class WslContext(
     }
 
     suspend fun setStoredVariable(name: String, value: String) {
-        log(10, "Setting stored variable \"$name\" to $value")
         client.characterId.value?.let { variableRepository.put(it.lowercase(), name, value) }
+        log(ScriptLoggingLevel.INFO, "SetVariable: $name=$value")
     }
 
     suspend fun deleteStoredVariable(name: String) {
-        log(10, "Deleting stored variable: $name")
         client.characterId.value?.let { variableRepository.delete(it.lowercase(), name) }
+        log(ScriptLoggingLevel.INFO, "DeleteVariable: $name")
     }
 
     fun setScriptVariable(name: String, value: WslValue) {
-        log(10, "Setting script variable \"$name\" to $value")
         scriptVariables += name to value
+        log(ScriptLoggingLevel.DEBUG, "Set script variable \"$name\" to $value")
     }
 
     fun deleteScriptVariable(name: String) {
-        log(10, "Deleting script variable: $name")
         scriptVariables -= name
+        log(ScriptLoggingLevel.DEBUG, "Deleted script variable: $name")
     }
 
     fun setLocalVariable(name: String, value: WslValue) {
-        log(10, "Setting local variable \"$name\" to $value")
         currentFrame.setVariable(name, value)
+        log(ScriptLoggingLevel.DEBUG, "Set local variable \"$name\" to $value")
     }
 
     fun deleteLocalVariable(name: String) {
-        log(10, "Deleting local variable: $name")
         currentFrame.deleteVariable(name)
+        log(ScriptLoggingLevel.DEBUG, "Deleted local variable: $name")
     }
 
     fun getNextLine(): WslLine? {
@@ -147,13 +148,17 @@ class WslContext(
     }
 
     suspend fun echo(message: String) {
-        client.print(StyledString(message, listOf(WarlockStyle.Echo)))
+        client.print(StyledString(message, WarlockStyle.Echo))
+    }
+
+    fun log(level: ScriptLoggingLevel, message: String) {
+        log(level.level, message)
     }
 
     fun log(level: Int, message: String) {
         if (level >= loggingLevel) {
             scope.launch {
-                client.debug(message)
+                client.scriptDebug(message)
             }
         }
     }
@@ -168,8 +173,9 @@ class WslContext(
     }
 
     suspend fun sendCommand(command: String) {
-        log(5, "sending command: $command")
-        if (client.sendCommand(command) == SendCommandType.SCRIPT) {
+        val result = client.sendCommand(command)
+        log(ScriptLoggingLevel.VERBOSE, "Sent: $command")
+        if (result == SendCommandType.SCRIPT) {
             stop()
         }
     }
@@ -187,10 +193,10 @@ class WslContext(
                 line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
             }
             if (index != -1) {
-                log(5, "goto \"labelError\" line $index")
+                log(ScriptLoggingLevel.DEBUG, "goto \"labelError\" line $index")
             }
         } else {
-            log(5, "goto \"$label\" line $index")
+            log(ScriptLoggingLevel.DEBUG, "goto \"$label\" line $index")
         }
         if (index == -1) {
             throw WslRuntimeException("Could not find label \"$label\".")
@@ -222,25 +228,25 @@ class WslContext(
     }
 
     suspend fun waitForNav() {
-        log(5, "waiting for next room")
+        log(ScriptLoggingLevel.DEBUG, "waiting for next room")
         navChannel.receive()
     }
 
     suspend fun waitForPrompt() {
-        log(5, "waiting for next prompt")
+        log(ScriptLoggingLevel.DEBUG, "waiting for next prompt")
         promptChannel.receive()
         scriptInstance.waitWhenSuspended()
     }
 
     suspend fun waitForText(text: String, ignoreCase: Boolean) {
-        log(5, "waiting for text: $text")
+        log(ScriptLoggingLevel.DEBUG, "waiting for text: $text")
         client.eventFlow.first {
             it is ClientTextEvent && it.text.contains(other = text, ignoreCase = ignoreCase)
         }
     }
 
     suspend fun waitForRegex(regex: Regex) {
-        log(5, "waiting for regex: ${regex.pattern}")
+        log(ScriptLoggingLevel.DEBUG, "waiting for regex: ${regex.pattern}")
         client.eventFlow.first {
             it is ClientTextEvent && regex.containsMatchIn(it.text)
         }
@@ -259,7 +265,7 @@ class WslContext(
             if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
                 matches.firstOrNull { match ->
                     match.match(event.text)?.let { text ->
-                        log(5, "matched \"${match.label}\": $text")
+                        log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
                         goto(match.label)
                         return@first true
                     }
@@ -273,7 +279,7 @@ class WslContext(
     }
 
     suspend fun waitForRoundTime() {
-        log(5, "waiting for round time")
+        log(ScriptLoggingLevel.DEBUG, "waiting for round time")
         while (true) {
             val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: 0
             val currentTime = client.time
@@ -281,11 +287,11 @@ class WslContext(
                 break
             }
             val duration = roundEnd - currentTime
-            log(0, "wait duration: ${duration}ms")
+            log(ScriptLoggingLevel.VERBOSE, "wait duration: ${duration}ms")
             delay(duration)
             scriptInstance.waitWhenSuspended()
         }
-        log(5, "done waiting for round time")
+        log(ScriptLoggingLevel.VERBOSE, "done waiting for round time")
     }
 
     override fun close() {
