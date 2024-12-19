@@ -619,6 +619,8 @@ class StormfrontClient(
     override suspend fun sendCommand(line: String, echo: Boolean): SendCommandType {
         if (echo) {
             printCommand(line)
+            simpleFileLogger?.write(line + "\n")
+            completeFileLogger.write("command: $line\n")
         }
         return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
@@ -671,9 +673,7 @@ class StormfrontClient(
 
     private suspend fun doSendCommand(line: String) {
         withContext(Dispatchers.IO) {
-            simpleFileLogger?.write(line + "\n")
             val toSend = "<c>$line\n"
-            completeFileLogger.write(toSend)
             try {
                 socket.getOutputStream().write(toSend.toByteArray(charset))
             } catch (e: SocketException) {
