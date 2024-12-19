@@ -193,7 +193,8 @@ class StormfrontClient(
                             WarlockStyle.Link("action" to "/resume ${it.key}")
                         )
 
-                        else -> { /* do nothing */
+                        else -> {
+                            // do nothing
                         }
                     }
                     text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
@@ -339,7 +340,6 @@ class StormfrontClient(
                                         if (currentTypeAhead.value > 0) {
                                             currentTypeAhead.update { it - 1 }
                                         }
-                                        _eventFlow.emit(ClientPromptEvent)
                                         currentStyle = null
                                         currentStream = mainStream
                                         if (!isPrompting) {
@@ -348,6 +348,7 @@ class StormfrontClient(
                                             )
                                             isPrompting = true
                                         }
+                                        notifyListeners(ClientPromptEvent)
                                     }
 
                                     is StormfrontTimeEvent -> {
@@ -379,7 +380,10 @@ class StormfrontClient(
 
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
                                     is StormfrontProgressBarEvent -> {
-                                        _eventFlow.emit(
+                                        _properties.value = _properties.value +
+                                                (event.id to event.value.value.toString()) +
+                                                (event.id + "text" to event.text)
+                                        notifyListeners(
                                             ClientProgressBarEvent(
                                                 ProgressBarData(
                                                     id = event.id,
@@ -391,13 +395,10 @@ class StormfrontClient(
                                                 )
                                             )
                                         )
-                                        _properties.value = _properties.value +
-                                                (event.id to event.value.value.toString()) +
-                                                (event.id + "text" to event.text)
                                     }
 
                                     is StormfrontCompassEndEvent -> {
-                                        _eventFlow.emit(ClientCompassEvent(directions.toPersistentHashSet()))
+                                        notifyListeners(ClientCompassEvent(directions.toPersistentHashSet()))
                                         directions.clear()
                                     }
 
@@ -449,7 +450,8 @@ class StormfrontClient(
                                         }
                                     }
 
-                                    StormfrontNavEvent -> _eventFlow.emit(ClientNavEvent)
+                                    StormfrontNavEvent -> notifyListeners(ClientNavEvent)
+
                                     is StormfrontStreamWindowEvent -> {
                                         val window = event.window
                                         windows[window.name] = window
@@ -579,14 +581,14 @@ class StormfrontClient(
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
         assert(componentId == null)
+        appendToStream(buffer ?: StyledString(""), currentStream, ignoreWhenBlank)
         buffer?.let {
             val message = it.toString() // Should this have a newline appended?
             if (message.isNotBlank() || !ignoreWhenBlank) {
-                _eventFlow.emit(ClientTextEvent(message))
+                notifyListeners(ClientTextEvent(message))
                 simpleFileLogger?.write(message)
             }
         }
-        appendToStream(buffer ?: StyledString(""), currentStream, ignoreWhenBlank)
         buffer = null
     }
 
@@ -689,19 +691,15 @@ class StormfrontClient(
     }
 
     override suspend fun print(message: StyledString) {
-        scope.launch {
-            _eventFlow.emit(ClientTextEvent(message.toString()))
-        }
         val style = outputStyle
         mainStream.appendLine(if (style != null) message.applyStyle(style) else message)
+        notifyListeners(ClientTextEvent(message.toString()))
     }
 
     private suspend fun printCommand(command: String) {
-        scope.launch {
-            _eventFlow.emit(ClientTextEvent(command))
-        }
         val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
         mainStream.appendPartialAndEol(StyledString(command, styles))
+        notifyListeners(ClientTextEvent(command))
     }
 
     override suspend fun debug(message: String) {
@@ -715,5 +713,11 @@ class StormfrontClient(
     override fun setMaxTypeAhead(value: Int) {
         require(value >= 0)
         maxTypeAhead = value
+    }
+
+    private fun notifyListeners(event: ClientEvent) {
+        scope.launch {
+            _eventFlow.emit(event)
+        }
     }
 }
