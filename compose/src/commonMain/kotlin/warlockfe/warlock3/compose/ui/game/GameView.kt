@@ -178,8 +178,9 @@ fun GameTextWindows(
             )
         }
         // Right Column
-        val rightWindows =
-            subWindowUiStates.filter { it.window?.location == WindowLocation.RIGHT }.sortedBy { it.window?.position }
+        val rightWindows = subWindowUiStates
+            .filter { it.window?.location == WindowLocation.RIGHT }
+            .sortedBy { it.window?.position }
         if (rightWindows.isNotEmpty()) {
             val panelState = remember(rightWidth == null) {
                 ResizablePanelState(initialSize = rightWidth?.dp ?: 0.dp, minSize = 16.dp)

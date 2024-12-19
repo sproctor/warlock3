@@ -21,18 +21,16 @@ fun ColorPickerDialog(
     onColorSelected: (color: WarlockColor) -> Unit,
 ) {
     var currentColor by remember {
-        mutableStateOf(
-            HsvColor.from(
-                initialColor ?: Color.Unspecified
-            )
-        )
+        mutableStateOf(HsvColor.from(initialColor ?: Color.Unspecified))
     }
     AlertDialog(
         title = { Text("Choose color") },
         onDismissRequest = onCloseRequest,
         confirmButton = {
             TextButton(
-                onClick = { onColorSelected(currentColor.toColor().toWarlockColor()) }
+                onClick = {
+                    onColorSelected(currentColor.toColor().toWarlockColor())
+                }
             ) {
                 Text("OK")
             }

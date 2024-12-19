@@ -88,26 +88,29 @@ fun WindowView(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                var showDropdown by remember { mutableStateOf(false) }
-                IconButton(
-                    modifier = Modifier.size(24.dp),
-                    onClick = { showDropdown = true }
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onPrimary,
+
+                Box {
+                    var showDropdown by remember { mutableStateOf(false) }
+                    IconButton(
+                        modifier = Modifier.size(24.dp),
+                        onClick = { showDropdown = !showDropdown }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                    WindowViewDropdownMenu(
+                        expanded = showDropdown,
+                        onDismissRequest = { showDropdown = false },
+                        onSettingsClicked = { showWindowSettingsDialog = true },
+                        onMoveClicked = onMoveClicked,
+                        onMoveTowardsStart = onMoveTowardsStart,
+                        onMoveTowardsEnd = onMoveTowardsEnd,
+                        location = uiState.window?.location,
                     )
                 }
-                WindowViewDropdownMenu(
-                    expanded = showDropdown,
-                    onDismissRequest = { showDropdown = false },
-                    onSettingsClicked = { showWindowSettingsDialog = true },
-                    onMoveClicked = onMoveClicked,
-                    onMoveTowardsStart = onMoveTowardsStart,
-                    onMoveTowardsEnd = onMoveTowardsEnd,
-                    location = uiState.window?.location,
-                )
                 if (uiState.window?.location != WindowLocation.MAIN) {
                     IconButton(
                         modifier = Modifier.size(24.dp),
@@ -141,6 +144,7 @@ fun WindowView(
                 fontFamily = window.fontFamily,
                 fontSize = window.fontSize
             ),
+            defaultStyle = uiState.defaultStyle,
             saveStyle = saveStyle,
         )
     }

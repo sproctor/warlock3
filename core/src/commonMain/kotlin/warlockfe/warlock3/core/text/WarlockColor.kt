@@ -18,6 +18,11 @@ fun WarlockColor.isSpecified(): Boolean = argb != -1L
 fun WarlockColor.specifiedOrNull(): WarlockColor? =
     if (isSpecified()) this else null
 
+fun WarlockColor.ifUnspecified(defaultColor: WarlockColor): WarlockColor {
+    if (isSpecified()) return this
+    return defaultColor
+}
+
 fun WarlockColor.toHexString(): String? {
     if (isUnspecified()) return null
     return "#" + argb.toString(16)
