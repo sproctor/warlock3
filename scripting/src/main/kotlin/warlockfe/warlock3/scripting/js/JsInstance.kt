@@ -56,7 +56,7 @@ class JsInstance(
         private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun start(client: WarlockClient, argumentString: String, onStop: suspend () -> Unit) {
+    override suspend fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         status = ScriptStatus.Running
         this.client = client
         thread = thread {

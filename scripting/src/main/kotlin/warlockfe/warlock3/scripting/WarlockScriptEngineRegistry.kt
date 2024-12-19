@@ -1,8 +1,12 @@
 package warlockfe.warlock3.scripting
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
@@ -22,6 +26,7 @@ class WarlockScriptEngineRegistry(
     highlightRepository: HighlightRepository,
     variableRepository: VariableRepository,
     private val scriptDirRepository: ScriptDirRepository,
+    private val externalScope: CoroutineScope,
 ) : ScriptManager {
 
     private val _scriptInfo = MutableStateFlow<Map<Long, ScriptInfo>>(emptyMap())
@@ -64,13 +69,20 @@ class WarlockScriptEngineRegistry(
     }
 
     private suspend fun startInstance(client: WarlockClient, instance: ScriptInstance, argString: String?) {
+        runningScripts.forEach { runningInstance ->
+            if (instance.name == runningInstance.name) {
+                runningInstance.stop()
+            }
+        }
         client.print(StyledString("Starting script: ${instance.name}", style = WarlockStyle.Echo))
         runningScripts += instance
         scriptStateChanged(instance)
         instance.start(client = client, argumentString = argString ?: "") {
-            runningScripts -= instance
-            _scriptInfo.update { it.minus(instance.id) }
-            client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
+            externalScope.launch {
+                runningScripts -= instance
+                _scriptInfo.update { it.minus(instance.id) }
+                client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
+            }
         }
     }
 

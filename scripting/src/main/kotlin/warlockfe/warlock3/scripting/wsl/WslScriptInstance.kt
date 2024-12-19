@@ -47,7 +47,7 @@ class WslScriptInstance(
     private val suspendedChannel = Channel<Unit>(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun start(client: WarlockClient, argumentString: String, onStop: suspend () -> Unit) {
+    override suspend fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
 
