@@ -2,7 +2,9 @@ package warlockfe.warlock3.android.di
 
 import android.content.Context
 import androidx.room.RoomDatabase
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okio.Path.Companion.toOkioPath
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.client.WarlockClient
@@ -27,11 +29,15 @@ class AndroidAppContainer(
     ioDispatcher = Dispatchers.IO,
     warlockDirs = warlockDirs,
 ) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override val scriptManager =
         WarlockScriptEngineRegistry(
             highlightRepository = highlightRepository,
             variableRepository = variableRepository,
             scriptDirRepository = scriptDirRepository,
+            externalScope = scope,
         )
 
     override val sgeClientFactory = object : SgeClientFactory {
