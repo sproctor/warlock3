@@ -203,9 +203,12 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         val regex = text?.let { parseRegex(it) } ?: throw WslRuntimeException("Invalid regex in matchRe")
         context.addMatch(RegexMatch(label, regex))
     },
-    "matchwait" to { context, _ ->
-        // TODO timeout after $args seconds
-        context.matchWait()
+    "matchwait" to { context, args ->
+        val (timeout, rest) = args.splitFirstWord()
+        if (rest != null) {
+            throw WslRuntimeException("MatchWait can only take 1 argument")
+        }
+        context.matchWait(timeout.toFloatOrNull())
     },
     "move" to { context, args ->
         context.putCommand(args)

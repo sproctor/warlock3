@@ -1,12 +1,14 @@
 package warlockfe.warlock3.scripting.wsl
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.timeout
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
@@ -23,6 +25,7 @@ import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 class WslContext(
     private val client: WarlockClient,
@@ -256,24 +259,34 @@ class WslContext(
         matches += match
     }
 
-    suspend fun matchWait() {
+    @OptIn(FlowPreview::class)
+    suspend fun matchWait(timeout: Float?) {
         if (matches.isEmpty()) {
             throw WslRuntimeException("matchWait called with no matches")
         }
 
-        client.eventFlow.first { event ->
-            if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
-                matches.firstOrNull { match ->
-                    match.match(event.text)?.let { text ->
-                        log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
-                        goto(match.label)
-                        return@first true
-                    }
-                    false
+        client.eventFlow
+            .let {
+                if (timeout != null) {
+                    val millis = (timeout * 1000).toLong()
+                    it.timeout(millis.milliseconds)
+                } else {
+                    it
                 }
             }
-            false
-        }
+            .first { event ->
+                if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
+                    matches.firstOrNull { match ->
+                        match.match(event.text)?.let { text ->
+                            log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
+                            goto(match.label)
+                            return@first true
+                        }
+                        false
+                    }
+                }
+                false
+            }
 
         matches.clear()
     }
