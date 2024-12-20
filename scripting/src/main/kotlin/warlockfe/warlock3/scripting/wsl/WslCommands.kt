@@ -1,12 +1,12 @@
 package warlockfe.warlock3.scripting.wsl
 
-import warlockfe.warlock3.core.text.WarlockColor
+import kotlinx.coroutines.delay
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.findArgumentBreak
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.toWarlockColor
-import kotlinx.coroutines.delay
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.math.BigDecimal
 import kotlin.random.Random
@@ -67,7 +67,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             throw WslRuntimeException("\"string\" must be specified for AddToHighlightStrings")
         }
         context.addHighlight(
-            pattern = pattern!!,
+            pattern = pattern,
             style = StyleDefinition(
                 textColor = textColor ?: WarlockColor.Unspecified,
                 backgroundColor = backgroundColor ?: WarlockColor.Unspecified,
@@ -134,7 +134,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         if (pattern == null) {
             throw WslRuntimeException("\"string\" must be specified for DeleteFromHighlightStrings")
         }
-        context.deleteHighlight(pattern = pattern!!)
+        context.deleteHighlight(pattern = pattern)
     },
     "deletevariable" to { context, args ->
         val (name, _) = args.splitFirstWord()
