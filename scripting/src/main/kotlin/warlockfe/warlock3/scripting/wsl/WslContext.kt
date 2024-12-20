@@ -1,14 +1,12 @@
 package warlockfe.warlock3.scripting.wsl
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
@@ -30,11 +28,11 @@ class WslContext(
     private val client: WarlockClient,
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
-) : AutoCloseable {
+) {
 
     private val scriptVariables = CaseInsensitiveMap(
         "components" to WslComponents(client),
@@ -44,7 +42,7 @@ class WslContext(
     )
 
     private val matches = mutableListOf<WslMatch>()
-    private val listeners = mutableListOf<Pair<String, (String) -> Unit>>()
+    private val listeners = mutableListOf<Pair<String, suspend (String) -> Unit>>()
 
     private val frameStack = mutableListOf(
         WslFrame(0)
@@ -115,22 +113,26 @@ class WslContext(
         log(ScriptLoggingLevel.INFO, "DeleteVariable: $name")
     }
 
-    fun setScriptVariable(name: String, value: WslValue) {
+    suspend fun setScriptVariable(name: String, value: WslValue) {
         scriptVariables += name to value
         log(ScriptLoggingLevel.DEBUG, "Set script variable \"$name\" to $value")
     }
 
-    fun deleteScriptVariable(name: String) {
+    fun setScriptVariableRaw(name: String, value: WslValue) {
+        scriptVariables += name to value
+    }
+
+    suspend fun deleteScriptVariable(name: String) {
         scriptVariables -= name
         log(ScriptLoggingLevel.DEBUG, "Deleted script variable: $name")
     }
 
-    fun setLocalVariable(name: String, value: WslValue) {
+    suspend fun setLocalVariable(name: String, value: WslValue) {
         currentFrame.setVariable(name, value)
         log(ScriptLoggingLevel.DEBUG, "Set local variable \"$name\" to $value")
     }
 
-    fun deleteLocalVariable(name: String) {
+    suspend fun deleteLocalVariable(name: String) {
         currentFrame.deleteVariable(name)
         log(ScriptLoggingLevel.DEBUG, "Deleted local variable: $name")
     }
@@ -151,15 +153,13 @@ class WslContext(
         client.print(StyledString(message, WarlockStyle.Echo))
     }
 
-    fun log(level: ScriptLoggingLevel, message: String) {
+    suspend fun log(level: ScriptLoggingLevel, message: String) {
         log(level.level, message)
     }
 
-    fun log(level: Int, message: String) {
+    suspend fun log(level: Int, message: String) {
         if (level >= loggingLevel) {
-            scope.launch {
-                client.scriptDebug(message)
-            }
+            client.scriptDebug(message)
         }
     }
 
@@ -184,7 +184,7 @@ class WslContext(
         client.startScript(scriptCommand)
     }
 
-    fun goto(label: String) {
+    suspend fun goto(label: String) {
         var index = lines.indexOfFirst { line ->
             line.labels.any { it.equals(other = label, ignoreCase = true) }
         }
@@ -294,10 +294,6 @@ class WslContext(
         log(ScriptLoggingLevel.VERBOSE, "done waiting for round time")
     }
 
-    override fun close() {
-        scope.cancel()
-    }
-
     suspend fun addHighlight(
         pattern: String,
         style: StyleDefinition,
@@ -326,7 +322,7 @@ class WslContext(
         }
     }
 
-    fun addListener(name: String, action: (String) -> Unit) {
+    fun addListener(name: String, action: suspend (String) -> Unit) {
         listeners.add(name to action)
     }
 

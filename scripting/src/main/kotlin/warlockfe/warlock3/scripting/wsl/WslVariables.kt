@@ -30,7 +30,7 @@ class WslVariables(
     }
 
     override fun setProperty(key: String, value: WslValue) {
-        context.setScriptVariable(key, value)
+        context.setScriptVariableRaw(key, value)
     }
 
     override fun isMap(): Boolean {
