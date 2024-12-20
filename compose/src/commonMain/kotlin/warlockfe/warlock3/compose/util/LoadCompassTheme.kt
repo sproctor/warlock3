@@ -8,6 +8,7 @@ import warlockfe.warlock3.compose.generated.resources.down_on
 import warlockfe.warlock3.compose.generated.resources.east_on
 import warlockfe.warlock3.compose.generated.resources.north_on
 import warlockfe.warlock3.compose.generated.resources.northeast_on
+import warlockfe.warlock3.compose.generated.resources.northwest_on
 import warlockfe.warlock3.compose.generated.resources.out_on
 import warlockfe.warlock3.compose.generated.resources.south_on
 import warlockfe.warlock3.compose.generated.resources.southeast_on
@@ -24,7 +25,7 @@ fun loadCompassTheme(themeProperties: Properties): CompassTheme {
         val position = Pair(xy[0].toInt(), xy[1].toInt())
         val image = when (direction) {
             DirectionType.North -> Res.drawable.north_on
-            DirectionType.Northwest -> Res.drawable.northeast_on
+            DirectionType.Northwest -> Res.drawable.northwest_on
             DirectionType.Down -> Res.drawable.down_on
             DirectionType.East -> Res.drawable.east_on
             DirectionType.Out -> Res.drawable.out_on
