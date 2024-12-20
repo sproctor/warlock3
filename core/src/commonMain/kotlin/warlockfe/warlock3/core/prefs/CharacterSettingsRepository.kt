@@ -9,7 +9,7 @@ import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 const val defaultMaxScrollLines = 5_000
 const val scrollbackKey = "scrollback"
 
-const val defaultMaxTypeAhead = 0
+const val defaultMaxTypeAhead = 1
 const val maxTypeAheadKey = "typeahead"
 
 class CharacterSettingsRepository(
