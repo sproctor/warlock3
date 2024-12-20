@@ -1,6 +1,6 @@
 package warlockfe.warlock3.stormfront.util
 
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.Path
 import java.time.LocalDateTime
@@ -9,10 +9,9 @@ import java.time.format.DateTimeFormatter
 class FileLogger(
     private val directory: Path,
     private val prefix: String,
-    ioDispatcher: CoroutineDispatcher,
 ) {
 
-    private val context = ioDispatcher.limitedParallelism(1)
+    private val context = Dispatchers.IO.limitedParallelism(1)
 
     init {
         directory.toFile().mkdirs()

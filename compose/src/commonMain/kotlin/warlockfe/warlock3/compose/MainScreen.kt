@@ -51,6 +51,7 @@ fun MainScreen(
             GameView(
                 viewModel = screen.viewModel,
                 navigateToDashboard = {
+                    screen.viewModel.client.close()
                     gameState.screen = GameScreen.Dashboard
                 }
             )

@@ -115,9 +115,9 @@ class SgeViewModel(
                         }
 
                         try {
-                            val client = warlockClientFactory.createStormFrontClient(credentials, gameState.windowRepository, gameState.streamRegistry)
-                            client.connect()
-                            val gameViewModel = gameViewModelFactory.create(client, gameState.windowRepository, gameState.streamRegistry)
+                            val sfClient = warlockClientFactory.createStormFrontClient(credentials, gameState.windowRepository, gameState.streamRegistry)
+                            sfClient.connect()
+                            val gameViewModel = gameViewModelFactory.create(sfClient, gameState.windowRepository, gameState.streamRegistry)
                             gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
                         } catch (e: UnknownHostException) {
                             gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")

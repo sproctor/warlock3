@@ -11,6 +11,7 @@ import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,9 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -116,7 +115,7 @@ class StormfrontClient(
 
     private val newLinePattern = Regex("\r?\n")
 
-    private var completeFileLogger = FileLogger(logPath / "unknown", "complete", Dispatchers.IO)
+    private var completeFileLogger = FileLogger(logPath / "unknown", "complete")
     private var simpleFileLogger: FileLogger? = null
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -210,17 +209,18 @@ class StormfrontClient(
                 }
             }
         }
-        combine(commandQueue, currentTypeAhead) { commands, typeAhead -> commands to typeAhead }
-            .onEach { (commands, typeAhead) ->
-                if (maxTypeAhead == 0 || typeAhead < maxTypeAhead) {
-                    commands.firstOrNull()?.let { command ->
-                        currentTypeAhead.update { it + 1 }
-                        commandQueue.update { it.drop(1) }
-                        doSendCommand(command)
+        scope.launch {
+            combine(commandQueue, currentTypeAhead) { commands, typeAhead -> commands to typeAhead }
+                .collect { (commands, typeAhead) ->
+                    if (maxTypeAhead == 0 || typeAhead < maxTypeAhead) {
+                        commands.firstOrNull()?.let { command ->
+                            currentTypeAhead.update { it + 1 }
+                            commandQueue.update { it.drop(1) }
+                            doSendCommand(command)
+                        }
                     }
                 }
-            }
-            .launchIn(scope)
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -316,8 +316,8 @@ class StormfrontClient(
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
                                             val path = logPath / "${event.game}_${event.character}"
-                                            completeFileLogger = FileLogger(path, "complete", Dispatchers.IO)
-                                            simpleFileLogger = FileLogger(path, "simple", Dispatchers.IO)
+                                            completeFileLogger = FileLogger(path, "complete")
+                                            simpleFileLogger = FileLogger(path, "simple")
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -737,5 +737,9 @@ class StormfrontClient(
         scope.launch {
             _eventFlow.emit(event)
         }
+    }
+
+    override fun close() {
+        scope.cancel()
     }
 }
