@@ -30,7 +30,7 @@ conveyor-control = "1.1"
 kotlin = "2.1.0"
 kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.3.8"
-kotlinx-coroutines =  "1.10.0"
+kotlinx-coroutines =  "1.10.1"
 # 7.0.3 fails to build with proguard
 kotlin-logging = "7.0.0"
 ##          ⬆ = "7.0.3"
