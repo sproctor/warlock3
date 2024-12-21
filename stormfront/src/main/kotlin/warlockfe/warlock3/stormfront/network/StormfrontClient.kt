@@ -116,7 +116,7 @@ class StormfrontClient(
 
     private val newLinePattern = Regex("\r?\n")
 
-    private var completeFileLogger = FileLogger(logPath / "unknown", "complete")
+    private var completeFileLogger = FileLogger(logPath / "unknown", "complete", true)
     private var simpleFileLogger: FileLogger? = null
 
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -317,8 +317,8 @@ class StormfrontClient(
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
                                             val path = logPath / "${event.game}_${event.character}"
-                                            completeFileLogger = FileLogger(path, "complete")
-                                            simpleFileLogger = FileLogger(path, "simple")
+                                            completeFileLogger = FileLogger(path, "complete", true)
+                                            simpleFileLogger = FileLogger(path, "simple", false)
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -617,7 +617,7 @@ class StormfrontClient(
 
     override suspend fun sendCommand(line: String): SendCommandType {
             printCommand(line)
-            simpleFileLogger?.write(line + "\n")
+            simpleFileLogger?.write(">$line\n")
             completeFileLogger.write("command: $line\n")
         return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)

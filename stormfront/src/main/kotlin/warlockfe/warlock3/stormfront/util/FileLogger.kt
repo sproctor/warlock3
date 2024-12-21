@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter
 class FileLogger(
     private val directory: Path,
     private val prefix: String,
+    private val addTimestamps: Boolean,
 ) {
 
     private val context = Dispatchers.IO.limitedParallelism(1)
@@ -22,8 +23,12 @@ class FileLogger(
             val now = LocalDateTime.now()
             val filename = formatFilename(now)
             val logFile = (directory / filename).toFile()
-            val dateString = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS"))
-            logFile.appendText("[$dateString] $message\n")
+            if (addTimestamps) {
+                val dateString = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS"))
+                logFile.appendText("[$dateString] $message\n")
+            } else {
+                logFile.appendText(message)
+            }
         }
     }
 
