@@ -257,7 +257,7 @@ class StormfrontClient(
             try {
                 logger.debug { "Opening connection to $host:$port" }
                 socket = Socket(host, port)
-            } catch (e: UnknownHostException) {
+            } catch (_: UnknownHostException) {
                 logger.debug { "Unknown host" }
                 _connected.value = false
                 return@launch
