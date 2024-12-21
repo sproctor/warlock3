@@ -559,9 +559,6 @@ class StormfrontClient(
             doAppendToStream(styledText, stream, ignoreWhenBlank)
         }
         if (stream == mainStream || ifClosedStream(stream) == mainStream) {
-            if (stream == mainStream) {
-                isPrompting = false
-            }
             val text = styledText.toString()
             if (text.isNotBlank()) {
                 simpleFileLogger?.write(text)
@@ -574,6 +571,9 @@ class StormfrontClient(
         if (ignoreWhenBlank && styledText.isBlank())
             return
         stream.appendLine(styledText, ignoreWhenBlank)
+        if (stream == mainStream) {
+            isPrompting = false
+        }
         doIfClosed(stream) { targetStream ->
             val style = windows[stream.name]?.styleIfClosed
             targetStream.appendLine(
