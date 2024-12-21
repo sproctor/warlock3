@@ -358,4 +358,8 @@ class WslContext(
     fun clearListeners() {
         listeners.clear()
     }
+
+    fun setTypeahead(value: Int) {
+        maxTypeAhead = value
+    }
 }

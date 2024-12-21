@@ -306,6 +306,10 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             }
         }
     },
+    "typeahead" to { context, args ->
+        val (typeahead, _) = args.splitFirstWord()
+        typeahead.toIntOrNull()?.let { context.setTypeahead(it) }
+    },
     "unsetlocal" to { context, args ->
         val (name, _) = args.splitFirstWord()
         context.deleteLocalVariable(name)
