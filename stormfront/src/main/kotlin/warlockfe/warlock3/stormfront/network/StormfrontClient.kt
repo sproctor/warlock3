@@ -559,7 +559,9 @@ class StormfrontClient(
             doAppendToStream(styledText, stream, ignoreWhenBlank)
         }
         if (stream == mainStream || ifClosedStream(stream) == mainStream) {
-            isPrompting = false
+            if (stream == mainStream) {
+                isPrompting = false
+            }
             val text = styledText.toString()
             if (text.isNotBlank()) {
                 simpleFileLogger?.write(text)
