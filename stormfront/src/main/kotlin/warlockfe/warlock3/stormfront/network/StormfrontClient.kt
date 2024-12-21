@@ -616,9 +616,9 @@ class StormfrontClient(
     }
 
     override suspend fun sendCommand(line: String): SendCommandType {
-            printCommand(line)
-            simpleFileLogger?.write(">$line\n")
-            completeFileLogger.write("command: $line\n")
+        printCommand(line)
+        simpleFileLogger?.write(">$line\n")
+        completeFileLogger.write("command: $line\n")
         return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
             scriptManager.startScript(this, scriptCommand)

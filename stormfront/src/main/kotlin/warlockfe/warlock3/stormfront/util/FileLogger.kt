@@ -27,7 +27,7 @@ class FileLogger(
                 val dateString = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss,SSS"))
                 logFile.appendText("[$dateString] $message\n")
             } else {
-                logFile.appendText(message)
+                logFile.appendText(message + "\n")
             }
         }
     }
