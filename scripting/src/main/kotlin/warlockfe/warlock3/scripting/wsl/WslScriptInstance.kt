@@ -53,7 +53,7 @@ class WslScriptInstance(
 
         job = scope.launch {
             try {
-                client.sendCommand("_state scripting on", echo = false)
+                client.sendCommandDirect("_state scripting on")
                 lines = script.parse()
                 val globalVariables = client.characterId.flatMapLatest { id ->
                     if (id != null) {
@@ -99,7 +99,7 @@ class WslScriptInstance(
                 client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
             } finally {
                 try {
-                    client.sendCommand("_state scripting off", echo = false)
+                    client.sendCommandDirect("_state scripting off")
                     onStop()
                     scope.cancel()
                 } catch (e: CancellationException) {

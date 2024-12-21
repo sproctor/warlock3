@@ -25,6 +25,8 @@ import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
 class WslContext(
@@ -55,6 +57,9 @@ class WslContext(
 
     private var loggingLevel = 20
 
+    private var maxTypeAhead = 1
+    private var typeAhead = AtomicInteger(0)
+
     private val navChannel = Channel<Unit>(0)
     private val promptChannel = Channel<Unit>(0)
 
@@ -63,6 +68,7 @@ class WslContext(
             .onEach { event ->
                 when (event) {
                     is ClientPromptEvent -> {
+                        typeAhead.getAndUpdate { max(0, it - 1) }
                         promptChannel.trySend(Unit)
                     }
 
@@ -176,6 +182,10 @@ class WslContext(
     }
 
     suspend fun sendCommand(command: String) {
+        while (typeAhead.get() >= maxTypeAhead) {
+            waitForPrompt()
+        }
+        typeAhead.incrementAndGet()
         val result = client.sendCommand(command)
         log(ScriptLoggingLevel.VERBOSE, "Sent: $command")
         if (result == SendCommandType.SCRIPT) {

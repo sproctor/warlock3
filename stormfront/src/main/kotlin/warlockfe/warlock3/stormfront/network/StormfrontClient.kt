@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -93,6 +93,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.max
 
 const val scriptCommandPrefix = '.'
 const val clientCommandPrefix = '/'
@@ -210,16 +211,16 @@ class StormfrontClient(
             }
         }
         scope.launch {
-            combine(commandQueue, currentTypeAhead) { commands, typeAhead -> commands to typeAhead }
-                .collect { (commands, typeAhead) ->
-                    if (maxTypeAhead == 0 || typeAhead < maxTypeAhead) {
-                        commands.firstOrNull()?.let { command ->
-                            currentTypeAhead.update { it + 1 }
-                            commandQueue.update { it.drop(1) }
-                            doSendCommand(command)
-                        }
+            commandQueue.collect { commands ->
+                commands.firstOrNull()?.let { command ->
+                    if (maxTypeAhead > 0) {
+                        currentTypeAhead.first { it < maxTypeAhead }
                     }
+                    currentTypeAhead.update { it + 1 }
+                    commandQueue.update { it.drop(1) }
+                    sendCommandDirect(command)
                 }
+            }
         }
     }
 
@@ -265,8 +266,8 @@ class StormfrontClient(
                 _connected.value = false
                 return@launch
             }
-            doSendCommand(key)
-            doSendCommand("/FE:STORMFRONT /XML")
+            sendCommandDirect(key)
+            sendCommandDirect("/FE:STORMFRONT /XML")
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), charsetName))
             val protocolHandler = StormfrontProtocolHandler()
@@ -345,9 +346,7 @@ class StormfrontClient(
                                         currentStyle = event.style
 
                                     is StormfrontPromptEvent -> {
-                                        if (currentTypeAhead.value > 0) {
-                                            currentTypeAhead.update { it - 1 }
-                                        }
+                                        currentTypeAhead.update { max(0, it - 1) }
                                         currentStyle = null
                                         currentStream = mainStream
                                         if (!isPrompting) {
@@ -383,7 +382,7 @@ class StormfrontClient(
                                         // Not 100% where this belongs. connections hang until and empty command is sent
                                         // This must be in response to either mode, playerId, or settingsInfo, so
                                         // we put it here until someone discovers something else
-                                        doSendCommand("")
+                                        sendCommandDirect("")
                                     }
 
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
@@ -616,12 +615,10 @@ class StormfrontClient(
         }
     }
 
-    override suspend fun sendCommand(line: String, echo: Boolean): SendCommandType {
-        if (echo) {
+    override suspend fun sendCommand(line: String): SendCommandType {
             printCommand(line)
             simpleFileLogger?.write(line + "\n")
             completeFileLogger.write("command: $line\n")
-        }
         return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
             scriptManager.startScript(this, scriptCommand)
@@ -671,9 +668,9 @@ class StormfrontClient(
         }
     }
 
-    private suspend fun doSendCommand(line: String) {
+    override suspend fun sendCommandDirect(command: String) {
         withContext(Dispatchers.IO) {
-            val toSend = "<c>$line\n"
+            val toSend = "<c>$command\n"
             try {
                 socket.getOutputStream().write(toSend.toByteArray(charset))
             } catch (e: SocketException) {
