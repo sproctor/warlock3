@@ -11,13 +11,19 @@ dependencies {
     implementation(libs.apache.commons.text)
 }
 
-tasks.generateGrammarSource {
-    arguments = arguments + listOf("-visitor", "-long-messages", "-package", "warlockfe.warlock3.stormfront.parser")
-    outputDirectory = File("${layout.buildDirectory.get()}/generated-src/antlr/main/warlockfe/warlock3/stormfront/parser/")
-}
+tasks {
+    generateGrammarSource {
+        arguments = arguments + listOf("-visitor", "-long-messages", "-package", "warlockfe.warlock3.stormfront.parser")
+        outputDirectory = File("${layout.buildDirectory.get()}/generated-src/antlr/main/warlockfe/warlock3/stormfront/parser/")
+    }
 
-tasks.compileKotlin {
-    dependsOn.add(tasks.generateGrammarSource)
+    compileKotlin {
+        dependsOn.add(generateGrammarSource)
+    }
+
+    compileTestKotlin {
+        dependsOn.add(generateTestGrammarSource)
+    }
 }
 
 kotlin {
