@@ -732,8 +732,8 @@ class StormfrontClient(
         maxTypeAhead = value
     }
 
-    private fun notifyListeners(event: ClientEvent) {
-        scope.launch {
+    private suspend fun notifyListeners(event: ClientEvent) {
+        withContext(Dispatchers.IO) {
             _eventFlow.emit(event)
         }
     }
