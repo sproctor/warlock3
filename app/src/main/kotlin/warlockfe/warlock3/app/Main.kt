@@ -192,6 +192,7 @@ fun main(args: Array<String>) {
                     }
                 } catch (e: UpdateCheckException) {
                     // Handle exception
+                    logger.error(e) { "Update check failed" }
                 }
             }
         }
