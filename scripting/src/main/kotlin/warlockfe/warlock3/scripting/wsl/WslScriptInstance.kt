@@ -1,11 +1,11 @@
 package warlockfe.warlock3.scripting.wsl
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.flatMapLatest
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
@@ -47,7 +48,7 @@ class WslScriptInstance(
     private val suspendedChannel = Channel<Unit>(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
+    override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
 
@@ -99,11 +100,11 @@ class WslScriptInstance(
                 client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
             } finally {
                 try {
-                    client.sendCommandDirect("_state scripting off")
-                    onStop()
-                    scope.cancel()
-                } catch (e: CancellationException) {
-                    // Ignore cancellation exceptions
+                    withContext(NonCancellable) {
+                        client.sendCommandDirect("_state scripting off")
+                        onStop()
+                        scope.cancel()
+                    }
                 } catch (e: Throwable) {
                     logger.error(e) { "Problem terminating script: ${e.message}" }
                 }

@@ -56,7 +56,7 @@ class JsInstance(
         private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override suspend fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
+    override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
         status = ScriptStatus.Running
         this.client = client
         thread = thread {
@@ -133,7 +133,7 @@ class JsInstance(
                 }
                 ScriptableObject.defineClass(jsScope, MatchList::class.java)
                 context.evaluateReader(jsScope, reader, file.name, 1, null)
-            } catch (e: StopException) {
+            } catch (_: StopException) {
                 // nothing to do
             } catch (e: WrappedException) {
                 val wrappedException = e.wrappedException
@@ -187,7 +187,7 @@ class JsInstance(
         while (status == ScriptStatus.Suspended) {
             try {
                 Thread.sleep(1000)
-            } catch (e: InterruptedException) {
+            } catch (_: InterruptedException) {
                 // don't care
             }
         }

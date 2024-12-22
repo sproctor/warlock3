@@ -11,6 +11,7 @@ import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -617,58 +618,59 @@ class StormfrontClient(
         }
     }
 
-    override suspend fun sendCommand(line: String): SendCommandType {
-        printCommand(line)
-        simpleFileLogger?.write(">$line\n")
-        completeFileLogger.write("command: $line\n")
-        return if (line.startsWith(scriptCommandPrefix)) {
-            val scriptCommand = line.drop(1)
-            scriptManager.startScript(this, scriptCommand)
-            SendCommandType.SCRIPT
-        } else if (line.startsWith(clientCommandPrefix)) {
-            val clientCommand = line.drop(1)
-            val (command, args) = clientCommand.splitFirstWord()
-            when (command) {
-                "kill" -> {
-                    args?.split(' ')?.forEach { name ->
-                        scriptManager.findScriptInstance(name)?.stop()
-                    }
-                }
-
-                "pause" -> {
-                    args?.split(' ')?.forEach { name ->
-                        scriptManager.findScriptInstance(name)?.suspend()
-                    }
-                }
-
-                "resume" -> {
-                    args?.split(' ')?.forEach { name ->
-                        scriptManager.findScriptInstance(name)?.resume()
-                    }
-                }
-
-                "list" -> {
-                    val scripts = scriptManager.runningScripts
-                    if (scripts.isEmpty()) {
-                        print(StyledString("No scripts are running", WarlockStyle.Echo))
-                    } else {
-                        print(StyledString("Running scripts:", WarlockStyle.Echo))
-                        scripts.forEach {
-                            print(StyledString("${it.name} - ${it.id}", WarlockStyle.Echo))
+    override suspend fun sendCommand(line: String): SendCommandType =
+        withContext(NonCancellable) {
+            printCommand(line)
+            simpleFileLogger?.write(">$line\n")
+            completeFileLogger.write("command: $line\n")
+            if (line.startsWith(scriptCommandPrefix)) {
+                val scriptCommand = line.drop(1)
+                scriptManager.startScript(this@StormfrontClient, scriptCommand)
+                SendCommandType.SCRIPT
+            } else if (line.startsWith(clientCommandPrefix)) {
+                val clientCommand = line.drop(1)
+                val (command, args) = clientCommand.splitFirstWord()
+                when (command) {
+                    "kill" -> {
+                        args?.split(' ')?.forEach { name ->
+                            scriptManager.findScriptInstance(name)?.stop()
                         }
                     }
-                }
 
-                else -> {
-                    print(StyledString("Invalid command.", WarlockStyle.Error))
+                    "pause" -> {
+                        args?.split(' ')?.forEach { name ->
+                            scriptManager.findScriptInstance(name)?.suspend()
+                        }
+                    }
+
+                    "resume" -> {
+                        args?.split(' ')?.forEach { name ->
+                            scriptManager.findScriptInstance(name)?.resume()
+                        }
+                    }
+
+                    "list" -> {
+                        val scripts = scriptManager.runningScripts
+                        if (scripts.isEmpty()) {
+                            print(StyledString("No scripts are running", WarlockStyle.Echo))
+                        } else {
+                            print(StyledString("Running scripts:", WarlockStyle.Echo))
+                            scripts.forEach {
+                                print(StyledString("${it.name} - ${it.id}", WarlockStyle.Echo))
+                            }
+                        }
+                    }
+
+                    else -> {
+                        print(StyledString("Invalid command.", WarlockStyle.Error))
+                    }
                 }
+                SendCommandType.ACTION
+            } else {
+                commandQueue.update { it + line }
+                SendCommandType.COMMAND
             }
-            SendCommandType.ACTION
-        } else {
-            commandQueue.update { it + line }
-            SendCommandType.COMMAND
         }
-    }
 
     override suspend fun sendCommandDirect(command: String) {
         withContext(Dispatchers.IO) {
