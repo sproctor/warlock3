@@ -1,20 +1,29 @@
 package warlockfe.warlock3.app
 
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
+import androidx.compose.ui.window.MenuBarScope
+import androidx.compose.ui.window.setContent
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.util.toAwtColor
 import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.script.ScriptManager
+import java.awt.Color
 import java.io.File
+import javax.swing.JMenuBar
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -33,7 +42,7 @@ fun FrameWindowScope.AppMenuBar(
     val openWindows by windowRepository.observeOpenWindows(characterId ?: "").collectAsState(emptyList())
     var showAbout by remember { mutableStateOf(false) }
     var scriptDirectory by remember { mutableStateOf<String?>(null) }
-    MenuBar {
+    CustomMenuBar {
         Menu("File") {
             Item("New window", onClick = newWindow)
             Item("Settings", onClick = showSettings)
@@ -97,5 +106,25 @@ fun FrameWindowScope.AppMenuBar(
     }
     if (showAbout) {
         AboutDialog(warlockVersion) { showAbout = false }
+    }
+}
+
+@Composable
+fun FrameWindowScope.CustomMenuBar(content: @Composable MenuBarScope.() -> Unit) {
+    val parentComposition = rememberCompositionContext()
+
+    val backgroundColor = MaterialTheme.colorScheme.surface
+    val foregroundCOlor = MaterialTheme.colorScheme.onSurface
+    DisposableEffect(Unit) {
+        val menu = JMenuBar()
+        menu.background = backgroundColor.toAwtColor()
+        menu.foreground = foregroundCOlor.toAwtColor()
+        val composition = menu.setContent(parentComposition, content)
+        window.jMenuBar = menu
+
+        onDispose {
+            window.jMenuBar = null
+            composition.dispose()
+        }
     }
 }
