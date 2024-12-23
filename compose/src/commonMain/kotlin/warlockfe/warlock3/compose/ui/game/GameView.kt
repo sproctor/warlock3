@@ -267,17 +267,9 @@ fun WindowViews(
     saveStyle: (String, StyleDefinition) -> Unit,
 ) {
     windowStates.forEachIndexed { index, uiState ->
-        val panelState = remember(uiState.name) {
-            val size = if (isHorizontal) uiState.window?.width else uiState.window?.height
-            ResizablePanelState(initialSize = size?.dp ?: 160.dp, minSize = 16.dp)
-        }
-        ResizablePanel(
-            modifier = if (isHorizontal) Modifier.fillMaxHeight() else Modifier.fillMaxWidth(),
-            isHorizontal = isHorizontal,
-            state = panelState,
-        ) {
+        val content = @Composable { modifier: Modifier ->
             WindowView(
-                modifier = Modifier.matchParentSize(),
+                modifier = modifier,
                 uiState = uiState,
                 onActionClicked = onActionClicked,
                 onMoveClicked = { onMoveClicked(uiState.name, it) },
@@ -291,13 +283,29 @@ fun WindowViews(
                 saveStyle = { saveStyle(uiState.name, it) }
             )
         }
-        LaunchedEffect(panelState.currentSize) {
-            val size = panelState.currentSize.value.toInt()
-            if (isHorizontal) {
-                onWidthChanged(uiState.name, size)
-            } else {
-                onHeightChanged(uiState.name, size)
+
+        if (index != windowStates.lastIndex) {
+            val panelState = remember(uiState.name) {
+                val size = if (isHorizontal) uiState.window?.width else uiState.window?.height
+                ResizablePanelState(initialSize = size?.dp ?: 160.dp, minSize = 16.dp)
             }
+            ResizablePanel(
+                modifier = if (isHorizontal) Modifier.fillMaxHeight() else Modifier.fillMaxWidth(),
+                isHorizontal = isHorizontal,
+                state = panelState,
+            ) {
+                content(Modifier.matchParentSize())
+            }
+            LaunchedEffect(panelState.currentSize) {
+                val size = panelState.currentSize.value.toInt()
+                if (isHorizontal) {
+                    onWidthChanged(uiState.name, size)
+                } else {
+                    onHeightChanged(uiState.name, size)
+                }
+            }
+        } else {
+            content(Modifier.fillMaxSize())
         }
     }
 }
