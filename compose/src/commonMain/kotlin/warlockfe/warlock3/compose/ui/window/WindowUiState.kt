@@ -6,7 +6,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.Window
 
 @Stable
-class WindowUiState(
+data class WindowUiState(
     val name: String,
     val stream: ComposeTextStream,
     val window: Window?,

@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.compose.components.LocalScrollbarStyle
@@ -71,11 +72,11 @@ fun WindowView(
         modifier.padding(2.dp),
         shape = MaterialTheme.shapes.extraSmall,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
     ) {
         Column {
             Row(
-                Modifier.background(MaterialTheme.colorScheme.primary).fillMaxWidth()
+                Modifier.background(MaterialTheme.colorScheme.primaryContainer).fillMaxWidth()
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -83,7 +84,7 @@ fun WindowView(
                 Box(Modifier.weight(1f)) {
                     Text(
                         text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -98,7 +99,7 @@ fun WindowView(
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                     WindowViewDropdownMenu(
@@ -119,7 +120,7 @@ fun WindowView(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                 }
