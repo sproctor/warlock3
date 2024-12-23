@@ -114,11 +114,11 @@ fun FrameWindowScope.CustomMenuBar(content: @Composable MenuBarScope.() -> Unit)
     val parentComposition = rememberCompositionContext()
 
     val backgroundColor = MaterialTheme.colorScheme.surface
-    val foregroundCOlor = MaterialTheme.colorScheme.onSurface
+    val foregroundColor = MaterialTheme.colorScheme.onSurface
     DisposableEffect(Unit) {
         val menu = JMenuBar()
         menu.background = backgroundColor.toAwtColor()
-        menu.foreground = foregroundCOlor.toAwtColor()
+        menu.foreground = foregroundColor.toAwtColor()
         val composition = menu.setContent(parentComposition, content)
         window.jMenuBar = menu
 

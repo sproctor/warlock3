@@ -16,7 +16,6 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
     implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
     implementation(compose.components.resources)
     implementation(libs.compose.color.picker)
     implementation(libs.kotlinx.cli)

@@ -60,12 +60,9 @@ import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
-import java.awt.Color
 import java.io.File
 import java.nio.file.Path
-import javax.swing.JFrame
 import javax.swing.UIManager
-import javax.swing.plaf.ColorUIResource
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
@@ -107,13 +104,7 @@ fun main(args: Array<String>) {
     }
     val logger = KotlinLogging.logger("main")
 
-//    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
-    UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName())
-    UIManager.put("MenuBar.background", Color.RED)
-    UIManager.put("Menu.background", Color.GREEN);
-    UIManager.put("MenuItem.background", Color.MAGENTA)
-    UIManager.put("MenuItem.background", Color.red)
-    UIManager.put("MenuItem.opaque", true)
+    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
 
     val credentials =
         if (port != null && host != null && key != null) {
