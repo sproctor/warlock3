@@ -62,7 +62,7 @@ class WindowRepository(
                     _windows.value += Pair(
                         it.name,
                         existingWindow?.copy(
-                            location = it.location,
+                            location = it.location ?: existingWindow.location,
                             position = it.position,
                             width = it.width,
                             height = it.height,
