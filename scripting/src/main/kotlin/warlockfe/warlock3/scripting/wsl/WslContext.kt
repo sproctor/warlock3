@@ -57,7 +57,7 @@ class WslContext(
 
     private var loggingLevel = 20
 
-    private var maxTypeAhead = 1
+    private var maxTypeAhead = 2
     private var typeAhead = AtomicInteger(0)
 
     private val navChannel = Channel<Unit>(0)
