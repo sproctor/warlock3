@@ -200,7 +200,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     },
     "matchre" to { context, args ->
         val (label, text) = args.splitFirstWord()
-        val regex = text?.let { parseRegex(it) } ?: throw WslRuntimeException("Invalid regex in matchRe")
+        val regex = text?.let { parseRegex(it) } ?: throw WslRuntimeException("Invalid regex in MatchRe")
         context.addMatch(RegexMatch(label, regex))
     },
     "matchwait" to { context, args ->
@@ -254,7 +254,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         val (name, value) = args.splitFirstWord()
 
         if (name.isBlank()) {
-            throw WslRuntimeException("Invalid arguments to setvariable")
+            throw WslRuntimeException("Invalid arguments to SetVariable")
         }
         //cx.scriptDebug(1, "setVariable: $name=$value")
         context.setStoredVariable(name, value ?: "")
@@ -335,7 +335,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     },
     "waitforre" to { context, args ->
         context.waitForRegex(
-            parseRegex(args) ?: throw WslRuntimeException("Invalid regex in waitForRe")
+            parseRegex(args) ?: throw WslRuntimeException("Invalid regex in WaitForRe")
         )
     },
 ) + (1..9).map { "if_$it" to ifNCommand(it) }
