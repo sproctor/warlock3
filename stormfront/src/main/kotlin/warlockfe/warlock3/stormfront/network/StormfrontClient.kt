@@ -267,8 +267,7 @@ class StormfrontClient(
                 _connected.value = false
                 return@launch
             }
-            sendCommandDirect(key)
-            sendCommandDirect("/FE:STORMFRONT /XML")
+            sendHandshake(key)
 
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), charsetName))
             val protocolHandler = StormfrontProtocolHandler()
@@ -679,6 +678,17 @@ class StormfrontClient(
                 socket.getOutputStream().write(toSend.toByteArray(charset))
             } catch (e: SocketException) {
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
+            }
+        }
+    }
+
+    suspend fun sendHandshake(key: String) {
+        withContext(Dispatchers.IO) {
+            val toSend = "<c>$key\n<c>/FE:WRAYTH /VERSION:1.0.1.28 /XML\n"
+            try {
+                socket.getOutputStream().write(toSend.toByteArray(charset))
+            } catch (e: SocketException) {
+                print(StyledString("Could not send handshake: ${e.message}", WarlockStyle.Error))
             }
         }
     }
