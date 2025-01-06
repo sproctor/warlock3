@@ -14,7 +14,8 @@ class InterruptibleContextFactory(
     override fun makeContext(): Context {
         val cx = super.makeContext()
         cx.instructionObserverThreshold = 10_000
-        cx.optimizationLevel = -1
+        // FIXME: it's possible the following line is no longer needed
+        cx.isInterpretedMode = true
         return cx
     }
 
