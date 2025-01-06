@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,25 +59,35 @@ import warlockfe.warlock3.core.window.WindowLocation
 fun WindowView(
     modifier: Modifier,
     uiState: WindowUiState,
+    isSelected: Boolean,
     onActionClicked: (String) -> Unit,
     onMoveClicked: (WindowLocation) -> Unit,
     onMoveTowardsStart: (() -> Unit)?,
     onMoveTowardsEnd: (() -> Unit)?,
     onCloseClicked: () -> Unit,
     saveStyle: (StyleDefinition) -> Unit,
+    onSelected: () -> Unit,
 ) {
     val window = uiState.window
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
 
     Surface(
-        modifier.padding(2.dp),
+        modifier.padding(2.dp)
+            .clickable(interactionSource = null, indication = null) {
+                onSelected()
+            },
         shape = MaterialTheme.shapes.extraSmall,
         shadowElevation = 2.dp,
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
     ) {
         Column {
             Row(
-                Modifier.background(MaterialTheme.colorScheme.primaryContainer).fillMaxWidth()
+                Modifier
+                    .background(
+                        if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest
+                        else MaterialTheme.colorScheme.surfaceContainer
+                    )
+                    .fillMaxWidth()
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -84,7 +95,7 @@ fun WindowView(
                 Box(Modifier.weight(1f)) {
                     Text(
                         text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

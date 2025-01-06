@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
@@ -277,7 +279,7 @@ class GameViewModel(
             initialValue = emptySet()
         )
 
-    val windowUiStates: Flow<List<WindowUiState>> =
+    val windowUiStates: StateFlow<List<WindowUiState>> =
         combine(
             openWindows,
             windows,
@@ -295,6 +297,11 @@ class GameViewModel(
                 )
             }
         }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
 
     val mainWindowUiState: StateFlow<WindowUiState> =
         combine(windows, presets, highlights) { windows, presets, highlights ->
@@ -321,6 +328,9 @@ class GameViewModel(
                         defaultStyle = defaultStyles["default"]!!,
                     )
             )
+
+    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(mainWindowUiState.value.name)
+    val selectedWindow: StateFlow<String> = _selectedWindow
 
     init {
         client.eventFlow
@@ -643,6 +653,10 @@ class GameViewModel(
                 windowRepository.setStyle(characterId = characterId, name = name, style = style)
             }
         }
+    }
+
+    fun selectWindow(window: String) {
+        _selectedWindow.value = window
     }
 }
 

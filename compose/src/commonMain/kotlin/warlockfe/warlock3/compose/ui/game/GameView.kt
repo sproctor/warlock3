@@ -1,12 +1,23 @@
 package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,12 +59,13 @@ fun GameView(
             }
         }
 
-        val subWindows = viewModel.windowUiStates.collectAsState(emptyList())
+        val subWindows = viewModel.windowUiStates.collectAsState()
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         GameTextWindows(
             modifier = Modifier.fillMaxWidth().weight(1f),
             subWindowUiStates = subWindows.value,
             mainWindowUiState = mainWindow.value,
+            selectedWindow = viewModel.selectedWindow.collectAsState().value,
             topHeight = viewModel.topHeight.collectAsState(null).value,
             leftWidth = viewModel.leftWidth.collectAsState(null).value,
             rightWidth = viewModel.rightWidth.collectAsState(null).value,
@@ -74,7 +86,8 @@ fun GameView(
             onTopChanged = viewModel::setTopHeight,
             onSwapWindows = viewModel::changeWindowPositions,
             onCloseClicked = viewModel::closeWindow,
-            saveStyle = viewModel::saveWindowStyle
+            saveStyle = viewModel::saveWindowStyle,
+            onWindowSelected = viewModel::selectWindow,
         )
         GameBottomBar(viewModel)
     }
@@ -85,6 +98,7 @@ fun GameTextWindows(
     modifier: Modifier,
     subWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState,
+    selectedWindow: String,
     topHeight: Int?,
     leftWidth: Int?,
     rightWidth: Int?,
@@ -98,6 +112,7 @@ fun GameTextWindows(
     onSwapWindows: (WindowLocation, Int, Int) -> Unit,
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
+    onWindowSelected: (String) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = modifier) {
@@ -115,6 +130,7 @@ fun GameTextWindows(
                 Column {
                     WindowViews(
                         windowStates = leftWindows,
+                        selectedWindow = selectedWindow,
                         onActionClicked = onActionClicked,
                         isHorizontal = false,
                         onMoveClicked = onMoveClicked,
@@ -123,6 +139,7 @@ fun GameTextWindows(
                         onSwapWindows = onSwapWindows,
                         onCloseClicked = onCloseClicked,
                         saveStyle = saveStyle,
+                        onWindowSelected = onWindowSelected,
                     )
                 }
             }
@@ -147,6 +164,7 @@ fun GameTextWindows(
                     Row {
                         WindowViews(
                             windowStates = topWindows,
+                            selectedWindow = selectedWindow,
                             onActionClicked = onActionClicked,
                             isHorizontal = true,
                             onMoveClicked = onMoveClicked,
@@ -155,6 +173,7 @@ fun GameTextWindows(
                             onSwapWindows = onSwapWindows,
                             onCloseClicked = onCloseClicked,
                             saveStyle = saveStyle,
+                            onWindowSelected = onWindowSelected,
                         )
                     }
                 }
@@ -164,9 +183,11 @@ fun GameTextWindows(
                     }
                 }
             }
+//            val focusRequester = remember { FocusRequester() }
             WindowView(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
                 uiState = mainWindowUiState,
+                isSelected = selectedWindow == mainWindowUiState.name,
                 onActionClicked = onActionClicked,
                 onMoveClicked = {},
                 onMoveTowardsStart = null,
@@ -174,8 +195,12 @@ fun GameTextWindows(
                 onCloseClicked = {},
                 saveStyle = {
                     saveStyle(mainWindowUiState.name, it)
-                }
+                },
+                onSelected = { onWindowSelected(mainWindowUiState.name) },
             )
+//            LaunchedEffect(Unit) {
+//                focusRequester.requestFocus()
+//            }
         }
         // Right Column
         val rightWindows = subWindowUiStates
@@ -193,6 +218,7 @@ fun GameTextWindows(
                 Column {
                     WindowViews(
                         windowStates = rightWindows,
+                        selectedWindow = selectedWindow,
                         onActionClicked = onActionClicked,
                         isHorizontal = false,
                         onMoveClicked = onMoveClicked,
@@ -201,6 +227,7 @@ fun GameTextWindows(
                         onSwapWindows = onSwapWindows,
                         onCloseClicked = onCloseClicked,
                         saveStyle = saveStyle,
+                        onWindowSelected = onWindowSelected,
                     )
                 }
             }
@@ -257,6 +284,7 @@ fun GameBottomBar(viewModel: GameViewModel) {
 @Composable
 fun WindowViews(
     windowStates: List<WindowUiState>,
+    selectedWindow: String,
     isHorizontal: Boolean,
     onActionClicked: (String) -> Unit,
     onMoveClicked: (String, WindowLocation) -> Unit,
@@ -265,12 +293,14 @@ fun WindowViews(
     onSwapWindows: (WindowLocation, Int, Int) -> Unit,
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
+    onWindowSelected: (String) -> Unit,
 ) {
     windowStates.forEachIndexed { index, uiState ->
         val content = @Composable { modifier: Modifier ->
             WindowView(
                 modifier = modifier,
                 uiState = uiState,
+                isSelected = selectedWindow == uiState.name,
                 onActionClicked = onActionClicked,
                 onMoveClicked = { onMoveClicked(uiState.name, it) },
                 onMoveTowardsStart = if (index > 0) {
@@ -280,7 +310,8 @@ fun WindowViews(
                     { onSwapWindows(uiState.window!!.location!!, index, index + 1) }
                 } else null,
                 onCloseClicked = { onCloseClicked(uiState.name) },
-                saveStyle = { saveStyle(uiState.name, it) }
+                saveStyle = { saveStyle(uiState.name, it) },
+                onSelected = { onWindowSelected(uiState.name) },
             )
         }
 
