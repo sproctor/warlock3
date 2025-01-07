@@ -660,6 +660,10 @@ class StormfrontClient(
                         }
                     }
 
+                    "send" -> {
+                        sendCommandDirect(args ?: "")
+                    }
+
                     else -> {
                         print(StyledString("Invalid command.", WarlockStyle.Error))
                     }
