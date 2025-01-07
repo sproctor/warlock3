@@ -3,12 +3,25 @@ package warlockfe.warlock3.compose.macros
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.window.ScrollEvent
 
 val macroCommands = mapOf<String, suspend (GameViewModel, ClipboardManager) -> Unit>(
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
         val text = textField.text.substring(textField.selection.start, textField.selection.end)
         clipboard.setText(AnnotatedString(text))
+    },
+    "linedown" to { viewModel, clipboard ->
+        viewModel.scroll(ScrollEvent.LINE_DOWN)
+    },
+    "lineup" to { viewModel, clipboard ->
+        viewModel.scroll(ScrollEvent.LINE_UP)
+    },
+    "pagedown" to { viewModel, clipboard ->
+        viewModel.scroll(ScrollEvent.PAGE_DOWN)
+    },
+    "pageup" to { viewModel, clipboard ->
+        viewModel.scroll(ScrollEvent.PAGE_UP)
     },
     "paste" to { viewModel, clipboard ->
         clipboard.getText()?.let { text ->

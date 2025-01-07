@@ -28,6 +28,7 @@ import warlockfe.warlock3.compose.components.ResizablePanelState
 import warlockfe.warlock3.compose.ui.components.HandsView
 import warlockfe.warlock3.compose.ui.components.IndicatorView
 import warlockfe.warlock3.compose.ui.components.VitalBars
+import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.util.toColor
@@ -88,6 +89,8 @@ fun GameView(
             onCloseClicked = viewModel::closeWindow,
             saveStyle = viewModel::saveWindowStyle,
             onWindowSelected = viewModel::selectWindow,
+            scrollEvents = viewModel.scrollEvents.collectAsState().value,
+            handledScrollEvent = viewModel::handledScrollEvent,
         )
         GameBottomBar(viewModel)
     }
@@ -113,6 +116,8 @@ fun GameTextWindows(
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
     onWindowSelected: (String) -> Unit,
+    scrollEvents: List<ScrollEvent>,
+    handledScrollEvent: (ScrollEvent) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = modifier) {
@@ -140,6 +145,8 @@ fun GameTextWindows(
                         onCloseClicked = onCloseClicked,
                         saveStyle = saveStyle,
                         onWindowSelected = onWindowSelected,
+                        scrollEvents = scrollEvents,
+                        handledScrollEvent = handledScrollEvent,
                     )
                 }
             }
@@ -174,6 +181,8 @@ fun GameTextWindows(
                             onCloseClicked = onCloseClicked,
                             saveStyle = saveStyle,
                             onWindowSelected = onWindowSelected,
+                            scrollEvents = scrollEvents,
+                            handledScrollEvent = handledScrollEvent,
                         )
                     }
                 }
@@ -183,7 +192,6 @@ fun GameTextWindows(
                     }
                 }
             }
-//            val focusRequester = remember { FocusRequester() }
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
                 uiState = mainWindowUiState,
@@ -197,10 +205,9 @@ fun GameTextWindows(
                     saveStyle(mainWindowUiState.name, it)
                 },
                 onSelected = { onWindowSelected(mainWindowUiState.name) },
+                scrollEvents = scrollEvents,
+                handledScrollEvent = handledScrollEvent,
             )
-//            LaunchedEffect(Unit) {
-//                focusRequester.requestFocus()
-//            }
         }
         // Right Column
         val rightWindows = subWindowUiStates
@@ -228,6 +235,8 @@ fun GameTextWindows(
                         onCloseClicked = onCloseClicked,
                         saveStyle = saveStyle,
                         onWindowSelected = onWindowSelected,
+                        scrollEvents = scrollEvents,
+                        handledScrollEvent = handledScrollEvent,
                     )
                 }
             }
@@ -294,6 +303,8 @@ fun WindowViews(
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
     onWindowSelected: (String) -> Unit,
+    scrollEvents: List<ScrollEvent>,
+    handledScrollEvent: (ScrollEvent) -> Unit,
 ) {
     windowStates.forEachIndexed { index, uiState ->
         val content = @Composable { modifier: Modifier ->
@@ -312,6 +323,8 @@ fun WindowViews(
                 onCloseClicked = { onCloseClicked(uiState.name) },
                 saveStyle = { saveStyle(uiState.name, it) },
                 onSelected = { onWindowSelected(uiState.name) },
+                scrollEvents = scrollEvents,
+                handledScrollEvent = handledScrollEvent,
             )
         }
 

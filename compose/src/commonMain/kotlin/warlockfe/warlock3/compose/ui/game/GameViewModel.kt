@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -22,6 +23,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
@@ -47,6 +51,7 @@ import warlockfe.warlock3.compose.macros.macroCommands
 import warlockfe.warlock3.compose.macros.parseMacroCommand
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
+import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowLine
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.util.getEntireLineStyles
@@ -99,6 +104,9 @@ class GameViewModel(
 
     var entryText by mutableStateOf(TextFieldValue())
         private set
+
+    private val _scrollEvents = MutableStateFlow<PersistentList<ScrollEvent>>(persistentListOf())
+    val scrollEvents = _scrollEvents.asStateFlow()
 
     private val _compassState = mutableStateOf(CompassState(emptySet()))
     val compassState: State<CompassState> = _compassState
@@ -657,6 +665,17 @@ class GameViewModel(
 
     fun selectWindow(window: String) {
         _selectedWindow.value = window
+    }
+
+    fun scroll(event: ScrollEvent) {
+        println("ScrollEvent: $event")
+        _scrollEvents.update { it.add(event) }
+    }
+
+    fun handledScrollEvent(event: ScrollEvent) {
+        _scrollEvents.update { oldList ->
+            oldList.remove(event)
+        }
     }
 }
 

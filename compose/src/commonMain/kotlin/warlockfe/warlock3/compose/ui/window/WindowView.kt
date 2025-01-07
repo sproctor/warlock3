@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.ui.window
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
@@ -67,9 +69,12 @@ fun WindowView(
     onCloseClicked: () -> Unit,
     saveStyle: (StyleDefinition) -> Unit,
     onSelected: () -> Unit,
+    scrollEvents: List<ScrollEvent>,
+    handledScrollEvent: (ScrollEvent) -> Unit,
 ) {
     val window = uiState.window
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
+    val scrollState = rememberLazyListState()
 
     Surface(
         modifier.padding(2.dp)
@@ -138,6 +143,7 @@ fun WindowView(
             }
             WindowViewContent(
                 stream = uiState.stream,
+                scrollState = scrollState,
                 window = window,
                 highlights = uiState.highlights,
                 presets = uiState.presets,
@@ -159,6 +165,39 @@ fun WindowView(
             defaultStyle = uiState.defaultStyle,
             saveStyle = saveStyle,
         )
+    }
+
+    LaunchedEffect(scrollEvents) {
+        println("observed scroll event: $scrollEvents")
+        if (isSelected) {
+            val event = scrollEvents.firstOrNull()
+            if (event != null) {
+                println("handling scrollevent: $event")
+                val viewportHeight = scrollState.layoutInfo.viewportSize.height.toFloat()
+                println("viewport height: $viewportHeight")
+                when (event) {
+                    ScrollEvent.PAGE_UP -> scrollState.scrollBy(-viewportHeight)
+                    ScrollEvent.PAGE_DOWN -> scrollState.scrollBy(viewportHeight)
+                    ScrollEvent.LINE_UP -> {
+                        val offset = scrollState.firstVisibleItemScrollOffset
+                        val firstItem = scrollState.firstVisibleItemIndex
+                        if (firstItem > 0) {
+                            scrollState.scrollToItem(firstItem - 1, offset)
+                        } else {
+                            scrollState.scrollToItem(0)
+                        }
+                    }
+
+                    ScrollEvent.LINE_DOWN -> {
+                        val offset = scrollState.firstVisibleItemScrollOffset
+                        val firstItem = scrollState.firstVisibleItemIndex
+                        scrollState.scrollToItem(firstItem + 1, offset)
+                    }
+                }
+                println("handled scroll event: $event")
+                handledScrollEvent(event)
+            }
+        }
     }
 }
 
@@ -238,6 +277,7 @@ private fun WindowViewDropdownMenu(
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
+    scrollState: LazyListState,
     window: Window?,
     highlights: List<ViewHighlight>,
     presets: Map<String, StyleDefinition>,
@@ -257,7 +297,6 @@ private fun WindowViewContent(
     val components = snapshot.components
 
     SelectionContainer {
-        val scrollState = rememberLazyListState()
         CompositionLocalProvider(
             LocalScrollbarStyle provides ScrollbarStyle(
                 hoverColor = textColor.copy(alpha = 0.5f),
