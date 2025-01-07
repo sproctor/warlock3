@@ -29,5 +29,7 @@ suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
         putGlobal(Key.Escape.getLabel(), "{StopScript}")
         putGlobal("shift+${Key.Escape.getLabel()}", "{PauseScript}")
         putGlobal(Key.NumPadEnter.getLabel(), "{RepeatLast}")
+        putGlobal(Key.PageUp.getLabel(), "{PageUp}")
+        putGlobal(Key.PageDown.getLabel(), "{PageDown}")
     }
 }
