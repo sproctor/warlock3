@@ -168,13 +168,10 @@ fun WindowView(
     }
 
     LaunchedEffect(scrollEvents) {
-        println("observed scroll event: $scrollEvents")
         if (isSelected) {
             val event = scrollEvents.firstOrNull()
             if (event != null) {
-                println("handling scrollevent: $event")
                 val viewportHeight = scrollState.layoutInfo.viewportSize.height.toFloat()
-                println("viewport height: $viewportHeight")
                 when (event) {
                     ScrollEvent.PAGE_UP -> scrollState.scrollBy(-viewportHeight)
                     ScrollEvent.PAGE_DOWN -> scrollState.scrollBy(viewportHeight)
@@ -194,7 +191,6 @@ fun WindowView(
                         scrollState.scrollToItem(firstItem + 1, offset)
                     }
                 }
-                println("handled scroll event: $event")
                 handledScrollEvent(event)
             }
         }

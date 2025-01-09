@@ -667,7 +667,6 @@ class GameViewModel(
     }
 
     fun scroll(event: ScrollEvent) {
-        println("ScrollEvent: $event")
         _scrollEvents.update { it.add(event) }
     }
 
