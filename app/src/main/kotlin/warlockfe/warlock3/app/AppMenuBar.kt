@@ -29,13 +29,14 @@ import javax.swing.JMenuBar
 @Composable
 fun FrameWindowScope.AppMenuBar(
     characterId: String?,
+    isConnected: Boolean,
     windowRepository: WindowRepository,
     scriptEngineRegistry: ScriptManager,
     runScript: (File) -> Unit,
     newWindow: () -> Unit,
     showSettings: () -> Unit,
     showUpdateDialog: () -> Unit,
-    disconnect: (() -> Unit)?,
+    disconnect: () -> Unit,
     warlockVersion: String,
 ) {
     val windows by windowRepository.windows.collectAsState()
@@ -68,10 +69,12 @@ fun FrameWindowScope.AppMenuBar(
                     }
                 )
             }
-            if (disconnect != null) {
-                HorizontalDivider()
-                Item("Disconnect", onClick = disconnect)
-            }
+            Separator()
+            Item(
+                text = "Disconnect",
+                enabled = isConnected,
+                onClick = disconnect,
+            )
         }
 
         if (characterId != null) {

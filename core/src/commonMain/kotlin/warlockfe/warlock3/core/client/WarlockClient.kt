@@ -21,7 +21,7 @@ interface WarlockClient {
 
     fun connect()
 
-    suspend fun disconnect()
+    fun disconnect()
 
     suspend fun sendCommand(line: String): SendCommandType
 

@@ -706,9 +706,11 @@ class StormfrontClient(
         SendCommandType.SCRIPT
     }
 
-    override suspend fun disconnect() {
+    override fun disconnect() {
         doDisconnect()
-        mainStream.appendLine(StyledString("Closed connection to server."))
+        scope.launch {
+            mainStream.appendLine(StyledString("Closed connection to server."))
+        }
     }
 
     private suspend fun disconnected() {
