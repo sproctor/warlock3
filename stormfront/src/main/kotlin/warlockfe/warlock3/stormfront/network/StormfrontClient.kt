@@ -494,7 +494,7 @@ class StormfrontClient(
                             }
                         } else {
                             // connection was closed by server
-                            disconnect()
+                            disconnected()
                         }
                     } else {
                         // This is the strange mode to read books and create characters
@@ -502,7 +502,7 @@ class StormfrontClient(
                         val c = reader.read()
                         if (c == -1) {
                             // connection was closed by server
-                            disconnect()
+                            disconnected()
                         } else {
                             val char = c.toChar()
                             buffer.append(char)
@@ -530,10 +530,10 @@ class StormfrontClient(
                     }
                 } catch (e: SocketException) {
                     logger.debug { "Socket exception: " + e.message }
-                    disconnect()
+                    disconnected()
                 } catch (e: SocketTimeoutException) {
                     logger.debug { "Socket timeout: " + e.message }
-                    disconnect()
+                    disconnected()
                 }
             }
         }
@@ -660,6 +660,10 @@ class StormfrontClient(
                         }
                     }
 
+                    "disconnect", "dc" -> {
+                        disconnect()
+                    }
+
                     "send" -> {
                         sendCommandDirect(args ?: "")
                     }
@@ -703,10 +707,21 @@ class StormfrontClient(
     }
 
     override suspend fun disconnect() {
+        doDisconnect()
+        mainStream.appendLine(StyledString("Closed connection to server."))
+    }
+
+    private suspend fun disconnected() {
+        if (connected.value) {
+            mainStream.appendLine(StyledString("Connection closed by server."))
+        }
+        doDisconnect()
+    }
+
+    private fun doDisconnect() {
         runCatching {
             socket.close()
         }
-        mainStream.appendLine(StyledString("Connection closed by server."))
         _connected.value = false
     }
 
