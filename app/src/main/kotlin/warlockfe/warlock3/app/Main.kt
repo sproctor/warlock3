@@ -19,8 +19,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
@@ -46,8 +44,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.model.GameScreen
@@ -61,10 +57,7 @@ import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
-import java.nio.file.Path
 import javax.swing.UIManager
-import kotlin.io.path.exists
-import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
 
 fun main(args: Array<String>) {
@@ -250,7 +243,6 @@ fun main(args: Array<String>) {
                 Window(
                     title = "Warlock 3 - $title",
                     state = windowState,
-                    icon = appIcon,
                     onCloseRequest = {
                         games.removeAt(index)
                         if (games.isEmpty()) {
@@ -258,10 +250,8 @@ fun main(args: Array<String>) {
                         }
                     },
                 ) {
-                    //val scale by clientSettings.observeScale().collectAsState(null)
                     CompositionLocalProvider(
                         LocalWindowComponent provides window,
-                        //LocalDensity provides Density(scale ?: 1.0f, 1.0f)
                     ) {
                         WarlockApp(
                             appContainer = appContainer,
@@ -291,22 +281,6 @@ fun main(args: Array<String>) {
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalResourceApi::class)
-private val appIcon: Painter? by lazy {
-    // app.dir is set when packaged to point at our collected inputs.
-    val appDirProp = System.getProperty("app.dir")
-    val appDir = appDirProp?.let { Path.of(it) }
-    // On Windows we should use the .ico file. On Linux, there's no native compound image format and Compose can't render SVG icons,
-    // so we pick the 128x128 icon and let the frameworks/desktop environment rescale. On macOS we don't need to do anything.
-    var iconPath = appDir?.resolve("app.ico")?.takeIf { it.exists() }
-    iconPath = iconPath ?: appDir?.resolve("icon-square-128.png")?.takeIf { it.exists() }
-    if (iconPath?.exists() == true) {
-        BitmapPainter(iconPath.inputStream().readAllBytes().decodeToImageBitmap())
-    } else {
-        null
     }
 }
 
