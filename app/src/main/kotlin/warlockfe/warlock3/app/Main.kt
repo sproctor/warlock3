@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
@@ -44,6 +45,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.model.GameScreen
@@ -57,9 +60,13 @@ import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
+import java.nio.file.Paths
 import javax.swing.UIManager
+import kotlin.io.path.exists
+import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalResourceApi::class)
 fun main(args: Array<String>) {
 
     initializeSentry()
@@ -240,9 +247,18 @@ fun main(args: Array<String>) {
             games.forEachIndexed { index, gameState ->
                 val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp) }
                 val title by gameState.getTitle().collectAsState("Loading...")
+                // app.dir is set when packaged to point at our collected inputs.
+                val appIcon = remember {
+                    System.getProperty("app.dir")
+                        ?.let { Paths.get(it, "icon-512.png") }
+                        ?.takeIf { it.exists() }
+                        ?.inputStream()
+                        ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
+                }
                 Window(
                     title = "Warlock 3 - $title",
                     state = windowState,
+                    icon = appIcon,
                     onCloseRequest = {
                         games.removeAt(index)
                         if (games.isEmpty()) {
