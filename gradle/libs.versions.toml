@@ -17,7 +17,7 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 
 agp = "8.7.3"
 ##⬆= "8.8.0"
-androidx-activity = "1.9.3"
+androidx-activity = "1.10.0"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.8.4"
 androidxSqlite = "2.5.0-alpha12"
