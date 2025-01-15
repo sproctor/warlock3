@@ -17,4 +17,7 @@ interface CharacterSettingDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(characterSetting: CharacterSettingEntity)
+
+    @Query("DELETE FROM CharacterSetting WHERE `key` = :key AND characterId = :characterId")
+    suspend fun delete(key: String, characterId: String)
 }

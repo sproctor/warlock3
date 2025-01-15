@@ -113,6 +113,7 @@ abstract class AppContainer(
     val dashboardViewModelFactory by lazy {
         DashboardViewModelFactory(
             characterRepository = characterRepository,
+            characterSettingsRepository = characterSettingsRepository,
             accountRepository = accountRepository,
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,

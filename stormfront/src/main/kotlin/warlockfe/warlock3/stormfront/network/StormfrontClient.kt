@@ -18,12 +18,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -124,7 +127,9 @@ class StormfrontClient(
 
     private var maxTypeAhead: Int = defaultMaxTypeAhead
 
-    private lateinit var socket: Socket
+    private var socket: Socket? = null
+
+    private var proxyProcess: Process? = null
 
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
@@ -269,10 +274,10 @@ class StormfrontClient(
             }
             sendHandshake(key)
 
-            val reader = BufferedReader(InputStreamReader(socket.getInputStream(), charsetName))
+            val reader = BufferedReader(InputStreamReader(socket!!.getInputStream(), charsetName))
             val protocolHandler = StormfrontProtocolHandler()
 
-            while (!socket.isClosed) {
+            while (!socket!!.isClosed) {
                 try {
                     if (parseText) {
                         // This is the standard Stormfront parser
@@ -683,7 +688,7 @@ class StormfrontClient(
         withContext(Dispatchers.IO) {
             val toSend = "<c>$command\n"
             try {
-                socket.getOutputStream().write(toSend.toByteArray(charset))
+                socket?.getOutputStream()?.write(toSend.toByteArray(charset))
             } catch (e: SocketException) {
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
             }
@@ -694,7 +699,7 @@ class StormfrontClient(
         withContext(Dispatchers.IO) {
             val toSend = "<c>$key\n<c>/FE:WRAYTH /VERSION:1.0.1.28 /XML\n"
             try {
-                socket.getOutputStream().write(toSend.toByteArray(charset))
+                socket?.getOutputStream()?.write(toSend.toByteArray(charset))
             } catch (e: SocketException) {
                 print(StyledString("Could not send handshake: ${e.message}", WarlockStyle.Error))
             }
@@ -722,7 +727,7 @@ class StormfrontClient(
 
     private fun doDisconnect() {
         runCatching {
-            socket.close()
+            socket?.close()
         }
         _connected.value = false
     }
@@ -771,7 +776,27 @@ class StormfrontClient(
         }
     }
 
+    fun setProxy(process: Process) {
+        proxyProcess = process
+        process.inputStream.bufferedReader().lineSequence().asFlow()
+            .onEach {
+                scriptDebug(it)
+            }
+            .launchIn(scope)
+        process.errorStream.bufferedReader().lineSequence().asFlow()
+            .onEach {
+                doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
+            }
+            .launchIn(scope)
+    }
+
     override fun close() {
         scope.cancel()
+        if (socket?.isClosed == false) {
+            socket?.close()
+            socket = null
+        }
+        proxyProcess?.destroy()
+        proxyProcess = null
     }
 }
