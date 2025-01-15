@@ -89,12 +89,10 @@ import warlockfe.warlock3.stormfront.util.AlterationResult
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import warlockfe.warlock3.stormfront.util.FileLogger
 import java.io.BufferedReader
-import java.io.IOException
 import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
-import java.net.UnknownHostException
 import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
@@ -251,8 +249,8 @@ class StormfrontClient(
     private val directions: HashSet<DirectionType> = hashSetOf()
     private var componentId: String? = null
 
-    private val _connected = MutableStateFlow(false)
-    override val connected = _connected.asStateFlow()
+    private val _disconnected = MutableStateFlow(false)
+    override val disconnected = _disconnected.asStateFlow()
 
     private var delta = 0L
     override val time: Long
@@ -261,7 +259,6 @@ class StormfrontClient(
     override suspend fun connect() {
         logger.debug { "Opening connection to $host:$port" }
         socket = Socket(host, port)
-        _connected.value = true
 
         scope.launch {
             sendHandshake(key)
@@ -711,7 +708,7 @@ class StormfrontClient(
     }
 
     private suspend fun disconnected() {
-        if (connected.value) {
+        if (!disconnected.value) {
             mainStream.appendLine(StyledString("Connection closed by server."))
         }
         doDisconnect()
@@ -721,7 +718,7 @@ class StormfrontClient(
         runCatching {
             socket?.close()
         }
-        _connected.value = false
+        _disconnected.value = true
     }
 
     private suspend fun rawPrint(text: String) {

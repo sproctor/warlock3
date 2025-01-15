@@ -41,10 +41,10 @@ fun GameView(
     viewModel: GameViewModel,
     navigateToDashboard: () -> Unit,
 ) {
-    val connected by viewModel.client.connected.collectAsState()
+    val disconnected by viewModel.client.disconnected.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        if (!connected) {
+        if (disconnected) {
             Column(
                 Modifier
                     .fillMaxWidth()

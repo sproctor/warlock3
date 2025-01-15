@@ -93,10 +93,10 @@ class DashboardViewModel(
                                 try {
                                     connectToGame(event.credentials, character.id)
                                 } catch (e: UnknownHostException) {
-                                    gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
+                                    gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}", returnTo = GameScreen.Dashboard)
                                 } catch (e: Exception) {
                                     logger.error(e) { "Error connecting to server" }
-                                    gameState.screen = GameScreen.ErrorState("Error: ${e.message}")
+                                    gameState.screen = GameScreen.ErrorState("Error: ${e.message}", returnTo = GameScreen.Dashboard)
                                 }
                                 sgeClient.close()
                                 cancelConnect()
@@ -151,7 +151,6 @@ class DashboardViewModel(
             if (proxyCommand != null) {
                 logger.debug { "Launching proxy command: $proxyCommand" }
                 process = Runtime.getRuntime().exec(proxyCommand)
-                // delay(proxySettings.delay ?: 1000L)
             }
         }
         val sfClient = warlockClientFactory.createStormFrontClient(
@@ -164,6 +163,7 @@ class DashboardViewModel(
             try {
                 println("attempt")
                 sfClient.connect()
+                break
             } catch (_: UnknownHostException) {
                 logger.debug { "Unknown host" }
                 break
@@ -171,7 +171,7 @@ class DashboardViewModel(
                 logger.debug(e) { "Error connecting to $host:$port" }
                 delay(500L)
             }
-        } while (process != null && process.isAlive && !sfClient.connected.value)
+        } while (process != null && process.isAlive)
         val gameViewModel = gameViewModelFactory.create(
             sfClient,
             gameState.windowRepository,

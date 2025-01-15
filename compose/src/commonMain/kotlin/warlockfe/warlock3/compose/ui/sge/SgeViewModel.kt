@@ -120,7 +120,7 @@ class SgeViewModel(
                             val gameViewModel = gameViewModelFactory.create(sfClient, gameState.windowRepository, gameState.streamRegistry)
                             gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
                         } catch (e: UnknownHostException) {
-                            gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
+                            gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}", returnTo = GameScreen.NewGameState)
                         }
                     }
                 }

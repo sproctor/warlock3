@@ -45,10 +45,10 @@ fun FrameWindowScope.WarlockApp(
                 is GameScreen.ConnectedGameState -> screen.viewModel.client.characterId.collectAsState().value
                 else -> null
             }
+            val isDisconnected = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.client?.disconnected?.collectAsState()
             AppMenuBar(
                 characterId = characterId,
-                isConnected =
-                    (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.client?.connected?.value == true,
+                isConnected = isDisconnected?.value != true,
                 windowRepository = gameState.windowRepository,
                 scriptEngineRegistry = appContainer.scriptManager,
                 newWindow = newWindow,

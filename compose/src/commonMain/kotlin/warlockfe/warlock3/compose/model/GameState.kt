@@ -19,5 +19,5 @@ sealed interface GameScreen {
     data object NewGameState : GameScreen
     data class ConnectedGameState(val viewModel: GameViewModel) : GameScreen
 
-    data class ErrorState(val message: String) : GameScreen
+    data class ErrorState(val message: String, val returnTo: GameScreen) : GameScreen
 }

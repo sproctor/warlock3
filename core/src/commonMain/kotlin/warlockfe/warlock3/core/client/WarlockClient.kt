@@ -17,7 +17,7 @@ interface WarlockClient {
 
     val time: Long
 
-    val connected: StateFlow<Boolean>
+    val disconnected: StateFlow<Boolean>
 
     suspend fun connect()
 
