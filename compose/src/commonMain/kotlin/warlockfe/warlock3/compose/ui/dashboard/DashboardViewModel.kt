@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -24,6 +23,7 @@ import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.stormfront.network.StormfrontClient
+import java.io.IOException
 import java.net.UnknownHostException
 
 class DashboardViewModel(
@@ -67,50 +67,49 @@ class DashboardViewModel(
                     message = "Could not connect to SGE"
                     return@launch
                 }
-                viewModelScope.launch(Dispatchers.IO) {
-                    sgeClient.eventFlow
-                        .collect { event ->
-                            when (event) {
-                                is SgeEvent.SgeLoginSucceededEvent -> sgeClient.selectGame(character.gameCode)
-                                is SgeEvent.SgeGameSelectedEvent -> sgeClient.requestCharacterList()
-                                is SgeEvent.SgeCharactersReadyEvent -> {
-                                    val characters = event.characters
-                                    val sgeCharacter = characters.firstOrNull { it.name.equals(character.name, true) }
-                                    if (sgeCharacter == null) {
-                                        message = "Could not find character: ${character.name}"
-                                    } else {
-                                        sgeClient.selectCharacter(sgeCharacter.code)
-                                    }
-                                }
-
-                                is SgeEvent.SgeReadyToPlayEvent -> {
-                                    try {
-                                        connectToGame(event.credentials, character.id)
-                                    } catch (e: UnknownHostException) {
-                                        gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
-                                    } catch (e: Exception) {
-                                        logger.error(e) { "Error connecting to server" }
-                                        gameState.screen = GameScreen.ErrorState("Error: ${e.message}")
-                                    }
-                                    sgeClient.close()
-                                    cancelConnect()
-                                }
-
-                                is SgeEvent.SgeErrorEvent -> {
-                                    message = "Error code (${event.errorCode})"
-                                    connectJob?.cancel()
-                                }
-
-                                else -> Unit // we don't care?
-                            }
-                        }
-                }
                 val account = character.accountId?.let { accountRepository.getByUsername(it) }
                 if (account == null) {
                     message = "Invalid account"
                     return@launch
                 }
                 sgeClient.login(username = account.username, account.password ?: "")
+
+                sgeClient.eventFlow
+                    .collect { event ->
+                        when (event) {
+                            is SgeEvent.SgeLoginSucceededEvent -> sgeClient.selectGame(character.gameCode)
+                            is SgeEvent.SgeGameSelectedEvent -> sgeClient.requestCharacterList()
+                            is SgeEvent.SgeCharactersReadyEvent -> {
+                                val characters = event.characters
+                                val sgeCharacter = characters.firstOrNull { it.name.equals(character.name, true) }
+                                if (sgeCharacter == null) {
+                                    message = "Could not find character: ${character.name}"
+                                } else {
+                                    sgeClient.selectCharacter(sgeCharacter.code)
+                                }
+                            }
+
+                            is SgeEvent.SgeReadyToPlayEvent -> {
+                                try {
+                                    connectToGame(event.credentials, character.id)
+                                } catch (e: UnknownHostException) {
+                                    gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}")
+                                } catch (e: Exception) {
+                                    logger.error(e) { "Error connecting to server" }
+                                    gameState.screen = GameScreen.ErrorState("Error: ${e.message}")
+                                }
+                                sgeClient.close()
+                                cancelConnect()
+                            }
+
+                            is SgeEvent.SgeErrorEvent -> {
+                                message = "Error code (${event.errorCode})"
+                                connectJob?.cancel()
+                            }
+
+                            else -> Unit // we don't care?
+                        }
+                    }
             } finally {
                 connectJob = null
                 busy = false
@@ -152,7 +151,7 @@ class DashboardViewModel(
             if (proxyCommand != null) {
                 logger.debug { "Launching proxy command: $proxyCommand" }
                 process = Runtime.getRuntime().exec(proxyCommand)
-                delay(proxySettings.delay ?: 1000L)
+                // delay(proxySettings.delay ?: 1000L)
             }
         }
         val sfClient = warlockClientFactory.createStormFrontClient(
@@ -161,7 +160,18 @@ class DashboardViewModel(
             gameState.streamRegistry,
         ) as StormfrontClient
         process?.let { sfClient.setProxy(it) }
-        sfClient.connect()
+        do {
+            try {
+                println("attempt")
+                sfClient.connect()
+            } catch (_: UnknownHostException) {
+                logger.debug { "Unknown host" }
+                break
+            } catch (e: IOException) {
+                logger.debug(e) { "Error connecting to $host:$port" }
+                delay(500L)
+            }
+        } while (process != null && process.isAlive && !sfClient.connected.value)
         val gameViewModel = gameViewModelFactory.create(
             sfClient,
             gameState.windowRepository,

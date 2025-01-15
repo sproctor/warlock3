@@ -61,6 +61,14 @@ fun DashboardView(
                     modifier = Modifier.weight(1f),
                     viewModel = viewModel,
                 )
+            } else {
+                Button(
+                    onClick = {
+                        viewModel.cancelConnect()
+                    }
+                ) {
+                    Text("Cancel")
+                }
             }
         }
     }

@@ -158,9 +158,16 @@ fun main(args: Array<String>) {
                     windowRepository,
                     streamRegistry
                 )
-                client.connect()
-                val viewModel = appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
-                screen = GameScreen.ConnectedGameState(viewModel)
+                // TODO: move this somewhere we can control it
+                runBlocking {
+                    try {
+                        client.connect()
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to connect to Warlock" }
+                    }
+                    val viewModel = appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
+                    screen = GameScreen.ConnectedGameState(viewModel)
+                }
             }
         }
     )

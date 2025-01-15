@@ -251,27 +251,19 @@ class StormfrontClient(
     private val directions: HashSet<DirectionType> = hashSetOf()
     private var componentId: String? = null
 
-    private val _connected = MutableStateFlow(true)
+    private val _connected = MutableStateFlow(false)
     override val connected = _connected.asStateFlow()
 
     private var delta = 0L
     override val time: Long
         get() = System.currentTimeMillis() + delta
 
-    override fun connect() {
+    override suspend fun connect() {
+        logger.debug { "Opening connection to $host:$port" }
+        socket = Socket(host, port)
+        _connected.value = true
+
         scope.launch {
-            try {
-                logger.debug { "Opening connection to $host:$port" }
-                socket = Socket(host, port)
-            } catch (_: UnknownHostException) {
-                logger.debug { "Unknown host" }
-                _connected.value = false
-                return@launch
-            } catch (e: IOException) {
-                logger.error(e) { "Error connecting to $host:$port" }
-                _connected.value = false
-                return@launch
-            }
             sendHandshake(key)
 
             val reader = BufferedReader(InputStreamReader(socket!!.getInputStream(), charsetName))

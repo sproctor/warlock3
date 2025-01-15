@@ -38,7 +38,6 @@ class CharacterSettingsRepository(
             launchCommand = get(characterId, "proxyLaunchCommand"),
             host = get(characterId, "proxyHost"),
             port = get(characterId, "proxyPort"),
-            delay = get(characterId, "proxyDelay")?.toLongOrNull(),
         )
     }
 
@@ -83,17 +82,6 @@ class CharacterSettingsRepository(
                 )
             } else {
                 characterSettingsQueries.delete(key = "proxyPort", characterId = characterId)
-            }
-            if (proxySettings.delay != null) {
-                characterSettingsQueries.save(
-                    CharacterSettingEntity(
-                        characterId = characterId,
-                        key = "proxyDelay",
-                        value = proxySettings.delay.toString(),
-                    )
-                )
-            } else {
-                characterSettingsQueries.delete(key = "proxyDelay", characterId = characterId)
             }
         }
     }

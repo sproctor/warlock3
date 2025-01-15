@@ -5,5 +5,4 @@ data class CharacterProxySettings(
     val launchCommand: String?,
     val host: String?,
     val port: String?,
-    val delay: Long?,
 )

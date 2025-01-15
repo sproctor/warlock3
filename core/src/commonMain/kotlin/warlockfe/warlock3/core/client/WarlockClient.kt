@@ -19,7 +19,7 @@ interface WarlockClient {
 
     val connected: StateFlow<Boolean>
 
-    fun connect()
+    suspend fun connect()
 
     fun disconnect()
 

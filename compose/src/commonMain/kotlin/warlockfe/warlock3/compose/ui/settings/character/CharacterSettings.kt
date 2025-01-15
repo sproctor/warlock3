@@ -32,7 +32,6 @@ fun CharacterSettingsDialog(
     var proxyCommand by remember(proxySettings) { mutableStateOf(proxySettings.launchCommand ?: "") }
     var proxyHost by remember(proxySettings) { mutableStateOf(proxySettings.host ?: "") }
     var proxyPort by remember(proxySettings) { mutableStateOf(proxySettings.port ?: "") }
-    var proxyDelay by remember(proxySettings) { mutableStateOf(proxySettings.delay?.toString() ?: "") }
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = closeDialog,
@@ -46,7 +45,6 @@ fun CharacterSettingsDialog(
                                 launchCommand = proxyCommand.ifBlank { null },
                                 host = proxyHost.ifBlank { null },
                                 port = proxyPort.ifBlank { null },
-                                delay = proxyDelay.toLongOrNull(),
                             )
                         )
                         closeDialog()
@@ -105,18 +103,6 @@ fun CharacterSettingsDialog(
                     },
                     placeholder = {
                         Text("{port}")
-                    }
-                )
-                TextField(
-                    value = proxyDelay,
-                    onValueChange = {
-                        proxyDelay = it
-                    },
-                    label = {
-                        Text("Proxy connection delay (ms)")
-                    },
-                    placeholder = {
-                        Text("1000")
                     }
                 )
             }
