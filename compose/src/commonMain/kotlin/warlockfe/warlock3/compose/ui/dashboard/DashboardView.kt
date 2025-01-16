@@ -1,6 +1,8 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.icons.Login
+import warlockfe.warlock3.compose.ui.components.ConfirmationDialog
 import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.client.CharacterProxySettings
 import warlockfe.warlock3.core.client.GameCharacter
@@ -80,6 +84,7 @@ fun CharacterList(
     viewModel: DashboardViewModel,
 ) {
     var showCharacterSettings: GameCharacter? by remember { mutableStateOf(null) }
+    var showCharacterDelete: GameCharacter? by remember { mutableStateOf(null) }
     val characters by viewModel.characters.collectAsState(emptyList())
     ScrollableColumn(modifier) {
         Text(text = "Characters", style = MaterialTheme.typography.headlineMedium)
@@ -98,12 +103,21 @@ fun CharacterList(
                     }
                 },
                 trailingContent = {
-                    IconButton(
-                        onClick = {
-                            showCharacterSettings = character
-                        },
-                    ) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = {
+                                showCharacterSettings = character
+                            },
+                        ) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                        }
+                        IconButton(
+                            onClick = {
+                                showCharacterDelete = character
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                        }
                     }
                 }
             )
@@ -127,5 +141,16 @@ fun CharacterList(
                 proxySettings = viewModel.getProxySettings(characterSettings.id)
             }
         }
+    }
+    if (showCharacterDelete != null) {
+        ConfirmationDialog(
+            title = "Delete character",
+            text = "Are you sure that you want to delete: ${showCharacterDelete!!.name}",
+            onDismiss = { showCharacterDelete = null },
+            onConfirm = {
+                viewModel.deleteCharacter(showCharacterDelete!!.id)
+                showCharacterDelete = null
+            }
+        )
     }
 }

@@ -30,4 +30,10 @@ class CharacterRepository(
             characterDao.save(character.toEntity())
         }
     }
+
+    suspend fun deleteCharacter(id: String) {
+        withContext(NonCancellable) {
+            characterDao.delete(id)
+        }
+    }
 }

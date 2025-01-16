@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -27,7 +28,7 @@ import java.io.IOException
 import java.net.UnknownHostException
 
 class DashboardViewModel(
-    characterRepository: CharacterRepository,
+    private val characterRepository: CharacterRepository,
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val accountRepository: AccountRepository,
     private val gameState: GameState,
@@ -178,6 +179,12 @@ class DashboardViewModel(
             gameState.streamRegistry
         )
         gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
+    }
+
+    fun deleteCharacter(characterId: String) {
+        viewModelScope.launch {
+            characterRepository.deleteCharacter(characterId)
+        }
     }
 }
 
