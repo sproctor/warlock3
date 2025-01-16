@@ -45,43 +45,49 @@ kotlin {
     }
 }
 
-compose.desktop {
-    application {
-        mainClass = "warlockfe.warlock3.app.MainKt"
+compose {
+    desktop {
+        application {
+            mainClass = "warlockfe.warlock3.app.MainKt"
 
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "warlock3"
-            packageVersion = project.version.toString()
-            modules("java.naming")
-            copyright = "Copyright 2024 Sean Proctor"
-            licenseFile.set(project.file("../LICENSE"))
-            description = "Warlock Front-end"
-            vendor = "Warlock Project"
+            nativeDistributions {
+                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+                packageName = "warlock3"
+                packageVersion = project.version.toString()
+                modules("java.naming")
+                copyright = "Copyright 2024 Sean Proctor"
+                licenseFile.set(project.file("../LICENSE"))
+                description = "Warlock Front-end"
+                vendor = "Warlock Project"
 
-            windows {
-                menu = true
-                // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
-                upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
+                windows {
+                    menu = true
+                    // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
+                    upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
+                }
+                macOS {
+                    bundleID = "warlockfe.warlock3"
+                    signing {
+                        sign.set(true)
+                        identity.set("Sean Proctor")
+                    }
+                    notarization {
+                        appleID.set("sproctor@gmail.com")
+                        password.set(providers.environmentVariable("NOTARY_PWD"))
+                        teamID.set("DBNJ4AR55X")
+                    }
+                }
             }
-            macOS {
-                bundleID = "warlockfe.warlock3"
-                signing {
-                    sign.set(true)
-                    identity.set("Sean Proctor")
-                }
-                notarization {
-                    appleID.set("sproctor@gmail.com")
-                    password.set(providers.environmentVariable("NOTARY_PWD"))
-                    teamID.set("DBNJ4AR55X")
-                }
+
+            buildTypes.release.proguard {
+                version.set("7.6.0")
+                configurationFiles.from("rules.pro")
             }
         }
+    }
 
-        buildTypes.release.proguard {
-            version.set("7.6.0")
-            configurationFiles.from("rules.pro")
-        }
+    resources {
+        packageOfResClass = "warlockfe.warlock3.app.resources"
     }
 }
 
