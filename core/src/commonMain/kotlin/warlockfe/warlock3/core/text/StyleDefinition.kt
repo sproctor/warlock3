@@ -24,6 +24,9 @@ data class StyleDefinition(
     }
 }
 
+/*
+ * Priority goes to earlier styles in the list
+ */
 fun flattenStyles(styles: List<StyleDefinition>): StyleDefinition? {
     return styles
         .reduceOrNull { acc, warlockStyle ->

@@ -1,8 +1,8 @@
 package warlockfe.warlock3.compose.model
 
-import androidx.compose.ui.text.SpanStyle
+import warlockfe.warlock3.core.text.StyleDefinition
 
 data class ViewHighlight(
     val regex: Regex,
-    val styles: Map<Int, SpanStyle>,
+    val styles: Map<Int, StyleDefinition>,
 )

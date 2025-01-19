@@ -28,6 +28,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -159,8 +160,7 @@ fun EditHighlightDialog(
     onClose: () -> Unit,
 ) {
     var pattern by remember { mutableStateOf(highlight.pattern) }
-    val styles =
-        remember { mutableListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
+    val styles = remember { mutableStateListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
@@ -175,8 +175,7 @@ fun EditHighlightDialog(
                         Highlight(
                             id = highlight.id,
                             pattern = pattern,
-                            styles = styles.mapIndexed { index, style -> Pair(index, style) }
-                                .toMap(),
+                            styles = styles.mapIndexed { index, style -> Pair(index, style) }.toMap(),
                             isRegex = isRegex,
                             matchPartialWord = matchPartialWord,
                             ignoreCase = ignoreCase,
@@ -294,6 +293,20 @@ fun EditHighlightDialog(
                     }
                 }
                 if (!isRegex) {
+                    Row {
+                        val style = styles[0]
+                        Checkbox(
+                            checked = style.entireLine == true,
+                            onCheckedChange = {
+                                println("entire line: $it")
+                                styles[0] = style.copy(entireLine = it)
+                            }
+                        )
+                        Text(
+                            text = "Highlight entire line",
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
                     Row {
                         Checkbox(
                             checked = matchPartialWord,

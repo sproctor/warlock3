@@ -258,7 +258,7 @@ class GameViewModel(
                                     pattern = pattern,
                                     options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
                                 ),
-                                styles = highlight.styles.mapValues { it.value.toSpanStyle() }
+                                styles = highlight.styles
                             )
                         } catch (e: Throwable) {
                             client.debug("Error while parsing highlight (${e.message}): $highlights")
@@ -683,7 +683,17 @@ fun StreamLine.toWindowLine(
     components: Map<String, StyledString>,
     actionHandler: (String) -> Unit,
 ): WindowLine? {
+    val textWithComponents = text.toAnnotatedString(
+        variables = components,
+        styleMap = presets,
+        actionHandler = actionHandler,
+    )
+    if (ignoreWhenBlank && textWithComponents.isBlank()) {
+        return null
+    }
+    val highlightedResult = textWithComponents.highlight(highlights)
     val lineStyle = flattenStyles(
+        highlightedResult.entireLineStyles +
         text.getEntireLineStyles(
             variables = components,
             styleMap = presets,
@@ -691,20 +701,11 @@ fun StreamLine.toWindowLine(
     )
     val annotatedString = buildAnnotatedString {
         lineStyle?.let { pushStyle(it.toSpanStyle()) }
-        append(
-            text.toAnnotatedString(
-                variables = components,
-                styleMap = presets,
-                actionHandler = actionHandler,
-            )
-        )
+        append(highlightedResult.text)
         if (lineStyle != null) pop()
     }
-    if (ignoreWhenBlank && annotatedString.isBlank()) {
-        return null
-    }
     return WindowLine(
-        text = annotatedString.highlight(highlights),
+        text = annotatedString,
         entireLineStyle = lineStyle
     )
 }

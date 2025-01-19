@@ -282,8 +282,7 @@ private fun WindowViewContent(
 ) {
     val logger = LocalLogger.current
 
-    val backgroundColor =
-        (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
+    val backgroundColor = (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
     val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
