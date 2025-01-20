@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.ui.components.FontPickerDialog
+import warlockfe.warlock3.compose.ui.components.FontUpdate
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor

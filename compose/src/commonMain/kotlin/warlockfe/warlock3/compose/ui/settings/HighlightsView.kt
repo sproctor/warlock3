@@ -298,7 +298,6 @@ fun EditHighlightDialog(
                         Checkbox(
                             checked = style.entireLine == true,
                             onCheckedChange = {
-                                println("entire line: $it")
                                 styles[0] = style.copy(entireLine = it)
                             }
                         )

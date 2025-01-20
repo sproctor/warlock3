@@ -38,7 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -49,7 +51,6 @@ import warlockfe.warlock3.compose.components.ScrollbarStyle
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
-import warlockfe.warlock3.compose.ui.settings.fontFamilyMap
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -270,6 +271,7 @@ private fun WindowViewDropdownMenu(
     }
 }
 
+@OptIn(ExperimentalTextApi::class)
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
@@ -284,7 +286,7 @@ private fun WindowViewContent(
 
     val backgroundColor = (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
     val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
-    val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { fontFamilyMap[it] }
+    val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { FontFamily(it) }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
     val snapshot by stream.snapshot.collectAsState()

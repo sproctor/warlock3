@@ -1,15 +1,16 @@
 package warlockfe.warlock3.compose.util
 
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
-import warlockfe.warlock3.compose.ui.settings.fontFamilyMap
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
@@ -29,11 +30,12 @@ fun StyledString.toAnnotatedString(
     }
 }
 
+@OptIn(ExperimentalTextApi::class)
 fun StyleDefinition.toSpanStyle(): SpanStyle {
     return SpanStyle(
         color = textColor.toColor(),
         background = backgroundColor.toColor(),
-        fontFamily = fontFamily?.let { fontFamilyMap[it] },
+        fontFamily = fontFamily?.let { FontFamily(it) },
         textDecoration = if (underline) TextDecoration.Underline else null,
         fontWeight = if (bold) FontWeight.Bold else null,
         fontStyle = if (italic) FontStyle.Italic else null,

@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
@@ -162,7 +161,6 @@ class DashboardViewModel(
         process?.let { sfClient.setProxy(it) }
         do {
             try {
-                println("attempt")
                 sfClient.connect()
                 break
             } catch (_: UnknownHostException) {
