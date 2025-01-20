@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.ui.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,8 +27,6 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.jetbrains.skia.FontMgr
-import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.core.text.StyleDefinition
 
 @OptIn(ExperimentalTextApi::class)
@@ -45,19 +43,10 @@ fun FontPickerDialog(
     var newFontFamily by remember(currentStyle.fontFamily) {
         mutableStateOf(currentStyle.fontFamily ?: "Default")
     }
-    var skiaFontFamilies by remember { mutableStateOf(emptyList<FontFamilyInfo>())}
+    var systemFontFamilies by remember { mutableStateOf(emptyList<FontFamilyInfo>())}
 
     LaunchedEffect(Unit) {
-        val fontManager = FontMgr.default
-        skiaFontFamilies = (0 until fontManager.familiesCount)
-            .map { index -> fontManager.getFamilyName(index) }
-            .sorted()
-            .map { familyName ->
-                FontFamilyInfo(
-                    familyName = familyName,
-                    fontFamily = FontFamily(familyName),
-                )
-            }
+        systemFontFamilies = loadSystemFonts()
     }
     AlertDialog(
         onDismissRequest = onCloseRequest,
@@ -97,7 +86,7 @@ fun FontPickerDialog(
                         .fillMaxWidth()
                 ) {
 
-                    (genericFontFamilies + skiaFontFamilies).forEach { fontFamily ->
+                    (genericFontFamilies + systemFontFamilies).forEach { fontFamily ->
                         ListItem(
                             modifier = Modifier
                                 .clickable {
@@ -130,7 +119,7 @@ fun FontPickerDialog(
     )
 }
 
-private data class FontFamilyInfo(
+internal data class FontFamilyInfo(
     val familyName: String,
     val fontFamily: FontFamily,
 )
@@ -144,3 +133,5 @@ private val genericFontFamilies = listOf(
     FontFamilyInfo("Monospace", FontFamily.Monospace),
     FontFamilyInfo("Cursive", FontFamily.Cursive),
 )
+
+internal expect fun loadSystemFonts(): List<FontFamilyInfo>

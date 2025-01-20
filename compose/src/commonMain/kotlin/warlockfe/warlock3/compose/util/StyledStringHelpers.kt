@@ -5,7 +5,6 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,7 +34,7 @@ fun StyleDefinition.toSpanStyle(): SpanStyle {
     return SpanStyle(
         color = textColor.toColor(),
         background = backgroundColor.toColor(),
-        fontFamily = fontFamily?.let { FontFamily(it) },
+        fontFamily = fontFamily?.let { createFontFamily(it) },
         textDecoration = if (underline) TextDecoration.Underline else null,
         fontWeight = if (bold) FontWeight.Bold else null,
         fontStyle = if (italic) FontStyle.Italic else null,
