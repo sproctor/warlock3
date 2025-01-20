@@ -54,7 +54,6 @@ class WslScriptInstance(
 
         job = scope.launch {
             try {
-                client.sendCommandDirect("_state scripting on")
                 lines = script.parse()
                 val globalVariables = client.characterId.flatMapLatest { id ->
                     if (id != null) {
@@ -101,7 +100,6 @@ class WslScriptInstance(
             } finally {
                 try {
                     withContext(NonCancellable) {
-                        client.sendCommandDirect("_state scripting off")
                         onStop()
                         scope.cancel()
                     }
