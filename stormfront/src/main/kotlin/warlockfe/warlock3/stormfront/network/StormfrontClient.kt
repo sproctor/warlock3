@@ -261,7 +261,8 @@ class StormfrontClient(
         socket = Socket(host, port)
 
         scope.launch {
-            sendHandshake(key)
+            sendCommandDirect(key)
+            sendCommandDirect("/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML")
 
             val reader = BufferedReader(InputStreamReader(socket!!.getInputStream(), charsetName))
             val protocolHandler = StormfrontProtocolHandler()
@@ -331,6 +332,7 @@ class StormfrontClient(
                                             .plus("character" to (event.character ?: ""))
                                             .plus("game" to (event.game ?: ""))
                                         _properties.value = newProperties
+                                        sendCommandDirect("_flag Display Inventory Boxes 1")
                                     }
 
                                     is StormfrontOutputEvent ->
@@ -377,6 +379,7 @@ class StormfrontClient(
                                         // This must be in response to either mode, playerId, or settingsInfo, so
                                         // we put it here until someone discovers something else
                                         sendCommandDirect("")
+                                        sendCommandDirect("_STATE CHATMODE OFF")
                                     }
 
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
@@ -461,6 +464,9 @@ class StormfrontClient(
                                             title = window.title,
                                             subtitle = window.subtitle
                                         )
+                                        if (event.window.name != "main") {
+                                            sendCommandDirect("_swclose s${event.window.name}")
+                                        }
                                     }
 
                                     is StormfrontActionEvent -> {
@@ -680,17 +686,6 @@ class StormfrontClient(
                 socket?.getOutputStream()?.write(toSend.toByteArray(charset))
             } catch (e: SocketException) {
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
-            }
-        }
-    }
-
-    suspend fun sendHandshake(key: String) {
-        withContext(Dispatchers.IO) {
-            val toSend = "<c>$key\n<c>/FE:WRAYTH /VERSION:1.0.1.28 /XML\n"
-            try {
-                socket?.getOutputStream()?.write(toSend.toByteArray(charset))
-            } catch (e: SocketException) {
-                print(StyledString("Could not send handshake: ${e.message}", WarlockStyle.Error))
             }
         }
     }
