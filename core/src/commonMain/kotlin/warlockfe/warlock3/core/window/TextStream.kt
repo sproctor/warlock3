@@ -9,7 +9,7 @@ import kotlinx.collections.immutable.toPersistentSet
 
 interface TextStream {
 
-    val name: String
+    val id: String
 
     suspend fun appendPartial(text: StyledString)
 

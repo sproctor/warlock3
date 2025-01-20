@@ -11,7 +11,7 @@ class ContainerHandler : BaseElementListener() {
         val name = element.attributes["id"] ?: return null
         return StormfrontStreamWindowEvent(
             StormfrontWindow(
-                name = name,
+                id = name,
                 title = element.attributes["title"] ?: "",
                 subtitle = null,
                 ifClosed = "",

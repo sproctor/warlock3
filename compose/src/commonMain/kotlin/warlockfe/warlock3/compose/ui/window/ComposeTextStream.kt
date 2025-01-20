@@ -17,7 +17,7 @@ import warlockfe.warlock3.core.window.getComponents
 import java.util.*
 
 class ComposeTextStream(
-    override val name: String,
+    override val id: String,
     private var maxLines: Int,
     ioDispatcher: CoroutineDispatcher,
 ) : TextStream {

@@ -163,30 +163,29 @@ class StormfrontClient(
     private var buffer: StyledString? = null
 
     init {
-        windows["warlockscripts"] = StormfrontWindow(
-            name = "warlockscripts",
-            title = "Running scripts",
-            subtitle = null,
-            ifClosed = "",
-            styleIfClosed = null,
-        )
-        windows["scriptoutput"] = StormfrontWindow(
-            name = "scriptoutput",
-            title = "Script output",
-            subtitle = null,
-            ifClosed = "main",
-            styleIfClosed = "echo",
-        )
-        windows["debug"] = StormfrontWindow(
-            name = "debug",
-            title = "Debug",
-            subtitle = null,
-            ifClosed = "",
-            styleIfClosed = null,
-        )
-        windowRepository.setWindowTitle("warlockscripts", "Running scripts", null)
-        windowRepository.setWindowTitle("scriptoutput", "Script output", null)
-        windowRepository.setWindowTitle("debug", "Debug", null)
+        listOf(
+            StormfrontWindow(
+                id = "warlockscripts",
+                title = "Running scripts",
+                subtitle = null,
+                ifClosed = "",
+                styleIfClosed = null,
+            ),
+            StormfrontWindow(
+                id = "scriptoutput",
+                title = "Script output",
+                subtitle = null,
+                ifClosed = "main",
+                styleIfClosed = "echo",
+            ),
+            StormfrontWindow(
+                id = "debug",
+                title = "Debug",
+                subtitle = null,
+                ifClosed = "",
+                styleIfClosed = null,
+            ),
+        ).forEach { addWindow(it) }
         scope.launch {
             val scriptStream = getStream("warlockscripts")
             scriptManager.scriptInfo.collect { scripts ->
@@ -458,14 +457,9 @@ class StormfrontClient(
 
                                     is StormfrontStreamWindowEvent -> {
                                         val window = event.window
-                                        windows[window.name] = window
-                                        windowRepository.setWindowTitle(
-                                            name = window.name,
-                                            title = window.title,
-                                            subtitle = window.subtitle
-                                        )
-                                        if (event.window.name != "main") {
-                                            sendCommandDirect("_swclose s${event.window.name}")
+                                        addWindow(window)
+                                        if (window.id != "main") {
+                                            sendCommandDirect("_swclose s${event.window.id}")
                                         }
                                     }
 
@@ -547,7 +541,7 @@ class StormfrontClient(
     }
 
     private suspend fun appendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
-        val alteration = findAlteration(styledText.toString(), stream.name)
+        val alteration = findAlteration(styledText.toString(), stream.id)
         if (alteration != null) {
             if (alteration.alteration.keepOriginal) {
                 doAppendToStream(styledText, stream, ignoreWhenBlank)
@@ -575,7 +569,7 @@ class StormfrontClient(
             isPrompting = false
         }
         doIfClosed(stream) { targetStream ->
-            val style = windows[stream.name]?.styleIfClosed
+            val style = windows[stream.id]?.styleIfClosed
             targetStream.appendLine(
                 text = style?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
                 ignoreWhenBlank = ignoreWhenBlank
@@ -600,7 +594,7 @@ class StormfrontClient(
     }
 
     private suspend fun doIfClosed(stream: TextStream, action: suspend (TextStream) -> Unit) {
-        if (!openWindows.value.contains(stream.name)) {
+        if (!openWindows.value.contains(stream.id)) {
             ifClosedStream(stream)?.let { closedStream ->
                 action(closedStream)
             }
@@ -608,9 +602,9 @@ class StormfrontClient(
     }
 
     private fun ifClosedStream(stream: TextStream): TextStream? {
-        val window = windows[stream.name] ?: return null
+        val window = windows[stream.id] ?: return null
         val ifClosedName = window.ifClosed ?: "main"
-        return if (stream.name != ifClosedName && ifClosedName.isNotBlank()) {
+        return if (stream.id != ifClosedName && ifClosedName.isNotBlank()) {
             getStream(ifClosedName)
         } else {
             null
@@ -772,6 +766,15 @@ class StormfrontClient(
                 doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
             }
             .launchIn(scope)
+    }
+
+    private fun addWindow(window: StormfrontWindow) {
+        windows[window.id] = window
+        windowRepository.setWindowTitle(
+            name = window.id,
+            title = window.title,
+            subtitle = window.subtitle
+        )
     }
 
     override fun close() {
