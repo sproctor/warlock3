@@ -8,7 +8,7 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
     val entireLineStyles = mutableListOf<StyleDefinition>()
     val text = with(AnnotatedString.Builder(this)) {
         highlights.forEach { highlight ->
-            highlight.regex.find(text)?.let { result ->
+            highlight.regex.findAll(text).forEach { result ->
                 for ((index, group) in result.groups.withIndex()) {
                     if (group != null) {
                         highlight.styles[index]?.let { style ->
