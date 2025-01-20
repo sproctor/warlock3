@@ -37,6 +37,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
@@ -179,6 +180,7 @@ fun main(args: Array<String>) {
         var showUpdateDialog by remember { mutableStateOf(false) }
         var currentVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
         var latestVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
+        val scope = rememberCoroutineScope()
 
         LaunchedEffect(Unit) {
             if (controller != null && !clientSettings.getIgnoreUpdates()) {
@@ -267,9 +269,16 @@ fun main(args: Array<String>) {
                     state = windowState,
                     icon = appIcon,
                     onCloseRequest = {
-                        games.removeAt(index)
-                        if (games.isEmpty()) {
-                            exitApplication()
+                        scope.launch {
+                            val game = games[index]
+                            val screen = game.screen
+                            if (screen is GameScreen.ConnectedGameState) {
+                                screen.viewModel.sendCommandBlocking("quit")
+                            }
+                            games.removeAt(index)
+                            if (games.isEmpty()) {
+                                exitApplication()
+                            }
                         }
                     },
                 ) {

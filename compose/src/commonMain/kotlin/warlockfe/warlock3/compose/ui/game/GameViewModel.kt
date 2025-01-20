@@ -386,6 +386,10 @@ class GameViewModel(
         }
     }
 
+    suspend fun sendCommandBlocking(command: String) {
+        client.sendCommand(command)
+    }
+
     suspend fun stopScripts() {
         val scriptInstances = scriptManager.runningScripts
         val count = scriptInstances.size
