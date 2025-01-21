@@ -87,7 +87,7 @@ import kotlin.math.max
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
     private val windowRepository: WindowRepository,
-    val client: WarlockClient,
+    private val client: WarlockClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
     highlightRepository: HighlightRepository,
@@ -118,7 +118,9 @@ class GameViewModel(
 
     val properties: StateFlow<Map<String, String>> = client.properties
 
-    val character = combine(client.characterId, properties) { characterId, properties ->
+    val characterId = client.characterId
+
+    val character = combine(characterId, properties) { characterId, properties ->
         val game = properties["game"]
         val name = properties["character"]
         if (characterId != null && game != null && name != null) {
@@ -339,6 +341,8 @@ class GameViewModel(
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(mainWindowUiState.value.name)
     val selectedWindow: StateFlow<String> = _selectedWindow
 
+    val disconnected = client.disconnected
+
     init {
         client.eventFlow
             .onEach { event ->
@@ -384,10 +388,6 @@ class GameViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             client.sendCommand(command)
         }
-    }
-
-    suspend fun sendCommandBlocking(command: String) {
-        client.sendCommand(command)
     }
 
     suspend fun stopScripts() {
@@ -678,6 +678,13 @@ class GameViewModel(
         _scrollEvents.update { oldList ->
             oldList.remove(event)
         }
+    }
+
+    suspend fun close() {
+        if (!client.disconnected.value) {
+            client.sendCommand("quit")
+        }
+        client.close()
     }
 }
 

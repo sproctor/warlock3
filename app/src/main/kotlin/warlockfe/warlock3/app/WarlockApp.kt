@@ -9,8 +9,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
+import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.model.GameScreen
@@ -28,6 +30,7 @@ fun FrameWindowScope.WarlockApp(
 ) {
     var showSettings by remember { mutableStateOf(false) }
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
+    val scope = rememberCoroutineScope()
     AppTheme(
         useDarkTheme = when (themeSetting) {
             ThemeSetting.AUTO -> isSystemInDarkTheme()
@@ -42,10 +45,10 @@ fun FrameWindowScope.WarlockApp(
             )
         ) {
             val characterId = when (val screen = gameState.screen) {
-                is GameScreen.ConnectedGameState -> screen.viewModel.client.characterId.collectAsState().value
+                is GameScreen.ConnectedGameState -> screen.viewModel.characterId.collectAsState().value
                 else -> null
             }
-            val isDisconnected = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.client?.disconnected?.collectAsState()
+            val isDisconnected = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.disconnected?.collectAsState()
             AppMenuBar(
                 characterId = characterId,
                 isConnected = isDisconnected?.value != true,
@@ -56,7 +59,9 @@ fun FrameWindowScope.WarlockApp(
                 disconnect = {
                     val screen = gameState.screen
                     if (screen is GameScreen.ConnectedGameState) {
-                        screen.viewModel.client.disconnect()
+                        scope.launch {
+                            screen.viewModel.close()
+                        }
                     }
                 },
                 runScript = {

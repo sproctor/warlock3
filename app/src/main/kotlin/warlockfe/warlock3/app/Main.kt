@@ -37,7 +37,6 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
@@ -273,7 +272,7 @@ fun main(args: Array<String>) {
                             val game = games[index]
                             val screen = game.screen
                             if (screen is GameScreen.ConnectedGameState) {
-                                screen.viewModel.sendCommandBlocking("quit")
+                                screen.viewModel.close()
                             }
                             games.removeAt(index)
                             if (games.isEmpty()) {

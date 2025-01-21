@@ -9,8 +9,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.dashboard.DashboardView
@@ -27,6 +29,7 @@ fun MainScreen(
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
 
     when (val screen = gameState.screen) {
         GameScreen.Dashboard -> {
@@ -52,8 +55,10 @@ fun MainScreen(
             GameView(
                 viewModel = screen.viewModel,
                 navigateToDashboard = {
-                    screen.viewModel.client.close()
-                    gameState.screen = GameScreen.Dashboard
+                    scope.launch {
+                        screen.viewModel.close()
+                        gameState.screen = GameScreen.Dashboard
+                    }
                 }
             )
         }
