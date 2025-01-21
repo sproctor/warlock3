@@ -188,7 +188,7 @@ class StormfrontClient(
         ).forEach { addWindow(it) }
         scope.launch {
             val scriptStream = getStream("warlockscripts")
-            scriptManager.scriptInfo.collect { scripts ->
+            scriptManager.runningScripts.collect { scripts ->
                 scriptStream.clear()
                 scripts.forEach {
                     val info = it.value
@@ -643,13 +643,13 @@ class StormfrontClient(
                     }
 
                     "list" -> {
-                        val scripts = scriptManager.runningScripts
+                        val scripts = scriptManager.runningScripts.value
                         if (scripts.isEmpty()) {
                             print(StyledString("No scripts are running", WarlockStyle.Echo))
                         } else {
                             print(StyledString("Running scripts:", WarlockStyle.Echo))
                             scripts.forEach {
-                                print(StyledString("${it.name} - ${it.id}", WarlockStyle.Echo))
+                                print(StyledString("${it.value.name} - ${it.key}", WarlockStyle.Echo))
                             }
                         }
                     }

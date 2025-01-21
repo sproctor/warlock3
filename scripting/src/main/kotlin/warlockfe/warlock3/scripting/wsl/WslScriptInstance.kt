@@ -18,27 +18,27 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
+import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.toCaseInsensitiveMap
-import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
+import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 
 class WslScriptInstance(
     override val name: String,
-    override val id: Long,
     private val script: WslScript,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
-    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
+    private val scriptManager: ScriptManager,
 ) : ScriptInstance {
 
     private val logger = KotlinLogging.logger {}
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
             field = newStatus
-            scriptEngineRegistry.scriptStateChanged(this)
+            scriptManager.scriptStateChanged(this)
         }
 
     private lateinit var lines: List<WslLine>

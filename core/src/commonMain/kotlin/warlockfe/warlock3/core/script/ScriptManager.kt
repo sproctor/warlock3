@@ -6,9 +6,7 @@ import java.io.File
 
 interface ScriptManager {
 
-    val scriptInfo: StateFlow<Map<Long, ScriptInfo>>
-
-    val runningScripts: Set<ScriptInstance>
+    val runningScripts: StateFlow<Map<Long, ScriptInstance>>
 
     suspend fun startScript(client: WarlockClient, command: String)
 
@@ -16,5 +14,5 @@ interface ScriptManager {
 
     fun findScriptInstance(description: String): ScriptInstance?
 
-    fun supportsExtension(extension: String): Boolean
+    fun scriptStateChanged(instance: ScriptInstance)
 }

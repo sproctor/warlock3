@@ -3,10 +3,9 @@ package warlockfe.warlock3.scripting.js
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.mozilla.javascript.Context
 import org.mozilla.javascript.ContextFactory
-import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 
 class InterruptibleContextFactory(
-    private val scriptEngineRegistry: WarlockScriptEngineRegistry
+    private val runningScripts: List<JsInstance>,
 ) : ContextFactory() {
 
     private val logger = KotlinLogging.logger {}
@@ -30,8 +29,8 @@ class InterruptibleContextFactory(
     }
 
     fun getInstance(cx: Context): JsInstance {
-        for (instance in scriptEngineRegistry.runningScripts) {
-            if (instance is JsInstance && instance.context == cx) {
+        for (instance in runningScripts) {
+            if (instance.context == cx) {
                 return instance
             }
         }

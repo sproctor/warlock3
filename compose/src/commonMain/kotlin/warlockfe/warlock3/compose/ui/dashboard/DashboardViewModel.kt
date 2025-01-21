@@ -174,7 +174,7 @@ class DashboardViewModel(
         val gameViewModel = gameViewModelFactory.create(
             sfClient,
             gameState.windowRepository,
-            gameState.streamRegistry
+            gameState.streamRegistry,
         )
         gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
     }

@@ -19,11 +19,11 @@ import org.mozilla.javascript.WrappedException
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
+import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.toCaseInsensitiveMap
-import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
 import java.io.File
 import java.io.InputStreamReader
 import kotlin.concurrent.thread
@@ -31,10 +31,9 @@ import kotlin.reflect.jvm.javaMethod
 
 class JsInstance(
     override val name: String,
-    override val id: Long,
     private val file: File,
     private val variableRepository: VariableRepository,
-    private val scriptEngineRegistry: WarlockScriptEngineRegistry,
+    private val scriptManager: ScriptManager,
 ) : ScriptInstance {
 
     private val logger = KotlinLogging.logger {}
@@ -42,7 +41,7 @@ class JsInstance(
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
             field = newStatus
-            scriptEngineRegistry.scriptStateChanged(this)
+            scriptManager.scriptStateChanged(this)
         }
 
     private lateinit var thread: Thread

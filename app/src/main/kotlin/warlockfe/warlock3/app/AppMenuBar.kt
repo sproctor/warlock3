@@ -1,6 +1,5 @@
 package warlockfe.warlock3.app
 
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -10,9 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.window.FrameWindowScope
-import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.MenuBarScope
 import androidx.compose.ui.window.setContent
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -20,8 +17,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.util.toAwtColor
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.script.ScriptManager
-import java.awt.Color
+import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import java.io.File
 import javax.swing.JMenuBar
 
@@ -31,7 +27,7 @@ fun FrameWindowScope.AppMenuBar(
     characterId: String?,
     isConnected: Boolean,
     windowRepository: WindowRepository,
-    scriptEngineRegistry: ScriptManager,
+    scriptEngineRepository: WarlockScriptEngineRepository,
     runScript: (File) -> Unit,
     newWindow: () -> Unit,
     showSettings: () -> Unit,
@@ -57,7 +53,7 @@ fun FrameWindowScope.AppMenuBar(
                         }
                         dialog.setFilenameFilter { _, name ->
                             val extension = File(name).extension
-                            scriptEngineRegistry.supportsExtension(extension)
+                            scriptEngineRepository.supportsExtension(extension)
                         }
                         dialog.isVisible = true
                         val fileName = dialog.file

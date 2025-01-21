@@ -16,7 +16,7 @@ import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.StreamRegistry
-import warlockfe.warlock3.scripting.WarlockScriptEngineRegistry
+import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 import warlockfe.warlock3.stormfront.network.SgeClientImpl
 import warlockfe.warlock3.stormfront.network.StormfrontClient
 
@@ -33,7 +33,7 @@ class AndroidAppContainer(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val scriptManager =
-        WarlockScriptEngineRegistry(
+        WarlockScriptEngineRepositoryImpl(
             highlightRepository = highlightRepository,
             variableRepository = variableRepository,
             scriptDirRepository = scriptDirRepository,

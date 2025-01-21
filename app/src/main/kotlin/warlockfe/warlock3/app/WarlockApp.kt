@@ -53,7 +53,7 @@ fun FrameWindowScope.WarlockApp(
                 characterId = characterId,
                 isConnected = isDisconnected?.value != true,
                 windowRepository = gameState.windowRepository,
-                scriptEngineRegistry = appContainer.scriptManager,
+                scriptEngineRepository = appContainer.scriptEngineRepository,
                 newWindow = newWindow,
                 showSettings = { showSettings = true },
                 disconnect = {

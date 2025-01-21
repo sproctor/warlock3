@@ -27,7 +27,8 @@ import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.script.ScriptManager
+import warlockfe.warlock3.core.script.ScriptManagerFactory
+import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.StringReader
@@ -93,17 +94,19 @@ abstract class AppContainer(
         load(StringReader(themeText))
     }
     val compassTheme: CompassTheme = loadCompassTheme(themeProperties)
-    abstract val scriptManager: ScriptManager
+    abstract val scriptEngineRepository: WarlockScriptEngineRepository
+    abstract val scriptManagerFactory: ScriptManagerFactory
+
     val gameViewModelFactory by lazy {
         GameViewModelFactory(
             macroRepository = macroRepository,
             variableRepository = variableRepository,
-            scriptManager = scriptManager,
             compassTheme = compassTheme,
             highlightRepository = highlightRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
+            scriptManagerFactory = scriptManagerFactory,
         )
     }
 

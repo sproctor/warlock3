@@ -9,7 +9,7 @@ import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.script.ScriptManager
+import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.window.StreamRegistry
 
 class GameViewModelFactory(
@@ -17,10 +17,10 @@ class GameViewModelFactory(
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
     private val presetRepository: PresetRepository,
-    private val scriptManager: ScriptManager,
     private val compassTheme: CompassTheme,
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val aliasRepository: AliasRepository,
+    private val scriptManagerFactory: ScriptManagerFactory,
 ) {
     fun create(client: WarlockClient, windowRepository: WindowRepository, streamRegistry: StreamRegistry): GameViewModel =
         GameViewModel(
@@ -28,7 +28,7 @@ class GameViewModelFactory(
             windowRepository = windowRepository,
             macroRepository = macroRepository,
             variableRepository = variableRepository,
-            scriptManager = scriptManager,
+            scriptManager = scriptManagerFactory.create(),
             compassTheme = compassTheme,
             highlightRepository = highlightRepository,
             presetRepository = presetRepository,

@@ -74,6 +74,8 @@ import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.script.ScriptManager
+import warlockfe.warlock3.core.script.ScriptManagerFactory
+import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
@@ -391,8 +393,8 @@ class GameViewModel(
     }
 
     suspend fun stopScripts() {
-        val scriptInstances = scriptManager.runningScripts
-        val count = scriptInstances.size
+        val scriptInstances = scriptManager.runningScripts.value.values
+        var count = scriptInstances.size
         if (count > 0) {
             scriptInstances.forEach { scriptInstance ->
                 scriptInstance.stop()
@@ -404,7 +406,7 @@ class GameViewModel(
     suspend fun pauseScripts() {
         val paused = this.scriptsPaused
         this.scriptsPaused = !paused
-        val scriptInstances = scriptManager.runningScripts
+        val scriptInstances = scriptManager.runningScripts.value.values
         if (scriptInstances.isNotEmpty()) {
             if (paused) {
                 client.print(StyledString("Resumed script(s)"))
@@ -705,10 +707,10 @@ fun StreamLine.toWindowLine(
     val highlightedResult = textWithComponents.highlight(highlights)
     val lineStyle = flattenStyles(
         highlightedResult.entireLineStyles +
-        text.getEntireLineStyles(
-            variables = components,
-            styleMap = presets,
-        )
+                text.getEntireLineStyles(
+                    variables = components,
+                    styleMap = presets,
+                )
     )
     val annotatedString = buildAnnotatedString {
         lineStyle?.let { pushStyle(it.toSpanStyle()) }
