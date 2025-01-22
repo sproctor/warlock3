@@ -11,12 +11,16 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
+import warlockfe.warlock3.scripting.js.JsEngineFactory
+import warlockfe.warlock3.scripting.wsl.WslEngineFactory
 import warlockfe.warlock3.stormfront.network.SgeClientImpl
 import warlockfe.warlock3.stormfront.network.StormfrontClient
 
@@ -32,11 +36,15 @@ class AndroidAppContainer(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    override val scriptManager =
+    override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
-            highlightRepository = highlightRepository,
-            variableRepository = variableRepository,
+            wslEngineFactory = WslEngineFactory(highlightRepository, variableRepository),
+            jsEngineFactory = JsEngineFactory(variableRepository),
             scriptDirRepository = scriptDirRepository,
+        )
+    override val scriptManagerFactory: ScriptManagerFactory =
+        ScriptManagerFactoryImpl(
+            scriptEngineRepository = scriptEngineRepository,
             externalScope = scope,
         )
 
@@ -57,7 +65,7 @@ class AndroidAppContainer(
                 key = credentials.key,
                 windowRepository = windowRepository,
                 characterRepository = characterRepository,
-                scriptManager = scriptManager,
+                scriptManager = scriptManagerFactory.create(),
                 alterationRepository = alterationRepository,
                 streamRegistry = streamRegistry,
                 logPath = context.filesDir.toOkioPath() / "logs"

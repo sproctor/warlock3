@@ -10,7 +10,6 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
