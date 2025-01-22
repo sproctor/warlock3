@@ -229,13 +229,15 @@ fun ColumnScope.PresetSettings(
             "default",
             "bold",
             "command",
+            "echo",
+            "error",
             "link",
+            "mono",
             "roomName",
             "speech",
             "thought",
             "watching",
             "whisper",
-            "echo"
         )
         presets.forEach { preset ->
             val style = styleMap[preset]
