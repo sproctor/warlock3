@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.core.text.StyleDefinition
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 fun FontPickerDialog(
     currentStyle: StyleDefinition,
@@ -127,11 +126,11 @@ internal data class FontFamilyInfo(
 data class FontUpdate(val size: Float?, val fontFamily: String?)
 
 private val genericFontFamilies = listOf(
-    FontFamilyInfo("Default", FontFamily.Default),
-    FontFamilyInfo("Serif", FontFamily.Serif),
-    FontFamilyInfo("SansSerif", FontFamily.SansSerif),
-    FontFamilyInfo("Monospace", FontFamily.Monospace),
-    FontFamilyInfo("Cursive", FontFamily.Cursive),
+    FontFamilyInfo("default", FontFamily.Default),
+    FontFamilyInfo("serif", FontFamily.Serif),
+    FontFamilyInfo("sans-serif", FontFamily.SansSerif),
+    FontFamilyInfo("monospace", FontFamily.Monospace),
+    FontFamilyInfo("cursive", FontFamily.Cursive),
 )
 
 internal expect fun loadSystemFonts(): List<FontFamilyInfo>

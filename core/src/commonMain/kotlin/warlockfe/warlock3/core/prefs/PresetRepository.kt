@@ -55,7 +55,7 @@ val defaultStyles =
             textColor = WarlockColor("#ADD8E6"),
             underline = true
         ),
-        "mono" to StyleDefinition(fontFamily = "Monospace"),
+        "mono" to StyleDefinition(fontFamily = "monospace"),
         "roomName" to StyleDefinition(
             textColor = WarlockColor("#FFFFFF"),
             backgroundColor = WarlockColor("#0000FF"),
