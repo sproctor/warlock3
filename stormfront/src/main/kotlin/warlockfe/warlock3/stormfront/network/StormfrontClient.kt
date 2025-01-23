@@ -355,6 +355,7 @@ class StormfrontClient(
                                     is StormfrontPromptEvent -> {
                                         currentTypeAhead.update { max(0, it - 1) }
                                         styleStack.clear()
+                                        currentStyle = null
                                         currentStream = mainStream
                                         if (!isPrompting) {
                                             mainStream.appendPartial(
