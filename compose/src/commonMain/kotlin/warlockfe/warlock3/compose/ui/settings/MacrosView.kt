@@ -32,7 +32,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.macros.reverseKeyMappings
-import warlockfe.warlock3.compose.ui.components.ConfirmationDialog
+import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.MacroRepository

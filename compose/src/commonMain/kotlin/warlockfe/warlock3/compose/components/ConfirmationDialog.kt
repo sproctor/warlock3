@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.ui.components
+package warlockfe.warlock3.compose.components
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text

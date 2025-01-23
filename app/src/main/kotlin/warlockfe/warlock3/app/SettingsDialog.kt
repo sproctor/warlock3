@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
-import warlockfe.warlock3.compose.ui.components.DrawerMenuItem
+import warlockfe.warlock3.compose.components.DrawerMenuItem
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter

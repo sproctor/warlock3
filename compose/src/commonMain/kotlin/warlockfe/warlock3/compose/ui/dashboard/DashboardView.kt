@@ -31,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.icons.Login
-import warlockfe.warlock3.compose.ui.components.ConfirmationDialog
+import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.client.CharacterProxySettings
 import warlockfe.warlock3.core.client.GameCharacter
