@@ -84,6 +84,7 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontRoundTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontSettingsInfoEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamWindowEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUnhandledTagEvent
 import warlockfe.warlock3.stormfront.stream.StormfrontWindow
@@ -243,10 +244,12 @@ class StormfrontClient(
     private var parseText = true
 
     private var currentStream: TextStream = mainStream
-    private val styleStack = Stack<WarlockStyle>()
 
-    // Output style is for echo style! Not received text
+    private var currentStyle: WarlockStyle? = null
+    private val styleStack = Stack<WarlockStyle>()
+    // Output style gets applied to echoed text as well
     private var outputStyle: WarlockStyle? = null
+
     private var dialogDataId: String? = null
     private val directions: HashSet<DirectionType> = hashSetOf()
     private var componentId: String? = null
@@ -340,6 +343,9 @@ class StormfrontClient(
                                     is StormfrontOutputEvent ->
                                         outputStyle = event.style
 
+                                    is StormfrontStyleEvent ->
+                                        currentStyle = event.style
+
                                     is StormfrontPushStyleEvent ->
                                         styleStack.push(event.style)
 
@@ -424,6 +430,7 @@ class StormfrontClient(
 
                                     is StormfrontComponentDefinitionEvent -> {
                                         // Should not happen on main stream, so don't clear prompt
+                                        // TODO: Should currentStyle be used here? is it per stream?
                                         val styles = styleStack.toPersistentList()
                                         bufferText(
                                             text = StyledString(
@@ -541,6 +548,7 @@ class StormfrontClient(
 
     private fun bufferText(text: StyledString) {
         var styledText = text
+        currentStyle?.let { styledText = styledText.applyStyle(it) }
         styleStack.asReversed().forEach { styledText = styledText.applyStyle(it) }
         outputStyle?.let { styledText = styledText.applyStyle(it) }
         buffer = buffer?.plus(styledText) ?: styledText
