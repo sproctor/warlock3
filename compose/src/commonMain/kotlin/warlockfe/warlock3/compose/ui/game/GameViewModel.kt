@@ -74,8 +74,6 @@ import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.script.ScriptManager
-import warlockfe.warlock3.core.script.ScriptManagerFactory
-import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
@@ -236,8 +234,8 @@ class GameViewModel(
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
-    private var historyPosition = -1
-    private val sendHistory = mutableListOf<String>()
+    private var historyPosition = 0
+    private val sendHistory = mutableListOf<String>("")
 
     private val windows = windowRepository.windows
 
@@ -381,8 +379,9 @@ class GameViewModel(
         aliases.value.forEach { alias ->
             line = alias.replace(line)
         }
-        sendHistory.add(0, line)
-        historyPosition = -1
+        sendHistory[0] = line
+        sendHistory.add(0, "")
+        historyPosition = 0
         sendCommand(line)
     }
 
@@ -542,6 +541,7 @@ class GameViewModel(
     fun historyPrev() {
         val history = sendHistory
         if (historyPosition < history.size - 1) {
+            sendHistory[historyPosition] = entryText.text
             historyPosition++
             val text = history[historyPosition]
             entryText = TextFieldValue(text = text, selection = TextRange(text.length))
@@ -549,14 +549,11 @@ class GameViewModel(
     }
 
     fun historyNext() {
-        if (historyPosition >= 0) {
+        if (historyPosition > 0) {
+            sendHistory[historyPosition] = entryText.text
             historyPosition--
-            if (historyPosition < 0) {
-                entryClear()
-            } else {
-                val text = sendHistory[historyPosition]
-                entryText = TextFieldValue(text = text, selection = TextRange(text.length))
-            }
+            val text = sendHistory[historyPosition]
+            entryText = TextFieldValue(text = text, selection = TextRange(text.length))
         }
     }
 
