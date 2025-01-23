@@ -108,17 +108,25 @@ fun AppearanceView(
         ),
         StreamLine(
             text = StyledString(
-                "Someone whispers",
-                style = WarlockStyle.Whisper
-            ) + StyledString(", \"Hi\""),
+                "Your mind hears Someone thinking, \"hello everyone\"",
+                style = WarlockStyle.Thought
+            ),
             ignoreWhenBlank = false,
             serialNumber = 0L,
         ),
         StreamLine(
             text = StyledString(
-                "Your mind hears Someone thinking, \"hello everyone\"",
-                style = WarlockStyle.Thought
+                "Some text you are watching",
+                style = WarlockStyle.Watching
             ),
+            ignoreWhenBlank = false,
+            serialNumber = 0L,
+        ),
+        StreamLine(
+            text = StyledString(
+                "Someone whispers",
+                style = WarlockStyle.Whisper
+            ) + StyledString(", \"Hi\""),
             ignoreWhenBlank = false,
             serialNumber = 0L,
         ),
