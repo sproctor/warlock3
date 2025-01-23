@@ -8,14 +8,6 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontOutputEvent
 class OutputHandler : BaseElementListener() {
     override fun startElement(element: StartElement): StormfrontOutputEvent {
         val className = element.attributes["class"]
-        return StormfrontOutputEvent(style = getStyleByClass(className))
-    }
-}
-
-fun getStyleByClass(name: String?): WarlockStyle? {
-    return if (name?.isNotBlank() == true) {
-        WarlockStyle(name)
-    } else {
-        null
+        return StormfrontOutputEvent(style = className?.ifBlank { null }?.let { WarlockStyle(it) })
     }
 }

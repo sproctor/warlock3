@@ -247,6 +247,7 @@ class StormfrontClient(
 
     private var currentStyle: WarlockStyle? = null
     private val styleStack = Stack<WarlockStyle>()
+
     // Output style gets applied to echoed text as well
     private var outputStyle: WarlockStyle? = null
 
@@ -350,7 +351,8 @@ class StormfrontClient(
                                         styleStack.push(event.style)
 
                                     StormfrontPopStyleEvent ->
-                                        styleStack.pop()
+                                        if (styleStack.isNotEmpty())
+                                            styleStack.pop()
 
                                     is StormfrontPromptEvent -> {
                                         currentTypeAhead.update { max(0, it - 1) }

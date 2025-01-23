@@ -16,6 +16,7 @@ import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.flattenStyles
 
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
@@ -29,7 +30,6 @@ fun StyledString.toAnnotatedString(
     }
 }
 
-@OptIn(ExperimentalTextApi::class)
 fun StyleDefinition.toSpanStyle(): SpanStyle {
     return SpanStyle(
         color = textColor.toColor(),
@@ -52,9 +52,10 @@ fun StyledStringLeaf.toAnnotatedString(
     actionHandler: (String) -> Unit,
 ): AnnotatedString {
     return buildAnnotatedString {
+        val style = flattenStyles(styles.map { it.toStyleDefinition(styleMap) })
+            ?.also { pushStyle(it.toSpanStyle()) }
+
         styles.forEach { style ->
-            val styleDef = style.toStyleDefinition(styleMap)
-            pushStyle(styleDef.toSpanStyle())
             style.annotation?.let { annotation ->
                 when (val tag = annotation.first) {
                     "action" ->
@@ -78,8 +79,10 @@ fun StyledStringLeaf.toAnnotatedString(
                     append(it)
                 }
         }
-        styles.forEach { style ->
+        if (style != null) {
             pop()
+        }
+        styles.forEach { style ->
             style.annotation?.let { _ -> pop() }
         }
     }
