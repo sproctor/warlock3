@@ -5,5 +5,12 @@ import androidx.compose.ui.text.font.FontFamily
 
 @OptIn(ExperimentalTextApi::class)
 actual fun createFontFamily(familyName: String): FontFamily {
-    return FontFamily(familyName)
+    return when (familyName) {
+        "Default" -> FontFamily.Default
+        "Serif" -> FontFamily.Serif
+        "SansSerif" -> FontFamily.SansSerif
+        "Monospace" -> FontFamily.Monospace
+        "Cursive" -> FontFamily.Cursive
+        else -> FontFamily(familyName)
+    }
 }

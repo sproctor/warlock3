@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -126,11 +125,11 @@ internal data class FontFamilyInfo(
 data class FontUpdate(val size: Float?, val fontFamily: String?)
 
 private val genericFontFamilies = listOf(
-    FontFamilyInfo("default", FontFamily.Default),
-    FontFamilyInfo("serif", FontFamily.Serif),
-    FontFamilyInfo("sans-serif", FontFamily.SansSerif),
-    FontFamilyInfo("monospace", FontFamily.Monospace),
-    FontFamilyInfo("cursive", FontFamily.Cursive),
+    FontFamilyInfo("Default", FontFamily.Default),
+    FontFamilyInfo("Serif", FontFamily.Serif),
+    FontFamilyInfo("SansSerif", FontFamily.SansSerif),
+    FontFamilyInfo("Monospace", FontFamily.Monospace),
+    FontFamilyInfo("Cursive", FontFamily.Cursive),
 )
 
 internal expect fun loadSystemFonts(): List<FontFamilyInfo>
