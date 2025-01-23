@@ -78,7 +78,10 @@ fun RowScope.HandBox(icon: @Composable () -> Unit, value: String) {
         ) {
             icon()
             Spacer(Modifier.width(8.dp))
-            Text(value)
+            Text(
+                text = value,
+                maxLines = 1,
+            )
         }
     }
 }
