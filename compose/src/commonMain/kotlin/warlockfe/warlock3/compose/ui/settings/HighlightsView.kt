@@ -82,7 +82,7 @@ fun HighlightsView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Highlights", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        Column(
+        ScrollableColumn(
             Modifier.fillMaxWidth().weight(1f)
         ) {
             highlights.forEach { highlight ->

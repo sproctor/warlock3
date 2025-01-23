@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
@@ -63,7 +64,7 @@ fun AlterationsView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Alterations", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        Column(
+        ScrollableColumn(
             Modifier.fillMaxWidth().weight(1f)
         ) {
             alterations.forEach { alteration ->
