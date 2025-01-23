@@ -549,9 +549,9 @@ class StormfrontClient(
 
     private fun bufferText(text: StyledString) {
         var styledText = text
-        currentStyle?.let { styledText = styledText.applyStyle(it) }
-        styleStack.asReversed().forEach { styledText = styledText.applyStyle(it) }
         outputStyle?.let { styledText = styledText.applyStyle(it) }
+        currentStyle?.let { styledText = styledText.applyStyle(it) }
+        styleStack.forEach { styledText = styledText.applyStyle(it) }
         buffer = buffer?.plus(styledText) ?: styledText
     }
 

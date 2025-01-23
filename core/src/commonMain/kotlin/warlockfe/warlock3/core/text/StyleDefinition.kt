@@ -25,11 +25,12 @@ data class StyleDefinition(
 }
 
 /*
- * Priority goes to earlier styles in the list
+ * Priority goes to later styles in the list
+ * Used to be opposite changing for 3.0.43
  */
 fun flattenStyles(styles: List<StyleDefinition>): StyleDefinition? {
     return styles
         .reduceOrNull { acc, warlockStyle ->
-            acc.mergeWith(warlockStyle)
+            warlockStyle.mergeWith(acc)
         }
 }
