@@ -8,6 +8,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.plus
 import kotlinx.collections.immutable.toPersistentHashSet
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -73,15 +74,16 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontModeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontNavEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontOutputEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontParseErrorEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontPopStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontProgressBarEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPromptEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPropertyEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontProtocolHandler
+import warlockfe.warlock3.stormfront.protocol.StormfrontPushStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontRoundTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontSettingsInfoEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamWindowEvent
-import warlockfe.warlock3.stormfront.protocol.StormfrontStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUnhandledTagEvent
 import warlockfe.warlock3.stormfront.stream.StormfrontWindow
@@ -94,6 +96,7 @@ import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.nio.charset.Charset
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 
@@ -240,7 +243,7 @@ class StormfrontClient(
     private var parseText = true
 
     private var currentStream: TextStream = mainStream
-    private var currentStyle: WarlockStyle? = null
+    private val styleStack = Stack<WarlockStyle>()
 
     // Output style is for echo style! Not received text
     private var outputStyle: WarlockStyle? = null
@@ -337,12 +340,15 @@ class StormfrontClient(
                                     is StormfrontOutputEvent ->
                                         outputStyle = event.style
 
-                                    is StormfrontStyleEvent ->
-                                        currentStyle = event.style
+                                    is StormfrontPushStyleEvent ->
+                                        styleStack.push(event.style)
+
+                                    StormfrontPopStyleEvent ->
+                                        styleStack.pop()
 
                                     is StormfrontPromptEvent -> {
                                         currentTypeAhead.update { max(0, it - 1) }
-                                        currentStyle = null
+                                        styleStack.clear()
                                         currentStream = mainStream
                                         if (!isPrompting) {
                                             mainStream.appendPartial(
@@ -418,7 +424,7 @@ class StormfrontClient(
 
                                     is StormfrontComponentDefinitionEvent -> {
                                         // Should not happen on main stream, so don't clear prompt
-                                        val styles = currentStyle?.let { persistentListOf(it) } ?: persistentListOf()
+                                        val styles = styleStack.toPersistentList()
                                         bufferText(
                                             text = StyledString(
                                                 persistentListOf(
@@ -535,7 +541,7 @@ class StormfrontClient(
 
     private fun bufferText(text: StyledString) {
         var styledText = text
-        currentStyle?.let { styledText = styledText.applyStyle(it) }
+        styleStack.asReversed().forEach { styledText = styledText.applyStyle(it) }
         outputStyle?.let { styledText = styledText.applyStyle(it) }
         buffer = buffer?.plus(styledText) ?: styledText
     }

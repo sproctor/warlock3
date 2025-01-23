@@ -13,5 +13,6 @@ data class WarlockStyle(val name: String, val annotation: Pair<String, String>? 
         val Thought = WarlockStyle("thought")
         val Watching = WarlockStyle("watching")
         val Whisper = WarlockStyle("whisper")
+        val Default = WarlockStyle("")
     }
 }

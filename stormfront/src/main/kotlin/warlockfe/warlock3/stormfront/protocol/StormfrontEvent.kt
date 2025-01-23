@@ -14,7 +14,8 @@ data class StormfrontClearStreamEvent(val id: String) : StormfrontEvent
 data class StormfrontModeEvent(val id: String?) : StormfrontEvent
 data class StormfrontAppEvent(val character: String?, val game: String?) : StormfrontEvent
 data class StormfrontOutputEvent(val style: WarlockStyle?) : StormfrontEvent
-data class StormfrontStyleEvent(val style: WarlockStyle?) : StormfrontEvent
+data class StormfrontPushStyleEvent(val style: WarlockStyle) : StormfrontEvent
+data object StormfrontPopStyleEvent : StormfrontEvent
 data class StormfrontPromptEvent(val text: String) : StormfrontEvent
 data class StormfrontTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontRoundTimeEvent(val time: String) : StormfrontEvent
