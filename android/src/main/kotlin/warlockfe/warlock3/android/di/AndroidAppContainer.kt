@@ -65,7 +65,6 @@ class AndroidAppContainer(
                 key = credentials.key,
                 windowRepository = windowRepository,
                 characterRepository = characterRepository,
-                scriptManager = scriptManagerFactory.create(),
                 alterationRepository = alterationRepository,
                 streamRegistry = streamRegistry,
                 logPath = context.filesDir.toOkioPath() / "logs"
