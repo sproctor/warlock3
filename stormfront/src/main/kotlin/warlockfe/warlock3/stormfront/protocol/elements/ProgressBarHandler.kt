@@ -11,8 +11,8 @@ class ProgressBarHandler : BaseElementListener() {
         val id = element.attributes["id"] ?: return null
         val value = element.attributes["value"]?.toIntOrNull()?.let { Percentage(it) } ?: return null
         val text = element.attributes["text"] ?: ""
-        val left = element.attributes["left"]?.toPercentage() ?: return null
-        val width = element.attributes["width"]?.toPercentage() ?: return null
+        val left = element.attributes["left"]?.let { Percentage.fromString(it) } ?: return null
+        val width = element.attributes["width"]?.let { Percentage.fromString(it) } ?: return null
         return StormfrontProgressBarEvent(
             id = id,
             value = value,
@@ -21,8 +21,4 @@ class ProgressBarHandler : BaseElementListener() {
             width = width,
         )
     }
-}
-
-fun String.toPercentage(): Percentage? {
-    return dropLast(1).toIntOrNull()?.let { Percentage(it) }
 }
