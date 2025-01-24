@@ -154,9 +154,9 @@ class DashboardViewModel(
             }
         }
         val sfClient = warlockClientFactory.createStormFrontClient(
-            loginCredentials,
-            gameState.windowRepository,
-            gameState.streamRegistry,
+            credentials = loginCredentials,
+            windowRepository = gameState.windowRepository,
+            streamRegistry = gameState.streamRegistry,
         ) as StormfrontClient
         process?.let { sfClient.setProxy(it) }
         do {

@@ -6,6 +6,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.findArgumentBreak
 import warlockfe.warlock3.core.util.parseArguments
+import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.math.BigDecimal
@@ -356,9 +357,4 @@ fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit {
             context.executeCommand(args)
         }
     }
-}
-
-fun String.splitFirstWord(): Pair<String, String?> {
-    val list = trim().split(Regex("[ \t]+"), limit = 2)
-    return Pair(list[0], list.getOrNull(1))
 }

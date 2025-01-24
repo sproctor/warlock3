@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
@@ -24,7 +25,6 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.toCaseInsensitiveMap
-import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 
 class WslScriptInstance(
     override val name: String,
@@ -48,7 +48,12 @@ class WslScriptInstance(
     private val suspendedChannel = Channel<Unit>(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
+    override fun start(
+        client: WarlockClient,
+        argumentString: String,
+        onStop: () -> Unit,
+        commandHandler: (String) -> SendCommandType,
+    ) {
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
 
@@ -70,12 +75,14 @@ class WslScriptInstance(
                     .stateIn(scope = scope)
                 val context = WslContext(
                     client = client,
+                    scriptManager = scriptManager,
                     lines = lines,
                     scriptInstance = this@WslScriptInstance,
                     scope = scope,
                     globalVariables = globalVariables,
                     variableRepository = variableRepository,
                     highlightRepository = highlightRepository,
+                    commandHandler = commandHandler,
                 )
                 context.setScriptVariable("0", WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->

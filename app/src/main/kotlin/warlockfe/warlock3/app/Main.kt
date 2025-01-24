@@ -150,13 +150,13 @@ fun main(args: Array<String>) {
                 windowSettingsDao = appContainer.database.windowSettingsDao(),
                 externalScope = CoroutineScope(Dispatchers.IO)
             ),
-            streamRegistry = StreamRegistryImpl(Dispatchers.IO)
+            streamRegistry = StreamRegistryImpl(Dispatchers.IO),
         ).apply {
             if (credentials != null) {
                 val client = appContainer.warlockClientFactory.createStormFrontClient(
-                    credentials,
-                    windowRepository,
-                    streamRegistry
+                    credentials = credentials,
+                    windowRepository = windowRepository,
+                    streamRegistry = streamRegistry,
                 )
                 // TODO: move this somewhere we can control it
                 runBlocking {

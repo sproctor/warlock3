@@ -63,7 +63,6 @@ class JvmAppContainer(
                     key = credentials.key,
                     windowRepository = windowRepository,
                     characterRepository = characterRepository,
-                    scriptManager = scriptManagerFactory.create(),
                     alterationRepository = alterationRepository,
                     streamRegistry = streamRegistry,
                     logPath = warlockDirs.logDir.toPath()

@@ -9,3 +9,8 @@ fun String.toUuidOrNull(): UUID? {
         null
     }
 }
+
+fun String.splitFirstWord(): Pair<String, String?> {
+    val list = trim().split(Regex("[ \t]+"), limit = 2)
+    return Pair(list[0], list.getOrNull(1))
+}

@@ -22,7 +22,11 @@ class GameViewModelFactory(
     private val aliasRepository: AliasRepository,
     private val scriptManagerFactory: ScriptManagerFactory,
 ) {
-    fun create(client: WarlockClient, windowRepository: WindowRepository, streamRegistry: StreamRegistry): GameViewModel =
+    fun create(
+        client: WarlockClient,
+        windowRepository: WindowRepository,
+        streamRegistry: StreamRegistry,
+    ): GameViewModel =
         GameViewModel(
             client = client,
             windowRepository = windowRepository,

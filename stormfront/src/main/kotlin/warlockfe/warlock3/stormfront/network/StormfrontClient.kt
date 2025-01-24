@@ -48,15 +48,12 @@ import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
-import warlockfe.warlock3.core.script.ScriptManager
-import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isBlank
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.TextStream
-import warlockfe.warlock3.scripting.wsl.splitFirstWord
 import warlockfe.warlock3.stormfront.protocol.StormfrontActionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontAppEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontCastTimeEvent
@@ -113,7 +110,6 @@ class StormfrontClient(
     private val logPath: Path,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
-    private val scriptManager: ScriptManager,
     private val alterationRepository: AlterationRepository,
     private val streamRegistry: StreamRegistry,
 ) : WarlockClient {
@@ -191,31 +187,7 @@ class StormfrontClient(
             ),
         ).forEach { addWindow(it) }
         scope.launch {
-            val scriptStream = getStream("warlockscripts")
-            scriptManager.runningScripts.collect { scripts ->
-                scriptStream.clear()
-                scripts.forEach {
-                    val info = it.value
-                    var text = StyledString("${info.name}: ${info.status} ")
-                    when (info.status) {
-                        ScriptStatus.Running -> text += StyledString(
-                            "pause",
-                            WarlockStyle.Link("action" to "/pause ${it.key}")
-                        )
 
-                        ScriptStatus.Suspended -> text += StyledString(
-                            "resume",
-                            WarlockStyle.Link("action" to "/resume ${it.key}")
-                        )
-
-                        else -> {
-                            // do nothing
-                        }
-                    }
-                    text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
-                    scriptStream.appendLine(text, false)
-                }
-            }
         }
         scope.launch {
             commandQueue.collect { commands ->
@@ -633,61 +605,8 @@ class StormfrontClient(
             printCommand(line)
             simpleFileLogger?.write(">$line\n")
             completeFileLogger.write("command: $line\n")
-            if (line.startsWith(scriptCommandPrefix)) {
-                val scriptCommand = line.drop(1)
-                scriptManager.startScript(this@StormfrontClient, scriptCommand)
-                SendCommandType.SCRIPT
-            } else if (line.startsWith(clientCommandPrefix)) {
-                val clientCommand = line.drop(1)
-                val (command, args) = clientCommand.splitFirstWord()
-                when (command) {
-                    "kill" -> {
-                        args?.split(' ')?.forEach { name ->
-                            scriptManager.findScriptInstance(name)?.stop()
-                        }
-                    }
-
-                    "pause" -> {
-                        args?.split(' ')?.forEach { name ->
-                            scriptManager.findScriptInstance(name)?.suspend()
-                        }
-                    }
-
-                    "resume" -> {
-                        args?.split(' ')?.forEach { name ->
-                            scriptManager.findScriptInstance(name)?.resume()
-                        }
-                    }
-
-                    "list" -> {
-                        val scripts = scriptManager.runningScripts.value
-                        if (scripts.isEmpty()) {
-                            print(StyledString("No scripts are running", WarlockStyle.Echo))
-                        } else {
-                            print(StyledString("Running scripts:", WarlockStyle.Echo))
-                            scripts.forEach {
-                                print(StyledString("${it.value.name} - ${it.key}", WarlockStyle.Echo))
-                            }
-                        }
-                    }
-
-                    "disconnect", "dc" -> {
-                        disconnect()
-                    }
-
-                    "send" -> {
-                        sendCommandDirect(args ?: "")
-                    }
-
-                    else -> {
-                        print(StyledString("Invalid command.", WarlockStyle.Error))
-                    }
-                }
-                SendCommandType.ACTION
-            } else {
-                commandQueue.update { it + line }
-                SendCommandType.COMMAND
-            }
+            commandQueue.update { it + line }
+            SendCommandType.COMMAND
         }
 
     override suspend fun sendCommandDirect(command: String) {
@@ -699,11 +618,6 @@ class StormfrontClient(
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
             }
         }
-    }
-
-    override suspend fun startScript(scriptCommand: String) {
-        scriptManager.startScript(this, scriptCommand)
-        SendCommandType.SCRIPT
     }
 
     override fun disconnect() {
@@ -742,7 +656,7 @@ class StormfrontClient(
         notifyListeners(ClientTextEvent(message.toString()))
     }
 
-    private suspend fun printCommand(command: String) {
+    suspend fun printCommand(command: String) {
         val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
         mainStream.appendPartialAndEol(StyledString(command, styles))
         notifyListeners(ClientTextEvent(command))
@@ -756,7 +670,7 @@ class StormfrontClient(
         doAppendToStream(StyledString(message), getStream("scriptoutput"), false)
     }
 
-    private fun getStream(name: String): TextStream {
+    override fun getStream(name: String): TextStream {
         return streamRegistry.getOrCreateStream(name)
     }
 

@@ -17,26 +17,31 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.parseArguments
+import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
+// TODO: generate constructor with a factory
 class WslContext(
     private val client: WarlockClient,
+    private val scriptManager: ScriptManager,
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
     scope: CoroutineScope,
     private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
+    private val commandHandler: (String) -> SendCommandType,
 ) {
 
     private val scriptVariables = CaseInsensitiveMap(
@@ -185,8 +190,10 @@ class WslContext(
         while (typeAhead.get() >= maxTypeAhead) {
             waitForPrompt()
         }
-        typeAhead.incrementAndGet()
-        val result = client.sendCommand(command)
+        val result = commandHandler(command)
+        if (result == SendCommandType.COMMAND) {
+            typeAhead.incrementAndGet()
+        }
         log(ScriptLoggingLevel.VERBOSE, "Sent: $command")
         if (result == SendCommandType.SCRIPT) {
             stop()
@@ -194,7 +201,7 @@ class WslContext(
     }
 
     suspend fun runCommand(scriptCommand: String) {
-        client.startScript(scriptCommand)
+        scriptManager.startScript(client, scriptCommand, commandHandler)
     }
 
     suspend fun goto(label: String) {

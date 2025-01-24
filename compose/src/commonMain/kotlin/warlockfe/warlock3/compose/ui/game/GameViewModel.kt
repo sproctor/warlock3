@@ -61,6 +61,7 @@ import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientProgressBarEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.ProgressBarData
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.prefs.AliasRepository
@@ -74,13 +75,18 @@ import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.script.ScriptManager
+import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
+import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.stormfront.network.clientCommandPrefix
+import warlockfe.warlock3.stormfront.network.scriptCommandPrefix
 import java.io.File
 import kotlin.math.max
 
@@ -371,6 +377,34 @@ class GameViewModel(
                 client.setMaxTypeAhead(maxTypeAhead?.toIntOrNull() ?: defaultMaxTypeAhead)
             }
             .launchIn(viewModelScope)
+
+        val scriptStream = client.getStream("warlockscripts")
+        scriptManager.runningScripts
+            .onEach { scripts ->
+            scriptStream.clear()
+            scripts.forEach {
+                val info = it.value
+                var text = StyledString("${info.name}: ${info.status} ")
+                when (info.status) {
+                    ScriptStatus.Running -> text += StyledString(
+                        "pause",
+                        WarlockStyle.Link("action" to "/pause ${it.key}")
+                    )
+
+                    ScriptStatus.Suspended -> text += StyledString(
+                        "resume",
+                        WarlockStyle.Link("action" to "/resume ${it.key}")
+                    )
+
+                    else -> {
+                        // do nothing
+                    }
+                }
+                text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
+                scriptStream.appendLine(text, false)
+            }
+        }
+            .launchIn(viewModelScope)
     }
 
     fun submit() {
@@ -386,9 +420,7 @@ class GameViewModel(
     }
 
     fun sendCommand(command: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            client.sendCommand(command)
-        }
+        commandHandler(command)
     }
 
     suspend fun stopScripts() {
@@ -431,7 +463,7 @@ class GameViewModel(
 
     fun runScript(file: File) {
         viewModelScope.launch(Dispatchers.IO) {
-            scriptManager.startScript(client, file)
+            scriptManager.startScript(client, file, ::commandHandler)
         }
     }
 
@@ -685,6 +717,75 @@ class GameViewModel(
         }
         client.close()
     }
+
+    /*
+     * returns true when the command triggers type ahead
+     */
+    private fun commandHandler(line: String): SendCommandType {
+        return if (line.startsWith(scriptCommandPrefix)) {
+            val scriptCommand = line.drop(1)
+            // TODO: if we want scripts to outlive the vm, fix this
+            viewModelScope.launch {
+                client.print(StyledString(line, WarlockStyle.Command))
+                scriptManager.startScript(client, scriptCommand, ::commandHandler)
+            }
+            SendCommandType.SCRIPT
+        } else if (line.startsWith(clientCommandPrefix)) {
+            val clientCommand = line.drop(1)
+            val (command, args) = clientCommand.splitFirstWord()
+            when (command) {
+                "kill" -> {
+                    args?.split(' ')?.forEach { name ->
+                        scriptManager.findScriptInstance(name)?.stop()
+                    }
+                }
+
+                "pause" -> {
+                    args?.split(' ')?.forEach { name ->
+                        scriptManager.findScriptInstance(name)?.suspend()
+                    }
+                }
+
+                "resume" -> {
+                    args?.split(' ')?.forEach { name ->
+                        scriptManager.findScriptInstance(name)?.resume()
+                    }
+                }
+
+                "list" -> {
+                    val scripts = scriptManager.runningScripts.value
+                    if (scripts.isEmpty()) {
+                        print(StyledString("No scripts are running", WarlockStyle.Echo))
+                    } else {
+                        print(StyledString("Running scripts:", WarlockStyle.Echo))
+                        scripts.forEach {
+                            print(StyledString("${it.value.name} - ${it.key}", WarlockStyle.Echo))
+                        }
+                    }
+                }
+
+                "disconnect", "dc" -> {
+                    client.disconnect()
+                }
+
+                "send" -> {
+                    viewModelScope.launch {
+                        client.sendCommandDirect(args ?: "")
+                    }
+                }
+
+                else -> {
+                    print(StyledString("Invalid command.", WarlockStyle.Error))
+                }
+            }
+            SendCommandType.ACTION
+        } else {
+            viewModelScope.launch {
+                client.sendCommand(line)
+            }
+            SendCommandType.COMMAND
+        }
+    }
 }
 
 fun StreamLine.toWindowLine(
@@ -719,10 +820,3 @@ fun StreamLine.toWindowLine(
         entireLineStyle = lineStyle
     )
 }
-
-// Use to track changes in important values in lines
-//data class CacheLine(
-//    val highlights: ImmutableList<Highlight>,
-//    val presets: ImmutableList<PresetStyle>,
-//    val components: ImmutableList<Pair<String, StyledString>>,
-//    )

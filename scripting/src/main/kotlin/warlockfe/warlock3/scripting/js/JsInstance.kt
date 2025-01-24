@@ -16,6 +16,7 @@ import org.mozilla.javascript.EvaluatorException
 import org.mozilla.javascript.FunctionObject
 import org.mozilla.javascript.ScriptableObject
 import org.mozilla.javascript.WrappedException
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
@@ -55,7 +56,12 @@ class JsInstance(
         private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun start(client: WarlockClient, argumentString: String, onStop: () -> Unit) {
+    override fun start(
+        client: WarlockClient,
+        argumentString: String,
+        onStop: () -> Unit,
+        commandHandler: (String) -> SendCommandType,
+    ) {
         status = ScriptStatus.Running
         this.client = client
         thread = thread {

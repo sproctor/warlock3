@@ -89,6 +89,7 @@ class SgeViewModel(
                             logger.debug { "Got character list in unexpected state" }
                         }
                     }
+
                     is SgeEvent.SgeErrorEvent -> {
                         val errorMessage = when (event.errorCode) {
                             SgeError.INVALID_PASSWORD -> "Invalid password"
@@ -99,6 +100,7 @@ class SgeViewModel(
                         }
                         navigate(SgeViewState.SgeError(errorMessage))
                     }
+
                     is SgeEvent.SgeReadyToPlayEvent -> {
                         val credentials = event.credentials
                         val character =
@@ -115,12 +117,23 @@ class SgeViewModel(
                         }
 
                         try {
-                            val sfClient = warlockClientFactory.createStormFrontClient(credentials, gameState.windowRepository, gameState.streamRegistry)
+                            val sfClient = warlockClientFactory.createStormFrontClient(
+                                credentials = credentials,
+                                windowRepository = gameState.windowRepository,
+                                streamRegistry = gameState.streamRegistry,
+                            )
                             sfClient.connect()
-                            val gameViewModel = gameViewModelFactory.create(sfClient, gameState.windowRepository, gameState.streamRegistry)
+                            val gameViewModel = gameViewModelFactory.create(
+                                client = sfClient,
+                                windowRepository = gameState.windowRepository,
+                                streamRegistry = gameState.streamRegistry
+                            )
                             gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
                         } catch (e: UnknownHostException) {
-                            gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}", returnTo = GameScreen.NewGameState)
+                            gameState.screen = GameScreen.ErrorState(
+                                message = "Unknown host: ${e.message}",
+                                returnTo = GameScreen.NewGameState,
+                            )
                         }
                     }
                 }

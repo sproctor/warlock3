@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
@@ -12,7 +13,7 @@ import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.scripting.wsl.splitFirstWord
+import warlockfe.warlock3.core.util.splitFirstWord
 import java.io.File
 
 class ScriptManagerImpl(
@@ -24,29 +25,38 @@ class ScriptManagerImpl(
 
     private var nextId = 0L
 
-    override suspend fun startScript(client: WarlockClient, command: String) {
+    override suspend fun startScript(
+        client: WarlockClient,
+        command: String,
+        commandHandler: (String) -> SendCommandType
+    ) {
         val (name, argString) = command.splitFirstWord()
 
         val instance = scriptEngineRepository.getScript(name, client.characterId.value ?: "", this)
         if (instance != null) {
-            startInstance(client, instance, argString)
+            startInstance(client, instance, argString, commandHandler)
         } else {
             client.print(StyledString("Could not find a script with that name", style = WarlockStyle.Error))
         }
     }
 
-    override suspend fun startScript(client: WarlockClient, file: File) {
+    override suspend fun startScript(client: WarlockClient, file: File, commandHandler: (String) -> SendCommandType) {
         if (file.exists()) {
             val instance = scriptEngineRepository.getScript(file, this)
             if (instance != null) {
-                startInstance(client, instance, null)
+                startInstance(client, instance, null, commandHandler)
             } else {
                 client.print(StyledString("Could not find a script with that name", style = WarlockStyle.Error))
             }
         }
     }
 
-    private suspend fun startInstance(client: WarlockClient, instance: ScriptInstance, argString: String?) {
+    private suspend fun startInstance(
+        client: WarlockClient,
+        instance: ScriptInstance,
+        argString: String?,
+        commandHandler: (String) -> SendCommandType,
+    ) {
         val id = nextId++
         runningScripts.value.values.forEach { runningInstance ->
             if (instance.name == runningInstance.name) {
@@ -56,12 +66,17 @@ class ScriptManagerImpl(
         client.print(StyledString("Starting script: ${instance.name}", style = WarlockStyle.Echo))
         _runningScripts.update { it + (id to instance) }
         scriptStateChanged(instance)
-        instance.start(client = client, argumentString = argString ?: "") {
-            externalScope.launch {
-                _runningScripts.update { it - id }
-                client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
-            }
-        }
+        instance.start(
+            client = client,
+            argumentString = argString ?: "",
+            onStop = {
+                externalScope.launch {
+                    _runningScripts.update { it - id }
+                    client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
+                }
+            },
+            commandHandler = commandHandler,
+        )
     }
 
     override fun findScriptInstance(description: String): ScriptInstance? {
