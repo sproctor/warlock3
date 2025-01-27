@@ -28,7 +28,7 @@ class ScriptManagerImpl(
     override suspend fun startScript(
         client: WarlockClient,
         command: String,
-        commandHandler: (String) -> SendCommandType
+        commandHandler: suspend (String) -> SendCommandType
     ) {
         val (name, argString) = command.splitFirstWord()
 
@@ -40,7 +40,7 @@ class ScriptManagerImpl(
         }
     }
 
-    override suspend fun startScript(client: WarlockClient, file: File, commandHandler: (String) -> SendCommandType) {
+    override suspend fun startScript(client: WarlockClient, file: File, commandHandler: suspend (String) -> SendCommandType) {
         if (file.exists()) {
             val instance = scriptEngineRepository.getScript(file, this)
             if (instance != null) {
@@ -55,7 +55,7 @@ class ScriptManagerImpl(
         client: WarlockClient,
         instance: ScriptInstance,
         argString: String?,
-        commandHandler: (String) -> SendCommandType,
+        commandHandler: suspend (String) -> SendCommandType,
     ) {
         val id = nextId++
         runningScripts.value.values.forEach { runningInstance ->

@@ -52,7 +52,7 @@ class WslScriptInstance(
         client: WarlockClient,
         argumentString: String,
         onStop: () -> Unit,
-        commandHandler: (String) -> SendCommandType,
+        commandHandler: suspend (String) -> SendCommandType,
     ) {
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running

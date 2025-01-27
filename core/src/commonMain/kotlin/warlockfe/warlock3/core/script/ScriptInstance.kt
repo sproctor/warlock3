@@ -11,7 +11,7 @@ interface ScriptInstance {
         client: WarlockClient,
         argumentString: String,
         onStop: () -> Unit,
-        commandHandler: (String) -> SendCommandType,
+        commandHandler: suspend (String) -> SendCommandType,
     )
 
     fun stop()

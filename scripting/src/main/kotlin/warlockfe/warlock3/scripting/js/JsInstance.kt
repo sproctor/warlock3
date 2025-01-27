@@ -60,7 +60,7 @@ class JsInstance(
         client: WarlockClient,
         argumentString: String,
         onStop: () -> Unit,
-        commandHandler: (String) -> SendCommandType,
+        commandHandler: suspend (String) -> SendCommandType,
     ) {
         status = ScriptStatus.Running
         this.client = client

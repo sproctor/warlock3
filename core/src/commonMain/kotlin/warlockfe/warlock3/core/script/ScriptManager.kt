@@ -9,9 +9,9 @@ interface ScriptManager {
 
     val runningScripts: StateFlow<Map<Long, ScriptInstance>>
 
-    suspend fun startScript(client: WarlockClient, command: String, commandHandler: (String) -> SendCommandType)
+    suspend fun startScript(client: WarlockClient, command: String, commandHandler: suspend (String) -> SendCommandType)
 
-    suspend fun startScript(client: WarlockClient, file: File, commandHandler: (String) -> SendCommandType)
+    suspend fun startScript(client: WarlockClient, file: File, commandHandler: suspend (String) -> SendCommandType)
 
     fun findScriptInstance(description: String): ScriptInstance?
 

@@ -41,7 +41,7 @@ class WslContext(
     private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
-    private val commandHandler: (String) -> SendCommandType,
+    private val commandHandler: suspend (String) -> SendCommandType,
 ) {
 
     private val scriptVariables = CaseInsensitiveMap(

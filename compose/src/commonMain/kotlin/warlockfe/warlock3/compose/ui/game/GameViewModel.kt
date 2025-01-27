@@ -381,29 +381,29 @@ class GameViewModel(
         val scriptStream = client.getStream("warlockscripts")
         scriptManager.runningScripts
             .onEach { scripts ->
-            scriptStream.clear()
-            scripts.forEach {
-                val info = it.value
-                var text = StyledString("${info.name}: ${info.status} ")
-                when (info.status) {
-                    ScriptStatus.Running -> text += StyledString(
-                        "pause",
-                        WarlockStyle.Link("action" to "/pause ${it.key}")
-                    )
+                scriptStream.clear()
+                scripts.forEach {
+                    val info = it.value
+                    var text = StyledString("${info.name}: ${info.status} ")
+                    when (info.status) {
+                        ScriptStatus.Running -> text += StyledString(
+                            "pause",
+                            WarlockStyle.Link("action" to "/pause ${it.key}")
+                        )
 
-                    ScriptStatus.Suspended -> text += StyledString(
-                        "resume",
-                        WarlockStyle.Link("action" to "/resume ${it.key}")
-                    )
+                        ScriptStatus.Suspended -> text += StyledString(
+                            "resume",
+                            WarlockStyle.Link("action" to "/resume ${it.key}")
+                        )
 
-                    else -> {
-                        // do nothing
+                        else -> {
+                            // do nothing
+                        }
                     }
+                    text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
+                    scriptStream.appendLine(text, false)
                 }
-                text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
-                scriptStream.appendLine(text, false)
             }
-        }
             .launchIn(viewModelScope)
     }
 
@@ -420,7 +420,9 @@ class GameViewModel(
     }
 
     fun sendCommand(command: String) {
-        commandHandler(command)
+        viewModelScope.launch {
+            commandHandler(command)
+        }
     }
 
     suspend fun stopScripts() {
@@ -721,14 +723,11 @@ class GameViewModel(
     /*
      * returns true when the command triggers type ahead
      */
-    private fun commandHandler(line: String): SendCommandType {
+    private suspend fun commandHandler(line: String): SendCommandType {
         return if (line.startsWith(scriptCommandPrefix)) {
             val scriptCommand = line.drop(1)
-            // TODO: if we want scripts to outlive the vm, fix this
-            viewModelScope.launch {
-                client.print(StyledString(line, WarlockStyle.Command))
-                scriptManager.startScript(client, scriptCommand, ::commandHandler)
-            }
+            client.print(StyledString(line, WarlockStyle.Command))
+            scriptManager.startScript(client, scriptCommand, ::commandHandler)
             SendCommandType.SCRIPT
         } else if (line.startsWith(clientCommandPrefix)) {
             val clientCommand = line.drop(1)
@@ -769,9 +768,7 @@ class GameViewModel(
                 }
 
                 "send" -> {
-                    viewModelScope.launch {
-                        client.sendCommandDirect(args ?: "")
-                    }
+                    client.sendCommandDirect(args ?: "")
                 }
 
                 else -> {
@@ -780,9 +777,7 @@ class GameViewModel(
             }
             SendCommandType.ACTION
         } else {
-            viewModelScope.launch {
-                client.sendCommand(line)
-            }
+            client.sendCommand(line)
             SendCommandType.COMMAND
         }
     }
