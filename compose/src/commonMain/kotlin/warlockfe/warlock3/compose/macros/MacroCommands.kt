@@ -1,15 +1,15 @@
 package warlockfe.warlock3.compose.macros
 
 import androidx.compose.ui.platform.ClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.getSelectedText
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 
 val macroCommands = mapOf<String, suspend (GameViewModel, ClipboardManager) -> Unit>(
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
-        val text = textField.text.substring(textField.selection.start, textField.selection.end)
-        clipboard.setText(AnnotatedString(text))
+        // TODO: allow focus on other windows and apply copy there
+        clipboard.setText(textField.getSelectedText())
     },
     "linedown" to { viewModel, clipboard ->
         viewModel.scroll(ScrollEvent.LINE_DOWN)
