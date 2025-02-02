@@ -69,8 +69,6 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalResourceApi::class)
 fun main(args: Array<String>) {
 
-    initializeSentry()
-
     val parser = ArgParser("warlock3")
     val port by parser.option(
         type = ArgType.Int,
@@ -99,6 +97,9 @@ fun main(args: Array<String>) {
     parser.parse(args)
 
     val version = System.getProperty("app.version")
+    version?.let {
+        initializeSentry(version)
+    }
     if (debug == true || (debug == null && version == null)) {
         System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
     }
@@ -331,9 +332,12 @@ private fun GameState.getTitle(): Flow<String> {
     }
 }
 
-fun initializeSentry() {
+fun initializeSentry(version: String) {
     Sentry.init { options ->
-        options.dsn = "https://06169c08bd931ba4308dab95573400e2@o4508437273378816.ingest.us.sentry.io/4508437322727424"
+        with(options) {
+            dsn = "https://06169c08bd931ba4308dab95573400e2@o4508437273378816.ingest.us.sentry.io/4508437322727424"
+            release = "desktop@$version"
+        }
     }
 }
 
