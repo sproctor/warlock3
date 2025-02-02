@@ -13,11 +13,10 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
-import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.AccountRepository
-import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.ConnectionRepository
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -30,7 +29,7 @@ import java.net.UnknownHostException
 class SgeViewModel(
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
-    private val characterRepository: CharacterRepository,
+    private val connectionRepository: ConnectionRepository,
     private val warlockClientFactory: WarlockClientFactory,
     sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
@@ -50,7 +49,7 @@ class SgeViewModel(
     private val client = sgeClientFactory.create(host = host, port = port)
     private val job: Job
 
-    private var accountId: String? = null
+    private var username: String? = null
     private var characterName: String? = null
     private var gameCode: String? = null
 
@@ -103,17 +102,16 @@ class SgeViewModel(
 
                     is SgeEvent.SgeReadyToPlayEvent -> {
                         val credentials = event.credentials
-                        val character =
-                            GameCharacter(
-                                accountId,
-                                "$gameCode:$characterName".lowercase(),
-                                gameCode!!,
-                                characterName!!
-                            )
 
                         viewModelScope.launch {
-                            characterRepository.saveCharacter(character)
-                            clientSettingRepository.putLastUsername(accountId)
+                            username?.let {
+                                connectionRepository.save(
+                                    username = it,
+                                    character = characterName!!,
+                                    gameCode = gameCode!!,
+                                )
+                                clientSettingRepository.putLastUsername(it)
+                            }
                         }
 
                         try {
@@ -143,7 +141,7 @@ class SgeViewModel(
 
     fun accountSelected(account: AccountEntity) {
         _state.value = SgeViewState.SgeLoadingGameList
-        accountId = account.username
+        username = account.username
         viewModelScope.launch {
             client.login(account.username, account.password ?: "")
         }

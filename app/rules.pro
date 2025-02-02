@@ -21,7 +21,7 @@
 -keep class org.slf4j.simple.SimpleServiceProvider { *; }
 -keep class androidx.compose.foundation.text.TextLinkScope { *; }
 -keep class com.sun.jna.** { *; }
--keep class androidx.sqlite.driver.** { *; }
+-keep class androidx.sqlite.** { *; }
 
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.

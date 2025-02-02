@@ -21,6 +21,8 @@ import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.ConnectionRepository
+import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PrefsDatabase
@@ -80,6 +82,12 @@ abstract class AppContainer(
         CharacterSettingsRepository(
             characterSettingsQueries = database.characterSettingDao(),
         )
+    val connectionRepository = ConnectionRepository(
+        connectionDao = database.connectionDao(),
+    )
+    val connectionSettingsRepository = ConnectionSettingsRepository(
+        connectionSettingDao = database.connectionSettingDao(),
+    )
     val aliasRepository =
         AliasRepository(
             database.aliasDao(),
@@ -115,9 +123,8 @@ abstract class AppContainer(
 
     val dashboardViewModelFactory by lazy {
         DashboardViewModelFactory(
-            characterRepository = characterRepository,
-            characterSettingsRepository = characterSettingsRepository,
-            accountRepository = accountRepository,
+            connectionRepository = connectionRepository,
+            connectionSettingsRepository = connectionSettingsRepository,
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
@@ -129,7 +136,7 @@ abstract class AppContainer(
         SgeViewModelFactory(
             clientSettingRepository = clientSettings,
             accountRepository = accountRepository,
-            characterRepository = characterRepository,
+            connectionRepository = connectionRepository,
             warlockClientFactory = warlockClientFactory,
             sgeClientFactory = sgeClientFactory,
             gameViewModelFactory = gameViewModelFactory,

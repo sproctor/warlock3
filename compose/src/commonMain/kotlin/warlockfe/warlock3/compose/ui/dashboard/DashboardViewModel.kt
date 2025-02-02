@@ -13,23 +13,21 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
-import warlockfe.warlock3.core.client.CharacterProxySettings
-import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.WarlockClientFactory
-import warlockfe.warlock3.core.prefs.AccountRepository
-import warlockfe.warlock3.core.prefs.CharacterRepository
-import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.ConnectionRepository
+import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
+import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.stormfront.network.StormfrontClient
 import java.io.IOException
 import java.net.UnknownHostException
 
 class DashboardViewModel(
-    private val characterRepository: CharacterRepository,
-    private val characterSettingsRepository: CharacterSettingsRepository,
-    private val accountRepository: AccountRepository,
+    private val connectionRepository: ConnectionRepository,
+    private val connectionSettingsRepository: ConnectionSettingsRepository,
     private val gameState: GameState,
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
@@ -37,7 +35,7 @@ class DashboardViewModel(
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    val characters = characterRepository.observeAllCharacters()
+    val connections = connectionRepository.observeAllConnections()
 
     private val logger = KotlinLogging.logger { }
 
@@ -53,7 +51,7 @@ class DashboardViewModel(
 
     private var connectJob: Job? = null
 
-    fun connectCharacter(character: GameCharacter) {
+    fun connect(connection: StoredConnection) {
         if (busy) return
         busy = true
         connectJob?.cancel()
@@ -67,23 +65,18 @@ class DashboardViewModel(
                     message = "Could not connect to SGE"
                     return@launch
                 }
-                val account = character.accountId?.let { accountRepository.getByUsername(it) }
-                if (account == null) {
-                    message = "Invalid account"
-                    return@launch
-                }
-                sgeClient.login(username = account.username, account.password ?: "")
+                sgeClient.login(username = connection.username, password = connection.password ?: "")
 
                 sgeClient.eventFlow
                     .collect { event ->
                         when (event) {
-                            is SgeEvent.SgeLoginSucceededEvent -> sgeClient.selectGame(character.gameCode)
+                            is SgeEvent.SgeLoginSucceededEvent -> sgeClient.selectGame(connection.code)
                             is SgeEvent.SgeGameSelectedEvent -> sgeClient.requestCharacterList()
                             is SgeEvent.SgeCharactersReadyEvent -> {
                                 val characters = event.characters
-                                val sgeCharacter = characters.firstOrNull { it.name.equals(character.name, true) }
+                                val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
                                 if (sgeCharacter == null) {
-                                    message = "Could not find character: ${character.name}"
+                                    message = "Could not find character: ${connection.character}"
                                 } else {
                                     sgeClient.selectCharacter(sgeCharacter.code)
                                 }
@@ -91,7 +84,7 @@ class DashboardViewModel(
 
                             is SgeEvent.SgeReadyToPlayEvent -> {
                                 try {
-                                    connectToGame(event.credentials, character.id)
+                                    connectToGame(event.credentials, connection.proxySettings)
                                 } catch (e: UnknownHostException) {
                                     gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}", returnTo = GameScreen.Dashboard)
                                 } catch (e: Exception) {
@@ -122,19 +115,14 @@ class DashboardViewModel(
         connectJob = null
     }
 
-    suspend fun getProxySettings(characterId: String): CharacterProxySettings {
-        return characterSettingsRepository.getProxySettings(characterId)
-    }
-
-    fun updateProxySettings(characterId: String, proxySettings: CharacterProxySettings) {
+    fun updateProxySettings(characterId: String, proxySettings: ConnectionProxySettings) {
         viewModelScope.launch {
-            characterSettingsRepository.saveProxySettings(characterId, proxySettings)
+            connectionSettingsRepository.saveProxySettings(characterId, proxySettings)
         }
     }
 
-    private suspend fun connectToGame(credentials: SimuGameCredentials, characterId: String) {
+    private suspend fun connectToGame(credentials: SimuGameCredentials, proxySettings: ConnectionProxySettings) {
         var loginCredentials = credentials
-        val proxySettings = getProxySettings(characterId)
         var process: Process? = null
         if (proxySettings.enabled) {
             val substitutions = mapOf(
@@ -179,9 +167,9 @@ class DashboardViewModel(
         gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
     }
 
-    fun deleteCharacter(characterId: String) {
+    fun deleteConnection(id: String) {
         viewModelScope.launch {
-            characterRepository.deleteCharacter(characterId)
+            connectionRepository.deleteConnection(id)
         }
     }
 }

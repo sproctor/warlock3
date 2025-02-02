@@ -7,12 +7,13 @@ import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.AccountRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.ConnectionRepository
+import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
 import warlockfe.warlock3.core.sge.SgeClientFactory
 
 class DashboardViewModelFactory(
-    private val characterRepository: CharacterRepository,
-    private val characterSettingsRepository: CharacterSettingsRepository,
-    private val accountRepository: AccountRepository,
+    private val connectionRepository: ConnectionRepository,
+    private val connectionSettingsRepository: ConnectionSettingsRepository,
     private val gameViewModelFactory: GameViewModelFactory,
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
@@ -22,9 +23,8 @@ class DashboardViewModelFactory(
         gameState: GameState
     ): DashboardViewModel {
         return DashboardViewModel(
-            characterRepository = characterRepository,
-            characterSettingsRepository = characterSettingsRepository,
-            accountRepository = accountRepository,
+            connectionRepository = connectionRepository,
+            connectionSettingsRepository = connectionSettingsRepository,
             gameState = gameState,
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,

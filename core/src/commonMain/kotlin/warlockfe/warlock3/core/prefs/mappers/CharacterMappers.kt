@@ -5,7 +5,6 @@ import warlockfe.warlock3.core.prefs.models.CharacterEntity
 
 fun CharacterEntity.toGameCharacter(): GameCharacter {
     return GameCharacter(
-        accountId = accountId,
         id = id,
         gameCode = gameCode,
         name = name,
@@ -14,7 +13,6 @@ fun CharacterEntity.toGameCharacter(): GameCharacter {
 
 fun GameCharacter.toEntity(): CharacterEntity {
     return CharacterEntity(
-        accountId = accountId,
         id = id,
         gameCode = gameCode,
         name = name

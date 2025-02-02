@@ -130,7 +130,7 @@ class GameViewModel(
         val game = properties["game"]
         val name = properties["character"]
         if (characterId != null && game != null && name != null) {
-            GameCharacter(accountId = null, id = characterId, gameCode = game, name = name)
+            GameCharacter(id = characterId, gameCode = game, name = name)
         } else {
             null
         }

@@ -20,12 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import warlockfe.warlock3.core.client.CharacterProxySettings
+import warlockfe.warlock3.core.sge.ConnectionProxySettings
 
 @Composable
 fun CharacterSettingsDialog(
-    proxySettings: CharacterProxySettings,
-    updateProxySettings: (CharacterProxySettings) -> Unit,
+    proxySettings: ConnectionProxySettings,
+    updateProxySettings: (ConnectionProxySettings) -> Unit,
     closeDialog: () -> Unit,
 ) {
     var proxyEnabled by remember(proxySettings) { mutableStateOf(proxySettings.enabled) }
@@ -40,7 +40,7 @@ fun CharacterSettingsDialog(
                 onClick = {
                     scope.launch {
                         updateProxySettings(
-                            CharacterProxySettings(
+                            ConnectionProxySettings(
                                 enabled = proxyEnabled,
                                 launchCommand = proxyCommand.ifBlank { null },
                                 host = proxyHost.ifBlank { null },

@@ -26,6 +26,7 @@ kotlin {
                 implementation(libs.appdirs)
                 api(libs.androidx.lifecycle.viewmodel.compose)
                 implementation(libs.sqlite.bundled)
+                implementation(libs.sqlite)
             }
         }
         val androidMain by getting {

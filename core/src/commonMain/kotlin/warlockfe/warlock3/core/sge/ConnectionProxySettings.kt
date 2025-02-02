@@ -1,6 +1,6 @@
-package warlockfe.warlock3.core.client
+package warlockfe.warlock3.core.sge
 
-data class CharacterProxySettings(
+data class ConnectionProxySettings(
     val enabled: Boolean,
     val launchCommand: String?,
     val host: String?,

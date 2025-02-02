@@ -20,7 +20,7 @@ agp = "8.7.3"
 androidx-activity = "1.10.0"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.8.4"
-androidxSqlite = "2.5.0-alpha12"
+androidxSqlite = "2.5.0-alpha12" # 2.5.0-alpha13 has an issue finding the SqliteDriver
 antlr = "4.13.2"
 apache-commons-text = "1.13.0"
 appdirs = "1.2.0"
@@ -28,14 +28,14 @@ compose = "1.7.3"
 compose-color-picker = "0.7.0"
 conveyor = "1.12"
 conveyor-control = "1.1"
-kotlin = "2.1.0"
+kotlin = "2.1.10"
 kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.3.8"
 kotlinx-coroutines =  "1.10.1"
 # 7.0.3 fails to build with proguard
 kotlin-logging = "7.0.0"
 ##          ⬆ = "7.0.3"
-ksp = "2.1.0-1.0.29"
+ksp = "2.1.10-1.0.29"
 okio = "3.10.2"
 rhino = "1.8.0"
 room = "2.7.0-alpha12"
@@ -68,4 +68,5 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 slf4j-android = { module = "com.github.tony19:logback-android", version.ref = "slf4jAndroid" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
+sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }

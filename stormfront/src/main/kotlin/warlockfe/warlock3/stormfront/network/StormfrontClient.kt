@@ -295,7 +295,6 @@ class StormfrontClient(
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
-                                                        accountId = null,
                                                         id = characterId,
                                                         gameCode = game,
                                                         name = character
