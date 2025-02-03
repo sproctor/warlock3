@@ -95,7 +95,7 @@ class ScriptManagerImpl(
     override fun scriptStateChanged(instance: ScriptInstance) {
         if (instance.status == ScriptStatus.Stopped) {
             _runningScripts.update { originalMap ->
-                originalMap.filter { it.value == instance }
+                originalMap.filter { it.value != instance }
             }
         }
     }
