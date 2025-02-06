@@ -7,6 +7,7 @@ import kotlinx.collections.immutable.minus
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.plus
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
@@ -59,6 +60,7 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontActionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontAppEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontCastTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontClearStreamEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontCliEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontCompassEndEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontComponentDefinitionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontComponentEndEvent
@@ -66,6 +68,7 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontComponentStartEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontDataReceivedEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontDialogDataEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontDirectionEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontEndCmdList
 import warlockfe.warlock3.stormfront.protocol.StormfrontEolEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontHandledEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontModeEvent
@@ -78,16 +81,20 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontProgressBarEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPromptEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPropertyEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontProtocolHandler
+import warlockfe.warlock3.stormfront.protocol.StormfrontPushCmdEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPushStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontRoundTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontSettingsInfoEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontStartCmdList
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStreamWindowEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUnhandledTagEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontUpdateVerbsEvent
 import warlockfe.warlock3.stormfront.stream.StormfrontWindow
 import warlockfe.warlock3.stormfront.util.AlterationResult
+import warlockfe.warlock3.stormfront.util.CmdDefinition
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import warlockfe.warlock3.stormfront.util.FileLogger
 import java.io.BufferedReader
@@ -164,6 +171,10 @@ class StormfrontClient(
     // Line state variables
     private var isPrompting = false
     private var buffer: StyledString? = null
+
+    private val cliCache = mutableListOf<CmdDefinition>()
+
+    private val cliCoords = MutableStateFlow<Map<String, CmdDefinition>>(emptyMap())
 
     init {
         listOf(
@@ -468,6 +479,41 @@ class StormfrontClient(
                                             notifyListeners(ClientOpenUrlEvent(url))
                                         } catch (_: Exception) {
                                             // Silently ignore exceptions
+                                        }
+                                    }
+
+                                    is StormfrontUpdateVerbsEvent -> {
+                                        sendCommandDirect("_menu update 1")
+                                    }
+
+                                    is StormfrontStartCmdList -> {
+                                        // ignore for now
+                                    }
+
+                                    is StormfrontEndCmdList -> {
+                                        val newValues = cliCache.associate { cli ->
+                                            cli.coord to cli
+                                        }
+                                        cliCoords.update { orig ->
+                                            orig + newValues
+                                        }
+                                        cliCache.clear()
+                                    }
+
+                                    is StormfrontCliEvent -> {
+                                        cliCache.add(event.cmd)
+                                    }
+
+                                    is StormfrontPushCmdEvent -> {
+                                        val cmd = event.cmd
+                                        if (cmd.coord != null) {
+                                            styleStack.push(
+                                                WarlockStyle.Link(
+                                                    "action" to "test"
+                                                )
+                                            )
+                                        } else {
+                                            styleStack.push(WarlockStyle(""))
                                         }
                                     }
 

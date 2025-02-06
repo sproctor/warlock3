@@ -4,6 +4,8 @@ import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.stormfront.stream.StormfrontWindow
+import warlockfe.warlock3.stormfront.util.CmdDefinition
+import warlockfe.warlock3.stormfront.util.StormfrontCmd
 
 sealed interface StormfrontEvent
 
@@ -30,16 +32,21 @@ data class StormfrontProgressBarEvent(
     val width: Percentage
 ) : StormfrontEvent
 data class StormfrontDialogDataEvent(val id: String?) : StormfrontEvent
-object StormfrontCompassEndEvent : StormfrontEvent
+data object StormfrontCompassEndEvent : StormfrontEvent
 data class StormfrontDirectionEvent(val direction: DirectionType) : StormfrontEvent
 data class StormfrontPropertyEvent(val key: String, val value: String?) : StormfrontEvent
 data class StormfrontComponentStartEvent(val id: String) : StormfrontEvent
-object StormfrontComponentEndEvent : StormfrontEvent
+data object StormfrontComponentEndEvent : StormfrontEvent
 data class StormfrontComponentDefinitionEvent(val id: String) : StormfrontEvent
-object StormfrontHandledEvent : StormfrontEvent
+data object StormfrontHandledEvent : StormfrontEvent
 data class StormfrontStreamWindowEvent(val window: StormfrontWindow) : StormfrontEvent
-object StormfrontNavEvent : StormfrontEvent
+data object StormfrontNavEvent : StormfrontEvent
 data class StormfrontActionEvent(val text: String, val command: String) : StormfrontEvent
 data class StormfrontOpenUrlEvent(val url: String) : StormfrontEvent
 data class StormfrontParseErrorEvent(val text: String) : StormfrontEvent
 data class StormfrontUnhandledTagEvent(val tag: String) : StormfrontEvent
+data object StormfrontUpdateVerbsEvent : StormfrontEvent
+data object StormfrontStartCmdList : StormfrontEvent
+data object StormfrontEndCmdList : StormfrontEvent
+data class StormfrontCliEvent(val cmd: CmdDefinition) : StormfrontEvent
+data class StormfrontPushCmdEvent(val cmd: StormfrontCmd) : StormfrontEvent

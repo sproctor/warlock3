@@ -11,6 +11,8 @@ import warlockfe.warlock3.stormfront.protocol.elements.BHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CastTimeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ClearContainerHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ClearStreamHandler
+import warlockfe.warlock3.stormfront.protocol.elements.CliHandler
+import warlockfe.warlock3.stormfront.protocol.elements.CmdlistHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CompDefHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CompassHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ComponentHandler
@@ -39,6 +41,7 @@ import warlockfe.warlock3.stormfront.protocol.elements.SettingsInfoHandler
 import warlockfe.warlock3.stormfront.protocol.elements.SpellHandler
 import warlockfe.warlock3.stormfront.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.stormfront.protocol.elements.StyleHandler
+import warlockfe.warlock3.stormfront.protocol.elements.UpdateVerbsHandler
 import java.util.LinkedList
 
 class StormfrontProtocolHandler {
@@ -53,6 +56,8 @@ class StormfrontProtocolHandler {
         "casttime" to CastTimeHandler(),
         "clearcontainer" to ClearContainerHandler(),
         "clearstream" to ClearStreamHandler(),
+        "cli" to CliHandler(),
+        "cmdlist" to CmdlistHandler(),
         "compass" to CompassHandler(),
         "compdef" to CompDefHandler(),
         "component" to ComponentHandler(),
@@ -81,6 +86,7 @@ class StormfrontProtocolHandler {
         "streamwindow" to StreamWindowHandler(),
         "spell" to SpellHandler(),
         "style" to StyleHandler(),
+        "updateverbs" to UpdateVerbsHandler(),
     )
 
     fun parseLine(line: String): List<StormfrontEvent> {

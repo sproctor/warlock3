@@ -5,18 +5,25 @@ import warlockfe.warlock3.stormfront.protocol.BaseElementListener
 import warlockfe.warlock3.stormfront.protocol.StartElement
 import warlockfe.warlock3.stormfront.protocol.StormfrontEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPopStyleEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontPushCmdEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPushStyleEvent
+import warlockfe.warlock3.stormfront.util.StormfrontCmd
 
 class AHandler : BaseElementListener() {
     override fun startElement(element: StartElement): StormfrontEvent {
         val url = element.attributes["href"]
-        val action = if (url != null) {
-            Pair("url", url)
+        if (url != null) {
+            return StormfrontPushStyleEvent(WarlockStyle.Link(Pair("url", url)))
         } else {
-            // TODO handle GS stuff here
-            null
+            return StormfrontPushCmdEvent(
+                StormfrontCmd(
+                    coord = element.attributes["coord"],
+                    noun = element.attributes["noun"],
+                    exist = element.attributes["exist"],
+                )
+            )
         }
-        return StormfrontPushStyleEvent(WarlockStyle.Link(action))
+
     }
 
     override fun endElement(): StormfrontEvent {
