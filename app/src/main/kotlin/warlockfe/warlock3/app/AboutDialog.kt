@@ -30,7 +30,7 @@ fun AboutDialog(
     DialogWindow(
         state = rememberDialogState(width = 400.dp, height = 300.dp),
         onCloseRequest = onCloseRequest,
-        title = "About Warlock 3",
+        title = "About Warlock",
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth()) {
@@ -41,7 +41,7 @@ fun AboutDialog(
                 )
                 Spacer(Modifier.width(16.dp))
                 Column {
-                    Text("Warlock 3")
+                    Text("Warlock FE")
                     Text("Version: $warlockVersion")
                 }
             }

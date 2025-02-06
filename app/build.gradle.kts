@@ -1,5 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
@@ -51,11 +49,9 @@ compose {
             mainClass = "warlockfe.warlock3.app.MainKt"
 
             nativeDistributions {
-                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-                packageName = "warlock3"
+                packageName = "warlock"
                 packageVersion = project.version.toString()
-                modules("java.naming")
-                copyright = "Copyright 2024 Sean Proctor"
+                copyright = "Copyright 2025 Sean Proctor"
                 licenseFile.set(project.file("../LICENSE"))
                 description = "Warlock Front-end"
                 vendor = "Warlock Project"

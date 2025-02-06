@@ -265,7 +265,7 @@ fun main(args: Array<String>) {
                         ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
                 }
                 Window(
-                    title = "Warlock 3 - $title",
+                    title = "Warlock - $title",
                     state = windowState,
                     icon = appIcon,
                     onCloseRequest = {

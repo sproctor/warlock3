@@ -1,4 +1,4 @@
-# Warlock 3
+# Warlock
 
 For general usage, see our project page at https://warlockfe.github.io/
 

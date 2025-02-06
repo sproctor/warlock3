@@ -85,7 +85,7 @@ fun WarlockApp(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text(text = "Warlock 3", maxLines = 1) },
+                        title = { Text(text = "Warlock", maxLines = 1) },
                         navigationIcon = {
                             IconButton(
                                 onClick = {
