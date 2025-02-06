@@ -40,5 +40,6 @@ object StormfrontHandledEvent : StormfrontEvent
 data class StormfrontStreamWindowEvent(val window: StormfrontWindow) : StormfrontEvent
 object StormfrontNavEvent : StormfrontEvent
 data class StormfrontActionEvent(val text: String, val command: String) : StormfrontEvent
+data class StormfrontOpenUrlEvent(val url: String) : StormfrontEvent
 data class StormfrontParseErrorEvent(val text: String) : StormfrontEvent
 data class StormfrontUnhandledTagEvent(val tag: String) : StormfrontEvent

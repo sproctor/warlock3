@@ -55,9 +55,11 @@ import warlockfe.warlock3.compose.ui.window.WindowLine
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.highlight
+import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.core.client.ClientCompassEvent
+import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientProgressBarEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.ProgressBarData
@@ -359,6 +361,10 @@ class GameViewModel(
 
                     is ClientCompassEvent -> {
                         _compassState.value = CompassState(directions = event.directions.toSet())
+                    }
+
+                    is ClientOpenUrlEvent -> {
+                        openUrl(event.url)
                     }
 
                     else -> {

@@ -36,6 +36,7 @@ import okio.Path
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
+import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientProgressBarEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
@@ -69,6 +70,7 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontEolEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontHandledEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontModeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontNavEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontOpenUrlEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontOutputEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontParseErrorEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPopStyleEvent
@@ -93,6 +95,7 @@ import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
+import java.net.URL
 import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -457,6 +460,15 @@ class StormfrontClient(
                                                 WarlockStyle.Link("action" to event.command)
                                             )
                                         )
+                                    }
+
+                                    is StormfrontOpenUrlEvent -> {
+                                        try {
+                                            val url = URL(URL("https://www.play.net/"), event.url)
+                                            notifyListeners(ClientOpenUrlEvent(url))
+                                        } catch (_: Exception) {
+                                            // Silently ignore exceptions
+                                        }
                                     }
 
                                     is StormfrontUnhandledTagEvent -> {

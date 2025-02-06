@@ -21,6 +21,7 @@ import warlockfe.warlock3.stormfront.protocol.elements.DirHandler
 import warlockfe.warlock3.stormfront.protocol.elements.DynaStreamHandler
 import warlockfe.warlock3.stormfront.protocol.elements.IndicatorHandler
 import warlockfe.warlock3.stormfront.protocol.elements.InvHandler
+import warlockfe.warlock3.stormfront.protocol.elements.LaunchURLHandler
 import warlockfe.warlock3.stormfront.protocol.elements.LeftHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ModeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.NavHandler
@@ -62,6 +63,7 @@ class StormfrontProtocolHandler {
         "dynastream" to DynaStreamHandler(),
         "indicator" to IndicatorHandler(),
         "inv" to InvHandler(),
+        "launchurl" to LaunchURLHandler(),
         "left" to LeftHandler(),
         "mode" to ModeHandler(),
         "nav" to NavHandler(),
