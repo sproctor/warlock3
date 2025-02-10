@@ -64,6 +64,7 @@ import warlockfe.warlock3.core.client.ClientProgressBarEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.ProgressBarData
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.prefs.AliasRepository
@@ -351,6 +352,8 @@ class GameViewModel(
 
     val disconnected = client.disconnected
 
+    val menuData = client.menuData
+
     init {
         client.eventFlow
             .onEach { event ->
@@ -394,19 +397,19 @@ class GameViewModel(
                     when (info.status) {
                         ScriptStatus.Running -> text += StyledString(
                             "pause",
-                            WarlockStyle.Link("action" to "/pause ${it.key}")
+                            WarlockStyle.Link(WarlockAction.SendCommand("/pause ${it.key}"))
                         )
 
                         ScriptStatus.Suspended -> text += StyledString(
                             "resume",
-                            WarlockStyle.Link("action" to "/resume ${it.key}")
+                            WarlockStyle.Link(WarlockAction.SendCommand("/resume ${it.key}"))
                         )
 
                         else -> {
                             // do nothing
                         }
                     }
-                    text += StyledString(" ") + StyledString("stop", WarlockStyle.Link("action" to "/kill ${it.key}"))
+                    text += StyledString(" ") + StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${it.key}")))
                     scriptStream.appendLine(text, false)
                 }
             }
@@ -793,7 +796,7 @@ fun StreamLine.toWindowLine(
     highlights: List<ViewHighlight>,
     presets: Map<String, StyleDefinition>,
     components: Map<String, StyledString>,
-    actionHandler: (String) -> Unit,
+    actionHandler: (WarlockAction) -> Unit,
 ): WindowLine? {
     val textWithComponents = text.toAnnotatedString(
         variables = components,

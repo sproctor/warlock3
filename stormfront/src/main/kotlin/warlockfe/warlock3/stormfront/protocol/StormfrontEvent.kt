@@ -50,3 +50,6 @@ data object StormfrontStartCmdList : StormfrontEvent
 data object StormfrontEndCmdList : StormfrontEvent
 data class StormfrontCliEvent(val cmd: CmdDefinition) : StormfrontEvent
 data class StormfrontPushCmdEvent(val cmd: StormfrontCmd) : StormfrontEvent
+data class StormfrontMenuStartEvent(val id: Int?) : StormfrontEvent
+data object StormfrontMenuEndEvent : StormfrontEvent
+data class StormfrontMenuItemEvent(val coord: String) : StormfrontEvent

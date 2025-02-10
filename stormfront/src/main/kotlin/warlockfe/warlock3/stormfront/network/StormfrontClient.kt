@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.PersistentMap
 import kotlinx.collections.immutable.minus
+import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.plus
@@ -44,7 +45,10 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.ProgressBarData
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.client.WarlockMenuData
+import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
@@ -71,6 +75,9 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontDirectionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontEndCmdList
 import warlockfe.warlock3.stormfront.protocol.StormfrontEolEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontHandledEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontMenuEndEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontMenuItemEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontMenuStartEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontModeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontNavEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontOpenUrlEvent
@@ -157,6 +164,8 @@ class StormfrontClient(
     private val commandQueue = MutableStateFlow<List<String>>(emptyList())
     private val currentTypeAhead = MutableStateFlow(0)
 
+    private var menuCount = 0
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
         if (characterId != null)
@@ -174,7 +183,14 @@ class StormfrontClient(
 
     private val cliCache = mutableListOf<CmdDefinition>()
 
-    private val cliCoords = MutableStateFlow<Map<String, CmdDefinition>>(emptyMap())
+    private var cliCoords = persistentMapOf<String, CmdDefinition>()
+
+    private val _menuData = MutableStateFlow<WarlockMenuData>(WarlockMenuData(0, emptyList()))
+    override val menuData: StateFlow<WarlockMenuData> = _menuData.asStateFlow()
+
+    private var currentMenuId: Int = 0
+
+    private val cachedMenuItems = mutableListOf<WarlockMenuItem>()
 
     init {
         listOf(
@@ -200,9 +216,6 @@ class StormfrontClient(
                 styleIfClosed = null,
             ),
         ).forEach { addWindow(it) }
-        scope.launch {
-
-        }
         scope.launch {
             commandQueue.collect { commands ->
                 commands.firstOrNull()?.let { command ->
@@ -323,7 +336,6 @@ class StormfrontClient(
                                             .plus("character" to (event.character ?: ""))
                                             .plus("game" to (event.game ?: ""))
                                         _properties.value = newProperties
-                                        sendCommandDirect("_flag Display Inventory Boxes 1")
                                     }
 
                                     is StormfrontOutputEvent ->
@@ -467,8 +479,8 @@ class StormfrontClient(
                                     is StormfrontActionEvent -> {
                                         bufferText(
                                             StyledString(
-                                                event.text,
-                                                WarlockStyle.Link("action" to event.command)
+                                                text = event.text,
+                                                style = WarlockStyle.Link(WarlockAction.SendCommand(event.command)),
                                             )
                                         )
                                     }
@@ -491,11 +503,10 @@ class StormfrontClient(
                                     }
 
                                     is StormfrontEndCmdList -> {
-                                        val newValues = cliCache.associate { cli ->
-                                            cli.coord to cli
-                                        }
-                                        cliCoords.update { orig ->
-                                            orig + newValues
+                                        cliCoords = cliCoords.mutate { map ->
+                                            cliCache.forEach { cli ->
+                                                map[cli.coord] = cli
+                                            }
                                         }
                                         cliCache.clear()
                                     }
@@ -507,14 +518,63 @@ class StormfrontClient(
                                     is StormfrontPushCmdEvent -> {
                                         val cmd = event.cmd
                                         if (cmd.coord != null) {
-                                            styleStack.push(
-                                                WarlockStyle.Link(
-                                                    "action" to "test"
+                                            val cmdDef = cliCoords[cmd.coord]
+                                            if (cmdDef != null) {
+                                                val command = cmdDef.command.replace("@", cmd.noun ?: "")
+                                                styleStack.push(
+                                                    WarlockStyle.Link(WarlockAction.SendCommand(command))
+                                                )
+                                            } else {
+                                                debug("Could not find cli for coord: ${cmd.coord}")
+                                                styleStack.push(WarlockStyle(""))
+                                            }
+                                        } else {
+                                            if (cmd.exist != null) {
+                                                styleStack.push(
+                                                    WarlockStyle.Link(
+                                                        WarlockAction.OpenMenu {
+                                                            val menuId = menuCount++
+                                                            _menuData.value = WarlockMenuData(menuId, emptyList())
+                                                            scope.launch {
+                                                                sendCommandDirect("_menu #${cmd.exist} $menuId")
+                                                            }
+                                                            menuId
+                                                        }
+                                                    )
+                                                )
+                                            } else {
+                                                styleStack.push(WarlockStyle(""))
+                                            }
+                                        }
+                                    }
+
+                                    is StormfrontMenuStartEvent -> {
+                                        event.id?.let {
+                                            currentMenuId = it
+                                        }
+                                    }
+
+                                    is StormfrontMenuItemEvent -> {
+                                        cliCoords[event.coord]?.let { command ->
+                                            cachedMenuItems.add(
+                                                WarlockMenuItem(
+                                                    label = command.menu,
+                                                    category = command.category,
+                                                    action = {}
                                                 )
                                             )
-                                        } else {
-                                            styleStack.push(WarlockStyle(""))
                                         }
+                                    }
+
+                                    is StormfrontMenuEndEvent -> {
+                                        _menuData.update { menu ->
+                                            if (menu.id != currentMenuId) {
+                                                menu
+                                            } else {
+                                                menu.copy(items = cachedMenuItems.toPersistentList())
+                                            }
+                                        }
+                                        cachedMenuItems.clear()
                                     }
 
                                     is StormfrontUnhandledTagEvent -> {

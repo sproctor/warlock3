@@ -33,11 +33,11 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.components.FontPickerDialog
+import warlockfe.warlock3.compose.components.FontUpdate
 import warlockfe.warlock3.compose.components.LocalScrollbarStyle
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollbarStyle
-import warlockfe.warlock3.compose.components.FontPickerDialog
-import warlockfe.warlock3.compose.components.FontUpdate
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor

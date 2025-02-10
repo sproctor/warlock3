@@ -55,6 +55,7 @@ private val keyMappings = mapOf(
     Key.Zero to "0",
     Key.Minus to "Minus",
     Key.Equals to "Equals",
+    Key.Backspace to "Backspace",
     Key.A to "A",
     Key.B to "B",
     Key.C to "C",

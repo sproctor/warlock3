@@ -25,6 +25,8 @@ import warlockfe.warlock3.stormfront.protocol.elements.IndicatorHandler
 import warlockfe.warlock3.stormfront.protocol.elements.InvHandler
 import warlockfe.warlock3.stormfront.protocol.elements.LaunchURLHandler
 import warlockfe.warlock3.stormfront.protocol.elements.LeftHandler
+import warlockfe.warlock3.stormfront.protocol.elements.MenuHandler
+import warlockfe.warlock3.stormfront.protocol.elements.MiHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ModeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.NavHandler
 import warlockfe.warlock3.stormfront.protocol.elements.OutputHandler
@@ -70,6 +72,8 @@ class StormfrontProtocolHandler {
         "inv" to InvHandler(),
         "launchurl" to LaunchURLHandler(),
         "left" to LeftHandler(),
+        "menu" to MenuHandler(),
+        "mi" to MiHandler(),
         "mode" to ModeHandler(),
         "nav" to NavHandler(),
         "output" to OutputHandler(),
@@ -98,7 +102,7 @@ class StormfrontProtocolHandler {
             val contents = StormfrontNodeVisitor.visitDocument(parser.document())
             handleContent(contents)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.error(e) { "Error parsing line" }
             listOf(StormfrontParseErrorEvent(line))
         }
     }

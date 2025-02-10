@@ -53,6 +53,7 @@ import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.Window
@@ -63,7 +64,7 @@ fun WindowView(
     modifier: Modifier,
     uiState: WindowUiState,
     isSelected: Boolean,
-    onActionClicked: (String) -> Unit,
+    onActionClicked: (WarlockAction) -> Unit,
     onMoveClicked: (WindowLocation) -> Unit,
     onMoveTowardsStart: (() -> Unit)?,
     onMoveTowardsEnd: (() -> Unit)?,
@@ -280,7 +281,7 @@ private fun WindowViewContent(
     highlights: List<ViewHighlight>,
     presets: Map<String, StyleDefinition>,
     defaultStyle: StyleDefinition,
-    onActionClicked: (String) -> Unit
+    onActionClicked: (WarlockAction) -> Unit
 ) {
     val logger = LocalLogger.current
 

@@ -14,6 +14,8 @@ interface WarlockClient {
 
     val components: StateFlow<ImmutableMap<String, StyledString>>
 
+    val menuData: StateFlow<WarlockMenuData>
+
     val characterId: StateFlow<String?>
 
     val time: Long

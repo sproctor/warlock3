@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.util
 
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -10,6 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
@@ -21,7 +21,7 @@ import warlockfe.warlock3.core.text.flattenStyles
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
-    actionHandler: (String) -> Unit,
+    actionHandler: (WarlockAction) -> Unit,
 ): AnnotatedString {
     return buildAnnotatedString {
         substrings.forEach {
@@ -49,21 +49,23 @@ fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): Styl
 fun StyledStringLeaf.toAnnotatedString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
-    actionHandler: (String) -> Unit,
+    actionHandler: (WarlockAction) -> Unit,
 ): AnnotatedString {
     return buildAnnotatedString {
         val style = flattenStyles(styles.map { it.toStyleDefinition(styleMap) })
             ?.also { pushStyle(it.toSpanStyle()) }
 
         styles.forEach { style ->
-            style.annotation?.let { annotation ->
-                when (val tag = annotation.first) {
-                    "action" ->
-                        pushLink(
-                            LinkAnnotation.Clickable(tag) { actionHandler(annotation.second) }
-                        )
-                    "url" -> pushLink(LinkAnnotation.Url(annotation.second))
-                    else -> error("Unsupported style annotation \"$tag\"")
+            style.action?.let { action ->
+                when (action) {
+                    is WarlockAction.OpenLink ->
+                        pushLink(LinkAnnotation.Url(action.url))
+
+                    else -> pushLink(
+                        LinkAnnotation.Clickable("action") {
+                            actionHandler(action)
+                        }
+                    )
                 }
             }
         }
@@ -83,7 +85,7 @@ fun StyledStringLeaf.toAnnotatedString(
             pop()
         }
         styles.forEach { style ->
-            style.annotation?.let { _ -> pop() }
+            style.action?.let { _ -> pop() }
         }
     }
 }
