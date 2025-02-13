@@ -17,11 +17,13 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 
 agp = "8.7.3"
 ##⬆= "8.8.0"
+##⬆= "8.8.1"
 androidx-activity = "1.10.0"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.8.4"
-androidxSqlite = "2.5.0-alpha12" # 2.5.0-alpha13 has an issue finding the SqliteDriver
+androidxSqlite = "2.5.0-alpha12" # 2.5.0-alpha13 has an issue finding the SqliteDriver, should be fixed in beta02
 ##          ⬆ = "2.5.0-alpha13"
+##          ⬆ = "2.5.0-beta01"
 antlr = "4.13.2"
 apache-commons-text = "1.13.0"
 appdirs = "1.2.0"
@@ -34,14 +36,14 @@ kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.3.8"
 kotlinx-coroutines =  "1.10.1"
 # 7.0.3 fails to build with proguard
-kotlin-logging = "7.0.0"
-##          ⬆ = "7.0.3"
+kotlin-logging = "7.0.4"
 ksp = "2.1.10-1.0.29"
 okio = "3.10.2"
 rhino = "1.8.0"
 room = "2.7.0-alpha12"
 ##⬆ = "2.7.0-alpha13"
-sentryKotlin = "0.10.0"
+##⬆ = "2.7.0-beta01"
+sentryKotlin = "0.11.0"
 slf4j = "2.0.16"
 slf4jAndroid = "3.0.0"
 
