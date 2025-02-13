@@ -79,7 +79,8 @@ fun CharacterSettingsDialog(
                     },
                     placeholder = {
                         Text("ruby lich.rbw -g {host}:{port}")
-                    }
+                    },
+                    singleLine = true,
                 )
                 TextField(
                     value = proxyHost,
@@ -92,6 +93,7 @@ fun CharacterSettingsDialog(
                     placeholder = {
                         Text("localhost")
                     },
+                    singleLine = true,
                 )
                 TextField(
                     value = proxyPort,
@@ -103,7 +105,8 @@ fun CharacterSettingsDialog(
                     },
                     placeholder = {
                         Text("{port}")
-                    }
+                    },
+                    singleLine = true,
                 )
             }
         },

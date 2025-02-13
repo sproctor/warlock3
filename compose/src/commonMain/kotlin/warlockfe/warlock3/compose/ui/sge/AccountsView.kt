@@ -11,6 +11,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 
@@ -34,43 +35,24 @@ fun AccountsView(
             Column(
                 modifier = Modifier.align(Alignment.Center)
             ) {
-                val focusManager = LocalFocusManager.current
                 TextField(
-                    modifier = Modifier.padding(8.dp)
-                        .onPreviewKeyEvent {
-                            if (it.key.keyCode == Key.Tab.keyCode) {
-                                if (it.type == KeyEventType.KeyDown) {
-                                    focusManager.moveFocus(FocusDirection.Next)
-                                }
-                                true
-                            } else {
-                                false
-                            }
-                        },
+                    modifier = Modifier.padding(8.dp),
                     value = username,
                     onValueChange = {
                         username = it
                     },
                     label = { Text("Username") },
+                    singleLine = true,
                 )
                 TextField(
-                    modifier = Modifier.padding(8.dp)
-                        .onPreviewKeyEvent {
-                            if (it.key.keyCode == Key.Tab.keyCode) {
-                                if (it.type == KeyEventType.KeyDown) {
-                                    focusManager.moveFocus(FocusDirection.Next)
-                                }
-                                true
-                            } else {
-                                false
-                            }
-                        },
+                    modifier = Modifier.padding(8.dp),
                     value = password,
                     onValueChange = {
                         password = it
                     },
                     label = { Text("Password") },
-                    visualTransformation = PasswordVisualTransformation('*')
+                    visualTransformation = PasswordVisualTransformation('*'),
+                    singleLine = true,
                 )
             }
         }
