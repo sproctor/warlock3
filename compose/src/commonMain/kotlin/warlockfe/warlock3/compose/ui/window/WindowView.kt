@@ -38,7 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -78,10 +82,14 @@ fun WindowView(
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
     val scrollState = rememberLazyListState()
 
+    val title = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: "")
     Surface(
         modifier.padding(2.dp)
             .clickable(interactionSource = null, indication = null) {
                 onSelected()
+            }
+            .semantics {
+                paneTitle = title
             },
         shape = MaterialTheme.shapes.extraSmall,
         shadowElevation = 2.dp,
@@ -101,7 +109,7 @@ fun WindowView(
             ) {
                 Box(Modifier.weight(1f)) {
                     Text(
-                        text = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: ""),
+                        text = title,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -272,7 +280,6 @@ private fun WindowViewDropdownMenu(
     }
 }
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
@@ -302,7 +309,14 @@ private fun WindowViewContent(
             )
         ) {
             ScrollableLazyColumn(
-                modifier = Modifier.fillMaxSize().background(backgroundColor).padding(vertical = 4.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+                    .padding(vertical = 4.dp)
+                    .semantics {
+                        isTraversalGroup = true
+                        liveRegion = LiveRegionMode.Polite
+                    },
                 state = scrollState
             ) {
                 items(
