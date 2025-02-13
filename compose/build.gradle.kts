@@ -26,7 +26,6 @@ kotlin {
                 implementation(libs.appdirs)
                 api(libs.androidx.lifecycle.viewmodel.compose)
                 implementation(libs.sqlite.bundled)
-                implementation(libs.sqlite)
             }
         }
         val androidMain by getting {
@@ -45,6 +44,8 @@ kotlin {
 //        }
         val jvmMain by getting {
             dependencies {
+                // This shouldn't be needed after upgrading to sqlite 2.5.0-beta02
+                implementation(libs.sqlite.jvm)
                 implementation(compose.preview)
             }
         }

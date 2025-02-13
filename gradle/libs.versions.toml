@@ -21,9 +21,7 @@ agp = "8.7.3"
 androidx-activity = "1.10.0"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.8.4"
-androidxSqlite = "2.5.0-alpha12" # 2.5.0-alpha13 has an issue finding the SqliteDriver, should be fixed in beta02
-##          ⬆ = "2.5.0-alpha13"
-##          ⬆ = "2.5.0-beta01"
+androidxSqlite = "2.5.0-beta01"
 antlr = "4.13.2"
 apache-commons-text = "1.13.0"
 appdirs = "1.2.0"
@@ -40,9 +38,7 @@ kotlin-logging = "7.0.4"
 ksp = "2.1.10-1.0.29"
 okio = "3.10.2"
 rhino = "1.8.0"
-room = "2.7.0-alpha12"
-##⬆ = "2.7.0-alpha13"
-##⬆ = "2.7.0-beta01"
+room = "2.7.0-beta01"
 sentryKotlin = "0.11.0"
 slf4j = "2.0.16"
 slf4jAndroid = "3.0.0"
@@ -72,5 +68,5 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 slf4j-android = { module = "com.github.tony19:logback-android", version.ref = "slf4jAndroid" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
+sqlite-jvm = { module = "androidx.sqlite:sqlite-jvm", version.ref = "androidxSqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
