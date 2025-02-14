@@ -27,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -84,11 +87,25 @@ fun ConnectionList(
     var showConnectionSettings: StoredConnection? by remember { mutableStateOf(null) }
     var showConnectionDelete: StoredConnection? by remember { mutableStateOf(null) }
     val connections by viewModel.connections.collectAsState(emptyList())
-    ScrollableColumn(modifier) {
-        Text(text = "Connections", style = MaterialTheme.typography.headlineMedium)
+    ScrollableColumn(
+        modifier.semantics {
+            this.contentDescription = "List of stored connections"
+        }
+    ) {
+        Text(
+            modifier = Modifier.semantics { heading() },
+            text = "Saved connections",
+            style = MaterialTheme.typography.headlineMedium,
+        )
         Spacer(Modifier.height(8.dp))
+        if (connections.isEmpty()) {
+            Text("There are currently no stored connections")
+        }
         connections.forEach { connection ->
             ListItem(
+                modifier = Modifier.semantics {
+                    contentDescription = "Saved connection"
+                },
                 headlineContent = { Text(connection.name) },
                 // supportingContent = { Text(character.gameCode) },
                 leadingContent = {
@@ -97,7 +114,7 @@ fun ConnectionList(
                             viewModel.connect(connection)
                         },
                     ) {
-                        Icon(imageVector = Login, contentDescription = null)
+                        Icon(imageVector = Login, contentDescription = "Login")
                     }
                 },
                 trailingContent = {
@@ -107,14 +124,14 @@ fun ConnectionList(
                                 showConnectionSettings = connection
                             },
                         ) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit connection")
                         }
                         IconButton(
                             onClick = {
                                 showConnectionDelete = connection
                             }
                         ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete connection")
                         }
                     }
                 }
@@ -123,13 +140,13 @@ fun ConnectionList(
     }
     val proxySettings = showConnectionSettings?.proxySettings
     if (proxySettings != null) {
-            CharacterSettingsDialog(
-                proxySettings = proxySettings,
-                updateProxySettings = {
-                    viewModel.updateProxySettings(showConnectionSettings!!.id, it)
-                },
-                closeDialog = { showConnectionSettings = null },
-            )
+        CharacterSettingsDialog(
+            proxySettings = proxySettings,
+            updateProxySettings = {
+                viewModel.updateProxySettings(showConnectionSettings!!.id, it)
+            },
+            closeDialog = { showConnectionSettings = null },
+        )
     }
     if (showConnectionDelete != null) {
         ConfirmationDialog(
