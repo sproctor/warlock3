@@ -9,15 +9,15 @@ interface SgeClient {
 
     suspend fun connect(): Result<Job>
 
-    fun login(username: String, password: String)
+    suspend fun login(username: String, password: String)
 
-    fun requestGameList()
+    suspend fun requestGameList()
 
-    fun requestCharacterList()
+    suspend fun requestCharacterList()
 
-    fun selectGame(gameCode: String)
+    suspend fun selectGame(gameCode: String)
 
-    fun selectCharacter(characterCode: String)
+    suspend fun selectCharacter(characterCode: String)
 
     fun close()
 }

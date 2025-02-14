@@ -3,7 +3,10 @@ package warlockfe.warlock3.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import io.github.oshai.kotlinlogging.KotlinLogging
+import warlockfe.warlock3.compose.util.LocalLogger
 
 class MainActivity : ComponentActivity() {
 
@@ -14,9 +17,14 @@ class MainActivity : ComponentActivity() {
 
         val warlockApplication = application as WarlockApplication
         val appContainer = warlockApplication.appContainer
+        val logger = KotlinLogging.logger("main")
 
         setContent {
-            WarlockApp(appContainer = appContainer)
+            CompositionLocalProvider(
+                LocalLogger provides logger,
+            ) {
+                WarlockApp(appContainer = appContainer)
+            }
         }
     }
 }

@@ -1,9 +1,11 @@
 package warlockfe.warlock3.stormfront.network
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -27,7 +29,8 @@ import java.net.SocketTimeoutException
 
 class SgeClientImpl(
     private val host: String,
-    private val port: Int
+    private val port: Int,
+    private val ioDispatcher: CoroutineDispatcher,
 ) : SgeClient {
 
     private val logger = KotlinLogging.logger {}
@@ -38,10 +41,10 @@ class SgeClientImpl(
     private var passwordHash: ByteArray? = null
     private var username: String? = null
 
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
 
     override suspend fun connect(): Result<Job> =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             runCatching {
                 logger.debug { "connecting..." }
 
@@ -186,20 +189,24 @@ class SgeClientImpl(
         }
     }
 
-    private fun send(string: String) {
-        logger.debug { "SGE send: $string" }
-        sink?.writeUtf8(string)
-        sink?.flush()
+    private suspend fun send(string: String) {
+        withContext(ioDispatcher) {
+            logger.debug { "SGE send: $string" }
+            sink?.writeUtf8(string)
+            sink?.flush()
+        }
     }
 
-    private fun send(bytes: ByteArray) {
-        logger.debug { "SGE send: ${bytes.decodeToString()}" }
-        sink?.write(bytes)
-        sink?.flush()
+    private suspend fun send(bytes: ByteArray) {
+        withContext(ioDispatcher) {
+            logger.debug { "SGE send: ${bytes.decodeToString()}" }
+            sink?.write(bytes)
+            sink?.flush()
+        }
     }
 
-    override fun login(username: String, password: String) {
-        this.username = username
+    override suspend fun login(username: String, password: String) {
+        this@SgeClientImpl.username = username
         val encryptedPassword = encryptPassword(password.toByteArray(Charsets.US_ASCII))
         val output = "A\t$username\t".toByteArray(Charsets.US_ASCII) + encryptedPassword + '\n'.code.toByte()
         send(output)
@@ -213,20 +220,20 @@ class SgeClientImpl(
         }
     }
 
-    override fun requestGameList() {
+    override suspend fun requestGameList() {
         // request game list
         send("M\n")
     }
 
-    override fun requestCharacterList() {
+    override suspend fun requestCharacterList() {
         send("C\n")
     }
 
-    override fun selectGame(gameCode: String) {
+    override suspend fun selectGame(gameCode: String) {
         send("G\t${gameCode}\n")
     }
 
-    override fun selectCharacter(characterCode: String) {
+    override suspend fun selectCharacter(characterCode: String) {
         send("L\t${characterCode}\tSTORM\n")
     }
 

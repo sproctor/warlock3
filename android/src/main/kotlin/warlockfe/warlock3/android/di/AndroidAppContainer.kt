@@ -50,7 +50,7 @@ class AndroidAppContainer(
 
     override val sgeClientFactory = object : SgeClientFactory {
         override fun create(host: String, port: Int): SgeClient {
-            return SgeClientImpl(host, port)
+            return SgeClientImpl(host, port, Dispatchers.IO)
         }
     }
     override val warlockClientFactory = object : WarlockClientFactory {

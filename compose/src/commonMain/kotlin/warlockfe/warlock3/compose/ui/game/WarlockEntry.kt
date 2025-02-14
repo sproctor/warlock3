@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,6 +39,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,6 +60,7 @@ fun WarlockEntry(modifier: Modifier, backgroundColor: Color, textColor: Color, v
         onKeyPress = { viewModel.handleKeyPress(it, clipboard) },
         roundTime = roundTime,
         castTime = castTime,
+        sendCommand = viewModel::submit,
     )
 }
 
@@ -67,6 +72,7 @@ fun WarlockEntryContent(
     textField: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     onKeyPress: (KeyEvent) -> Boolean,
+    sendCommand: () -> Unit,
     roundTime: Int,
     castTime: Int,
 ) {
@@ -108,7 +114,17 @@ fun WarlockEntryContent(
                 textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
                 cursorBrush = SolidColor(textColor),
                 onValueChange = onValueChange,
-                maxLines = 1,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    imeAction = ImeAction.Send,
+                ),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        sendCommand()
+                    }
+                )
             )
 
             LaunchedEffect(Unit) {

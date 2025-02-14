@@ -87,7 +87,7 @@ fun AccountsView(
                 Text("Cancel")
             }
             Button(
-                onClick = { onAccountSelect(AccountEntity(username, password)) }
+                onClick = { onAccountSelect(AccountEntity(username.trim(), password.trim())) }
             ) {
                 Text("Next")
             }
