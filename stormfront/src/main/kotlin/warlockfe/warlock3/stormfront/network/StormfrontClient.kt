@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okio.IOException
 import okio.Path
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
@@ -752,8 +753,10 @@ class StormfrontClient(
     }
 
     private fun doDisconnect() {
-        runCatching {
+        try {
             socket?.close()
+        } catch (_: IOException) {
+            // Ignore exception
         }
         _disconnected.value = true
     }
