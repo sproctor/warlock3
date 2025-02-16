@@ -38,7 +38,7 @@ fun SgeGameView(
                 modifier = Modifier.padding(16.dp),
                 onClick = onBackPressed
             ) {
-                Text("BACK")
+                Text("Back")
             }
         }
     }
