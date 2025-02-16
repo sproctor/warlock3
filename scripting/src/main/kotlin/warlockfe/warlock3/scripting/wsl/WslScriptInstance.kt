@@ -1,6 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +33,6 @@ class WslScriptInstance(
     private val scriptManager: ScriptManager,
 ) : ScriptInstance {
 
-    private val logger = KotlinLogging.logger {}
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
             field = newStatus
