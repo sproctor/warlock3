@@ -105,13 +105,9 @@ class WslScriptInstance(
                 status = ScriptStatus.Stopped
                 client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
             } finally {
-                try {
-                    withContext(NonCancellable) {
-                        onStop()
-                        scope.cancel()
-                    }
-                } catch (e: Throwable) {
-                    logger.error(e) { "Problem terminating script: ${e.message}" }
+                withContext(NonCancellable) {
+                    onStop()
+                    scope.cancel()
                 }
             }
         }

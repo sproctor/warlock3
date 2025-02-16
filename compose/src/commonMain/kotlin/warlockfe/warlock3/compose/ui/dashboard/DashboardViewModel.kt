@@ -88,7 +88,7 @@ class DashboardViewModel(
                                         "Unknown host: ${e.message}",
                                         returnTo = GameScreen.Dashboard
                                     )
-                                } catch (e: Exception) {
+                                } catch (e: IOException) {
                                     logger.error(e) { "Error connecting to server" }
                                     gameState.screen =
                                         GameScreen.ErrorState("Error: ${e.message}", returnTo = GameScreen.Dashboard)

@@ -271,7 +271,7 @@ class GameViewModel(
                                 ),
                                 styles = highlight.styles
                             )
-                        } catch (e: Throwable) {
+                        } catch (e: Exception) {
                             client.debug("Error while parsing highlight (${e.message}): $highlights")
                             null
                         }

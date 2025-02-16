@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okio.IOException
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
@@ -163,7 +164,7 @@ fun main(args: Array<String>) {
                 runBlocking {
                     try {
                         client.connect()
-                    } catch (e: Exception) {
+                    } catch (e: IOException) {
                         logger.error(e) { "Failed to connect to Warlock" }
                     }
                     val viewModel = appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
