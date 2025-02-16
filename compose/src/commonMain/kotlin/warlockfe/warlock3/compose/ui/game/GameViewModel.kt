@@ -488,7 +488,7 @@ class GameViewModel(
 
         if (macroString != null) {
             // TODO: notify when macro fails to parse
-            val tokens = parseMacroCommand(macroString).getOrNull() ?: return false
+            val tokens = parseMacroCommand(macroString) ?: return false
 
             executeMacro(tokens, clipboard)
 
