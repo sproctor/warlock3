@@ -28,7 +28,6 @@ class JvmAppContainer(
     warlockDirs: WarlockDirs,
 ) : AppContainer(
     databaseBuilder = databaseBuilder,
-    ioDispatcher = Dispatchers.IO,
     warlockDirs = warlockDirs,
 ) {
     private val externalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -47,7 +46,7 @@ class JvmAppContainer(
     override val sgeClientFactory: SgeClientFactory =
         object : SgeClientFactory {
             override fun create(host: String, port: Int): SgeClient {
-                return SgeClientImpl(host, port)
+                return SgeClientImpl(host, port, Dispatchers.IO)
             }
         }
     override val warlockClientFactory: WarlockClientFactory =

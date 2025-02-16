@@ -3,8 +3,6 @@ package warlockfe.warlock3.stormfront.network
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -24,8 +22,6 @@ import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import java.lang.Integer.min
 import java.net.Socket
-import java.net.SocketException
-import java.net.SocketTimeoutException
 
 class SgeClientImpl(
     private val host: String,
@@ -43,9 +39,9 @@ class SgeClientImpl(
 
     private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
 
-    override suspend fun connect(): Result<Job> =
-        withContext(ioDispatcher) {
-            runCatching {
+    override suspend fun connect(): Boolean {
+        return withContext(ioDispatcher) {
+            try {
                 logger.debug { "connecting..." }
 
                 val socket = Socket(host, port)
@@ -68,24 +64,23 @@ class SgeClientImpl(
                                 stopped = true
                             }
                         }
-                    } catch (e: SocketException) {
+                    } catch (e: IOException) {
                         // not sure why, but let's retry!
-                        logger.debug { "SGE socket exception: " + e.message }
-                    } catch (_: SocketTimeoutException) {
-                        // Timeout, let's retry!
-                        logger.debug { "Timed out connecting to server" }
-                    } catch (e: Exception) {
-                        logger.error(e) { "SGE exception" }
+                        logger.debug { "SGE  exception: ${e.message}" }
+                        _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                     } finally {
                         logger.debug { "Closing socket" }
                         source.close()
                         sink?.close()
                         socket.close()
                     }
-                    _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                 }
+                true
+            } catch (_: IOException) {
+                false
             }
         }
+    }
 
     private suspend fun handleData(line: String) {
         logger.debug { "SGE receive: $line" }

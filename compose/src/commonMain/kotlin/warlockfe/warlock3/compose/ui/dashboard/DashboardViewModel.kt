@@ -32,7 +32,6 @@ class DashboardViewModel(
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
-    private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     val connections = connectionRepository.observeAllConnections()
@@ -55,13 +54,12 @@ class DashboardViewModel(
         if (busy) return
         busy = true
         connectJob?.cancel()
-        connectJob = viewModelScope.launch(ioDispatcher) {
+        connectJob = viewModelScope.launch {
             try {
                 message = "Connecting..."
                 val sgeClient = sgeClientFactory.create(host = host, port = port)
-                val result = sgeClient.connect()
-                if (result.isFailure) {
-                    logger.error(result.exceptionOrNull()) { "Unable to connect to server" }
+                if (!sgeClient.connect()) {
+                    logger.error { "Unable to connect to server" }
                     message = "Could not connect to SGE"
                     return@launch
                 }
@@ -86,10 +84,14 @@ class DashboardViewModel(
                                 try {
                                     connectToGame(event.credentials, connection.proxySettings)
                                 } catch (e: UnknownHostException) {
-                                    gameState.screen = GameScreen.ErrorState("Unknown host: ${e.message}", returnTo = GameScreen.Dashboard)
+                                    gameState.screen = GameScreen.ErrorState(
+                                        "Unknown host: ${e.message}",
+                                        returnTo = GameScreen.Dashboard
+                                    )
                                 } catch (e: Exception) {
                                     logger.error(e) { "Error connecting to server" }
-                                    gameState.screen = GameScreen.ErrorState("Error: ${e.message}", returnTo = GameScreen.Dashboard)
+                                    gameState.screen =
+                                        GameScreen.ErrorState("Error: ${e.message}", returnTo = GameScreen.Dashboard)
                                 }
                                 sgeClient.close()
                                 cancelConnect()
@@ -103,6 +105,8 @@ class DashboardViewModel(
                             else -> Unit // we don't care?
                         }
                     }
+            } catch (e: IOException) {
+
             } finally {
                 connectJob = null
                 busy = false

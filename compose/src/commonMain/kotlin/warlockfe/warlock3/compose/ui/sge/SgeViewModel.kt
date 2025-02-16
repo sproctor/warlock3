@@ -63,7 +63,7 @@ class SgeViewModel(
 
     init {
         job = viewModelScope.launch {
-            if (client.connect().isFailure) {
+            if (!client.connect()) {
                 logger.debug { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
                 return@launch

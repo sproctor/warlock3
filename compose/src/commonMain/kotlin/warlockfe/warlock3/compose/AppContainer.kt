@@ -5,7 +5,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import warlockfe.warlock3.compose.components.CompassTheme
@@ -38,7 +37,6 @@ import java.util.*
 
 abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
-    ioDispatcher: CoroutineDispatcher,
     warlockDirs: WarlockDirs,
 ) {
     val database = databaseBuilder
@@ -128,7 +126,6 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
-            ioDispatcher = ioDispatcher,
         )
     }
 
