@@ -54,7 +54,7 @@ fun DashboardView(
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Connect a new character")
+                Text(text = "Create a new connection")
             }
             Spacer(Modifier.height(16.dp))
             if (viewModel.message != null) {
@@ -150,7 +150,7 @@ fun ConnectionList(
     }
     if (showConnectionDelete != null) {
         ConfirmationDialog(
-            title = "Delete character",
+            title = "Delete connection",
             text = "Are you sure that you want to delete: ${showConnectionDelete!!.name}",
             onDismiss = { showConnectionDelete = null },
             onConfirm = {
