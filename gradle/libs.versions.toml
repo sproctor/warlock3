@@ -18,10 +18,11 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 agp = "8.7.3"
 ##⬆= "8.8.0"
 ##⬆= "8.8.1"
-androidx-activity = "1.10.0"
+##⬆= "8.8.2"
+androidx-activity = "1.10.1"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.8.4"
-androidxSqlite = "2.5.0-beta01"
+androidxSqlite = "2.5.0-rc01"
 antlr = "4.13.2"
 apache-commons-text = "1.13.0"
 appdirs = "1.2.0"
@@ -40,9 +41,9 @@ kotlin-logging = "7.0.0"
 ksp = "2.1.10-1.0.30"
 okio = "3.10.2"
 rhino = "1.8.0"
-room = "2.7.0-beta01"
+room = "2.7.0-rc01"
 sentryKotlin = "0.11.0"
-slf4j = "2.0.16"
+slf4j = "2.0.17"
 slf4jAndroid = "3.0.0"
 
 [libraries]
@@ -70,5 +71,4 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 slf4j-android = { module = "com.github.tony19:logback-android", version.ref = "slf4jAndroid" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
-sqlite-jvm = { module = "androidx.sqlite:sqlite-jvm", version.ref = "androidxSqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }

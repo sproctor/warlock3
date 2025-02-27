@@ -44,8 +44,6 @@ kotlin {
 //        }
         val jvmMain by getting {
             dependencies {
-                // This shouldn't be needed after upgrading to sqlite 2.5.0-beta02
-                implementation(libs.sqlite.jvm)
                 implementation(compose.preview)
             }
         }
