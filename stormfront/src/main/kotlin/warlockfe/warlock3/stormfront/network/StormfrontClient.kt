@@ -15,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -161,7 +163,7 @@ class StormfrontClient(
     private val mainStream = getStream("main")
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
 
-    private val commandQueue = MutableStateFlow<List<String>>(emptyList())
+    private val commandQueue = Channel<String>(Channel.UNLIMITED)
     private val currentTypeAhead = MutableStateFlow(0)
 
     private var menuCount = 0
@@ -217,15 +219,12 @@ class StormfrontClient(
             ),
         ).forEach { addWindow(it) }
         scope.launch {
-            commandQueue.collect { commands ->
-                commands.firstOrNull()?.let { command ->
-                    if (maxTypeAhead > 0) {
-                        currentTypeAhead.first { it < maxTypeAhead }
-                    }
-                    currentTypeAhead.update { it + 1 }
-                    commandQueue.update { it.drop(1) }
-                    sendCommandDirect(command)
+            commandQueue.consumeEach { command ->
+                if (maxTypeAhead > 0) {
+                    currentTypeAhead.first { it < maxTypeAhead }
                 }
+                currentTypeAhead.update { it + 1 }
+                sendCommandDirect(command)
             }
         }
     }
@@ -722,7 +721,7 @@ class StormfrontClient(
             printCommand(line)
             simpleFileLogger?.write(">$line\n")
             completeFileLogger.write("command: $line\n")
-            commandQueue.update { it + line }
+            commandQueue.send(line)
             SendCommandType.COMMAND
         }
 
