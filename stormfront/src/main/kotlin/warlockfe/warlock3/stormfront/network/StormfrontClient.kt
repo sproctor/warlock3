@@ -719,8 +719,8 @@ class StormfrontClient(
     override suspend fun sendCommand(line: String): SendCommandType =
         withContext(NonCancellable) {
             printCommand(line)
-            simpleFileLogger?.write(">$line\n")
-            completeFileLogger.write("command: $line\n")
+            simpleFileLogger?.write(">$line")
+            completeFileLogger.write("command: $line")
             commandQueue.send(line)
             SendCommandType.COMMAND
         }
