@@ -30,7 +30,6 @@ class AndroidAppContainer(
     warlockDirs: WarlockDirs,
 ) : AppContainer(
     databaseBuilder = databaseBuilder,
-    ioDispatcher = Dispatchers.IO,
     warlockDirs = warlockDirs,
 ) {
 
