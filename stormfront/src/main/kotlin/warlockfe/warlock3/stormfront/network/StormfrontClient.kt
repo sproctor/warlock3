@@ -115,6 +115,7 @@ import java.net.URL
 import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.collections.set
 import kotlin.math.max
 
 const val scriptCommandPrefix = '.'
@@ -469,10 +470,10 @@ class StormfrontClient(
 
                                     is StormfrontStreamWindowEvent -> {
                                         val window = event.window
-                                        addWindow(window)
-                                        if (window.id != "main") {
+                                        if (windows.get(event.window.id) != null && window.id != "main") {
                                             sendCommandDirect("_swclose s${event.window.id}")
                                         }
+                                        addWindow(window)
                                     }
 
                                     is StormfrontActionEvent -> {
