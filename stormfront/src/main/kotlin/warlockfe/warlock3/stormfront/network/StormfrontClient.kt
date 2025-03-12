@@ -470,7 +470,7 @@ class StormfrontClient(
 
                                     is StormfrontStreamWindowEvent -> {
                                         val window = event.window
-                                        if (windows.get(event.window.id) != null && window.id != "main") {
+                                        if (windows.get(event.window.id) == null && window.id != "main") {
                                             sendCommandDirect("_swclose s${event.window.id}")
                                         }
                                         addWindow(window)
