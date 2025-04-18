@@ -36,13 +36,9 @@ kotlin = "2.1.20"
 kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.3.8"
 kotlinx-coroutines =  "1.10.2"
-# 7.0.3 fails to build with proguard
-kotlin-logging = "7.0.0"
-##          ⬆ = "7.0.3"
-##          ⬆ = "7.0.4"
-##          ⬆ = "7.0.5"
-##          ⬆ = "7.0.6"
+kotlin-logging = "7.0.7"
 ksp = "2.1.20-2.0.0"
+logback = "1.5.18" # Added as a work-around to https://github.com/oshai/kotlin-logging/issues/496
 okio = "3.11.0"
 rhino = "1.8.0"
 room = "2.7.0"
@@ -67,6 +63,7 @@ kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-co
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.ref = "kotlin-logging" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
