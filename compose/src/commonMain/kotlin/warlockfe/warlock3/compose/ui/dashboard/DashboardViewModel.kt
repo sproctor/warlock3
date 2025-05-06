@@ -6,7 +6,6 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -105,8 +104,8 @@ class DashboardViewModel(
                             else -> Unit // we don't care?
                         }
                     }
-            } catch (e: IOException) {
-
+            } catch (_: IOException) {
+                // Do we care?
             } finally {
                 connectJob = null
                 busy = false

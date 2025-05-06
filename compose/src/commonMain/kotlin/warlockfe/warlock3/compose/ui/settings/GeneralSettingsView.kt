@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -19,6 +20,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -50,6 +52,7 @@ import warlockfe.warlock3.core.prefs.defaultMaxScrollLines
 import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.prefs.scrollbackKey
+import warlockfe.warlock3.core.util.LogType
 
 @Composable
 fun GeneralSettingsView(
@@ -234,6 +237,48 @@ fun GeneralSettingsView(
                     }
                 ) {
                     Text("Change directory")
+                }
+
+                Text("Select logging style")
+                LogType.entries.forEach { entry ->
+                    Row(
+                        modifier = Modifier.clickable {
+                            scope.launch(NonCancellable) {
+                                clientSettingRepository.putLoggingType(entry)
+                            }
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = loggingSettings!!.type == entry,
+                            onClick = {
+                                scope.launch(NonCancellable) {
+                                    clientSettingRepository.putLoggingType(entry)
+                                }
+                            }
+                        )
+                        Text(entry.name)
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.clickable {
+                        scope.launch(NonCancellable) {
+                            clientSettingRepository.putLoggingTimestamps(!loggingSettings!!.logTimestamps)
+                        }
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Switch(
+                        checked = loggingSettings!!.logTimestamps,
+                        onCheckedChange = {
+                            scope.launch(NonCancellable) {
+                                clientSettingRepository.putLoggingTimestamps(!loggingSettings!!.logTimestamps)
+                            }
+                        }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Add timestamps to logs")
                 }
             }
         }

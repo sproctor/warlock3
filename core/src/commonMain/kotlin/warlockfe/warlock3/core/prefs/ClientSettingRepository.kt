@@ -81,6 +81,14 @@ class ClientSettingRepository(
         put("logPath", value)
     }
 
+    suspend fun putLoggingType(value: LogType) {
+        put("logType", value.name)
+    }
+
+    suspend fun putLoggingTimestamps(value: Boolean) {
+        putBoolean("logTimestamps", value)
+    }
+
     suspend fun putTheme(value: ThemeSetting) {
         put("theme", value.name)
     }
