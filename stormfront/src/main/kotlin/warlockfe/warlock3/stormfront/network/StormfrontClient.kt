@@ -574,7 +574,7 @@ class StormfrontClient(
                                     }
 
                                     is StormfrontUnhandledTagEvent -> {
-                                        debug("Unhandled tag: ${event.tag}")
+                                        // debug("Unhandled tag: ${event.tag}")
                                     }
 
                                     is StormfrontParseErrorEvent -> {
