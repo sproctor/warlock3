@@ -12,8 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.rememberWindowState
+import androidx.compose.ui.window.DialogWindow
+import androidx.compose.ui.window.rememberDialogState
 import warlockfe.warlock3.compose.components.DrawerMenuItem
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
@@ -44,10 +44,10 @@ fun SettingsDialog(
     clientSettingRepository: ClientSettingRepository,
     closeDialog: () -> Unit,
 ) {
-    Window(
+    DialogWindow(
         title = "Settings",
         onCloseRequest = closeDialog,
-        state = rememberWindowState(width = 900.dp, height = 600.dp)
+        state = rememberDialogState(width = 900.dp, height = 600.dp)
     ) {
         var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
 
