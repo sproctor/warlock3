@@ -81,7 +81,7 @@ fun FrameWindowScope.AppMenuBar(
             )
         }
 
-        if (characterId != null) {
+        if (characterId != null && windows.values.isNotEmpty()) {
             Menu("Windows") {
                 windows.values.forEach { window ->
                     if (window.name != "main") {
