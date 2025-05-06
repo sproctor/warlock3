@@ -832,6 +832,7 @@ class StormfrontClient(
         }
         proxyProcess?.destroy()
         proxyProcess = null
+        _disconnected.value = true
     }
 
     private suspend fun logComplete(message: () -> String) {
