@@ -1,7 +1,7 @@
 package warlockfe.warlock3.compose.util
 
-import java.net.URL
+import java.net.URI
 
-actual fun openUrl(url: URL) {
+actual fun openUrl(url: URI) {
     TODO("Not yet implemented")
 }

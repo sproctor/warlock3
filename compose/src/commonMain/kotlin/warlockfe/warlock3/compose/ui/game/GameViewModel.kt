@@ -15,7 +15,7 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
@@ -244,7 +244,7 @@ class GameViewModel(
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
     private var historyPosition = 0
-    private val sendHistory = mutableListOf<String>("")
+    private val sendHistory = mutableListOf("")
 
     private val windows = windowRepository.windows
 
@@ -436,7 +436,7 @@ class GameViewModel(
 
     suspend fun stopScripts() {
         val scriptInstances = scriptManager.runningScripts.value.values
-        var count = scriptInstances.size
+        val count = scriptInstances.size
         if (count > 0) {
             scriptInstances.forEach { scriptInstance ->
                 scriptInstance.stop()
@@ -478,7 +478,7 @@ class GameViewModel(
         }
     }
 
-    fun handleKeyPress(event: KeyEvent, clipboard: ClipboardManager): Boolean {
+    fun handleKeyPress(event: KeyEvent, clipboard: Clipboard): Boolean {
         if (event.type != KeyEventType.KeyDown) {
             return false
         }
@@ -503,7 +503,7 @@ class GameViewModel(
         return false
     }
 
-    private fun executeMacro(tokens: List<MacroToken>, clipboard: ClipboardManager) {
+    private fun executeMacro(tokens: List<MacroToken>, clipboard: Clipboard) {
         viewModelScope.launch {
             var movedCursor = false
             tokens.forEach { token ->

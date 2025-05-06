@@ -5,6 +5,9 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import warlockfe.warlock3.compose.components.CompassTheme
@@ -23,6 +26,7 @@ import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.ConnectionRepository
 import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
+import warlockfe.warlock3.core.prefs.LoggingRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.PresetRepository
@@ -39,6 +43,7 @@ abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
 ) {
+    val externalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val database = databaseBuilder
         .setDriver(BundledSQLiteDriver())
         .addMigrations(
@@ -70,7 +75,8 @@ abstract class AppContainer(
     val accountRepository = AccountRepository(database.accountDao())
     val highlightRepository = HighlightRepository(database.highlightDao())
     val presetRepository = PresetRepository(database.presetStyleDao())
-    val clientSettings = ClientSettingRepository(database.clientSettingDao())
+    val clientSettings = ClientSettingRepository(database.clientSettingDao(), warlockDirs)
+    val loggingRepository = LoggingRepository(clientSettings, externalScope)
     val scriptDirRepository =
         ScriptDirRepository(
             scriptDirDao = database.scriptDirDao(),

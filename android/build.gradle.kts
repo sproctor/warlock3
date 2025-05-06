@@ -86,6 +86,8 @@ dependencies {
     implementation(libs.slf4j.api)
     implementation(libs.slf4j.android)
 
+    implementation(libs.filekit.dialogs)
+
     // Leak detection
 //    debugImplementation(Square.leakCanary.android)
 }

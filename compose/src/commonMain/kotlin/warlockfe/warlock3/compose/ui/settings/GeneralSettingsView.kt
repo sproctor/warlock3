@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -32,11 +34,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.util.DirectoryChooserButton
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
@@ -47,7 +51,6 @@ import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.prefs.scrollbackKey
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun GeneralSettingsView(
     characterSettingsRepository: CharacterSettingsRepository,
@@ -60,6 +63,7 @@ fun GeneralSettingsView(
         remember(initialCharacter, characters) { mutableStateOf(initialCharacter) }
     val currentCharacter = currentCharacterState.value
     val currentCharacterId = currentCharacter?.id ?: "global"
+    val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -83,8 +87,7 @@ fun GeneralSettingsView(
                     value = maxLinesValue,
                     onValueChange = {
                         maxLinesValue = it
-                        // TODO: use a view model here to handle scope
-                        GlobalScope.launch {
+                        scope.launch(NonCancellable) {
                             characterSettingsRepository.save(
                                 characterId = currentCharacter.id,
                                 key = scrollbackKey,
@@ -112,8 +115,7 @@ fun GeneralSettingsView(
                     value = maxTypeAheadValue,
                     onValueChange = {
                         maxTypeAheadValue = it
-                        // TODO: use a view model here to handle scope
-                        GlobalScope.launch {
+                        scope.launch(NonCancellable) {
                             characterSettingsRepository.save(
                                 characterId = currentCharacter.id,
                                 key = maxTypeAheadKey,
@@ -150,7 +152,7 @@ fun GeneralSettingsView(
                         trailingContent = {
                             IconButton(
                                 onClick = {
-                                    GlobalScope.launch {
+                                    scope.launch(NonCancellable) {
                                         scriptDirRepository.delete(
                                             characterId = currentCharacterId,
                                             path = scriptDir
@@ -168,19 +170,25 @@ fun GeneralSettingsView(
                 }
             }
 
-            DirectoryChooserButton(
-                label = "Add a directory",
-                title = "Choose a script directory",
-                saveDirectory = {
-                    scriptDirRepository.save(currentCharacterId, it)
+            Button(
+                onClick = {
+                    scope.launch {
+                        val directory = FileKit.openDirectoryPicker(
+                            title = "Choose a script directory",
+                        )
+                        if (directory != null) {
+                            scriptDirRepository.save(currentCharacterId, directory.absolutePath())
+                        }
+                    }
                 }
-            )
+            ) {
+                Text("Add a directory")
+            }
 
             Spacer(Modifier.height(16.dp))
 
             val currentTheme by clientSettingRepository.observeTheme().collectAsState(null)
             Text("Select theme")
-            val scope = rememberCoroutineScope()
             ThemeSetting.entries.forEach { entry ->
                 Row(
                     Modifier.clickable {
@@ -193,7 +201,7 @@ fun GeneralSettingsView(
                     RadioButton(
                         selected = currentTheme == entry,
                         onClick = {
-                            scope.launch {
+                            scope.launch(NonCancellable) {
                                 clientSettingRepository.putTheme(entry)
                             }
                         }
@@ -202,29 +210,32 @@ fun GeneralSettingsView(
                 }
             }
 
-//            Spacer(Modifier.height(8.dp))
-//            Text("UI scale", style = MaterialTheme.typography.headlineSmall)
-//
-//            val scope = rememberCoroutineScope()
-//            val initialScale by clientSettingRepository.observeScale().collectAsState(null)
-//            val sliderState = remember(initialScale) {
-//                SliderState(
-//                    value = initialScale ?: 1f,
-//                    valueRange = 0.25f..3f,
-//                    steps = 54,
-//                ).apply {
-//                    onValueChangeFinished = {
-//                        scope.launch {
-//                            clientSettingRepository.putScale(value)
-//                        }
-//                    }
-//                }
-//            }
-//            Slider(
-//                state = sliderState,
-//            )
-//            // TODO: round to nearest hundredth
-//            Text("%.2f".format(sliderState.value))
+            Spacer(Modifier.height(8.dp))
+
+            val loggingSettings by clientSettingRepository.observeLogSettings().collectAsState(null)
+            Text("Logging settings")
+            if (loggingSettings != null) {
+                OutlinedTextField(
+                    value = loggingSettings!!.basePath,
+                    readOnly = true,
+                    onValueChange = {},
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val directory = FileKit.openDirectoryPicker(
+                                title = "Choose a base logging directory",
+                                directory = PlatformFile(loggingSettings!!.basePath)
+                            )
+                            if (directory != null) {
+                                clientSettingRepository.putLoggingPath(directory.absolutePath())
+                            }
+                        }
+                    }
+                ) {
+                    Text("Change directory")
+                }
+            }
         }
     }
 }

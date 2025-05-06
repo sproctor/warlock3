@@ -1,15 +1,21 @@
 package warlockfe.warlock3.compose.macros
 
-import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.asAwtTransferable
 import androidx.compose.ui.text.input.getSelectedText
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
+import java.awt.datatransfer.DataFlavor
 
-val macroCommands = mapOf<String, suspend (GameViewModel, ClipboardManager) -> Unit>(
+@OptIn(ExperimentalComposeUiApi::class)
+val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
         // TODO: allow focus on other windows and apply copy there
-        clipboard.setText(textField.getSelectedText())
+        textField.getSelectedText()
+        clipboard.setClipEntry(ClipEntry(textField.getSelectedText()))
     },
     "linedown" to { viewModel, clipboard ->
         viewModel.scroll(ScrollEvent.LINE_DOWN)
@@ -24,8 +30,12 @@ val macroCommands = mapOf<String, suspend (GameViewModel, ClipboardManager) -> U
         viewModel.scroll(ScrollEvent.PAGE_UP)
     },
     "paste" to { viewModel, clipboard ->
-        clipboard.getText()?.let { text ->
-            viewModel.entryInsert(text.text)
+        clipboard.getClipEntry()?.let { clipEntry ->
+            // TODO: generalize this for Android
+            if (clipEntry.asAwtTransferable?.isDataFlavorSupported(DataFlavor.stringFlavor) == true) {
+                val text = clipEntry.asAwtTransferable!!.getTransferData(DataFlavor.stringFlavor) as String
+                viewModel.entryInsert(text)
+            }
         }
     },
     "prevhistory" to { viewModel, _ ->

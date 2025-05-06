@@ -17,15 +17,23 @@ kotlin {
                 implementation(project(":core"))
                 implementation(project(":macro"))
                 implementation(project(":stormfront")) // TODO: remove when abstracting DI
+
+                // Compose
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
-                implementation(libs.compose.color.picker)
-                implementation(libs.kotlinx.collections.immutable)
                 implementation(compose.components.resources)
-                implementation(libs.appdirs)
+                implementation(libs.material.icons)
                 api(libs.androidx.lifecycle.viewmodel.compose)
+
+                // Third party UI
+                implementation(libs.compose.color.picker)
+                implementation(libs.filekit.dialogs)
+
+                // Other stuff
+                implementation(libs.kotlinx.collections.immutable)
                 implementation(libs.sqlite.bundled)
+                implementation(libs.appdirs)
             }
         }
         val androidMain by getting {
@@ -58,7 +66,7 @@ kotlin {
 
 android {
     namespace = "warlockfe.warlock3.compose"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

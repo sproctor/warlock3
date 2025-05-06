@@ -16,8 +16,14 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.components.resources)
     implementation(libs.compose.color.picker)
+
+    // Command line options
     implementation(libs.kotlinx.cli)
+
+    // Files
     implementation(libs.appdirs)
+    implementation(libs.filekit.dialogs)
+
     implementation(libs.kotlinx.coroutines.swing)
 
     // Logging and error reporting
@@ -77,7 +83,6 @@ compose {
             }
 
             buildTypes.release.proguard {
-                version.set("7.6.0")
                 configurationFiles.from("rules.pro")
             }
         }

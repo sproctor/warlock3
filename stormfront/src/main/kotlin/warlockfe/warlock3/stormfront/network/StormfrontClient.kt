@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okio.IOException
-import okio.Path
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -54,6 +53,7 @@ import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
+import warlockfe.warlock3.core.prefs.LoggingRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.text.StyledString
@@ -105,17 +105,15 @@ import warlockfe.warlock3.stormfront.stream.StormfrontWindow
 import warlockfe.warlock3.stormfront.util.AlterationResult
 import warlockfe.warlock3.stormfront.util.CmdDefinition
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
-import warlockfe.warlock3.stormfront.util.FileLogger
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
 import java.net.SocketTimeoutException
-import java.net.URL
+import java.net.URI
 import java.nio.charset.Charset
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.collections.set
 import kotlin.math.max
 
 const val scriptCommandPrefix = '.'
@@ -127,19 +125,16 @@ class StormfrontClient(
     private val host: String,
     private val port: Int,
     private val key: String,
-    private val logPath: Path,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
     private val alterationRepository: AlterationRepository,
     private val streamRegistry: StreamRegistry,
+    private val fileLogging: LoggingRepository
 ) : WarlockClient {
 
     private val logger = KotlinLogging.logger {}
 
     private val newLinePattern = Regex("\r?\n")
-
-    private var completeFileLogger = FileLogger(logPath / "unknown", "complete", true)
-    private var simpleFileLogger: FileLogger? = null
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -160,6 +155,8 @@ class StormfrontClient(
 
     private val _components = MutableStateFlow<PersistentMap<String, StyledString>>(persistentMapOf())
     override val components: StateFlow<ImmutableMap<String, StyledString>> = _components.asStateFlow()
+
+    private var logName: String? = null
 
     private val mainStream = getStream("main")
     private val windows = ConcurrentHashMap<String, StormfrontWindow>()
@@ -188,7 +185,7 @@ class StormfrontClient(
 
     private var cliCoords = persistentMapOf<String, CmdDefinition>()
 
-    private val _menuData = MutableStateFlow<WarlockMenuData>(WarlockMenuData(0, emptyList()))
+    private val _menuData = MutableStateFlow(WarlockMenuData(0, emptyList()))
     override val menuData: StateFlow<WarlockMenuData> = _menuData.asStateFlow()
 
     private var currentMenuId: Int = 0
@@ -278,7 +275,7 @@ class StormfrontClient(
                         // This is the standard Stormfront parser
                         val line: String? = reader.readLine()
                         if (line != null) {
-                            completeFileLogger.write(line)
+                            logComplete { line }
                             debug(line)
                             val events = protocolHandler.parseLine(line)
                             events.forEach { event ->
@@ -316,9 +313,7 @@ class StormfrontClient(
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
-                                            val path = logPath / "${event.game}_${event.character}"
-                                            completeFileLogger = FileLogger(path, "complete", true)
-                                            simpleFileLogger = FileLogger(path, "simple", false)
+                                            logName =  "${event.game}_${event.character}"
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -487,7 +482,8 @@ class StormfrontClient(
 
                                     is StormfrontOpenUrlEvent -> {
                                         try {
-                                            val url = URL(URL("https://www.play.net/"), event.url)
+                                            val url = URI(event.url)
+                                                .resolve(URI("https://www.play.net/"))
                                             notifyListeners(ClientOpenUrlEvent(url))
                                         } catch (_: Exception) {
                                             // Silently ignore exceptions
@@ -614,8 +610,8 @@ class StormfrontClient(
                                     parseText = true
                                     protocolHandler.parseLine(line)
                                 } else {
-                                    completeFileLogger.write(line)
-                                    simpleFileLogger?.write(line)
+                                    logComplete { line }
+                                    logSimple { line }
                                     rawPrint(line)
                                 }
                             } else {
@@ -661,7 +657,7 @@ class StormfrontClient(
         if (stream == mainStream || ifClosedStream(stream) == mainStream) {
             val text = styledText.toString()
             if (text.isNotBlank()) {
-                simpleFileLogger?.write(text)
+                logSimple { text }
                 notifyListeners(ClientTextEvent(text))
             }
         }
@@ -720,8 +716,8 @@ class StormfrontClient(
     override suspend fun sendCommand(line: String): SendCommandType =
         withContext(NonCancellable) {
             printCommand(line)
-            simpleFileLogger?.write(">$line")
-            completeFileLogger.write("command: $line")
+            logSimple { ">$line" }
+            logComplete { "command: $line" }
             commandQueue.send(line)
             SendCommandType.COMMAND
         }
@@ -731,7 +727,7 @@ class StormfrontClient(
             val toSend = "<c>$command\n"
             try {
                 socket?.getOutputStream()?.write(toSend.toByteArray(charset))
-                completeFileLogger.write("Sent command: $command")
+                logComplete { "Sent command: $command" }
             } catch (e: SocketException) {
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
             }
@@ -836,5 +832,17 @@ class StormfrontClient(
         }
         proxyProcess?.destroy()
         proxyProcess = null
+    }
+
+    private suspend fun logComplete(message: () -> String) {
+        logName?.let {
+            fileLogging.logComplete(it, message)
+        }
+    }
+
+    private suspend fun logSimple(message: () -> String) {
+        logName?.let {
+            fileLogging.logSimple(it, message)
+        }
     }
 }

@@ -55,7 +55,7 @@ class SgeViewModel(
 
     val lastAccount: Flow<AccountEntity?> = flow {
         emit(
-            clientSettingRepository.get("lastUsername")?.let { username ->
+            clientSettingRepository.getLastUsername()?.let { username ->
                 accountRepository.getByUsername(username)
             }
         )

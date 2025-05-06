@@ -22,6 +22,7 @@ agp = "8.7.3"
 ##⬆= "8.9.0"
 ##⬆= "8.9.1"
 ##⬆= "8.9.2"
+##⬆= "8.10.0"
 androidx-activity = "1.10.1"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.8.4"
@@ -29,10 +30,11 @@ androidxSqlite = "2.5.0"
 antlr = "4.13.2"
 apache-commons-text = "1.13.1"
 appdirs = "1.2.0"
-compose = "1.7.3"
+compose = "1.8.0"
 compose-color-picker = "0.7.0"
 conveyor = "1.12"
 conveyor-control = "1.1"
+filekit = "0.10.0-beta03"
 kotlin = "2.1.20"
 kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.3.8"
@@ -40,6 +42,7 @@ kotlinx-coroutines =  "1.10.2"
 kotlin-logging = "7.0.7"
 ksp = "2.1.20-2.0.1"
 logback = "1.5.18" # Added as a work-around to https://github.com/oshai/kotlin-logging/issues/496
+material-icons = "1.7.3"
 okio = "3.11.0"
 rhino = "1.8.0"
 room = "2.7.1"
@@ -57,6 +60,7 @@ antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
 compose-color-picker = { group = "com.godaddy.android.colorpicker", name = "compose-color-picker", version.ref = "compose-color-picker" }
 conveyor-control = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }
+filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -65,6 +69,7 @@ kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.r
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "material-icons" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }

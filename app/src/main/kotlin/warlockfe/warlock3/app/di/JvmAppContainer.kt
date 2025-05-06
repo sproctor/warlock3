@@ -1,10 +1,7 @@
 package warlockfe.warlock3.app.di
 
 import androidx.room.RoomDatabase
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import okio.Path.Companion.toPath
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
@@ -30,8 +27,6 @@ class JvmAppContainer(
     databaseBuilder = databaseBuilder,
     warlockDirs = warlockDirs,
 ) {
-    private val externalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
             wslEngineFactory = WslEngineFactory(highlightRepository, variableRepository),
@@ -64,7 +59,7 @@ class JvmAppContainer(
                     characterRepository = characterRepository,
                     alterationRepository = alterationRepository,
                     streamRegistry = streamRegistry,
-                    logPath = warlockDirs.logDir.toPath()
+                    fileLogging = loggingRepository,
                 )
             }
         }

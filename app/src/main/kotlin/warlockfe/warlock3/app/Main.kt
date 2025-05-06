@@ -32,6 +32,7 @@ import ca.gosyer.appdirs.AppDirs
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
@@ -62,7 +63,6 @@ import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
 import java.nio.file.Paths
-import javax.swing.UIManager
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
@@ -70,7 +70,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalResourceApi::class)
 fun main(args: Array<String>) {
 
-    val parser = ArgParser("warlock3")
+    val parser = ArgParser("warlock")
     val port by parser.option(
         type = ArgType.Int,
         fullName = "port",
@@ -106,7 +106,7 @@ fun main(args: Array<String>) {
     }
     val logger = KotlinLogging.logger("main")
 
-    UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
+    FileKit.init("warlock")
 
     val credentials =
         if (port != null && host != null && key != null) {
@@ -128,10 +128,12 @@ fun main(args: Array<String>) {
     )
 
     // Copy old config
-    val oldConfigDir = System.getProperty("user.home") + "/.warlock3"
-    val oldDbFilename = "$oldConfigDir/prefs.db"
-    if (!File(dbFilename).exists() && File(oldDbFilename).exists()) {
-        File(oldDbFilename).copyTo(File(dbFilename))
+    if (!File(dbFilename).exists()) {
+        val oldConfigDir = System.getProperty("user.home") + "/.warlock3"
+        val oldDbFile = File("$oldConfigDir/prefs.db")
+        if (oldDbFile.exists()) {
+            oldDbFile.copyTo(File(dbFilename))
+        }
     }
 
     val databaseBuilder = getPrefsDatabaseBuilder(dbFilename)

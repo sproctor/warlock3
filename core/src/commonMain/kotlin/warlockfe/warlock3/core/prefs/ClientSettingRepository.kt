@@ -2,13 +2,18 @@ package warlockfe.warlock3.core.prefs
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
+import warlockfe.warlock3.core.util.LogSettings
+import warlockfe.warlock3.core.util.LogType
+import warlockfe.warlock3.core.util.WarlockDirs
 
 class ClientSettingRepository(
     private val clientSettingDao: ClientSettingDao,
+    private val warlockDirs: WarlockDirs,
 ) {
     suspend fun getWidth(): Int? {
         return getInt("width")
@@ -18,23 +23,33 @@ class ClientSettingRepository(
         return getInt("height")
     }
 
-//    suspend fun getScale(): Float? {
-//        return getFloat("scale")
-//    }
-
     suspend fun getIgnoreUpdates(): Boolean {
         return getBoolean("ignoreUpdates") ?: false
+    }
+
+    suspend fun getLastUsername(): String? {
+        return get("lastUsername")
     }
 
     fun observeTheme(): Flow<ThemeSetting> {
         return observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
     }
 
-//    fun observeScale(): Flow<Float?> {
-//        return observe("scale").map { it?.toFloatOrNull() }
-//    }
+    fun observeLogSettings(): Flow<LogSettings> {
+        return combine(
+            observe("logPath"),
+            observe("logType"),
+            observe("logTimestamps"),
+        ) { logPath, logType, logTimestamps ->
+            LogSettings(
+                basePath = logPath ?: warlockDirs.logDir,
+                type = logType?.let { LogType.valueOf(it) } ?: LogType.SIMPLE,
+                logTimestamps = logTimestamps?.toBooleanStrictOrNull() ?: true,
+            )
+        }
+    }
 
-    suspend fun get(key: String): String? {
+    private suspend fun get(key: String): String? {
         return clientSettingDao.getByKey(key)
     }
 
@@ -62,9 +77,9 @@ class ClientSettingRepository(
         putInt("height", value)
     }
 
-//    suspend fun putScale(value: Float) {
-//        putFloat("scale", value)
-//    }
+    suspend fun putLoggingPath(value: String) {
+        put("logPath", value)
+    }
 
     suspend fun putTheme(value: ThemeSetting) {
         put("theme", value.name)
