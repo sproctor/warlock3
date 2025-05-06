@@ -31,7 +31,7 @@ antlr = "4.13.2"
 apache-commons-text = "1.13.1"
 appdirs = "1.2.0"
 compose = "1.8.0"
-compose-color-picker = "0.7.0"
+colorpicker = "1.1.2"
 conveyor = "1.12"
 conveyor-control = "1.1"
 filekit = "0.10.0-beta03"
@@ -58,7 +58,7 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycleViewmodel" }
 antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
-compose-color-picker = { group = "com.godaddy.android.colorpicker", name = "compose-color-picker", version.ref = "compose-color-picker" }
+colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 conveyor-control = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }

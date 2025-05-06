@@ -27,7 +27,7 @@ kotlin {
                 api(libs.androidx.lifecycle.viewmodel.compose)
 
                 // Third party UI
-                implementation(libs.compose.color.picker)
+                implementation(libs.colorpicker)
                 implementation(libs.filekit.dialogs)
 
                 // Other stuff

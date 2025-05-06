@@ -15,7 +15,7 @@ dependencies {
     implementation(compose.uiTooling)
     implementation(compose.material3)
     implementation(compose.components.resources)
-    implementation(libs.compose.color.picker)
+    // implementation(libs.colorpicker)
 
     // Command line options
     implementation(libs.kotlinx.cli)
