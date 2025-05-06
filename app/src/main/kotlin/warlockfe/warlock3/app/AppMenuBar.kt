@@ -13,8 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBarScope
 import androidx.compose.ui.window.setContent
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.util.toAwtColor
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -22,7 +20,6 @@ import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import java.io.File
 import javax.swing.JMenuBar
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun FrameWindowScope.AppMenuBar(
     characterId: String?,
@@ -92,7 +89,7 @@ fun FrameWindowScope.AppMenuBar(
                             text = window.title,
                             checked = openWindows.any { it == window.name },
                             onCheckedChange = {
-                                GlobalScope.launch {
+                                scope.launch {
                                     if (it) {
                                         windowRepository.openWindow(characterId, window.name)
                                     } else {
