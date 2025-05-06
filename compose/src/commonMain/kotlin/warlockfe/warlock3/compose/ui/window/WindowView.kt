@@ -349,6 +349,7 @@ private fun WindowViewContent(
                                     fontSize = fontSize
                                 ),
                             )
+                            BasicText(text = "\n", modifier = Modifier.size(0.dp))
                         }
                     }
                 }
