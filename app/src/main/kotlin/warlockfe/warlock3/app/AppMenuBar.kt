@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCompositionContext
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBarScope
@@ -29,38 +30,46 @@ fun FrameWindowScope.AppMenuBar(
     windowRepository: WindowRepository,
     scriptEngineRepository: WarlockScriptEngineRepository,
     runScript: (File) -> Unit,
-    newWindow: () -> Unit,
-    showSettings: () -> Unit,
-    showUpdateDialog: () -> Unit,
-    disconnect: () -> Unit,
+    newWindow: suspend () -> Unit,
+    showSettings: suspend () -> Unit,
+    showUpdateDialog: suspend () -> Unit,
+    disconnect: suspend () -> Unit,
     warlockVersion: String,
 ) {
     val windows by windowRepository.windows.collectAsState()
     val openWindows by windowRepository.observeOpenWindows(characterId ?: "").collectAsState(emptyList())
     var showAbout by remember { mutableStateOf(false) }
     var scriptDirectory by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     CustomMenuBar {
         Menu("File") {
-            Item("New window", onClick = newWindow)
-            Item("Settings", onClick = showSettings)
+            Item("New window", onClick = { scope.launch { newWindow() } } )
+            Item(
+                text = "Settings",
+                onClick = {
+                    scope.launch { showSettings() }
+                }
+            )
             if (characterId != null) {
                 Item(
                     text = "Run script...",
                     onClick = {
-                        val dialog = java.awt.FileDialog(window, "Run script")
-                        if (scriptDirectory != null) {
-                            dialog.directory = scriptDirectory
-                        }
-                        dialog.setFilenameFilter { _, name ->
-                            val extension = File(name).extension
-                            scriptEngineRepository.supportsExtension(extension)
-                        }
-                        dialog.isVisible = true
-                        val fileName = dialog.file
-                        if (fileName != null) {
-                            scriptDirectory = dialog.directory
-                            val file = File(dialog.directory, fileName)
-                            runScript(file)
+                        scope.launch {
+                            val dialog = java.awt.FileDialog(window, "Run script")
+                            if (scriptDirectory != null) {
+                                dialog.directory = scriptDirectory
+                            }
+                            dialog.setFilenameFilter { _, name ->
+                                val extension = File(name).extension
+                                scriptEngineRepository.supportsExtension(extension)
+                            }
+                            dialog.isVisible = true
+                            val fileName = dialog.file
+                            if (fileName != null) {
+                                scriptDirectory = dialog.directory
+                                val file = File(dialog.directory, fileName)
+                                runScript(file)
+                            }
                         }
                     }
                 )
@@ -69,7 +78,9 @@ fun FrameWindowScope.AppMenuBar(
             Item(
                 text = "Disconnect",
                 enabled = isConnected,
-                onClick = disconnect,
+                onClick = {
+                    scope.launch { disconnect() }
+                },
             )
         }
 
@@ -96,7 +107,9 @@ fun FrameWindowScope.AppMenuBar(
         }
         Menu("Help") {
             Item("Updates") {
-                showUpdateDialog()
+                scope.launch {
+                    showUpdateDialog()
+                }
             }
             Item("About") {
                 showAbout = true
