@@ -562,7 +562,7 @@ class StormfrontClient(
                                                         .replace("%", event.noun ?: ""),
                                                     category = command.category,
                                                     action = {
-                                                        val noun = currentCmd?.noun
+                                                        val noun = currentCmd?.exist?.let { "#$it" } ?: currentCmd?.noun
                                                         if (noun != null) {
                                                             sendCommand(
                                                                 command.command
