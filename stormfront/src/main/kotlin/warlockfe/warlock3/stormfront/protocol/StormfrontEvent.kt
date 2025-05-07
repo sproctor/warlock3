@@ -52,4 +52,4 @@ data class StormfrontCliEvent(val cmd: CmdDefinition) : StormfrontEvent
 data class StormfrontPushCmdEvent(val cmd: StormfrontCmd) : StormfrontEvent
 data class StormfrontMenuStartEvent(val id: Int?) : StormfrontEvent
 data object StormfrontMenuEndEvent : StormfrontEvent
-data class StormfrontMenuItemEvent(val coord: String) : StormfrontEvent
+data class StormfrontMenuItemEvent(val coord: String, val noun: String?, val category: String?) : StormfrontEvent

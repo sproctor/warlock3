@@ -22,11 +22,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
@@ -144,6 +146,7 @@ fun ActionContextMenu(
     onDismiss: () -> Unit,
 ) {
     val logger = LocalLogger.current
+    val scope = rememberCoroutineScope()
     if (menuData != null) {
         if (expectedMenuId == menuData.id) {
             DropdownMenu(
@@ -161,7 +164,12 @@ fun ActionContextMenu(
                                 text = {
                                     Text(item.label)
                                 },
-                                onClick = item.action
+                                onClick = {
+                                    scope.launch {
+                                        item.action()
+                                        onDismiss()
+                                    }
+                                }
                             )
                         }
                     } else {
@@ -185,7 +193,12 @@ fun ActionContextMenu(
                                     text = {
                                         Text(item.label)
                                     },
-                                    onClick = item.action
+                                    onClick = {
+                                        scope.launch {
+                                            item.action()
+                                            onDismiss()
+                                        }
+                                    }
                                 )
                             }
                             val subcatories = subgroups.keys.filterNotNull().sorted()
@@ -209,7 +222,12 @@ fun ActionContextMenu(
                                             text = {
                                                 Text(item.label)
                                             },
-                                            onClick = item.action
+                                            onClick = {
+                                                scope.launch {
+                                                    item.action()
+                                                    onDismiss()
+                                                }
+                                            }
                                         )
                                     }
                                 }

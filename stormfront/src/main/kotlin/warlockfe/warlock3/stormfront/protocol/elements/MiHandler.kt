@@ -8,6 +8,10 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontMenuItemEvent
 class MiHandler : BaseElementListener() {
     override fun startElement(element: StartElement): StormfrontEvent? {
         val coord = element.attributes["coord"] ?: return null
-        return StormfrontMenuItemEvent(coord)
+        return StormfrontMenuItemEvent(
+            coord = coord,
+            noun = element.attributes["noun"],
+            category = element.attributes["menu_cat"],
+        )
     }
 }

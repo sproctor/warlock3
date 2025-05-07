@@ -105,6 +105,7 @@ import warlockfe.warlock3.stormfront.stream.StormfrontWindow
 import warlockfe.warlock3.stormfront.util.AlterationResult
 import warlockfe.warlock3.stormfront.util.CmdDefinition
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
+import warlockfe.warlock3.stormfront.util.StormfrontCmd
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.Socket
@@ -187,6 +188,7 @@ class StormfrontClient(
 
     private val _menuData = MutableStateFlow(WarlockMenuData(0, emptyList()))
     override val menuData: StateFlow<WarlockMenuData> = _menuData.asStateFlow()
+    private var currentCmd: StormfrontCmd? = null
 
     private var currentMenuId: Int = 0
 
@@ -531,6 +533,7 @@ class StormfrontClient(
                                                         WarlockAction.OpenMenu {
                                                             val menuId = menuCount++
                                                             _menuData.value = WarlockMenuData(menuId, emptyList())
+                                                            currentCmd = cmd
                                                             scope.launch {
                                                                 sendCommandDirect("_menu #${cmd.exist} $menuId")
                                                             }
@@ -554,9 +557,22 @@ class StormfrontClient(
                                         cliCoords[event.coord]?.let { command ->
                                             cachedMenuItems.add(
                                                 WarlockMenuItem(
-                                                    label = command.menu,
+                                                    label = command.menu
+                                                        .replace("@", currentCmd?.noun ?: "")
+                                                        .replace("%", event.noun ?: ""),
                                                     category = command.category,
-                                                    action = {}
+                                                    action = {
+                                                        val noun = currentCmd?.noun
+                                                        if (noun != null) {
+                                                            sendCommand(
+                                                                command.command
+                                                                    .replace("#", noun)
+                                                                    .replace("%", event.noun ?: "")
+                                                            )
+                                                        } else {
+                                                            print(StyledString("Command noun is null", WarlockStyle.Error))
+                                                        }
+                                                    }
                                                 )
                                             )
                                         }
