@@ -409,7 +409,8 @@ class GameViewModel(
                             // do nothing
                         }
                     }
-                    text += StyledString(" ") + StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${it.key}")))
+                    text += StyledString(" ") +
+                            StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${it.key}")))
                     scriptStream.appendLine(text, false)
                 }
             }
@@ -743,31 +744,52 @@ class GameViewModel(
             val (command, args) = clientCommand.splitFirstWord()
             when (command) {
                 "kill" -> {
+                    // TODO: verify arguments
                     args?.split(' ')?.forEach { name ->
-                        scriptManager.findScriptInstance(name)?.stop()
+                        val script = scriptManager.findScriptInstance(name)
+                        if (script != null) {
+                            script.stop()
+                            client.print(StyledString("Script $name stopped.", WarlockStyle.Echo))
+                        } else {
+                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
+                        }
                     }
                 }
 
                 "pause" -> {
+                    // TODO: verify arguments
                     args?.split(' ')?.forEach { name ->
-                        scriptManager.findScriptInstance(name)?.suspend()
+                        val script = scriptManager.findScriptInstance(name)
+                        if (script != null) {
+                            script.suspend()
+                            client.print(StyledString("Script $name paused.", WarlockStyle.Echo))
+                        } else {
+                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
+                        }
                     }
                 }
 
                 "resume" -> {
+                    // TODO: verify arguments
                     args?.split(' ')?.forEach { name ->
-                        scriptManager.findScriptInstance(name)?.resume()
+                        val script = scriptManager.findScriptInstance(name)
+                        if (script != null) {
+                            script.resume()
+                            client.print(StyledString("Script $name resumed.", WarlockStyle.Echo))
+                        } else {
+                            client.print(StyledString("Script $name not found.", WarlockStyle.Error))
+                        }
                     }
                 }
 
                 "list" -> {
                     val scripts = scriptManager.runningScripts.value
                     if (scripts.isEmpty()) {
-                        print(StyledString("No scripts are running", WarlockStyle.Echo))
+                        client.print(StyledString("No scripts are running", WarlockStyle.Echo))
                     } else {
-                        print(StyledString("Running scripts:", WarlockStyle.Echo))
+                        client.print(StyledString("Running scripts:", WarlockStyle.Echo))
                         scripts.forEach {
-                            print(StyledString("${it.value.name} - ${it.key}", WarlockStyle.Echo))
+                            client.print(StyledString("${it.value.name} - ${it.key}", WarlockStyle.Echo))
                         }
                     }
                 }
@@ -781,7 +803,7 @@ class GameViewModel(
                 }
 
                 else -> {
-                    print(StyledString("Invalid command.", WarlockStyle.Error))
+                    client.print(StyledString("Invalid command.", WarlockStyle.Error))
                 }
             }
             SendCommandType.ACTION
