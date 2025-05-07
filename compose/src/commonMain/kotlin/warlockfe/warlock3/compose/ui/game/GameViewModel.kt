@@ -24,6 +24,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -220,7 +221,7 @@ class GameViewModel(
             initialValue = emptyList()
         )
 
-    private var scriptsPaused = false
+    private val runningScripts = scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
     private val currentTime: Flow<Int> = flow {
         while (true) {
@@ -388,21 +389,21 @@ class GameViewModel(
             .launchIn(viewModelScope)
 
         val scriptStream = client.getStream("warlockscripts")
-        scriptManager.runningScripts
+        runningScripts
             .onEach { scripts ->
                 scriptStream.clear()
-                scripts.forEach {
-                    val info = it.value
-                    var text = StyledString("${info.name}: ${info.status} ")
-                    when (info.status) {
+                scripts.forEach { entry ->
+                    val instance = entry.value.instance
+                    var text = StyledString("${instance.name}: ${instance.status} ")
+                    when (instance.status) {
                         ScriptStatus.Running -> text += StyledString(
                             "pause",
-                            WarlockStyle.Link(WarlockAction.SendCommand("/pause ${it.key}"))
+                            WarlockStyle.Link(WarlockAction.SendCommand("/pause ${entry.key}"))
                         )
 
                         ScriptStatus.Suspended -> text += StyledString(
                             "resume",
-                            WarlockStyle.Link(WarlockAction.SendCommand("/resume ${it.key}"))
+                            WarlockStyle.Link(WarlockAction.SendCommand("/resume ${entry.key}"))
                         )
 
                         else -> {
@@ -410,7 +411,7 @@ class GameViewModel(
                         }
                     }
                     text += StyledString(" ") +
-                            StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${it.key}")))
+                            StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${entry.key}")))
                     scriptStream.appendLine(text, false)
                 }
             }
@@ -436,21 +437,20 @@ class GameViewModel(
     }
 
     suspend fun stopScripts() {
-        val scriptInstances = scriptManager.runningScripts.value.values
-        val count = scriptInstances.size
+        val scripts = scriptManager.runningScripts.value.values
+        val count = scripts.size
         if (count > 0) {
-            scriptInstances.forEach { scriptInstance ->
-                scriptInstance.stop()
+            scripts.forEach { script ->
+                script.instance.stop()
             }
             client.print(StyledString("Stopped $count script(s)"))
         }
     }
 
     suspend fun pauseScripts() {
-        val paused = this.scriptsPaused
-        this.scriptsPaused = !paused
-        val scriptInstances = scriptManager.runningScripts.value.values
+        val scriptInstances = scriptManager.runningScripts.value.values.map { it.instance }
         if (scriptInstances.isNotEmpty()) {
+            val paused = !scriptInstances.any { it.status == ScriptStatus.Running }
             if (paused) {
                 client.print(StyledString("Resumed script(s)"))
             } else {
@@ -463,6 +463,8 @@ class GameViewModel(
                     instance.suspend()
                 }
             }
+        } else {
+            client.print(StyledString("No scripts running"))
         }
     }
 
@@ -488,8 +490,14 @@ class GameViewModel(
         val macroString = macros.value[keyString]
 
         if (macroString != null) {
-            // TODO: notify when macro fails to parse
-            val tokens = parseMacroCommand(macroString) ?: return false
+            val tokens = parseMacroCommand(macroString)
+
+            if (tokens == null) {
+                viewModelScope.launch {
+                    client.print(StyledString("Invalid macro: $macroString"))
+                }
+                return false
+            }
 
             executeMacro(tokens, clipboard)
 
@@ -740,6 +748,7 @@ class GameViewModel(
             scriptManager.startScript(client, scriptCommand, ::commandHandler)
             SendCommandType.SCRIPT
         } else if (line.startsWith(clientCommandPrefix)) {
+            client.print(StyledString(line, WarlockStyle.Command))
             val clientCommand = line.drop(1)
             val (command, args) = clientCommand.splitFirstWord()
             when (command) {
@@ -789,7 +798,7 @@ class GameViewModel(
                     } else {
                         client.print(StyledString("Running scripts:", WarlockStyle.Echo))
                         scripts.forEach {
-                            client.print(StyledString("${it.value.name} - ${it.key}", WarlockStyle.Echo))
+                            client.print(StyledString("${it.value.instance.name} - ${it.key}", WarlockStyle.Echo))
                         }
                     }
                 }

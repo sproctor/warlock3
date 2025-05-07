@@ -1,5 +1,8 @@
 package warlockfe.warlock3.scripting
 
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -7,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.script.ScriptData
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
@@ -20,10 +24,8 @@ class ScriptManagerImpl(
     private val scriptEngineRepository: WarlockScriptEngineRepository,
     private val externalScope: CoroutineScope,
 ) : ScriptManager {
-    private val _runningScripts = MutableStateFlow<Map<Long, ScriptInstance>>(emptyMap())
+    private val _runningScripts = MutableStateFlow<PersistentMap<Long, ScriptData>>(persistentMapOf())
     override val runningScripts = _runningScripts.asStateFlow()
-
-    private var nextId = 0L
 
     override suspend fun startScript(
         client: WarlockClient,
@@ -57,21 +59,19 @@ class ScriptManagerImpl(
         argString: String?,
         commandHandler: suspend (String) -> SendCommandType,
     ) {
-        val id = nextId++
-        runningScripts.value.values.forEach { runningInstance ->
-            if (instance.name == runningInstance.name) {
-                runningInstance.stop()
+        runningScripts.value.values.forEach { data ->
+            if (instance.name == data.instance.name) {
+                data.instance.stop()
             }
         }
         client.print(StyledString("Starting script: ${instance.name}", style = WarlockStyle.Echo))
-        _runningScripts.update { it + (id to instance) }
         scriptStateChanged(instance)
         instance.start(
             client = client,
             argumentString = argString ?: "",
             onStop = {
                 externalScope.launch {
-                    _runningScripts.update { it - id }
+                    _runningScripts.update { it.remove(instance.id) }
                     client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
                 }
             },
@@ -82,21 +82,26 @@ class ScriptManagerImpl(
     override fun findScriptInstance(description: String): ScriptInstance? {
         val id = description.toLongOrNull()
         if (id != null) {
-            runningScripts.value[id]?.let { return it }
+            runningScripts.value[id]?.let { return it.instance }
         }
-        runningScripts.value.values.forEach { instance ->
-            if (instance.name.startsWith(description, true)) {
-                return instance
+        runningScripts.value.values.forEach { data ->
+            if (data.instance.name.startsWith(description, true)) {
+                return data.instance
             }
         }
         return null
     }
 
     override fun scriptStateChanged(instance: ScriptInstance) {
-        if (instance.status == ScriptStatus.Stopped) {
-            _runningScripts.update { originalMap ->
-                originalMap.filter { it.value != instance }
+        _runningScripts.update { originalMap ->
+            originalMap.toMutableMap().apply {
+                if (instance.status == ScriptStatus.Stopped) {
+                    remove(instance.id)
+                } else {
+                    this[instance.id] = ScriptData(instance.status, instance)
+                }
             }
+                .toPersistentMap()
         }
     }
 }

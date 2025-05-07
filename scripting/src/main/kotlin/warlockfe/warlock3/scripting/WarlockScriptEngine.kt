@@ -8,5 +8,5 @@ interface WarlockScriptEngine {
 
     val extensions: List<String>
 
-    fun createInstance(name: String, file: File, scriptManager: ScriptManager): ScriptInstance
+    fun createInstance(id: Long, name: String, file: File, scriptManager: ScriptManager): ScriptInstance
 }

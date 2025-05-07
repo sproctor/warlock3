@@ -4,6 +4,8 @@ import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 
 interface ScriptInstance {
+
+    val id: Long
     val name: String
     val status: ScriptStatus
 

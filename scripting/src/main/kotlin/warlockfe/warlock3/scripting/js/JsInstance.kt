@@ -31,6 +31,7 @@ import kotlin.concurrent.thread
 import kotlin.reflect.jvm.javaMethod
 
 class JsInstance(
+    override val id: Long,
     override val name: String,
     private val file: File,
     private val variableRepository: VariableRepository,

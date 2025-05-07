@@ -5,7 +5,6 @@ import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.scripting.WarlockScriptEngine
-import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -22,8 +21,8 @@ class JsEngine(
     }
 
     // FIXME: We leak instances here. Maybe we should clean them up?
-    override fun createInstance(name: String, file: File, scriptManager: ScriptManager): ScriptInstance {
-        return JsInstance(name, file, variableRepository, scriptManager)
+    override fun createInstance(id: Long, name: String, file: File, scriptManager: ScriptManager): ScriptInstance {
+        return JsInstance(id, name, file, variableRepository, scriptManager)
             .also { runningScripts.add(it) }
     }
 }

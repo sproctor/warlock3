@@ -18,13 +18,15 @@ class WarlockScriptEngineRepositoryImpl(
         jsEngineFactory.create(),
     )
 
+    private var nextId = 0L
+
     override suspend fun getScript(name: String, characterId: String, scriptManager: ScriptManager): ScriptInstance? {
         for (engine in engines) {
             for (extension in engine.extensions) {
                 for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
                     val file = File("$scriptDir/$name.$extension")
                     if (file.exists()) {
-                        return engine.createInstance(name, file, scriptManager)
+                        return engine.createInstance(nextId++, name, file, scriptManager)
                     }
                 }
             }
@@ -36,7 +38,7 @@ class WarlockScriptEngineRepositoryImpl(
         return if (file.exists()) {
             val engine = getEngineForExtension(file.extension) ?: return null // TODO: find a way to print error messages here
             // client.print(StyledString("That extension is not supported"))
-            engine.createInstance(file.name, file, scriptManager)
+            engine.createInstance(nextId++, file.name, file, scriptManager)
         } else {
             null
         }

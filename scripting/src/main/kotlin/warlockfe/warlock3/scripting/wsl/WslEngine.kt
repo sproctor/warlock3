@@ -14,9 +14,10 @@ class WslEngine(
 ) : WarlockScriptEngine {
     override val extensions: List<String> = listOf("wsl", "cmd", "wiz")
 
-    override fun createInstance(name: String, file: File, scriptManager: ScriptManager): ScriptInstance {
+    override fun createInstance(id: Long, name: String, file: File, scriptManager: ScriptManager): ScriptInstance {
         val script = WslScript(name, file)
         return WslScriptInstance(
+            id = id,
             name = name,
             script = script,
             highlightRepository = highlightRepository,

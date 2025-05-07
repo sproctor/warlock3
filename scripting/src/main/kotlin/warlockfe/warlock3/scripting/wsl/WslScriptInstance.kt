@@ -26,6 +26,7 @@ import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.toCaseInsensitiveMap
 
 class WslScriptInstance(
+    override val id: Long,
     override val name: String,
     private val script: WslScript,
     private val variableRepository: VariableRepository,
