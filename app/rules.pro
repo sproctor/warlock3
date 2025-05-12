@@ -22,6 +22,7 @@
 -keep class androidx.compose.foundation.text.TextLinkScope { *; }
 -keep class com.sun.jna.** { *; }
 -keep class androidx.sqlite.** { *; }
+-keep class io.github.vinceglb.filekit.dialogs.** { *; }
 
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
