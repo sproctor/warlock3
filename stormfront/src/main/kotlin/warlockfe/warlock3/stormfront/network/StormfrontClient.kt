@@ -484,8 +484,8 @@ class StormfrontClient(
 
                                     is StormfrontOpenUrlEvent -> {
                                         try {
-                                            val url = URI(event.url)
-                                                .resolve(URI("https://www.play.net/"))
+                                            val url = URI("https://www.play.net/")
+                                                .resolve(event.url)
                                             notifyListeners(ClientOpenUrlEvent(url))
                                         } catch (_: Exception) {
                                             // Silently ignore exceptions
