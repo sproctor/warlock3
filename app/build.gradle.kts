@@ -80,6 +80,10 @@ compose {
                         teamID.set("DBNJ4AR55X")
                     }
                 }
+                linux {
+                    // Add this for FileKit
+                    modules("jdk.security.auth")
+                }
             }
 
             buildTypes.release.proguard {
