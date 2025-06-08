@@ -141,6 +141,7 @@ class DashboardViewModel(
             )
             if (proxyCommand != null) {
                 logger.debug { "Launching proxy command: $proxyCommand" }
+                // TODO: manually split args respecting quotes. exec(String) is deprecated in Java 18+, use exec(Array<String>)
                 process = Runtime.getRuntime().exec(proxyCommand)
             }
         }
