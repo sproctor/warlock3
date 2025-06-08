@@ -45,5 +45,7 @@ class FileLogger(
 
     override fun close() {
         cachedStream?.close()
+        cachedStream = null
+        dateString = null
     }
 }

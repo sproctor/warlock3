@@ -271,7 +271,7 @@ class StormfrontClient(
             val reader = BufferedReader(InputStreamReader(socket!!.getInputStream(), charsetName))
             val protocolHandler = StormfrontProtocolHandler()
 
-            while (!socket!!.isClosed) {
+            while (socket?.isClosed == false) {
                 try {
                     if (parseText) {
                         // This is the standard Stormfront parser
@@ -484,8 +484,8 @@ class StormfrontClient(
 
                                     is StormfrontOpenUrlEvent -> {
                                         try {
-                                            val url = URI(event.url)
-                                                .resolve(URI("https://www.play.net/"))
+                                            val url = URI("https://www.play.net/")
+                                                .resolve(event.url)
                                             notifyListeners(ClientOpenUrlEvent(url))
                                         } catch (_: Exception) {
                                             // Silently ignore exceptions
@@ -844,7 +844,6 @@ class StormfrontClient(
         scope.cancel()
         if (socket?.isClosed == false) {
             socket?.close()
-            socket = null
         }
         proxyProcess?.destroy()
         proxyProcess = null
