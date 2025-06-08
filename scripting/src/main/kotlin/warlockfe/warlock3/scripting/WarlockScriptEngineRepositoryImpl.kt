@@ -1,7 +1,7 @@
 package warlockfe.warlock3.scripting
 
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
-import warlockfe.warlock3.core.script.ScriptInstance
+import warlockfe.warlock3.core.script.ScriptLaunchResult
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.scripting.js.JsEngineFactory
@@ -20,27 +20,31 @@ class WarlockScriptEngineRepositoryImpl(
 
     private var nextId = 0L
 
-    override suspend fun getScript(name: String, characterId: String, scriptManager: ScriptManager): ScriptInstance? {
+    override suspend fun getScript(name: String, characterId: String, scriptManager: ScriptManager): ScriptLaunchResult {
         for (engine in engines) {
             for (extension in engine.extensions) {
                 for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
-                    val file = File("$scriptDir/$name.$extension")
-                    if (file.exists()) {
-                        return engine.createInstance(nextId++, name, file, scriptManager)
+                    val files = File(scriptDir).listFiles { file ->
+                        file.extension.equals(extension, ignoreCase = true) && file.nameWithoutExtension.equals(name, ignoreCase = true)
+                    }
+                    if (files.size == 1) {
+                        return ScriptLaunchResult.Success(engine.createInstance(nextId++, name, files.first(), scriptManager))
+                    } else if (files.size > 1) {
+                        return ScriptLaunchResult.Failure("Found multiple files that could be launched by that command")
                     }
                 }
             }
         }
-        return null
+        return ScriptLaunchResult.Failure("Could not find a script with that name")
     }
 
-    override suspend fun getScript(file: File, scriptManager: ScriptManager): ScriptInstance? {
+    override suspend fun getScript(file: File, scriptManager: ScriptManager): ScriptLaunchResult {
         return if (file.exists()) {
-            val engine = getEngineForExtension(file.extension) ?: return null // TODO: find a way to print error messages here
+            val engine = getEngineForExtension(file.extension) ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
             // client.print(StyledString("That extension is not supported"))
-            engine.createInstance(nextId++, file.name, file, scriptManager)
+            ScriptLaunchResult.Success(engine.createInstance(nextId++, file.name, file, scriptManager))
         } else {
-            null
+            ScriptLaunchResult.Failure("Could not find a script with that name")
         }
     }
 

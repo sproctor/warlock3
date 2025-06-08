@@ -12,6 +12,7 @@ import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.script.ScriptData
 import warlockfe.warlock3.core.script.ScriptInstance
+import warlockfe.warlock3.core.script.ScriptLaunchResult
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
@@ -34,21 +35,27 @@ class ScriptManagerImpl(
     ) {
         val (name, argString) = command.splitFirstWord()
 
-        val instance = scriptEngineRepository.getScript(name, client.characterId.value ?: "", this)
-        if (instance != null) {
-            startInstance(client, instance, argString, commandHandler)
-        } else {
-            client.print(StyledString("Could not find a script with that name", style = WarlockStyle.Error))
+        val result = scriptEngineRepository.getScript(name, client.characterId.value ?: "", this)
+        when (result) {
+            is ScriptLaunchResult.Success -> {
+                startInstance(client, result.instance, argString, commandHandler)
+            }
+            is ScriptLaunchResult.Failure -> {
+                client.print(StyledString(result.message, style = WarlockStyle.Error))
+            }
         }
     }
 
     override suspend fun startScript(client: WarlockClient, file: File, commandHandler: suspend (String) -> SendCommandType) {
         if (file.exists()) {
-            val instance = scriptEngineRepository.getScript(file, this)
-            if (instance != null) {
-                startInstance(client, instance, null, commandHandler)
-            } else {
-                client.print(StyledString("Could not find a script with that name", style = WarlockStyle.Error))
+            val result = scriptEngineRepository.getScript(file, this)
+            when (result) {
+                is ScriptLaunchResult.Success -> {
+                    startInstance(client, result.instance, null, commandHandler)
+                }
+                is ScriptLaunchResult.Failure -> {
+                    client.print(StyledString(result.message, style = WarlockStyle.Error))
+                }
             }
         }
     }
