@@ -20,28 +20,38 @@ class WarlockScriptEngineRepositoryImpl(
 
     private var nextId = 0L
 
-    override suspend fun getScript(name: String, characterId: String, scriptManager: ScriptManager): ScriptLaunchResult {
+    override suspend fun getScript(
+        name: String,
+        characterId: String,
+        scriptManager: ScriptManager
+    ): ScriptLaunchResult {
+        val matchedFiles = mutableListOf<Pair<WarlockScriptEngine, File>>()
         for (engine in engines) {
-            for (extension in engine.extensions) {
-                for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
-                    val files = File(scriptDir).listFiles { file ->
-                        file.extension.equals(extension, ignoreCase = true) && file.nameWithoutExtension.equals(name, ignoreCase = true)
-                    }
-                    if (files.size == 1) {
-                        return ScriptLaunchResult.Success(engine.createInstance(nextId++, name, files.first(), scriptManager))
-                    } else if (files.size > 1) {
-                        return ScriptLaunchResult.Failure("Found multiple files that could be launched by that command")
-                    }
+            for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
+                matchedFiles.addAll(File(scriptDir).listFiles { file ->
+                    engine.extensions.any { file.extension.equals(it, ignoreCase = true) } &&
+                            file.nameWithoutExtension.equals(name, ignoreCase = true)
                 }
+                    .map { engine to it }
+                )
             }
         }
-        return ScriptLaunchResult.Failure("Could not find a script with that name")
+        return if (matchedFiles.size == 1) {
+            val entry = matchedFiles.first()
+            ScriptLaunchResult.Success(
+                entry.first.createInstance(nextId++, name, entry.second, scriptManager)
+            )
+        } else if (matchedFiles.size > 1) {
+            ScriptLaunchResult.Failure("Found multiple files that could be launched by that command")
+        } else {
+            ScriptLaunchResult.Failure("Could not find a script with that name")
+        }
     }
 
     override suspend fun getScript(file: File, scriptManager: ScriptManager): ScriptLaunchResult {
         return if (file.exists()) {
-            val engine = getEngineForExtension(file.extension) ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
-            // client.print(StyledString("That extension is not supported"))
+            val engine = getEngineForExtension(file.extension)
+                ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
             ScriptLaunchResult.Success(engine.createInstance(nextId++, file.name, file, scriptManager))
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
@@ -50,10 +60,8 @@ class WarlockScriptEngineRepositoryImpl(
 
     private fun getEngineForExtension(extension: String): WarlockScriptEngine? {
         for (engine in engines) {
-            for (validExtension in engine.extensions) {
-                if (extension == validExtension) {
-                    return engine
-                }
+            if (engine.extensions.any { extension.equals(it, ignoreCase = true) }) {
+                return engine
             }
         }
         return null
