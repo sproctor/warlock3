@@ -77,61 +77,59 @@ fun GeneralSettingsView(
         )
         Spacer(Modifier.height(16.dp))
         ScrollableColumn {
-            if (currentCharacter != null) {
-                val initialMaxLines by characterSettingsRepository.observe(
-                    characterId = currentCharacter.id, key = scrollbackKey
-                ).collectAsState(null)
-                var maxLinesValue by remember(initialMaxLines == null) {
-                    mutableStateOf(
-                        TextFieldValue(initialMaxLines ?: defaultMaxScrollLines.toString())
-                    )
-                }
-                TextField(
-                    value = maxLinesValue,
-                    onValueChange = {
-                        maxLinesValue = it
-                        scope.launch(NonCancellable) {
-                            characterSettingsRepository.save(
-                                characterId = currentCharacter.id,
-                                key = scrollbackKey,
-                                value = it.text
-                            )
-                        }
-                    },
-                    label = {
-                        Text("Maximum lines in scroll back buffer")
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                val initialMaxTypeAhead by characterSettingsRepository.observe(
-                    characterId = currentCharacter.id, key = maxTypeAheadKey
-                ).collectAsState(null)
-                var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
-                    mutableStateOf(
-                        TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
-                    )
-                }
-                TextField(
-                    value = maxTypeAheadValue,
-                    onValueChange = {
-                        maxTypeAheadValue = it
-                        scope.launch(NonCancellable) {
-                            characterSettingsRepository.save(
-                                characterId = currentCharacter.id,
-                                key = maxTypeAheadKey,
-                                value = it.text
-                            )
-                        }
-                    },
-                    label = {
-                        Text("Maximum commands to type ahead. 0 to disable buffer")
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            val initialMaxLines by characterSettingsRepository.observe(
+                characterId = "global", key = scrollbackKey
+            ).collectAsState(null)
+            var maxLinesValue by remember(initialMaxLines == null) {
+                mutableStateOf(
+                    TextFieldValue(initialMaxLines ?: defaultMaxScrollLines.toString())
                 )
             }
+            TextField(
+                value = maxLinesValue,
+                onValueChange = {
+                    maxLinesValue = it
+                    scope.launch(NonCancellable) {
+                        characterSettingsRepository.save(
+                            characterId = "global",
+                            key = scrollbackKey,
+                            value = it.text
+                        )
+                    }
+                },
+                label = {
+                    Text("Maximum lines in scroll back buffer")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            val initialMaxTypeAhead by characterSettingsRepository.observe(
+                characterId = "global", key = maxTypeAheadKey
+            ).collectAsState(null)
+            var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
+                mutableStateOf(
+                    TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
+                )
+            }
+            TextField(
+                value = maxTypeAheadValue,
+                onValueChange = {
+                    maxTypeAheadValue = it
+                    scope.launch(NonCancellable) {
+                        characterSettingsRepository.save(
+                            characterId = "global",
+                            key = maxTypeAheadKey,
+                            value = it.text
+                        )
+                    }
+                },
+                label = {
+                    Text("Maximum commands to type ahead. 0 to disable buffer")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
 
             Spacer(Modifier.height(16.dp))
 
