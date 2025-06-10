@@ -1,5 +1,6 @@
 -dontobfuscate
 -ignorewarnings
+-dontoptimize
 
 -keepclasseswithmembers public class warlockfe.warlock3.app.MainKt {
     public static void main(java.lang.String[]);

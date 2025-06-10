@@ -28,7 +28,6 @@ dependencies {
     // Logging and error reporting
     implementation(libs.slf4j.simple)
     implementation(libs.sentry.kotlin)
-    implementation(libs.logback.classic)
 
     // Control updates
     implementation(libs.conveyor.control)
