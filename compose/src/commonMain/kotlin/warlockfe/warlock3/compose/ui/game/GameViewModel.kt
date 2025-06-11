@@ -424,8 +424,10 @@ class GameViewModel(
         aliases.value.forEach { alias ->
             line = alias.replace(line)
         }
-        sendHistory[0] = line
-        sendHistory.add(0, "")
+        if (sendHistory.getOrNull(1) != line) {
+            sendHistory[0] = line
+            sendHistory.add(0, "")
+        }
         historyPosition = 0
         sendCommand(line)
     }
