@@ -119,7 +119,7 @@ fun main(args: Array<String>) {
     val appDirs = AppDirs("warlock", "WarlockFE")
     val configDir = appDirs.getUserConfigDir()
     File(configDir).mkdirs()
-    val dbFilename = "$configDir/prefs.db"
+    val dbFile = File(configDir, "prefs.db")
     val warlockDirs = WarlockDirs(
         homeDir = System.getProperty("user.home"),
         configDir = appDirs.getUserConfigDir(),
@@ -127,16 +127,7 @@ fun main(args: Array<String>) {
         logDir = appDirs.getUserLogDir(),
     )
 
-    // Copy old config
-    if (!File(dbFilename).exists()) {
-        val oldConfigDir = System.getProperty("user.home") + "/.warlock3"
-        val oldDbFile = File("$oldConfigDir/prefs.db")
-        if (oldDbFile.exists()) {
-            oldDbFile.copyTo(File(dbFilename))
-        }
-    }
-
-    val databaseBuilder = getPrefsDatabaseBuilder(dbFilename)
+    val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
 
     val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
 
