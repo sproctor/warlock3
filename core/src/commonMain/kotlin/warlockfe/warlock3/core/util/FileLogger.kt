@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.Path
 import java.io.BufferedWriter
+import java.io.FileOutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -33,11 +34,10 @@ class FileLogger(
     private fun getStream(now: LocalDateTime): BufferedWriter {
         val formattedDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         if (cachedStream == null || dateString != formattedDate) {
-            directory.toFile().mkdirs()
             val file = directory / "$formattedDate.log"
             file.parent?.toFile()?.mkdirs()
             cachedStream?.close()
-            cachedStream = file.toFile().outputStream().bufferedWriter()
+            cachedStream = FileOutputStream(file.toFile(), true).bufferedWriter()
             dateString = formattedDate
         }
         return cachedStream!!
