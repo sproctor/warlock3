@@ -40,37 +40,36 @@ fun FrameWindowScope.AppMenuBar(
     val scope = rememberCoroutineScope()
     CustomMenuBar {
         Menu("File") {
-            Item("New window", onClick = { scope.launch { newWindow() } } )
+            Item("New window", onClick = { scope.launch { newWindow() } })
             Item(
                 text = "Settings",
                 onClick = {
                     scope.launch { showSettings() }
                 }
             )
-            if (characterId != null) {
-                Item(
-                    text = "Run script...",
-                    onClick = {
-                        scope.launch {
-                            val dialog = java.awt.FileDialog(window, "Run script")
-                            if (scriptDirectory != null) {
-                                dialog.directory = scriptDirectory
-                            }
-                            dialog.setFilenameFilter { _, name ->
-                                val extension = File(name).extension
-                                scriptEngineRepository.supportsExtension(extension)
-                            }
-                            dialog.isVisible = true
-                            val fileName = dialog.file
-                            if (fileName != null) {
-                                scriptDirectory = dialog.directory
-                                val file = File(dialog.directory, fileName)
-                                runScript(file)
-                            }
+            Item(
+                text = "Run script...",
+                enabled = characterId != null,
+                onClick = {
+                    scope.launch {
+                        val dialog = java.awt.FileDialog(window, "Run script")
+                        if (scriptDirectory != null) {
+                            dialog.directory = scriptDirectory
+                        }
+                        dialog.setFilenameFilter { _, name ->
+                            val extension = File(name).extension
+                            scriptEngineRepository.supportsExtension(extension)
+                        }
+                        dialog.isVisible = true
+                        val fileName = dialog.file
+                        if (fileName != null) {
+                            scriptDirectory = dialog.directory
+                            val file = File(dialog.directory, fileName)
+                            runScript(file)
                         }
                     }
-                )
-            }
+                }
+            )
             Separator()
             Item(
                 text = "Disconnect",
@@ -81,15 +80,18 @@ fun FrameWindowScope.AppMenuBar(
             )
         }
 
-        if (characterId != null && windows.values.isNotEmpty()) {
-            Menu("Windows") {
-                windows.values.forEach { window ->
-                    if (window.name != "main") {
-                        CheckboxItem(
-                            text = window.title,
-                            checked = openWindows.any { it == window.name },
-                            onCheckedChange = {
-                                scope.launch {
+        Menu(
+            text = "Windows",
+            enabled = characterId != null && windows.values.isNotEmpty(),
+        ) {
+            windows.values.forEach { window ->
+                if (window.name != "main") {
+                    CheckboxItem(
+                        text = window.title,
+                        checked = openWindows.any { it == window.name },
+                        onCheckedChange = {
+                            scope.launch {
+                                if (characterId != null) {
                                     if (it) {
                                         windowRepository.openWindow(characterId, window.name)
                                     } else {
@@ -97,8 +99,8 @@ fun FrameWindowScope.AppMenuBar(
                                     }
                                 }
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
         }
