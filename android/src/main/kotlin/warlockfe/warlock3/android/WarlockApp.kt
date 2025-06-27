@@ -25,20 +25,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.model.GameStateFactory
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.theme.AppTheme
-import warlockfe.warlock3.compose.ui.window.StreamRegistryImpl
+import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
-import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,13 +52,18 @@ fun WarlockApp(
             ThemeSetting.DARK -> true
         }
     ) {
-        val gameState = GameState(
-            windowRepository = WindowRepository(
+        val gameStateFactory = GameStateFactory(
+            windowRepositoryFactory = WindowRepositoryFactory(
                 windowSettingsDao = appContainer.database.windowSettingsDao(),
-                externalScope = CoroutineScope(Dispatchers.IO),
+                externalScope = appContainer.externalScope,
             ),
-            streamRegistry = StreamRegistryImpl(Dispatchers.IO)
+            streamRegistryFactory = StreamRegistryFactory(
+                mainDispatcher = Dispatchers.Main.immediate,
+                externalScope = appContainer.externalScope,
+                settingRepository = appContainer.clientSettings,
+            ),
         )
+        val gameState = gameStateFactory.create()
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 

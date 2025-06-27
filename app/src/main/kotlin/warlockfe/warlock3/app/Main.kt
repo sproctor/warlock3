@@ -36,7 +36,6 @@ import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -53,12 +52,13 @@ import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.ui.window.StreamRegistryImpl
+import warlockfe.warlock3.compose.model.GameStateFactory
+import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
-import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
@@ -142,19 +142,20 @@ fun main(args: Array<String>) {
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
 
-    // TODO: Make a GameStateFactory
+    val gameStateFactory = GameStateFactory(
+        windowRepositoryFactory = WindowRepositoryFactory(
+            windowSettingsDao = appContainer.database.windowSettingsDao(),
+            externalScope = appContainer.externalScope,
+        ),
+        streamRegistryFactory = StreamRegistryFactory(
+            mainDispatcher = Dispatchers.Main.immediate,
+            externalScope = appContainer.externalScope,
+            settingRepository = clientSettings,
+        ),
+    )
+
     val games = mutableStateListOf(
-        GameState(
-            windowRepository = WindowRepository(
-                windowSettingsDao = appContainer.database.windowSettingsDao(),
-                externalScope = appContainer.externalScope,
-            ),
-            streamRegistry = StreamRegistryImpl(
-                mainDispatcher = Dispatchers.Main.immediate,
-                externalScope = appContainer.externalScope,
-                settingRepository = clientSettings,
-            ),
-        ).apply {
+        gameStateFactory.create().apply {
             if (credentials != null) {
                 val client = appContainer.warlockClientFactory.createStormFrontClient(
                     credentials = credentials,
@@ -291,19 +292,7 @@ fun main(args: Array<String>) {
                             appContainer = appContainer,
                             gameState = gameState,
                             newWindow = {
-                                games.add(
-                                    GameState(
-                                        windowRepository = WindowRepository(
-                                            appContainer.database.windowSettingsDao(),
-                                            CoroutineScope(Dispatchers.IO),
-                                        ),
-                                        streamRegistry = StreamRegistryImpl(
-                                            mainDispatcher = Dispatchers.Main.immediate,
-                                            externalScope = appContainer.externalScope,
-                                            settingRepository = clientSettings,
-                                        ),
-                                    )
-                                )
+                                games.add(gameStateFactory.create())
                             },
                             showUpdateDialog = { showUpdateDialog = true },
                         )

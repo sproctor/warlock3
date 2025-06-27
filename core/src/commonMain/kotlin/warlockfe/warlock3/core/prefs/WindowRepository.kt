@@ -174,3 +174,13 @@ class WindowRepository(
         }
     }
 }
+
+class WindowRepositoryFactory(
+    private val windowSettingsDao: WindowSettingsDao,
+    private val externalScope: CoroutineScope,
+) {
+    fun create(): WindowRepository = WindowRepository(
+        windowSettingsDao = windowSettingsDao,
+        externalScope = externalScope,
+    )
+}

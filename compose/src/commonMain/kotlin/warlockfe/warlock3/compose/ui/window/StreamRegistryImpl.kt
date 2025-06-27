@@ -51,3 +51,17 @@ class StreamRegistryImpl(
         return streams.values
     }
 }
+
+class StreamRegistryFactory(
+    private val mainDispatcher: CoroutineDispatcher,
+    private val externalScope: CoroutineScope,
+    private val settingRepository: ClientSettingRepository,
+) {
+    fun create(): StreamRegistry {
+        return StreamRegistryImpl(
+            mainDispatcher = mainDispatcher,
+            externalScope = externalScope,
+            settingRepository = settingRepository,
+        )
+    }
+}
