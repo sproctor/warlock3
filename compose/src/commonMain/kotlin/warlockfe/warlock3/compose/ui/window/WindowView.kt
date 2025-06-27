@@ -297,9 +297,8 @@ private fun WindowViewContent(
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { createFontFamily(it) }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
-    val snapshot by stream.snapshot.collectAsState()
-    val lines = snapshot.lines
-    val components = snapshot.components
+    val lines = stream.lines
+    val components = stream.components
 
     SelectionContainer {
         CompositionLocalProvider(
@@ -349,6 +348,7 @@ private fun WindowViewContent(
                                     fontSize = fontSize
                                 ),
                             )
+                            // Add newlines in selected text
                             BasicText(text = "\n", modifier = Modifier.size(0.dp))
                         }
                     }

@@ -4,17 +4,45 @@ import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.TextStream
 import kotlinx.collections.immutable.persistentHashMapOf
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+import warlockfe.warlock3.core.prefs.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.defaultMaxScrollLines
 import kotlin.synchronized
 
 class StreamRegistryImpl(
-    private val ioDispatcher: CoroutineDispatcher,
+    private val mainDispatcher: CoroutineDispatcher,
+    externalScope: CoroutineScope,
+    settingRepository: ClientSettingRepository,
 ) : StreamRegistry {
-    private var streams = persistentHashMapOf<String, TextStream>()
+
+    private var streams = persistentHashMapOf<String, ComposeTextStream>()
+
+    private val maxLines = settingRepository
+        .observeMaxScrollLines()
+        .onEach {
+            synchronized(this) {
+                streams.values.forEach { stream ->
+                    stream.setMaxLines(it)
+                }
+            }
+        }
+        .stateIn(
+            scope = externalScope,
+            started = SharingStarted.Eagerly,
+            initialValue = defaultMaxScrollLines,
+        )
 
     override fun getOrCreateStream(name: String): TextStream {
         synchronized(this) {
             streams[name]?.let { return it }
-            return ComposeTextStream(name, 5000, ioDispatcher)
+            return ComposeTextStream(
+                id = name,
+                maxLines = maxLines.value,
+                mainDispatcher = mainDispatcher,
+            )
                 .also { streams = streams.put(name, it) }
         }
     }

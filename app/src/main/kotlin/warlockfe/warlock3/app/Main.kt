@@ -142,13 +142,18 @@ fun main(args: Array<String>) {
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
 
+    // TODO: Make a GameStateFactory
     val games = mutableStateListOf(
         GameState(
             windowRepository = WindowRepository(
                 windowSettingsDao = appContainer.database.windowSettingsDao(),
-                externalScope = CoroutineScope(Dispatchers.IO)
+                externalScope = appContainer.externalScope,
             ),
-            streamRegistry = StreamRegistryImpl(Dispatchers.IO),
+            streamRegistry = StreamRegistryImpl(
+                mainDispatcher = Dispatchers.Main.immediate,
+                externalScope = appContainer.externalScope,
+                settingRepository = clientSettings,
+            ),
         ).apply {
             if (credentials != null) {
                 val client = appContainer.warlockClientFactory.createStormFrontClient(
@@ -292,7 +297,11 @@ fun main(args: Array<String>) {
                                             appContainer.database.windowSettingsDao(),
                                             CoroutineScope(Dispatchers.IO),
                                         ),
-                                        streamRegistry = StreamRegistryImpl(Dispatchers.IO)
+                                        streamRegistry = StreamRegistryImpl(
+                                            mainDispatcher = Dispatchers.Main.immediate,
+                                            externalScope = appContainer.externalScope,
+                                            settingRepository = clientSettings,
+                                        ),
                                     )
                                 )
                             },

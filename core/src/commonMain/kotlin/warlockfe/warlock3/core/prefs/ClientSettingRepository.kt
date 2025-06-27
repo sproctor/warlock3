@@ -49,6 +49,11 @@ class ClientSettingRepository(
         }
     }
 
+    fun observeMaxScrollLines(): Flow<Int> {
+        return observe(scrollbackKey)
+            .map { it?.toIntOrNull() ?: defaultMaxScrollLines }
+    }
+
     private suspend fun get(key: String): String? {
         return clientSettingDao.getByKey(key)
     }
