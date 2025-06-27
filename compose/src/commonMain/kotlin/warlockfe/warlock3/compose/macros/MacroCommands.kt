@@ -45,16 +45,16 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
         viewModel.pauseScripts()
     },
     "repeatlast" to { viewModel, _ ->
-        viewModel.repeatCommand(0)
+        viewModel.repeatCommand(1)
     },
     "returnorrepeatlast" to { viewModel, _ ->
         if (viewModel.entryText.text.isBlank()) {
-            viewModel.repeatCommand(0)
+            viewModel.repeatCommand(1)
         } else {
             viewModel.submit()
         }
     },
     "repeatsecondtolast" to { viewModel, _ ->
-        viewModel.repeatCommand(1)
+        viewModel.repeatCommand(2)
     }
 )
