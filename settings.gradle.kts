@@ -1,8 +1,9 @@
 rootProject.name = "warlock3"
+
 include(":core")
 include(":stormfront")
 include(":app")
-//include(":android")
+include(":android")
 include(":compose")
 include(":scripting")
 include(":macro")

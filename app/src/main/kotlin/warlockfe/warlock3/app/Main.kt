@@ -116,7 +116,10 @@ fun main(args: Array<String>) {
             null
         }
 
-    val appDirs = AppDirs("warlock", "WarlockFE")
+    val appDirs = AppDirs {
+        appName = "warlock"
+        appAuthor = "WarlockFE"
+    }
     val configDir = appDirs.getUserConfigDir()
     File(configDir).mkdirs()
     val dbFile = File(configDir, "prefs.db")

@@ -15,41 +15,33 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 
 [versions]
 
-agp = "8.7.3"
-##⬆= "8.8.0"
-##⬆= "8.8.1"
-##⬆= "8.8.2"
-##⬆= "8.9.0"
-##⬆= "8.9.1"
-##⬆= "8.9.2"
-##⬆= "8.9.3"
-##⬆= "8.10.0"
-##⬆= "8.10.1"
+agp = "8.10.1"
+##⬆= "8.11.0"
 androidx-activity = "1.10.1"
 androidx-core-splashscreen = "1.0.1"
-androidxLifecycleViewmodel = "2.9.0"
-androidxSqlite = "2.5.1"
+androidxLifecycleViewmodel = "2.9.1"
+androidxSqlite = "2.5.2"
 antlr = "4.13.2"
 apache-commons-text = "1.13.1"
-appdirs = "1.2.0"
-compose = "1.8.1"
+appdirs = "2.0.0"
+compose = "1.8.2"
 colorpicker = "1.1.2"
 conveyor = "1.12"
 conveyor-control = "1.1"
 filekit = "0.10.0-beta04"
-kotlin = "2.1.21"
+kotlin = "2.2.0"
 kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
 kotlin-logging = "7.0.7"
-ksp = "2.1.21-2.0.2"
+ksp = "2.2.0-2.0.2"
 material-icons = "1.7.3"
-okio = "3.12.0"
+okio = "3.13.0"
 rhino = "1.8.0"
-room = "2.7.1"
+room = "2.7.2"
 sentryKotlin = "0.12.0"
 slf4j = "2.0.17"
-slf4jAndroid = "3.0.0"
+slf4jAndroid = "2.0.17-0"
 
 [libraries]
 
@@ -75,7 +67,7 @@ sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref 
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
-slf4j-android = { module = "com.github.tony19:logback-android", version.ref = "slf4jAndroid" }
+slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version.ref = "slf4jAndroid" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
