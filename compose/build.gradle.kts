@@ -2,13 +2,13 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
-    // alias(libs.plugins.android.library)
+    alias(libs.plugins.android.library)
 }
 
 val jvmToolchainVersion: String by project
 
 kotlin {
-    // androidTarget()
+    androidTarget()
     jvm()
 
     sourceSets {
@@ -62,16 +62,16 @@ kotlin {
     }
 }
 
-//android {
-//    namespace = "warlockfe.warlock3.compose"
-//    compileSdk = 35
-//
-//    defaultConfig {
-//        minSdk = 26
-//
-//        // consumerProguardFiles("consumer-rules.pro")
-//    }
-//}
+android {
+    namespace = "warlockfe.warlock3.compose"
+    compileSdk = 35
+
+    defaultConfig {
+        minSdk = 26
+
+        // consumerProguardFiles("consumer-rules.pro")
+    }
+}
 
 compose {
     resources {

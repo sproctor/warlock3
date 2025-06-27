@@ -27,7 +27,7 @@ class WarlockApplication : Application() {
         )
         configDir.mkdirs()
         val database = getPrefsDatabaseBuilder(getDatabasePath("prefs.db").absolutePath)
-        appContainer = AndroidAppContainer(this, database, warlockDirs)
+        appContainer = AndroidAppContainer(database, warlockDirs)
         runBlocking {
             appContainer.macroRepository.insertDefaultMacrosIfNeeded()
         }

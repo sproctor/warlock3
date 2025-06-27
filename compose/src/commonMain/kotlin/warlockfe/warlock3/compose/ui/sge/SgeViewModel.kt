@@ -6,10 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
@@ -34,6 +37,7 @@ class SgeViewModel(
     sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
     private val gameState: GameState,
+    private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val logger = KotlinLogging.logger { }
@@ -120,7 +124,9 @@ class SgeViewModel(
                                 windowRepository = gameState.windowRepository,
                                 streamRegistry = gameState.streamRegistry,
                             )
-                            sfClient.connect()
+                            withContext(ioDispatcher) {
+                                sfClient.connect()
+                            }
                             val gameViewModel = gameViewModelFactory.create(
                                 client = sfClient,
                                 windowRepository = gameState.windowRepository,

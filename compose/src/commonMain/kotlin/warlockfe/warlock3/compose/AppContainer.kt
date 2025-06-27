@@ -5,6 +5,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +17,7 @@ import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.util.loadCompassTheme
+import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.AccountRepository
 import warlockfe.warlock3.core.prefs.AliasRepository
@@ -32,18 +34,25 @@ import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
+import warlockfe.warlock3.core.prefs.WindowRepository
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
+import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
+import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.stormfront.network.SgeClientImpl
+import warlockfe.warlock3.stormfront.network.StormfrontClient
 import java.io.StringReader
 import java.util.*
 
 abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    val externalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
         .setDriver(BundledSQLiteDriver())
         .addMigrations(
@@ -122,8 +131,32 @@ abstract class AppContainer(
         )
     }
 
-    abstract val sgeClientFactory: SgeClientFactory
-    abstract val warlockClientFactory: WarlockClientFactory
+    val sgeClientFactory: SgeClientFactory =
+        object : SgeClientFactory {
+            override fun create(host: String, port: Int): SgeClient {
+                return SgeClientImpl(host, port, Dispatchers.IO)
+            }
+        }
+
+    val warlockClientFactory: WarlockClientFactory =
+        object : WarlockClientFactory {
+            override fun createStormFrontClient(
+                credentials: SimuGameCredentials,
+                windowRepository: WindowRepository,
+                streamRegistry: StreamRegistry,
+            ): WarlockClient {
+                return StormfrontClient(
+                    host = credentials.host,
+                    port = credentials.port,
+                    key = credentials.key,
+                    windowRepository = windowRepository,
+                    characterRepository = characterRepository,
+                    alterationRepository = alterationRepository,
+                    streamRegistry = streamRegistry,
+                    fileLogging = loggingRepository,
+                )
+            }
+        }
 
     val dashboardViewModelFactory by lazy {
         DashboardViewModelFactory(
@@ -132,6 +165,7 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
+            ioDispatcher = ioDispatcher,
         )
     }
 
@@ -143,6 +177,7 @@ abstract class AppContainer(
             warlockClientFactory = warlockClientFactory,
             sgeClientFactory = sgeClientFactory,
             gameViewModelFactory = gameViewModelFactory,
+            ioDispatcher = ioDispatcher,
         )
     }
 }

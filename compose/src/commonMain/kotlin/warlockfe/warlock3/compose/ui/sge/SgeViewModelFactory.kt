@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.ui.sge
 
+import kotlinx.coroutines.CoroutineDispatcher
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
@@ -15,6 +16,7 @@ class SgeViewModelFactory(
     private val warlockClientFactory: WarlockClientFactory,
     private val sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
+    private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
         gameState: GameState,
@@ -27,6 +29,7 @@ class SgeViewModelFactory(
             sgeClientFactory = sgeClientFactory,
             gameViewModelFactory = gameViewModelFactory,
             gameState = gameState,
+            ioDispatcher = ioDispatcher,
         )
     }
 }

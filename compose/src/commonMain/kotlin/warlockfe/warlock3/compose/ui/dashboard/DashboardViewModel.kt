@@ -6,9 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
@@ -31,6 +33,7 @@ class DashboardViewModel(
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
+    private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     val connections = connectionRepository.observeAllConnections()
@@ -125,50 +128,52 @@ class DashboardViewModel(
     }
 
     private suspend fun connectToGame(credentials: SimuGameCredentials, proxySettings: ConnectionProxySettings) {
-        var loginCredentials = credentials
-        var process: Process? = null
-        if (proxySettings.enabled) {
-            val substitutions = mapOf(
-                "{host}" to loginCredentials.host,
-                "{port}" to loginCredentials.port.toString(),
-            )
-            val proxyCommand = proxySettings.launchCommand?.substitute(substitutions)
-            val proxyHost = proxySettings.host?.substitute(substitutions) ?: "localhost"
-            val proxyPort = proxySettings.port?.substitute(substitutions)?.toInt() ?: loginCredentials.port
-            loginCredentials = credentials.copy(
-                host = proxyHost,
-                port = proxyPort,
-            )
-            if (proxyCommand != null) {
-                logger.debug { "Launching proxy command: $proxyCommand" }
-                // TODO: manually split args respecting quotes. exec(String) is deprecated in Java 18+, use exec(Array<String>)
-                process = Runtime.getRuntime().exec(proxyCommand)
+        withContext(ioDispatcher) {
+            var loginCredentials = credentials
+            var process: Process? = null
+            if (proxySettings.enabled) {
+                val substitutions = mapOf(
+                    "{host}" to loginCredentials.host,
+                    "{port}" to loginCredentials.port.toString(),
+                )
+                val proxyCommand = proxySettings.launchCommand?.substitute(substitutions)
+                val proxyHost = proxySettings.host?.substitute(substitutions) ?: "localhost"
+                val proxyPort = proxySettings.port?.substitute(substitutions)?.toInt() ?: loginCredentials.port
+                loginCredentials = credentials.copy(
+                    host = proxyHost,
+                    port = proxyPort,
+                )
+                if (proxyCommand != null) {
+                    logger.debug { "Launching proxy command: $proxyCommand" }
+                    // TODO: manually split args respecting quotes. exec(String) is deprecated in Java 18+, use exec(Array<String>)
+                    process = Runtime.getRuntime().exec(proxyCommand)
+                }
             }
+            val sfClient = warlockClientFactory.createStormFrontClient(
+                credentials = loginCredentials,
+                windowRepository = gameState.windowRepository,
+                streamRegistry = gameState.streamRegistry,
+            ) as StormfrontClient
+            process?.let { sfClient.setProxy(it) }
+            do {
+                try {
+                    sfClient.connect()
+                    break
+                } catch (_: UnknownHostException) {
+                    logger.debug { "Unknown host" }
+                    break
+                } catch (e: IOException) {
+                    logger.debug(e) { "Error connecting to $host:$port" }
+                    delay(500L)
+                }
+            } while (process != null && process.isAlive)
+            val gameViewModel = gameViewModelFactory.create(
+                sfClient,
+                gameState.windowRepository,
+                gameState.streamRegistry,
+            )
+            gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
         }
-        val sfClient = warlockClientFactory.createStormFrontClient(
-            credentials = loginCredentials,
-            windowRepository = gameState.windowRepository,
-            streamRegistry = gameState.streamRegistry,
-        ) as StormfrontClient
-        process?.let { sfClient.setProxy(it) }
-        do {
-            try {
-                sfClient.connect()
-                break
-            } catch (_: UnknownHostException) {
-                logger.debug { "Unknown host" }
-                break
-            } catch (e: IOException) {
-                logger.debug(e) { "Error connecting to $host:$port" }
-                delay(500L)
-            }
-        } while (process != null && process.isAlive)
-        val gameViewModel = gameViewModelFactory.create(
-            sfClient,
-            gameState.windowRepository,
-            gameState.streamRegistry,
-        )
-        gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
     }
 
     fun deleteConnection(id: String) {
