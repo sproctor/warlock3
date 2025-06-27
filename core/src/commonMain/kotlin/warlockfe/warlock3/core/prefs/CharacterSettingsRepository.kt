@@ -3,11 +3,10 @@ package warlockfe.warlock3.core.prefs
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 
-const val defaultMaxScrollLines = 5_000
+const val defaultMaxScrollLines = 2_000
 const val scrollbackKey = "scrollback"
 
 const val defaultMaxTypeAhead = 2
