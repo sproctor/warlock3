@@ -13,10 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBarScope
 import androidx.compose.ui.window.setContent
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.openFilePicker
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.util.toAwtColor
 import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import java.io.File
 import javax.swing.JMenuBar
 
@@ -25,7 +27,6 @@ fun FrameWindowScope.AppMenuBar(
     characterId: String?,
     isConnected: Boolean,
     windowRepository: WindowRepository,
-    scriptEngineRepository: WarlockScriptEngineRepository,
     runScript: (File) -> Unit,
     newWindow: suspend () -> Unit,
     showSettings: suspend () -> Unit,
@@ -52,20 +53,12 @@ fun FrameWindowScope.AppMenuBar(
                 enabled = characterId != null,
                 onClick = {
                     scope.launch {
-                        val dialog = java.awt.FileDialog(window, "Run script")
-                        if (scriptDirectory != null) {
-                            dialog.directory = scriptDirectory
-                        }
-                        dialog.setFilenameFilter { _, name ->
-                            val extension = File(name).extension
-                            scriptEngineRepository.supportsExtension(extension)
-                        }
-                        dialog.isVisible = true
-                        val fileName = dialog.file
-                        if (fileName != null) {
-                            scriptDirectory = dialog.directory
-                            val file = File(dialog.directory, fileName)
-                            runScript(file)
+                        val file = FileKit.openFilePicker(
+                            title = "Run script",
+                            directory = scriptDirectory?.let { PlatformFile(it) },
+                        )
+                        if (file != null) {
+                            runScript(file.file)
                         }
                     }
                 }
