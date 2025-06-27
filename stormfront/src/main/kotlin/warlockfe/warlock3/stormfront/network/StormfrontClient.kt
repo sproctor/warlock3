@@ -35,7 +35,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okio.IOException
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -107,6 +106,7 @@ import warlockfe.warlock3.stormfront.util.CmdDefinition
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import warlockfe.warlock3.stormfront.util.StormfrontCmd
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
@@ -132,6 +132,8 @@ class StormfrontClient(
     private val streamRegistry: StreamRegistry,
     private val fileLogging: LoggingRepository
 ) : WarlockClient {
+
+    private val writeContext = Dispatchers.IO.limitedParallelism(1)
 
     private val logger = KotlinLogging.logger {}
 
@@ -739,7 +741,7 @@ class StormfrontClient(
         }
 
     override suspend fun sendCommandDirect(command: String) {
-        withContext(Dispatchers.IO) {
+        withContext(writeContext) {
             val toSend = "<c>$command\n"
             try {
                 socket?.getOutputStream()?.write(toSend.toByteArray(charset))
