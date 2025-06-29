@@ -150,6 +150,15 @@ class GameViewModel(
         }
     }
 
+    val bottomHeight = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            characterSettingsRepository.observe(characterId = characterId, "bottomHeight")
+                .map { it?.toIntOrNull() ?: 200 }
+        } else {
+            flow { }
+        }
+    }
+
     val leftWidth = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
             characterSettingsRepository.observe(characterId = characterId, "leftWidth")
@@ -663,26 +672,17 @@ class GameViewModel(
         }
     }
 
-    fun setLeftWidth(width: Int) {
+    fun setLocationSize(location: WindowLocation, size: Int) {
         client.characterId.value?.let { characterId ->
             viewModelScope.launch {
-                characterSettingsRepository.save(characterId, "leftWidth", width.toString())
-            }
-        }
-    }
-
-    fun setRightWidth(width: Int) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                characterSettingsRepository.save(characterId, "rightWidth", width.toString())
-            }
-        }
-    }
-
-    fun setTopHeight(height: Int) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                characterSettingsRepository.save(characterId, "topHeight", height.toString())
+                val key = when (location) {
+                    WindowLocation.LEFT -> "leftWidth"
+                    WindowLocation.RIGHT -> "rightWidth"
+                    WindowLocation.TOP -> "topHeight"
+                    WindowLocation.BOTTOM -> "bottomHeight"
+                    WindowLocation.MAIN -> error("Cannot set size on main location")
+                }
+                characterSettingsRepository.save(characterId, key, size.toString())
             }
         }
     }

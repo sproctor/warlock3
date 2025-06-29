@@ -21,4 +21,5 @@ enum class WindowLocation(val value: String) {
     LEFT("left"),
     RIGHT("right"),
     MAIN("main"),
+    BOTTOM("bottom"),
 }

@@ -99,6 +99,7 @@ fun GameView(
             mainWindowUiState = mainWindow.value,
             selectedWindow = viewModel.selectedWindow.collectAsState().value,
             topHeight = viewModel.topHeight.collectAsState(null).value,
+            bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
             leftWidth = viewModel.leftWidth.collectAsState(null).value,
             rightWidth = viewModel.rightWidth.collectAsState(null).value,
             onActionClicked = { action ->
@@ -125,9 +126,7 @@ fun GameView(
             onHeightChanged = { name, height ->
                 viewModel.setWindowHeight(name, height)
             },
-            onLeftChanged = viewModel::setLeftWidth,
-            onRightChanged = viewModel::setRightWidth,
-            onTopChanged = viewModel::setTopHeight,
+            onSizeChanged = viewModel::setLocationSize,
             onSwapWindows = viewModel::changeWindowPositions,
             onCloseClicked = viewModel::closeWindow,
             saveStyle = viewModel::saveWindowStyle,
@@ -247,15 +246,14 @@ fun GameTextWindows(
     mainWindowUiState: WindowUiState,
     selectedWindow: String,
     topHeight: Int?,
+    bottomHeight: Int?,
     leftWidth: Int?,
     rightWidth: Int?,
     onActionClicked: (WarlockAction) -> Unit,
     onMoveClicked: (name: String, WindowLocation) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
-    onTopChanged: (Int) -> Unit,
-    onLeftChanged: (Int) -> Unit,
-    onRightChanged: (Int) -> Unit,
+    onSizeChanged: (WindowLocation, Int) -> Unit,
     onSwapWindows: (WindowLocation, Int, Int) -> Unit,
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
@@ -266,76 +264,46 @@ fun GameTextWindows(
     // Container for all window views
     Row(modifier = modifier) {
         // Left column
-        val leftWindows =
-            subWindowUiStates.filter { it.window?.location == WindowLocation.LEFT }.sortedBy { it.window?.position }
-        if (leftWindows.isNotEmpty()) {
-            val panelState = remember(leftWidth == null) {
-                ResizablePanelState(initialSize = leftWidth?.dp ?: 0.dp, minSize = 16.dp)
-            }
-            ResizablePanel(
-                isHorizontal = true,
-                state = panelState,
-            ) {
-                Column {
-                    WindowViews(
-                        windowStates = leftWindows,
-                        selectedWindow = selectedWindow,
-                        onActionClicked = onActionClicked,
-                        isHorizontal = false,
-                        onMoveClicked = onMoveClicked,
-                        onHeightChanged = onHeightChanged,
-                        onWidthChanged = onWidthChanged,
-                        onSwapWindows = onSwapWindows,
-                        onCloseClicked = onCloseClicked,
-                        saveStyle = saveStyle,
-                        onWindowSelected = onWindowSelected,
-                        scrollEvents = scrollEvents,
-                        handledScrollEvent = handledScrollEvent,
-                    )
-                }
-            }
-            LaunchedEffect(panelState.currentSize) {
-                if (leftWidth != null) {
-                    onLeftChanged(panelState.currentSize.value.toInt())
-                }
-            }
-        }
+        WindowsAtLocation(
+            location = WindowLocation.LEFT,
+            size = leftWidth,
+            windowUiStates = subWindowUiStates,
+            horizontalPanel = true,
+            handleBefore = false,
+            selectedWindow = selectedWindow,
+            onSizeChanged = { onSizeChanged(WindowLocation.LEFT, it) },
+            onActionClicked = onActionClicked,
+            onMoveClicked = onMoveClicked,
+            onHeightChanged = onHeightChanged,
+            onWidthChanged = onWidthChanged,
+            onSwapWindows = onSwapWindows,
+            onCloseClicked = onCloseClicked,
+            saveStyle = saveStyle,
+            onWindowSelected = onWindowSelected,
+            scrollEvents = scrollEvents,
+            handledScrollEvent = handledScrollEvent,
+        )
         // Center column
         Column(modifier = Modifier.weight(1f)) {
-            val topWindows =
-                subWindowUiStates.filter { it.window?.location == WindowLocation.TOP }.sortedBy { it.window?.position }
-            if (topWindows.isNotEmpty()) {
-                val panelState = remember(topHeight == null) {
-                    ResizablePanelState(initialSize = topHeight?.dp ?: 0.dp, minSize = 16.dp)
-                }
-                ResizablePanel(
-                    isHorizontal = false,
-                    state = panelState,
-                ) {
-                    Row {
-                        WindowViews(
-                            windowStates = topWindows,
-                            selectedWindow = selectedWindow,
-                            onActionClicked = onActionClicked,
-                            isHorizontal = true,
-                            onMoveClicked = onMoveClicked,
-                            onHeightChanged = onHeightChanged,
-                            onWidthChanged = onWidthChanged,
-                            onSwapWindows = onSwapWindows,
-                            onCloseClicked = onCloseClicked,
-                            saveStyle = saveStyle,
-                            onWindowSelected = onWindowSelected,
-                            scrollEvents = scrollEvents,
-                            handledScrollEvent = handledScrollEvent,
-                        )
-                    }
-                }
-                LaunchedEffect(panelState.currentSize) {
-                    if (topHeight != null) {
-                        onTopChanged(panelState.currentSize.value.toInt())
-                    }
-                }
-            }
+            WindowsAtLocation(
+                location = WindowLocation.TOP,
+                size = topHeight,
+                windowUiStates = subWindowUiStates,
+                horizontalPanel = false,
+                handleBefore = false,
+                selectedWindow = selectedWindow,
+                onSizeChanged = { onSizeChanged(WindowLocation.TOP, it) },
+                onActionClicked = onActionClicked,
+                onMoveClicked = onMoveClicked,
+                onHeightChanged = onHeightChanged,
+                onWidthChanged = onWidthChanged,
+                onSwapWindows = onSwapWindows,
+                onCloseClicked = onCloseClicked,
+                saveStyle = saveStyle,
+                onWindowSelected = onWindowSelected,
+                scrollEvents = scrollEvents,
+                handledScrollEvent = handledScrollEvent,
+            )
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
                 uiState = mainWindowUiState,
@@ -352,42 +320,100 @@ fun GameTextWindows(
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
             )
+            WindowsAtLocation(
+                location = WindowLocation.BOTTOM,
+                size = bottomHeight,
+                windowUiStates = subWindowUiStates,
+                horizontalPanel = false,
+                handleBefore = true,
+                selectedWindow = selectedWindow,
+                onSizeChanged = { onSizeChanged(WindowLocation.BOTTOM, it) },
+                onActionClicked = onActionClicked,
+                onMoveClicked = onMoveClicked,
+                onHeightChanged = onHeightChanged,
+                onWidthChanged = onWidthChanged,
+                onSwapWindows = onSwapWindows,
+                onCloseClicked = onCloseClicked,
+                saveStyle = saveStyle,
+                onWindowSelected = onWindowSelected,
+                scrollEvents = scrollEvents,
+                handledScrollEvent = handledScrollEvent,
+            )
         }
         // Right Column
-        val rightWindows = subWindowUiStates
-            .filter { it.window?.location == WindowLocation.RIGHT }
-            .sortedBy { it.window?.position }
-        if (rightWindows.isNotEmpty()) {
-            val panelState = remember(rightWidth == null) {
-                ResizablePanelState(initialSize = rightWidth?.dp ?: 0.dp, minSize = 16.dp)
+        WindowsAtLocation(
+            location = WindowLocation.RIGHT,
+            size = rightWidth,
+            windowUiStates = subWindowUiStates,
+            horizontalPanel = true,
+            handleBefore = true,
+            selectedWindow = selectedWindow,
+            onSizeChanged = { onSizeChanged(WindowLocation.RIGHT, it) },
+            onActionClicked = onActionClicked,
+            onMoveClicked = onMoveClicked,
+            onHeightChanged = onHeightChanged,
+            onWidthChanged = onWidthChanged,
+            onSwapWindows = onSwapWindows,
+            onCloseClicked = onCloseClicked,
+            saveStyle = saveStyle,
+            onWindowSelected = onWindowSelected,
+            scrollEvents = scrollEvents,
+            handledScrollEvent = handledScrollEvent,
+        )
+    }
+}
+
+@Composable
+fun WindowsAtLocation(
+    location: WindowLocation,
+    size: Int?,
+    windowUiStates: List<WindowUiState>,
+    horizontalPanel: Boolean,
+    handleBefore: Boolean,
+    selectedWindow: String,
+    onSizeChanged: (Int) -> Unit,
+    onActionClicked: (WarlockAction) -> Unit,
+    onMoveClicked: (String, WindowLocation) -> Unit,
+    onHeightChanged: (String, Int) -> Unit,
+    onWidthChanged: (String, Int) -> Unit,
+    onSwapWindows: (WindowLocation, Int, Int) -> Unit,
+    onCloseClicked: (String) -> Unit,
+    saveStyle: (String, StyleDefinition) -> Unit,
+    onWindowSelected: (String) -> Unit,
+    scrollEvents: List<ScrollEvent>,
+    handledScrollEvent: (ScrollEvent) -> Unit,
+) {
+    val windows = windowUiStates.filter { it.window?.location == location }.sortedBy { it.window?.position }
+    if (windows.isNotEmpty()) {
+        val panelState = remember(size == null) {
+            ResizablePanelState(initialSize = size?.dp ?: 0.dp, minSize = 16.dp)
+        }
+        ResizablePanel(
+            isHorizontal = horizontalPanel,
+            handleBefore = handleBefore,
+            state = panelState,
+        ) {
+            Row {
+                WindowViews(
+                    windowStates = windows,
+                    selectedWindow = selectedWindow,
+                    onActionClicked = onActionClicked,
+                    isHorizontal = !horizontalPanel,
+                    onMoveClicked = onMoveClicked,
+                    onHeightChanged = onHeightChanged,
+                    onWidthChanged = onWidthChanged,
+                    onSwapWindows = onSwapWindows,
+                    onCloseClicked = onCloseClicked,
+                    saveStyle = saveStyle,
+                    onWindowSelected = onWindowSelected,
+                    scrollEvents = scrollEvents,
+                    handledScrollEvent = handledScrollEvent,
+                )
             }
-            ResizablePanel(
-                isHorizontal = true,
-                handleBefore = true,
-                state = panelState,
-            ) {
-                Column {
-                    WindowViews(
-                        windowStates = rightWindows,
-                        selectedWindow = selectedWindow,
-                        onActionClicked = onActionClicked,
-                        isHorizontal = false,
-                        onMoveClicked = onMoveClicked,
-                        onHeightChanged = onHeightChanged,
-                        onWidthChanged = onWidthChanged,
-                        onSwapWindows = onSwapWindows,
-                        onCloseClicked = onCloseClicked,
-                        saveStyle = saveStyle,
-                        onWindowSelected = onWindowSelected,
-                        scrollEvents = scrollEvents,
-                        handledScrollEvent = handledScrollEvent,
-                    )
-                }
-            }
-            LaunchedEffect(panelState.currentSize) {
-                if (rightWidth != null) {
-                    onRightChanged(panelState.currentSize.value.toInt())
-                }
+        }
+        LaunchedEffect(panelState.currentSize) {
+            if (size != null) {
+                onSizeChanged(panelState.currentSize.value.toInt())
             }
         }
     }

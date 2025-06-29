@@ -30,7 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -228,31 +227,13 @@ private fun WindowViewDropdownMenu(
             },
             text = { Text("Window Settings ...") }
         )
-        if (location != null) {
-            if (location != WindowLocation.MAIN) {
-                if (location != WindowLocation.LEFT) {
+        if (location != null && location != WindowLocation.MAIN) {
+            WindowLocation.entries.forEach { otherLocation ->
+                if (location != otherLocation && otherLocation != WindowLocation.MAIN) {
                     DropdownMenuItem(
-                        text = { Text("Move to left column") },
+                        text = { Text("Move to ${otherLocation.value.lowercase()} slot") },
                         onClick = {
-                            onMoveClicked(WindowLocation.LEFT)
-                            onDismissRequest()
-                        }
-                    )
-                }
-                if (location != WindowLocation.TOP) {
-                    DropdownMenuItem(
-                        text = { Text("Move to center column") },
-                        onClick = {
-                            onMoveClicked(WindowLocation.TOP)
-                            onDismissRequest()
-                        }
-                    )
-                }
-                if (location != WindowLocation.RIGHT) {
-                    DropdownMenuItem(
-                        text = { Text("Move to right column") },
-                        onClick = {
-                            onMoveClicked(WindowLocation.RIGHT)
+                            onMoveClicked(otherLocation)
                             onDismissRequest()
                         }
                     )
