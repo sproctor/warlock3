@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.prefs
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -13,8 +14,10 @@ class MacroRepository(
     val macroDao: MacroDao,
 ) {
 
-    suspend fun getGlobalMacros(): List<MacroEntity> {
-        return macroDao.getGlobals()
+    private val logger = KotlinLogging.logger {}
+
+    suspend fun getGlobalCount(): Int {
+        return macroDao.getGlobalCount()
     }
 
     fun observeGlobalMacros(): Flow<List<MacroCommand>> {
@@ -43,32 +46,32 @@ class MacroRepository(
             }
     }
 
-    suspend fun delete(characterId: String, key: String) {
-        assert(characterId != "global")
+    suspend fun delete(characterId: String, keyCombo: MacroKeyCombo) {
         withContext(NonCancellable) {
-            macroDao.delete(characterId, key)
-        }
-    }
-
-    suspend fun deleteGlobal(key: String) {
-        withContext(NonCancellable) {
-            macroDao.delete("global", key)
-        }
-    }
-
-    suspend fun put(characterId: String, key: String, value: String) {
-        assert(characterId != "global")
-        withContext(NonCancellable) {
-            macroDao.save(
-                MacroEntity(characterId, key, value)
+            macroDao.delete(
+                characterId = characterId,
+                keyCode = keyCombo.keyCode,
+                ctrl = keyCombo.ctrl,
+                alt = keyCombo.alt,
+                shift = keyCombo.shift,
+                meta = keyCombo.meta,
             )
         }
     }
 
-    suspend fun putGlobal(key: String, value: String) {
+    suspend fun put(characterId: String, keyCombo: MacroKeyCombo, value: String) {
         withContext(NonCancellable) {
             macroDao.save(
-                MacroEntity("global", key, value)
+                MacroEntity(
+                    characterId = characterId,
+                    key = "",
+                    value = value,
+                    keyCode = keyCombo.keyCode,
+                    ctrl = keyCombo.ctrl,
+                    alt = keyCombo.alt,
+                    shift = keyCombo.shift,
+                    meta = keyCombo.meta,
+                )
             )
         }
     }
@@ -78,11 +81,38 @@ class MacroRepository(
             macroDao.deleteAllGlobals()
         }
     }
+
+    suspend fun migrateMacros(keyMap: Map<String, Long>) {
+        val oldMacros = macroDao.getOldMacros()
+
+        oldMacros.forEach { oldMacro ->
+            logger.debug { "Migrating macro: $oldMacro" }
+            val parts = oldMacro.key.split("+")
+            val keyCode = keyMap[parts.last()]
+            if (keyCode != null) {
+                val entity = MacroEntity(
+                    characterId = oldMacro.characterId,
+                    key = "",
+                    value = oldMacro.value,
+                    keyCode = keyCode,
+                    ctrl = parts.contains("ctrl"),
+                    alt = parts.contains("alt"),
+                    shift = parts.contains("shift"),
+                    meta = parts.contains("meta"),
+                )
+                logger.debug { "New macro: $entity" }
+                macroDao.save(entity)
+                macroDao.deleteByKey(characterId = oldMacro.characterId, key = oldMacro.key)
+            } else {
+                logger.error { "Could not find keycode for: $oldMacro" }
+            }
+        }
+    }
 }
 
 private fun MacroEntity.toMacroCommand(): MacroCommand {
     return MacroCommand(
-        keyCombo = MacroKeyCombo.decode(key),
+        keyCombo = MacroKeyCombo(keyCode = keyCode, ctrl = ctrl, alt = alt, shift = shift, meta = meta),
         command = value,
     )
 }

@@ -3,7 +3,8 @@ package warlockfe.warlock3.compose.macros
 import androidx.compose.ui.input.key.Key
 import io.github.oshai.kotlinlogging.KotlinLogging
 
-private val keyMappings = mapOf(
+// Maintained for migration
+val keyMappings = mapOf(
     Key.F1 to "F1",
     Key.F2 to "F2",
     Key.F3 to "F3",
@@ -99,21 +100,3 @@ private val keyMappings = mapOf(
     Key.NumPadDot to "NPDot",
     Key.NumPadEnter to "NPEnter",
 )
-
-val reverseKeyMappings = keyMappings.entries.associate { (k, v) -> v to k }
-
-//expect fun Key.getLabel(): String
-//{
-//    KotlinLogging.logger("key").debug { "key: $this" }
-//    val text = keyMappings.firstNotNullOfOrNull {
-//        if (it.key.keyCode == keyCode) {
-//            it.value
-//        } else {
-//            null
-//        }
-//    }
-//    if (text == null) {
-//        KotlinLogging.logger("key").debug { "unassociated key: $this" }
-//    }
-//    return text ?: "??"
-//}

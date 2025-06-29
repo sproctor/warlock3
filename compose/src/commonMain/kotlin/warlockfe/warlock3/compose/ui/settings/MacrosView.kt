@@ -88,7 +88,7 @@ fun MacrosView(
                                     GlobalScope.launch {
                                         macroRepository.delete(
                                             currentCharacter?.id ?: "global",
-                                            macro.keyCombo.encode()
+                                            macro.keyCombo
                                         )
                                     }
                                 }
@@ -147,15 +147,15 @@ fun MacrosView(
                         val oldKeyCombo = macro?.keyCombo
                         if (oldKeyCombo != null && newMacro.keyCombo != oldKeyCombo) {
                             if (currentCharacter != null) {
-                                macroRepository.delete(currentCharacter!!.id, macro.keyCombo.encode())
+                                macroRepository.delete(currentCharacter!!.id, macro.keyCombo)
                             } else {
-                                macroRepository.deleteGlobal(macro.keyCombo.encode())
+                                macroRepository.delete("global", macro.keyCombo)
                             }
                         }
                         if (currentCharacter != null) {
-                            macroRepository.put(currentCharacter!!.id, newMacro.keyCombo.encode(), newMacro.command)
+                            macroRepository.put(currentCharacter!!.id, newMacro.keyCombo, newMacro.command)
                         } else {
-                            macroRepository.putGlobal(newMacro.keyCombo.encode(), newMacro.command)
+                            macroRepository.put("global", newMacro.keyCombo, newMacro.command)
                         }
                         editingMacro = EditMacroState.Closed
                     }

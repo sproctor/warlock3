@@ -50,6 +50,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.macros.keyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.GameStateFactory
@@ -135,6 +136,11 @@ fun main(args: Array<String>) {
     val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
 
     runBlocking {
+        appContainer.macroRepository.migrateMacros(
+            keyMappings.map { entry ->
+                entry.value to entry.key.keyCode
+            }.toMap()
+        )
         appContainer.macroRepository.insertDefaultMacrosIfNeeded()
     }
 
