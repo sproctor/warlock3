@@ -76,6 +76,7 @@ fun WindowView(
     onSelected: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
+    clearStream: () -> Unit,
 ) {
     val window = uiState.window
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
@@ -135,6 +136,7 @@ fun WindowView(
                         onMoveTowardsStart = onMoveTowardsStart,
                         onMoveTowardsEnd = onMoveTowardsEnd,
                         location = uiState.window?.location,
+                        clearStream = clearStream,
                     )
                 }
                 if (uiState.window?.location != WindowLocation.MAIN) {
@@ -215,6 +217,7 @@ private fun WindowViewDropdownMenu(
     onMoveClicked: (WindowLocation) -> Unit,
     onMoveTowardsStart: (() -> Unit)?,
     onMoveTowardsEnd: (() -> Unit)?,
+    clearStream: () -> Unit,
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -226,6 +229,13 @@ private fun WindowViewDropdownMenu(
                 onDismissRequest()
             },
             text = { Text("Window Settings ...") }
+        )
+        DropdownMenuItem(
+            onClick = {
+                clearStream()
+                onDismissRequest()
+            },
+            text = { Text("Clear window") },
         )
         if (location != null && location != WindowLocation.MAIN) {
             WindowLocation.entries.forEach { otherLocation ->

@@ -133,6 +133,7 @@ fun GameView(
             onWindowSelected = viewModel::selectWindow,
             scrollEvents = viewModel.scrollEvents.collectAsState().value,
             handledScrollEvent = viewModel::handledScrollEvent,
+            clearStream = viewModel::clearStream,
         )
         GameBottomBar(viewModel)
     }
@@ -260,6 +261,7 @@ fun GameTextWindows(
     onWindowSelected: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
+    clearStream: (String) -> Unit,
 ) {
     // Container for all window views
     Row(modifier = modifier) {
@@ -282,6 +284,7 @@ fun GameTextWindows(
             onWindowSelected = onWindowSelected,
             scrollEvents = scrollEvents,
             handledScrollEvent = handledScrollEvent,
+            clearStream = clearStream,
         )
         // Center column
         Column(modifier = Modifier.weight(1f)) {
@@ -303,6 +306,7 @@ fun GameTextWindows(
                 onWindowSelected = onWindowSelected,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
+                clearStream = clearStream,
             )
             WindowView(
                 modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
@@ -319,6 +323,7 @@ fun GameTextWindows(
                 onSelected = { onWindowSelected(mainWindowUiState.name) },
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
+                clearStream = { clearStream(mainWindowUiState.name) },
             )
             WindowsAtLocation(
                 location = WindowLocation.BOTTOM,
@@ -338,6 +343,7 @@ fun GameTextWindows(
                 onWindowSelected = onWindowSelected,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
+                clearStream = clearStream,
             )
         }
         // Right Column
@@ -359,6 +365,7 @@ fun GameTextWindows(
             onWindowSelected = onWindowSelected,
             scrollEvents = scrollEvents,
             handledScrollEvent = handledScrollEvent,
+            clearStream = clearStream,
         )
     }
 }
@@ -382,6 +389,7 @@ fun WindowsAtLocation(
     onWindowSelected: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
+    clearStream: (String) -> Unit,
 ) {
     val windows = windowUiStates.filter { it.window?.location == location }.sortedBy { it.window?.position }
     if (windows.isNotEmpty()) {
@@ -408,6 +416,7 @@ fun WindowsAtLocation(
                     onWindowSelected = onWindowSelected,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
+                    clearStream = clearStream,
                 )
             }
         }
@@ -475,6 +484,7 @@ fun WindowViews(
     onWindowSelected: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
+    clearStream: (String) -> Unit,
 ) {
     windowStates.forEachIndexed { index, uiState ->
         val content = @Composable { modifier: Modifier ->
@@ -495,6 +505,7 @@ fun WindowViews(
                 onSelected = { onWindowSelected(uiState.name) },
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
+                clearStream = { clearStream(uiState.name) },
             )
         }
 

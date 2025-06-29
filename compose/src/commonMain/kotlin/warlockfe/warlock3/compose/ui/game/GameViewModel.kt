@@ -704,6 +704,13 @@ class GameViewModel(
         }
     }
 
+    fun clearStream(name: String) {
+        viewModelScope.launch {
+            val stream = streamRegistry.getOrCreateStream(name)
+            stream.clear()
+        }
+    }
+
     fun saveWindowStyle(name: String, style: StyleDefinition) {
         client.characterId.value?.let { characterId ->
             viewModelScope.launch {
