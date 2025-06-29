@@ -131,6 +131,7 @@ fun main(args: Array<String>) {
         logDir = appDirs.getUserLogDir(),
     )
 
+    println("Loading preferences from ${dbFile.absolutePath}")
     val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
 
     val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
