@@ -4,6 +4,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.macro.MacroCommand
+import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 
@@ -15,27 +17,29 @@ class MacroRepository(
         return macroDao.getGlobals()
     }
 
-    fun observeGlobalMacros(): Flow<List<Pair<String, String>>> {
+    fun observeGlobalMacros(): Flow<List<MacroCommand>> {
         return macroDao
             .observeGlobals()
-            .map { list -> list.map { Pair(it.key, it.value) } }
+            .map { list ->
+                list.map { it.toMacroCommand() }
+            }
     }
 
-    fun observeCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
+    fun observeCharacterMacros(characterId: String): Flow<List<MacroCommand>> {
         assert(characterId != "global")
         return macroDao
             .observeByCharacterWithGlobals(characterId)
             .map { list ->
-                list.map { Pair(it.key, it.value) }
+                list.map { it.toMacroCommand() }
             }
     }
 
-    fun observeOnlyCharacterMacros(characterId: String): Flow<List<Pair<String, String>>> {
+    fun observeOnlyCharacterMacros(characterId: String): Flow<List<MacroCommand>> {
         assert(characterId != "global")
         return macroDao
             .observeByCharacter(characterId)
             .map { list ->
-                list.map { Pair(it.key, it.value) }
+                list.map { it.toMacroCommand() }
             }
     }
 
@@ -74,4 +78,11 @@ class MacroRepository(
             macroDao.deleteAllGlobals()
         }
     }
+}
+
+private fun MacroEntity.toMacroCommand(): MacroCommand {
+    return MacroCommand(
+        keyCombo = MacroKeyCombo.decode(key),
+        command = value,
+    )
 }

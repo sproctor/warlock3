@@ -46,7 +46,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
-import warlockfe.warlock3.compose.macros.getLabel
 import warlockfe.warlock3.compose.macros.macroCommands
 import warlockfe.warlock3.compose.macros.parseMacroCommand
 import warlockfe.warlock3.compose.model.ViewHighlight
@@ -55,6 +54,7 @@ import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowLine
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.util.getEntireLineStyles
+import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.compose.util.toAnnotatedString
@@ -67,6 +67,7 @@ import warlockfe.warlock3.core.client.ProgressBarData
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
@@ -173,8 +174,8 @@ class GameViewModel(
         } else {
             macroRepository.observeGlobalMacros()
         }
-            .map {
-                it.toMap()
+            .map { macroCommands ->
+                macroCommands.associate { it.keyCombo to it.command }
             }
     }
         .stateIn(
@@ -612,22 +613,14 @@ class GameViewModel(
     }
 
     // TODO: convert this into a simpler representation
-    private fun translateKeyPress(event: KeyEvent): String {
-        val keyString = StringBuilder()
-        if (event.isCtrlPressed) {
-            keyString.append("ctrl+")
-        }
-        if (event.isAltPressed) {
-            keyString.append("alt+")
-        }
-        if (event.isShiftPressed) {
-            keyString.append("shift+")
-        }
-        if (event.isMetaPressed) {
-            keyString.append("meta+")
-        }
-        keyString.append(event.key.getLabel())
-        return keyString.toString()
+    private fun translateKeyPress(event: KeyEvent): MacroKeyCombo {
+        return MacroKeyCombo(
+            keyCode = event.key.keyCode,
+            ctrl = event.isCtrlPressed,
+            alt = event.isAltPressed,
+            shift = event.isShiftPressed,
+            meta = event.isMetaPressed,
+        )
     }
 
     fun updateEntryText(value: TextFieldValue) {

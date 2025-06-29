@@ -30,11 +30,13 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.macros.reverseKeyMappings
 import warlockfe.warlock3.compose.components.ConfirmationDialog
+import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.macro.MacroCommand
+import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.prefs.MacroRepository
 
 // TODO: use a ViewModel to handle business logic
@@ -51,7 +53,7 @@ fun MacrosView(
     } else {
         macroRepository.observeOnlyCharacterMacros(currentCharacter!!.id)
     }.collectAsState(emptyList())
-    var editingMacro by remember { mutableStateOf<Pair<String?, String>?>(null) }
+    var editingMacro by remember { mutableStateOf<EditMacroState>(EditMacroState.Closed) }
     var confirmReset by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -70,14 +72,13 @@ fun MacrosView(
                 .weight(1f)
         ) {
             macros.forEach { macro ->
-                val text = macro.first
                 ListItem(
-                    headlineContent = { Text(text) },
-                    supportingContent = { Text(macro.second) },
+                    headlineContent = { Text(macro.keyCombo.toDisplayString()) },
+                    supportingContent = { Text(macro.command) },
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingMacro = macro }
+                                onClick = { editingMacro = EditMacroState.Edit(macro) }
                             ) {
                                 Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
                             }
@@ -87,7 +88,7 @@ fun MacrosView(
                                     GlobalScope.launch {
                                         macroRepository.delete(
                                             currentCharacter?.id ?: "global",
-                                            macro.first
+                                            macro.keyCombo.encode()
                                         )
                                     }
                                 }
@@ -107,12 +108,12 @@ fun MacrosView(
             horizontalArrangement = Arrangement.End
         ) {
             OutlinedButton(
-                onClick = { confirmReset = true}
+                onClick = { confirmReset = true }
             ) {
                 Text("Reset global macros")
             }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = { editingMacro = Pair(null, "") }) {
+            Button(onClick = { editingMacro = EditMacroState.Edit(null) }) {
                 Text("Create macro")
             }
         }
@@ -133,42 +134,75 @@ fun MacrosView(
             }
         )
     }
-    editingMacro?.let { macro ->
-        val (initialKey, modifiers) = macro.first?.let { stringToKey(it) } ?: Pair(null, emptySet())
-        EditMacroDialog(
-            key = initialKey,
-            modifiers = modifiers,
-            value = macro.second,
-            saveMacro = { key, value ->
-                scope.launch {
-                    if (key != macro.first) {
-                        macro.first?.let {
+    when (val state = editingMacro) {
+        is EditMacroState.Edit -> {
+            val macro = state.macroCommand
+            val (initialKey, modifiers) = macro?.let { keyComboToKey(it.keyCombo) } ?: (null to emptySet())
+            EditMacroDialog(
+                key = initialKey,
+                modifiers = modifiers,
+                value = macro?.command ?: "",
+                saveMacro = { newMacro ->
+                    scope.launch {
+                        val oldKeyCombo = macro?.keyCombo
+                        if (oldKeyCombo != null && newMacro.keyCombo != oldKeyCombo) {
                             if (currentCharacter != null) {
-                                macroRepository.delete(currentCharacter!!.id, it)
+                                macroRepository.delete(currentCharacter!!.id, macro.keyCombo.encode())
                             } else {
-                                macroRepository.deleteGlobal(it)
+                                macroRepository.deleteGlobal(macro.keyCombo.encode())
                             }
                         }
+                        if (currentCharacter != null) {
+                            macroRepository.put(currentCharacter!!.id, newMacro.keyCombo.encode(), newMacro.command)
+                        } else {
+                            macroRepository.putGlobal(newMacro.keyCombo.encode(), newMacro.command)
+                        }
+                        editingMacro = EditMacroState.Closed
                     }
-                    if (currentCharacter != null) {
-                        macroRepository.put(currentCharacter!!.id, key, value)
-                    } else {
-                        macroRepository.putGlobal(key, value)
-                    }
-                    editingMacro = null
-                }
-            },
-            onClose = { editingMacro = null }
-        )
+                },
+                onClose = { editingMacro = EditMacroState.Closed }
+            )
+        }
+        else -> Unit
     }
 }
 
-fun stringToKey(value: String): Pair<Key, Set<String>> {
+private fun keyComboToKey(keyCombo: MacroKeyCombo): Pair<Key, Set<String>> {
     val modifiers = mutableSetOf<String>()
-    val parts = value.split("+")
-    for (i in 0..(parts.size - 2)) {
-        modifiers.add(parts[i])
+    if (keyCombo.ctrl) {
+        modifiers.add("ctrl")
     }
-    val key = reverseKeyMappings[parts.last()] ?: Key(0)
-    return key to modifiers
+    if (keyCombo.alt) {
+        modifiers.add("alt")
+    }
+    if (keyCombo.shift) {
+        modifiers.add("shift")
+    }
+    if (keyCombo.meta) {
+        modifiers.add("meta")
+    }
+    return Key(keyCombo.keyCode) to modifiers
+}
+
+private fun MacroKeyCombo.toDisplayString(): String {
+    val keyString = StringBuilder()
+    if (ctrl) {
+        keyString.append("ctrl+")
+    }
+    if (alt) {
+        keyString.append("alt+")
+    }
+    if (shift) {
+        keyString.append("shift+")
+    }
+    if (meta) {
+        keyString.append("meta+")
+    }
+    keyString.append(Key(keyCode).getLabel())
+    return keyString.toString()
+}
+
+sealed class EditMacroState {
+    data object Closed : EditMacroState()
+    data class Edit(val macroCommand: MacroCommand?) : EditMacroState()
 }

@@ -102,16 +102,18 @@ private val keyMappings = mapOf(
 
 val reverseKeyMappings = keyMappings.entries.associate { (k, v) -> v to k }
 
-fun Key.getLabel(): String {
-    val text = keyMappings.firstNotNullOfOrNull {
-        if (it.key.keyCode == keyCode) {
-            it.value
-        } else {
-            null
-        }
-    }
-    if (text == null) {
-        KotlinLogging.logger("key").debug { "unassociated key: $this" }
-    }
-    return text ?: "??"
-}
+//expect fun Key.getLabel(): String
+//{
+//    KotlinLogging.logger("key").debug { "key: $this" }
+//    val text = keyMappings.firstNotNullOfOrNull {
+//        if (it.key.keyCode == keyCode) {
+//            it.value
+//        } else {
+//            null
+//        }
+//    }
+//    if (text == null) {
+//        KotlinLogging.logger("key").debug { "unassociated key: $this" }
+//    }
+//    return text ?: "??"
+//}

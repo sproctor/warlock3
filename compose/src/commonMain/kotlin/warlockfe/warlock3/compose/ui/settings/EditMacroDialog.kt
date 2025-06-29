@@ -34,7 +34,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.toPersistentSet
-import warlockfe.warlock3.compose.macros.getLabel
+import warlockfe.warlock3.compose.util.getLabel
+import warlockfe.warlock3.core.macro.MacroCommand
+import warlockfe.warlock3.core.macro.MacroKeyCombo
 
 private val allModifierKeys = arrayOf(
     Key.CtrlLeft,
@@ -52,15 +54,12 @@ fun EditMacroDialog(
     key: Key?,
     modifiers: Set<String>,
     value: String,
-    saveMacro: (String, String) -> Unit,
+    saveMacro: (MacroCommand) -> Unit,
     onClose: () -> Unit,
 ) {
     var newValue by remember(value) { mutableStateOf(value) }
     var selectedKey by remember { mutableStateOf(key) }
     var modifierKeys by remember { mutableStateOf(modifiers) }
-    val keyString = selectedKey?.let { key ->
-        buildKeyString(key, modifierKeys)
-    }
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text("Edit Macro") },
@@ -73,8 +72,8 @@ fun EditMacroDialog(
             TextButton(
                 enabled = selectedKey != null,
                 onClick = {
-                    if (keyString != null) {
-                        saveMacro(keyString, newValue)
+                    if (selectedKey != null) {
+                        saveMacro(MacroCommand(buildKeyCombo(selectedKey!!, modifierKeys), newValue))
                     }
                 }
             ) {
@@ -102,7 +101,7 @@ fun EditMacroDialog(
                             }
                             true
                         },
-                    value = TextFieldValue(text = keyString ?: buildKeyString(null, modifierKeys)),
+                    value = TextFieldValue(text = buildKeyString(selectedKey, modifierKeys)),
                     label = { Text("Key") },
                     onValueChange = {},
                     maxLines = 1,
@@ -114,8 +113,8 @@ fun EditMacroDialog(
                 Spacer(Modifier.height(16.dp))
                 TextField(
                     value = newValue,
-                    label = { Text("Value") },
-                    onValueChange = { newValue = it }
+                    label = { Text("Command") },
+                    onValueChange = { newValue = it },
                 )
             }
         }
@@ -134,11 +133,21 @@ private fun buildKeyString(key: Key?, modifierKeys: Set<String>): String {
     return newKey.toString()
 }
 
-fun KeyEvent.getKeyModifiers(): Set<String> {
+private fun KeyEvent.getKeyModifiers(): Set<String> {
     val modifiers = mutableSetOf<String>()
     if (isAltPressed) modifiers.add("alt")
     if (isShiftPressed) modifiers.add("shift")
     if (isMetaPressed) modifiers.add("meta")
     if (isCtrlPressed) modifiers.add("ctrl")
     return modifiers.toPersistentSet()
+}
+
+private fun buildKeyCombo(key: Key, modifierKeys: Set<String>): MacroKeyCombo {
+    return MacroKeyCombo(
+        keyCode = key.keyCode,
+        ctrl = modifierKeys.contains("ctrl"),
+        alt = modifierKeys.contains("alt"),
+        shift = modifierKeys.contains("shift"),
+        meta = modifierKeys.contains("meta"),
+    )
 }
