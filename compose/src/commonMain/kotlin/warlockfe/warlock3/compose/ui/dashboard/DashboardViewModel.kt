@@ -138,7 +138,7 @@ class DashboardViewModel(
                 )
                 val proxyCommand = proxySettings.launchCommand?.substitute(substitutions)
                 val proxyHost = proxySettings.host?.substitute(substitutions) ?: "localhost"
-                val proxyPort = proxySettings.port?.substitute(substitutions)?.toInt() ?: loginCredentials.port
+                val proxyPort = proxySettings.port?.substitute(substitutions)?.toIntOrNull() ?: loginCredentials.port
                 loginCredentials = credentials.copy(
                     host = proxyHost,
                     port = proxyPort,
