@@ -33,9 +33,9 @@ import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
 import warlockfe.warlock3.compose.icons.Arrow_right
+import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.components.HandsView
 import warlockfe.warlock3.compose.ui.components.IndicatorView
-import warlockfe.warlock3.compose.ui.components.VitalBars
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
@@ -401,7 +401,7 @@ fun WindowsAtLocation(
             handleBefore = handleBefore,
             state = panelState,
         ) {
-            Row {
+            val content = @Composable {
                 WindowViews(
                     windowStates = windows,
                     selectedWindow = selectedWindow,
@@ -418,6 +418,15 @@ fun WindowsAtLocation(
                     handledScrollEvent = handledScrollEvent,
                     clearStream = clearStream,
                 )
+            }
+            if (horizontalPanel) {
+                Column {
+                    content()
+                }
+            } else {
+                Row {
+                    content()
+                }
             }
         }
         LaunchedEffect(panelState.currentSize) {
@@ -455,7 +464,11 @@ fun GameBottomBar(viewModel: GameViewModel) {
                     properties = properties.value,
                 )
             }
-            VitalBars(viewModel.vitalBars)
+            val vitalBars by viewModel.vitalBars.collectAsState(emptyList())
+            DialogContent(
+                dataObjects = vitalBars,
+                modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 2.dp)
+            )
             HandsView(viewModel.properties.collectAsState().value)
         }
         CompassView(

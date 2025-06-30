@@ -25,6 +25,7 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation(libs.material.icons)
                 api(libs.androidx.lifecycle.viewmodel.compose)
+                implementation("tech.annexflow.compose:constraintlayout-compose-multiplatform:0.6.0")
 
                 // Third party UI
                 implementation(libs.colorpicker)

@@ -12,6 +12,7 @@ import warlockfe.warlock3.stormfront.protocol.elements.CastTimeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ClearContainerHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ClearStreamHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CliHandler
+import warlockfe.warlock3.stormfront.protocol.elements.CmdButtonHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CmdlistHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CompDefHandler
 import warlockfe.warlock3.stormfront.protocol.elements.CompassHandler
@@ -23,12 +24,15 @@ import warlockfe.warlock3.stormfront.protocol.elements.DirHandler
 import warlockfe.warlock3.stormfront.protocol.elements.DynaStreamHandler
 import warlockfe.warlock3.stormfront.protocol.elements.IndicatorHandler
 import warlockfe.warlock3.stormfront.protocol.elements.InvHandler
+import warlockfe.warlock3.stormfront.protocol.elements.LabelHandler
 import warlockfe.warlock3.stormfront.protocol.elements.LaunchURLHandler
 import warlockfe.warlock3.stormfront.protocol.elements.LeftHandler
+import warlockfe.warlock3.stormfront.protocol.elements.LinkHandler
 import warlockfe.warlock3.stormfront.protocol.elements.MenuHandler
 import warlockfe.warlock3.stormfront.protocol.elements.MiHandler
 import warlockfe.warlock3.stormfront.protocol.elements.ModeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.NavHandler
+import warlockfe.warlock3.stormfront.protocol.elements.OpenDialogHandler
 import warlockfe.warlock3.stormfront.protocol.elements.OutputHandler
 import warlockfe.warlock3.stormfront.protocol.elements.PopBoldHandler
 import warlockfe.warlock3.stormfront.protocol.elements.PopStreamHandler
@@ -40,6 +44,7 @@ import warlockfe.warlock3.stormfront.protocol.elements.PushStreamHandler
 import warlockfe.warlock3.stormfront.protocol.elements.RightHandler
 import warlockfe.warlock3.stormfront.protocol.elements.RoundTimeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.SettingsInfoHandler
+import warlockfe.warlock3.stormfront.protocol.elements.SkinHandler
 import warlockfe.warlock3.stormfront.protocol.elements.SpellHandler
 import warlockfe.warlock3.stormfront.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.stormfront.protocol.elements.StyleHandler
@@ -59,6 +64,7 @@ class StormfrontProtocolHandler {
         "clearcontainer" to ClearContainerHandler(),
         "clearstream" to ClearStreamHandler(),
         "cli" to CliHandler(),
+        "cmdbutton" to CmdButtonHandler(),
         "cmdlist" to CmdlistHandler(),
         "compass" to CompassHandler(),
         "compdef" to CompDefHandler(),
@@ -70,12 +76,15 @@ class StormfrontProtocolHandler {
         "dynastream" to DynaStreamHandler(),
         "indicator" to IndicatorHandler(),
         "inv" to InvHandler(),
+        "label" to LabelHandler(),
         "launchurl" to LaunchURLHandler(),
         "left" to LeftHandler(),
+        "link" to LinkHandler(),
         "menu" to MenuHandler(),
         "mi" to MiHandler(),
         "mode" to ModeHandler(),
         "nav" to NavHandler(),
+        "opendialog" to OpenDialogHandler(),
         "output" to OutputHandler(),
         "preset" to PresetHandler(),
         "popbold" to PopBoldHandler(),
@@ -87,6 +96,7 @@ class StormfrontProtocolHandler {
         "right" to RightHandler(),
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
+        "skin" to SkinHandler(),
         "streamwindow" to StreamWindowHandler(),
         "spell" to SpellHandler(),
         "style" to StyleHandler(),

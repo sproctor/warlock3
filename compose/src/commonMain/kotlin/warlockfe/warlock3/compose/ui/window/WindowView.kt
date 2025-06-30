@@ -51,6 +51,7 @@ import warlockfe.warlock3.compose.components.LocalScrollbarStyle
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.ScrollbarStyle
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.LocalLogger
@@ -152,19 +153,29 @@ fun WindowView(
                     }
                 }
             }
-            WindowViewContent(
-                stream = uiState.stream,
-                scrollState = scrollState,
-                window = window,
-                highlights = uiState.highlights,
-                presets = uiState.presets,
-                defaultStyle = uiState.defaultStyle,
-                onActionClicked = onActionClicked,
-            )
+            when (uiState) {
+                is StreamWindowUiState ->
+                    WindowViewContent(
+                        stream = uiState.stream,
+                        scrollState = scrollState,
+                        window = window,
+                        highlights = uiState.highlights,
+                        presets = uiState.presets,
+                        defaultStyle = uiState.defaultStyle,
+                        onActionClicked = onActionClicked,
+                    )
+                is DialogWindowUiState ->
+                    DialogContent(
+                        dataObjects = uiState.dialogData,
+                        modifier = Modifier.fillMaxSize()
+                            .background(uiState.style.backgroundColor.toColor())
+                            .padding(8.dp),
+                    )
+            }
         }
     }
 
-    if (showWindowSettingsDialog && window != null) {
+    if (showWindowSettingsDialog && window != null && uiState is StreamWindowUiState) {
         WindowSettingsDialog(
             onCloseRequest = { showWindowSettingsDialog = false },
             style = StyleDefinition(

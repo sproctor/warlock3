@@ -17,6 +17,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WindowRepository(
@@ -31,6 +32,7 @@ class WindowRepository(
                 title = "Main",
                 subtitle = "",
                 location = WindowLocation.MAIN,
+                windowType = WindowType.STREAM,
                 position = 0,
                 width = null,
                 height = null,
@@ -76,6 +78,7 @@ class WindowRepository(
                                 title = it.name,
                                 subtitle = null,
                                 location = it.location,
+                                windowType = WindowType.STREAM,
                                 position = it.position,
                                 width = it.width,
                                 height = it.height,
@@ -95,7 +98,7 @@ class WindowRepository(
         this.characterId.value = characterId
     }
 
-    fun setWindowTitle(name: String, title: String, subtitle: String?) {
+    fun setWindowTitle(name: String, title: String, subtitle: String?, windowType: WindowType) {
         val existingWindow = windows.value[name]
         _windows.value += Pair(
             name,
@@ -104,6 +107,7 @@ class WindowRepository(
                 title = title,
                 subtitle = subtitle,
                 location = null,
+                windowType = windowType,
                 position = null,
                 width = null,
                 height = null,

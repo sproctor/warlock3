@@ -1,11 +1,8 @@
 package warlockfe.warlock3.compose.ui.game
 
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -25,6 +22,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -50,20 +48,21 @@ import warlockfe.warlock3.compose.macros.macroCommands
 import warlockfe.warlock3.compose.macros.parseMacroCommand
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
+import warlockfe.warlock3.compose.ui.window.DialogWindowUiState
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
+import warlockfe.warlock3.compose.ui.window.StreamWindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowLine
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.util.getEntireLineStyles
-import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.core.client.ClientCompassEvent
+import warlockfe.warlock3.core.client.ClientDialogEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
-import warlockfe.warlock3.core.client.ClientProgressBarEvent
+import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.client.ProgressBarData
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
@@ -90,6 +89,7 @@ import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.stormfront.network.clientCommandPrefix
 import warlockfe.warlock3.stormfront.network.scriptCommandPrefix
 import java.io.File
@@ -118,11 +118,14 @@ class GameViewModel(
     private val _scrollEvents = MutableStateFlow<PersistentList<ScrollEvent>>(persistentListOf())
     val scrollEvents = _scrollEvents.asStateFlow()
 
-    private val _compassState = mutableStateOf(CompassState(emptySet()))
-    val compassState: State<CompassState> = _compassState
+    private val _compassState = MutableStateFlow(CompassState(emptySet()))
+    val compassState: StateFlow<CompassState> = _compassState
 
-    private val _vitalBars = mutableStateMapOf<String, ProgressBarData>()
-    val vitalBars: SnapshotStateMap<String, ProgressBarData> = _vitalBars
+    private val _dialogs = MutableStateFlow<Map<String, Map<String, DialogObject>>>(emptyMap())
+
+    val vitalBars: Flow<List<DialogObject>> = _dialogs.map { dialogs ->
+        dialogs["minivitals"]?.values?.toList() ?: emptyList()
+    }
 
     // Saved by macros
     private var storedText: String? = null
@@ -313,17 +316,28 @@ class GameViewModel(
             openWindows,
             windows,
             presets,
-            highlights
-        ) { openWindows, windows, presets, highlights ->
+            highlights,
+            _dialogs,
+        ) { openWindows, windows, presets, highlights, dialogs ->
             openWindows.map { name ->
-                WindowUiState(
-                    name = name,
-                    stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-                    window = windows[name],
-                    highlights = highlights,
-                    presets = presets,
-                    defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                )
+                val window = windows[name]
+                if (window?.windowType == WindowType.DIALOG) {
+                    DialogWindowUiState(
+                        name = name,
+                        window = window,
+                        dialogData = dialogs[name]?.values?.toList() ?: emptyList(),
+                        style = presets["default"] ?: defaultStyles["default"]!!,
+                    )
+                } else {
+                    StreamWindowUiState(
+                        name = name,
+                        stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
+                        window = window,
+                        highlights = highlights,
+                        presets = presets,
+                        defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
+                    )
+                }
             }
         }
             .stateIn(
@@ -335,7 +349,7 @@ class GameViewModel(
     val mainWindowUiState: StateFlow<WindowUiState> =
         combine(windows, presets, highlights) { windows, presets, highlights ->
             val name = "main"
-            WindowUiState(
+            StreamWindowUiState(
                 name = name,
                 stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
                 window = windows[name],
@@ -348,7 +362,7 @@ class GameViewModel(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
                 initialValue =
-                    WindowUiState(
+                    StreamWindowUiState(
                         name = "main",
                         stream = streamRegistry.getOrCreateStream("main") as ComposeTextStream,
                         window = null,
@@ -369,8 +383,14 @@ class GameViewModel(
         client.eventFlow
             .onEach { event ->
                 when (event) {
-                    is ClientProgressBarEvent -> {
-                        _vitalBars += event.progressBarData.id to event.progressBarData
+                    is ClientDialogEvent -> {
+                        _dialogs.update { origDialogs ->
+                            val data = origDialogs[event.id]?.toMutableMap() ?: mutableMapOf()
+                            data[event.data.id] = event.data
+                            val dialogs = origDialogs.toMutableMap()
+                            dialogs[event.id] = data
+                            dialogs.toPersistentMap()
+                        }
                     }
 
                     is ClientCompassEvent -> {

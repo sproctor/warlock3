@@ -7,6 +7,7 @@ data class Window(
     val title: String,
     val subtitle: String?,
     val location: WindowLocation?,
+    val windowType: WindowType,
     val position: Int?,
     val width: Int?,
     val height: Int?,
@@ -22,4 +23,9 @@ enum class WindowLocation(val value: String) {
     RIGHT("right"),
     MAIN("main"),
     BOTTOM("bottom"),
+}
+
+enum class WindowType {
+    STREAM,
+    DIALOG
 }

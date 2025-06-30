@@ -1,11 +1,12 @@
 package warlockfe.warlock3.stormfront.protocol
 
-import warlockfe.warlock3.core.client.Percentage
+import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.stormfront.stream.StormfrontWindow
+import warlockfe.warlock3.stormfront.util.StormfrontStreamWindow
 import warlockfe.warlock3.stormfront.util.CmdDefinition
 import warlockfe.warlock3.stormfront.util.StormfrontCmd
+import warlockfe.warlock3.stormfront.util.StormfrontDialogWindow
 
 sealed interface StormfrontEvent
 
@@ -24,13 +25,7 @@ data class StormfrontTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontRoundTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontCastTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontSettingsInfoEvent(val crc: String?, val instance: String?) : StormfrontEvent
-data class StormfrontProgressBarEvent(
-    val id: String,
-    val value: Percentage,
-    val text: String,
-    val left: Percentage,
-    val width: Percentage
-) : StormfrontEvent
+data class StormfrontDialogObjectEvent(val data: DialogObject) : StormfrontEvent
 data class StormfrontDialogDataEvent(val id: String?) : StormfrontEvent
 data object StormfrontCompassEndEvent : StormfrontEvent
 data class StormfrontDirectionEvent(val direction: DirectionType) : StormfrontEvent
@@ -39,7 +34,8 @@ data class StormfrontComponentStartEvent(val id: String) : StormfrontEvent
 data object StormfrontComponentEndEvent : StormfrontEvent
 data class StormfrontComponentDefinitionEvent(val id: String) : StormfrontEvent
 data object StormfrontHandledEvent : StormfrontEvent
-data class StormfrontStreamWindowEvent(val window: StormfrontWindow) : StormfrontEvent
+data class StormfrontStreamWindowEvent(val window: StormfrontStreamWindow) : StormfrontEvent
+data class StormfrontDialogWindowEvent(val window: StormfrontDialogWindow) : StormfrontEvent
 data object StormfrontNavEvent : StormfrontEvent
 data class StormfrontActionEvent(val text: String, val command: String) : StormfrontEvent
 data class StormfrontOpenUrlEvent(val url: String) : StormfrontEvent

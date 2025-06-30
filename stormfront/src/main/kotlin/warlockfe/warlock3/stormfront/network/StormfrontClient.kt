@@ -36,14 +36,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.client.ClientCompassEvent
+import warlockfe.warlock3.core.client.ClientDialogEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
-import warlockfe.warlock3.core.client.ClientProgressBarEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.client.ProgressBarData
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
@@ -61,6 +61,7 @@ import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isBlank
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.TextStream
+import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.stormfront.protocol.StormfrontActionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontAppEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontCastTimeEvent
@@ -72,6 +73,8 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontComponentEndEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontComponentStartEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontDataReceivedEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontDialogDataEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontDialogObjectEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontDialogWindowEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontDirectionEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontEndCmdList
 import warlockfe.warlock3.stormfront.protocol.StormfrontEolEvent
@@ -85,7 +88,6 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontOpenUrlEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontOutputEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontParseErrorEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPopStyleEvent
-import warlockfe.warlock3.stormfront.protocol.StormfrontProgressBarEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPromptEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPropertyEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontProtocolHandler
@@ -100,11 +102,12 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUnhandledTagEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUpdateVerbsEvent
-import warlockfe.warlock3.stormfront.stream.StormfrontWindow
+import warlockfe.warlock3.stormfront.util.StormfrontStreamWindow
 import warlockfe.warlock3.stormfront.util.AlterationResult
 import warlockfe.warlock3.stormfront.util.CmdDefinition
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import warlockfe.warlock3.stormfront.util.StormfrontCmd
+import warlockfe.warlock3.stormfront.util.StormfrontDialogWindow
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -162,7 +165,7 @@ class StormfrontClient(
     private var logName: String? = null
 
     private val mainStream = getStream("main")
-    private val windows = ConcurrentHashMap<String, StormfrontWindow>()
+    private val windows = ConcurrentHashMap<String, StormfrontStreamWindow>()
 
     private val commandQueue = Channel<String>(Channel.UNLIMITED)
     private val currentTypeAhead = MutableStateFlow(0)
@@ -198,21 +201,21 @@ class StormfrontClient(
 
     init {
         listOf(
-            StormfrontWindow(
+            StormfrontStreamWindow(
                 id = "warlockscripts",
                 title = "Running scripts",
                 subtitle = null,
                 ifClosed = "",
                 styleIfClosed = null,
             ),
-            StormfrontWindow(
+            StormfrontStreamWindow(
                 id = "scriptoutput",
                 title = "Script output",
                 subtitle = null,
                 ifClosed = "main",
                 styleIfClosed = "echo",
             ),
-            StormfrontWindow(
+            StormfrontStreamWindow(
                 id = "debug",
                 title = "Debug",
                 subtitle = null,
@@ -393,22 +396,16 @@ class StormfrontClient(
                                     }
 
                                     is StormfrontDialogDataEvent -> dialogDataId = event.id
-                                    is StormfrontProgressBarEvent -> {
-                                        _properties.value = _properties.value +
-                                                (event.id to event.value.value.toString()) +
-                                                (event.id + "text" to event.text)
-                                        notifyListeners(
-                                            ClientProgressBarEvent(
-                                                ProgressBarData(
-                                                    id = event.id,
-                                                    groupId = dialogDataId ?: "",
-                                                    left = event.left,
-                                                    width = event.width,
-                                                    text = event.text,
-                                                    value = event.value,
-                                                )
-                                            )
-                                        )
+                                    is StormfrontDialogObjectEvent -> {
+                                        val data = event.data
+                                        if (data is DialogObject.ProgressBar) {
+                                            _properties.value = _properties.value +
+                                                    (data.id to data.value.value.toString()) +
+                                                    ((data.id + "text") to (data.text ?: ""))
+                                        }
+                                        dialogDataId?.let {
+                                            notifyListeners(ClientDialogEvent(it, data))
+                                        }
                                     }
 
                                     is StormfrontCompassEndEvent -> {
@@ -473,6 +470,16 @@ class StormfrontClient(
                                             sendCommandDirect("_swclose s${event.window.id}")
                                         }
                                         addWindow(window)
+                                    }
+
+                                    is StormfrontDialogWindowEvent -> {
+                                        val window = event.window
+                                        windowRepository.setWindowTitle(
+                                            name = window.id,
+                                            title = window.title,
+                                            subtitle = null,
+                                            windowType = WindowType.DIALOG,
+                                        )
                                     }
 
                                     is StormfrontActionEvent -> {
@@ -833,12 +840,13 @@ class StormfrontClient(
             .launchIn(scope)
     }
 
-    private fun addWindow(window: StormfrontWindow) {
+    private fun addWindow(window: StormfrontStreamWindow) {
         windows[window.id] = window
         windowRepository.setWindowTitle(
             name = window.id,
             title = window.title,
-            subtitle = window.subtitle
+            subtitle = window.subtitle,
+            windowType = WindowType.STREAM,
         )
     }
 

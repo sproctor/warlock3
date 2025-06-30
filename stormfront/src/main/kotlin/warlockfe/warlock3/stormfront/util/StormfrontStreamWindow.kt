@@ -1,6 +1,6 @@
-package warlockfe.warlock3.stormfront.stream
+package warlockfe.warlock3.stormfront.util
 
-data class StormfrontWindow(
+data class StormfrontStreamWindow(
     val id: String,
     val title: String,
     val subtitle: String?,
