@@ -7,14 +7,15 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontDialogObjectEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontEvent
 import warlockfe.warlock3.stormfront.util.parseDistance
 
-class LinkHandler : BaseElementListener() {
+class ImageHandler : BaseElementListener() {
     override fun startElement(element: StartElement): StormfrontEvent? {
         val id = element.attributes["id"] ?: return null
         return StormfrontDialogObjectEvent(
-            DialogObject.Link(
+            DialogObject.Image(
                 id = id,
-                value = element.attributes["value"],
+                name = element.attributes["name"],
                 cmd = element.attributes["cmd"],
+                tooltip = element.attributes["tooltip"],
                 echo = element.attributes["echo"],
                 left = element.attributes["left"]?.let { parseDistance(it) },
                 top = element.attributes["top"]?.let { parseDistance(it) },
@@ -22,7 +23,6 @@ class LinkHandler : BaseElementListener() {
                 height = element.attributes["height"]?.let { parseDistance(it) },
                 topAnchor = element.attributes["anchor_top"],
                 leftAnchor = element.attributes["anchor_left"],
-                tooltip = element.attributes["tooltip"],
             )
         )
     }

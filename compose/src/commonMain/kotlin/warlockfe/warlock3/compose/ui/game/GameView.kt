@@ -467,13 +467,16 @@ fun GameBottomBar(viewModel: GameViewModel) {
             val vitalBars by viewModel.vitalBars.collectAsState(emptyList())
             DialogContent(
                 dataObjects = vitalBars,
-                modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 2.dp)
+                modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 2.dp),
+                executeCommand = {
+                    // Cannot execute commands from vitals bar
+                }
             )
             HandsView(viewModel.properties.collectAsState().value)
         }
         CompassView(
             modifier = Modifier.padding(4.dp),
-            state = viewModel.compassState.value,
+            state = viewModel.compassState.collectAsState().value,
             theme = viewModel.compassTheme,
             onClick = {
                 viewModel.sendCommand(it.abbreviation)

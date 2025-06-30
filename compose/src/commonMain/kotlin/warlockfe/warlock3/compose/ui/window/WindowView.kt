@@ -170,6 +170,9 @@ fun WindowView(
                         modifier = Modifier.fillMaxSize()
                             .background(uiState.style.backgroundColor.toColor())
                             .padding(8.dp),
+                        executeCommand = { command ->
+                            onActionClicked(WarlockAction.SendCommand(command))
+                        },
                     )
             }
         }
@@ -197,6 +200,7 @@ fun WindowView(
                 when (event) {
                     ScrollEvent.PAGE_UP -> scrollState.scrollBy(-viewportHeight)
                     ScrollEvent.PAGE_DOWN -> scrollState.scrollBy(viewportHeight)
+
                     ScrollEvent.LINE_UP -> {
                         val offset = scrollState.firstVisibleItemScrollOffset
                         val firstItem = scrollState.firstVisibleItemIndex
@@ -206,11 +210,17 @@ fun WindowView(
                             scrollState.scrollToItem(0)
                         }
                     }
-
                     ScrollEvent.LINE_DOWN -> {
                         val offset = scrollState.firstVisibleItemScrollOffset
                         val firstItem = scrollState.firstVisibleItemIndex
                         scrollState.scrollToItem(firstItem + 1, offset)
+                    }
+
+                    ScrollEvent.BUFFER_END -> {
+                        scrollState.scrollToItem(scrollState.layoutInfo.totalItemsCount - 1)
+                    }
+                    ScrollEvent.BUFFER_START -> {
+                        scrollState.scrollToItem(0)
                     }
                 }
                 handledScrollEvent(event)

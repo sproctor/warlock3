@@ -22,6 +22,7 @@ import warlockfe.warlock3.stormfront.protocol.elements.DHandler
 import warlockfe.warlock3.stormfront.protocol.elements.DialogDataHandler
 import warlockfe.warlock3.stormfront.protocol.elements.DirHandler
 import warlockfe.warlock3.stormfront.protocol.elements.DynaStreamHandler
+import warlockfe.warlock3.stormfront.protocol.elements.ImageHandler
 import warlockfe.warlock3.stormfront.protocol.elements.IndicatorHandler
 import warlockfe.warlock3.stormfront.protocol.elements.InvHandler
 import warlockfe.warlock3.stormfront.protocol.elements.LabelHandler
@@ -74,6 +75,7 @@ class StormfrontProtocolHandler {
         "dialogdata" to DialogDataHandler(),
         "dir" to DirHandler(),
         "dynastream" to DynaStreamHandler(),
+        "image" to ImageHandler(),
         "indicator" to IndicatorHandler(),
         "inv" to InvHandler(),
         "label" to LabelHandler(),

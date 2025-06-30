@@ -1,17 +1,23 @@
 package warlockfe.warlock3.compose.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -23,7 +29,9 @@ import kotlin.math.min
 fun DialogContent(
     dataObjects: List<DialogObject>,
     modifier: Modifier = Modifier,
+    executeCommand: (String) -> Unit,
 ) {
+    println("DialogContent: $dataObjects")
     val colors = mutableMapOf<String, ColorGroup>()
     dataObjects.forEach { data ->
         if (data is DialogObject.Skin) {
@@ -92,7 +100,8 @@ fun DialogContent(
                             absoluteLeft.linkTo(leftAnchor, leftMargin)
                         },
                     colorGroup = colors,
-                    dataObject = data
+                    dataObject = data,
+                    executeCommand = executeCommand,
                 )
             }
         }
@@ -104,10 +113,13 @@ private fun DataObjectContent(
     modifier: Modifier,
     colorGroup: ColorGroup,
     dataObject: DialogObject,
+    executeCommand: (String) -> Unit,
 ) {
     when (dataObject) {
         is DialogObject.ProgressBar -> ProgressBar(modifier, colorGroup, dataObject)
         is DialogObject.Label -> Label(modifier, colorGroup, dataObject.value ?: "")
+        is DialogObject.Link -> Link(modifier, colorGroup, dataObject, executeCommand)
+        is DialogObject.Image -> DialogImage(modifier, colorGroup, dataObject, executeCommand)
         else -> {
             // todo
         }
@@ -157,6 +169,53 @@ private fun Label(
             color = colorGroup.text,
             style = MaterialTheme.typography.bodySmall
         )
+    }
+}
+
+@Composable
+private fun Link(
+    modifier: Modifier,
+    colorGroup: ColorGroup,
+    data: DialogObject.Link,
+    executeCommand: (String) -> Unit,
+) {
+    Box(modifier = modifier) {
+        Text(
+            modifier = Modifier.align(Alignment.Center),
+            text = buildAnnotatedString {
+                pushLink(
+                    LinkAnnotation.Clickable("action") {
+                        executeCommand(data.cmd ?: "")
+                    }
+                )
+                append(data.value)
+                pop()
+            },
+            color = colorGroup.text,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
+private fun DialogImage(
+    modifier: Modifier,
+    colorGroup: ColorGroup,
+    data: DialogObject.Image,
+    executeCommand: (String) -> Unit,
+) {
+    Box(
+        modifier = modifier.then(
+            if (data.cmd != null) {
+                Modifier.clickable {
+                    executeCommand(data.cmd!!)
+                }
+            } else {
+                Modifier
+            }
+        )
+    ) {
+        Icon(Icons.Default.Search, null)
     }
 }
 

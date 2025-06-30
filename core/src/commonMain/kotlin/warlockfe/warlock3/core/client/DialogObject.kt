@@ -8,6 +8,7 @@ sealed class DialogObject() {
     abstract val height: DataDistance?
     abstract val topAnchor: String?
     abstract val leftAnchor: String?
+    abstract val tooltip: String?
 
     data class Skin(
         override val id: String,
@@ -17,6 +18,7 @@ sealed class DialogObject() {
         override val height: DataDistance?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
+        override val tooltip: String?,
         val name: String,
         val controls: List<String>,
     ) : DialogObject()
@@ -29,6 +31,7 @@ sealed class DialogObject() {
         override val height: DataDistance?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
+        override val tooltip: String?,
         val value: Percentage,
         val text: String?,
     ) : DialogObject()
@@ -41,6 +44,7 @@ sealed class DialogObject() {
         override val height: DataDistance?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
+        override val tooltip: String?,
         val value: String?,
     ) : DialogObject()
 
@@ -52,6 +56,7 @@ sealed class DialogObject() {
         override val height: DataDistance?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
+        override val tooltip: String?,
         val value: String?,
         val cmd: String?,
         val echo: String?,
@@ -66,9 +71,9 @@ sealed class DialogObject() {
         override val height: DataDistance?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
+        override val tooltip: String?,
         val value: String?,
         val cmd: String?,
-        val tooltip: String?,
         val echo: String?,
     ) : DialogObject()
 
@@ -76,7 +81,19 @@ sealed class DialogObject() {
 
     // radio
 
-    // image
+    data class Image(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val name: String?,
+        val cmd: String?,
+        val echo: String?,
+    ) : DialogObject()
 }
 
 sealed class DataDistance {
