@@ -19,10 +19,6 @@ fun parseMacro(text: String): List<MacroToken>? {
                 MacroToken.At
             }
 
-            MacroLexer.Question -> {
-                MacroToken.Question
-            }
-
             MacroLexer.Character -> {
                 MacroToken.Text(token.text)
             }

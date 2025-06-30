@@ -6,8 +6,6 @@ Percent: '%' -> skip, pushMode(VARIABLE);
 
 LCurl: '{' -> skip, pushMode(COMMAND);
 
-Question: '?' ;
-
 At: '@' ;
 
 Character: . ;

@@ -550,16 +550,12 @@ class GameViewModel(
             tokens.forEach { token ->
                 when (token) {
                     is MacroToken.Entity -> {
-                        handleEntity(token.char)
+                        handleEntity(token.char, movedCursor)
                     }
 
                     MacroToken.At -> {
                         entryText = entryText.copy(selection = TextRange(entryText.text.length))
                         movedCursor = true
-                    }
-
-                    MacroToken.Question -> {
-                        storedText?.let { entryAppend(it, !movedCursor) }
                     }
 
                     is MacroToken.Text -> {
@@ -579,7 +575,7 @@ class GameViewModel(
         }
     }
 
-    private suspend fun handleEntity(entity: Char) {
+    private suspend fun handleEntity(entity: Char, movedCursor: Boolean) {
         when (entity) {
             'x' -> {
                 storedText = entryText.text
@@ -592,6 +588,10 @@ class GameViewModel(
 
             'p' -> {
                 delay(1_000L)
+            }
+
+            '?' -> {
+                storedText?.let { entryAppend(it, !movedCursor) }
             }
         }
     }
