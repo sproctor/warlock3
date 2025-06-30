@@ -10,6 +10,12 @@ import warlockfe.warlock3.compose.util.getText
 
 @OptIn(ExperimentalComposeUiApi::class)
 val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
+    "bufferend" to { viewModel, _ ->
+        viewModel.scroll(ScrollEvent.BUFFER_END)
+    },
+    "bufferstart" to { viewModel, _ ->
+        viewModel.scroll(ScrollEvent.BUFFER_START)
+    },
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
         // TODO: allow focus on other windows and apply copy there
