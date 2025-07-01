@@ -6,6 +6,7 @@ sealed class DialogObject() {
     abstract val top: DataDistance?
     abstract val width: DataDistance?
     abstract val height: DataDistance?
+    abstract val align: String?
     abstract val topAnchor: String?
     abstract val leftAnchor: String?
     abstract val tooltip: String?
@@ -16,6 +17,7 @@ sealed class DialogObject() {
         override val top: DataDistance?,
         override val width: DataDistance?,
         override val height: DataDistance?,
+        override val align: String?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
         override val tooltip: String?,
@@ -29,6 +31,7 @@ sealed class DialogObject() {
         override val top: DataDistance?,
         override val width: DataDistance?,
         override val height: DataDistance?,
+        override val align: String?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
         override val tooltip: String?,
@@ -42,6 +45,7 @@ sealed class DialogObject() {
         override val top: DataDistance?,
         override val width: DataDistance?,
         override val height: DataDistance?,
+        override val align: String?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
         override val tooltip: String?,
@@ -54,6 +58,7 @@ sealed class DialogObject() {
         override val top: DataDistance?,
         override val width: DataDistance?,
         override val height: DataDistance?,
+        override val align: String?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
         override val tooltip: String?,
@@ -69,6 +74,7 @@ sealed class DialogObject() {
         override val top: DataDistance?,
         override val width: DataDistance?,
         override val height: DataDistance?,
+        override val align: String?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
         override val tooltip: String?,
@@ -87,6 +93,7 @@ sealed class DialogObject() {
         override val top: DataDistance?,
         override val width: DataDistance?,
         override val height: DataDistance?,
+        override val align: String?,
         override val topAnchor: String?,
         override val leftAnchor: String?,
         override val tooltip: String?,

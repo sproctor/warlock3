@@ -19,6 +19,7 @@ class SkinHandler : BaseElementListener() {
                 top = element.attributes["top"]?.let { parseDistance(it) },
                 width = element.attributes["width"]?.let { parseDistance(it) },
                 height = element.attributes["height"]?.let { parseDistance(it) },
+                align = element.attributes["align"],
                 topAnchor = element.attributes["anchor_top"],
                 leftAnchor = element.attributes["anchor_left"],
                 tooltip = element.attributes["tooltip"],

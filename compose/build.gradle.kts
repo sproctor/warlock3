@@ -26,6 +26,8 @@ kotlin {
                 implementation(libs.material.icons)
                 api(libs.androidx.lifecycle.viewmodel.compose)
                 implementation("tech.annexflow.compose:constraintlayout-compose-multiplatform:0.6.0")
+                implementation(compose.uiTooling)
+                implementation(compose.components.uiToolingPreview)
 
                 // Third party UI
                 implementation(libs.colorpicker)
@@ -37,11 +39,6 @@ kotlin {
                 implementation(libs.appdirs)
             }
         }
-//        val androidMain by getting {
-//            dependencies {
-//                implementation(compose.preview)
-//            }
-//        }
 //        val commonTest by getting {
 //            dependencies {
 //                implementation(kotlin("test"))
@@ -49,11 +46,6 @@ kotlin {
 //                implementation(libs.turbine)
 //            }
 //        }
-        val jvmMain by getting {
-            dependencies {
-                implementation(compose.preview)
-            }
-        }
     }
 
     jvmToolchain(jvmToolchainVersion.toInt())
