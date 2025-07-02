@@ -77,7 +77,7 @@ fun FrameWindowScope.AppMenuBar(
             text = "Windows",
             enabled = characterId != null && windows.values.isNotEmpty(),
         ) {
-            windows.values.forEach { window ->
+            windows.values.sortedBy { it.name }.forEach { window ->
                 if (window.name != "main") {
                     CheckboxItem(
                         text = window.title,
