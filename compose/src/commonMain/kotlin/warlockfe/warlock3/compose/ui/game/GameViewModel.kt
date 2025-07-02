@@ -327,6 +327,8 @@ class GameViewModel(
                         window = window,
                         dialogData = dialogs[name] ?: emptyList(),
                         style = presets["default"] ?: defaultStyles["default"]!!,
+                        width = null,
+                        height = null,
                     )
                 } else {
                     StreamWindowUiState(

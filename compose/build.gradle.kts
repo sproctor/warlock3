@@ -28,6 +28,7 @@ kotlin {
                 implementation(libs.constraintlayout)
                 implementation(compose.uiTooling)
                 implementation(compose.components.uiToolingPreview)
+                implementation(libs.fastscroller.m3)
 
                 // Third party UI
                 implementation(libs.colorpicker)

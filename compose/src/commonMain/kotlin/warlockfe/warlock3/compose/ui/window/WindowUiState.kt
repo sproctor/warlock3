@@ -28,4 +28,6 @@ data class DialogWindowUiState(
     override val window: Window?,
     val dialogData: List<DialogObject>,
     val style: StyleDefinition,
+    val width: Int?,
+    val height: Int?,
 ) : WindowUiState

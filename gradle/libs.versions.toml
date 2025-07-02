@@ -31,6 +31,7 @@ constraintlayout = "0.6.0"
 ##            ⬆ = "0.6.0-shaded-core"
 conveyor = "1.12"
 conveyor-control = "1.1"
+fastscroller = "0.3.2"
 filekit = "0.10.0-beta04"
 kotlin = "2.2.0"
 kotlinx-cli = "0.3.6"
@@ -57,6 +58,7 @@ apache-commons-text = { group = "org.apache.commons", name = "commons-text", ver
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 constraintlayout = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout" }
 conveyor-control = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }
+fastscroller-m3 = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-material3", version.ref = "fastscroller" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }

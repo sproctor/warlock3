@@ -85,7 +85,9 @@ fun DialogContent(
     BoxWithConstraints(modifier) {
         val maxWidth = maxWidth
         val maxHeight = maxHeight
-        ConstraintLayout(Modifier.fillMaxSize()) {
+        ConstraintLayout(
+            Modifier.fillMaxSize()
+        ) {
             val refs = dataObjects.associate { it.id to createRef() }
             var lastRef: ConstrainedLayoutReference? = null
             dataObjects.forEach { data ->

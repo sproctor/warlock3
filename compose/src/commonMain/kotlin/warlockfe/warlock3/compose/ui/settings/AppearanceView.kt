@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -29,15 +30,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.FontUpdate
-import warlockfe.warlock3.compose.components.LocalScrollbarStyle
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.components.ScrollbarStyle
+import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
@@ -155,10 +156,6 @@ fun AppearanceView(
         val barColor = presets["default"]?.textColor?.toColor() ?: MaterialTheme.colorScheme.onSurface
         CompositionLocalProvider(
             LocalContentColor provides (presets["default"]?.textColor?.toColor() ?: LocalContentColor.current),
-            LocalScrollbarStyle provides ScrollbarStyle(
-                hoverColor = barColor.copy(alpha = 0.5f),
-                unhoverColor = barColor.copy(alpha = 0.12f)
-            ),
         ) {
             ScrollableColumn(
                 Modifier.weight(1f)
@@ -166,6 +163,13 @@ fun AppearanceView(
                         presets["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
                     )
                     .fillMaxWidth(),
+                scrollbarStyle = defaultScrollbarStyle(
+                    thumbStyle = ThumbStyle(
+                        shape = RoundedCornerShape(4.dp),
+                        unhoverColor = barColor.copy(alpha = 0.2f),
+                        hoverColor = barColor,
+                    )
+                )
             ) {
                 previewLines.forEach { line ->
                     val lineStyle = flattenStyles(

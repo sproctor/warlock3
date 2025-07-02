@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
@@ -12,9 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -28,15 +28,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
@@ -47,9 +48,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import warlockfe.warlock3.compose.components.LocalScrollbarStyle
-import warlockfe.warlock3.compose.components.ScrollableLazyColumn
-import warlockfe.warlock3.compose.components.ScrollbarStyle
+import io.github.oikvpqya.compose.fastscroller.ThumbStyle
+import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.game.toWindowLine
@@ -81,11 +82,15 @@ fun WindowView(
 ) {
     val window = uiState.window
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
-    val scrollState = rememberLazyListState()
+    val scrollState = rememberScrollState()
 
     val title = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: "")
+    var viewportHeight by mutableIntStateOf(0)
     Surface(
         modifier.padding(2.dp)
+            .onLayoutRectChanged { bounds ->
+                viewportHeight = bounds.height
+            }
             .clickable(interactionSource = null, indication = null) {
                 onSelected()
             }
@@ -164,16 +169,18 @@ fun WindowView(
                         defaultStyle = uiState.defaultStyle,
                         onActionClicked = onActionClicked,
                     )
+
                 is DialogWindowUiState ->
-                    DialogContent(
-                        dataObjects = uiState.dialogData,
-                        modifier = Modifier.fillMaxSize()
-                            .background(uiState.style.backgroundColor.toColor())
-                            .padding(8.dp),
-                        executeCommand = { command ->
-                            onActionClicked(WarlockAction.SendCommand(command))
-                        },
-                    )
+                    ScrollableColumn(Modifier.background(uiState.style.backgroundColor.toColor())) {
+                        DialogContent(
+                            dataObjects = uiState.dialogData,
+                            modifier = Modifier.fillMaxSize()
+                                .padding(8.dp),
+                            executeCommand = { command ->
+                                onActionClicked(WarlockAction.SendCommand(command))
+                            },
+                        )
+                    }
             }
         }
     }
@@ -196,31 +203,24 @@ fun WindowView(
         if (isSelected) {
             val event = scrollEvents.firstOrNull()
             if (event != null) {
-                val viewportHeight = scrollState.layoutInfo.viewportSize.height.toFloat()
                 when (event) {
-                    ScrollEvent.PAGE_UP -> scrollState.scrollBy(-viewportHeight)
-                    ScrollEvent.PAGE_DOWN -> scrollState.scrollBy(viewportHeight)
+                    ScrollEvent.PAGE_UP -> scrollState.scrollBy(-viewportHeight.toFloat())
+                    ScrollEvent.PAGE_DOWN -> scrollState.scrollBy(viewportHeight.toFloat())
 
                     ScrollEvent.LINE_UP -> {
-                        val offset = scrollState.firstVisibleItemScrollOffset
-                        val firstItem = scrollState.firstVisibleItemIndex
-                        if (firstItem > 0) {
-                            scrollState.scrollToItem(firstItem - 1, offset)
-                        } else {
-                            scrollState.scrollToItem(0)
-                        }
+                        scrollState.scrollBy(-20f)
                     }
+
                     ScrollEvent.LINE_DOWN -> {
-                        val offset = scrollState.firstVisibleItemScrollOffset
-                        val firstItem = scrollState.firstVisibleItemIndex
-                        scrollState.scrollToItem(firstItem + 1, offset)
+                        scrollState.scrollBy(20f)
                     }
 
                     ScrollEvent.BUFFER_END -> {
-                        scrollState.scrollToItem(scrollState.layoutInfo.totalItemsCount - 1)
+                        scrollState.scrollTo(0)
                     }
+
                     ScrollEvent.BUFFER_START -> {
-                        scrollState.scrollToItem(0)
+                        scrollState.scrollTo(scrollState.maxValue)
                     }
                 }
                 handledScrollEvent(event)
@@ -295,7 +295,7 @@ private fun WindowViewDropdownMenu(
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
-    scrollState: LazyListState,
+    scrollState: ScrollState,
     window: Window?,
     highlights: List<ViewHighlight>,
     presets: Map<String, StyleDefinition>,
@@ -313,56 +313,53 @@ private fun WindowViewContent(
     val components = stream.components
 
     SelectionContainer {
-        CompositionLocalProvider(
-            LocalScrollbarStyle provides ScrollbarStyle(
-                hoverColor = textColor.copy(alpha = 0.5f),
-                unhoverColor = textColor.copy(alpha = 0.12f)
+        ScrollableColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(vertical = 4.dp)
+                .semantics {
+                    isTraversalGroup = true
+                    liveRegion = LiveRegionMode.Polite
+                },
+            state = scrollState,
+            scrollbarStyle = defaultScrollbarStyle(
+                thumbStyle = ThumbStyle(
+                    shape = RoundedCornerShape(4.dp),
+                    unhoverColor = textColor.copy(alpha = 0.2f),
+                    hoverColor = textColor,
+                )
             )
         ) {
-            ScrollableLazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-                    .padding(vertical = 4.dp)
-                    .semantics {
-                        isTraversalGroup = true
-                        liveRegion = LiveRegionMode.Polite
-                    },
-                state = scrollState
-            ) {
-                items(
-                    items = lines,
-                    key = { it.serialNumber }
-                ) { streamLine ->
-                    val line = streamLine.toWindowLine(
-                        highlights = highlights,
-                        presets = presets,
-                        components = components,
-                    ) { action ->
-                        logger.debug { "action clicked: $action" }
-                        onActionClicked(action)
-                    }
-                    // FIXME: if line is null, I think we can screw up the scrolling
-                    if (line != null) {
-                        Box(
-                            modifier = Modifier.fillParentMaxWidth()
-                                .background(
-                                    line.entireLineStyle?.backgroundColor?.toColor()
-                                        ?: Color.Unspecified
-                                )
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            BasicText(
-                                text = line.text,
-                                style = TextStyle(
-                                    color = textColor,
-                                    fontFamily = fontFamily,
-                                    fontSize = fontSize
-                                ),
+            lines.forEach { streamLine ->
+                val line = streamLine.toWindowLine(
+                    highlights = highlights,
+                    presets = presets,
+                    components = components,
+                ) { action ->
+                    logger.debug { "action clicked: $action" }
+                    onActionClicked(action)
+                }
+                // FIXME: if line is null, I think we can screw up the scrolling
+                if (line != null) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .background(
+                                line.entireLineStyle?.backgroundColor?.toColor()
+                                    ?: Color.Unspecified
                             )
-                            // Add newlines in selected text
-                            BasicText(text = "\n", modifier = Modifier.size(0.dp))
-                        }
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        BasicText(
+                            text = line.text,
+                            style = TextStyle(
+                                color = textColor,
+                                fontFamily = fontFamily,
+                                fontSize = fontSize
+                            ),
+                        )
+                        // Add newlines in selected text
+                        BasicText(text = "\n", modifier = Modifier.size(0.dp))
                     }
                 }
             }
@@ -370,14 +367,16 @@ private fun WindowViewContent(
             // This probably shouldn't cause a recomposition
             var prevLastSerial by remember { mutableStateOf(-1L) }
             val lastSerial = lines.lastOrNull()?.serialNumber
+            var stickToEnd by remember { mutableStateOf(true) }
+            LaunchedEffect(scrollState.value) {
+                if (prevLastSerial == lastSerial) {
+                    stickToEnd = scrollState.value == scrollState.maxValue
+                }
+            }
             LaunchedEffect(lastSerial) {
                 if (lastSerial != null) {
-                    // If we're at the spot we last scrolled to
-                    val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                        ?.let { lines.getOrNull(it)?.serialNumber }
-                        ?: -1L
-                    if ((lastVisibleSerial >= prevLastSerial || lastVisibleSerial == -1L) && lines.lastIndex > 0) { // scroll to the end if we were at the end
-                        scrollState.scrollToItem(lines.lastIndex)
+                    if (stickToEnd) {
+                        scrollState.scrollTo(scrollState.maxValue)
                     }
                     // remember the last serial
                     prevLastSerial = lastSerial
