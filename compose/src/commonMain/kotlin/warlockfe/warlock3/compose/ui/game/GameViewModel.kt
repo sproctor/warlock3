@@ -121,10 +121,10 @@ class GameViewModel(
     private val _compassState = MutableStateFlow(CompassState(emptySet()))
     val compassState: StateFlow<CompassState> = _compassState
 
-    private val _dialogs = MutableStateFlow<Map<String, Map<String, DialogObject>>>(emptyMap())
+    private val _dialogs = MutableStateFlow<Map<String, List<DialogObject>>>(emptyMap())
 
     val vitalBars: Flow<List<DialogObject>> = _dialogs.map { dialogs ->
-        dialogs["minivitals"]?.values?.toList() ?: emptyList()
+        dialogs["minivitals"] ?: emptyList()
     }
 
     // Saved by macros
@@ -325,7 +325,7 @@ class GameViewModel(
                     DialogWindowUiState(
                         name = name,
                         window = window,
-                        dialogData = dialogs[name]?.values?.toList() ?: emptyList(),
+                        dialogData = dialogs[name] ?: emptyList(),
                         style = presets["default"] ?: defaultStyles["default"]!!,
                     )
                 } else {
@@ -385,8 +385,13 @@ class GameViewModel(
                 when (event) {
                     is ClientDialogEvent -> {
                         _dialogs.update { origDialogs ->
-                            val data = origDialogs[event.id]?.toMutableMap() ?: mutableMapOf()
-                            data[event.data.id] = event.data
+                            val data = origDialogs[event.id]?.toMutableList() ?: mutableListOf()
+                            val existingIndex = data.indexOfFirst { it.id == event.data.id }
+                            if (existingIndex != -1) {
+                                data[existingIndex] = event.data
+                            } else {
+                                data.add(event.data)
+                            }
                             val dialogs = origDialogs.toMutableMap()
                             dialogs[event.id] = data
                             dialogs.toPersistentMap()

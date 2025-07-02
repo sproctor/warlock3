@@ -1,10 +1,13 @@
 package warlockfe.warlock3.compose.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
+import androidx.constraintlayout.compose.ConstrainedLayoutReference
 import androidx.constraintlayout.compose.ConstraintLayout
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import warlockfe.warlock3.core.client.DataDistance
@@ -81,34 +85,58 @@ fun DialogContent(
     BoxWithConstraints(modifier) {
         val maxWidth = maxWidth
         val maxHeight = maxHeight
-        ConstraintLayout {
+        ConstraintLayout(Modifier.fillMaxSize()) {
             val refs = dataObjects.associate { it.id to createRef() }
-            var defaultLeftMargin = 0.dp
-            var defaultTopMargin = 0.dp
+            var lastRef: ConstrainedLayoutReference? = null
             dataObjects.forEach { data ->
-                val width = data.width?.toDp(maxWidth) ?: data.getWidth()
-                val height = data.height?.toDp(maxHeight) ?: Dp.Unspecified
-                val offsetX = when (data.align) {
-                    "n" -> (maxWidth - (width.takeIf { it.isSpecified } ?: 0.dp)) / 2
-                    "ne" -> maxWidth - (width.takeIf { it.isSpecified } ?: 0.dp)
-                    else -> 0.dp
-                }
-                val leftMargin = (data.left?.toDp(maxWidth)?.let { it + offsetX } ?: defaultLeftMargin)
-                val topMargin = data.top?.toDp(maxWidth) ?: defaultTopMargin
-                defaultTopMargin = topMargin
-                defaultLeftMargin = leftMargin + width
                 val colors = colors[data.id] ?: ColorGroup(
                     text = Color.White,
                     bar = Color.Blue,
                     background = Color.Gray
                 )
                 DataObjectContent(
-                    modifier = Modifier.size(width, height)
+                    modifier = Modifier
+                        .size(
+                            width = data.width?.toDp(maxWidth) ?: Dp.Unspecified,
+                            height = data.height?.toDp(maxHeight) ?: Dp.Unspecified,
+                        )
                         .constrainAs(refs[data.id]!!) {
-                            val topAnchor = data.topAnchor?.let { refs[it]?.bottom } ?: parent.top
-                            top.linkTo(topAnchor, topMargin)
-                            val leftAnchor = data.leftAnchor?.let { refs[it]?.absoluteRight } ?: parent.absoluteLeft
-                            absoluteLeft.linkTo(leftAnchor, leftMargin)
+                            val topAnchor = if (data.topAnchor != null) {
+                                refs[data.topAnchor]?.bottom ?: parent.top
+                            } else if (data.top == null) {
+                                lastRef?.top ?: parent.top
+                            } else {
+                                parent.top
+                            }
+                            top.linkTo(
+                                anchor = topAnchor,
+                                margin = data.top?.toDp(maxWidth) ?: 0.dp
+                            )
+                            val leftMargin = data.left?.toDp(maxWidth) ?: 0.dp
+                            when (data.align) {
+                                "n" -> {
+                                    absoluteLeft.linkTo(parent.absoluteLeft, leftMargin)
+                                    absoluteRight.linkTo(parent.absoluteRight, -leftMargin)
+                                    // We're ignoring anchor_left in this situation, is that ok?
+                                }
+
+                                "ne" -> {
+                                    absoluteRight.linkTo(parent.absoluteRight, leftMargin)
+                                }
+
+                                else -> {
+                                    // nw and default are treated the same
+                                    val leftAnchor = if (data.leftAnchor != null) {
+                                        refs[data.leftAnchor]?.absoluteRight ?: parent.absoluteLeft
+                                    } else if (data.left == null) {
+                                        lastRef?.absoluteRight ?: parent.absoluteLeft
+                                    } else {
+                                        parent.absoluteLeft
+                                    }
+                                    absoluteLeft.linkTo(leftAnchor, leftMargin)
+                                }
+                            }
+                            lastRef = refs[data.id]
                         },
                     colorGroup = colors,
                     dataObject = data,
@@ -131,6 +159,7 @@ private fun DataObjectContent(
         is DialogObject.Label -> Label(modifier, colorGroup, dataObject.value ?: "")
         is DialogObject.Link -> Link(modifier, colorGroup, dataObject, executeCommand)
         is DialogObject.Image -> DialogImage(modifier, colorGroup, dataObject, executeCommand)
+        is DialogObject.Button -> DialogButton(modifier, dataObject, executeCommand)
         else -> {
             // todo
         }
@@ -161,7 +190,7 @@ private fun ProgressBar(
                 modifier = Modifier.align(Alignment.Center),
                 text = text,
                 color = colorGroup.text,
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.labelSmall
             )
         }
     }
@@ -173,12 +202,12 @@ private fun Label(
     colorGroup: ColorGroup,
     text: String,
 ) {
-    Box(modifier = modifier) {
+    Box(modifier = modifier.padding(4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = text,
             color = colorGroup.text,
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.labelSmall
         )
     }
 }
@@ -190,7 +219,7 @@ private fun Link(
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
 ) {
-    Box(modifier = modifier) {
+    Box(modifier = modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = buildAnnotatedString {
@@ -203,7 +232,7 @@ private fun Link(
                 pop()
             },
             color = colorGroup.text,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -234,27 +263,42 @@ private fun DialogImage(
     }
 }
 
-private data class ColorGroup(val text: Color, val bar: Color, val background: Color)
-
-private fun DialogObject.getWidth(): Dp {
-    return when (this) {
-        is DialogObject.ProgressBar -> {
-            getTextWidth(text)
-        }
-        is DialogObject.Label -> {
-            getTextWidth(value)
-        }
-        is DialogObject.Image -> 0.dp
-        is DialogObject.Link ->
-            getTextWidth(value)
-        is DialogObject.Skin -> 0.dp
-        is DialogObject.Button -> getTextWidth(value)
+@Composable
+private fun DialogButton(
+    modifier: Modifier,
+    data: DialogObject.Button,
+    executeCommand: (String) -> Unit,
+) {
+    val shape = MaterialTheme.shapes.extraSmall
+    Box(modifier = modifier
+        .border(
+            width = Dp.Hairline,
+            color = MaterialTheme.colorScheme.outline,
+            shape = shape
+        )
+        .background(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shape = shape
+        )
+    ) {
+        Text(
+            modifier = Modifier.align(Alignment.Center),
+            text = buildAnnotatedString {
+                pushLink(
+                    LinkAnnotation.Clickable("action") {
+                        executeCommand(data.cmd ?: "")
+                    }
+                )
+                append(data.value)
+                pop()
+            },
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
-private fun getTextWidth(text: String?): Dp {
-    return text?.let { 11.dp * it.length } ?: 0.dp
-}
+private data class ColorGroup(val text: Color, val bar: Color, val background: Color)
 
 @Preview
 @Composable
@@ -624,7 +668,7 @@ fun CombatDialogPreview() {
             topAnchor = null,
             leftAnchor = null,
             tooltip = null,
-            value = "MMMM",
+            value = "skin",
             cmd = "_skin",
             echo = "skin"
         ),
