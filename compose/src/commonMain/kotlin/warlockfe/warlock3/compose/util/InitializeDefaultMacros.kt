@@ -12,19 +12,19 @@ suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
         put("global", MacroKeyCombo(Key.C.keyCode, ctrl = true), "{copy}")
         put("global", MacroKeyCombo(Key.DirectionUp.keyCode), "{PrevHistory}")
         put("global", MacroKeyCombo(Key.DirectionDown.keyCode), "{NextHistory}")
-        put("global", MacroKeyCombo(Key.MoveEnd.keyCode), "\\xsw\\r\\?")
-        put("global", MacroKeyCombo(Key.DirectionDown.keyCode), "\\xs\\r\\?")
-        put("global", MacroKeyCombo(Key.PageDown.keyCode), "\\xse\\r\\?")
-        put("global", MacroKeyCombo(Key.DirectionLeft.keyCode), "\\xw\\r\\?")
-        put("global", MacroKeyCombo(Key.DirectionCenter.keyCode), "\\xout\\r\\?")
-        put("global", MacroKeyCombo(Key.DirectionRight.keyCode), "\\xe\\r\\?")
-        put("global", MacroKeyCombo(Key.Home.keyCode), "\\xnw\\r\\?")
-        put("global", MacroKeyCombo(Key.DirectionUp.keyCode), "\\xn\\r\\?")
-        put("global", MacroKeyCombo(Key.PageUp.keyCode), "\\xne\\r\\?")
-        put("global", MacroKeyCombo(Key.Insert.keyCode), "\\xdown\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad1.keyCode), "\\xsw\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad2.keyCode), "\\xs\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad3.keyCode), "\\xse\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad4.keyCode), "\\xw\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad5.keyCode), "\\xout\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad6.keyCode), "\\xe\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad7.keyCode), "\\xnw\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad8.keyCode), "\\xn\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad9.keyCode), "\\xne\\r\\?")
+        put("global", MacroKeyCombo(Key.NumPad0.keyCode), "\\xdown\\r\\?")
         put("global",
             // this is currently broken on desktop, waiting for fix of https://youtrack.jetbrains.com/issue/CMP-4211
-            MacroKeyCombo(Key.Delete.keyCode), "\\xup\\r\\?"
+            MacroKeyCombo(Key.NumPadDot.keyCode), "\\xup\\r\\?"
         )
         put("global", MacroKeyCombo(Key.Escape.keyCode), "{StopScript}")
         put("global", MacroKeyCombo(Key.Escape.keyCode, shift = true), "{PauseScript}")
@@ -33,9 +33,3 @@ suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
         put("global", MacroKeyCombo(Key.PageDown.keyCode), "{PageDown}")
     }
 }
-
-//expect val Key.Companion.NumPadInsert: Key
-//expect val Key.Companion.NumPadDelete: Key
-//expect val Key.Companion.End: Key
-//expect val Key.Companion.NumPadDown: Key
-//expect val Key.Companion.NumPadPageDown: Key
