@@ -64,6 +64,12 @@ import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.*
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+import kotlin.time.toJavaInstant
 
 @Composable
 fun WindowView(
@@ -294,6 +300,7 @@ private fun WindowViewDropdownMenu(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
@@ -346,7 +353,7 @@ private fun WindowViewContent(
                 }
                 // FIXME: if line is null, I think we can screw up the scrolling
                 if (line != null) {
-                    Box(
+                    Row(
                         modifier = Modifier.fillMaxWidth()
                             .background(
                                 line.entireLineStyle?.backgroundColor?.toColor()
@@ -354,6 +361,16 @@ private fun WindowViewContent(
                             )
                             .padding(horizontal = 4.dp)
                     ) {
+                        if (window?.showTimestamps == true) {
+                            BasicText(
+                                text = line.timestamp.toDateTimeString() + ": ",
+                                style = TextStyle(
+                                    color = textColor,
+                                    fontFamily = fontFamily,
+                                    fontSize = fontSize
+                                ),
+                            )
+                        }
                         BasicText(
                             text = line.text,
                             style = TextStyle(
@@ -388,4 +405,12 @@ private fun WindowViewContent(
             }
         }
     }
+}
+
+private val instantFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+
+@OptIn(ExperimentalTime::class)
+private fun Instant.toDateTimeString(timeZone: TimeZone = TimeZone.getDefault()): String {
+    val zonedDateTime = toJavaInstant().atZone(timeZone.toZoneId())
+    return instantFormatter.format(zonedDateTime)
 }

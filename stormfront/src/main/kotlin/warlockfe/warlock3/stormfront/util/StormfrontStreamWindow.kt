@@ -6,4 +6,5 @@ data class StormfrontStreamWindow(
     val subtitle: String?,
     val ifClosed: String?,
     val styleIfClosed: String?,
+    val timestamp: Boolean,
 )

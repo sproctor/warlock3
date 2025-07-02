@@ -16,7 +16,8 @@ class StreamWindowHandler : BaseElementListener() {
                 title = element.attributes["title"] ?: id,
                 subtitle = element.attributes["subtitle"],
                 ifClosed = element.attributes["ifClosed"],
-                styleIfClosed = element.attributes["styleIfClosed"]
+                styleIfClosed = element.attributes["styleIfClosed"],
+                timestamp = element.attributes["timestamp"] != null,
             )
         )
     }

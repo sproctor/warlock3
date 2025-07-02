@@ -167,6 +167,10 @@ class WslContext(
         client.print(StyledString(message, WarlockStyle.Echo))
     }
 
+    suspend fun printToStream(stream: String, message: String) {
+        client.getStream(stream).appendLine(StyledString(message))
+    }
+
     suspend fun log(level: ScriptLoggingLevel, message: String) {
         log(level.level, message)
     }

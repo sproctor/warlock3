@@ -190,6 +190,7 @@ class StormfrontClient(
                 subtitle = null,
                 ifClosed = "",
                 styleIfClosed = null,
+                timestamp = false,
             ),
             StormfrontStreamWindow(
                 id = "scriptoutput",
@@ -197,6 +198,7 @@ class StormfrontClient(
                 subtitle = null,
                 ifClosed = "main",
                 styleIfClosed = "echo",
+                timestamp = false,
             ),
             StormfrontStreamWindow(
                 id = "debug",
@@ -204,6 +206,7 @@ class StormfrontClient(
                 subtitle = null,
                 ifClosed = "",
                 styleIfClosed = null,
+                timestamp = false,
             ),
         ).forEach { addWindow(it) }
         scope.launch {
@@ -462,6 +465,7 @@ class StormfrontClient(
                                             title = window.title,
                                             subtitle = null,
                                             windowType = WindowType.DIALOG,
+                                            showTimestamps = false,
                                         )
                                     }
 
@@ -812,6 +816,7 @@ class StormfrontClient(
             title = window.title,
             subtitle = window.subtitle,
             windowType = WindowType.STREAM,
+            showTimestamps = window.timestamp,
         )
     }
 

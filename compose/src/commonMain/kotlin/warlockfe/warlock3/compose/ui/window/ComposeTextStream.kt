@@ -8,7 +8,10 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 class ComposeTextStream(
     override val id: String,
     private var maxLines: Int,
@@ -73,7 +76,14 @@ class ComposeTextStream(
         if (maxLines > 0 && lines.size >= maxLines) {
             lines.removeAt(0)
         }
-        lines.add(StreamLine(text = text, ignoreWhenBlank = ignoreWhenBlank, serialNumber = nextSerialNumber++))
+        lines.add(
+            StreamLine(
+                text = text,
+                ignoreWhenBlank = ignoreWhenBlank,
+                serialNumber = nextSerialNumber++,
+                timestamp = Clock.System.now(),
+            )
+        )
     }
 
     override suspend fun updateComponent(name: String, value: StyledString) {

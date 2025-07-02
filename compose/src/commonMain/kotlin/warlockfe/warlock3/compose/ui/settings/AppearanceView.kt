@@ -50,8 +50,10 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.window.StreamLine
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
-@OptIn(DelicateCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalTime::class)
 @Composable
 fun AppearanceView(
     presetRepository: PresetRepository,
@@ -77,6 +79,7 @@ fun AppearanceView(
             text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString(
@@ -85,6 +88,7 @@ fun AppearanceView(
             ),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString("You also see a ") + StyledString(
@@ -93,11 +97,13 @@ fun AppearanceView(
             ) + StyledString("."),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString("say Hello", style = WarlockStyle.Command),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString(
@@ -106,6 +112,7 @@ fun AppearanceView(
             ) + StyledString(", \"Hello.\""),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString(
@@ -114,6 +121,7 @@ fun AppearanceView(
             ),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString(
@@ -122,6 +130,7 @@ fun AppearanceView(
             ),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString(
@@ -130,6 +139,7 @@ fun AppearanceView(
             ) + StyledString(", \"Hi\""),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         ),
         StreamLine(
             text = StyledString(
@@ -143,6 +153,7 @@ fun AppearanceView(
             ),
             ignoreWhenBlank = false,
             serialNumber = 0L,
+            timestamp = Clock.System.now(),
         )
     )
 

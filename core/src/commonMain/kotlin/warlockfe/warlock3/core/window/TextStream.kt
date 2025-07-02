@@ -6,6 +6,8 @@ import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.toPersistentSet
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 interface TextStream {
 
@@ -33,8 +35,10 @@ fun StyledStringLeaf.getComponent(): String? {
     }
 }
 
+@OptIn(ExperimentalTime::class)
 data class StreamLine(
     val ignoreWhenBlank: Boolean,
     val text: StyledString,
     val serialNumber: Long,
+    val timestamp: Instant,
 )

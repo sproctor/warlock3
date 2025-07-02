@@ -16,6 +16,7 @@ class ContainerHandler : BaseElementListener() {
                 subtitle = null,
                 ifClosed = "",
                 styleIfClosed = null,
+                timestamp = false,
             )
         )
     }

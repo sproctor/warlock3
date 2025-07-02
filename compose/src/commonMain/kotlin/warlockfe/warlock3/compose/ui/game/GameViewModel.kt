@@ -98,6 +98,7 @@ import warlockfe.warlock3.stormfront.network.scriptCommandPrefix
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import java.io.File
 import kotlin.math.max
+import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -884,6 +885,7 @@ class GameViewModel(
     }
 }
 
+@OptIn(ExperimentalTime::class)
 fun StreamLine.toWindowLine(
     highlights: List<ViewHighlight>,
     alterations: List<CompiledAlteration>,
@@ -916,7 +918,8 @@ fun StreamLine.toWindowLine(
     }
     return WindowLine(
         text = annotatedString,
-        entireLineStyle = lineStyle
+        entireLineStyle = lineStyle,
+        timestamp = timestamp,
     )
 }
 

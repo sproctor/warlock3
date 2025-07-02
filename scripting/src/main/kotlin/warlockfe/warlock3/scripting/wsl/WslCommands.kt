@@ -38,47 +38,8 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             }
         }
     },
-    "addtohighlightstrings" to { context, argString ->
-        val args = parseArguments(argString)
-        var pattern: String? = null
-        var textColor: WarlockColor? = null
-        var backgroundColor: WarlockColor? = null
-        var entireLine = false
-        var matchPartialWord = true
-        var ignoreCase = true
-        var isRegex = false
-        args.forEach { pair ->
-            val parts = pair.split("=", limit = 2)
-            if (parts.size != 2) {
-                throw WslRuntimeException("Malformed arguments to AddToHighlightStrings")
-            }
-            val arg = parts[1]
-            when (val name = parts[0].lowercase()) {
-                "string" -> pattern = arg
-                "forecolor" -> textColor = arg.toWarlockColor()
-                "backcolor" -> backgroundColor = arg.toWarlockColor()
-                "highlightentireline" -> entireLine = arg.toBoolean()
-                "notonwordboundary", "matchpartialword" -> matchPartialWord = arg.toBoolean()
-                "caseinsensitive", "ignorecase" -> ignoreCase = arg.toBoolean()
-                "isregex" -> isRegex = arg.toBoolean()
-                else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightStrings")
-            }
-        }
-        if (pattern == null) {
-            throw WslRuntimeException("\"string\" must be specified for AddToHighlightStrings")
-        }
-        context.addHighlight(
-            pattern = pattern,
-            style = StyleDefinition(
-                textColor = textColor ?: WarlockColor.Unspecified,
-                backgroundColor = backgroundColor ?: WarlockColor.Unspecified,
-                entireLine = entireLine,
-            ),
-            ignoreCase = ignoreCase,
-            matchPartialWord = matchPartialWord,
-            isRegex = isRegex,
-        )
-    },
+    "addtohighlightnames" to ::addHighlight,
+    "addtohighlightstrings" to ::addHighlight,
     "cleartextlisteners" to { context, _ ->
         context.clearListeners()
     },
@@ -118,25 +79,8 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         delay((duration * BigDecimal(1000)).toLong())
         context.scriptInstance.waitWhenSuspended()
     },
-    "deletefromhighlightstrings" to { context, argString ->
-        val args = parseArguments(argString)
-        var pattern: String? = null
-        args.forEach { pair ->
-            val parts = pair.split("=", limit = 2)
-            if (parts.size != 2) {
-                throw WslRuntimeException("Malformed arguments to DeleteFromHighlightStrings")
-            }
-            val arg = parts[1]
-            when (val name = parts[0].lowercase()) {
-                "string" -> pattern = arg
-                else -> throw WslRuntimeException("Invalid argument \"$name\" to DeleteFromHighlightStrings")
-            }
-        }
-        if (pattern == null) {
-            throw WslRuntimeException("\"string\" must be specified for DeleteFromHighlightStrings")
-        }
-        context.deleteHighlight(pattern = pattern)
-    },
+    "deletefromhighlightnames" to ::deleteHighlight,
+    "deletefromhighlightstrings" to ::deleteHighlight,
     "deletevariable" to { context, args ->
         val (name, _) = args.splitFirstWord()
         context.deleteStoredVariable(name)
@@ -224,6 +168,12 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         context.waitForRoundTime()
         delay((duration * BigDecimal(1000)).toLong())
         context.scriptInstance.waitWhenSuspended()
+    },
+    "print" to { context, args ->
+        val (stream, rest) = args.splitFirstWord()
+        rest?.let {
+            context.printToStream(stream, it)
+        }
     },
     "put" to { context, args ->
         context.putCommand(args)
@@ -341,7 +291,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     },
 ) + (1..9).map { "if_$it" to ifNCommand(it) }
 
-fun parseRegex(text: String): Regex? {
+private fun parseRegex(text: String): Regex? {
     val regex = Regex("/(.*)/(i)?")
     return regex.find(text)?.let { result ->
         Regex(
@@ -351,10 +301,72 @@ fun parseRegex(text: String): Regex? {
     }
 }
 
-fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit {
+private fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit {
     return { context, args ->
         if (context.hasVariable(n.toString())) {
             context.executeCommand(args)
         }
     }
+}
+
+private suspend fun addHighlight(context: WslContext, argString: String) {
+    val args = parseArguments(argString)
+    var pattern: String? = null
+    var textColor: WarlockColor? = null
+    var backgroundColor: WarlockColor? = null
+    var entireLine = false
+    var matchPartialWord = true
+    var ignoreCase = true
+    var isRegex = false
+    args.forEach { pair ->
+        val parts = pair.split("=", limit = 2)
+        if (parts.size != 2) {
+            throw WslRuntimeException("Malformed arguments to AddToHighlightStrings")
+        }
+        val arg = parts[1]
+        when (val name = parts[0].lowercase()) {
+            "string" -> pattern = arg
+            "forecolor" -> textColor = arg.toWarlockColor()
+            "backcolor" -> backgroundColor = arg.toWarlockColor()
+            "highlightentireline" -> entireLine = arg.toBoolean()
+            "notonwordboundary", "matchpartialword" -> matchPartialWord = arg.toBoolean()
+            "caseinsensitive", "ignorecase" -> ignoreCase = arg.toBoolean()
+            "isregex" -> isRegex = arg.toBoolean()
+            else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightStrings")
+        }
+    }
+    if (pattern == null) {
+        throw WslRuntimeException("\"string\" must be specified for AddToHighlightStrings")
+    }
+    context.addHighlight(
+        pattern = pattern,
+        style = StyleDefinition(
+            textColor = textColor ?: WarlockColor.Unspecified,
+            backgroundColor = backgroundColor ?: WarlockColor.Unspecified,
+            entireLine = entireLine,
+        ),
+        ignoreCase = ignoreCase,
+        matchPartialWord = matchPartialWord,
+        isRegex = isRegex,
+    )
+}
+
+private suspend fun deleteHighlight(context: WslContext, argString: String) {
+    val args = parseArguments(argString)
+    var pattern: String? = null
+    args.forEach { pair ->
+        val parts = pair.split("=", limit = 2)
+        if (parts.size != 2) {
+            throw WslRuntimeException("Malformed arguments to DeleteFromHighlightStrings")
+        }
+        val arg = parts[1]
+        when (val name = parts[0].lowercase()) {
+            "string" -> pattern = arg
+            else -> throw WslRuntimeException("Invalid argument \"$name\" to DeleteFromHighlightStrings")
+        }
+    }
+    if (pattern == null) {
+        throw WslRuntimeException("\"string\" must be specified for DeleteFromHighlightStrings")
+    }
+    context.deleteHighlight(pattern = pattern)
 }

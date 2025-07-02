@@ -40,6 +40,7 @@ class WindowRepository(
                 backgroundColor = WarlockColor.Unspecified,
                 fontFamily = null,
                 fontSize = null,
+                showTimestamps = false,
             )
         )
     )
@@ -60,7 +61,6 @@ class WindowRepository(
             .onEach { windowSettings ->
                 windowSettings.forEach {
                     val existingWindow = windows.value[it.name]
-
                     _windows.value += Pair(
                         it.name,
                         existingWindow?.copy(
@@ -86,6 +86,7 @@ class WindowRepository(
                                 backgroundColor = it.backgroundColor,
                                 fontFamily = it.fontFamily,
                                 fontSize = it.fontSize,
+                                showTimestamps = false,
                             )
                     )
                 }
@@ -98,11 +99,17 @@ class WindowRepository(
         this.characterId.value = characterId
     }
 
-    fun setWindowTitle(name: String, title: String, subtitle: String?, windowType: WindowType) {
+    fun setWindowTitle(
+        name: String,
+        title: String,
+        subtitle: String?,
+        windowType: WindowType,
+        showTimestamps: Boolean,
+    ) {
         val existingWindow = windows.value[name]
         _windows.value += Pair(
             name,
-            existingWindow?.copy(title = title, subtitle = subtitle) ?: Window(
+            existingWindow?.copy(title = title, subtitle = subtitle, showTimestamps = showTimestamps) ?: Window(
                 name = name,
                 title = title,
                 subtitle = subtitle,
@@ -115,6 +122,7 @@ class WindowRepository(
                 backgroundColor = WarlockColor.Unspecified,
                 fontFamily = null,
                 fontSize = null,
+                showTimestamps = showTimestamps,
             )
         )
     }

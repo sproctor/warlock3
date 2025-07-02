@@ -15,6 +15,7 @@ data class Window(
     val backgroundColor: WarlockColor,
     val fontFamily: String?,
     val fontSize: Float?,
+    val showTimestamps: Boolean,
 )
 
 enum class WindowLocation(val value: String) {
