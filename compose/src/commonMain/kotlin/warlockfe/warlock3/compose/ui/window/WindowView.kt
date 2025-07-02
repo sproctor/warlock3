@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
@@ -13,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.components.DialogContent
@@ -89,7 +91,7 @@ fun WindowView(
 ) {
     val window = uiState.window
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
+    val scrollState = rememberLazyListState()
 
     val title = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: "")
     var viewportHeight by mutableIntStateOf(0)
@@ -224,11 +226,11 @@ fun WindowView(
                     }
 
                     ScrollEvent.BUFFER_END -> {
-                        scrollState.scrollTo(0)
+                        scrollState.scrollToItem(scrollState.layoutInfo.totalItemsCount - 1)
                     }
 
                     ScrollEvent.BUFFER_START -> {
-                        scrollState.scrollTo(scrollState.maxValue)
+                        scrollState.scrollToItem(0)
                     }
                 }
                 handledScrollEvent(event)
@@ -304,7 +306,7 @@ private fun WindowViewDropdownMenu(
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
-    scrollState: ScrollState,
+    scrollState: LazyListState,
     window: Window?,
     highlights: List<ViewHighlight>,
     alterations: List<CompiledAlteration>,
@@ -323,7 +325,7 @@ private fun WindowViewContent(
     val components = stream.components
 
     SelectionContainer {
-        ScrollableColumn(
+        ScrollableLazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(backgroundColor)
@@ -341,7 +343,10 @@ private fun WindowViewContent(
                 )
             )
         ) {
-            lines.forEach { streamLine ->
+            items(
+                items = lines,
+                key = { it.serialNumber }
+            ) { streamLine ->
                 val line = streamLine.toWindowLine(
                     highlights = highlights,
                     presets = presets,
@@ -384,24 +389,22 @@ private fun WindowViewContent(
                     }
                 }
             }
+        }
 
-            // This probably shouldn't cause a recomposition
-            var prevLastSerial by remember { mutableStateOf(-1L) }
-            val lastSerial = lines.lastOrNull()?.serialNumber
-            var stickToEnd by remember { mutableStateOf(true) }
-            LaunchedEffect(scrollState.value) {
-                if (prevLastSerial == lastSerial) {
-                    stickToEnd = scrollState.value == scrollState.maxValue
+        // This probably shouldn't cause a recomposition
+        var prevLastSerial by remember { mutableStateOf(-1L) }
+        val lastSerial = lines.lastOrNull()?.serialNumber
+        LaunchedEffect(lastSerial) {
+            if (lastSerial != null) {
+                // If we're at the spot we last scrolled to
+                val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    ?.let { lines.getOrNull(it)?.serialNumber }
+                    ?: -1L
+                if ((lastVisibleSerial >= prevLastSerial || lastVisibleSerial == -1L) && lines.lastIndex > 0) { // scroll to the end if we were at the end
+                    scrollState.scrollToItem(lines.lastIndex)
                 }
-            }
-            LaunchedEffect(lastSerial) {
-                if (lastSerial != null) {
-                    if (stickToEnd) {
-                        scrollState.scrollTo(scrollState.maxValue)
-                    }
-                    // remember the last serial
-                    prevLastSerial = lastSerial
-                }
+                // remember the last serial
+                prevLastSerial = lastSerial
             }
         }
     }
