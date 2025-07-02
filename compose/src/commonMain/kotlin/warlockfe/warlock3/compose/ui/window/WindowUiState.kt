@@ -5,6 +5,7 @@ import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.Window
+import warlockfe.warlock3.stormfront.util.CompiledAlteration
 
 @Stable
 sealed interface WindowUiState {
@@ -19,6 +20,7 @@ data class StreamWindowUiState(
     override val window: Window?,
     val defaultStyle: StyleDefinition,
     val highlights: List<ViewHighlight>,
+    val alterations: List<CompiledAlteration>,
     val presets: Map<String, StyleDefinition>,
 ) : WindowUiState
 

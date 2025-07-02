@@ -7,8 +7,8 @@ import kotlinx.collections.immutable.toPersistentList
 data class StyledString(val substrings: ImmutableList<StyledStringLeaf>) {
     constructor(text: String, styles: List<WarlockStyle> = emptyList())
             : this(persistentListOf<StyledStringSubstring>(StyledStringSubstring(text, styles)))
-    constructor(text: String, style: WarlockStyle)
-    : this(text, listOf(style))
+
+    constructor(text: String, style: WarlockStyle) : this(text, listOf(style))
 
     operator fun plus(string: StyledString): StyledString {
         return StyledString((substrings + string.substrings).toPersistentList())

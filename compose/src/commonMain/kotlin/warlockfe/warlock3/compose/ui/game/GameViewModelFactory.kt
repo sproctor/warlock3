@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.ui.game
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.AliasRepository
+import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
@@ -20,6 +21,7 @@ class GameViewModelFactory(
     private val compassTheme: CompassTheme,
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val aliasRepository: AliasRepository,
+    private val alterationRepository: AlterationRepository,
     private val scriptManagerFactory: ScriptManagerFactory,
 ) {
     fun create(
@@ -38,6 +40,7 @@ class GameViewModelFactory(
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
+            alterationRepository = alterationRepository,
             streamRegistry = streamRegistry,
         )
 }

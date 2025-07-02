@@ -6,21 +6,21 @@ class CompiledAlteration(private val alteration: AlterationEntity) {
     private val regex =
         Regex(alteration.pattern, setOfNotNull(if (alteration.ignoreCase) RegexOption.IGNORE_CASE else null))
 
-    fun match(line: String, streamName: String): AlterationResult? {
-        if (alteration.sourceStream != null && streamName != alteration.sourceStream)
-            return null
-        return if (regex.containsMatchIn(line)) {
+    fun appliesToStream(streamName: String): Boolean {
+        return alteration.sourceStream.isNullOrBlank() || streamName.equals(alteration.sourceStream, ignoreCase = true)
+    }
+
+    fun match(line: String): AlterationResult? {
+        return regex.find(line)?.let {
             AlterationResult(
-                text = alteration.result?.let { regex.replace(line, it) },
-                alteration = alteration
+                text = alteration.result,
+                matchResult = it,
             )
-        } else {
-            null
         }
     }
 }
 
 data class AlterationResult(
-    val text: String?, // null means keep original text
-    val alteration: AlterationEntity
+    val text: String?,
+    val matchResult: MatchResult,
 )

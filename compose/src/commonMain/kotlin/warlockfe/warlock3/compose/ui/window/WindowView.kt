@@ -63,6 +63,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.stormfront.util.CompiledAlteration
 
 @Composable
 fun WindowView(
@@ -165,6 +166,7 @@ fun WindowView(
                         scrollState = scrollState,
                         window = window,
                         highlights = uiState.highlights,
+                        alterations = uiState.alterations,
                         presets = uiState.presets,
                         defaultStyle = uiState.defaultStyle,
                         onActionClicked = onActionClicked,
@@ -298,6 +300,7 @@ private fun WindowViewContent(
     scrollState: ScrollState,
     window: Window?,
     highlights: List<ViewHighlight>,
+    alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,
     defaultStyle: StyleDefinition,
     onActionClicked: (WarlockAction) -> Unit
@@ -336,6 +339,7 @@ private fun WindowViewContent(
                     highlights = highlights,
                     presets = presets,
                     components = components,
+                    alterations = alterations,
                 ) { action ->
                     logger.debug { "action clicked: $action" }
                     onActionClicked(action)

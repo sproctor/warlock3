@@ -189,18 +189,18 @@ fun EditAlterationDialog(
                     onValueChange = { replacement = it })
                 TextField(
                     value = sourceStream,
-                    label = { Text("Source stream (leave blank for any)") },
+                    label = { Text("Apply alteration to stream (leave blank for any)") },
                     onValueChange = { sourceStream = it })
-                TextField(
-                    value = destinationStream,
-                    label = { Text("Destination stream (leave blank to leave text on the source stream)") },
-                    onValueChange = {
-                        destinationStream = it
-                        if (it.isBlank()) {
-                            keepOriginal = false
-                        }
-                    }
-                )
+//                TextField(
+//                    value = destinationStream,
+//                    label = { Text("Destination stream (leave blank to leave text on the source stream)") },
+//                    onValueChange = {
+//                        destinationStream = it
+//                        if (it.isBlank()) {
+//                            keepOriginal = false
+//                        }
+//                    }
+//                )
                 Row {
                     Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
                     Text(
@@ -208,15 +208,15 @@ fun EditAlterationDialog(
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
                 }
-                if (destinationStream.isNotBlank()) {
-                    Row {
-                        Checkbox(checked = keepOriginal, onCheckedChange = { keepOriginal = it })
-                        Text(
-                            text = "Keep original text",
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-                }
+//                if (destinationStream.isNotBlank()) {
+//                    Row {
+//                        Checkbox(checked = keepOriginal, onCheckedChange = { keepOriginal = it })
+//                        Text(
+//                            text = "Keep original text",
+//                            modifier = Modifier.align(Alignment.CenterVertically)
+//                        )
+//                    }
+//                }
             }
         }
     )

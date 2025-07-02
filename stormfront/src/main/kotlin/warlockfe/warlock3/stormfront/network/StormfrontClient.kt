@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -50,7 +49,6 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.compass.DirectionType
-import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterRepository
 import warlockfe.warlock3.core.prefs.LoggingRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -102,12 +100,9 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontStyleEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUnhandledTagEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontUpdateVerbsEvent
-import warlockfe.warlock3.stormfront.util.StormfrontStreamWindow
-import warlockfe.warlock3.stormfront.util.AlterationResult
 import warlockfe.warlock3.stormfront.util.CmdDefinition
-import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import warlockfe.warlock3.stormfront.util.StormfrontCmd
-import warlockfe.warlock3.stormfront.util.StormfrontDialogWindow
+import warlockfe.warlock3.stormfront.util.StormfrontStreamWindow
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -131,7 +126,6 @@ class StormfrontClient(
     private val key: String,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
-    private val alterationRepository: AlterationRepository,
     private val streamRegistry: StreamRegistry,
     private val fileLogging: LoggingRepository
 ) : WarlockClient {
@@ -171,17 +165,6 @@ class StormfrontClient(
     private val currentTypeAhead = MutableStateFlow(0)
 
     private var menuCount = 0
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
-        if (characterId != null)
-            alterationRepository.observeForCharacter(characterId).map { list ->
-                list.map { CompiledAlteration(it) }
-            }
-        else
-            flow { }
-    }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     // Line state variables
     private var isPrompting = false
@@ -668,17 +651,7 @@ class StormfrontClient(
     }
 
     private suspend fun appendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
-        val alteration = findAlteration(styledText.toString(), stream.id)
-        if (alteration != null) {
-            if (alteration.alteration.keepOriginal) {
-                doAppendToStream(styledText, stream, ignoreWhenBlank)
-            }
-            val alteredText = alteration.text?.let { StyledString(it) } ?: styledText
-            val destinationStream = alteration.alteration.destinationStream?.let { getStream(it) } ?: stream
-            doAppendToStream(alteredText, destinationStream, ignoreWhenBlank)
-        } else {
-            doAppendToStream(styledText, stream, ignoreWhenBlank)
-        }
+        doAppendToStream(styledText, stream, ignoreWhenBlank)
         if (stream == mainStream || ifClosedStream(stream) == mainStream) {
             val text = styledText.toString()
             if (text.isNotBlank()) {
@@ -702,14 +675,6 @@ class StormfrontClient(
                 ignoreWhenBlank = ignoreWhenBlank
             )
         }
-    }
-
-    private fun findAlteration(text: String, streamName: String): AlterationResult? {
-        alterations.value.forEach { alteration ->
-            val result = alteration.match(text, streamName)
-            if (result != null) return result
-        }
-        return null
     }
 
     // TODO: separate buffer into its own class

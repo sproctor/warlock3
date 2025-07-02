@@ -13,6 +13,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
@@ -69,6 +70,7 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.prefs.AliasRepository
+import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
@@ -88,10 +90,12 @@ import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.stormfront.network.clientCommandPrefix
 import warlockfe.warlock3.stormfront.network.scriptCommandPrefix
+import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import java.io.File
 import kotlin.math.max
 
@@ -106,6 +110,7 @@ class GameViewModel(
     private val scriptManager: ScriptManager,
     val compassTheme: CompassTheme,
     private val characterSettingsRepository: CharacterSettingsRepository,
+    private val alterationRepository: AlterationRepository,
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
 ) : ViewModel() {
@@ -234,7 +239,19 @@ class GameViewModel(
             initialValue = emptyList()
         )
 
-    private val runningScripts = scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
+        if (characterId != null)
+            alterationRepository.observeForCharacter(characterId).map { list ->
+                list.map { CompiledAlteration(it) }
+            }
+        else
+            flow { }
+    }
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyList())
+
+    private val runningScripts =
+        scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
     private val currentTime: Flow<Int> = flow {
         while (true) {
@@ -259,8 +276,6 @@ class GameViewModel(
 
     private var historyPosition = 0
     private val sendHistory = mutableListOf("")
-
-    private val windows = windowRepository.windows
 
     private val highlights: Flow<List<ViewHighlight>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
@@ -311,14 +326,23 @@ class GameViewModel(
             initialValue = emptySet()
         )
 
+    @Suppress("UNCHECKED_CAST")
     val windowUiStates: StateFlow<List<WindowUiState>> =
         combine(
             openWindows,
-            windows,
+            windowRepository.windows,
             presets,
             highlights,
+            alterations,
             _dialogs,
-        ) { openWindows, windows, presets, highlights, dialogs ->
+        ) { flows ->
+            val openWindows = flows[0] as Set<String>
+            val windows = flows[1] as Map<String, Window>
+            val presets = flows[2] as Map<String, StyleDefinition>
+            val highlights = flows[3] as List<ViewHighlight>
+            val alterations = flows[4] as List<CompiledAlteration>
+            val dialogs = flows[5] as Map<String, List<DialogObject>>
+
             openWindows.map { name ->
                 val window = windows[name]
                 if (window?.windowType == WindowType.DIALOG) {
@@ -337,6 +361,7 @@ class GameViewModel(
                         window = window,
                         highlights = highlights,
                         presets = presets,
+                        alterations = alterations.filter { it.appliesToStream(name) },
                         defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
                     )
                 }
@@ -349,7 +374,12 @@ class GameViewModel(
             )
 
     val mainWindowUiState: StateFlow<WindowUiState> =
-        combine(windows, presets, highlights) { windows, presets, highlights ->
+        combine(
+            windowRepository.windows,
+            presets,
+            highlights,
+            alterations
+        ) { windows, presets, highlights, alterations ->
             val name = "main"
             StreamWindowUiState(
                 name = name,
@@ -357,6 +387,7 @@ class GameViewModel(
                 window = windows[name],
                 highlights = highlights,
                 presets = presets,
+                alterations = alterations.filter { it.appliesToStream(name) },
                 defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
             )
         }
@@ -370,6 +401,7 @@ class GameViewModel(
                         window = null,
                         highlights = emptyList(),
                         presets = emptyMap(),
+                        alterations = emptyList(),
                         defaultStyle = defaultStyles["default"]!!,
                     )
             )
@@ -854,15 +886,18 @@ class GameViewModel(
 
 fun StreamLine.toWindowLine(
     highlights: List<ViewHighlight>,
+    alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,
     components: Map<String, StyledString>,
     actionHandler: (WarlockAction) -> Unit,
 ): WindowLine? {
-    val textWithComponents = text.toAnnotatedString(
-        variables = components,
-        styleMap = presets,
-        actionHandler = actionHandler,
-    )
+    val textWithComponents =
+        text.toAnnotatedString(
+            variables = components,
+            styleMap = presets,
+            actionHandler = actionHandler,
+        )
+            .alter(alterations)
     if (ignoreWhenBlank && textWithComponents.isBlank()) {
         return null
     }
@@ -883,4 +918,19 @@ fun StreamLine.toWindowLine(
         text = annotatedString,
         entireLineStyle = lineStyle
     )
+}
+
+private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString {
+    var result = this
+    alterations.forEach { alteration ->
+        val match = alteration.match(result.text)
+        if (match != null) {
+            result = buildAnnotatedString {
+                append(result.substring(0, match.matchResult.range.first))
+                match.text?.let { append(it) }
+                append(result.substring(match.matchResult.range.last + 1))
+            }
+        }
+    }
+    return result
 }

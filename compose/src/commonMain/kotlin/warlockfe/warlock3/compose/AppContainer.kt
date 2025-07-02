@@ -128,6 +128,7 @@ abstract class AppContainer(
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
             scriptManagerFactory = scriptManagerFactory,
+            alterationRepository = alterationRepository,
         )
     }
 
@@ -151,7 +152,6 @@ abstract class AppContainer(
                     key = credentials.key,
                     windowRepository = windowRepository,
                     characterRepository = characterRepository,
-                    alterationRepository = alterationRepository,
                     streamRegistry = streamRegistry,
                     fileLogging = loggingRepository,
                 )
