@@ -899,7 +899,7 @@ fun StreamLine.toWindowLine(
             styleMap = presets,
             actionHandler = actionHandler,
         )
-            .alter(alterations)
+            .alter(alterations) ?: return null
     if (ignoreWhenBlank && textWithComponents.isBlank()) {
         return null
     }
@@ -923,7 +923,7 @@ fun StreamLine.toWindowLine(
     )
 }
 
-private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString {
+private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString? {
     var result = this
     alterations.forEach { alteration ->
         val match = alteration.match(result.text)
@@ -935,5 +935,5 @@ private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): Annota
             }
         }
     }
-    return result
+    return result.takeIf { it.isNotEmpty() }
 }
