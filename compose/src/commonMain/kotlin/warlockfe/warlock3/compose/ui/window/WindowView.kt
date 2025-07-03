@@ -384,6 +384,8 @@ private fun WindowViewContent(
                         // Add newlines in selected text
                         BasicText(text = "\n", modifier = Modifier.size(0.dp))
                     }
+                } else {
+                    Box {}
                 }
             }
         }
