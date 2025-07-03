@@ -38,7 +38,6 @@ fun DialogContent(
     modifier: Modifier = Modifier,
     executeCommand: (String) -> Unit,
 ) {
-    println(dataObjects.toString())
     val colors = mutableMapOf<String, ColorGroup>()
     dataObjects.forEach { data ->
         if (data is DialogObject.Skin) {
