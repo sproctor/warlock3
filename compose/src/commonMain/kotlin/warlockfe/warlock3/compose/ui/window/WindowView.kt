@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -358,7 +359,7 @@ private fun WindowViewContent(
                 }
                 // FIXME: if line is null, I think we can screw up the scrolling
                 if (line != null) {
-                    Row(
+                    Box(
                         modifier = Modifier.fillMaxWidth()
                             .background(
                                 line.entireLineStyle?.backgroundColor?.toColor()
@@ -366,18 +367,14 @@ private fun WindowViewContent(
                             )
                             .padding(horizontal = 4.dp)
                     ) {
-                        if (window?.showTimestamps == true) {
-                            BasicText(
-                                text = line.timestamp.toDateTimeString() + ": ",
-                                style = TextStyle(
-                                    color = textColor,
-                                    fontFamily = fontFamily,
-                                    fontSize = fontSize
-                                ),
-                            )
+                        val text = if (window?.showTimestamps == true) {
+                            line.text + AnnotatedString(" [${line.timestamp.toTimeString()}]")
+                        } else {
+                            line.text
                         }
+
                         BasicText(
-                            text = line.text,
+                            text = text,
                             style = TextStyle(
                                 color = textColor,
                                 fontFamily = fontFamily,
@@ -410,10 +407,10 @@ private fun WindowViewContent(
     }
 }
 
-private val instantFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 
 @OptIn(ExperimentalTime::class)
-private fun Instant.toDateTimeString(timeZone: TimeZone = TimeZone.getDefault()): String {
+private fun Instant.toTimeString(timeZone: TimeZone = TimeZone.getDefault()): String {
     val zonedDateTime = toJavaInstant().atZone(timeZone.toZoneId())
-    return instantFormatter.format(zonedDateTime)
+    return timeFormatter.format(zonedDateTime)
 }
