@@ -38,6 +38,7 @@ fun DialogContent(
     modifier: Modifier = Modifier,
     executeCommand: (String) -> Unit,
 ) {
+    println(dataObjects.toString())
     val colors = mutableMapOf<String, ColorGroup>()
     dataObjects.forEach { data ->
         if (data is DialogObject.Skin) {
@@ -204,7 +205,7 @@ private fun Label(
     colorGroup: ColorGroup,
     text: String,
 ) {
-    Box(modifier = modifier.padding(4.dp)) {
+    Box(modifier = modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = text,
@@ -272,16 +273,17 @@ private fun DialogButton(
     executeCommand: (String) -> Unit,
 ) {
     val shape = MaterialTheme.shapes.extraSmall
-    Box(modifier = modifier
-        .border(
-            width = Dp.Hairline,
-            color = MaterialTheme.colorScheme.outline,
-            shape = shape
-        )
-        .background(
-            color = MaterialTheme.colorScheme.primaryContainer,
-            shape = shape
-        )
+    Box(
+        modifier = modifier
+            .border(
+                width = Dp.Hairline,
+                color = MaterialTheme.colorScheme.outline,
+                shape = shape
+            )
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = shape
+            )
     ) {
         Text(
             modifier = Modifier.align(Alignment.Center),
@@ -417,7 +419,6 @@ fun VitalBarsPreview() {
         executeCommand = {},
     )
 }
-
 
 @Preview
 @Composable
@@ -706,6 +707,132 @@ fun CombatDialogPreview() {
     DialogContent(
         dataObjects = dialogData,
         modifier = Modifier.size(190.dp, 219.dp),
+        executeCommand = {},
+    )
+}
+
+@Preview
+@Composable
+fun ExperiencePreview() {
+    val dialogData = listOf(
+        DialogObject.Label(
+            id = "yourLvl",
+            left = DataDistance.Pixels(value = 0),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 160),
+            height = DataDistance.Pixels(value = 15),
+            align = "n",
+            topAnchor = null,
+            leftAnchor = null,
+            tooltip = null,
+            value = "Level 0"
+        ),
+        DialogObject.ProgressBar(
+            id = "mindState",
+            left = DataDistance.Pixels(value = 3),
+            top = DataDistance.Pixels(value = 45),
+            width = DataDistance.Pixels(value = 160),
+            height = DataDistance.Pixels(value = 15),
+            align = "n",
+            topAnchor = null,
+            leftAnchor = null,
+            tooltip = null,
+            value = Percentage(value = 0),
+            text = "clear as a bell"
+        ),
+        DialogObject.ProgressBar(
+            id = "nextLvlPB",
+            left = DataDistance.Pixels(value = 3),
+            top = DataDistance.Pixels(value = 20),
+            width = DataDistance.Pixels(value = 160),
+            height = DataDistance.Pixels(value = 15),
+            align = "n",
+            topAnchor = null,
+            leftAnchor = null,
+            tooltip = null,
+            value = Percentage(value = 6),
+            text = "2365 until next level"
+        ),
+        DialogObject.Label(
+            id = "PTPs",
+            left = DataDistance.Pixels(value = 20),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 80),
+            height = DataDistance.Pixels(value = 20),
+            align = null,
+            topAnchor = "mindState",
+            leftAnchor = null,
+            tooltip = "Physical Training Points",
+            value = "5 PTPs"
+        ),
+        DialogObject.Label(
+            id = "MTPs",
+            left = DataDistance.Pixels(value = 0),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 80),
+            height = DataDistance.Pixels(value = 20),
+            align = null,
+            topAnchor = "mindState",
+            leftAnchor = "PTPs",
+            tooltip = "Mental Training Points",
+            value = "3 MTPs"
+        ),
+        DialogObject.Label(
+            id = "p2m",
+            left = DataDistance.Pixels(value = 20),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 80),
+            height = DataDistance.Pixels(value = 20),
+            align = null,
+            topAnchor = "PTPs",
+            leftAnchor = null,
+            tooltip = "Physical tps that have been converted to Mental tps",
+            value = "0 P2M"
+        ),
+        DialogObject.Label(
+            id = "m2p",
+            left = DataDistance.Pixels(value = 0),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 80),
+            height = DataDistance.Pixels(value = 20),
+            align = null,
+            topAnchor = "MTPs",
+            leftAnchor = "p2m",
+            tooltip = "Mental tps that have been converted to Physical tps",
+            value = "0 M2P"
+        ),
+        DialogObject.Link(
+            id = "exprLNK",
+            left = DataDistance.Pixels(value = 20),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 80),
+            height = null,
+            align = null,
+            topAnchor = "p2m",
+            leftAnchor = null,
+            tooltip = null,
+            value = "Details",
+            cmd = "experie",
+            echo = "experience"
+        ),
+        DialogObject.Link(
+            id = "goalsLNK",
+            left = DataDistance.Pixels(value = 0),
+            top = DataDistance.Pixels(value = 0),
+            width = DataDistance.Pixels(value = 80),
+            height = null,
+            align = null,
+            topAnchor = "m2p",
+            leftAnchor = "exprLNK",
+            tooltip = null,
+            value = "Skill Goals",
+            cmd = "goals",
+            echo = "goals"
+        )
+    )
+    DialogContent(
+        dataObjects = dialogData,
+        modifier = Modifier.size(190.dp, 200.dp),
         executeCommand = {},
     )
 }
