@@ -48,10 +48,8 @@ import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.ThemeSetting
-import warlockfe.warlock3.core.prefs.defaultMaxScrollLines
 import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
-import warlockfe.warlock3.core.prefs.scrollbackKey
 import warlockfe.warlock3.core.util.LogType
 
 @Composable
@@ -77,12 +75,10 @@ fun GeneralSettingsView(
         )
         Spacer(Modifier.height(16.dp))
         ScrollableColumn {
-            val initialMaxLines by characterSettingsRepository.observe(
-                characterId = "global", key = scrollbackKey
-            ).collectAsState(null)
+            val initialMaxLines by clientSettingRepository.observeMaxScrollLines().collectAsState(null)
             var maxLinesValue by remember(initialMaxLines == null) {
                 mutableStateOf(
-                    TextFieldValue(initialMaxLines ?: defaultMaxScrollLines.toString())
+                    TextFieldValue(initialMaxLines?.toString() ?: "")
                 )
             }
             TextField(
@@ -90,11 +86,7 @@ fun GeneralSettingsView(
                 onValueChange = {
                     maxLinesValue = it
                     scope.launch(NonCancellable) {
-                        characterSettingsRepository.save(
-                            characterId = "global",
-                            key = scrollbackKey,
-                            value = it.text
-                        )
+                        clientSettingRepository.putMaxScrollLines(it.text.toIntOrNull())
                     }
                 },
                 label = {

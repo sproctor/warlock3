@@ -50,8 +50,8 @@ class ClientSettingRepository(
     }
 
     fun observeMaxScrollLines(): Flow<Int> {
-        return observe(scrollbackKey)
-            .map { it?.toIntOrNull() ?: defaultMaxScrollLines }
+        return observe(SCROLLBACK_KEY)
+            .map { it?.toIntOrNull() ?: DEFAULT_MAX_SCROLL_LINES }
     }
 
     private suspend fun get(key: String): String? {
@@ -106,6 +106,14 @@ class ClientSettingRepository(
         putBoolean("ignoreUpdates", value)
     }
 
+    suspend fun putMaxScrollLines(value: Int?) {
+        if (value != null) {
+            putInt(SCROLLBACK_KEY, value)
+        } else {
+            removeKey(SCROLLBACK_KEY)
+        }
+    }
+
     private suspend fun putInt(key: String, value: Int) {
         put(key, value.toString())
     }
@@ -122,5 +130,16 @@ class ClientSettingRepository(
         withContext(NonCancellable) {
             clientSettingDao.save(ClientSettingEntity(key, value))
         }
+    }
+
+    private suspend fun removeKey(key: String) {
+        withContext(NonCancellable) {
+            clientSettingDao.removeByKey(key)
+        }
+    }
+
+    companion object {
+        const val DEFAULT_MAX_SCROLL_LINES = 2_000
+        const val SCROLLBACK_KEY = "scrollback"
     }
 }

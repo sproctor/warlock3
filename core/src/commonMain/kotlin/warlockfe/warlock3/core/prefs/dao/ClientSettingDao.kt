@@ -18,6 +18,9 @@ interface ClientSettingDao {
     @Query("SELECT value FROM ClientSetting WHERE `key` = :key")
     fun observeByKey(key: String): Flow<String?>
 
+    @Query("DELETE FROM ClientSetting WHERE `key` = :key")
+    suspend fun removeByKey(key: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(entity: ClientSettingEntity)
 }

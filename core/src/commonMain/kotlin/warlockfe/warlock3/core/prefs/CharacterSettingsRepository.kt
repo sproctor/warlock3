@@ -6,9 +6,6 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 
-const val defaultMaxScrollLines = 2_000
-const val scrollbackKey = "scrollback"
-
 const val defaultMaxTypeAhead = 2
 const val maxTypeAheadKey = "typeahead"
 

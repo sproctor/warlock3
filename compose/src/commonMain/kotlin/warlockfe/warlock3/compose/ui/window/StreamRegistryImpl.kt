@@ -1,7 +1,5 @@
 package warlockfe.warlock3.compose.ui.window
 
-import warlockfe.warlock3.core.window.StreamRegistry
-import warlockfe.warlock3.core.window.TextStream
 import kotlinx.collections.immutable.persistentHashMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -9,8 +7,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.defaultMaxScrollLines
-import kotlin.synchronized
+import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.window.TextStream
 
 class StreamRegistryImpl(
     private val mainDispatcher: CoroutineDispatcher,
@@ -32,7 +30,7 @@ class StreamRegistryImpl(
         .stateIn(
             scope = externalScope,
             started = SharingStarted.Eagerly,
-            initialValue = defaultMaxScrollLines,
+            initialValue = ClientSettingRepository.DEFAULT_MAX_SCROLL_LINES,
         )
 
     override fun getOrCreateStream(name: String): TextStream {
