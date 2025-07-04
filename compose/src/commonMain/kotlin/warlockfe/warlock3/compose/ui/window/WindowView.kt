@@ -384,26 +384,24 @@ private fun WindowViewContent(
                         // Add newlines in selected text
                         BasicText(text = "\n", modifier = Modifier.size(0.dp))
                     }
-                } else {
-                    Box {}
                 }
             }
         }
 
-        // This probably shouldn't cause a recomposition
-        var prevLastSerial by remember { mutableStateOf(-1L) }
+        var sticky by remember { mutableStateOf(true) }
         val lastSerial = lines.lastOrNull()?.serialNumber
         LaunchedEffect(lastSerial) {
-            if (lastSerial != null) {
-                // If we're at the spot we last scrolled to
-                val lastVisibleSerial = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                    ?.let { lines.getOrNull(it)?.serialNumber }
-                    ?: -1L
-                if ((lastVisibleSerial >= prevLastSerial || lastVisibleSerial == -1L) && lines.lastIndex > 0) { // scroll to the end if we were at the end
-                    scrollState.scrollToItem(lines.lastIndex)
-                }
-                // remember the last serial
-                prevLastSerial = lastSerial
+            if (lastSerial != null && sticky) {
+                scrollState.scrollToItem(lines.lastIndex)
+            }
+        }
+        LaunchedEffect(scrollState.lastScrolledBackward, scrollState.canScrollForward) {
+            // If the user scrolled back and they can scroll forward, stop being sticky
+            // if the window can't be scrolled forward, be sticky again
+            if (scrollState.lastScrolledBackward && scrollState.canScrollForward) {
+                sticky = false
+            } else if (!scrollState.canScrollForward) {
+                sticky = true
             }
         }
     }
