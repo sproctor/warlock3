@@ -294,10 +294,14 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
 private fun parseRegex(text: String): Regex? {
     val regex = Regex("/(.*)/(i)?")
     return regex.find(text)?.let { result ->
-        Regex(
-            pattern = result.groups[1]!!.value,
-            options = if (result.groups[2] != null) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-        )
+        try {
+            Regex(
+                pattern = result.groups[1]!!.value,
+                options = if (result.groups[2] != null) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+            )
+        } catch (_: Exception) {
+            null
+        }
     }
 }
 

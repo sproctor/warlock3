@@ -15,8 +15,12 @@ class AliasRepository(
     fun observeForCharacter(characterId: String): Flow<List<Alias>> {
         return aliasDao.observeByCharacterWithGlobals(characterId)
             .map { list ->
-                list.map {
-                    Alias(it.pattern, it.replacement)
+                list.mapNotNull {
+                    try {
+                        Alias(it.pattern, it.replacement)
+                    } catch (_: Exception) {
+                        null // TODO: Find a way to notify the user
+                    }
                 }
             }
     }
