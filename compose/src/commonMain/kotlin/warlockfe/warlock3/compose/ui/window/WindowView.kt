@@ -392,7 +392,9 @@ private fun WindowViewContent(
         val lastSerial = lines.lastOrNull()?.serialNumber
         LaunchedEffect(lastSerial) {
             if (lastSerial != null && sticky) {
-                scrollState.scrollToItem(lines.lastIndex)
+                lines.lastIndex.takeIf { it > -1 }?.let { index ->
+                    scrollState.scrollToItem(index)
+                }
             }
         }
         LaunchedEffect(scrollState.lastScrolledBackward, scrollState.canScrollForward) {
