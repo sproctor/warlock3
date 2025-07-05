@@ -129,6 +129,7 @@ fun WindowView(
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                 }
 
