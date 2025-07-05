@@ -924,6 +924,8 @@ fun StreamLine.toWindowLine(
 }
 
 private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString? {
+    if (isEmpty())
+        return this
     var result = this
     alterations.forEach { alteration ->
         val match = alteration.match(result.text)
@@ -933,7 +935,9 @@ private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): Annota
                 match.text?.let { append(it) }
                 append(result.substring(match.matchResult.range.last + 1))
             }
+            if (result.isEmpty())
+                return null
         }
     }
-    return result.takeIf { it.isNotEmpty() }
+    return result
 }
