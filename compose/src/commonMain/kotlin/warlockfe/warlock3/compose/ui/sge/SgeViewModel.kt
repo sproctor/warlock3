@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -132,11 +131,13 @@ class SgeViewModel(
                                 windowRepository = gameState.windowRepository,
                                 streamRegistry = gameState.streamRegistry
                             )
-                            gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
+                            gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                         } catch (e: UnknownHostException) {
-                            gameState.screen = GameScreen.ErrorState(
-                                message = "Unknown host: ${e.message}",
-                                returnTo = GameScreen.NewGameState,
+                            gameState.setScreen(
+                                GameScreen.ErrorState(
+                                    message = "Unknown host: ${e.message}",
+                                    returnTo = GameScreen.NewGameState,
+                                )
                             )
                         }
                     }

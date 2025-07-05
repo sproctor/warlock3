@@ -3,6 +3,8 @@ package warlockfe.warlock3.compose.model
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -14,6 +16,13 @@ class GameState(
     val streamRegistry: StreamRegistry,
 ) {
     var screen by mutableStateOf<GameScreen>(GameScreen.Dashboard)
+        private set
+
+    suspend fun setScreen(screen: GameScreen) {
+        withContext(Dispatchers.Main.immediate) {
+            this@GameState.screen = screen
+        }
+    }
 }
 
 class GameStateFactory(

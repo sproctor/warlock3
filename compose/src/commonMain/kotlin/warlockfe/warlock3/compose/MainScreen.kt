@@ -38,7 +38,11 @@ fun MainScreen(
             }
             DashboardView(
                 viewModel = viewModel,
-                connectToSGE = { gameState.screen = GameScreen.NewGameState }
+                connectToSGE = {
+                    scope.launch {
+                        gameState.setScreen(GameScreen.NewGameState)
+                    }
+                }
             )
         }
 
@@ -46,7 +50,12 @@ fun MainScreen(
             val viewModel = remember {
                 sgeViewModelFactory.create(gameState)
             }
-            SgeWizard(viewModel = viewModel, onCancel = { gameState.screen = GameScreen.Dashboard })
+            SgeWizard(
+                viewModel = viewModel,
+                onCancel = {
+                    scope.launch { gameState.setScreen(GameScreen.Dashboard) }
+                }
+            )
         }
 
         is GameScreen.ConnectedGameState -> {
@@ -57,7 +66,7 @@ fun MainScreen(
                 navigateToDashboard = {
                     scope.launch {
                         screen.viewModel.close()
-                        gameState.screen = GameScreen.Dashboard
+                        gameState.setScreen(GameScreen.Dashboard)
                     }
                 }
             )
@@ -72,7 +81,9 @@ fun MainScreen(
                 ) {
                     Text(text = screen.message)
                     Button(
-                        onClick = { gameState.screen = screen.returnTo }
+                        onClick = {
+                            scope.launch { gameState.setScreen(screen.returnTo) }
+                        }
                     ) {
                         Text("OK")
                     }

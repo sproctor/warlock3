@@ -86,14 +86,17 @@ class DashboardViewModel(
                                 try {
                                     connectToGame(event.credentials, connection.proxySettings)
                                 } catch (e: UnknownHostException) {
-                                    gameState.screen = GameScreen.ErrorState(
-                                        "Unknown host: ${e.message}",
-                                        returnTo = GameScreen.Dashboard
+                                    gameState.setScreen(
+                                        GameScreen.ErrorState(
+                                            "Unknown host: ${e.message}",
+                                            returnTo = GameScreen.Dashboard
+                                        )
                                     )
                                 } catch (e: IOException) {
                                     logger.error(e) { "Error connecting to server" }
-                                    gameState.screen =
+                                    gameState.setScreen(
                                         GameScreen.ErrorState("Error: ${e.message}", returnTo = GameScreen.Dashboard)
+                                    )
                                 }
                                 sgeClient.close()
                                 cancelConnect()
@@ -172,7 +175,7 @@ class DashboardViewModel(
                 gameState.windowRepository,
                 gameState.streamRegistry,
             )
-            gameState.screen = GameScreen.ConnectedGameState(gameViewModel)
+            gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
         }
     }
 
