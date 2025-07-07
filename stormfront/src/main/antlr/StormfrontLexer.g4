@@ -24,6 +24,7 @@ STRING      :   '"' ~'"'* ('"' ~["=>]*)* '"' // handles strings in elements. acc
             ;
 Name        :   NameStartChar NameChar* ;
 S           :   [ \t\r\n]               -> skip ;
+INVALID     :   [\u001C]GS.*            -> skip ;
 
 fragment
 HEXDIGIT    :   [a-fA-F0-9] ;
