@@ -1,11 +1,11 @@
 package warlockfe.warlock3.core.window
 
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.toPersistentSet
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
-import kotlinx.collections.immutable.PersistentSet
-import kotlinx.collections.immutable.toPersistentSet
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -22,6 +22,8 @@ interface TextStream {
     suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false)
 
     suspend fun updateComponent(name: String, value: StyledString)
+
+    suspend fun appendResource(url: String)
 }
 
 fun StyledString.getComponents(): PersistentSet<String> {
@@ -35,10 +37,19 @@ fun StyledStringLeaf.getComponent(): String? {
     }
 }
 
+sealed interface StreamLine {
+    val serialNumber: Long
+}
+
 @OptIn(ExperimentalTime::class)
-data class StreamLine(
+data class StreamTextLine(
     val ignoreWhenBlank: Boolean,
     val text: StyledString,
-    val serialNumber: Long,
+    override val serialNumber: Long,
     val timestamp: Instant,
-)
+) : StreamLine
+
+data class StreamImageLine(
+    val url: String,
+    override val serialNumber: Long,
+) : StreamLine

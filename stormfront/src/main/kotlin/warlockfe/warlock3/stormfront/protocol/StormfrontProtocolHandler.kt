@@ -42,6 +42,7 @@ import warlockfe.warlock3.stormfront.protocol.elements.ProgressBarHandler
 import warlockfe.warlock3.stormfront.protocol.elements.PromptHandler
 import warlockfe.warlock3.stormfront.protocol.elements.PushBoldHandler
 import warlockfe.warlock3.stormfront.protocol.elements.PushStreamHandler
+import warlockfe.warlock3.stormfront.protocol.elements.ResourceHandler
 import warlockfe.warlock3.stormfront.protocol.elements.RightHandler
 import warlockfe.warlock3.stormfront.protocol.elements.RoundTimeHandler
 import warlockfe.warlock3.stormfront.protocol.elements.SettingsInfoHandler
@@ -95,6 +96,7 @@ class StormfrontProtocolHandler {
         "prompt" to PromptHandler(),
         "pushbold" to PushBoldHandler(),
         "pushstream" to PushStreamHandler(),
+        "resource" to ResourceHandler(),
         "right" to RightHandler(),
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),

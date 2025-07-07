@@ -24,6 +24,7 @@ androidxSqlite = "2.5.2"
 antlr = "4.13.2"
 apache-commons-text = "1.13.1"
 appdirs = "2.0.0"
+coil = "3.2.0"
 compose = "1.8.2"
 colorpicker = "1.1.2"
 constraintlayout = "0.6.0"
@@ -55,6 +56,8 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycleViewmodel" }
 antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 constraintlayout = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout" }
 conveyor-control = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }

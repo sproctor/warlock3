@@ -5,7 +5,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.window.StreamImageLine
 import warlockfe.warlock3.core.window.StreamLine
+import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
 import kotlin.time.Clock
@@ -43,14 +45,18 @@ class ComposeTextStream(
     private fun doAppendPartial(text: StyledString) {
         if (isPartial) {
             val lastLine = lines.last()
-            lines[lines.lastIndex] = lastLine.copy(text = lastLine.text + text)
-        } else {
-            isPartial = true
-            doAppendLine(
-                ignoreWhenBlank = false,
-                text = text,
-            )
+            if (lastLine is StreamTextLine) {
+                lines[lines.lastIndex] = lastLine.copy(text = lastLine.text + text)
+                return
+            }
+
         }
+        // else
+        isPartial = true
+        doAppendLine(
+            ignoreWhenBlank = false,
+            text = text,
+        )
     }
 
     override suspend fun clear() {
@@ -77,13 +83,24 @@ class ComposeTextStream(
             lines.removeAt(0)
         }
         lines.add(
-            StreamLine(
+            StreamTextLine(
                 text = text,
                 ignoreWhenBlank = ignoreWhenBlank,
                 serialNumber = nextSerialNumber++,
                 timestamp = Clock.System.now(),
             )
         )
+    }
+
+    override suspend fun appendResource(url: String) {
+        withContext(mainDispatcher) {
+            lines.add(
+                StreamImageLine(
+                    url = url,
+                    serialNumber = nextSerialNumber++,
+                )
+            )
+        }
     }
 
     override suspend fun updateComponent(name: String, value: StyledString) {

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -32,7 +33,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ConfirmationDialog
-import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.icons.Login
 import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.sge.StoredConnection
@@ -87,21 +88,23 @@ fun ConnectionList(
     var showConnectionSettings: StoredConnection? by remember { mutableStateOf(null) }
     var showConnectionDelete: StoredConnection? by remember { mutableStateOf(null) }
     val connections by viewModel.connections.collectAsState(emptyList())
-    ScrollableColumn(
+    ScrollableLazyColumn(
         modifier.semantics {
             this.contentDescription = "List of stored connections"
         }
     ) {
-        Text(
-            modifier = Modifier.semantics { heading() },
-            text = "Saved connections",
-            style = MaterialTheme.typography.headlineMedium,
-        )
-        Spacer(Modifier.height(8.dp))
-        if (connections.isEmpty()) {
-            Text("There are currently no stored connections")
+        item {
+            Text(
+                modifier = Modifier.semantics { heading() },
+                text = "Saved connections",
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Spacer(Modifier.height(8.dp))
+            if (connections.isEmpty()) {
+                Text("There are currently no stored connections")
+            }
         }
-        connections.forEach { connection ->
+        items(connections) { connection ->
             ListItem(
                 modifier = Modifier.semantics {
                     contentDescription = "Saved connection"

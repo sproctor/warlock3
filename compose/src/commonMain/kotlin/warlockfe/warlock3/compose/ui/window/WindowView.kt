@@ -1,17 +1,24 @@
 package warlockfe.warlock3.compose.ui.window
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onLayoutRectChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
@@ -49,7 +58,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.size.Size
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
@@ -64,6 +79,8 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.specifiedOrNull
+import warlockfe.warlock3.core.window.StreamImageLine
+import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
@@ -349,41 +366,83 @@ private fun WindowViewContent(
                 items = lines,
                 key = { it.serialNumber }
             ) { streamLine ->
-                val line = streamLine.toWindowLine(
-                    highlights = highlights,
-                    presets = presets,
-                    components = components,
-                    alterations = alterations,
-                ) { action ->
-                    logger.debug { "action clicked: $action" }
-                    onActionClicked(action)
-                }
-                // FIXME: if line is null, I think we can screw up the scrolling
-                if (line != null) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth()
-                            .background(
-                                line.entireLineStyle?.backgroundColor?.toColor()
-                                    ?: Color.Unspecified
-                            )
-                            .padding(horizontal = 4.dp)
-                    ) {
-                        val text = if (window?.showTimestamps == true) {
-                            line.text + AnnotatedString(" [${line.timestamp.toTimeString()}]")
-                        } else {
-                            line.text
+                when (streamLine) {
+                    is StreamTextLine -> {
+                        val line = streamLine.toWindowLine(
+                            highlights = highlights,
+                            presets = presets,
+                            components = components,
+                            alterations = alterations,
+                        ) { action ->
+                            logger.debug { "action clicked: $action" }
+                            onActionClicked(action)
                         }
+                        // FIXME: if line is null, I think we can screw up the scrolling
+                        if (line != null) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(
+                                        line.entireLineStyle?.backgroundColor?.toColor()
+                                            ?: Color.Unspecified
+                                    )
+                                    .padding(horizontal = 4.dp)
+                            ) {
+                                val text = if (window?.showTimestamps == true) {
+                                    line.text + AnnotatedString(" [${line.timestamp.toTimeString()}]")
+                                } else {
+                                    line.text
+                                }
 
-                        BasicText(
-                            text = text,
-                            style = TextStyle(
-                                color = textColor,
-                                fontFamily = fontFamily,
-                                fontSize = fontSize
-                            ),
-                        )
-                        // Add newlines in selected text
-                        BasicText(text = "\n", modifier = Modifier.size(0.dp))
+                                BasicText(
+                                    text = text,
+                                    style = TextStyle(
+                                        color = textColor,
+                                        fontFamily = fontFamily,
+                                        fontSize = fontSize
+                                    ),
+                                )
+                                // Add newlines in selected text
+                                BasicText(text = "\n", modifier = Modifier.size(0.dp))
+                            }
+                        }
+                    }
+
+                    is StreamImageLine -> {
+                        Box(Modifier.height(50.dp).fillMaxWidth()) {
+                            val painter = rememberAsyncImagePainter(
+                                ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(streamLine.url)
+                                    .size(Size.ORIGINAL)
+                                    .build()
+                            )
+                            val painterState by painter.state.collectAsState()
+                            when (val state = painterState) {
+                                is AsyncImagePainter.State.Success -> {
+                                    val interactionSource = remember { MutableInteractionSource() }
+                                    val hovered by interactionSource.collectIsHoveredAsState()
+                                    LocalLogger.current.debug { "Hovered: $hovered" }
+                                    val height = if (hovered) {
+                                        with(LocalDensity.current) {
+                                            max(state.result.image.height.toDp(), 50.dp)
+                                        }
+                                    } else {
+                                        50.dp
+                                    }
+                                    Image(
+                                        modifier = Modifier
+                                            .hoverable(interactionSource)
+                                            .wrapContentSize(unbounded = true, align = Alignment.TopStart)
+                                            .animateContentSize()
+                                            .height(height)
+                                        ,
+                                        painter = painter,
+                                        contentDescription = null,
+                                    )
+                                }
+
+                                else -> {}
+                            }
+                        }
                     }
                 }
             }

@@ -91,6 +91,7 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontPropertyEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontProtocolHandler
 import warlockfe.warlock3.stormfront.protocol.StormfrontPushCmdEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontPushStyleEvent
+import warlockfe.warlock3.stormfront.protocol.StormfrontResourceEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontRoundTimeEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontSettingsInfoEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontStartCmdList
@@ -144,6 +145,8 @@ class StormfrontClient(
 
     private var proxyProcess: Process? = null
 
+    private var gameCode: String? = null
+
     private val _eventFlow = MutableSharedFlow<ClientEvent>()
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
 
@@ -156,6 +159,7 @@ class StormfrontClient(
     private val _components = MutableStateFlow<PersistentMap<String, StyledString>>(persistentMapOf())
     override val components: StateFlow<ImmutableMap<String, StyledString>> = _components.asStateFlow()
 
+    private val logBuffer = mutableListOf<suspend () -> Unit>()
     private var logName: String? = null
 
     private val mainStream = getStream("main")
@@ -307,6 +311,10 @@ class StormfrontClient(
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
                                             logName =  "${event.game}_${event.character}"
+                                            logBuffer.forEach {
+                                                it()
+                                            }
+                                            logBuffer.clear()
                                             if (characterRepository.getCharacter(characterId) == null) {
                                                 characterRepository.saveCharacter(
                                                     GameCharacter(
@@ -372,6 +380,8 @@ class StormfrontClient(
                                         _properties.value += "casttime" to event.time
 
                                     is StormfrontSettingsInfoEvent -> {
+                                        gameCode = event.instance
+
                                         // We don't actually handle server settings
 
                                         // Not 100% where this belongs. connections hang until and empty command is sent
@@ -596,6 +606,18 @@ class StormfrontClient(
                                                 WarlockStyle.Error
                                             )
                                         )
+                                    }
+
+                                    is StormfrontResourceEvent -> {
+                                        flushBuffer(true)
+                                        gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
+                                            val url = "https://www.play.net/bfe/$code-art/${event.picture}.jpg"
+                                            logger.debug { "Got resource: $url" }
+                                            currentStream.appendResource(url)
+                                            if (currentStream == mainStream) {
+                                                isPrompting = false
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -831,14 +853,18 @@ class StormfrontClient(
     }
 
     private suspend fun logComplete(message: () -> String) {
-        logName?.let {
-            fileLogging.logComplete(it, message)
+        if (logName != null) {
+            fileLogging.logComplete(logName!!, message)
+        } else {
+            logBuffer.add { fileLogging.logComplete(logName!!, message) }
         }
     }
 
     private suspend fun logSimple(message: () -> String) {
-        logName?.let {
-            fileLogging.logSimple(it, message)
+        if (logName != null) {
+            fileLogging.logSimple(logName!!, message)
+        } else {
+            logBuffer.add { fileLogging.logSimple(logName!!, message) }
         }
     }
 }

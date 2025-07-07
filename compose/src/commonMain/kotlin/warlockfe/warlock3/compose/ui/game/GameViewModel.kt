@@ -88,8 +88,8 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.splitFirstWord
-import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
@@ -886,7 +886,7 @@ class GameViewModel(
 }
 
 @OptIn(ExperimentalTime::class)
-fun StreamLine.toWindowLine(
+fun StreamTextLine.toWindowLine(
     highlights: List<ViewHighlight>,
     alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,

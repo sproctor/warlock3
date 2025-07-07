@@ -38,6 +38,8 @@ kotlin {
                 implementation(libs.kotlinx.collections.immutable)
                 implementation(libs.sqlite.bundled)
                 implementation(libs.appdirs)
+                implementation(libs.coil.compose)
+                implementation(libs.coil.network.okhttp)
             }
         }
 //        val commonTest by getting {
