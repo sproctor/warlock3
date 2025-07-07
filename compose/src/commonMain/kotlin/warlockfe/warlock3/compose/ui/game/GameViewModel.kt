@@ -60,6 +60,7 @@ import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.core.client.ClientCompassEvent
+import warlockfe.warlock3.core.client.ClientDialogClearEvent
 import warlockfe.warlock3.core.client.ClientDialogEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.DialogObject
@@ -430,6 +431,14 @@ class GameViewModel(
                             val dialogs = origDialogs.toMutableMap()
                             dialogs[event.id] = data
                             dialogs.toPersistentMap()
+                        }
+                    }
+
+                    is ClientDialogClearEvent -> {
+                        _dialogs.update { origDialogs ->
+                            val newDialogs = origDialogs.toMutableMap()
+                            newDialogs[event.id] = emptyList()
+                            newDialogs.toPersistentMap()
                         }
                     }
 

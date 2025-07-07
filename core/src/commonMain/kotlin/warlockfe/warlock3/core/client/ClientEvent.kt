@@ -7,6 +7,7 @@ import java.net.URI
 sealed interface ClientEvent
 data class ClientTextEvent(val text: String) : ClientEvent
 data class ClientDialogEvent(val id: String, val data: DialogObject) : ClientEvent
+data class ClientDialogClearEvent(val id: String) : ClientEvent
 data class ClientCompassEvent(val directions: ImmutableSet<DirectionType>) : ClientEvent
 data object ClientNavEvent : ClientEvent
 data object ClientPromptEvent : ClientEvent

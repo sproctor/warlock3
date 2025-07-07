@@ -26,7 +26,7 @@ data class StormfrontRoundTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontCastTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontSettingsInfoEvent(val crc: String?, val instance: String?) : StormfrontEvent
 data class StormfrontDialogObjectEvent(val data: DialogObject) : StormfrontEvent
-data class StormfrontDialogDataEvent(val id: String?) : StormfrontEvent
+data class StormfrontDialogDataEvent(val id: String?, val clear: Boolean) : StormfrontEvent
 data object StormfrontCompassEndEvent : StormfrontEvent
 data class StormfrontDirectionEvent(val direction: DirectionType) : StormfrontEvent
 data class StormfrontPropertyEvent(val key: String, val value: String?) : StormfrontEvent

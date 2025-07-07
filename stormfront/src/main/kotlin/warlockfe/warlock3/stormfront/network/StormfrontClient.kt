@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.client.ClientCompassEvent
+import warlockfe.warlock3.core.client.ClientDialogClearEvent
 import warlockfe.warlock3.core.client.ClientDialogEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -310,7 +311,7 @@ class StormfrontClient(
                                         _characterId.value = if (game != null && character != null) {
                                             val characterId = "${event.game}:${event.character}".lowercase()
                                             windowRepository.setCharacterId(characterId)
-                                            logName =  "${event.game}_${event.character}"
+                                            logName = "${event.game}_${event.character}"
                                             logBuffer.forEach {
                                                 it()
                                             }
@@ -391,7 +392,13 @@ class StormfrontClient(
                                         sendCommandDirect("_STATE CHATMODE OFF")
                                     }
 
-                                    is StormfrontDialogDataEvent -> dialogDataId = event.id
+                                    is StormfrontDialogDataEvent -> {
+                                        dialogDataId = event.id
+                                        if (event.clear && event.id != null) {
+                                            notifyListeners(ClientDialogClearEvent(event.id))
+                                        }
+                                    }
+
                                     is StormfrontDialogObjectEvent -> {
                                         val data = event.data
                                         if (data is DialogObject.ProgressBar) {
@@ -576,7 +583,12 @@ class StormfrontClient(
                                                                     .replace("%", event.noun ?: "")
                                                             )
                                                         } else {
-                                                            print(StyledString("Command noun is null", WarlockStyle.Error))
+                                                            print(
+                                                                StyledString(
+                                                                    "Command noun is null",
+                                                                    WarlockStyle.Error
+                                                                )
+                                                            )
                                                         }
                                                     }
                                                 )
