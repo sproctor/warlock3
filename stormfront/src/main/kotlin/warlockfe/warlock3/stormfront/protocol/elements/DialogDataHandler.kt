@@ -8,7 +8,7 @@ class DialogDataHandler : BaseElementListener() {
     override fun startElement(element: StartElement): StormfrontEvent {
         return StormfrontDialogDataEvent(
             id = element.attributes["id"],
-            clear = element.attributes["clear"] == "t",
+            clear = element.attributes["clear"]?.startsWith(prefix = "t", ignoreCase = true) == true,
         )
     }
 

@@ -477,13 +477,15 @@ class StormfrontClient(
 
                                     is StormfrontDialogWindowEvent -> {
                                         val window = event.window
-                                        windowRepository.setWindowTitle(
-                                            name = window.id,
-                                            title = window.title,
-                                            subtitle = null,
-                                            windowType = WindowType.DIALOG,
-                                            showTimestamps = false,
-                                        )
+                                        if (window.resident) {
+                                            windowRepository.setWindowTitle(
+                                                name = window.id,
+                                                title = window.title,
+                                                subtitle = null,
+                                                windowType = WindowType.DIALOG,
+                                                showTimestamps = false,
+                                            )
+                                        }
                                     }
 
                                     is StormfrontActionEvent -> {

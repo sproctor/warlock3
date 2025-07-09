@@ -1,16 +1,20 @@
 package warlockfe.warlock3.core.prefs
 
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -47,48 +51,38 @@ class WindowRepository(
     val windows = _windows.asStateFlow()
 
     private val characterId = MutableStateFlow<String?>(null)
+    private val windowsSettings = characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            windowSettingsDao.observeByCharacter(characterId)
+        } else {
+            flow {
 
-    init {
-        characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                windowSettingsDao.observeByCharacter(characterId)
-            } else {
-                flow {
-
-                }
             }
         }
+    }
+        .stateIn(externalScope, SharingStarted.Eagerly, emptyList())
+
+    init {
+        windowsSettings
             .onEach { windowSettings ->
-                windowSettings.forEach {
-                    val existingWindow = windows.value[it.name]
-                    _windows.value += Pair(
-                        it.name,
-                        existingWindow?.copy(
-                            location = it.location ?: existingWindow.location,
-                            position = it.position,
-                            width = it.width,
-                            height = it.height,
-                            textColor = it.textColor,
-                            backgroundColor = it.backgroundColor,
-                            fontFamily = it.fontFamily,
-                            fontSize = it.fontSize,
-                        )
-                            ?: Window(
-                                name = it.name,
-                                title = it.name,
-                                subtitle = null,
-                                location = it.location,
-                                windowType = WindowType.STREAM,
-                                position = it.position,
-                                width = it.width,
-                                height = it.height,
-                                textColor = it.textColor,
-                                backgroundColor = it.backgroundColor,
-                                fontFamily = it.fontFamily,
-                                fontSize = it.fontSize,
-                                showTimestamps = false,
+                windowSettings.forEach { windowSetting ->
+                    _windows.update { windows ->
+                        val existingWindows = windows.toMutableMap()
+                        val name = windowSetting.name
+                        windows[name]?.let { window ->
+                            existingWindows[name] = window.copy(
+                                location = windowSetting.location ?: window.location,
+                                position = windowSetting.position ?: window.position,
+                                width = windowSetting.width,
+                                height = windowSetting.height,
+                                textColor = windowSetting.textColor,
+                                backgroundColor = windowSetting.backgroundColor,
+                                fontFamily = windowSetting.fontFamily,
+                                fontSize = windowSetting.fontSize,
                             )
-                    )
+                        }
+                        existingWindows.toPersistentMap()
+                    }
                 }
 
             }
@@ -106,25 +100,45 @@ class WindowRepository(
         windowType: WindowType,
         showTimestamps: Boolean,
     ) {
-        val existingWindow = windows.value[name]
-        _windows.value += Pair(
-            name,
-            existingWindow?.copy(title = title, subtitle = subtitle, showTimestamps = showTimestamps) ?: Window(
-                name = name,
-                title = title,
-                subtitle = subtitle,
-                location = null,
-                windowType = windowType,
-                position = null,
-                width = null,
-                height = null,
-                textColor = WarlockColor.Unspecified,
-                backgroundColor = WarlockColor.Unspecified,
-                fontFamily = null,
-                fontSize = null,
-                showTimestamps = showTimestamps,
-            )
-        )
+        _windows.update { windows ->
+            val existingWindow = windows[name]
+            val existingWindows = windows.toMutableMap()
+            existingWindows[name] = existingWindow
+                ?.copy(title = title, subtitle = subtitle, showTimestamps = showTimestamps)
+                ?: windowsSettings.value.firstOrNull { it.name == name }?.let { settings ->
+                    Window(
+                        name = name,
+                        title = title,
+                        subtitle = subtitle,
+                        location = settings.location,
+                        windowType = windowType,
+                        position = settings.position,
+                        width = settings.width,
+                        height = settings.height,
+                        textColor = settings.textColor,
+                        backgroundColor = settings.backgroundColor,
+                        fontFamily = settings.fontFamily,
+                        fontSize = settings.fontSize,
+                        showTimestamps = showTimestamps,
+                    )
+                }
+                ?: Window(
+                    name = name,
+                    title = title,
+                    subtitle = subtitle,
+                    location = null,
+                    windowType = windowType,
+                    position = null,
+                    width = null,
+                    height = null,
+                    textColor = WarlockColor.Unspecified,
+                    backgroundColor = WarlockColor.Unspecified,
+                    fontFamily = null,
+                    fontSize = null,
+                    showTimestamps = showTimestamps,
+                )
+            existingWindows
+        }
     }
 
     fun observeOpenWindows(characterId: String): Flow<Set<String>> {
