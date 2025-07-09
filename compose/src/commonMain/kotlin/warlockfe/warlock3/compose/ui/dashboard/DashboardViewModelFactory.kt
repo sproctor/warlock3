@@ -7,6 +7,7 @@ import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.ConnectionRepository
 import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
 import warlockfe.warlock3.core.sge.SgeClientFactory
+import warlockfe.warlock3.core.util.WarlockDirs
 
 class DashboardViewModelFactory(
     private val connectionRepository: ConnectionRepository,
@@ -14,6 +15,7 @@ class DashboardViewModelFactory(
     private val gameViewModelFactory: GameViewModelFactory,
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
+    private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
@@ -26,6 +28,7 @@ class DashboardViewModelFactory(
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
+            dirs = dirs,
             ioDispatcher = ioDispatcher,
         )
     }

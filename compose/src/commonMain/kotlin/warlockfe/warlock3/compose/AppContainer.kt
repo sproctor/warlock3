@@ -165,6 +165,7 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
+            dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )
     }

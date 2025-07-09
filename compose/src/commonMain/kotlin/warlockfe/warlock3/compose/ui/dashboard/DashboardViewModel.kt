@@ -22,6 +22,7 @@ import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
+import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.stormfront.network.StormfrontClient
 import java.io.IOException
 import java.net.UnknownHostException
@@ -33,6 +34,7 @@ class DashboardViewModel(
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
+    private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -136,6 +138,7 @@ class DashboardViewModel(
             var process: Process? = null
             if (proxySettings.enabled) {
                 val substitutions = mapOf(
+                    "{home}" to dirs.homeDir,
                     "{host}" to loginCredentials.host,
                     "{port}" to loginCredentials.port.toString(),
                 )

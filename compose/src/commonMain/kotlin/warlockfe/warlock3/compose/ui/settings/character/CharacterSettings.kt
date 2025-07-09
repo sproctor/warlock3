@@ -58,7 +58,7 @@ fun CharacterSettingsDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("In the following settings, \"{host}\" and \"{port}\" are replaced by the values for the game server.")
+                Text("In the following settings, \"{host}\" and \"{port}\" are replaced by the values for the game server. \"{home}\" is replaced by the user home directory.")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(
                         checked = proxyEnabled,
