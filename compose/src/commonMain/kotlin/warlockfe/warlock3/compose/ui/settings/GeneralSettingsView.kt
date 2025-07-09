@@ -92,7 +92,8 @@ fun GeneralSettingsView(
                 label = {
                     Text("Maximum lines in scroll back buffer")
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
             )
 
             Spacer(Modifier.height(16.dp))
@@ -120,7 +121,8 @@ fun GeneralSettingsView(
                 label = {
                     Text("Maximum commands to type ahead. 0 to disable buffer")
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
             )
 
             Spacer(Modifier.height(16.dp))
@@ -212,6 +214,7 @@ fun GeneralSettingsView(
                     value = loggingSettings!!.basePath,
                     readOnly = true,
                     onValueChange = {},
+                    singleLine = true,
                 )
                 Button(
                     onClick = {
