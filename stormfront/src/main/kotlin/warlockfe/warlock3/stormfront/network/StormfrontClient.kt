@@ -12,7 +12,6 @@ import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
@@ -26,8 +25,6 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -225,14 +222,7 @@ class StormfrontClient(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val openWindows = characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            windowRepository.observeOpenWindows(characterId)
-        } else {
-            flow { }
-        }
-    }
+    private val openWindows = windowRepository.openWindows
         .stateIn(scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     private var parseText = true

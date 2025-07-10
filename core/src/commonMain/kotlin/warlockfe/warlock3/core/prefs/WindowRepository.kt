@@ -62,6 +62,17 @@ class WindowRepository(
     }
         .stateIn(externalScope, SharingStarted.Eagerly, emptyList())
 
+    val openWindows: Flow<Set<String>> = characterId.flatMapLatest { id ->
+        if (id != null) {
+            windowSettingsDao.observeOpenWindows(id)
+                .map { openWindows -> openWindows.toSet() }
+        } else {
+            flow {
+                emit(emptySet())
+            }
+        }
+    }
+
     init {
         windowsSettings
             .onEach { windowSettings ->
@@ -122,7 +133,7 @@ class WindowRepository(
                         showTimestamps = showTimestamps,
                     )
                 }
-                ?: Window(
+                        ?: Window(
                     name = name,
                     title = title,
                     subtitle = subtitle,
@@ -141,62 +152,61 @@ class WindowRepository(
         }
     }
 
-    fun observeOpenWindows(characterId: String): Flow<Set<String>> {
-        return windowSettingsDao.observeOpenWindows(characterId)
-            .map { it.toSet() }
-    }
-
-    suspend fun openWindow(characterId: String, name: String) {
+    suspend fun openWindow(name: String) {
         withContext(NonCancellable) {
-            windowSettingsDao.openWindow(characterId, name)
+            characterId.value?.let { windowSettingsDao.openWindow(it, name) }
         }
     }
 
-    suspend fun closeWindow(characterId: String, name: String) {
+    suspend fun closeWindow(name: String) {
         withContext(NonCancellable) {
-            windowSettingsDao.closeWindow(characterId, name)
+            characterId.value?.let { windowSettingsDao.closeWindow(it, name) }
         }
     }
 
-    suspend fun moveWindow(characterId: String, name: String, location: WindowLocation) {
+    suspend fun moveWindow(name: String, location: WindowLocation) {
         withContext(NonCancellable) {
-            windowSettingsDao.moveWindow(characterId, name, location)
+            characterId.value?.let { windowSettingsDao.moveWindow(it, name, location) }
         }
     }
 
-    suspend fun setWindowWidth(characterId: String, name: String, width: Int) {
+    suspend fun setWindowWidth(name: String, width: Int) {
         withContext(NonCancellable) {
-            windowSettingsDao.updateWidth(characterId = characterId, name = name, width = width)
+            characterId.value?.let { windowSettingsDao.updateWidth(characterId = it, name = name, width = width) }
         }
     }
 
-    suspend fun setWindowHeight(characterId: String, name: String, height: Int) {
+    suspend fun setWindowHeight(name: String, height: Int) {
         withContext(NonCancellable) {
-            windowSettingsDao.updateHeight(characterId = characterId, name = name, height = height)
+            characterId.value?.let { windowSettingsDao.updateHeight(characterId = it, name = name, height = height) }
         }
     }
 
-    suspend fun setStyle(characterId: String, name: String, style: StyleDefinition) {
+    suspend fun setStyle(name: String, style: StyleDefinition) {
         withContext(NonCancellable) {
-            windowSettingsDao.setStyle(
-                characterId = characterId,
-                name = name,
-                textColor = style.textColor,
-                backgroundColor = style.backgroundColor,
-                fontFamily = style.fontFamily,
-                fontSize = style.fontSize,
-            )
+            characterId.value?.let {
+                windowSettingsDao.setStyle(
+                    characterId = it,
+                    name = name,
+                    textColor = style.textColor,
+                    backgroundColor = style.backgroundColor,
+                    fontFamily = style.fontFamily,
+                    fontSize = style.fontSize,
+                )
+            }
         }
     }
 
-    suspend fun switchPositions(characterId: String, location: WindowLocation, pos1: Int, pos2: Int) {
+    suspend fun switchPositions(location: WindowLocation, pos1: Int, pos2: Int) {
         withContext(NonCancellable) {
-            windowSettingsDao.switchPositions(
-                characterId = characterId,
-                location = location,
-                curpos = pos1,
-                newpos = pos2,
-            )
+            characterId.value?.let {
+                windowSettingsDao.switchPositions(
+                    characterId = it,
+                    location = location,
+                    curpos = pos1,
+                    newpos = pos2,
+                )
+            }
         }
     }
 }

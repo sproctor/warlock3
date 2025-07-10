@@ -315,13 +315,7 @@ class GameViewModel(
         }
     }
 
-    private val openWindows = client.characterId.flatMapLatest {
-        if (it != null) {
-            windowRepository.observeOpenWindows(it)
-        } else {
-            flow { emit(emptySet()) }
-        }
-    }
+    private val openWindows = windowRepository.openWindows
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
@@ -706,38 +700,29 @@ class GameViewModel(
     }
 
     fun moveWindow(name: String, location: WindowLocation) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                windowRepository.moveWindow(
-                    characterId = characterId,
-                    name = name,
-                    location = location
-                )
-            }
+        viewModelScope.launch {
+            windowRepository.moveWindow(
+                name = name,
+                location = location
+            )
         }
     }
 
     fun setWindowWidth(name: String, width: Int) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                windowRepository.setWindowWidth(
-                    characterId = characterId,
-                    name = name,
-                    width = width
-                )
-            }
+        viewModelScope.launch {
+            windowRepository.setWindowWidth(
+                name = name,
+                width = width
+            )
         }
     }
 
     fun setWindowHeight(name: String, height: Int) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                windowRepository.setWindowHeight(
-                    characterId = characterId,
-                    name = name,
-                    height = height
-                )
-            }
+        viewModelScope.launch {
+            windowRepository.setWindowHeight(
+                name = name,
+                height = height
+            )
         }
     }
 
@@ -757,19 +742,15 @@ class GameViewModel(
     }
 
     fun changeWindowPositions(location: WindowLocation, curPos: Int, newPos: Int) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                logger.debug { "Swapping $curPos and $newPos" }
-                windowRepository.switchPositions(characterId, location, curPos, newPos)
-            }
+        viewModelScope.launch {
+            logger.debug { "Swapping $curPos and $newPos" }
+            windowRepository.switchPositions(location, curPos, newPos)
         }
     }
 
     fun closeWindow(name: String) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                windowRepository.closeWindow(characterId = characterId, name = name)
-            }
+        viewModelScope.launch {
+            windowRepository.closeWindow(name = name)
         }
     }
 
@@ -781,10 +762,8 @@ class GameViewModel(
     }
 
     fun saveWindowStyle(name: String, style: StyleDefinition) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                windowRepository.setStyle(characterId = characterId, name = name, style = style)
-            }
+        viewModelScope.launch {
+            windowRepository.setStyle(name = name, style = style)
         }
     }
 

@@ -44,13 +44,8 @@ fun FrameWindowScope.WarlockApp(
                 unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
         ) {
-            val characterId = when (val screen = gameState.screen) {
-                is GameScreen.ConnectedGameState -> screen.viewModel.characterId.collectAsState().value
-                else -> null
-            }
             val isDisconnected = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.disconnected?.collectAsState()
             AppMenuBar(
-                characterId = characterId,
                 isConnected = isDisconnected?.value == false,
                 windowRepository = gameState.windowRepository,
                 newWindow = newWindow,

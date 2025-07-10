@@ -24,7 +24,6 @@ import javax.swing.JMenuBar
 
 @Composable
 fun FrameWindowScope.AppMenuBar(
-    characterId: String?,
     isConnected: Boolean,
     windowRepository: WindowRepository,
     runScript: (File) -> Unit,
@@ -35,7 +34,7 @@ fun FrameWindowScope.AppMenuBar(
     warlockVersion: String,
 ) {
     val windows by windowRepository.windows.collectAsState()
-    val openWindows by windowRepository.observeOpenWindows(characterId ?: "").collectAsState(emptyList())
+    val openWindows by windowRepository.openWindows.collectAsState(emptySet())
     var showAbout by remember { mutableStateOf(false) }
     var scriptDirectory by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -50,7 +49,7 @@ fun FrameWindowScope.AppMenuBar(
             )
             Item(
                 text = "Run script...",
-                enabled = characterId != null,
+                enabled = isConnected,
                 onClick = {
                     scope.launch {
                         val file = FileKit.openFilePicker(
@@ -73,28 +72,25 @@ fun FrameWindowScope.AppMenuBar(
             )
         }
 
+        val windowList = windows.values.filter { it.name != "main" }.sortedBy { it.title }
         Menu(
             text = "Windows",
-            enabled = characterId != null && windows.values.isNotEmpty(),
+            enabled = windowList.isNotEmpty(),
         ) {
-            windows.values.sortedBy { it.title }.forEach { window ->
-                if (window.name != "main") {
-                    CheckboxItem(
-                        text = window.title,
-                        checked = openWindows.any { it == window.name },
-                        onCheckedChange = {
-                            scope.launch {
-                                if (characterId != null) {
-                                    if (it) {
-                                        windowRepository.openWindow(characterId, window.name)
-                                    } else {
-                                        windowRepository.closeWindow(characterId, window.name)
-                                    }
-                                }
+            windowList.forEach { window ->
+                CheckboxItem(
+                    text = window.title,
+                    checked = openWindows.any { it == window.name },
+                    onCheckedChange = {
+                        scope.launch {
+                            if (it) {
+                                windowRepository.openWindow(window.name)
+                            } else {
+                                windowRepository.closeWindow(window.name)
                             }
                         }
-                    )
-                }
+                    }
+                )
             }
         }
         Menu("Help") {
