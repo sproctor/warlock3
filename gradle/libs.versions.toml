@@ -17,6 +17,7 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 
 agp = "8.10.1"
 ##⬆= "8.11.0"
+##⬆= "8.11.1"
 androidx-activity = "1.10.1"
 androidx-core-splashscreen = "1.0.1"
 androidxLifecycleViewmodel = "2.9.1"
@@ -44,7 +45,7 @@ material-icons = "1.7.3"
 okio = "3.15.0"
 rhino = "1.8.0"
 room = "2.7.2"
-sentryKotlin = "0.13.0"
+sentryKotlin = "0.14.0"
 slf4j = "2.0.17"
 slf4jAndroid = "2.0.17-0"
 
