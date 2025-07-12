@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.util
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okio.Path
 import java.io.BufferedWriter
@@ -40,7 +41,9 @@ class FileLogger(
     }
 
     override fun close() {
-        writer.close()
-        outputStream.close()
+        runBlocking(context) {
+            writer.close()
+            outputStream.close()
+        }
     }
 }
