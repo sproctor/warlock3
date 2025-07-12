@@ -14,9 +14,11 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
+import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.ConnectionRepository
 import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
+import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent
@@ -28,12 +30,14 @@ import java.io.IOException
 import java.net.UnknownHostException
 
 class DashboardViewModel(
+    private val gameState: GameState,
     private val connectionRepository: ConnectionRepository,
     private val connectionSettingsRepository: ConnectionSettingsRepository,
-    private val gameState: GameState,
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
+    private val windowRepositoryFactory: WindowRepositoryFactory,
+    private val streamRegistryFactory: StreamRegistryFactory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
@@ -155,10 +159,12 @@ class DashboardViewModel(
                     process = Runtime.getRuntime().exec(proxyCommand)
                 }
             }
+            val windowRepository = windowRepositoryFactory.create()
+            val streamRegistry = streamRegistryFactory.create()
             val sfClient = warlockClientFactory.createStormFrontClient(
                 credentials = loginCredentials,
-                windowRepository = gameState.windowRepository,
-                streamRegistry = gameState.streamRegistry,
+                windowRepository = windowRepository,
+                streamRegistry = streamRegistry,
             ) as StormfrontClient
             process?.let { sfClient.setProxy(it) }
             do {
@@ -174,9 +180,9 @@ class DashboardViewModel(
                 }
             } while (process != null && process.isAlive)
             val gameViewModel = gameViewModelFactory.create(
-                sfClient,
-                gameState.windowRepository,
-                gameState.streamRegistry,
+                client = sfClient,
+                windowRepository = windowRepository,
+                streamRegistry = streamRegistry,
             )
             gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
         }

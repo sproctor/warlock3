@@ -15,10 +15,12 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
+import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.AccountRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.ConnectionRepository
+import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -29,13 +31,15 @@ import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
 class SgeViewModel(
+    private val gameState: GameState,
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
     private val connectionRepository: ConnectionRepository,
     private val warlockClientFactory: WarlockClientFactory,
     sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
-    private val gameState: GameState,
+    private val windowRepositoryFactory: WindowRepositoryFactory,
+    private val streamRegistryFactory: StreamRegistryFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -118,18 +122,20 @@ class SgeViewModel(
                         }
 
                         try {
+                            val windowRepository = windowRepositoryFactory.create()
+                            val streamRegistry = streamRegistryFactory.create()
                             val sfClient = warlockClientFactory.createStormFrontClient(
                                 credentials = credentials,
-                                windowRepository = gameState.windowRepository,
-                                streamRegistry = gameState.streamRegistry,
+                                windowRepository = windowRepository,
+                                streamRegistry = streamRegistry,
                             )
                             withContext(ioDispatcher) {
                                 sfClient.connect()
                             }
                             val gameViewModel = gameViewModelFactory.create(
                                 client = sfClient,
-                                windowRepository = gameState.windowRepository,
-                                streamRegistry = gameState.streamRegistry
+                                windowRepository = windowRepository,
+                                streamRegistry = streamRegistry
                             )
                             gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                         } catch (e: UnknownHostException) {

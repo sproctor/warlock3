@@ -53,7 +53,9 @@ fun MainScreen(
             SgeWizard(
                 viewModel = viewModel,
                 onCancel = {
-                    scope.launch { gameState.setScreen(GameScreen.Dashboard) }
+                    scope.launch {
+                        gameState.setScreen(GameScreen.Dashboard)
+                    }
                 }
             )
         }
@@ -82,7 +84,9 @@ fun MainScreen(
                     Text(text = screen.message)
                     Button(
                         onClick = {
-                            scope.launch { gameState.setScreen(screen.returnTo) }
+                            scope.launch {
+                                gameState.setScreen(screen.returnTo)
+                            }
                         }
                     ) {
                         Text("OK")

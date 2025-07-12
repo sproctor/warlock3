@@ -103,7 +103,7 @@ import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
-    private val windowRepository: WindowRepository,
+    val windowRepository: WindowRepository,
     private val client: WarlockClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
@@ -111,7 +111,7 @@ class GameViewModel(
     presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
     val compassTheme: CompassTheme,
-    private val characterSettingsRepository: CharacterSettingsRepository,
+    val characterSettingsRepository: CharacterSettingsRepository,
     private val alterationRepository: AlterationRepository,
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
@@ -315,17 +315,10 @@ class GameViewModel(
         }
     }
 
-    private val openWindows = windowRepository.openWindows
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptySet()
-        )
-
     @Suppress("UNCHECKED_CAST")
     val windowUiStates: StateFlow<List<WindowUiState>> =
         combine(
-            openWindows,
+            windowRepository.openWindows,
             windowRepository.windows,
             presets,
             highlights,

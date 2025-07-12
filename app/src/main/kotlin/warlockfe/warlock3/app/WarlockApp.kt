@@ -5,6 +5,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
@@ -20,6 +23,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.window.Window
 
 @Composable
 fun FrameWindowScope.WarlockApp(
@@ -44,10 +48,37 @@ fun FrameWindowScope.WarlockApp(
                 unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
         ) {
-            val isDisconnected = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.disconnected?.collectAsState()
+            var isConnected by remember { mutableStateOf(false) }
+            var windows by remember { mutableStateOf<List<Window>>(emptyList()) }
+            var openWindows by remember { mutableStateOf<Set<String>>(emptySet()) }
+            LaunchedEffect(gameState.screen) {
+                when (val screen = gameState.screen) {
+                    is GameScreen.ConnectedGameState -> {
+                        isConnected = true
+                        screen.viewModel.windowRepository.windows
+                            .onEach { windowsMap ->
+                                windows = windowsMap.values.toList()
+                            }
+                            .launchIn(this)
+                        screen.viewModel.windowRepository.openWindows
+                            .onEach {
+                                openWindows = it
+                            }
+                            .launchIn(this)
+                    }
+                    else -> {
+                        isConnected = false
+                        windows = emptyList()
+                        openWindows = emptySet()
+                    }
+                }
+            }
             AppMenuBar(
-                isConnected = isDisconnected?.value == false,
-                windowRepository = gameState.windowRepository,
+                isConnected = isConnected,
+                windows = windows,
+                openWindows = openWindows,
+                closeWindow = {},
+                openWindow = {},
                 newWindow = newWindow,
                 showSettings = { showSettings = true },
                 disconnect = {

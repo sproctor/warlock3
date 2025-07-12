@@ -3,7 +3,6 @@ package warlockfe.warlock3.app
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,33 +17,34 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.util.toAwtColor
-import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.window.Window
 import java.io.File
 import javax.swing.JMenuBar
 
 @Composable
 fun FrameWindowScope.AppMenuBar(
     isConnected: Boolean,
-    windowRepository: WindowRepository,
+    windows: List<Window>,
+    openWindows: Set<String>,
     runScript: (File) -> Unit,
-    newWindow: suspend () -> Unit,
-    showSettings: suspend () -> Unit,
-    showUpdateDialog: suspend () -> Unit,
-    disconnect: suspend () -> Unit,
+    newWindow: () -> Unit,
+    showSettings: () -> Unit,
+    showUpdateDialog: () -> Unit,
+    disconnect: () -> Unit,
+    openWindow: (String) -> Unit,
+    closeWindow: (String) -> Unit,
     warlockVersion: String,
 ) {
-    val windows by windowRepository.windows.collectAsState()
-    val openWindows by windowRepository.openWindows.collectAsState(emptySet())
     var showAbout by remember { mutableStateOf(false) }
     var scriptDirectory by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     CustomMenuBar {
         Menu("File") {
-            Item("New window", onClick = { scope.launch { newWindow() } })
+            Item("New window", onClick = { newWindow() })
             Item(
                 text = "Settings",
                 onClick = {
-                    scope.launch { showSettings() }
+                    showSettings()
                 }
             )
             Item(
@@ -67,27 +67,24 @@ fun FrameWindowScope.AppMenuBar(
                 text = "Disconnect",
                 enabled = isConnected,
                 onClick = {
-                    scope.launch { disconnect() }
+                    disconnect()
                 },
             )
         }
 
-        val windowList = windows.values.filter { it.name != "main" }.sortedBy { it.title }
         Menu(
             text = "Windows",
-            enabled = windowList.isNotEmpty(),
+            enabled = windows.isNotEmpty(),
         ) {
-            windowList.forEach { window ->
+            windows.sortedBy { it.title }.forEach { window ->
                 CheckboxItem(
                     text = window.title,
                     checked = openWindows.any { it == window.name },
                     onCheckedChange = {
-                        scope.launch {
-                            if (it) {
-                                windowRepository.openWindow(window.name)
-                            } else {
-                                windowRepository.closeWindow(window.name)
-                            }
+                        if (it) {
+                            openWindow(window.name)
+                        } else {
+                            closeWindow(window.name)
                         }
                     }
                 )
@@ -95,9 +92,7 @@ fun FrameWindowScope.AppMenuBar(
         }
         Menu("Help") {
             Item("Updates") {
-                scope.launch {
                     showUpdateDialog()
-                }
             }
             Item("About") {
                 showAbout = true

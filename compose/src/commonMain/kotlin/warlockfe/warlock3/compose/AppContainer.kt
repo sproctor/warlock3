@@ -16,6 +16,7 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
+import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
@@ -35,6 +36,7 @@ import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
@@ -158,6 +160,21 @@ abstract class AppContainer(
             }
         }
 
+    val windowRepositoryFactory by lazy {
+        WindowRepositoryFactory(
+            windowSettingsDao = database.windowSettingsDao(),
+            externalScope = externalScope,
+        )
+    }
+
+    val streamRegistryFactory by lazy {
+        StreamRegistryFactory(
+            mainDispatcher = Dispatchers.Main.immediate,
+            externalScope = externalScope,
+            settingRepository = clientSettings,
+        )
+    }
+
     val dashboardViewModelFactory by lazy {
         DashboardViewModelFactory(
             connectionRepository = connectionRepository,
@@ -165,6 +182,8 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
+            windowRepositoryFactory = windowRepositoryFactory,
+            streamRegistryFactory = streamRegistryFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )
@@ -178,6 +197,8 @@ abstract class AppContainer(
             warlockClientFactory = warlockClientFactory,
             sgeClientFactory = sgeClientFactory,
             gameViewModelFactory = gameViewModelFactory,
+            windowRepositoryFactory = windowRepositoryFactory,
+            streamRegistryFactory = streamRegistryFactory,
             ioDispatcher = ioDispatcher,
         )
     }
