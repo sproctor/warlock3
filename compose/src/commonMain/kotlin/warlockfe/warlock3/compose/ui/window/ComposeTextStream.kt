@@ -94,6 +94,10 @@ class ComposeTextStream(
 
     override suspend fun appendResource(url: String) {
         withContext(mainDispatcher) {
+            if (maxLines > 0 && lines.size >= maxLines) {
+                lines.removeAt(0)
+            }
+            isPartial = false
             lines.add(
                 StreamImageLine(
                     url = url,
@@ -111,10 +115,10 @@ class ComposeTextStream(
         }
     }
 
+    // TODO: test this method
     suspend fun setMaxLines(maxLines: Int) {
         withContext(mainDispatcher) {
             this@ComposeTextStream.maxLines = maxLines
-            // TODO: test this method
             if (lines.size > maxLines) {
                 lines.removeRange(maxLines - 1, lines.lastIndex)
             }
