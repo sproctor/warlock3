@@ -21,10 +21,8 @@ class StreamRegistryImpl(
     private val maxLines = settingRepository
         .observeMaxScrollLines()
         .onEach {
-            synchronized(this) {
-                streams.values.forEach { stream ->
-                    stream.setMaxLines(it)
-                }
+            streams.values.forEach { stream ->
+                stream.setMaxLines(it)
             }
         }
         .stateIn(

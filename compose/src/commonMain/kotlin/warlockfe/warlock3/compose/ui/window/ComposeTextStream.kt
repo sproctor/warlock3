@@ -111,11 +111,13 @@ class ComposeTextStream(
         }
     }
 
-    fun setMaxLines(maxLines: Int) {
-        this.maxLines = maxLines
-        // TODO: test this method
-        if (lines.size > maxLines) {
-            lines.removeRange(maxLines - 1, lines.lastIndex)
+    suspend fun setMaxLines(maxLines: Int) {
+        withContext(mainDispatcher) {
+            this@ComposeTextStream.maxLines = maxLines
+            // TODO: test this method
+            if (lines.size > maxLines) {
+                lines.removeRange(maxLines - 1, lines.lastIndex)
+            }
         }
     }
 }
