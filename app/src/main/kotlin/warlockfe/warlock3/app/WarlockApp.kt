@@ -77,8 +77,18 @@ fun FrameWindowScope.WarlockApp(
                 isConnected = isConnected,
                 windows = windows,
                 openWindows = openWindows,
-                closeWindow = {},
-                openWindow = {},
+                closeWindow = {
+                    scope.launch {
+                        (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.windowRepository
+                            ?.closeWindow(it)
+                    }
+                },
+                openWindow = {
+                    scope.launch {
+                        (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.windowRepository
+                            ?.openWindow(it)
+                    }
+                },
                 newWindow = newWindow,
                 showSettings = { showSettings = true },
                 disconnect = {
