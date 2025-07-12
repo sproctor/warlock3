@@ -4,6 +4,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okio.Path.Companion.toPath
 import warlockfe.warlock3.core.util.FileLogger
 import warlockfe.warlock3.core.util.LogType
@@ -12,10 +14,14 @@ class LoggingRepository(
     clientSettingRepository: ClientSettingRepository,
     externalScope: CoroutineScope,
 ) {
+    private val mutex = Mutex()
+
     private val loggingSettings = clientSettingRepository.observeLogSettings()
         .onEach {
-            loggers.forEach { (_, logger) -> logger.close() }
-            loggers.clear()
+            mutex.withLock {
+                loggers.forEach { (_, logger) -> logger.close() }
+                loggers.clear()
+            }
         }
         .stateIn(externalScope, SharingStarted.Eagerly, null)
 
@@ -37,12 +43,14 @@ class LoggingRepository(
         }
     }
 
-    private fun getLogger(path: String, name: String): FileLogger {
-        loggers[name]?.let { return it }
+    private suspend fun getLogger(path: String, name: String): FileLogger {
+        return mutex.withLock {
+            loggers[name]?.let { return@withLock it }
 
-        val directory = path.toPath() / name
-        val logger = FileLogger(directory)
-        return logger.also { loggers[name] = it }
+            val directory = path.toPath() / name
+            val logger = FileLogger(directory)
+            logger.also { loggers[name] = it }
+        }
     }
 }
 
