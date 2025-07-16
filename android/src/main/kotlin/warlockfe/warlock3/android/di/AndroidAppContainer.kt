@@ -4,6 +4,8 @@ import androidx.room.RoomDatabase
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.script.ScriptManagerFactory
+import warlockfe.warlock3.core.util.AndroidSoundPlayer
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
@@ -18,9 +20,11 @@ class AndroidAppContainer(
     warlockDirs = warlockDirs,
 ) {
 
+    override val soundPlayer: SoundPlayer = AndroidSoundPlayer()
+
     override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
-            wslEngineFactory = WslEngineFactory(highlightRepository, variableRepository),
+            wslEngineFactory = WslEngineFactory(highlightRepository, variableRepository, soundPlayer),
             jsEngineFactory = JsEngineFactory(variableRepository),
             scriptDirRepository = scriptDirRepository,
         )
