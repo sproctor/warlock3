@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
@@ -408,7 +409,8 @@ private fun WindowViewContent(
                     }
 
                     is StreamImageLine -> {
-                        Box(Modifier.height(50.dp).fillMaxWidth()) {
+                        val defaultHeight = 80.dp
+                        Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
                             val painter = rememberAsyncImagePainter(
                                 ImageRequest.Builder(LocalPlatformContext.current)
                                     .data(streamLine.url)
@@ -423,10 +425,10 @@ private fun WindowViewContent(
                                     LocalLogger.current.debug { "Hovered: $hovered" }
                                     val height = if (hovered) {
                                         with(LocalDensity.current) {
-                                            max(state.result.image.height.toDp(), 50.dp)
+                                            max(state.result.image.height.toDp(), defaultHeight)
                                         }
                                     } else {
-                                        50.dp
+                                        defaultHeight
                                     }
                                     Image(
                                         modifier = Modifier
