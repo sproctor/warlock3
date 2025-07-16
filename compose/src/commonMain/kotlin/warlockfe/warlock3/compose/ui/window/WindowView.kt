@@ -433,8 +433,7 @@ private fun WindowViewContent(
                                             .hoverable(interactionSource)
                                             .wrapContentSize(unbounded = true, align = Alignment.TopStart)
                                             .animateContentSize()
-                                            .height(height)
-                                        ,
+                                            .height(height),
                                         painter = painter,
                                         contentDescription = null,
                                     )
