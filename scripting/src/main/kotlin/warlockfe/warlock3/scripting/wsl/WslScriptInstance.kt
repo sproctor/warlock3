@@ -22,17 +22,22 @@ import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.toCaseInsensitiveMap
+import java.io.File
 
 class WslScriptInstance(
     override val id: Long,
     override val name: String,
-    private val script: WslScript,
+    val file: File,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
     private val scriptManager: ScriptManager,
+    private val soundPlayer: SoundPlayer,
 ) : ScriptInstance {
+
+    private val script: WslScript = WslScript(name, file)
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
@@ -82,6 +87,7 @@ class WslScriptInstance(
                     variableRepository = variableRepository,
                     highlightRepository = highlightRepository,
                     commandHandler = commandHandler,
+                    soundPlayer = soundPlayer,
                 )
                 context.setScriptVariable("0", WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->

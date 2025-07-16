@@ -42,6 +42,7 @@ import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.stormfront.network.SgeClientImpl
@@ -61,7 +62,8 @@ abstract class AppContainer(
             object : Migration(10, 11) {
                 override fun migrate(connection: SQLiteConnection) {
                     connection.execSQL("DROP TABLE Alteration")
-                    connection.execSQL("""
+                    connection.execSQL(
+                        """
                         CREATE TABLE alteration (
                             id BLOB NOT NULL PRIMARY KEY,
                             characterId TEXT NOT NULL,
@@ -72,7 +74,8 @@ abstract class AppContainer(
                             ignoreCase INTEGER NOT NULL,
                             keepOriginal INTEGER NOT NULL
                         );
-                    """.trimIndent())
+                    """.trimIndent()
+                    )
                 }
             }
         )
@@ -111,6 +114,7 @@ abstract class AppContainer(
         AlterationRepository(
             database.alterationDao(),
         )
+
     @OptIn(ExperimentalResourceApi::class)
     val themeProperties = Properties().apply {
         val themeText = runBlocking { Res.readBytes("files/theme.properties").decodeToString() }
@@ -119,6 +123,8 @@ abstract class AppContainer(
     val compassTheme: CompassTheme = loadCompassTheme(themeProperties)
     abstract val scriptEngineRepository: WarlockScriptEngineRepository
     abstract val scriptManagerFactory: ScriptManagerFactory
+
+    abstract val soundPlayer: SoundPlayer
 
     val gameViewModelFactory by lazy {
         GameViewModelFactory(

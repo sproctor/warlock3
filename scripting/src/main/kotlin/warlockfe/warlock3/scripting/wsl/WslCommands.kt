@@ -169,6 +169,10 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         delay((duration * BigDecimal(1000)).toLong())
         context.scriptInstance.waitWhenSuspended()
     },
+    "play" to { context, args ->
+        val (name, _) = args.splitFirstWord()
+        context.playSound(name)
+    },
     "print" to { context, args ->
         val (stream, rest) = args.splitFirstWord()
         rest?.let {

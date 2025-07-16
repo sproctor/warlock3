@@ -23,9 +23,11 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
+import java.io.File
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
@@ -42,6 +44,7 @@ class WslContext(
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
     private val commandHandler: suspend (String) -> SendCommandType,
+    private val soundPlayer: SoundPlayer,
 ) {
 
     private val scriptVariables = CaseInsensitiveMap(
@@ -372,5 +375,15 @@ class WslContext(
 
     fun setTypeahead(value: Int) {
         maxTypeAhead = value
+    }
+
+    suspend fun playSound(name: String) {
+        val file = File(scriptInstance.file.parent, name)
+        val filename = if (file.exists()) file.absolutePath else name
+        if (soundPlayer.playSound(filename)) {
+            echo("Playing sound: $name")
+        } else {
+            echo("Could not play sound: $name")
+        }
     }
 }
