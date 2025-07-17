@@ -4,16 +4,19 @@ import java.io.File
 import javax.sound.sampled.AudioSystem
 
 class DesktopSoundPlayer(
-    private val warlockDirs: WarlockDirs
+    warlockDirs: WarlockDirs
 ) : SoundPlayer {
+
+    private val dirs = listOf(
+        warlockDirs.dataDir,
+        warlockDirs.configDir,
+        warlockDirs.homeDir,
+    )
+
     override fun playSound(filename: String): String? {
-        val dirs = listOf(
-            warlockDirs.dataDir,
-            warlockDirs.configDir,
-            warlockDirs.homeDir,
-            "",
-        )
-        val file = dirs.map { File(it, filename) }.firstOrNull { it.exists() } ?: return "File not found"
+        val file = File(filename).takeIf { it.exists() }
+            ?: dirs.map { File(it, filename) }.firstOrNull { it.exists() }
+            ?: return "File not found"
         try {
             val clip = AudioSystem.getClip()
             val inputStream = AudioSystem.getAudioInputStream(file)
