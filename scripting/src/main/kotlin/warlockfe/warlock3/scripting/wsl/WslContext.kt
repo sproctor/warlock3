@@ -380,10 +380,11 @@ class WslContext(
     suspend fun playSound(name: String) {
         val file = File(scriptInstance.file.parent, name)
         val filename = if (file.exists()) file.absolutePath else name
-        if (soundPlayer.playSound(filename)) {
+        val error = soundPlayer.playSound(filename)
+        if (error == null) {
             echo("Playing sound: $name")
         } else {
-            echo("Could not play sound: $name")
+            echo("Could not play sound \"$name\". Reason: $error")
         }
     }
 }
