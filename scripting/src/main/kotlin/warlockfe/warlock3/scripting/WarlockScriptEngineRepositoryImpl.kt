@@ -31,19 +31,22 @@ class WarlockScriptEngineRepositoryImpl(
                 File(scriptDir)
                     .listFiles { file ->
                         engine.extensions.any { file.extension.equals(it, ignoreCase = true) } &&
-                                file.nameWithoutExtension.equals(name, ignoreCase = true)
+                                (file.nameWithoutExtension.equals(name, ignoreCase = true)
+                                        || file.name.equals(name, ignoreCase = true))
                     }
                     ?.map { engine to it }
                     ?.let { matchedFiles.addAll(it) }
             }
         }
-        return if (matchedFiles.size == 1) {
+        return if (matchedFiles.isNotEmpty()) {
+            // TODO: warn about multiple scripts
+//            if (matchedFiles.size > 1) {
+//                ScriptLaunchResult.Failure("Found multiple files that could be launched by that command")
+//            }
             val entry = matchedFiles.first()
             ScriptLaunchResult.Success(
                 entry.first.createInstance(nextId++, name, entry.second, scriptManager)
             )
-        } else if (matchedFiles.size > 1) {
-            ScriptLaunchResult.Failure("Found multiple files that could be launched by that command")
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
         }
