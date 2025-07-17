@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.util.WarlockDirs
+import java.io.File
 
 class ScriptDirRepository(
     private val scriptDirDao: ScriptDirDao,
@@ -16,11 +17,12 @@ class ScriptDirRepository(
     }
 
     suspend fun getMappedScriptDirs(characterId: String): List<String> {
-        return scriptDirDao.getByCharacterWithGlobal(characterId) + getDefaultDir()
+        return (scriptDirDao.getByCharacterWithGlobal(characterId) + getDefaultDir())
+            .toSet().toList()
     }
 
     fun getDefaultDir(): String {
-        return warlockDirs.dataDir + "/scripts/"
+        return File(warlockDirs.dataDir, "scripts").absolutePath
     }
 
     suspend fun save(characterId: String, path: String) {
@@ -38,13 +40,5 @@ class ScriptDirRepository(
                 path = path,
             )
         }
-    }
-
-    suspend fun saveGlobal(path: String) {
-        save("global", path)
-    }
-
-    suspend fun deleteGlobal(path: String) {
-        delete("global", path)
     }
 }
