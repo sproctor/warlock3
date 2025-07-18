@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.ui.game
 
+import kotlinx.coroutines.CoroutineDispatcher
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.AliasRepository
@@ -23,6 +24,7 @@ class GameViewModelFactory(
     private val aliasRepository: AliasRepository,
     private val alterationRepository: AlterationRepository,
     private val scriptManagerFactory: ScriptManagerFactory,
+    private val mainDispatcher: CoroutineDispatcher,
 ) {
     fun create(
         client: WarlockClient,
@@ -42,5 +44,6 @@ class GameViewModelFactory(
             aliasRepository = aliasRepository,
             alterationRepository = alterationRepository,
             streamRegistry = streamRegistry,
+            mainDispatcher = mainDispatcher,
         )
 }

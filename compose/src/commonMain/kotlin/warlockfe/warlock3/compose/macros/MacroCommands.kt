@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.macros
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.getSelectedText
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
@@ -16,6 +17,14 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     "bufferstart" to { viewModel, _ ->
         viewModel.scroll(ScrollEvent.BUFFER_START)
     },
+    "cleartostart" to { viewModel, _ ->
+        val text = viewModel.entryText
+        viewModel.entryDelete(TextRange(0, text.selection.start))
+    },
+    "cleartoend" to { viewModel, _ ->
+        val text = viewModel.entryText
+        viewModel.entryDelete(TextRange(text.selection.end, text.text.length))
+    },
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
         // TODO: allow focus on other windows and apply copy there
@@ -26,6 +35,19 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     },
     "lineup" to { viewModel, clipboard ->
         viewModel.scroll(ScrollEvent.LINE_UP)
+    },
+    "movecursortostart" to { viewModel, _ ->
+        viewModel.entrySetSelection(TextRange(0))
+    },
+    "movecursortoend" to { viewModel, _ ->
+        viewModel.entrySetSelection(TextRange(viewModel.entryText.text.length))
+    },
+    "deleteprevword" to { viewModel, _ ->
+        val text = viewModel.entryText
+        val index = text.text.substring(0, text.selection.start).trim().lastIndexOfAny(listOf(" ", "\t")) + 1
+        if (index < text.text.length) {
+            viewModel.entryDelete(TextRange(index, text.selection.start))
+        }
     },
     "pagedown" to { viewModel, clipboard ->
         viewModel.scroll(ScrollEvent.PAGE_DOWN)
@@ -62,5 +84,9 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     },
     "repeatsecondtolast" to { viewModel, _ ->
         viewModel.repeatCommand(2)
-    }
+    },
+    "selectall" to { viewModel, _ ->
+        val text = viewModel.entryText
+        viewModel.entrySetSelection(TextRange(0, text.text.length))
+    },
 )

@@ -54,6 +54,7 @@ abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
@@ -137,6 +138,7 @@ abstract class AppContainer(
             aliasRepository = aliasRepository,
             scriptManagerFactory = scriptManagerFactory,
             alterationRepository = alterationRepository,
+            mainDispatcher = mainDispatcher,
         )
     }
 
@@ -175,7 +177,7 @@ abstract class AppContainer(
 
     val streamRegistryFactory by lazy {
         StreamRegistryFactory(
-            mainDispatcher = Dispatchers.Main.immediate,
+            mainDispatcher = mainDispatcher,
             externalScope = externalScope,
             settingRepository = clientSettings,
         )

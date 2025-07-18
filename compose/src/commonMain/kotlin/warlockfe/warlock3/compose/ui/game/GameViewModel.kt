@@ -24,6 +24,7 @@ import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -43,6 +44,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.macros.macroCommands
@@ -115,6 +117,7 @@ class GameViewModel(
     private val alterationRepository: AlterationRepository,
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
+    private val mainDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val logger = KotlinLogging.logger { }
@@ -581,7 +584,7 @@ class GameViewModel(
     }
 
     private fun executeMacro(tokens: List<MacroToken>, clipboard: Clipboard) {
-        viewModelScope.launch {
+        viewModelScope.launch(mainDispatcher) {
             var movedCursor = false
             tokens.forEach { token ->
                 when (token) {
@@ -632,10 +635,12 @@ class GameViewModel(
         }
     }
 
+    // Must be called from main thread
     private fun entryClear() {
         entryText = TextFieldValue()
     }
 
+    // Must be called from main thread
     private fun entryAppend(text: String, moveCursor: Boolean) {
         val newText = entryText.text + text
         val selection = if (moveCursor) {
@@ -644,6 +649,26 @@ class GameViewModel(
             entryText.selection
         }
         entryText = entryText.copy(text = newText, selection = selection)
+    }
+
+    // Must be called from main thread
+    fun entryDelete(range: TextRange) {
+        val newText = entryText.text.removeRange(range.start, range.end)
+        val selection = entryText.selection
+        val newSelection = if (range.start < selection.start) {
+            TextRange(
+                start = selection.start - range.length,
+                end = selection.end - range.length,
+            )
+        } else {
+            selection
+        }
+        entryText = entryText.copy(text = newText, selection = newSelection)
+    }
+
+    // Must be called from main thread
+    fun entrySetSelection(selection: TextRange) {
+        entryText = entryText.copy(selection = selection)
     }
 
     fun entryInsert(text: String) {
