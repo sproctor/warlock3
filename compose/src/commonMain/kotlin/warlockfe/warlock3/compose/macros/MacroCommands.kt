@@ -42,7 +42,7 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     "movecursortoend" to { viewModel, _ ->
         viewModel.entrySetSelection(TextRange(viewModel.entryText.text.length))
     },
-    "deleteprevword" to { viewModel, _ ->
+    "deletelastword" to { viewModel, _ ->
         val text = viewModel.entryText
         val index = text.text.substring(0, text.selection.start).trim().lastIndexOfAny(listOf(" ", "\t")) + 1
         if (index < text.text.length) {
