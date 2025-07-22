@@ -54,22 +54,31 @@ fun FrameWindowScope.WarlockApp(
             LaunchedEffect(gameState.screen) {
                 when (val screen = gameState.screen) {
                     is GameScreen.ConnectedGameState -> {
-                        isConnected = true
+                        scope.launch {
+                            isConnected = true
+                        }
                         screen.viewModel.windowRepository.windows
                             .onEach { windowsMap ->
-                                windows = windowsMap.values.toList()
+                                scope.launch {
+                                    windows = windowsMap.values.toList()
+                                }
                             }
                             .launchIn(this)
                         screen.viewModel.windowRepository.openWindows
                             .onEach {
-                                openWindows = it
+                                scope.launch {
+                                    openWindows = it
+                                }
                             }
                             .launchIn(this)
                     }
+
                     else -> {
-                        isConnected = false
-                        windows = emptyList()
-                        openWindows = emptySet()
+                        scope.launch {
+                            isConnected = false
+                            windows = emptyList()
+                            openWindows = emptySet()
+                        }
                     }
                 }
             }
@@ -90,7 +99,11 @@ fun FrameWindowScope.WarlockApp(
                     }
                 },
                 newWindow = newWindow,
-                showSettings = { showSettings = true },
+                showSettings = {
+                    scope.launch {
+                        showSettings = true
+                    }
+                },
                 disconnect = {
                     val screen = gameState.screen
                     if (screen is GameScreen.ConnectedGameState) {
@@ -99,6 +112,7 @@ fun FrameWindowScope.WarlockApp(
                         }
                     }
                 },
+                scriptDirectory = appContainer.scriptDirRepository.getDefaultDir(),
                 runScript = {
                     val screen = gameState.screen
                     if (screen is GameScreen.ConnectedGameState) {

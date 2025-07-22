@@ -1,31 +1,26 @@
 package warlockfe.warlock3.app
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
-import androidx.compose.ui.window.MenuBarScope
-import androidx.compose.ui.window.setContent
+import androidx.compose.ui.window.MenuBar
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.openFilePicker
 import kotlinx.coroutines.launch
-import warlockfe.warlock3.compose.util.toAwtColor
 import warlockfe.warlock3.core.window.Window
 import java.io.File
-import javax.swing.JMenuBar
 
 @Composable
 fun FrameWindowScope.AppMenuBar(
     isConnected: Boolean,
     windows: List<Window>,
     openWindows: Set<String>,
+    scriptDirectory: String?,
     runScript: (File) -> Unit,
     newWindow: () -> Unit,
     showSettings: () -> Unit,
@@ -36,9 +31,8 @@ fun FrameWindowScope.AppMenuBar(
     warlockVersion: String,
 ) {
     var showAbout by remember { mutableStateOf(false) }
-    var scriptDirectory by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    CustomMenuBar {
+    MenuBar {
         Menu("File") {
             Item("New window", onClick = { newWindow() })
             Item(
@@ -92,34 +86,16 @@ fun FrameWindowScope.AppMenuBar(
         }
         Menu("Help") {
             Item("Updates") {
-                    showUpdateDialog()
+                showUpdateDialog()
             }
             Item("About") {
-                showAbout = true
+                scope.launch {
+                    showAbout = true
+                }
             }
         }
     }
     if (showAbout) {
         AboutDialog(warlockVersion) { showAbout = false }
-    }
-}
-
-@Composable
-fun FrameWindowScope.CustomMenuBar(content: @Composable MenuBarScope.() -> Unit) {
-    val parentComposition = rememberCompositionContext()
-
-    val backgroundColor = MaterialTheme.colorScheme.surface
-    val foregroundColor = MaterialTheme.colorScheme.onSurface
-    DisposableEffect(Unit) {
-        val menu = JMenuBar()
-        menu.background = backgroundColor.toAwtColor()
-        menu.foreground = foregroundColor.toAwtColor()
-        val composition = menu.setContent(parentComposition, content)
-        window.jMenuBar = menu
-
-        onDispose {
-            window.jMenuBar = null
-            composition.dispose()
-        }
     }
 }
