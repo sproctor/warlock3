@@ -21,7 +21,7 @@ data class StormfrontStyleEvent(val style: WarlockStyle?) : StormfrontEvent
 data class StormfrontPushStyleEvent(val style: WarlockStyle) : StormfrontEvent
 data object StormfrontPopStyleEvent : StormfrontEvent
 data class StormfrontPromptEvent(val text: String) : StormfrontEvent
-data class StormfrontTimeEvent(val time: String) : StormfrontEvent
+data class StormfrontTimeEvent(val time: Long) : StormfrontEvent
 data class StormfrontRoundTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontCastTimeEvent(val time: String) : StormfrontEvent
 data class StormfrontSettingsInfoEvent(val crc: String?, val instance: String?) : StormfrontEvent

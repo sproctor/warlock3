@@ -10,8 +10,8 @@ class PromptHandler : ElementListener {
     // the following is undefined: <prompt> <prompt>foo</prompt> bar </prompt>
     private val prompt = StringBuilder()
     override fun startElement(element: StartElement): StormfrontEvent? {
-        return element.attributes["time"]?.let { time ->
-            prompt.setLength(0)
+        prompt.setLength(0)
+        return element.attributes["time"]?.toLongOrNull()?.let { time ->
             StormfrontTimeEvent(time = time)
         }
     }

@@ -353,7 +353,7 @@ class StormfrontClient(
                                     }
 
                                     is StormfrontTimeEvent -> {
-                                        val newTime = event.time.toLong() * 1000L
+                                        val newTime = event.time * 1000L
                                         val currentTime = time
                                         if (newTime > currentTime + 1000L) {
                                             // We're more than 1s slow
