@@ -5,17 +5,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,13 +23,20 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.isSpecified
 import androidx.constraintlayout.compose.ConstrainedLayoutReference
 import androidx.constraintlayout.compose.ConstraintLayout
+import coil3.compose.AsyncImage
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import warlockfe.warlock3.compose.icons.Broken_image
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.SkinObject
+import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.Percentage
+import warlockfe.warlock3.core.util.getIgnoringCase
+import warlockfe.warlock3.core.util.toWarlockColor
+import kotlin.io.encoding.Base64
 import kotlin.math.min
 
 @Composable
@@ -38,83 +45,45 @@ fun DialogContent(
     modifier: Modifier = Modifier,
     executeCommand: (String) -> Unit,
 ) {
-    val colors = mutableMapOf<String, ColorGroup>()
+    val skin = LocalSkin.current
+    val skinObjects = mutableMapOf<String, SkinObject>()
     dataObjects.forEach { data ->
         if (data is DialogObject.Skin) {
-            data.controls.forEach { id ->
-                val colorGroup = when (data.name) {
-                    "healthBar" ->
-                        ColorGroup(
-                            text = Color.White,
-                            bar = Color(0xFF800000),
-                            background = Color.DarkGray
-                        )
-
-                    "manaBar" ->
-                        ColorGroup(
-                            text = Color.White,
-                            bar = Color.Blue,
-                            background = Color.DarkGray
-                        )
-
-                    "staminaBar" ->
-                        ColorGroup(
-                            text = Color.Black,
-                            bar = Color(0xFFD0982F),
-                            background = Color(0xFFDECCAA)
-                        )
-
-                    "spiritBar" ->
-                        ColorGroup(
-                            text = Color.Black,
-                            bar = Color.LightGray,
-                            background = Color.Gray
-                        )
-
-                    else ->
-                        ColorGroup(
-                            text = Color.White,
-                            bar = Color.Blue,
-                            background = Color.Gray
-                        )
+            val skinObject = skin.getIgnoringCase(data.name)
+            if (skinObject != null) {
+                data.controls.forEach { id ->
+                    skinObject.children.getIgnoringCase(id)?.let {
+                        skinObjects[id] = it
+                    }
                 }
-                colors[id] = colorGroup
             }
         }
     }
     BoxWithConstraints(modifier) {
-        val maxWidth = maxWidth
-        val maxHeight = maxHeight
         ConstraintLayout(
             Modifier.fillMaxSize()
         ) {
             val refs = dataObjects.associate { it.id to createRef() }
             var lastRef: ConstrainedLayoutReference? = null
             dataObjects.forEach { data ->
-                val colors = colors[data.id] ?: ColorGroup(
-                    text = Color.White,
-                    bar = Color.Blue,
-                    background = Color.Gray
-                )
-                DataObjectContent(
+                val skinObject = skinObjects.getIgnoringCase(data.id)
+                this@BoxWithConstraints.DataObjectContent(
                     modifier = Modifier
-                        .size(
-                            width = data.width?.toDp(maxWidth) ?: Dp.Unspecified,
-                            height = data.height?.toDp(maxHeight) ?: Dp.Unspecified,
-                        )
                         .constrainAs(refs[data.id]!!) {
+                            val dataTop = data.top ?: skinObject?.top?.let { DataDistance.Pixels(it) }
+                            val dataLeft = data.left ?: skinObject?.left?.let { DataDistance.Pixels(it) }
                             val topAnchor = if (data.topAnchor != null) {
                                 refs[data.topAnchor]?.bottom ?: parent.top
-                            } else if (data.top == null) {
+                            } else if (dataTop == null) {
                                 lastRef?.top ?: parent.top
                             } else {
                                 parent.top
                             }
                             top.linkTo(
                                 anchor = topAnchor,
-                                margin = data.top?.toDp(maxWidth) ?: 0.dp
+                                margin = dataTop?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
                             )
-                            val leftMargin = data.left?.toDp(maxWidth) ?: 0.dp
+                            val leftMargin = dataLeft?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
                             when (data.align) {
                                 "n" -> {
                                     absoluteLeft.linkTo(parent.absoluteLeft, leftMargin)
@@ -130,7 +99,7 @@ fun DialogContent(
                                     // nw and default are treated the same
                                     val leftAnchor = if (data.leftAnchor != null) {
                                         refs[data.leftAnchor]?.absoluteRight ?: parent.absoluteLeft
-                                    } else if (data.left == null) {
+                                    } else if (dataLeft == null) {
                                         lastRef?.absoluteRight ?: parent.absoluteLeft
                                     } else {
                                         parent.absoluteLeft
@@ -140,7 +109,7 @@ fun DialogContent(
                             }
                             lastRef = refs[data.id]
                         },
-                    colorGroup = colors,
+                    skinObject = skinObjects.getIgnoringCase(data.id),
                     dataObject = data,
                     executeCommand = executeCommand,
                 )
@@ -150,21 +119,19 @@ fun DialogContent(
 }
 
 @Composable
-private fun DataObjectContent(
+private fun BoxWithConstraintsScope.DataObjectContent(
     modifier: Modifier,
-    colorGroup: ColorGroup,
+    skinObject: SkinObject?,
     dataObject: DialogObject,
     executeCommand: (String) -> Unit,
 ) {
     when (dataObject) {
-        is DialogObject.ProgressBar -> ProgressBar(modifier, colorGroup, dataObject)
-        is DialogObject.Label -> Label(modifier, colorGroup, dataObject.value ?: "")
-        is DialogObject.Link -> Link(modifier, colorGroup, dataObject, executeCommand)
-        is DialogObject.Image -> DialogImage(modifier, colorGroup, dataObject, executeCommand)
+        is DialogObject.Skin -> DialogSkin(modifier, dataObject)
+        is DialogObject.ProgressBar -> ProgressBar(modifier, skinObject, dataObject)
+        is DialogObject.Label -> Label(modifier, skinObject, dataObject)
+        is DialogObject.Link -> Link(modifier, skinObject, dataObject, executeCommand)
+        is DialogObject.Image -> DialogImage(modifier, skinObject, dataObject, executeCommand)
         is DialogObject.Button -> DialogButton(modifier, dataObject, executeCommand)
-        else -> {
-            // todo
-        }
     }
 }
 
@@ -176,18 +143,26 @@ private fun DataDistance.toDp(maxWidth: Dp): Dp {
 }
 
 @Composable
-private fun ProgressBar(
+private fun BoxWithConstraintsScope.ProgressBar(
     modifier: Modifier,
-    colorGroup: ColorGroup,
-    progressBarData: DialogObject.ProgressBar,
+    skinObject: SkinObject?,
+    data: DialogObject.ProgressBar,
 ) {
-    BoxWithConstraints(
-        modifier = modifier.background(colorGroup.background)
+    val colorGroup = skinObject.getColorGroup()
+    Box(
+        modifier = modifier
+            .size(
+                width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
+                    ?: Dp.Unspecified,
+                height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                    ?: Dp.Unspecified,
+            )
+            .background(colorGroup.background)
     ) {
-        val percent = min(progressBarData.value.value, 100)
-        val width = maxWidth * percent / 100
+        val percent = min(data.value.value, 100)
+        val width = this@ProgressBar.maxWidth * percent / 100
         Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
-        progressBarData.text?.let { text ->
+        data.text?.let { text ->
             Text(
                 modifier = Modifier.align(Alignment.Center),
                 text = text,
@@ -199,15 +174,25 @@ private fun ProgressBar(
 }
 
 @Composable
-private fun Label(
+private fun BoxWithConstraintsScope.Label(
     modifier: Modifier,
-    colorGroup: ColorGroup,
-    text: String,
+    skinObject: SkinObject?,
+    data: DialogObject.Label,
 ) {
-    Box(modifier = modifier.padding(horizontal = 4.dp)) {
+    val colorGroup = skinObject.getColorGroup()
+    Box(
+        modifier = modifier
+            .size(
+                width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
+                    ?: Dp.Unspecified,
+                height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                    ?: Dp.Unspecified,
+            )
+            .padding(horizontal = 4.dp)
+    ) {
         Text(
             modifier = Modifier.align(Alignment.Center),
-            text = text,
+            text = data.value ?: "",
             color = colorGroup.text,
             style = MaterialTheme.typography.labelSmall
         )
@@ -215,13 +200,23 @@ private fun Label(
 }
 
 @Composable
-private fun Link(
+private fun BoxWithConstraintsScope.Link(
     modifier: Modifier,
-    colorGroup: ColorGroup,
+    skinObject: SkinObject?,
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
 ) {
-    Box(modifier = modifier.padding(horizontal = 4.dp)) {
+    val colorGroup = skinObject.getColorGroup()
+    Box(
+        modifier = modifier
+            .size(
+                width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
+                    ?: Dp.Unspecified,
+                height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                    ?: Dp.Unspecified,
+            )
+            .padding(horizontal = 4.dp)
+    ) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = buildAnnotatedString {
@@ -240,28 +235,46 @@ private fun Link(
 }
 
 @Composable
-private fun DialogImage(
+private fun BoxWithConstraintsScope.DialogImage(
     modifier: Modifier,
-    colorGroup: ColorGroup,
+    skinObject: SkinObject?,
     data: DialogObject.Image,
     executeCommand: (String) -> Unit,
 ) {
+    val skin = LocalSkin.current
+    val colorGroup = skinObject.getColorGroup()
+    val imageData = data.name?.let { skin.getIgnoringCase(it) }
     Box(
-        modifier = modifier.then(
-            if (data.cmd != null) {
-                Modifier.clickable {
-                    executeCommand(data.cmd!!)
+        modifier = modifier
+            .size(
+                width = ((imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(
+                    maxWidth
+                )
+                    ?: Dp.Unspecified,
+                height = ((imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) }
+                    ?: data.height)?.toDp(maxHeight)
+                    ?: Dp.Unspecified,
+            )
+            .then(
+                if (data.cmd != null) {
+                    Modifier.clickable {
+                        executeCommand(data.cmd!!)
+                    }
+                } else {
+                    Modifier
                 }
-            } else {
-                Modifier
-            }
-        )
+            )
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = null,
-            tint = colorGroup.bar,
-        )
+        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.Default.decode(it) }
+        if (image != null) {
+            AsyncImage(image, contentDescription = null)
+        } else {
+            Icon(
+                imageVector = Broken_image,
+                contentDescription = null,
+                tint = colorGroup.bar,
+            )
+        }
     }
 }
 
@@ -301,122 +314,159 @@ private fun DialogButton(
     }
 }
 
+@Composable
+private fun BoxWithConstraintsScope.DialogSkin(
+    modifier: Modifier,
+    data: DialogObject.Skin,
+) {
+    val skin = LocalSkin.current
+    val skinObject = skin.getIgnoringCase(data.name)
+    val image = skinObject?.image?.data?.let { Base64.Default.decode(it) }
+    if (image != null) {
+        AsyncImage(
+            modifier = modifier
+                .size(
+                    width = (skinObject.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
+                        ?: Dp.Unspecified,
+                    height = (skinObject.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                        ?: Dp.Unspecified,
+                ),
+            model = image,
+            contentDescription = null
+        )
+    }
+}
+
 private data class ColorGroup(val text: Color, val bar: Color, val background: Color)
 
 @Preview
 @Composable
 fun VitalBarsPreview() {
-    val dialogData = listOf(
-        DialogObject.Skin(
-            id = "healthSkin",
-            left = null,
-            top = null,
-            width = null,
-            height = null,
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            name = "healthBar",
-            controls = listOf("health")
+    CompositionLocalProvider(
+        LocalSkin provides mapOf(
+            "HealthBar" to SkinObject(
+                children = mapOf(
+                    "health" to SkinObject(
+                        color = "#FFFFFF",
+                        bar = "#800000",
+                        background = "#444444",
+                    )
+                )
+            )
         ),
-        DialogObject.ProgressBar(
-            id = "health",
-            left = DataDistance.Percent(value = Percentage(value = 0)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            value = Percentage(value = 100),
-            text = "health 26/26"
-        ),
-        DialogObject.Skin(
-            id = "manaSkin",
-            left = DataDistance.Percent(value = Percentage(value = 25)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            name = "manaBar",
-            controls = listOf("mana")
-        ),
-        DialogObject.ProgressBar(
-            id = "mana",
-            left = DataDistance.Percent(value = Percentage(value = 25)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            value = Percentage(value = 100),
-            text = "mana 2/2"
-        ),
-        DialogObject.Skin(
-            id = "spiritSkin",
-            left = DataDistance.Percent(value = Percentage(value = 75)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            name = "spiritBar",
-            controls = listOf("spirit")
-        ),
-        DialogObject.ProgressBar(
-            id = "spirit",
-            left = DataDistance.Percent(value = Percentage(value = 75)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            value = Percentage(value = 100),
-            text = "spirit 7/7"
-        ),
-        DialogObject.Skin(
-            id = "staminaSkin",
-            left = DataDistance.Percent(value = Percentage(value = 50)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            name = "staminaBar",
-            controls = listOf("stamina")
-        ),
-        DialogObject.ProgressBar(
-            id = "stamina",
-            left = DataDistance.Percent(value = Percentage(value = 50)),
-            top = DataDistance.Percent(value = Percentage(value = 0)),
-            width = DataDistance.Percent(value = Percentage(value = 25)),
-            height = DataDistance.Percent(value = Percentage(value = 100)),
-            align = null,
-            topAnchor = null,
-            leftAnchor = null,
-            tooltip = null,
-            value = Percentage(value = 100),
-            text = "stamina 26/26"
+    ) {
+        val dialogData = listOf(
+            DialogObject.Skin(
+                id = "healthSkin",
+                left = null,
+                top = null,
+                width = null,
+                height = null,
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                name = "healthBar",
+                controls = listOf("health")
+            ),
+            DialogObject.ProgressBar(
+                id = "health",
+                left = DataDistance.Percent(value = Percentage(value = 0)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                value = Percentage(value = 100),
+                text = "health 26/26"
+            ),
+            DialogObject.Skin(
+                id = "manaSkin",
+                left = DataDistance.Percent(value = Percentage(value = 25)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                name = "manaBar",
+                controls = listOf("mana")
+            ),
+            DialogObject.ProgressBar(
+                id = "mana",
+                left = DataDistance.Percent(value = Percentage(value = 25)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                value = Percentage(value = 100),
+                text = "mana 2/2"
+            ),
+            DialogObject.Skin(
+                id = "spiritSkin",
+                left = DataDistance.Percent(value = Percentage(value = 75)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                name = "spiritBar",
+                controls = listOf("spirit")
+            ),
+            DialogObject.ProgressBar(
+                id = "spirit",
+                left = DataDistance.Percent(value = Percentage(value = 75)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                value = Percentage(value = 100),
+                text = "spirit 7/7"
+            ),
+            DialogObject.Skin(
+                id = "staminaSkin",
+                left = DataDistance.Percent(value = Percentage(value = 50)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                name = "staminaBar",
+                controls = listOf("stamina")
+            ),
+            DialogObject.ProgressBar(
+                id = "stamina",
+                left = DataDistance.Percent(value = Percentage(value = 50)),
+                top = DataDistance.Percent(value = Percentage(value = 0)),
+                width = DataDistance.Percent(value = Percentage(value = 25)),
+                height = DataDistance.Percent(value = Percentage(value = 100)),
+                align = null,
+                topAnchor = null,
+                leftAnchor = null,
+                tooltip = null,
+                value = Percentage(value = 100),
+                text = "stamina 26/26"
+            )
         )
-    )
-    DialogContent(
-        dataObjects = dialogData,
-        modifier = Modifier.size(400.dp, 24.dp),
-        executeCommand = {},
-    )
+        DialogContent(
+            dataObjects = dialogData,
+            modifier = Modifier.size(400.dp, 24.dp),
+            executeCommand = {},
+        )
+    }
 }
 
 @Preview
@@ -833,5 +883,13 @@ fun ExperiencePreview() {
         dataObjects = dialogData,
         modifier = Modifier.size(190.dp, 200.dp),
         executeCommand = {},
+    )
+}
+
+private fun SkinObject?.getColorGroup(): ColorGroup {
+    return ColorGroup(
+        text = this?.color?.toWarlockColor()?.toColor() ?: Color.White,
+        bar = this?.bar?.toWarlockColor()?.toColor() ?: Color.Blue,
+        background = this?.background?.toWarlockColor()?.toColor() ?: Color.Gray
     )
 }

@@ -44,7 +44,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.macros.macroCommands
@@ -412,7 +411,9 @@ class GameViewModel(
                     is ClientDialogEvent -> {
                         _dialogs.update { origDialogs ->
                             val data = origDialogs[event.id]?.toMutableList() ?: mutableListOf()
-                            val existingIndex = data.indexOfFirst { it.id == event.data.id }
+                            val existingIndex = data.indexOfFirst {
+                                it.id.equals(other = event.data.id, ignoreCase = true)
+                            }
                             if (existingIndex != -1) {
                                 data[existingIndex] = event.data
                             } else {

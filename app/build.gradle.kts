@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.filekit.dialogs)
 
     implementation(libs.kotlinx.coroutines.swing)
+    implementation(libs.kotlinx.serialization.json)
 
     // Logging and error reporting
     implementation(libs.slf4j.simple)

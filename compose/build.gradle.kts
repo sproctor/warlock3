@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val jvmToolchainVersion: String by project
@@ -12,43 +13,41 @@ kotlin {
     jvm()
 
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation(project(":core"))
-                implementation(project(":macro"))
-                implementation(project(":stormfront")) // TODO: remove when abstracting DI
+        commonMain.dependencies {
+            implementation(project(":core"))
+            implementation(project(":macro"))
+            implementation(project(":stormfront")) // TODO: remove when abstracting DI
 
-                // Compose
-                implementation(compose.runtime)
-                implementation(compose.foundation)
-                implementation(compose.material3)
-                implementation(compose.components.resources)
-                implementation(libs.material.icons)
-                api(libs.androidx.lifecycle.viewmodel.compose)
-                implementation(libs.constraintlayout)
-                implementation(compose.uiTooling)
-                implementation(compose.components.uiToolingPreview)
-                implementation(libs.fastscroller.m3)
+            implementation(libs.kotlinx.serialization.json)
 
-                // Third party UI
-                implementation(libs.colorpicker)
-                implementation(libs.filekit.dialogs)
+            // Compose
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.components.resources)
+            implementation(libs.material.icons)
+            api(libs.androidx.lifecycle.viewmodel.compose)
+            implementation(libs.constraintlayout)
+            implementation(compose.uiTooling)
+            implementation(compose.components.uiToolingPreview)
+            implementation(libs.fastscroller.m3)
 
-                // Other stuff
-                implementation(libs.kotlinx.collections.immutable)
-                implementation(libs.sqlite.bundled)
-                implementation(libs.appdirs)
-                implementation(libs.coil.compose)
-                implementation(libs.coil.network.okhttp)
-            }
+            // Third party UI
+            implementation(libs.colorpicker)
+            implementation(libs.filekit.dialogs)
+
+            // Other stuff
+            implementation(libs.kotlinx.collections.immutable)
+            implementation(libs.sqlite.bundled)
+            implementation(libs.appdirs)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.okhttp)
         }
-//        val commonTest by getting {
-//            dependencies {
-//                implementation(kotlin("test"))
-//                implementation(libs.kotlinx.coroutines.test)
-//                implementation(libs.turbine)
-//            }
-//        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+//            implementation(libs.kotlinx.coroutines.test)
+//            implementation(libs.turbine)
+        }
     }
 
     jvmToolchain(jvmToolchainVersion.toInt())

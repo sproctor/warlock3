@@ -44,16 +44,20 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import okio.IOException
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.keyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.util.LocalLogger
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
+import warlockfe.warlock3.compose.util.SkinObject
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.sge.SimuGameCredentials
@@ -141,6 +145,13 @@ fun main(args: Array<String>) {
         appContainer.macroRepository.insertDefaultMacrosIfNeeded()
     }
 
+    val skin = runBlocking {
+        val json = Json {
+            ignoreUnknownKeys = true
+        }
+        json.decodeFromString<Map<String, SkinObject>>(Res.readBytes("files/skin.json").decodeToString())
+    }
+
     val clientSettings = appContainer.clientSettings
     val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
     val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
@@ -203,54 +214,57 @@ fun main(args: Array<String>) {
                 }
             }
         }
-        if (showUpdateDialog) {
-            DialogWindow(
-                onCloseRequest = { showUpdateDialog = false },
-                title = "Warlock update available",
-                state = rememberDialogState(width = 400.dp, height = 300.dp),
-            ) {
-                Column(Modifier.fillMaxSize().padding(8.dp)) {
-                    if (updateAvailable) {
-                        Text("An update to Warlock is available. You are currently running \"$currentVersion\" and \"$latestVersion\" is available.")
-                    } else {
-                        Text("Current version: ${currentVersion ?: "unknown"}")
-                        Text("Available version: ${latestVersion ?: "unknown"}")
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Row(Modifier.fillMaxWidth()) {
-                        Spacer(Modifier.weight(1f))
-                        val scope = rememberCoroutineScope()
-                        TextButton(
-                            onClick = {
-                                scope.launch {
-                                    clientSettings.putIgnoreUpdates(true)
-                                    showUpdateDialog = false
-                                }
-                            },
-                        ) {
-                            Text("Ignore updates")
-                        }
-                        TextButton(
-                            onClick = { showUpdateDialog = false },
-                        ) {
-                            Text("Close")
-                        }
+
+        CompositionLocalProvider(
+            LocalLogger provides logger,
+            LocalSkin provides skin,
+        ) {
+            if (showUpdateDialog) {
+                DialogWindow(
+                    onCloseRequest = { showUpdateDialog = false },
+                    title = "Warlock update available",
+                    state = rememberDialogState(width = 400.dp, height = 300.dp),
+                ) {
+                    Column(Modifier.fillMaxSize().padding(8.dp)) {
                         if (updateAvailable) {
+                            Text("An update to Warlock is available. You are currently running \"$currentVersion\" and \"$latestVersion\" is available.")
+                        } else {
+                            Text("Current version: ${currentVersion ?: "unknown"}")
+                            Text("Available version: ${latestVersion ?: "unknown"}")
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Row(Modifier.fillMaxWidth()) {
+                            Spacer(Modifier.weight(1f))
+                            val scope = rememberCoroutineScope()
                             TextButton(
                                 onClick = {
-                                    controller.triggerUpdateCheckUI()
-                                }
+                                    scope.launch {
+                                        clientSettings.putIgnoreUpdates(true)
+                                        showUpdateDialog = false
+                                    }
+                                },
                             ) {
-                                Text("Update")
+                                Text("Ignore updates")
+                            }
+                            TextButton(
+                                onClick = { showUpdateDialog = false },
+                            ) {
+                                Text("Close")
+                            }
+                            if (updateAvailable) {
+                                TextButton(
+                                    onClick = {
+                                        controller.triggerUpdateCheckUI()
+                                    }
+                                ) {
+                                    Text("Update")
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        CompositionLocalProvider(
-            LocalLogger provides logger,
-        ) {
+
             games.forEachIndexed { index, gameState ->
                 val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp) }
                 val title by gameState.getTitle().collectAsState("Loading...")

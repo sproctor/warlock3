@@ -10,6 +10,7 @@ hydraulic-conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room-schema = { id = "androidx.room", version.ref = "room"  }
 
@@ -36,10 +37,11 @@ conveyor-control = "1.1"
 fastscroller = "0.3.2"
 filekit = "0.10.0-beta04"
 kotlin = "2.2.0"
+kotlin-logging = "7.0.7"
 kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
-kotlin-logging = "7.0.7"
+kotlinx-serialization = "1.9.0"
 ksp = "2.2.0-2.0.2"
 material-icons = "1.7.3"
 okio = "3.15.0"
@@ -64,13 +66,14 @@ constraintlayout = { module = "tech.annexflow.compose:constraintlayout-compose-m
 conveyor-control = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }
 fastscroller-m3 = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-material3", version.ref = "fastscroller" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.ref = "kotlin-logging" }
+kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.ref = "kotlin-logging" }
-kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "material-icons" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
