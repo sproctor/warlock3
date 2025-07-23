@@ -134,7 +134,7 @@ private fun BoxWithConstraintsScope.DataObjectContent(
         is DialogObject.Label -> Label(modifier, skinObject, dataObject)
         is DialogObject.Link -> Link(modifier, skinObject, dataObject, executeCommand)
         is DialogObject.Image -> DialogImage(modifier, skinObject, dataObject, executeCommand)
-        is DialogObject.Button -> DialogButton(modifier, dataObject, executeCommand)
+        is DialogObject.Button -> DialogButton(modifier, skinObject, dataObject, executeCommand)
     }
 }
 
@@ -282,14 +282,21 @@ private fun BoxWithConstraintsScope.DialogImage(
 }
 
 @Composable
-private fun DialogButton(
+private fun BoxWithConstraintsScope.DialogButton(
     modifier: Modifier,
+    skinObject: SkinObject?,
     data: DialogObject.Button,
     executeCommand: (String) -> Unit,
 ) {
     val shape = MaterialTheme.shapes.extraSmall
     Box(
         modifier = modifier
+            .size(
+                width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
+                    ?: Dp.Unspecified,
+                height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                    ?: Dp.Unspecified,
+            )
             .border(
                 width = Dp.Hairline,
                 color = MaterialTheme.colorScheme.outline,
