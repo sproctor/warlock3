@@ -152,7 +152,7 @@ private fun BoxWithConstraintsScope.ProgressBar(
     data: DialogObject.ProgressBar,
 ) {
     val colorGroup = skinObject.getColorGroup()
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .size(
                 width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
@@ -163,7 +163,7 @@ private fun BoxWithConstraintsScope.ProgressBar(
             .background(colorGroup.background)
     ) {
         val percent = min(data.value.value, 100)
-        val width = this@ProgressBar.maxWidth * percent / 100
+        val width = maxWidth * percent / 100
         Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
         data.text?.let { text ->
             Text(
@@ -382,8 +382,8 @@ fun VitalBarsPreview() {
                 topAnchor = null,
                 leftAnchor = null,
                 tooltip = null,
-                value = Percentage(value = 100),
-                text = "health 26/26"
+                value = Percentage(value = 50),
+                text = "health 13/26"
             ),
             DialogObject.Skin(
                 id = "manaSkin",
