@@ -136,6 +136,24 @@ fun main(args: Array<String>) {
 
     val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
 
+    val json = Json {
+        ignoreUnknownKeys = true
+    }
+
+    val skin = mutableStateOf<Map<String, SkinObject>>(emptyMap())
+
+    appContainer.clientSettings
+        .observeSkinFile()
+        .onEach { skinFile ->
+            val bytes = skinFile
+                ?.let { File(it) }
+                ?.takeIf { it.exists() }
+                ?.readBytes()
+                ?: Res.readBytes("files/skin.json")
+            skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+        }
+        .launchIn(appContainer.externalScope)
+
     runBlocking {
         appContainer.macroRepository.migrateMacros(
             keyMappings.map { entry ->
@@ -143,13 +161,6 @@ fun main(args: Array<String>) {
             }.toMap()
         )
         appContainer.macroRepository.insertDefaultMacrosIfNeeded()
-    }
-
-    val skin = runBlocking {
-        val json = Json {
-            ignoreUnknownKeys = true
-        }
-        json.decodeFromString<Map<String, SkinObject>>(Res.readBytes("files/skin.json").decodeToString())
     }
 
     val clientSettings = appContainer.clientSettings
@@ -217,7 +228,7 @@ fun main(args: Array<String>) {
 
         CompositionLocalProvider(
             LocalLogger provides logger,
-            LocalSkin provides skin,
+            LocalSkin provides skin.value,
         ) {
             if (showUpdateDialog) {
                 DialogWindow(

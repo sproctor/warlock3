@@ -40,6 +40,7 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import io.github.vinceglb.filekit.dialogs.openFilePicker
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -51,6 +52,7 @@ import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.maxTypeAheadKey
 import warlockfe.warlock3.core.util.LogType
+import java.io.File
 
 @Composable
 fun GeneralSettingsView(
@@ -203,6 +205,44 @@ fun GeneralSettingsView(
                     )
                     Text(entry.name)
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            val currentSkin by clientSettingRepository.observeSkinFile().collectAsState(null)
+            Text("Select skin")
+            OutlinedTextField(
+                value = currentSkin ?: "Default",
+                readOnly = true,
+                onValueChange = {},
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    scope.launch {
+                        clientSettingRepository.putSkinFile(null)
+                    }
+                },
+                enabled = currentSkin != null,
+            ) {
+                Text("Use default skin")
+            }
+            Button(
+                onClick = {
+                    scope.launch {
+                        val file = FileKit.openFilePicker(
+                            title = "Choose a skin file",
+                            directory = currentSkin
+                                ?.takeIf { File(it).exists() }
+                                ?.let { PlatformFile(it) },
+                        )
+                        if (file != null) {
+                            clientSettingRepository.putSkinFile(file.absolutePath())
+                        }
+                    }
+                }
+            ) {
+                Text("Change skin")
             }
 
             Spacer(Modifier.height(8.dp))

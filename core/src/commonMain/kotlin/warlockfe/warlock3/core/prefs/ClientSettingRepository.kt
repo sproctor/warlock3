@@ -35,6 +35,10 @@ class ClientSettingRepository(
         return observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
     }
 
+    fun observeSkinFile(): Flow<String?> {
+        return observe("skinFile")
+    }
+
     fun observeLogSettings(): Flow<LogSettings> {
         return combine(
             observe("logPath"),
@@ -96,6 +100,10 @@ class ClientSettingRepository(
 
     suspend fun putTheme(value: ThemeSetting) {
         put("theme", value.name)
+    }
+
+    suspend fun putSkinFile(value: String?) {
+        put("skinFile", value)
     }
 
     suspend fun putLastUsername(value: String?) {
