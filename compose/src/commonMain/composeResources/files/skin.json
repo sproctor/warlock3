@@ -88,6 +88,14 @@
         "top": 49,
         "left": 4
       },
+      "leftHand": {
+        "top": 68,
+        "left": 59
+      },
+      "rightHand": {
+        "top": 68,
+        "left": 4
+      },
       "back": {
         "top": 26,
         "left": 0

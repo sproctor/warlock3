@@ -47,6 +47,7 @@ fun DialogContent(
 ) {
     val skin = LocalSkin.current
     val skinObjects = mutableMapOf<String, SkinObject>()
+    val parentSkins = mutableMapOf<String, String>()
     dataObjects.forEach { data ->
         if (data is DialogObject.Skin) {
             val skinObject = skin.getIgnoringCase(data.name)
@@ -55,6 +56,7 @@ fun DialogContent(
                     skinObject.children.getIgnoringCase(id)?.let {
                         skinObjects[id] = it
                     }
+                    parentSkins[id] = data.id
                 }
             }
         }
@@ -67,6 +69,7 @@ fun DialogContent(
             var lastRef: ConstrainedLayoutReference? = null
             dataObjects.forEach { data ->
                 val skinObject = skinObjects.getIgnoringCase(data.id)
+                val parentSkin = parentSkins.getIgnoringCase(data.id)?.let { refs[it] }
                 this@BoxWithConstraints.DataObjectContent(
                     modifier = Modifier
                         .constrainAs(refs[data.id]!!) {
@@ -77,7 +80,7 @@ fun DialogContent(
                             } else if (dataTop == null) {
                                 lastRef?.top ?: parent.top
                             } else {
-                                parent.top
+                                parentSkin?.top ?: parent.top
                             }
                             top.linkTo(
                                 anchor = topAnchor,
@@ -102,7 +105,7 @@ fun DialogContent(
                                     } else if (dataLeft == null) {
                                         lastRef?.absoluteRight ?: parent.absoluteLeft
                                     } else {
-                                        parent.absoluteLeft
+                                        parentSkin?.absoluteLeft ?: parent.absoluteLeft
                                     }
                                     absoluteLeft.linkTo(leftAnchor, leftMargin)
                                 }
