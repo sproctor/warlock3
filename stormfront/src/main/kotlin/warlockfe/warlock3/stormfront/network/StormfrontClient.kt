@@ -736,8 +736,6 @@ class StormfrontClient(
     override suspend fun sendCommand(line: String): SendCommandType =
         withContext(NonCancellable) {
             printCommand(line)
-            logSimple { ">$line" }
-            logComplete { "command: $line" }
             commandQueue.send(line)
             SendCommandType.COMMAND
         }
@@ -747,7 +745,8 @@ class StormfrontClient(
             val toSend = "<c>$command\n"
             try {
                 socket?.getOutputStream()?.write(toSend.toByteArray(charset))
-                logComplete { "Sent command: $command" }
+                logSimple { ">$command" }
+                logComplete { "<command>$command</command>" }
             } catch (e: SocketException) {
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
             }

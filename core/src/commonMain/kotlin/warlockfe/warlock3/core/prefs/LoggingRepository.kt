@@ -39,7 +39,7 @@ class LoggingRepository(
         val settings = loggingSettings.value ?: error("Attempted to print log before settings were loaded")
         if (settings.type == type) {
             val logger = getLogger(settings.basePath, name)
-            logger.write(message(), settings.logTimestamps)
+            logger.write(message(), settings.logTimestamps, settings.type)
         }
     }
 
@@ -53,4 +53,3 @@ class LoggingRepository(
         }
     }
 }
-
