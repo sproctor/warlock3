@@ -87,27 +87,33 @@ fun DialogContent(
                                 margin = dataTop?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
                             )
                             val leftMargin = dataLeft?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
-                            when (data.align) {
-                                "n" -> {
-                                    absoluteLeft.linkTo(parent.absoluteLeft, leftMargin)
-                                    absoluteRight.linkTo(parent.absoluteRight, -leftMargin)
-                                    // We're ignoring anchor_left in this situation, is that ok?
-                                }
-
-                                "ne" -> {
-                                    absoluteRight.linkTo(parent.absoluteRight, leftMargin)
-                                }
-
-                                else -> {
-                                    // nw and default are treated the same
-                                    val leftAnchor = if (data.leftAnchor != null) {
-                                        refs[data.leftAnchor]?.absoluteRight ?: parent.absoluteLeft
-                                    } else if (dataLeft == null) {
-                                        lastRef?.absoluteRight ?: parent.absoluteLeft
-                                    } else {
-                                        parentSkin?.absoluteLeft ?: parent.absoluteLeft
+                            if (data.leftAnchor != null) {
+                                absoluteLeft.linkTo(
+                                    anchor = refs[data.leftAnchor]?.absoluteRight ?: parent.absoluteLeft,
+                                    margin = leftMargin
+                                )
+                            } else {
+                                when (data.align) {
+                                    "n" -> {
+                                        absoluteLeft.linkTo(parent.absoluteLeft, leftMargin)
+                                        absoluteRight.linkTo(parent.absoluteRight, -leftMargin)
+                                        // We're ignoring anchor_left in this situation, is that ok?
                                     }
-                                    absoluteLeft.linkTo(leftAnchor, leftMargin)
+
+                                    "ne" -> {
+                                        absoluteRight.linkTo(parent.absoluteRight, leftMargin)
+                                    }
+
+                                    // Are w, e, s, sw, se used?
+                                    else -> {
+                                        // nw and default are treated the same
+                                        val leftAnchor = if (dataLeft == null) {
+                                            lastRef?.absoluteRight ?: parent.absoluteLeft
+                                        } else {
+                                            parentSkin?.absoluteLeft ?: parent.absoluteLeft
+                                        }
+                                        absoluteLeft.linkTo(leftAnchor, leftMargin)
+                                    }
                                 }
                             }
                             lastRef = refs[data.id]
@@ -332,18 +338,22 @@ private fun BoxWithConstraintsScope.DialogSkin(
     val skin = LocalSkin.current
     val skinObject = skin.getIgnoringCase(data.name)
     val image = skinObject?.image?.data?.let { Base64.Default.decode(it) }
-    if (image != null) {
-        AsyncImage(
-            modifier = modifier
-                .size(
-                    width = (skinObject.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
-                        ?: Dp.Unspecified,
-                    height = (skinObject.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                        ?: Dp.Unspecified,
-                ),
-            model = image,
-            contentDescription = null
-        )
+    Box(
+        modifier
+            .size(
+                width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
+                    ?: Dp.Unspecified,
+                height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                    ?: Dp.Unspecified,
+            )
+    ) {
+        if (image != null) {
+            AsyncImage(
+                modifier = Modifier.fillMaxSize(),
+                model = image,
+                contentDescription = null
+            )
+        }
     }
 }
 
