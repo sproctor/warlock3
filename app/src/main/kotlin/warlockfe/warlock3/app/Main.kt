@@ -72,6 +72,7 @@ import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
+import kotlin.system.exitProcess
 
 private val version = System.getProperty("app.version")
 
@@ -81,6 +82,7 @@ private class WarlockCommand : CliktCommand() {
     val key: String? by option("-k", "--key", help = "Character key to connect with")
     val debug: Boolean by option("-d", "--debug", help = "Enable debug output").flag()
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
+    val inputFile: String? by option("-i", "--input", help = "Read input from file")
 
     override fun run() {
 
@@ -155,7 +157,7 @@ private class WarlockCommand : CliktCommand() {
 
         val games = mutableStateListOf(
             GameState().apply {
-                if (credentials != null || stdin) {
+                if (credentials != null || stdin || inputFile != null) {
                     val windowRepository = appContainer.windowRepositoryFactory.create()
                     val streamRegistry = appContainer.streamRegistryFactory.create()
                     val client = appContainer.warlockClientFactory.createClient(
@@ -167,6 +169,13 @@ private class WarlockCommand : CliktCommand() {
                         try {
                             if (stdin) {
                                 client.connect(System.`in`, null, "")
+                            } else if (inputFile != null) {
+                                val file = File(inputFile!!)
+                                if (!file.exists()) {
+                                    logger.error { "Input file does not exist: $inputFile" }
+                                    exitProcess(1)
+                                }
+                                client.connect(file.inputStream(), null, "")
                             } else {
                                 val socket = Socket(credentials!!.host, credentials.port)
                                 client.connect(socket.inputStream, socket, credentials.key)
