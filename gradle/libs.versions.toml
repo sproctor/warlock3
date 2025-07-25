@@ -26,6 +26,7 @@ androidxSqlite = "2.5.2"
 antlr = "4.13.2"
 apache-commons-text = "1.14.0"
 appdirs = "2.0.0"
+clikt = "5.0.3"
 coil = "3.3.0"
 compose = "1.8.2"
 colorpicker = "1.1.2"
@@ -38,7 +39,6 @@ fastscroller = "0.3.2"
 filekit = "0.10.0-beta04"
 kotlin = "2.2.0"
 kotlin-logging = "7.0.7"
-kotlinx-cli = "0.3.6"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
 kotlinx-serialization = "1.9.0"
@@ -59,6 +59,7 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycleViewmodel" }
 antlr4 = { group = "org.antlr", name = "antlr4", version.ref = "antlr" }
 apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
@@ -69,7 +70,6 @@ filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", versi
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.ref = "kotlin-logging" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
-kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.ref = "kotlinx-cli" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }

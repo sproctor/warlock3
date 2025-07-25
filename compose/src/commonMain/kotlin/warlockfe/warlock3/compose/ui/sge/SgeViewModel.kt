@@ -27,6 +27,7 @@ import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
+import java.net.Socket
 import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
@@ -124,13 +125,13 @@ class SgeViewModel(
                         try {
                             val windowRepository = windowRepositoryFactory.create()
                             val streamRegistry = streamRegistryFactory.create()
-                            val sfClient = warlockClientFactory.createStormFrontClient(
-                                credentials = credentials,
+                            val sfClient = warlockClientFactory.createClient(
                                 windowRepository = windowRepository,
                                 streamRegistry = streamRegistry,
                             )
                             withContext(ioDispatcher) {
-                                sfClient.connect()
+                                val socket = Socket(credentials.host, credentials.port)
+                                sfClient.connect(socket.inputStream, socket, credentials.key)
                             }
                             val gameViewModel = gameViewModelFactory.create(
                                 client = sfClient,

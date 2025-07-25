@@ -41,7 +41,6 @@ import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
-import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.StreamRegistry
@@ -151,15 +150,11 @@ abstract class AppContainer(
 
     val warlockClientFactory: WarlockClientFactory =
         object : WarlockClientFactory {
-            override fun createStormFrontClient(
-                credentials: SimuGameCredentials,
+            override fun createClient(
                 windowRepository: WindowRepository,
                 streamRegistry: StreamRegistry,
             ): WarlockClient {
                 return StormfrontClient(
-                    host = credentials.host,
-                    port = credentials.port,
-                    key = credentials.key,
                     windowRepository = windowRepository,
                     characterRepository = characterRepository,
                     streamRegistry = streamRegistry,

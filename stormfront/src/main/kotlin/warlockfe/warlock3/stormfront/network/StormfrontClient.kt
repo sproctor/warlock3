@@ -104,6 +104,7 @@ import warlockfe.warlock3.stormfront.util.StormfrontCmd
 import warlockfe.warlock3.stormfront.util.StormfrontStreamWindow
 import java.io.BufferedReader
 import java.io.IOException
+import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.Socket
 import java.net.SocketException
@@ -120,9 +121,6 @@ private const val charsetName = "windows-1252"
 private val charset = Charset.forName(charsetName)
 
 class StormfrontClient(
-    private val host: String,
-    private val port: Int,
-    private val key: String,
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
     private val streamRegistry: StreamRegistry,
@@ -246,388 +244,388 @@ class StormfrontClient(
     override val time: Long
         get() = System.currentTimeMillis() + delta
 
-    override suspend fun connect() {
-        logger.debug { "Opening connection to $host:$port" }
-        socket = Socket(host, port)
+    override suspend fun connect(inputStream: InputStream, socket: Socket?, key: String) {
+
+        this.socket = socket
 
         scope.launch {
             sendCommandDirect(key)
             sendCommandDirect("/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML")
 
-            val reader = BufferedReader(InputStreamReader(socket!!.getInputStream(), charsetName))
+            val reader = BufferedReader(InputStreamReader(inputStream, charsetName))
             val protocolHandler = StormfrontProtocolHandler()
 
-            while (socket?.isClosed == false) {
+            while (socket?.isClosed != true) {
                 try {
                     if (parseText) {
                         // This is the standard Stormfront parser
                         val line: String? = reader.readLine()
-                        if (line != null) {
-                            logComplete { line }
-                            debug(line)
-                            val events = protocolHandler.parseLine(line)
-                            events.forEach { event ->
-                                when (event) {
-                                    StormfrontHandledEvent -> Unit
-                                    is StormfrontModeEvent ->
-                                        if (event.id.equals("cmgr", true)) {
-                                            parseText = false
+                        if (line == null) {
+                            // Connection closed by server
+                            disconnected()
+                            break
+                        }
+                        logComplete { line }
+                        debug(line)
+                        val events = protocolHandler.parseLine(line)
+                        events.forEach { event ->
+                            when (event) {
+                                StormfrontHandledEvent -> Unit
+                                is StormfrontModeEvent ->
+                                    if (event.id.equals("cmgr", true)) {
+                                        parseText = false
+                                    }
+
+                                is StormfrontStreamEvent -> {
+                                    flushBuffer(true)
+                                    currentStream = if (event.id != null) {
+                                        getStream(event.id)
+                                    } else {
+                                        mainStream
+                                    }
+                                }
+
+                                is StormfrontClearStreamEvent ->
+                                    getStream(event.id).clear()
+
+                                is StormfrontDataReceivedEvent -> {
+                                    bufferText(StyledString(event.text))
+                                }
+
+                                is StormfrontEolEvent -> {
+                                    // We're working under the assumption that an end tag is always on the same line as the start tag
+                                    flushBuffer(event.ignoreWhenBlank)
+                                }
+
+                                is StormfrontAppEvent -> {
+                                    val game = event.game
+                                    val character = event.character
+                                    _characterId.value = if (game != null && character != null) {
+                                        val characterId = "${event.game}:${event.character}".lowercase()
+                                        windowRepository.setCharacterId(characterId)
+                                        logName = "${event.game}_${event.character}"
+                                        logBuffer.forEach {
+                                            it()
                                         }
-
-                                    is StormfrontStreamEvent -> {
-                                        flushBuffer(true)
-                                        currentStream = if (event.id != null) {
-                                            getStream(event.id)
-                                        } else {
-                                            mainStream
-                                        }
-                                    }
-
-                                    is StormfrontClearStreamEvent ->
-                                        getStream(event.id).clear()
-
-                                    is StormfrontDataReceivedEvent -> {
-                                        bufferText(StyledString(event.text))
-                                    }
-
-                                    is StormfrontEolEvent -> {
-                                        // We're working under the assumption that an end tag is always on the same line as the start tag
-                                        flushBuffer(event.ignoreWhenBlank)
-                                    }
-
-                                    is StormfrontAppEvent -> {
-                                        val game = event.game
-                                        val character = event.character
-                                        _characterId.value = if (game != null && character != null) {
-                                            val characterId = "${event.game}:${event.character}".lowercase()
-                                            windowRepository.setCharacterId(characterId)
-                                            logName = "${event.game}_${event.character}"
-                                            logBuffer.forEach {
-                                                it()
-                                            }
-                                            logBuffer.clear()
-                                            if (characterRepository.getCharacter(characterId) == null) {
-                                                characterRepository.saveCharacter(
-                                                    GameCharacter(
-                                                        id = characterId,
-                                                        gameCode = game,
-                                                        name = character
-                                                    )
+                                        logBuffer.clear()
+                                        if (characterRepository.getCharacter(characterId) == null) {
+                                            characterRepository.saveCharacter(
+                                                GameCharacter(
+                                                    id = characterId,
+                                                    gameCode = game,
+                                                    name = character
                                                 )
-                                            }
-                                            characterId
-                                        } else {
-                                            null
-                                        }
-                                        val newProperties = _properties.value
-                                            .plus("character" to (event.character ?: ""))
-                                            .plus("game" to (event.game ?: ""))
-                                        _properties.value = newProperties
-                                    }
-
-                                    is StormfrontOutputEvent ->
-                                        outputStyle = event.style
-
-                                    is StormfrontStyleEvent ->
-                                        currentStyle = event.style
-
-                                    is StormfrontPushStyleEvent ->
-                                        styleStack.push(event.style)
-
-                                    StormfrontPopStyleEvent ->
-                                        if (styleStack.isNotEmpty())
-                                            styleStack.pop()
-
-                                    is StormfrontPromptEvent -> {
-                                        currentTypeAhead.update { max(0, it - 1) }
-                                        styleStack.clear()
-                                        currentStyle = null
-                                        currentStream = mainStream
-                                        if (!isPrompting) {
-                                            mainStream.appendPartial(
-                                                StyledString(event.text, listOfNotNull(outputStyle))
                                             )
-                                            isPrompting = true
                                         }
-                                        notifyListeners(ClientPromptEvent)
+                                        characterId
+                                    } else {
+                                        null
                                     }
+                                    val newProperties = _properties.value
+                                        .plus("character" to (event.character ?: ""))
+                                        .plus("game" to (event.game ?: ""))
+                                    _properties.value = newProperties
+                                }
 
-                                    is StormfrontTimeEvent -> {
-                                        val newTime = event.time * 1000L
-                                        val currentTime = time
-                                        if (newTime > currentTime + 1000L) {
-                                            // We're more than 1s slow
-                                            delta = newTime - System.currentTimeMillis() - 1000L
-                                        } else if (newTime < currentTime - 1000L) {
-                                            // We're more than 1s fast
-                                            delta = newTime - System.currentTimeMillis() + 1000L
+                                is StormfrontOutputEvent ->
+                                    outputStyle = event.style
+
+                                is StormfrontStyleEvent ->
+                                    currentStyle = event.style
+
+                                is StormfrontPushStyleEvent ->
+                                    styleStack.push(event.style)
+
+                                StormfrontPopStyleEvent ->
+                                    if (styleStack.isNotEmpty())
+                                        styleStack.pop()
+
+                                is StormfrontPromptEvent -> {
+                                    currentTypeAhead.update { max(0, it - 1) }
+                                    styleStack.clear()
+                                    currentStyle = null
+                                    currentStream = mainStream
+                                    if (!isPrompting) {
+                                        mainStream.appendPartial(
+                                            StyledString(event.text, listOfNotNull(outputStyle))
+                                        )
+                                        isPrompting = true
+                                    }
+                                    notifyListeners(ClientPromptEvent)
+                                }
+
+                                is StormfrontTimeEvent -> {
+                                    val newTime = event.time * 1000L
+                                    val currentTime = time
+                                    if (newTime > currentTime + 1000L) {
+                                        // We're more than 1s slow
+                                        delta = newTime - System.currentTimeMillis() - 1000L
+                                    } else if (newTime < currentTime - 1000L) {
+                                        // We're more than 1s fast
+                                        delta = newTime - System.currentTimeMillis() + 1000L
+                                    }
+                                }
+
+                                is StormfrontRoundTimeEvent ->
+                                    _properties.value += "roundtime" to event.time
+
+                                is StormfrontCastTimeEvent ->
+                                    _properties.value += "casttime" to event.time
+
+                                is StormfrontSettingsInfoEvent -> {
+                                    gameCode = event.instance
+
+                                    // We don't actually handle server settings
+
+                                    // Not 100% where this belongs. connections hang until and empty command is sent
+                                    // This must be in response to either mode, playerId, or settingsInfo, so
+                                    // we put it here until someone discovers something else
+                                    sendCommandDirect("")
+                                    sendCommandDirect("_STATE CHATMODE OFF")
+                                }
+
+                                is StormfrontDialogDataEvent -> {
+                                    dialogDataId = event.id
+                                    if (event.clear && event.id != null) {
+                                        notifyListeners(ClientDialogClearEvent(event.id))
+                                    }
+                                }
+
+                                is StormfrontDialogObjectEvent -> {
+                                    val data = event.data
+                                    if (data is DialogObject.ProgressBar) {
+                                        _properties.value = _properties.value +
+                                                (data.id to data.value.value.toString()) +
+                                                ((data.id + "text") to (data.text ?: ""))
+                                    }
+                                    dialogDataId?.let {
+                                        notifyListeners(ClientDialogEvent(it, data))
+                                    }
+                                }
+
+                                is StormfrontCompassEndEvent -> {
+                                    notifyListeners(ClientCompassEvent(directions.toPersistentHashSet()))
+                                    directions.clear()
+                                }
+
+                                is StormfrontDirectionEvent -> {
+                                    directions += event.direction
+                                }
+
+                                is StormfrontPropertyEvent -> {
+                                    if (event.value != null)
+                                        _properties.value += event.key to event.value
+                                    else
+                                        _properties.value -= event.key
+                                }
+
+                                is StormfrontComponentDefinitionEvent -> {
+                                    // Should not happen on main stream, so don't clear prompt
+                                    // TODO: Should currentStyle be used here? is it per stream?
+                                    val styles = styleStack.toPersistentList()
+                                    bufferText(
+                                        text = StyledString(
+                                            persistentListOf(
+                                                StyledStringVariable(name = event.id, styles = styles)
+                                            )
+                                        ),
+                                    )
+                                }
+
+                                is StormfrontComponentStartEvent -> {
+                                    flushBuffer(true)
+                                    componentId = event.id
+                                }
+
+                                StormfrontComponentEndEvent -> {
+                                    if (componentId != null) {
+                                        // Either replace the component in the map with the new value
+                                        //  or remove the component from the map (if we got an empty one)
+                                        if (buffer?.substrings.isNullOrEmpty()) {
+                                            _components.value -= componentId!!
+                                        } else {
+                                            _components.value += (componentId!! to buffer!!)
                                         }
-                                    }
-
-                                    is StormfrontRoundTimeEvent ->
-                                        _properties.value += "roundtime" to event.time
-
-                                    is StormfrontCastTimeEvent ->
-                                        _properties.value += "casttime" to event.time
-
-                                    is StormfrontSettingsInfoEvent -> {
-                                        gameCode = event.instance
-
-                                        // We don't actually handle server settings
-
-                                        // Not 100% where this belongs. connections hang until and empty command is sent
-                                        // This must be in response to either mode, playerId, or settingsInfo, so
-                                        // we put it here until someone discovers something else
-                                        sendCommandDirect("")
-                                        sendCommandDirect("_STATE CHATMODE OFF")
-                                    }
-
-                                    is StormfrontDialogDataEvent -> {
-                                        dialogDataId = event.id
-                                        if (event.clear && event.id != null) {
-                                            notifyListeners(ClientDialogClearEvent(event.id))
+                                        val newValue = buffer ?: StyledString("")
+                                        streamRegistry.getStreams().forEach { stream ->
+                                            stream.updateComponent(componentId!!, newValue)
                                         }
+                                        buffer = null
+                                        componentId = null
+                                    } else {
+                                        // mismatched component tags?
                                     }
+                                }
 
-                                    is StormfrontDialogObjectEvent -> {
-                                        val data = event.data
-                                        if (data is DialogObject.ProgressBar) {
-                                            _properties.value = _properties.value +
-                                                    (data.id to data.value.value.toString()) +
-                                                    ((data.id + "text") to (data.text ?: ""))
-                                        }
-                                        dialogDataId?.let {
-                                            notifyListeners(ClientDialogEvent(it, data))
-                                        }
+                                StormfrontNavEvent -> notifyListeners(ClientNavEvent)
+
+                                is StormfrontStreamWindowEvent -> {
+                                    val window = event.window
+                                    if (windows.get(event.window.id) == null && window.id != "main") {
+                                        sendCommandDirect("_swclose s${event.window.id}")
                                     }
+                                    addWindow(window)
+                                }
 
-                                    is StormfrontCompassEndEvent -> {
-                                        notifyListeners(ClientCompassEvent(directions.toPersistentHashSet()))
-                                        directions.clear()
-                                    }
-
-                                    is StormfrontDirectionEvent -> {
-                                        directions += event.direction
-                                    }
-
-                                    is StormfrontPropertyEvent -> {
-                                        if (event.value != null)
-                                            _properties.value += event.key to event.value
-                                        else
-                                            _properties.value -= event.key
-                                    }
-
-                                    is StormfrontComponentDefinitionEvent -> {
-                                        // Should not happen on main stream, so don't clear prompt
-                                        // TODO: Should currentStyle be used here? is it per stream?
-                                        val styles = styleStack.toPersistentList()
-                                        bufferText(
-                                            text = StyledString(
-                                                persistentListOf(
-                                                    StyledStringVariable(name = event.id, styles = styles)
-                                                )
-                                            ),
+                                is StormfrontDialogWindowEvent -> {
+                                    val window = event.window
+                                    if (window.resident) {
+                                        windowRepository.setWindowTitle(
+                                            name = window.id,
+                                            title = window.title,
+                                            subtitle = null,
+                                            windowType = WindowType.DIALOG,
+                                            showTimestamps = false,
                                         )
                                     }
+                                }
 
-                                    is StormfrontComponentStartEvent -> {
-                                        flushBuffer(true)
-                                        componentId = event.id
-                                    }
-
-                                    StormfrontComponentEndEvent -> {
-                                        if (componentId != null) {
-                                            // Either replace the component in the map with the new value
-                                            //  or remove the component from the map (if we got an empty one)
-                                            if (buffer?.substrings.isNullOrEmpty()) {
-                                                _components.value -= componentId!!
-                                            } else {
-                                                _components.value += (componentId!! to buffer!!)
-                                            }
-                                            val newValue = buffer ?: StyledString("")
-                                            streamRegistry.getStreams().forEach { stream ->
-                                                stream.updateComponent(componentId!!, newValue)
-                                            }
-                                            buffer = null
-                                            componentId = null
-                                        } else {
-                                            // mismatched component tags?
-                                        }
-                                    }
-
-                                    StormfrontNavEvent -> notifyListeners(ClientNavEvent)
-
-                                    is StormfrontStreamWindowEvent -> {
-                                        val window = event.window
-                                        if (windows.get(event.window.id) == null && window.id != "main") {
-                                            sendCommandDirect("_swclose s${event.window.id}")
-                                        }
-                                        addWindow(window)
-                                    }
-
-                                    is StormfrontDialogWindowEvent -> {
-                                        val window = event.window
-                                        if (window.resident) {
-                                            windowRepository.setWindowTitle(
-                                                name = window.id,
-                                                title = window.title,
-                                                subtitle = null,
-                                                windowType = WindowType.DIALOG,
-                                                showTimestamps = false,
-                                            )
-                                        }
-                                    }
-
-                                    is StormfrontActionEvent -> {
-                                        bufferText(
-                                            StyledString(
-                                                text = event.text,
-                                                style = WarlockStyle.Link(WarlockAction.SendCommand(event.command)),
-                                            )
+                                is StormfrontActionEvent -> {
+                                    bufferText(
+                                        StyledString(
+                                            text = event.text,
+                                            style = WarlockStyle.Link(WarlockAction.SendCommand(event.command)),
                                         )
-                                    }
+                                    )
+                                }
 
-                                    is StormfrontOpenUrlEvent -> {
-                                        try {
-                                            val url = URI("https://www.play.net/")
-                                                .resolve(event.url)
-                                            notifyListeners(ClientOpenUrlEvent(url))
-                                        } catch (_: Exception) {
-                                            // Silently ignore exceptions
+                                is StormfrontOpenUrlEvent -> {
+                                    try {
+                                        val url = URI("https://www.play.net/")
+                                            .resolve(event.url)
+                                        notifyListeners(ClientOpenUrlEvent(url))
+                                    } catch (_: Exception) {
+                                        // Silently ignore exceptions
+                                    }
+                                }
+
+                                is StormfrontUpdateVerbsEvent -> {
+                                    sendCommandDirect("_menu update 1")
+                                }
+
+                                is StormfrontStartCmdList -> {
+                                    // ignore for now
+                                }
+
+                                is StormfrontEndCmdList -> {
+                                    cliCoords = cliCoords.mutate { map ->
+                                        cliCache.forEach { cli ->
+                                            map[cli.coord] = cli
                                         }
                                     }
+                                    cliCache.clear()
+                                }
 
-                                    is StormfrontUpdateVerbsEvent -> {
-                                        sendCommandDirect("_menu update 1")
-                                    }
+                                is StormfrontCliEvent -> {
+                                    cliCache.add(event.cmd)
+                                }
 
-                                    is StormfrontStartCmdList -> {
-                                        // ignore for now
-                                    }
-
-                                    is StormfrontEndCmdList -> {
-                                        cliCoords = cliCoords.mutate { map ->
-                                            cliCache.forEach { cli ->
-                                                map[cli.coord] = cli
-                                            }
-                                        }
-                                        cliCache.clear()
-                                    }
-
-                                    is StormfrontCliEvent -> {
-                                        cliCache.add(event.cmd)
-                                    }
-
-                                    is StormfrontPushCmdEvent -> {
-                                        val cmd = event.cmd
-                                        if (cmd.coord != null) {
-                                            val cmdDef = cliCoords[cmd.coord]
-                                            if (cmdDef != null) {
-                                                val command = cmdDef.command.replace("@", cmd.noun ?: "")
-                                                styleStack.push(
-                                                    WarlockStyle.Link(WarlockAction.SendCommand(command))
-                                                )
-                                            } else {
-                                                debug("Could not find cli for coord: ${cmd.coord}")
-                                                styleStack.push(WarlockStyle(""))
-                                            }
+                                is StormfrontPushCmdEvent -> {
+                                    val cmd = event.cmd
+                                    if (cmd.coord != null) {
+                                        val cmdDef = cliCoords[cmd.coord]
+                                        if (cmdDef != null) {
+                                            val command = cmdDef.command.replace("@", cmd.noun ?: "")
+                                            styleStack.push(
+                                                WarlockStyle.Link(WarlockAction.SendCommand(command))
+                                            )
                                         } else {
-                                            if (cmd.exist != null) {
-                                                styleStack.push(
-                                                    WarlockStyle.Link(
-                                                        WarlockAction.OpenMenu {
-                                                            val menuId = menuCount++
-                                                            _menuData.value = WarlockMenuData(menuId, emptyList())
-                                                            currentCmd = cmd
-                                                            scope.launch {
-                                                                sendCommandDirect("_menu #${cmd.exist} $menuId")
-                                                            }
-                                                            menuId
-                                                        }
-                                                    )
-                                                )
-                                            } else {
-                                                styleStack.push(WarlockStyle(""))
-                                            }
+                                            debug("Could not find cli for coord: ${cmd.coord}")
+                                            styleStack.push(WarlockStyle(""))
                                         }
-                                    }
-
-                                    is StormfrontMenuStartEvent -> {
-                                        event.id?.let {
-                                            currentMenuId = it
-                                        }
-                                    }
-
-                                    is StormfrontMenuItemEvent -> {
-                                        cliCoords[event.coord]?.let { command ->
-                                            cachedMenuItems.add(
-                                                WarlockMenuItem(
-                                                    label = command.menu
-                                                        .replace("@", currentCmd?.noun ?: "")
-                                                        .replace("%", event.noun ?: ""),
-                                                    category = command.category,
-                                                    action = {
-                                                        val noun = currentCmd?.exist?.let { "#$it" } ?: currentCmd?.noun
-                                                        if (noun != null) {
-                                                            sendCommand(
-                                                                command.command
-                                                                    .replace("#", noun)
-                                                                    .replace("%", event.noun ?: "")
-                                                            )
-                                                        } else {
-                                                            print(
-                                                                StyledString(
-                                                                    "Command noun is null",
-                                                                    WarlockStyle.Error
-                                                                )
-                                                            )
+                                    } else {
+                                        if (cmd.exist != null) {
+                                            styleStack.push(
+                                                WarlockStyle.Link(
+                                                    WarlockAction.OpenMenu {
+                                                        val menuId = menuCount++
+                                                        _menuData.value = WarlockMenuData(menuId, emptyList())
+                                                        currentCmd = cmd
+                                                        scope.launch {
+                                                            sendCommandDirect("_menu #${cmd.exist} $menuId")
                                                         }
+                                                        menuId
                                                     }
                                                 )
                                             )
+                                        } else {
+                                            styleStack.push(WarlockStyle(""))
                                         }
                                     }
+                                }
 
-                                    is StormfrontMenuEndEvent -> {
-                                        _menuData.update { menu ->
-                                            if (menu.id != currentMenuId) {
-                                                menu
-                                            } else {
-                                                menu.copy(items = cachedMenuItems.toPersistentList())
-                                            }
-                                        }
-                                        cachedMenuItems.clear()
+                                is StormfrontMenuStartEvent -> {
+                                    event.id?.let {
+                                        currentMenuId = it
                                     }
+                                }
 
-                                    is StormfrontUnhandledTagEvent -> {
-                                        // debug("Unhandled tag: ${event.tag}")
-                                    }
-
-                                    is StormfrontParseErrorEvent -> {
-                                        mainStream.appendLine(
-                                            StyledString(
-                                                "parse error: ${event.text}",
-                                                WarlockStyle.Error
+                                is StormfrontMenuItemEvent -> {
+                                    cliCoords[event.coord]?.let { command ->
+                                        cachedMenuItems.add(
+                                            WarlockMenuItem(
+                                                label = command.menu
+                                                    .replace("@", currentCmd?.noun ?: "")
+                                                    .replace("%", event.noun ?: ""),
+                                                category = command.category,
+                                                action = {
+                                                    val noun = currentCmd?.exist?.let { "#$it" } ?: currentCmd?.noun
+                                                    if (noun != null) {
+                                                        sendCommand(
+                                                            command.command
+                                                                .replace("#", noun)
+                                                                .replace("%", event.noun ?: "")
+                                                        )
+                                                    } else {
+                                                        print(
+                                                            StyledString(
+                                                                "Command noun is null",
+                                                                WarlockStyle.Error
+                                                            )
+                                                        )
+                                                    }
+                                                }
                                             )
                                         )
                                     }
+                                }
 
-                                    is StormfrontResourceEvent -> {
-                                        flushBuffer(true)
-                                        gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
-                                            val url = "https://www.play.net/bfe/$code-art/${event.picture}.jpg"
-                                            logger.debug { "Got resource: $url" }
-                                            currentStream.appendResource(url)
-                                            if (currentStream == mainStream) {
-                                                isPrompting = false
-                                            }
+                                is StormfrontMenuEndEvent -> {
+                                    _menuData.update { menu ->
+                                        if (menu.id != currentMenuId) {
+                                            menu
+                                        } else {
+                                            menu.copy(items = cachedMenuItems.toPersistentList())
+                                        }
+                                    }
+                                    cachedMenuItems.clear()
+                                }
+
+                                is StormfrontUnhandledTagEvent -> {
+                                    // debug("Unhandled tag: ${event.tag}")
+                                }
+
+                                is StormfrontParseErrorEvent -> {
+                                    mainStream.appendLine(
+                                        StyledString(
+                                            "parse error: ${event.text}",
+                                            WarlockStyle.Error
+                                        )
+                                    )
+                                }
+
+                                is StormfrontResourceEvent -> {
+                                    flushBuffer(true)
+                                    gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
+                                        val url = "https://www.play.net/bfe/$code-art/${event.picture}.jpg"
+                                        logger.debug { "Got resource: $url" }
+                                        currentStream.appendResource(url)
+                                        if (currentStream == mainStream) {
+                                            isPrompting = false
                                         }
                                     }
                                 }
                             }
-                        } else {
-                            // connection was closed by server
-                            disconnected()
                         }
                     } else {
                         // This is the strange mode to read books and create characters
@@ -636,37 +634,39 @@ class StormfrontClient(
                         if (c == -1) {
                             // connection was closed by server
                             disconnected()
-                        } else {
-                            val char = c.toChar()
-                            buffer.append(char)
-                            // check for <mode> tag
-                            if (char == '<') {
-                                buffer.append(reader.readLine())
-                                val line = buffer.toString()
-                                if (buffer.contains("<mode")) {
-                                    // if the line starts with a mode tag, drop back to the normal parser
-                                    parseText = true
-                                    protocolHandler.parseLine(line)
-                                } else {
-                                    logComplete { line }
-                                    logSimple { line }
-                                    rawPrint(line)
-                                }
+                            break
+                        }
+                        val char = c.toChar()
+                        buffer.append(char)
+                        // check for <mode> tag
+                        if (char == '<') {
+                            buffer.append(reader.readLine())
+                            val line = buffer.toString()
+                            if (buffer.contains("<mode")) {
+                                // if the line starts with a mode tag, drop back to the normal parser
+                                parseText = true
+                                protocolHandler.parseLine(line)
                             } else {
-                                while (reader.ready()) {
-                                    buffer.append(reader.read().toChar())
-                                }
-                                print(buffer.toString())
-                                rawPrint(buffer.toString())
+                                logComplete { line }
+                                logSimple { line }
+                                rawPrint(line)
                             }
+                        } else {
+                            while (reader.ready()) {
+                                buffer.append(reader.read().toChar())
+                            }
+                            print(buffer.toString())
+                            rawPrint(buffer.toString())
                         }
                     }
                 } catch (e: SocketException) {
                     logger.debug { "Socket exception: " + e.message }
                     disconnected()
+                    break
                 } catch (e: SocketTimeoutException) {
                     logger.debug { "Socket timeout: " + e.message }
                     disconnected()
+                    break
                 }
             }
         }
@@ -744,7 +744,7 @@ class StormfrontClient(
         withContext(writeContext) {
             val toSend = "<c>$command\n"
             try {
-                socket?.getOutputStream()?.write(toSend.toByteArray(charset))
+                socket?.outputStream?.write(toSend.toByteArray(charset))
                 logSimple { ">$command" }
                 logComplete { "<command>$command</command>" }
             } catch (e: SocketException) {

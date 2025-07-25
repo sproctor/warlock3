@@ -27,6 +27,7 @@ import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.stormfront.network.StormfrontClient
 import java.io.IOException
+import java.net.Socket
 import java.net.UnknownHostException
 
 class DashboardViewModel(
@@ -161,15 +162,15 @@ class DashboardViewModel(
             }
             val windowRepository = windowRepositoryFactory.create()
             val streamRegistry = streamRegistryFactory.create()
-            val sfClient = warlockClientFactory.createStormFrontClient(
-                credentials = loginCredentials,
+            val sfClient = warlockClientFactory.createClient(
                 windowRepository = windowRepository,
                 streamRegistry = streamRegistry,
             ) as StormfrontClient
             process?.let { sfClient.setProxy(it) }
             do {
                 try {
-                    sfClient.connect()
+                    val socket = Socket(loginCredentials.host, loginCredentials.port)
+                    sfClient.connect(socket.inputStream, socket, loginCredentials.key)
                     break
                 } catch (_: UnknownHostException) {
                     logger.debug { "Unknown host" }

@@ -17,7 +17,7 @@ dependencies {
     implementation(compose.components.resources)
 
     // Command line options
-    implementation(libs.kotlinx.cli)
+    implementation(libs.clikt)
 
     // Files
     implementation(libs.appdirs)
