@@ -1,3 +1,5 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
@@ -61,6 +63,8 @@ compose {
                 licenseFile.set(project.file("../LICENSE"))
                 description = "Warlock Front-end"
                 vendor = "Warlock Project"
+
+                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
                 windows {
                     menu = true
