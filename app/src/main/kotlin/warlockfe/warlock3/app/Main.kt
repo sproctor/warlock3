@@ -31,11 +31,9 @@ import androidx.room.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.help
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
-import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
@@ -74,22 +72,17 @@ import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
-import kotlin.system.exitProcess
 
 private val version = System.getProperty("app.version")
 
 private class WarlockCommand : CliktCommand() {
-    val port: Int? by option().int().help { "Port to connect to" }
-    val host: String? by option().help { "Host to connect to" }
-    val key: String? by option().help { "Character key to connect with" }
-    val debug: Boolean by option().boolean().default(false).help { "Enable debug output" }
-    val stdin: Boolean by option().boolean().default(false).help { "Read input from stdin" }
+    val port: Int? by option("-p", "--port", help = "Port to connect to").int()
+    val host: String? by option("-H", "--host", help = "Host to connect to")
+    val key: String? by option("-k", "--key", help = "Character key to connect with")
+    val debug: Boolean by option("-d", "--debug", help = "Enable debug output").flag()
+    val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
 
     override fun run() {
-        if (stdin) {
-            println("got stdin")
-            exitProcess(0)
-        }
 
         val version = System.getProperty("app.version")
         version?.let {
@@ -162,7 +155,7 @@ private class WarlockCommand : CliktCommand() {
 
         val games = mutableStateListOf(
             GameState().apply {
-                if (credentials != null) {
+                if (credentials != null || stdin) {
                     val windowRepository = appContainer.windowRepositoryFactory.create()
                     val streamRegistry = appContainer.streamRegistryFactory.create()
                     val client = appContainer.warlockClientFactory.createClient(
@@ -172,12 +165,17 @@ private class WarlockCommand : CliktCommand() {
                     // TODO: move this somewhere we can control it
                     runBlocking {
                         try {
-                            val socket = Socket(credentials.host, credentials.port)
-                            client.connect(socket.inputStream, socket, credentials.key)
+                            if (stdin) {
+                                client.connect(System.`in`, null, "")
+                            } else {
+                                val socket = Socket(credentials!!.host, credentials.port)
+                                client.connect(socket.inputStream, socket, credentials.key)
+                            }
                         } catch (e: IOException) {
                             logger.error(e) { "Failed to connect to Warlock" }
                         }
-                        val viewModel = appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
+                        val viewModel =
+                            appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
                         setScreen(
                             GameScreen.ConnectedGameState(viewModel)
                         )
@@ -326,7 +324,7 @@ private class WarlockCommand : CliktCommand() {
 }
 
 @OptIn(ExperimentalResourceApi::class)
-fun main(args: Array<String>) = WarlockCommand().versionOption(version ?: "Development" ).main(args)
+fun main(args: Array<String>) = WarlockCommand().versionOption(version ?: "Development").main(args)
 
 private fun GameState.getTitle(): Flow<String> {
     return when (val screen = this.screen) {
