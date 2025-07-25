@@ -66,6 +66,8 @@ compose {
 
                 targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
+                // args("--input=/home/sproctor/Downloads/20250725113100.log")
+
                 windows {
                     menu = true
                     // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
