@@ -24,6 +24,7 @@
 -keep class com.sun.jna.** { *; }
 -keep class androidx.sqlite.** { *; }
 -keep class io.github.vinceglb.filekit.dialogs.** { *; }
+-keep class com.github.ajalt.mordant.terminal.terminalinterface.** { *; }
 
 # Coil
 -keep class * extends coil3.util.DecoderServiceLoaderTarget { *; }
