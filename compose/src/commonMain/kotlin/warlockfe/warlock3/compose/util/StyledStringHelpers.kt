@@ -57,16 +57,16 @@ fun StyledStringLeaf.toAnnotatedString(
 
         styles.forEach { style ->
             style.action?.let { action ->
-                when (action) {
+                val link = when (action) {
                     is WarlockAction.OpenLink ->
-                        pushLink(LinkAnnotation.Url(action.url))
+                        LinkAnnotation.Url(action.url)
 
-                    else -> pushLink(
+                    else ->
                         LinkAnnotation.Clickable("action") {
                             actionHandler(action)
                         }
-                    )
                 }
+                pushLink(link)
             }
         }
         when (this@toAnnotatedString) {

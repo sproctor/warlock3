@@ -9,10 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -20,26 +17,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
-import warlockfe.warlock3.compose.icons.Arrow_right
 import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.components.HandsView
 import warlockfe.warlock3.compose.ui.components.IndicatorView
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
-import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -73,25 +64,7 @@ fun GameView(
 
         val subWindows = viewModel.windowUiStates.collectAsState()
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
-
-        var openMenuId: Int? by remember { mutableStateOf(null) }
-        var openMenu: WarlockMenuData? by remember { mutableStateOf(null) }
-
-        LaunchedEffect(openMenuId) {
-            if (openMenuId != null) {
-                viewModel.menuData.collect { menuData ->
-                    openMenu = menuData
-                }
-            } else {
-                openMenu = null
-            }
-        }
-
-        ActionContextMenu(
-            menuData = openMenu,
-            expectedMenuId = openMenuId,
-            onDismiss = { openMenuId = null },
-        )
+        val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
 
         GameTextWindows(
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -102,19 +75,19 @@ fun GameView(
             bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
             leftWidth = viewModel.leftWidth.collectAsState(null).value,
             rightWidth = viewModel.rightWidth.collectAsState(null).value,
+            menuData = menuData,
             onActionClicked = { action ->
                 when (action) {
                     is WarlockAction.SendCommand -> {
                         viewModel.sendCommand(action.command)
+                        null
                     }
 
                     is WarlockAction.OpenMenu -> {
-                        openMenuId = action.onClick()
+                        action.onClick()
                     }
 
-                    else -> {
-                        // Not our concern
-                    }
+                    else -> null
                 }
             },
             onMoveClicked = { name, location ->
@@ -140,107 +113,6 @@ fun GameView(
 }
 
 @Composable
-fun ActionContextMenu(
-    menuData: WarlockMenuData?,
-    expectedMenuId: Int?,
-    onDismiss: () -> Unit,
-) {
-    val logger = LocalLogger.current
-    val scope = rememberCoroutineScope()
-    if (menuData != null) {
-        if (expectedMenuId == menuData.id) {
-            DropdownMenu(
-                expanded = true,
-                onDismissRequest = onDismiss,
-            ) {
-                val groups = menuData.items.groupBy { it.category.split('-').first() }
-                val categories = groups.keys.sorted()
-                categories.forEach { category ->
-                    val items = groups[category]!!
-                    if (!category.contains('_')) {
-                        items.forEach { item ->
-                            logger.debug { "Menu item: $item" }
-                            DropdownMenuItem(
-                                text = {
-                                    Text(item.label)
-                                },
-                                onClick = {
-                                    scope.launch {
-                                        item.action()
-                                        onDismiss()
-                                    }
-                                }
-                            )
-                        }
-                    } else {
-                        var expanded by remember(category) { mutableStateOf(false) }
-                        DropdownMenuItem(
-                            text = {
-                                Text(category.split('_').getOrNull(1) ?: "Unknown")
-                            },
-                            onClick = { expanded = true },
-                            trailingIcon = {
-                                Icon(Arrow_right, contentDescription = "expandable")
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                        ) {
-                            val subgroups = items.groupBy { it.category.split('-').getOrNull(1) }
-                            subgroups[null]?.forEach { item ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(item.label)
-                                    },
-                                    onClick = {
-                                        scope.launch {
-                                            item.action()
-                                            onDismiss()
-                                        }
-                                    }
-                                )
-                            }
-                            val subcatories = subgroups.keys.filterNotNull().sorted()
-                            subcatories.forEach { category ->
-                                var expanded by remember(category) { mutableStateOf(false) }
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(category)
-                                    },
-                                    onClick = { expanded = true },
-                                    trailingIcon = {
-                                        Icon(Arrow_right, contentDescription = "expandable")
-                                    }
-                                )
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                ) {
-                                    subgroups[category]?.forEach { item ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(item.label)
-                                            },
-                                            onClick = {
-                                                scope.launch {
-                                                    item.action()
-                                                    onDismiss()
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun GameTextWindows(
     modifier: Modifier,
     subWindowUiStates: List<WindowUiState>,
@@ -250,7 +122,8 @@ fun GameTextWindows(
     bottomHeight: Int?,
     leftWidth: Int?,
     rightWidth: Int?,
-    onActionClicked: (WarlockAction) -> Unit,
+    menuData: WarlockMenuData?,
+    onActionClicked: (WarlockAction) -> Int?,
     onMoveClicked: (name: String, WindowLocation) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
@@ -274,6 +147,7 @@ fun GameTextWindows(
             handleBefore = false,
             selectedWindow = selectedWindow,
             onSizeChanged = { onSizeChanged(WindowLocation.LEFT, it) },
+            menuData = menuData,
             onActionClicked = onActionClicked,
             onMoveClicked = onMoveClicked,
             onHeightChanged = onHeightChanged,
@@ -296,6 +170,7 @@ fun GameTextWindows(
                 handleBefore = false,
                 selectedWindow = selectedWindow,
                 onSizeChanged = { onSizeChanged(WindowLocation.TOP, it) },
+                menuData = menuData,
                 onActionClicked = onActionClicked,
                 onMoveClicked = onMoveClicked,
                 onHeightChanged = onHeightChanged,
@@ -312,6 +187,7 @@ fun GameTextWindows(
                 modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
                 uiState = mainWindowUiState,
                 isSelected = selectedWindow == mainWindowUiState.name,
+                menuData = menuData,
                 onActionClicked = onActionClicked,
                 onMoveClicked = {},
                 onMoveTowardsStart = null,
@@ -333,6 +209,7 @@ fun GameTextWindows(
                 handleBefore = true,
                 selectedWindow = selectedWindow,
                 onSizeChanged = { onSizeChanged(WindowLocation.BOTTOM, it) },
+                menuData = menuData,
                 onActionClicked = onActionClicked,
                 onMoveClicked = onMoveClicked,
                 onHeightChanged = onHeightChanged,
@@ -355,6 +232,7 @@ fun GameTextWindows(
             handleBefore = true,
             selectedWindow = selectedWindow,
             onSizeChanged = { onSizeChanged(WindowLocation.RIGHT, it) },
+            menuData = menuData,
             onActionClicked = onActionClicked,
             onMoveClicked = onMoveClicked,
             onHeightChanged = onHeightChanged,
@@ -379,7 +257,8 @@ fun WindowsAtLocation(
     handleBefore: Boolean,
     selectedWindow: String,
     onSizeChanged: (Int) -> Unit,
-    onActionClicked: (WarlockAction) -> Unit,
+    menuData: WarlockMenuData?,
+    onActionClicked: (WarlockAction) -> Int?,
     onMoveClicked: (String, WindowLocation) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
@@ -405,6 +284,7 @@ fun WindowsAtLocation(
                 WindowViews(
                     windowStates = windows,
                     selectedWindow = selectedWindow,
+                    menuData = menuData,
                     onActionClicked = onActionClicked,
                     isHorizontal = !horizontalPanel,
                     onMoveClicked = onMoveClicked,
@@ -490,7 +370,8 @@ fun WindowViews(
     windowStates: List<WindowUiState>,
     selectedWindow: String,
     isHorizontal: Boolean,
-    onActionClicked: (WarlockAction) -> Unit,
+    menuData: WarlockMenuData?,
+    onActionClicked: (WarlockAction) -> Int?,
     onMoveClicked: (String, WindowLocation) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
@@ -508,6 +389,7 @@ fun WindowViews(
                 modifier = modifier,
                 uiState = uiState,
                 isSelected = selectedWindow == uiState.name,
+                menuData = menuData,
                 onActionClicked = onActionClicked,
                 onMoveClicked = { onMoveClicked(uiState.name, it) },
                 onMoveTowardsStart = if (index > 0) {

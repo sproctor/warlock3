@@ -42,10 +42,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -57,6 +64,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
@@ -67,9 +75,11 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
+import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
+import warlockfe.warlock3.compose.icons.Arrow_right
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.game.toWindowLine
@@ -78,6 +88,7 @@ import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
+import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.StreamImageLine
@@ -97,7 +108,8 @@ fun WindowView(
     modifier: Modifier,
     uiState: WindowUiState,
     isSelected: Boolean,
-    onActionClicked: (WarlockAction) -> Unit,
+    menuData: WarlockMenuData?,
+    onActionClicked: (WarlockAction) -> Int?,
     onMoveClicked: (WindowLocation) -> Unit,
     onMoveTowardsStart: (() -> Unit)?,
     onMoveTowardsEnd: (() -> Unit)?,
@@ -197,6 +209,7 @@ fun WindowView(
                         alterations = uiState.alterations,
                         presets = uiState.presets,
                         defaultStyle = uiState.defaultStyle,
+                        menuData = menuData,
                         onActionClicked = onActionClicked,
                     )
 
@@ -322,7 +335,7 @@ private fun WindowViewDropdownMenu(
     }
 }
 
-@OptIn(ExperimentalTime::class)
+@OptIn(ExperimentalTime::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun WindowViewContent(
     stream: ComposeTextStream,
@@ -332,7 +345,8 @@ private fun WindowViewContent(
     alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,
     defaultStyle: StyleDefinition,
-    onActionClicked: (WarlockAction) -> Unit
+    menuData: WarlockMenuData?,
+    onActionClicked: (WarlockAction) -> Int?
 ) {
     val logger = LocalLogger.current
 
@@ -367,6 +381,8 @@ private fun WindowViewContent(
                 items = lines,
                 key = { it.serialNumber }
             ) { streamLine ->
+                var clickOffset by remember { mutableStateOf<Offset?>(null) }
+                var openMenuId by remember { mutableStateOf<Int?>(null) }
                 when (streamLine) {
                     is StreamTextLine -> {
                         val line = streamLine.toWindowLine(
@@ -376,9 +392,8 @@ private fun WindowViewContent(
                             alterations = alterations,
                         ) { action ->
                             logger.debug { "action clicked: $action" }
-                            onActionClicked(action)
+                            openMenuId = onActionClicked(action)
                         }
-                        // FIXME: if line is null, I think we can screw up the scrolling
                         if (line != null) {
                             Box(
                                 modifier = Modifier.fillMaxWidth()
@@ -395,6 +410,11 @@ private fun WindowViewContent(
                                 }
 
                                 BasicText(
+                                    modifier = Modifier
+                                        .onPointerEvent(PointerEventType.Press) { event ->
+                                            logger.debug { "Click: $event" }
+                                            clickOffset = event.changes.firstOrNull()?.position
+                                        },
                                     text = text,
                                     style = TextStyle(
                                         color = textColor,
@@ -402,6 +422,15 @@ private fun WindowViewContent(
                                         fontSize = fontSize
                                     ),
                                 )
+
+                                if (menuData != null && menuData.id == openMenuId) {
+                                    ActionContextMenu(
+                                        offset = clickOffset,
+                                        menuData = menuData,
+                                        onDismiss = { openMenuId = null },
+                                    )
+                                }
+
                                 // Add newlines in selected text
                                 BasicText(text = "\n", modifier = Modifier.size(0.dp))
                             }
@@ -476,4 +505,102 @@ private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
 private fun Instant.toTimeString(timeZone: TimeZone = TimeZone.getDefault()): String {
     val zonedDateTime = toJavaInstant().atZone(timeZone.toZoneId())
     return timeFormatter.format(zonedDateTime)
+}
+
+@Composable
+private fun ActionContextMenu(
+    offset: Offset?,
+    menuData: WarlockMenuData,
+    onDismiss: () -> Unit,
+) {
+    val logger = LocalLogger.current
+    val scope = rememberCoroutineScope()
+    DropdownMenu(
+        offset = offset?.let { with(LocalDensity.current) { DpOffset(it.x.toDp(), it.y.toDp()) } } ?: DpOffset.Zero,
+        expanded = true,
+        onDismissRequest = onDismiss,
+    ) {
+        val groups = menuData.items.groupBy { it.category.split('-').first() }
+        val categories = groups.keys.sorted()
+        categories.forEach { category ->
+            val items = groups[category]!!
+            if (!category.contains('_')) {
+                items.forEach { item ->
+                    logger.debug { "Menu item: $item" }
+                    DropdownMenuItem(
+                        text = {
+                            Text(item.label)
+                        },
+                        onClick = {
+                            scope.launch {
+                                item.action()
+                                onDismiss()
+                            }
+                        }
+                    )
+                }
+            } else {
+                var expanded by remember(category) { mutableStateOf(false) }
+                DropdownMenuItem(
+                    text = {
+                        Text(category.split('_').getOrNull(1) ?: "Unknown")
+                    },
+                    onClick = { expanded = true },
+                    trailingIcon = {
+                        Icon(Arrow_right, contentDescription = "expandable")
+                    }
+                )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                ) {
+                    val subgroups = items.groupBy { it.category.split('-').getOrNull(1) }
+                    subgroups[null]?.forEach { item ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(item.label)
+                            },
+                            onClick = {
+                                scope.launch {
+                                    item.action()
+                                    onDismiss()
+                                }
+                            }
+                        )
+                    }
+                    val subcatories = subgroups.keys.filterNotNull().sorted()
+                    subcatories.forEach { category ->
+                        var expanded by remember(category) { mutableStateOf(false) }
+                        DropdownMenuItem(
+                            text = {
+                                Text(category)
+                            },
+                            onClick = { expanded = true },
+                            trailingIcon = {
+                                Icon(Arrow_right, contentDescription = "expandable")
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                        ) {
+                            subgroups[category]?.forEach { item ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(item.label)
+                                    },
+                                    onClick = {
+                                        scope.launch {
+                                            item.action()
+                                            onDismiss()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
