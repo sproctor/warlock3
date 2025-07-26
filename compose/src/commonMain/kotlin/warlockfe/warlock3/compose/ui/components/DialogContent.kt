@@ -73,8 +73,8 @@ fun DialogContent(
                 this@BoxWithConstraints.DataObjectContent(
                     modifier = Modifier
                         .constrainAs(refs[data.id]!!) {
-                            val dataTop = data.top ?: skinObject?.top?.let { DataDistance.Pixels(it) }
-                            val dataLeft = data.left ?: skinObject?.left?.let { DataDistance.Pixels(it) }
+                            val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
+                            val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
                             val topAnchor = if (data.topAnchor != null) {
                                 refs[data.topAnchor]?.bottom ?: parent.top
                             } else if (dataTop == null) {

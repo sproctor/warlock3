@@ -2,6 +2,8 @@
   "HealthBar": {
     "children": {
       "health": {
+        "top": 0,
+        "left": 0,
         "color": "#FFFFFF",
         "bar": "#800000",
         "background": "#444444"
@@ -11,6 +13,8 @@
   "HealthBar2": {
     "children": {
       "health2": {
+        "top": 0,
+        "left": 0,
         "color": "#FFFFFF",
         "bar": "#800000",
         "background": "#444444"
@@ -20,6 +24,8 @@
   "ManaBar": {
     "children": {
       "mana": {
+        "top": 0,
+        "left": 0,
         "color": "#FFFFFF",
         "bar": "#0000FF",
         "background": "#444444"
@@ -29,6 +35,8 @@
   "StaminaBar": {
     "children": {
       "stamina": {
+        "top": 0,
+        "left": 0,
         "color": "#000000",
         "bar": "#D0982F",
         "background": "#DECCAA"
@@ -38,6 +46,8 @@
   "SpiritBar": {
     "children": {
       "spirit": {
+        "top": 0,
+        "left": 0,
         "color": "#000000",
         "bar": "#CCCCCC",
         "background": "#444444"
