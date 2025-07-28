@@ -51,7 +51,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -356,6 +358,9 @@ private fun WindowViewContent(
     val lines = stream.lines
     val components = stream.components
 
+    var clickOffset by remember { mutableStateOf<Offset?>(null) }
+    var openMenuId by remember { mutableStateOf<Int?>(null) }
+
     SelectionContainer {
         ScrollableLazyColumn(
             modifier = Modifier
@@ -379,8 +384,6 @@ private fun WindowViewContent(
                 items = lines,
                 key = { it.serialNumber }
             ) { streamLine ->
-                var clickOffset by remember { mutableStateOf<Offset?>(null) }
-                var openMenuId by remember { mutableStateOf<Int?>(null) }
                 when (streamLine) {
                     is StreamTextLine -> {
                         val line = streamLine.toWindowLine(
@@ -393,8 +396,13 @@ private fun WindowViewContent(
                             openMenuId = onActionClicked(action)
                         }
                         if (line != null) {
+                            var positionInParent by remember { mutableStateOf(Offset.Zero) }
                             Box(
                                 modifier = Modifier.fillMaxWidth()
+                                    .onGloballyPositioned {
+                                        positionInParent = it.positionInParent()
+                                        logger.debug { "Globally positioned: $positionInParent" }
+                                    }
                                     .background(
                                         line.entireLineStyle?.backgroundColor?.toColor()
                                             ?: Color.Unspecified
@@ -415,7 +423,7 @@ private fun WindowViewContent(
                                                     val event = awaitPointerEvent()
                                                     if (event.type == PointerEventType.Press) {
                                                         logger.debug { "Click: $event" }
-                                                        clickOffset = event.changes.firstOrNull()?.position
+                                                        clickOffset = event.changes.firstOrNull()?.position?.let { it + positionInParent }
                                                     }
                                                 }
                                             }
@@ -427,14 +435,6 @@ private fun WindowViewContent(
                                         fontSize = fontSize
                                     ),
                                 )
-
-                                if (menuData != null && menuData.id == openMenuId) {
-                                    ActionContextMenu(
-                                        offset = clickOffset,
-                                        menuData = menuData,
-                                        onDismiss = { openMenuId = null },
-                                    )
-                                }
 
                                 // Add newlines in selected text
                                 BasicText(text = "\n", modifier = Modifier.size(0.dp))
@@ -481,6 +481,14 @@ private fun WindowViewContent(
                     }
                 }
             }
+        }
+
+        if (menuData != null && menuData.id == openMenuId) {
+            ActionContextMenu(
+                offset = clickOffset,
+                menuData = menuData,
+                onDismiss = { openMenuId = null },
+            )
         }
 
         var sticky by remember { mutableStateOf(true) }
