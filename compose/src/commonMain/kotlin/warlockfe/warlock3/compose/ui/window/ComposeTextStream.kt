@@ -119,7 +119,7 @@ class ComposeTextStream(
     suspend fun setMaxLines(maxLines: Int) {
         withContext(mainDispatcher) {
             this@ComposeTextStream.maxLines = maxLines
-            if (lines.size > maxLines) {
+            if (lines.size > maxLines && maxLines > 0) {
                 lines.removeRange(maxLines - 1, lines.lastIndex)
             }
         }
