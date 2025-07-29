@@ -744,7 +744,9 @@ class StormfrontClient(
         withContext(writeContext) {
             val toSend = "<c>$command\n"
             try {
-                socket?.outputStream?.write(toSend.toByteArray(charset))
+                val outputStream = socket?.outputStream
+                outputStream?.write(toSend.toByteArray(charset))
+                outputStream?.flush()
                 logSimple { ">$command" }
                 logComplete { "<command>$command</command>" }
             } catch (e: SocketException) {
