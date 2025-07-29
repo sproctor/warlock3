@@ -66,8 +66,8 @@ class DashboardViewModel(
         connectJob = viewModelScope.launch {
             try {
                 message = "Connecting..."
-                val sgeClient = sgeClientFactory.create(host = host, port = port)
-                if (!sgeClient.connect()) {
+                val sgeClient = sgeClientFactory.create()
+                if (!sgeClient.connect(host = host, port = port)) {
                     logger.error { "Unable to connect to server" }
                     message = "Could not connect to SGE"
                     return@launch

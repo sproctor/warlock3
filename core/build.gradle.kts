@@ -21,7 +21,7 @@ kotlin {
 
                 implementation(libs.appdirs)
 
-                api(libs.okio)
+                api(libs.kotlinx.io.core)
             }
         }
         val jvmTest by getting {

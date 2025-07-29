@@ -6,7 +6,7 @@ interface SgeClient {
 
     val eventFlow: SharedFlow<SgeEvent>
 
-    suspend fun connect(): Boolean
+    suspend fun connect(host: String, port: Int): Boolean
 
     suspend fun login(username: String, password: String)
 

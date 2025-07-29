@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okio.Path.Companion.toPath
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.util.FileLogger
 import warlockfe.warlock3.core.util.LogType
 
@@ -46,8 +46,7 @@ class LoggingRepository(
     private suspend fun getLogger(path: String, name: String): FileLogger {
         return mutex.withLock {
             loggers[name]?.let { return@withLock it }
-
-            val directory = path.toPath() / name
+            val directory = Path(path, name)
             val logger = FileLogger(directory)
             logger.also { loggers[name] = it }
         }

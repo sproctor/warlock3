@@ -143,8 +143,8 @@ abstract class AppContainer(
 
     val sgeClientFactory: SgeClientFactory =
         object : SgeClientFactory {
-            override fun create(host: String, port: Int): SgeClient {
-                return SgeClientImpl(host, port, Dispatchers.IO)
+            override fun create(): SgeClient {
+                return SgeClientImpl(Dispatchers.IO)
             }
         }
 

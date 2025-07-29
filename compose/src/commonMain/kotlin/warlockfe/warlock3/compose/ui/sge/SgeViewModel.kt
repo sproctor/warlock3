@@ -54,7 +54,7 @@ class SgeViewModel(
     val state: State<SgeViewState> = _state
     private val backStack = mutableStateListOf<SgeViewState>()
 
-    private val client = sgeClientFactory.create(host = host, port = port)
+    private val client = sgeClientFactory.create()
     private val job: Job
 
     private var username: String? = null
@@ -71,7 +71,7 @@ class SgeViewModel(
 
     init {
         job = viewModelScope.launch {
-            if (!client.connect()) {
+            if (!client.connect(host = host, port = port)) {
                 logger.debug { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
                 return@launch

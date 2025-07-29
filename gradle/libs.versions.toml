@@ -36,11 +36,12 @@ constraintlayout = "0.6.0"
 conveyor = "1.12"
 conveyor-control = "1.1"
 fastscroller = "0.3.2"
-filekit = "0.10.0-beta04"
+filekit = "0.10.0"
 kotlin = "2.2.0"
 kotlin-logging = "7.0.7"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
+kotlinx-io = "0.8.0"
 kotlinx-serialization = "1.9.0"
 ksp = "2.2.0-2.0.2"
 material-icons = "1.7.3"
@@ -73,9 +74,9 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "material-icons" }
-okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

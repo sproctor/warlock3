@@ -3,11 +3,12 @@ package warlockfe.warlock3.core.util
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import okio.Path
 import java.io.BufferedWriter
 import java.io.FileOutputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.io.files.Path
+import java.io.File
 
 class FileLogger(
     directory: Path,
@@ -21,9 +22,10 @@ class FileLogger(
 
     init {
         val formattedDate = timestamp.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-        val path = directory / "$formattedDate.log"
-        path.parent?.toFile()?.mkdirs()
-        outputStream = FileOutputStream(path.toFile(), true)
+        val path = Path(directory, "$formattedDate.log")
+        val file = File(path.toString())
+        file.parentFile?.mkdirs()
+        outputStream = FileOutputStream(file, true)
         writer = outputStream.bufferedWriter()
     }
 

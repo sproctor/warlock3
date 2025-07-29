@@ -9,28 +9,29 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okio.BufferedSink
-import okio.IOException
-import okio.buffer
-import okio.sink
-import okio.source
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStream
 import java.lang.Integer.min
 import java.net.Socket
+import java.nio.charset.Charset
+import kotlinx.io.IOException
+
+private const val charsetName = "windows-1252"
+private val charset = Charset.forName(charsetName)
 
 class SgeClientImpl(
-    private val host: String,
-    private val port: Int,
     private val ioDispatcher: CoroutineDispatcher,
 ) : SgeClient {
 
     private val logger = KotlinLogging.logger {}
-    private var sink: BufferedSink? = null
+    private var outputStream: OutputStream? = null
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
     override val eventFlow = _eventFlow.asSharedFlow()
@@ -39,24 +40,24 @@ class SgeClientImpl(
 
     private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
 
-    override suspend fun connect(): Boolean {
+    override suspend fun connect(host: String, port: Int): Boolean {
         return withContext(ioDispatcher) {
             try {
                 logger.debug { "connecting..." }
 
                 val socket = Socket(host, port)
-                sink = socket.sink().buffer()
-                val source = socket.source().buffer()
+                val reader = BufferedReader(InputStreamReader(socket.inputStream, charsetName))
+                outputStream = socket.outputStream
 
                 // request password hash
                 send("K\n")
-                passwordHash = source.readUtf8Line()?.toByteArray(Charsets.US_ASCII)
+                passwordHash = reader.readLine()?.toByteArray(Charsets.US_ASCII)
                     ?: throw IOException("Error getting password hash")
 
                 scope.launch {
                     try {
                         while (!stopped) {
-                            val line = source.readUtf8Line()
+                            val line = reader.readLine()
                             if (line != null) {
                                 handleData(line)
                             } else {
@@ -70,8 +71,7 @@ class SgeClientImpl(
                         _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                     } finally {
                         logger.debug { "Closing socket" }
-                        source.close()
-                        sink?.close()
+                        reader.close()
                         socket.close()
                     }
                 }
@@ -187,16 +187,16 @@ class SgeClientImpl(
     private suspend fun send(string: String) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: $string" }
-            sink?.writeUtf8(string)
-            sink?.flush()
+            outputStream?.write(string.toByteArray(charset))
+            outputStream?.flush()
         }
     }
 
     private suspend fun send(bytes: ByteArray) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: ${bytes.decodeToString()}" }
-            sink?.write(bytes)
-            sink?.flush()
+            outputStream?.write(bytes)
+            outputStream?.flush()
         }
     }
 
