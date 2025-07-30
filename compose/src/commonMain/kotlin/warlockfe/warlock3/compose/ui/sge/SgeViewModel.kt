@@ -178,8 +178,12 @@ class SgeViewModel(
     }
 
     fun goBack() {
-        backStack.removeLast()
-        _state.value = backStack.last()
+        try {
+            backStack.removeLast()
+            _state.value = backStack.last()
+        } catch (_: NoSuchElementException) {
+            // Can't go back, double-clicked back button?
+        }
     }
 
     fun saveAccount(account: AccountEntity) {
