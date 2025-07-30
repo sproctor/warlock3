@@ -19,13 +19,13 @@ class LoggingRepository(
     private val loggingSettings = clientSettingRepository.observeLogSettings()
         .onEach {
             mutex.withLock {
-                loggers.forEach { (_, logger) -> logger.close() }
+                loggers.forEach { (_, logger) -> logger?.close() }
                 loggers.clear()
             }
         }
         .stateIn(externalScope, SharingStarted.Eagerly, null)
 
-    private val loggers = mutableMapOf<String, FileLogger>()
+    private val loggers = mutableMapOf<String, FileLogger?>()
 
     suspend fun logSimple(name: String, message: () -> String) {
         log(LogType.SIMPLE, name, message)
@@ -39,15 +39,15 @@ class LoggingRepository(
         val settings = loggingSettings.value ?: error("Attempted to print log before settings were loaded")
         if (settings.type == type) {
             val logger = getLogger(settings.basePath, name)
-            logger.write(message(), settings.logTimestamps, settings.type)
+            logger?.write(message(), settings.logTimestamps, settings.type)
         }
     }
 
-    private suspend fun getLogger(path: String, name: String): FileLogger {
+    private suspend fun getLogger(path: String, name: String): FileLogger? {
         return mutex.withLock {
             loggers[name]?.let { return@withLock it }
             val directory = Path(path, name)
-            val logger = FileLogger(directory)
+            val logger = FileLogger.getLogger(directory)
             logger.also { loggers[name] = it }
         }
     }
