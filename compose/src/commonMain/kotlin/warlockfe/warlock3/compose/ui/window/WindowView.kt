@@ -423,7 +423,8 @@ private fun WindowViewContent(
                                                     val event = awaitPointerEvent()
                                                     if (event.type == PointerEventType.Press) {
                                                         logger.debug { "Click: $event" }
-                                                        clickOffset = event.changes.firstOrNull()?.position?.let { it + positionInParent }
+                                                        clickOffset = event.changes.firstOrNull()
+                                                            ?.position?.let { it + positionInParent }
                                                     }
                                                 }
                                             }
@@ -482,32 +483,32 @@ private fun WindowViewContent(
                 }
             }
         }
+    }
 
-        if (menuData != null && menuData.id == openMenuId) {
-            ActionContextMenu(
-                offset = clickOffset,
-                menuData = menuData,
-                onDismiss = { openMenuId = null },
-            )
-        }
+    if (menuData != null && menuData.id == openMenuId) {
+        ActionContextMenu(
+            offset = clickOffset,
+            menuData = menuData,
+            onDismiss = { openMenuId = null },
+        )
+    }
 
-        var sticky by remember { mutableStateOf(true) }
-        val lastSerial = lines.lastOrNull()?.serialNumber
-        LaunchedEffect(lastSerial) {
-            if (lastSerial != null && sticky) {
-                lines.lastIndex.takeIf { it > -1 }?.let { index ->
-                    scrollState.scrollToItem(index)
-                }
+    var sticky by remember { mutableStateOf(true) }
+    val lastSerial = lines.lastOrNull()?.serialNumber
+    LaunchedEffect(lastSerial) {
+        if (lastSerial != null && sticky) {
+            lines.lastIndex.takeIf { it > -1 }?.let { index ->
+                scrollState.scrollToItem(index)
             }
         }
-        LaunchedEffect(scrollState.lastScrolledBackward, scrollState.canScrollForward) {
-            // If the user scrolled back and they can scroll forward, stop being sticky
-            // if the window can't be scrolled forward, be sticky again
-            if (scrollState.lastScrolledBackward && scrollState.canScrollForward) {
-                sticky = false
-            } else if (!scrollState.canScrollForward) {
-                sticky = true
-            }
+    }
+    LaunchedEffect(scrollState.lastScrolledBackward, scrollState.canScrollForward) {
+        // If the user scrolled back and they can scroll forward, stop being sticky
+        // if the window can't be scrolled forward, be sticky again
+        if (scrollState.lastScrolledBackward && scrollState.canScrollForward) {
+            sticky = false
+        } else if (!scrollState.canScrollForward) {
+            sticky = true
         }
     }
 }
