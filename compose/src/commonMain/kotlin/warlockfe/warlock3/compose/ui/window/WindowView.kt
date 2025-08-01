@@ -401,7 +401,6 @@ private fun WindowViewContent(
                                 modifier = Modifier.fillMaxWidth()
                                     .onGloballyPositioned {
                                         positionInParent = it.positionInParent()
-                                        logger.debug { "Globally positioned: $positionInParent" }
                                     }
                                     .background(
                                         line.entireLineStyle?.backgroundColor?.toColor()
@@ -436,9 +435,6 @@ private fun WindowViewContent(
                                         fontSize = fontSize
                                     ),
                                 )
-
-                                // Add newlines in selected text
-                                BasicText(text = "\n", modifier = Modifier.size(0.dp))
                             }
                         }
                     }
