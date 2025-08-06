@@ -22,7 +22,7 @@
 -keep class androidx.compose.foundation.text.TextLinkScope { *; }
 -keep class com.sun.jna.** { *; }
 -keep class androidx.sqlite.** { *; }
--keep class io.github.vinceglb.filekit.dialogs.** { *; }
+-keep class io.github.vinceglb.filekit.** { *; }
 -keep class com.github.ajalt.mordant.terminal.terminalinterface.** { *; }
 
 # Coil
