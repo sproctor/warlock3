@@ -52,7 +52,7 @@ class SgeClientImpl(
                 // request password hash
                 send("K\n")
                 passwordHash = reader.readLine()?.toByteArray(Charsets.US_ASCII)
-                    ?: throw IOException("Error getting password hash")
+                    ?: return@withContext false
 
                 scope.launch {
                     try {
