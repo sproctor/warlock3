@@ -8,9 +8,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
-import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.openFilePicker
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.window.Window
 import java.io.File
@@ -32,6 +31,14 @@ fun FrameWindowScope.AppMenuBar(
 ) {
     var showAbout by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val scriptFilePickerLauncher = rememberFilePickerLauncher(
+        title = "Run script",
+        directory = scriptDirectory?.let { PlatformFile(it) },
+    ) { file ->
+        if (file != null) {
+            runScript(file.file)
+        }
+    }
     MenuBar {
         Menu("File") {
             Item("New window", onClick = { newWindow() })
@@ -45,15 +52,7 @@ fun FrameWindowScope.AppMenuBar(
                 text = "Run script...",
                 enabled = isConnected,
                 onClick = {
-                    scope.launch {
-                        val file = FileKit.openFilePicker(
-                            title = "Run script",
-                            directory = scriptDirectory?.let { PlatformFile(it) },
-                        )
-                        if (file != null) {
-                            runScript(file.file)
-                        }
-                    }
+                    scriptFilePickerLauncher.launch()
                 }
             )
             Separator()

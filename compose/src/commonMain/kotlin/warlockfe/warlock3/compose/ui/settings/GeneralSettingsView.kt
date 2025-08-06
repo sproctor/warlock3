@@ -36,11 +36,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
-import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
-import io.github.vinceglb.filekit.dialogs.openFilePicker
+import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -167,16 +166,18 @@ fun GeneralSettingsView(
                 }
             }
 
+            val scriptDirLauncher = rememberDirectoryPickerLauncher(
+                title = "Choose a script directory",
+            ) { directory ->
+                if (directory != null) {
+                    scope.launch {
+                        scriptDirRepository.save(currentCharacterId, directory.absolutePath())
+                    }
+                }
+            }
             Button(
                 onClick = {
-                    scope.launch {
-                        val directory = FileKit.openDirectoryPicker(
-                            title = "Choose a script directory",
-                        )
-                        if (directory != null) {
-                            scriptDirRepository.save(currentCharacterId, directory.absolutePath())
-                        }
-                    }
+                    scriptDirLauncher.launch()
                 }
             ) {
                 Text("Add a directory")
@@ -227,19 +228,21 @@ fun GeneralSettingsView(
             ) {
                 Text("Use default skin")
             }
+            val skinFileLauncher = rememberFilePickerLauncher(
+                title = "Choose a skin file",
+                directory = currentSkin
+                    ?.takeIf { File(it).exists() }
+                    ?.let { PlatformFile(it) }
+            ) { file ->
+                if (file != null) {
+                    scope.launch {
+                        clientSettingRepository.putSkinFile(file.absolutePath())
+                    }
+                }
+            }
             Button(
                 onClick = {
-                    scope.launch {
-                        val file = FileKit.openFilePicker(
-                            title = "Choose a skin file",
-                            directory = currentSkin
-                                ?.takeIf { File(it).exists() }
-                                ?.let { PlatformFile(it) },
-                        )
-                        if (file != null) {
-                            clientSettingRepository.putSkinFile(file.absolutePath())
-                        }
-                    }
+                    skinFileLauncher.launch()
                 }
             ) {
                 Text("Change skin")
@@ -256,17 +259,19 @@ fun GeneralSettingsView(
                     onValueChange = {},
                     singleLine = true,
                 )
+                val loggingDirectoryLauncher = rememberDirectoryPickerLauncher(
+                    title = "Choose a base logging directory",
+                    directory = PlatformFile(loggingSettings!!.basePath)
+                ) { directory ->
+                    if (directory != null) {
+                        scope.launch {
+                            clientSettingRepository.putLoggingPath(directory.absolutePath())
+                        }
+                    }
+                }
                 Button(
                     onClick = {
-                        scope.launch {
-                            val directory = FileKit.openDirectoryPicker(
-                                title = "Choose a base logging directory",
-                                directory = PlatformFile(loggingSettings!!.basePath)
-                            )
-                            if (directory != null) {
-                                clientSettingRepository.putLoggingPath(directory.absolutePath())
-                            }
-                        }
+                        loggingDirectoryLauncher.launch()
                     }
                 ) {
                     Text("Change directory")
