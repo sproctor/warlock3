@@ -667,6 +667,10 @@ class StormfrontClient(
                     logger.debug { "Socket timeout: " + e.message }
                     disconnected()
                     break
+                } catch (e: IOException) {
+                    logger.debug { "IO exception: " + e.message }
+                    disconnected()
+                    break
                 }
             }
         }
