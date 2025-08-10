@@ -13,9 +13,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.Clipboard
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -53,13 +51,8 @@ import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowUiState
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.StreamWindowUiState
-import warlockfe.warlock3.compose.ui.window.WindowLine
 import warlockfe.warlock3.compose.ui.window.WindowUiState
-import warlockfe.warlock3.compose.util.getEntireLineStyles
-import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.openUrl
-import warlockfe.warlock3.compose.util.toAnnotatedString
-import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientDialogClearEvent
 import warlockfe.warlock3.core.client.ClientDialogEvent
@@ -88,10 +81,8 @@ import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.StreamRegistry
-import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
@@ -100,7 +91,6 @@ import warlockfe.warlock3.stormfront.network.scriptCommandPrefix
 import warlockfe.warlock3.stormfront.util.CompiledAlteration
 import java.io.File
 import kotlin.math.max
-import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -890,59 +880,4 @@ class GameViewModel(
             SendCommandType.COMMAND
         }
     }
-}
-
-@OptIn(ExperimentalTime::class)
-fun StreamTextLine.toWindowLine(
-    highlights: List<ViewHighlight>,
-    alterations: List<CompiledAlteration>,
-    presets: Map<String, StyleDefinition>,
-    components: Map<String, StyledString>,
-    actionHandler: (WarlockAction) -> Unit,
-): WindowLine? {
-    val textWithComponents =
-        text.toAnnotatedString(
-            variables = components,
-            styleMap = presets,
-            actionHandler = actionHandler,
-        )
-            .alter(alterations) ?: return null
-    if (ignoreWhenBlank && textWithComponents.isBlank()) {
-        return null
-    }
-    val highlightedResult = textWithComponents.highlight(highlights)
-    val lineStyle = flattenStyles(
-        highlightedResult.entireLineStyles +
-                text.getEntireLineStyles(
-                    variables = components,
-                    styleMap = presets,
-                )
-    )
-    val annotatedString = buildAnnotatedString {
-        lineStyle?.let { pushStyle(it.toSpanStyle()) }
-        append(highlightedResult.text)
-        if (lineStyle != null) pop()
-    }
-    return WindowLine(
-        text = annotatedString,
-        entireLineStyle = lineStyle,
-        timestamp = timestamp,
-    )
-}
-
-private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString? {
-    var result = this
-    alterations.forEach { alteration ->
-        val match = alteration.match(result.text)
-        if (match != null) {
-            result = buildAnnotatedString {
-                append(result.substring(0, match.matchResult.range.first))
-                match.text?.let { append(it) }
-                append(result.substring(match.matchResult.range.last + 1))
-            }
-            if (result.isEmpty())
-                return null
-        }
-    }
-    return result
 }

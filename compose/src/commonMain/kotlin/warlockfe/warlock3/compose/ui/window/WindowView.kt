@@ -61,7 +61,11 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -82,14 +86,19 @@ import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.icons.Arrow_right
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.components.DialogContent
-import warlockfe.warlock3.compose.ui.game.toWindowLine
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.getEntireLineStyles
+import warlockfe.warlock3.compose.util.highlight
+import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.StreamImageLine
 import warlockfe.warlock3.core.window.StreamTextLine
@@ -125,7 +134,7 @@ fun WindowView(
     val scrollState = rememberLazyListState()
 
     val title = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: "")
-    var viewportHeight by mutableIntStateOf(0)
+    var viewportHeight by remember { mutableIntStateOf(0) }
     Surface(
         modifier.padding(2.dp)
             .onLayoutRectChanged { bounds ->
@@ -435,6 +444,9 @@ private fun WindowViewContent(
                                         fontSize = fontSize
                                     ),
                                 )
+
+                                // Add newlines in selected text
+                                BasicText(text = "\n", modifier = Modifier.size(0.dp))
                             }
                         }
                     }
@@ -614,3 +626,76 @@ private fun ActionContextMenu(
         }
     }
 }
+
+@OptIn(ExperimentalTime::class)
+fun StreamTextLine.toWindowLine(
+    highlights: List<ViewHighlight>,
+    alterations: List<CompiledAlteration>,
+    presets: Map<String, StyleDefinition>,
+    components: Map<String, StyledString>,
+    actionHandler: (WarlockAction) -> Unit,
+): WindowLine? {
+    val textWithComponents =
+        text.toAnnotatedString(
+            variables = components,
+            styleMap = presets,
+            actionHandler = actionHandler,
+        )
+            .alter(alterations) ?: return null
+    if (ignoreWhenBlank && textWithComponents.isBlank()) {
+        return null
+    }
+    val highlightedResult = textWithComponents.highlight(highlights)
+    val lineStyle = flattenStyles(
+        highlightedResult.entireLineStyles +
+                text.getEntireLineStyles(
+                    variables = components,
+                    styleMap = presets,
+                )
+    )
+    val annotatedString = buildAnnotatedString {
+        lineStyle?.let { pushStyle(it.toSpanStyle()) }
+        append(highlightedResult.text)
+        val matches = urlMatcher.findAll(highlightedResult.text.text)
+        matches.forEach { match ->
+            addStyle(
+                style = SpanStyle(textDecoration = TextDecoration.Underline),
+                start = match.range.first,
+                end = match.range.last + 1,
+            )
+            addLink(
+                url = LinkAnnotation.Url(match.value),
+                start = match.range.first,
+                end = match.range.last + 1,
+            )
+        }
+        if (lineStyle != null) pop()
+    }
+    return WindowLine(
+        text = annotatedString,
+        entireLineStyle = lineStyle,
+        timestamp = timestamp,
+    )
+}
+
+private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString? {
+    var result = this
+    alterations.forEach { alteration ->
+        val match = alteration.match(result.text)
+        if (match != null) {
+            result = buildAnnotatedString {
+                append(result.take(match.matchResult.range.first))
+                match.text?.let { append(it) }
+                append(result.substring(match.matchResult.range.last + 1))
+            }
+            if (result.isEmpty())
+                return null
+        }
+    }
+    return result
+}
+
+private val urlMatcher = Regex(
+    pattern = "\\b((?:https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|])",
+    option = RegexOption.IGNORE_CASE,
+)
