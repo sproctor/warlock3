@@ -21,6 +21,8 @@ interface TextStream {
 
     suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false)
 
+    suspend fun usesComponent(name: String)
+
     suspend fun updateComponent(name: String, value: StyledString)
 
     suspend fun appendResource(url: String)

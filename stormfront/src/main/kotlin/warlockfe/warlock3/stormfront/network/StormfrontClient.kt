@@ -168,7 +168,8 @@ class StormfrontClient(
 
     // Line state variables
     private var isPrompting = false
-    private var buffer: StyledString? = null
+    private var streamBuffer: StyledString? = null
+    private var elementBuffer: StyledString? = null
 
     private val cliCache = mutableListOf<CmdDefinition>()
 
@@ -422,35 +423,40 @@ class StormfrontClient(
                                 is StormfrontComponentDefinitionEvent -> {
                                     // Should not happen on main stream, so don't clear prompt
                                     // TODO: Should currentStyle be used here? is it per stream?
-                                    val styles = styleStack.toPersistentList()
                                     bufferText(
                                         text = StyledString(
                                             persistentListOf(
-                                                StyledStringVariable(name = event.id, styles = styles)
+                                                StyledStringVariable(
+                                                    name = event.id,
+                                                    styles = styleStack.toPersistentList()
+                                                )
                                             )
                                         ),
                                     )
+                                    componentId = event.id
+                                    elementBuffer = StyledString()
+                                    currentStream.usesComponent(event.id)
                                 }
 
                                 is StormfrontComponentStartEvent -> {
-                                    flushBuffer(true)
                                     componentId = event.id
+                                    elementBuffer = StyledString()
                                 }
 
                                 StormfrontComponentEndEvent -> {
                                     if (componentId != null) {
                                         // Either replace the component in the map with the new value
                                         //  or remove the component from the map (if we got an empty one)
-                                        if (buffer?.substrings.isNullOrEmpty()) {
+                                        if (elementBuffer?.substrings.isNullOrEmpty()) {
                                             _components.value -= componentId!!
                                         } else {
-                                            _components.value += (componentId!! to buffer!!)
+                                            _components.value += (componentId!! to elementBuffer!!)
                                         }
-                                        val newValue = buffer ?: StyledString("")
+                                        val newValue = elementBuffer ?: StyledString()
                                         streamRegistry.getStreams().forEach { stream ->
                                             stream.updateComponent(componentId!!, newValue)
                                         }
-                                        buffer = null
+                                        elementBuffer = null
                                         componentId = null
                                     } else {
                                         // mismatched component tags?
@@ -681,7 +687,11 @@ class StormfrontClient(
         outputStyle?.let { styledText = styledText.applyStyle(it) }
         currentStyle?.let { styledText = styledText.applyStyle(it) }
         styleStack.forEach { styledText = styledText.applyStyle(it) }
-        buffer = buffer?.plus(styledText) ?: styledText
+        if (elementBuffer != null) {
+            elementBuffer = elementBuffer!!.plus(styledText)
+        } else {
+            streamBuffer = streamBuffer?.plus(styledText) ?: styledText
+        }
     }
 
     private suspend fun appendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
@@ -714,9 +724,9 @@ class StormfrontClient(
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
         assert(componentId == null)
-        val styledText = buffer ?: StyledString("")
+        val styledText = streamBuffer ?: StyledString()
         appendToStream(styledText, currentStream, ignoreWhenBlank)
-        buffer = null
+        streamBuffer = null
     }
 
     private suspend fun doIfClosed(stream: TextStream, action: suspend (TextStream) -> Unit) {

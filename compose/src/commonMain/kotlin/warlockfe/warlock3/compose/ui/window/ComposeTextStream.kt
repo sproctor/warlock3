@@ -9,7 +9,6 @@ import warlockfe.warlock3.core.window.StreamImageLine
 import warlockfe.warlock3.core.window.StreamLine
 import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.TextStream
-import warlockfe.warlock3.core.window.getComponents
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -78,7 +77,7 @@ class ComposeTextStream(
 
     // Must be called with lock held
     private fun doAppendLine(text: StyledString, ignoreWhenBlank: Boolean) {
-        usedComponents += text.getComponents()
+        // usedComponents += text.getComponents()
         if (maxLines > 0 && lines.size >= maxLines) {
             lines.removeAt(0)
         }
@@ -105,6 +104,10 @@ class ComposeTextStream(
                 )
             )
         }
+    }
+
+    override suspend fun usesComponent(name: String) {
+        usedComponents.add(name)
     }
 
     override suspend fun updateComponent(name: String, value: StyledString) {

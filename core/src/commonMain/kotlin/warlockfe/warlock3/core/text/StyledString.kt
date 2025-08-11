@@ -4,7 +4,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 
-data class StyledString(val substrings: ImmutableList<StyledStringLeaf>) {
+data class StyledString(val substrings: ImmutableList<StyledStringLeaf> = persistentListOf()) {
     constructor(text: String, styles: List<WarlockStyle> = emptyList())
             : this(persistentListOf<StyledStringSubstring>(StyledStringSubstring(text, styles)))
 
