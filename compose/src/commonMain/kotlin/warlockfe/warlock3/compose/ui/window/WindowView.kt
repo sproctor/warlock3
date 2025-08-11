@@ -80,6 +80,8 @@ import coil3.request.ImageRequest
 import coil3.size.Size
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import kotlinx.coroutines.launch
+import org.nibor.autolink.LinkExtractor
+import org.nibor.autolink.LinkType
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
@@ -656,18 +658,26 @@ fun StreamTextLine.toWindowLine(
     val annotatedString = buildAnnotatedString {
         lineStyle?.let { pushStyle(it.toSpanStyle()) }
         append(highlightedResult.text)
-        val matches = urlMatcher.findAll(highlightedResult.text.text)
-        matches.forEach { match ->
-            addStyle(
-                style = SpanStyle(textDecoration = TextDecoration.Underline),
-                start = match.range.first,
-                end = match.range.last + 1,
-            )
-            addLink(
-                url = LinkAnnotation.Url(match.value),
-                start = match.range.first,
-                end = match.range.last + 1,
-            )
+        linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
+            if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
+                addStyle(
+                    style = SpanStyle(textDecoration = TextDecoration.Underline),
+                    start = link.beginIndex,
+                    end = link.endIndex,
+                )
+                val substring = highlightedResult.text.substring(link.beginIndex, link.endIndex)
+                addLink(
+                    url = LinkAnnotation.Url(
+                        if (link.type == LinkType.URL) {
+                            substring
+                        } else {
+                            "http://$substring"
+                        }
+                    ),
+                    start = link.beginIndex,
+                    end = link.endIndex,
+                )
+            }
         }
         if (lineStyle != null) pop()
     }
@@ -695,7 +705,4 @@ private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): Annota
     return result
 }
 
-private val urlMatcher = Regex(
-    pattern = "\\b((?:https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|])",
-    option = RegexOption.IGNORE_CASE,
-)
+private val linkExtractor = LinkExtractor.builder().linkTypes(setOf(LinkType.URL, LinkType.WWW)).build()

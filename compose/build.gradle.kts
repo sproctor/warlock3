@@ -42,6 +42,7 @@ kotlin {
             implementation(libs.appdirs)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.okhttp)
+            implementation(libs.autolink)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
