@@ -46,7 +46,6 @@ kotlinx-coroutines =  "1.10.2"
 kotlinx-io = "0.8.0"
 kotlinx-serialization = "1.9.0"
 ksp = "2.2.0-2.0.2"
-material-icons = "1.7.3"
 rhino = "1.8.0"
 room = "2.7.2"
 sentryKotlin = "0.18.0"
@@ -78,7 +77,6 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
-material-icons = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "material-icons" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

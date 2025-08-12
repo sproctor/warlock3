@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.icons.Add
+import warlockfe.warlock3.compose.icons.Edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.models.VariableEntity
@@ -75,7 +74,7 @@ fun VariablesView(
                         IconButton(
                             onClick = { editingVariable = variable }
                         ) {
-                            Icon(imageVector = Icons.Filled.Edit, contentDescription = "edit")
+                            Icon(imageVector = Edit, contentDescription = "edit")
                         }
                     }
                 )
@@ -88,7 +87,7 @@ fun VariablesView(
             IconButton(
                 onClick = { editingVariable = VariableEntity(characterId, "", "") }
             ) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = "add")
+                Icon(imageVector = Add, contentDescription = "add")
             }
         }
     }

@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +29,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.icons.Delete
+import warlockfe.warlock3.compose.icons.Edit
 import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
@@ -80,7 +79,7 @@ fun MacrosView(
                             IconButton(
                                 onClick = { editingMacro = EditMacroState.Edit(macro) }
                             ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(imageVector = Edit, contentDescription = "Edit")
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -94,7 +93,7 @@ fun MacrosView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = Delete,
                                     contentDescription = "Delete"
                                 )
                             }

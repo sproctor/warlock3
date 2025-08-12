@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +41,7 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.icons.Delete
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
@@ -157,7 +156,7 @@ fun GeneralSettingsView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = Delete,
                                     contentDescription = "Delete"
                                 )
                             }

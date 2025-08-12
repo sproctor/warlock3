@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -36,6 +32,9 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.icons.Add
+import warlockfe.warlock3.compose.icons.Delete
+import warlockfe.warlock3.compose.icons.Edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
@@ -78,7 +77,7 @@ fun AlterationsView(
                                 onClick = { editingAlteration = alteration }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Edit,
+                                    imageVector = Edit,
                                     contentDescription = "Edit",
                                 )
                             }
@@ -89,7 +88,7 @@ fun AlterationsView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Delete,
+                                    imageVector = Delete,
                                     contentDescription = "Delete",
                                 )
                             }
@@ -114,7 +113,7 @@ fun AlterationsView(
                     keepOriginal = false,
                 )
             }) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
+                Icon(imageVector = Add, contentDescription = null)
             }
         }
     }

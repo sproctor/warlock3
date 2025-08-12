@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -34,6 +30,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
+import warlockfe.warlock3.compose.icons.Add
+import warlockfe.warlock3.compose.icons.Delete
+import warlockfe.warlock3.compose.icons.Edit
 import warlockfe.warlock3.compose.icons.Login
 import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.sge.StoredConnection
@@ -53,7 +52,7 @@ fun DashboardView(
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 enabled = !viewModel.busy,
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                Icon(imageVector = Add, contentDescription = null)
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text(text = "Create a new connection")
             }
@@ -127,14 +126,14 @@ fun ConnectionList(
                                 showConnectionSettings = connection
                             },
                         ) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit connection")
+                            Icon(imageVector = Edit, contentDescription = "Edit connection")
                         }
                         IconButton(
                             onClick = {
                                 showConnectionDelete = connection
                             }
                         ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete connection")
+                            Icon(imageVector = Delete, contentDescription = "Delete connection")
                         }
                     }
                 }

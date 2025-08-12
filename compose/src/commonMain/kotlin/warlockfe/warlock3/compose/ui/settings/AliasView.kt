@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.icons.Add
+import warlockfe.warlock3.compose.icons.Delete
+import warlockfe.warlock3.compose.icons.Edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.models.AliasEntity
@@ -70,7 +69,7 @@ fun AliasView(
                             IconButton(
                                 onClick = { editingAlias = alias }
                             ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(imageVector = Edit, contentDescription = "Edit")
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -78,7 +77,7 @@ fun AliasView(
                                     GlobalScope.launch { aliasRepository.deleteById(alias.id) }
                                 }
                             ) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                                Icon(imageVector = Delete, contentDescription = "Delete")
                             }
                         }
                     }
@@ -97,7 +96,7 @@ fun AliasView(
                     replacement = "",
                 )
             }) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
+                Icon(imageVector = Add, contentDescription = null)
             }
         }
     }

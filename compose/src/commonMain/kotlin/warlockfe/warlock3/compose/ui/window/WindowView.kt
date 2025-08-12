@@ -25,9 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -86,6 +83,8 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.icons.Arrow_right
+import warlockfe.warlock3.compose.icons.Close
+import warlockfe.warlock3.compose.icons.Settings
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
@@ -181,7 +180,7 @@ fun WindowView(
                         onClick = { showDropdown = !showDropdown }
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Settings,
+                            imageVector = Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -203,7 +202,7 @@ fun WindowView(
                         onClick = onCloseClicked
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Close,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
