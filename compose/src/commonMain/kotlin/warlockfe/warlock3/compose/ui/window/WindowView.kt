@@ -97,6 +97,7 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
+import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.flattenStyles
@@ -660,7 +661,7 @@ fun StreamTextLine.toWindowLine(
         linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
             if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
                 addStyle(
-                    style = SpanStyle(textDecoration = TextDecoration.Underline),
+                    style = defaultStyles["link"]!!.toSpanStyle(),
                     start = link.beginIndex,
                     end = link.endIndex,
                 )
