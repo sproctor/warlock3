@@ -21,12 +21,12 @@ import warlockfe.warlock3.compose.generated.resources.hidden
 import warlockfe.warlock3.compose.generated.resources.invisible
 import warlockfe.warlock3.compose.generated.resources.joined
 import warlockfe.warlock3.compose.generated.resources.kneeling
+import warlockfe.warlock3.compose.generated.resources.local_hospital
 import warlockfe.warlock3.compose.generated.resources.prone
 import warlockfe.warlock3.compose.generated.resources.sitting
 import warlockfe.warlock3.compose.generated.resources.standing
 import warlockfe.warlock3.compose.generated.resources.stunned
 import warlockfe.warlock3.compose.generated.resources.webbed
-import warlockfe.warlock3.compose.icons.Local_hospital
 
 @Composable
 fun IndicatorView(
@@ -78,7 +78,7 @@ fun IndicatorView(
         mapOf(
             "bleeding" to {
                 Icon(
-                    imageVector = Local_hospital,
+                    painter = painterResource(Res.drawable.local_hospital),
                     contentDescription = "bleeding",
                     tint = Color.Red,
                 )

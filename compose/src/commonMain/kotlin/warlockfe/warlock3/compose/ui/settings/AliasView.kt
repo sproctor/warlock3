@@ -28,9 +28,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import warlockfe.warlock3.compose.icons.Add
-import warlockfe.warlock3.compose.icons.Delete
-import warlockfe.warlock3.compose.icons.Edit
+import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AliasRepository
 import warlockfe.warlock3.core.prefs.models.AliasEntity
@@ -69,7 +71,7 @@ fun AliasView(
                             IconButton(
                                 onClick = { editingAlias = alias }
                             ) {
-                                Icon(imageVector = Edit, contentDescription = "Edit")
+                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Edit")
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -77,7 +79,7 @@ fun AliasView(
                                     GlobalScope.launch { aliasRepository.deleteById(alias.id) }
                                 }
                             ) {
-                                Icon(imageVector = Delete, contentDescription = "Delete")
+                                Icon(painter = painterResource(Res.drawable.delete), contentDescription = "Delete")
                             }
                         }
                     }
@@ -96,7 +98,7 @@ fun AliasView(
                     replacement = "",
                 )
             }) {
-                Icon(imageVector = Add, contentDescription = null)
+                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
             }
         }
     }

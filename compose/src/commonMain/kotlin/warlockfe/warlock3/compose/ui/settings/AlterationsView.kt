@@ -31,10 +31,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.icons.Add
-import warlockfe.warlock3.compose.icons.Delete
-import warlockfe.warlock3.compose.icons.Edit
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
@@ -77,7 +79,7 @@ fun AlterationsView(
                                 onClick = { editingAlteration = alteration }
                             ) {
                                 Icon(
-                                    imageVector = Edit,
+                                    painter = painterResource(Res.drawable.edit),
                                     contentDescription = "Edit",
                                 )
                             }
@@ -88,7 +90,7 @@ fun AlterationsView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Delete,
+                                    painter = painterResource(Res.drawable.delete),
                                     contentDescription = "Delete",
                                 )
                             }
@@ -113,7 +115,7 @@ fun AlterationsView(
                     keepOriginal = false,
                 )
             }) {
-                Icon(imageVector = Add, contentDescription = null)
+                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
             }
         }
     }

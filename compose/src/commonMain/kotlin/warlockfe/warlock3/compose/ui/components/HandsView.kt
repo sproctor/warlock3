@@ -15,8 +15,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
-import warlockfe.warlock3.compose.icons.Front_hand
-import warlockfe.warlock3.compose.icons.Magic_button
+import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.front_hand
+import warlockfe.warlock3.compose.generated.resources.wand_stars
 import warlockfe.warlock3.compose.util.mirror
 
 @Composable
@@ -35,7 +37,7 @@ fun HandsViewContent(left: String, right: String, spell: String) {
             icon = {
                 Icon(
                     modifier = Modifier.rotate(90f).mirror(),
-                    imageVector = Front_hand,
+                    painter = painterResource(Res.drawable.front_hand),
                     contentDescription = "Left hand",
                 )
             },
@@ -45,7 +47,7 @@ fun HandsViewContent(left: String, right: String, spell: String) {
             icon = {
                 Icon(
                     modifier = Modifier.rotate(-90f),
-                    imageVector = Front_hand,
+                    painter = painterResource(Res.drawable.front_hand),
                     contentDescription = "Right hand",
                 )
             },
@@ -54,7 +56,7 @@ fun HandsViewContent(left: String, right: String, spell: String) {
         HandBox(
             icon = {
                 Icon(
-                    imageVector = Magic_button,
+                    painter = painterResource(Res.drawable.wand_stars),
                     contentDescription = "Spell",
                 )
             },

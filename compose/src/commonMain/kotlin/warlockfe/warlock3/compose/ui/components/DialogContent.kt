@@ -26,8 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstrainedLayoutReference
 import androidx.constraintlayout.compose.ConstraintLayout
 import coil3.compose.AsyncImage
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import warlockfe.warlock3.compose.icons.Broken_image
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SkinObject
 import warlockfe.warlock3.compose.util.toColor
@@ -279,7 +281,7 @@ private fun BoxWithConstraintsScope.DialogImage(
             AsyncImage(image, contentDescription = null)
         } else {
             Icon(
-                imageVector = Broken_image,
+                painter = painterResource(Res.drawable.broken_image),
                 contentDescription = null,
                 tint = colorGroup.bar,
             )

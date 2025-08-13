@@ -28,12 +28,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
-import warlockfe.warlock3.compose.icons.Add
-import warlockfe.warlock3.compose.icons.Delete
-import warlockfe.warlock3.compose.icons.Edit
-import warlockfe.warlock3.compose.icons.Login
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.edit
+import warlockfe.warlock3.compose.generated.resources.login
 import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.sge.StoredConnection
 
@@ -52,7 +54,7 @@ fun DashboardView(
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 enabled = !viewModel.busy,
             ) {
-                Icon(imageVector = Add, contentDescription = null)
+                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text(text = "Create a new connection")
             }
@@ -116,7 +118,7 @@ fun ConnectionList(
                             viewModel.connect(connection)
                         },
                     ) {
-                        Icon(imageVector = Login, contentDescription = "Login")
+                        Icon(painter = painterResource(Res.drawable.login), contentDescription = "Login")
                     }
                 },
                 trailingContent = {
@@ -126,14 +128,14 @@ fun ConnectionList(
                                 showConnectionSettings = connection
                             },
                         ) {
-                            Icon(imageVector = Edit, contentDescription = "Edit connection")
+                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Edit connection")
                         }
                         IconButton(
                             onClick = {
                                 showConnectionDelete = connection
                             }
                         ) {
-                            Icon(imageVector = Delete, contentDescription = "Delete connection")
+                            Icon(painter = painterResource(Res.drawable.delete), contentDescription = "Delete connection")
                         }
                     }
                 }

@@ -27,10 +27,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ConfirmationDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.icons.Delete
-import warlockfe.warlock3.compose.icons.Edit
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
@@ -79,7 +81,10 @@ fun MacrosView(
                             IconButton(
                                 onClick = { editingMacro = EditMacroState.Edit(macro) }
                             ) {
-                                Icon(imageVector = Edit, contentDescription = "Edit")
+                                Icon(
+                                    painter = painterResource(Res.drawable.edit),
+                                    contentDescription = "Edit",
+                                )
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
@@ -93,7 +98,7 @@ fun MacrosView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Delete,
+                                    painter = painterResource(Res.drawable.delete),
                                     contentDescription = "Delete"
                                 )
                             }
@@ -162,6 +167,7 @@ fun MacrosView(
                 onClose = { editingMacro = EditMacroState.Closed }
             )
         }
+
         else -> Unit
     }
 }

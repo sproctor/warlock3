@@ -40,8 +40,10 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLaunche
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.icons.Delete
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
@@ -156,7 +158,7 @@ fun GeneralSettingsView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Delete,
+                                    painter = painterResource(Res.drawable.delete),
                                     contentDescription = "Delete"
                                 )
                             }

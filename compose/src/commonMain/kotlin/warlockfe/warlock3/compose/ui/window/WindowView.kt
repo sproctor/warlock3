@@ -59,10 +59,8 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -77,14 +75,16 @@ import coil3.request.ImageRequest
 import coil3.size.Size
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.nibor.autolink.LinkExtractor
 import org.nibor.autolink.LinkType
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
-import warlockfe.warlock3.compose.icons.Arrow_right
-import warlockfe.warlock3.compose.icons.Close
-import warlockfe.warlock3.compose.icons.Settings
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.arrow_right
+import warlockfe.warlock3.compose.generated.resources.close
+import warlockfe.warlock3.compose.generated.resources.settings
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
@@ -181,7 +181,7 @@ fun WindowView(
                         onClick = { showDropdown = !showDropdown }
                     ) {
                         Icon(
-                            imageVector = Settings,
+                            painter = painterResource(Res.drawable.settings),
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -203,7 +203,7 @@ fun WindowView(
                         onClick = onCloseClicked
                     ) {
                         Icon(
-                            imageVector = Close,
+                            painter = painterResource(Res.drawable.close),
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -571,7 +571,7 @@ private fun ActionContextMenu(
                     },
                     onClick = { expanded = true },
                     trailingIcon = {
-                        Icon(Arrow_right, contentDescription = "expandable")
+                        Icon(painter = painterResource(Res.drawable.arrow_right), contentDescription = "expandable")
                     }
                 )
                 DropdownMenu(
@@ -601,7 +601,7 @@ private fun ActionContextMenu(
                             },
                             onClick = { expanded = true },
                             trailingIcon = {
-                                Icon(Arrow_right, contentDescription = "expandable")
+                                Icon(painter = painterResource(Res.drawable.arrow_right), contentDescription = "expandable")
                             }
                         )
                         DropdownMenu(

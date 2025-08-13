@@ -26,9 +26,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.icons.Add
-import warlockfe.warlock3.compose.icons.Edit
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.models.VariableEntity
@@ -74,7 +76,7 @@ fun VariablesView(
                         IconButton(
                             onClick = { editingVariable = variable }
                         ) {
-                            Icon(imageVector = Edit, contentDescription = "edit")
+                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = "edit")
                         }
                     }
                 )
@@ -87,7 +89,7 @@ fun VariablesView(
             IconButton(
                 onClick = { editingVariable = VariableEntity(characterId, "", "") }
             ) {
-                Icon(imageVector = Add, contentDescription = "add")
+                Icon(painter = painterResource(Res.drawable.add), contentDescription = "add")
             }
         }
     }

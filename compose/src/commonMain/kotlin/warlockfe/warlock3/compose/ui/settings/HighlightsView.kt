@@ -37,12 +37,14 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.icons.Add
-import warlockfe.warlock3.compose.icons.Delete
-import warlockfe.warlock3.compose.icons.Edit
-import warlockfe.warlock3.compose.icons.Palette
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.edit
+import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.HighlightRepository
@@ -95,7 +97,7 @@ fun HighlightsView(
                                 onClick = { editingHighlight = highlight }
                             ) {
                                 Icon(
-                                    imageVector = Edit,
+                                    painter = painterResource(Res.drawable.edit),
                                     contentDescription = "Edit",
                                 )
                             }
@@ -106,7 +108,7 @@ fun HighlightsView(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Delete,
+                                    painter = painterResource(Res.drawable.delete),
                                     contentDescription = "Delete",
                                 )
                             }
@@ -129,7 +131,7 @@ fun HighlightsView(
                     matchPartialWord = true,
                 )
             }) {
-                Icon(imageVector = Add, contentDescription = null)
+                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
             }
         }
     }
@@ -363,7 +365,7 @@ fun ColorTextField(
                 }
             ) {
                 Icon(
-                    imageVector = Palette,
+                    painter = painterResource(Res.drawable.palette),
                     contentDescription = "Color picker"
                 )
             }
