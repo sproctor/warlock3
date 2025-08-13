@@ -95,11 +95,12 @@ import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toSpanStyle
+import warlockfe.warlock3.compose.util.toStyleDefinition
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
-import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.StreamImageLine
@@ -661,7 +662,7 @@ fun StreamTextLine.toWindowLine(
         linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
             if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
                 addStyle(
-                    style = defaultStyles["link"]!!.toSpanStyle(),
+                    style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
                     start = link.beginIndex,
                     end = link.endIndex,
                 )
