@@ -9,8 +9,11 @@ value class Percentage(val value: Int) {
 
     companion object {
         fun fromString(str: String): Percentage {
-            return str
-                .dropLast(1)
+            return if (str.endsWith("%")) {
+                str.dropLast(1)
+            } else {
+                str
+            }
                 .toIntOrNull()
                 ?.coerceIn(0..100)
                 .let { Percentage(it ?: 0) }
