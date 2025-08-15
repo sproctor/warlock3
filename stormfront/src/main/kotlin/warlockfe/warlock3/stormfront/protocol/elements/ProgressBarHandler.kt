@@ -14,7 +14,7 @@ class ProgressBarHandler : BaseElementListener() {
         return StormfrontDialogObjectEvent(
             DialogObject.ProgressBar(
                 id = id,
-                value = Percentage(element.attributes["value"]?.toIntOrNull() ?: 0),
+                value = element.attributes["value"]?.let { Percentage.fromString(it) } ?: Percentage(0),
                 text = element.attributes["text"],
                 left = element.attributes["left"]?.let { parseDistance(it) },
                 top = element.attributes["top"]?.let { parseDistance(it) },

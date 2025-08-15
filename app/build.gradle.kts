@@ -66,7 +66,7 @@ compose {
 
                 targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
-                // args("--input=/home/sproctor/Downloads/20250810181352.log")
+                // args("--input=/home/sproctor/Downloads/20250815091411.log")
 
                 windows {
                     menu = true
