@@ -68,43 +68,43 @@
       },
       "leftEye": {
         "top": 6,
-        "left": 55
+        "left": 60
       },
       "rightEye": {
         "top": 6,
-        "left": 7
+        "left": 11
       },
       "head": {
         "top": 3,
-        "left": 31
+        "left": 36
       },
       "neck": {
         "top": 15,
-        "left": 31
+        "left": 36
       },
       "chest": {
         "top": 29,
-        "left": 31
+        "left": 36
       },
       "abdomen": {
         "top": 46,
-        "left": 31
+        "left": 36
       },
       "leftArm": {
         "top": 49,
-        "left": 53
+        "left": 60
       },
       "rightArm": {
         "top": 49,
-        "left": 4
+        "left": 17
       },
       "leftHand": {
         "top": 68,
-        "left": 59
+        "left": 63
       },
       "rightHand": {
         "top": 68,
-        "left": 4
+        "left": 10
       },
       "back": {
         "top": 26,
@@ -112,19 +112,19 @@
       },
       "leftLeg": {
         "top": 104,
-        "left": 45
+        "left": 49
       },
       "rightLeg": {
         "top": 104,
-        "left": 19
+        "left": 25
       },
       "leftFoot": {
         "top": 133,
-        "left": 51
+        "left": 57
       },
       "rightFoot": {
         "top": 133,
-        "left": 15
+        "left": 21
       }
     }
   },
