@@ -7,11 +7,11 @@ import warlockfe.warlock3.stormfront.protocol.StormfrontMenuEndEvent
 import warlockfe.warlock3.stormfront.protocol.StormfrontMenuStartEvent
 
 class MenuHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): StormfrontEvent? {
+    override fun startElement(element: StartElement): StormfrontEvent {
         return StormfrontMenuStartEvent(element.attributes["id"]?.toIntOrNull())
     }
 
-    override fun endElement(): StormfrontEvent? {
+    override fun endElement(): StormfrontEvent {
         return StormfrontMenuEndEvent
     }
 }
