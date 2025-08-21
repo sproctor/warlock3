@@ -138,7 +138,12 @@ private class WarlockCommand : CliktCommand() {
                     ?.takeIf { it.exists() }
                     ?.readBytes()
                     ?: Res.readBytes("files/skin.json")
-                skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+                try {
+                    skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+                } catch (e: Exception) {
+                    // TODO: notify user of error
+                    logger.error(e) { "Failed to load skin file" }
+                }
             }
             .launchIn(appContainer.externalScope)
 
