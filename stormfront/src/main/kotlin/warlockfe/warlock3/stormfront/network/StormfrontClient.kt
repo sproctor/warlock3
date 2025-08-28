@@ -568,31 +568,27 @@ class StormfrontClient(
 
                                 is StormfrontMenuItemEvent -> {
                                     cliCoords[event.coord]?.let { command ->
-                                        cachedMenuItems.add(
-                                            WarlockMenuItem(
-                                                label = command.menu
-                                                    .replace("@", currentCmd?.noun ?: "")
-                                                    .replace("%", event.noun ?: ""),
-                                                category = command.category,
-                                                action = {
-                                                    val noun = currentCmd?.exist?.let { "#$it" } ?: currentCmd?.noun
-                                                    if (noun != null) {
+                                        val cmd = currentCmd
+                                        if (cmd != null) {
+                                            val existId = cmd.exist?.let { "#$it" }
+                                            cachedMenuItems.add(
+                                                WarlockMenuItem(
+                                                    label = command.menu
+                                                        .replace("@", cmd.noun ?: "")
+                                                        .replace("#", existId ?: "")
+                                                        .replace("%", event.noun ?: ""),
+                                                    category = command.category,
+                                                    action = {
                                                         sendCommand(
                                                             command.command
-                                                                .replace("#", noun)
+                                                                .replace("@", existId ?: "")
+                                                                .replace("#", cmd.exist ?: "")
                                                                 .replace("%", event.noun ?: "")
                                                         )
-                                                    } else {
-                                                        print(
-                                                            StyledString(
-                                                                "Command noun is null",
-                                                                WarlockStyle.Error
-                                                            )
-                                                        )
                                                     }
-                                                }
+                                                )
                                             )
-                                        )
+                                        }
                                     }
                                 }
 
