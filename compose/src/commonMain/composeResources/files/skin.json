@@ -6,7 +6,7 @@
         "left": 0,
         "color": "#FFFFFF",
         "bar": "#800000",
-        "background": "#444444"
+        "background": "#888888"
       }
     }
   },
@@ -17,7 +17,7 @@
         "left": 0,
         "color": "#FFFFFF",
         "bar": "#800000",
-        "background": "#444444"
+        "background": "#888888"
       }
     }
   },
@@ -28,7 +28,7 @@
         "left": 0,
         "color": "#FFFFFF",
         "bar": "#0000FF",
-        "background": "#444444"
+        "background": "#888888"
       }
     }
   },
@@ -39,7 +39,7 @@
         "left": 0,
         "color": "#000000",
         "bar": "#D0982F",
-        "background": "#DECCAA"
+        "background": "#888888"
       }
     }
   },
@@ -50,7 +50,7 @@
         "left": 0,
         "color": "#000000",
         "bar": "#CCCCCC",
-        "background": "#444444"
+        "background": "#888888"
       }
     }
   },
