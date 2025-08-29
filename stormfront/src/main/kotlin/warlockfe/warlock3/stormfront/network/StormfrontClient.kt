@@ -581,8 +581,8 @@ class StormfrontClient(
                                                     action = {
                                                         sendCommand(
                                                             command.command
-                                                                .replace("@", existId ?: "")
-                                                                .replace("#", cmd.exist ?: "")
+                                                                .replace("@", cmd.noun ?: "")
+                                                                .replace("#", existId ?: "")
                                                                 .replace("%", event.noun ?: "")
                                                         )
                                                     }
