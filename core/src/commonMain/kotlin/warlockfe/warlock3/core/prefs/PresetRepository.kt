@@ -34,16 +34,16 @@ class PresetRepository(
 
 val defaultStyles =
     mapOf(
+        "default" to StyleDefinition(
+            textColor = WarlockColor("#F0F0FF"),
+            backgroundColor = WarlockColor("#191932"),
+        ),
         "bold" to StyleDefinition(
             textColor = WarlockColor("#FFFF00"),
         ),
         "command" to StyleDefinition(
             textColor = WarlockColor("#FFFFFF"),
             backgroundColor = WarlockColor("#404040"),
-        ),
-        "default" to StyleDefinition(
-            textColor = WarlockColor("#F0F0FF"),
-            backgroundColor = WarlockColor("#191932"),
         ),
         "echo" to StyleDefinition(
             textColor = WarlockColor("#FFFF80"),

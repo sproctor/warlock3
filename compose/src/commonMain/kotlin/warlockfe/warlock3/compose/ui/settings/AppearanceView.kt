@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,6 +45,7 @@ import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.PresetRepository
+import warlockfe.warlock3.core.prefs.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
@@ -247,22 +249,11 @@ fun ColumnScope.PresetSettings(
             }
         )
     }
-    ScrollableColumn(Modifier.weight(1f)) {
-        val presets = listOf(
-            "default",
-            "bold",
-            "command",
-            "echo",
-            "error",
-            "link",
-            "mono",
-            "roomName",
-            "speech",
-            "thought",
-            "watching",
-            "whisper",
-        )
-        presets.forEach { preset ->
+    ScrollableColumn(
+        modifier = Modifier.weight(1f).fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 8.dp),
+    ) {
+        defaultStyles.keys.forEach { preset ->
             val style = styleMap[preset]
             if (style != null) {
                 Row(
@@ -272,7 +263,9 @@ fun ColumnScope.PresetSettings(
                         modifier = Modifier.width(120.dp).align(Alignment.CenterVertically),
                         text = preset.replaceFirstChar { it.uppercase() },
                     )
-                    OutlinedButton(
+                    ColorPickerButton(
+                        text = "Content",
+                        color = style.textColor.toColor(),
                         onClick = {
                             editColor = Pair(style.textColor) { color ->
                                 saveStyle(
@@ -281,17 +274,11 @@ fun ColumnScope.PresetSettings(
                                 )
                             }
                         }
-                    ) {
-                        Row {
-                            Text("Content: ", maxLines = 1)
-                            Box(
-                                Modifier.size(16.dp).background(style.textColor.toColor())
-                                    .border(1.dp, Color.Black)
-                            )
-                        }
-                    }
+                    )
 
-                    OutlinedButton(
+                    ColorPickerButton(
+                        text = "Background",
+                        color = style.backgroundColor.toColor(),
                         onClick = {
                             editColor = Pair(style.backgroundColor) { color ->
                                 saveStyle(
@@ -300,15 +287,7 @@ fun ColumnScope.PresetSettings(
                                 )
                             }
                         }
-                    ) {
-                        Row {
-                            Text("Background: ", maxLines = 1)
-                            Box(
-                                Modifier.size(16.dp).background(style.backgroundColor.toColor())
-                                    .border(1.dp, Color.Black)
-                            )
-                        }
-                    }
+                    )
 
                     OutlinedButton(
                         onClick = {
@@ -323,10 +302,32 @@ fun ColumnScope.PresetSettings(
                             }
                         }
                     ) {
-                        Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}", maxLines = 1)
+                        Text("Font", maxLines = 1)
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ColorPickerButton(
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text, maxLines = 1)
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier.size(16.dp).background(color)
+                    .border(1.dp, MaterialTheme.colorScheme.outline)
+            )
         }
     }
 }
