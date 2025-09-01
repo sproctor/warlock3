@@ -25,9 +25,7 @@ import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
-import warlockfe.warlock3.compose.ui.components.DialogContent
-import warlockfe.warlock3.compose.ui.components.HandsView
-import warlockfe.warlock3.compose.ui.components.IndicatorView
+import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView

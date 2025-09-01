@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.ui.components
+package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row

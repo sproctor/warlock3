@@ -86,7 +86,6 @@ import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.close
 import warlockfe.warlock3.compose.generated.resources.settings
 import warlockfe.warlock3.compose.model.ViewHighlight
-import warlockfe.warlock3.compose.ui.components.DialogContent
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.createFontFamily

@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.ui.components
+package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,6 +38,7 @@ import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.util.getIgnoringCase
 import warlockfe.warlock3.core.util.toWarlockColor
+import kotlin.collections.get
 import kotlin.io.encoding.Base64
 import kotlin.math.min
 
