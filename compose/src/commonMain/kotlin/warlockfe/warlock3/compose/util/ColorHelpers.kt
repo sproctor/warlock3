@@ -18,3 +18,13 @@ fun Color.toWarlockColor(): WarlockColor {
         blue = (argb and 0x000000FFU).toInt(),
     )
 }
+
+fun parseHexToColorOrNull(color: String): Color? {
+    val s = color.trim().removePrefix("#")
+        .takeIf { it.length == 6 || it.length == 8 }
+        ?: return null
+
+    val value = s.toULongOrNull(16) ?: return null
+    val argb = if (s.length == 6) 0xFF000000uL or value else value
+    return Color(argb.toLong())
+}
