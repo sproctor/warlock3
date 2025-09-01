@@ -2,9 +2,12 @@ package warlockfe.warlock3.app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.PermanentDrawerSheet
 import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
-import warlockfe.warlock3.compose.components.DrawerMenuItem
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
@@ -53,12 +55,14 @@ fun SettingsDialog(
 
         PermanentNavigationDrawer(
             drawerContent = {
-                PermanentDrawerSheet {
+                PermanentDrawerSheet(
+                    modifier = Modifier.width(240.dp)
+                ) {
                     SettingsPage.entries.forEach { settingsPage ->
-                        DrawerMenuItem(
-                            title = settingsPage.title,
-                            onClick = { state = settingsPage },
+                        NavigationDrawerItem(
+                            label = { Text(settingsPage.title) },
                             selected = state == settingsPage,
+                            onClick = { state = settingsPage }
                         )
                     }
                 }
