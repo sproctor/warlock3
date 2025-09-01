@@ -277,7 +277,7 @@ private fun BoxWithConstraintsScope.DialogImage(
                 }
             )
     ) {
-        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.Default.decode(it) }
+        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
         if (image != null) {
             AsyncImage(image, contentDescription = null)
         } else {
@@ -340,7 +340,7 @@ private fun BoxWithConstraintsScope.DialogSkin(
 ) {
     val skin = LocalSkin.current
     val skinObject = skin.getIgnoringCase(data.name)
-    val image = skinObject?.image?.data?.let { Base64.Default.decode(it) }
+    val image = skinObject?.image?.data?.let { Base64.decode(it) }
     Box(
         modifier
             .size(
