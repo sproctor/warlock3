@@ -1,17 +1,11 @@
 package warlockfe.warlock3.compose.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,8 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.FontUpdate
@@ -72,26 +66,20 @@ fun WindowSettingsDialog(
         text = {
             Column(Modifier.padding(24.dp)) {
                 val textColor = style.textColor.ifUnspecified(defaultStyle.textColor)
-                OutlinedButton(
+                ColorPickerButton(
+                    text = "Content",
+                    color = textColor.toColor(),
                     onClick = {
                         editColor = Pair(textColor) { color ->
                             saveStyle(style.copy(textColor = color))
                         }
                     }
-                ) {
-                    Row {
-                        Text("Content: ")
-                        Box(
-                            Modifier
-                                .size(16.dp)
-                                .background(textColor.toColor())
-                                .border(Dp.Hairline, MaterialTheme.colorScheme.outline)
-                        )
-                    }
-                }
+                )
                 Spacer(Modifier.width(16.dp))
                 val backgroundColor = style.backgroundColor.ifUnspecified(defaultStyle.backgroundColor)
-                OutlinedButton(
+                ColorPickerButton(
+                    text = "Background",
+                    color = backgroundColor.toColor(),
                     onClick = {
                         editColor = Pair(backgroundColor) { color ->
                             saveStyle(
@@ -99,17 +87,7 @@ fun WindowSettingsDialog(
                             )
                         }
                     }
-                ) {
-                    Row {
-                        Text("Background: ")
-                        Box(
-                            Modifier
-                                .size(16.dp)
-                                .background(backgroundColor.toColor())
-                                .border(Dp.Hairline, MaterialTheme.colorScheme.outline)
-                        )
-                    }
-                }
+                )
                 Spacer(Modifier.width(16.dp))
                 OutlinedButton(
                     onClick = {

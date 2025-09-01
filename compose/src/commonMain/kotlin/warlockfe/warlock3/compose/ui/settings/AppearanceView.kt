@@ -35,6 +35,7 @@ import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.FontUpdate
@@ -306,28 +307,6 @@ fun ColumnScope.PresetSettings(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun ColorPickerButton(
-    text: String,
-    color: Color,
-    onClick: () -> Unit,
-) {
-    OutlinedButton(
-        onClick = onClick,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text, maxLines = 1)
-            Spacer(Modifier.width(8.dp))
-            Box(
-                Modifier.size(16.dp).background(color)
-                    .border(1.dp, MaterialTheme.colorScheme.outline)
-            )
         }
     }
 }

@@ -19,12 +19,12 @@ fun Color.toWarlockColor(): WarlockColor {
     )
 }
 
-fun parseHexToColorOrNull(color: String): Color? {
-    val s = color.trim().removePrefix("#")
+fun parseHexToColorOrNull(text: String): Color? {
+    val trimmed = text.trim().removePrefix("#")
         .takeIf { it.length == 6 || it.length == 8 }
-        ?: return null
 
-    val value = s.toULongOrNull(16) ?: return null
-    val argb = if (s.length == 6) 0xFF000000uL or value else value
+    val argb = trimmed?.toULongOrNull(16)
+        ?.let { if (trimmed.length == 6) 0xFF000000UL or it else it }
+        ?: return null
     return Color(argb.toLong())
 }
