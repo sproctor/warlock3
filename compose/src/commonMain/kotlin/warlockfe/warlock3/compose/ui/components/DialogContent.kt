@@ -80,7 +80,7 @@ fun DialogContent(
                             val topAnchor = if (data.topAnchor != null) {
                                 refs[data.topAnchor]?.bottom ?: parent.top
                             } else if (dataTop == null) {
-                                lastRef?.top ?: parent.top
+                                lastRef?.bottom ?: parent.top
                             } else {
                                 parentSkin?.top ?: parent.top
                             }
