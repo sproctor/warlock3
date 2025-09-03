@@ -11,11 +11,16 @@ class CompiledAlteration(private val alteration: AlterationEntity) {
     }
 
     fun match(line: String): AlterationResult? {
-        return regex.find(line)?.let {
-            AlterationResult(
-                text = alteration.result,
-                matchResult = it,
-            )
+        return try {
+            regex.find(line)?.let {
+                AlterationResult(
+                    text = alteration.result,
+                    matchResult = it,
+                )
+            }
+        } catch (_: Exception) {
+            // TODO: notify user
+            null
         }
     }
 }
