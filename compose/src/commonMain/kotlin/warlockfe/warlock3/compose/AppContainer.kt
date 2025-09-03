@@ -45,8 +45,8 @@ import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.StreamRegistry
-import warlockfe.warlock3.stormfront.network.SgeClientImpl
-import warlockfe.warlock3.stormfront.network.StormfrontClient
+import warlockfe.warlock3.wrayth.network.SgeClientImpl
+import warlockfe.warlock3.wrayth.network.WraythClient
 import java.io.StringReader
 import java.util.*
 
@@ -157,7 +157,7 @@ abstract class AppContainer(
                 windowRepository: WindowRepository,
                 streamRegistry: StreamRegistry,
             ): WarlockClient {
-                return StormfrontClient(
+                return WraythClient(
                     windowRepository = windowRepository,
                     characterRepository = characterRepository,
                     streamRegistry = streamRegistry,

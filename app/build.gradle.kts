@@ -9,7 +9,7 @@ plugins {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":stormfront"))
+    implementation(project(":wrayth"))
     implementation(project(":scripting"))
     implementation(project(":compose"))
 

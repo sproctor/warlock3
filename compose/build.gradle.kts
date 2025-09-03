@@ -16,7 +16,7 @@ kotlin {
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(project(":macro"))
-            implementation(project(":stormfront")) // TODO: remove when abstracting DI
+            implementation(project(":wrayth")) // TODO: remove when abstracting DI
 
             implementation(libs.kotlinx.serialization.json)
 

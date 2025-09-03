@@ -5,7 +5,7 @@ import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.Window
-import warlockfe.warlock3.stormfront.util.CompiledAlteration
+import warlockfe.warlock3.wrayth.util.CompiledAlteration
 
 @Stable
 sealed interface WindowUiState {

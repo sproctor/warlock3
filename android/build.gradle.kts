@@ -68,7 +68,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":compose"))
-    implementation(project(":stormfront"))
+    implementation(project(":wrayth"))
     implementation(project(":scripting"))
 
     // Compose dependencies

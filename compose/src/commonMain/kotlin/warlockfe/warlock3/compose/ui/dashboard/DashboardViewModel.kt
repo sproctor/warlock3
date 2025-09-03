@@ -25,7 +25,7 @@ import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.stormfront.network.StormfrontClient
+import warlockfe.warlock3.wrayth.network.WraythClient
 import java.io.IOException
 import java.net.Socket
 import java.net.UnknownHostException
@@ -165,7 +165,7 @@ class DashboardViewModel(
             val sfClient = warlockClientFactory.createClient(
                 windowRepository = windowRepository,
                 streamRegistry = streamRegistry,
-            ) as StormfrontClient
+            ) as WraythClient
             process?.let { sfClient.setProxy(it) }
             do {
                 try {

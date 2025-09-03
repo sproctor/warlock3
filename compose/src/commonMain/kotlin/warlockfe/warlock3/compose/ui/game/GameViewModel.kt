@@ -87,9 +87,9 @@ import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
-import warlockfe.warlock3.stormfront.network.clientCommandPrefix
-import warlockfe.warlock3.stormfront.network.scriptCommandPrefix
-import warlockfe.warlock3.stormfront.util.CompiledAlteration
+import warlockfe.warlock3.wrayth.network.clientCommandPrefix
+import warlockfe.warlock3.wrayth.network.scriptCommandPrefix
+import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import java.io.File
 import kotlin.math.max
 

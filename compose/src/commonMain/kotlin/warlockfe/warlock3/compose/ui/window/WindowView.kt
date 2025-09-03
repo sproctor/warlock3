@@ -106,7 +106,7 @@ import warlockfe.warlock3.core.window.StreamImageLine
 import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
-import warlockfe.warlock3.stormfront.util.CompiledAlteration
+import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.*
