@@ -69,6 +69,7 @@ import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -99,6 +100,7 @@ class GameViewModel(
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
     highlightRepository: HighlightRepository,
+    nameRepository: NameRepository,
     presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
     val compassTheme: CompassTheme,
@@ -279,33 +281,53 @@ class GameViewModel(
 
     private val highlights: Flow<List<ViewHighlight>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
-            highlightRepository.observeForCharacter(characterId)
-                .map { highlights ->
-                    highlights.mapNotNull { highlight ->
-                        val pattern = if (highlight.isRegex) {
-                            highlight.pattern
+            combine(
+                highlightRepository.observeForCharacter(characterId),
+                nameRepository.observeForCharacter(characterId)
+            ) { highlights, names ->
+                val generalHighlights = highlights.mapNotNull { highlight ->
+                    val pattern = if (highlight.isRegex) {
+                        highlight.pattern
+                    } else {
+                        val subpattern = Regex.escape(highlight.pattern)
+                        if (highlight.matchPartialWord) {
+                            subpattern
                         } else {
-                            val subpattern = Regex.escape(highlight.pattern)
-                            if (highlight.matchPartialWord) {
-                                subpattern
-                            } else {
-                                "\\b$subpattern\\b"
-                            }
-                        }
-                        try {
-                            ViewHighlight(
-                                regex = Regex(
-                                    pattern = pattern,
-                                    options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-                                ),
-                                styles = highlight.styles
-                            )
-                        } catch (e: Exception) {
-                            client.debug("Error while parsing highlight (${e.message}): $highlights")
-                            null
+                            "\\b$subpattern\\b"
                         }
                     }
+                    try {
+                        ViewHighlight(
+                            regex = Regex(
+                                pattern = pattern,
+                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                            ),
+                            styles = highlight.styles
+                        )
+                    } catch (e: Exception) {
+                        client.debug("Error while parsing highlight (${e.message}): $highlight")
+                        null
+                    }
                 }
+                val nameHighlights = names.mapNotNull { name ->
+                    val pattern = Regex.escape(name.text).let { "\\b$it\\b" }
+                    try {
+                        ViewHighlight(
+                            regex = Regex(pattern = pattern),
+                            styles = mapOf(
+                                0 to StyleDefinition(
+                                    textColor = name.textColor,
+                                    backgroundColor = name.backgroundColor,
+                                )
+                            )
+                        )
+                    }  catch (e: Exception) {
+                        client.debug("Error while parsing highlight (${e.message}): $name")
+                        null
+                    }
+                }
+                generalHighlights + nameHighlights
+            }
         } else {
             flow {
                 emit(emptyList())

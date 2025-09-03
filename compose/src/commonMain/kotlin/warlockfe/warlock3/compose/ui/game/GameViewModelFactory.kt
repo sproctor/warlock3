@@ -8,6 +8,7 @@ import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.WindowRepository
@@ -18,6 +19,7 @@ class GameViewModelFactory(
     private val macroRepository: MacroRepository,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
+    private val nameRepository: NameRepository,
     private val presetRepository: PresetRepository,
     private val compassTheme: CompassTheme,
     private val characterSettingsRepository: CharacterSettingsRepository,
@@ -39,6 +41,7 @@ class GameViewModelFactory(
             scriptManager = scriptManagerFactory.create(),
             compassTheme = compassTheme,
             highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,

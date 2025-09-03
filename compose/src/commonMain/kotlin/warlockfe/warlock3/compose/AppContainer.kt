@@ -134,6 +134,7 @@ abstract class AppContainer(
             variableRepository = variableRepository,
             compassTheme = compassTheme,
             highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
