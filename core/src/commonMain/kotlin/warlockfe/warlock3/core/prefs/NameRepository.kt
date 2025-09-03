@@ -22,14 +22,10 @@ class NameRepository(
         return nameDao.observeNamesForCharacter(characterId)
     }
 
-    suspend fun save(characterId: String, name: NameEntity) {
+    suspend fun save(name: NameEntity) {
         withContext(NonCancellable) {
             nameDao.save(name)
         }
-    }
-
-    suspend fun saveGlobal(name: NameEntity) {
-        save("global", name)
     }
 
     suspend fun deleteByText(characterId: String, text: String) {

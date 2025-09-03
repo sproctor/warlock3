@@ -38,7 +38,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
             }
         }
     },
-    "addtohighlightnames" to ::addHighlight,
+    "addtohighlightnames" to ::addName,
     "addtohighlightstrings" to ::addHighlight,
     "cleartextlisteners" to { context, _ ->
         context.clearListeners()
@@ -356,6 +356,38 @@ private suspend fun addHighlight(context: WslContext, argString: String) {
         ignoreCase = ignoreCase,
         matchPartialWord = matchPartialWord,
         isRegex = isRegex,
+    )
+}
+
+private suspend fun addName(context: WslContext, argString: String) {
+    val args = parseArguments(argString)
+    var pattern: String? = null
+    var textColor: WarlockColor? = null
+    var backgroundColor: WarlockColor? = null
+    args.forEach { pair ->
+        val parts = pair.split("=", limit = 2)
+        if (parts.size != 2) {
+            throw WslRuntimeException("Malformed arguments to AddToHighlightStrings")
+        }
+        val arg = parts[1]
+        when (val name = parts[0].lowercase()) {
+            "string" -> pattern = arg
+            "forecolor" -> textColor = arg.toWarlockColor()
+            "backcolor" -> backgroundColor = arg.toWarlockColor()
+            "highlightentireline" -> {}
+            "notonwordboundary", "matchpartialword" -> {}
+            "caseinsensitive", "ignorecase" -> {}
+            "isregex" -> {}
+            else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightStrings")
+        }
+    }
+    if (pattern == null) {
+        throw WslRuntimeException("\"string\" must be specified for AddToHighlightStrings")
+    }
+    context.addName(
+        pattern = pattern,
+        textColor = textColor ?: WarlockColor.Unspecified,
+        backgroundColor = backgroundColor ?: WarlockColor.Unspecified,
     )
 }
 

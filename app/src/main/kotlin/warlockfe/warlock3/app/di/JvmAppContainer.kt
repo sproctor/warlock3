@@ -23,7 +23,7 @@ class JvmAppContainer(
 
     override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
-            wslEngineFactory = WslEngineFactory(highlightRepository, variableRepository, soundPlayer),
+            wslEngineFactory = WslEngineFactory(highlightRepository, nameRepository, variableRepository, soundPlayer),
             jsEngineFactory = JsEngineFactory(variableRepository),
             scriptDirRepository = scriptDirRepository,
         )

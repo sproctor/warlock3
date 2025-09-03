@@ -15,12 +15,15 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.SoundPlayer
@@ -43,6 +46,7 @@ class WslContext(
     private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
+    private val nameRepository: NameRepository,
     private val commandHandler: suspend (String) -> SendCommandType,
     private val soundPlayer: SoundPlayer,
 ) {
@@ -348,6 +352,29 @@ class WslContext(
                     matchPartialWord = matchPartialWord,
                     ignoreCase = ignoreCase,
                     isRegex = isRegex,
+                )
+            )
+        }
+    }
+
+    suspend fun addName(
+        pattern: String,
+        textColor: WarlockColor,
+        backgroundColor: WarlockColor,
+    ) {
+        client.characterId.value?.lowercase()?.let { characterId ->
+            nameRepository.save(
+                NameEntity(
+                    id = UUID.randomUUID(),
+                    text = pattern,
+                    textColor = textColor,
+                    backgroundColor = backgroundColor,
+                    characterId = characterId,
+                    bold = false,
+                    italic = false,
+                    underline = false,
+                    fontFamily = null,
+                    fontSize = null,
                 )
             )
         }

@@ -1,6 +1,7 @@
 package warlockfe.warlock3.scripting.wsl
 
 import warlockfe.warlock3.core.prefs.HighlightRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
@@ -10,6 +11,7 @@ import java.io.File
 
 class WslEngine(
     private val highlightRepository: HighlightRepository,
+    private val nameRepository: NameRepository,
     private val variableRepository: VariableRepository,
     private val soundPlayer: SoundPlayer,
 ) : WarlockScriptEngine {
@@ -21,6 +23,7 @@ class WslEngine(
             name = name,
             file = file,
             highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
             variableRepository = variableRepository,
             scriptManager = scriptManager,
             soundPlayer = soundPlayer,

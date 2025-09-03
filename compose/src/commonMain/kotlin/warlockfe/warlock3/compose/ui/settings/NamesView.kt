@@ -131,11 +131,7 @@ fun NamesView(
             name = name,
             saveName = { newName ->
                 scope.launch {
-                    if (currentCharacterId != null) {
-                        nameRepository.save(currentCharacterId, newName)
-                    } else {
-                        nameRepository.saveGlobal(newName)
-                    }
+                    nameRepository.save(newName)
                     editingName = null
                 }
             },

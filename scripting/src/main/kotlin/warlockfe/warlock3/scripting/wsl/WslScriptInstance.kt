@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.HighlightRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
@@ -33,6 +34,7 @@ class WslScriptInstance(
     val file: File,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
+    private val nameRepository: NameRepository,
     private val scriptManager: ScriptManager,
     private val soundPlayer: SoundPlayer,
 ) : ScriptInstance {
@@ -86,6 +88,7 @@ class WslScriptInstance(
                     globalVariables = globalVariables,
                     variableRepository = variableRepository,
                     highlightRepository = highlightRepository,
+                    nameRepository = nameRepository,
                     commandHandler = commandHandler,
                     soundPlayer = soundPlayer,
                 )
