@@ -41,6 +41,7 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.AlterationRepository
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import java.util.*
+import java.util.regex.PatternSyntaxException
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -180,18 +181,36 @@ fun EditAlterationDialog(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                var patternError by remember { mutableStateOf<String?>(null) }
                 TextField(
                     value = pattern,
                     label = { Text("Pattern") },
-                    onValueChange = { pattern = it })
+                    onValueChange = {
+                        pattern = it
+                        try {
+                            Regex(it)
+                            patternError = null
+                        } catch (e: PatternSyntaxException) {
+                            patternError = e.message
+                        }
+                    },
+                    isError = patternError != null,
+                    supportingText = {
+                        patternError?.let {
+                            Text(it)
+                        }
+                    }
+                )
                 TextField(
                     value = replacement,
                     label = { Text("Replacement") },
-                    onValueChange = { replacement = it })
+                    onValueChange = { replacement = it },
+                )
                 TextField(
                     value = sourceStream,
                     label = { Text("Apply alteration to stream (leave blank for any)") },
-                    onValueChange = { sourceStream = it })
+                    onValueChange = { sourceStream = it },
+                )
 //                TextField(
 //                    value = destinationStream,
 //                    label = { Text("Destination stream (leave blank to leave text on the source stream)") },
