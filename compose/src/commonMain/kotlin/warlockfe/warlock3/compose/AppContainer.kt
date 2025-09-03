@@ -31,6 +31,7 @@ import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.LoggingRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
@@ -88,6 +89,7 @@ abstract class AppContainer(
     val macroRepository = MacroRepository(database.macroDao())
     val accountRepository = AccountRepository(database.accountDao())
     val highlightRepository = HighlightRepository(database.highlightDao())
+    val nameRepository = NameRepository(database.nameDao())
     val presetRepository = PresetRepository(database.presetStyleDao())
     val clientSettings = ClientSettingRepository(database.clientSettingDao(), warlockDirs)
     val loggingRepository = LoggingRepository(clientSettings, externalScope)

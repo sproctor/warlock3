@@ -141,6 +141,7 @@ fun FrameWindowScope.WarlockApp(
                     presetRepository = appContainer.presetRepository,
                     characterRepository = appContainer.characterRepository,
                     highlightRepository = appContainer.highlightRepository,
+                    nameRepository = appContainer.nameRepository,
                     characterSettingsRepository = appContainer.characterSettingsRepository,
                     aliasRepository = appContainer.aliasRepository,
                     scriptDirRepository = appContainer.scriptDirRepository,

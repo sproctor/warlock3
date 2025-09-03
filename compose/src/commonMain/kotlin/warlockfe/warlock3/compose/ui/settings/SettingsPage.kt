@@ -6,6 +6,7 @@ enum class SettingsPage(val title: String) {
     Variables("Variables"),
     Macros("Macros"),
     Highlights("Highlights"),
+    Names("Names"),
     Aliases("Aliases"),
     Alterations("Alterations"),
 }

@@ -11,6 +11,7 @@ import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.HighlightRepository
 import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.NameRepository
 import warlockfe.warlock3.core.prefs.PresetRepository
 import warlockfe.warlock3.core.prefs.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.VariableRepository
@@ -25,6 +26,7 @@ fun SettingsContent(
     variableRepository: VariableRepository,
     macroRepository: MacroRepository,
     highlightRepository: HighlightRepository,
+    nameRepository: NameRepository,
     presetRepository: PresetRepository,
     aliasRepository: AliasRepository,
     alterationRepository: AlterationRepository,
@@ -61,6 +63,12 @@ fun SettingsContent(
             currentCharacter = currentCharacter,
             allCharacters = characters,
             highlightRepository = highlightRepository,
+        )
+
+        SettingsPage.Names -> NamesView(
+            currentCharacter = currentCharacter,
+            allCharacters = characters,
+            nameRepository = nameRepository,
         )
 
         SettingsPage.Appearance -> {

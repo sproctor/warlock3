@@ -17,6 +17,7 @@ import warlockfe.warlock3.core.prefs.dao.ConnectionDao
 import warlockfe.warlock3.core.prefs.dao.ConnectionSettingDao
 import warlockfe.warlock3.core.prefs.dao.HighlightDao
 import warlockfe.warlock3.core.prefs.dao.MacroDao
+import warlockfe.warlock3.core.prefs.dao.NameDao
 import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.dao.VariableDao
@@ -32,6 +33,7 @@ import warlockfe.warlock3.core.prefs.models.ConnectionSettingEntity
 import warlockfe.warlock3.core.prefs.models.HighlightEntity
 import warlockfe.warlock3.core.prefs.models.HighlightStyleEntity
 import warlockfe.warlock3.core.prefs.models.MacroEntity
+import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.PresetStyleEntity
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
@@ -50,19 +52,21 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         HighlightEntity::class,
         HighlightStyleEntity::class,
         MacroEntity::class,
+        NameEntity::class,
         PresetStyleEntity::class,
         ScriptDirEntity::class,
         VariableEntity::class,
         WindowSettingsEntity::class,
     ],
-    version = 13,
+    version = 14,
     autoMigrations = [
         AutoMigration(
             from = 11,
             to = 12,
             spec = PrefsDatabase.AutoMigration12::class,
         ),
-        AutoMigration(from = 12, to = 13)
+        AutoMigration(from = 12, to = 13),
+        AutoMigration(from = 13, to = 14),
     ]
 )
 @TypeConverters(DatabaseConverters::class)
@@ -80,6 +84,7 @@ abstract class PrefsDatabase : RoomDatabase() {
     abstract fun clientSettingDao(): ClientSettingDao
     abstract fun highlightDao(): HighlightDao
     abstract fun macroDao(): MacroDao
+    abstract fun nameDao(): NameDao
     abstract fun presetStyleDao(): PresetStyleDao
     abstract fun scriptDirDao(): ScriptDirDao
     abstract fun variableDao(): VariableDao
