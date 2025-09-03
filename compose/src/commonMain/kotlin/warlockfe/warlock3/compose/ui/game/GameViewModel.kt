@@ -237,7 +237,13 @@ class GameViewModel(
     private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
         if (characterId != null)
             alterationRepository.observeForCharacter(characterId).map { list ->
-                list.map { CompiledAlteration(it) }
+                list.mapNotNull {
+                    try {
+                        CompiledAlteration(it)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
             }
         else
             flow { }

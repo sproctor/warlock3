@@ -7,6 +7,11 @@ class Alias(
     val regex = Regex(pattern)
 
     fun replace(input: String): String {
-        return regex.replace(input, replacement)
+        return try {
+            regex.replace(input, replacement)
+        } catch (_: RuntimeException) {
+            // TODO: report invalid alias
+            input
+        }
     }
 }
