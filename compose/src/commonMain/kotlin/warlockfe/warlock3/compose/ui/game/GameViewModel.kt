@@ -820,7 +820,7 @@ class GameViewModel(
 
     suspend fun close() {
         if (!client.disconnected.value) {
-            client.sendCommand("quit")
+            client.sendCommandDirect("quit")
         }
         client.close()
     }
