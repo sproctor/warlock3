@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     antlr
 }
 
@@ -7,8 +8,11 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":scripting"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.core)
+    implementation(libs.xmlutil.serialization)
     antlr(libs.antlr4)
     implementation(libs.apache.commons.text)
+    testImplementation(libs.kotlin.test)
 }
 
 tasks {
