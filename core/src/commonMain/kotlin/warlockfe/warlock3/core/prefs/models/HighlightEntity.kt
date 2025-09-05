@@ -8,7 +8,7 @@ import java.util.*
 @Entity(
     tableName = "Highlight",
     indices = [
-        Index(value = ["pattern"], unique = true)
+        Index(value = ["characterId", "pattern"], unique = true)
     ]
 )
 data class HighlightEntity(

@@ -58,7 +58,7 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         VariableEntity::class,
         WindowSettingsEntity::class,
     ],
-    version = 15,
+    version = 16,
     autoMigrations = [
         AutoMigration(
             from = 11,
@@ -67,7 +67,8 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         ),
         AutoMigration(from = 12, to = 13),
         AutoMigration(from = 13, to = 14),
-        AutoMigration(from = 14, to = 15),
+        AutoMigration(from = 14, to = 16),
+        AutoMigration(from = 15, to = 16),
     ]
 )
 @TypeConverters(DatabaseConverters::class)

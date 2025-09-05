@@ -9,7 +9,7 @@ import java.util.UUID
 @Entity(
     tableName = "Name",
     indices = [
-        Index(value = ["text"], unique = true)
+        Index(value = ["characterId", "text"], unique = true)
     ]
 )
 data class NameEntity(
