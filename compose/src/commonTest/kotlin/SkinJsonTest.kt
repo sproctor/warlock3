@@ -1,11 +1,7 @@
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.util.SkinObject
-import warlockfe.warlock3.core.util.getIgnoringCase
+import warlockfe.warlock3.compose.model.SkinObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 class SkinJsonTest {
     val json = Json {

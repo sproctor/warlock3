@@ -31,7 +31,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.compose.util.SkinObject
+import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject

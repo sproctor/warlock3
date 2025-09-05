@@ -7,8 +7,3 @@ import io.github.oshai.kotlinlogging.KLogger
 val LocalLogger = staticCompositionLocalOf<KLogger> {
     error("No Logger provided.")
 }
-
-@Composable
-fun debug(message: () -> String) {
-    LocalLogger.current.debug(message)
-}

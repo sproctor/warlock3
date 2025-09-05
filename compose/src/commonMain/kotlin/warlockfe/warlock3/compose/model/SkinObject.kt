@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.util
+package warlockfe.warlock3.compose.model
 
 import kotlinx.serialization.Serializable
 

@@ -6,6 +6,4 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 
 @Stable
-fun Modifier.mirror(): Modifier = composed {
-    scale(scaleX = -1f, scaleY = 1f)
-}
+fun Modifier.mirror(): Modifier = scale(scaleX = -1f, scaleY = 1f)

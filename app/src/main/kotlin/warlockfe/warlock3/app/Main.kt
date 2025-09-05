@@ -61,7 +61,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
-import warlockfe.warlock3.compose.util.SkinObject
+import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.sge.SimuGameCredentials
