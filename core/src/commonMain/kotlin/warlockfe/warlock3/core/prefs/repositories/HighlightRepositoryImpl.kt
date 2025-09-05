@@ -1,4 +1,4 @@
-package warlockfe.warlock3.core.prefs
+package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -11,42 +11,42 @@ import warlockfe.warlock3.core.prefs.mappers.toStyleEntities
 import warlockfe.warlock3.core.prefs.models.Highlight
 import java.util.*
 
-class HighlightRepository(
+class HighlightRepositoryImpl(
     private val highlightDao: HighlightDao,
-) {
-    fun observeGlobal(): Flow<List<Highlight>> {
+) : HighlightRepository {
+    override fun observeGlobal(): Flow<List<Highlight>> {
         return observeByCharacter("global")
     }
 
-    fun observeByCharacter(characterId: String): Flow<List<Highlight>> {
+    override fun observeByCharacter(characterId: String): Flow<List<Highlight>> {
         return highlightDao.observeHighlightsByCharacter(characterId)
             .map { highlights ->
                 highlights.map { it.toHighlight() }
             }
     }
 
-    fun observeForCharacter(characterId: String): Flow<List<Highlight>> {
+    override fun observeForCharacter(characterId: String): Flow<List<Highlight>> {
         return highlightDao.observeHighlightsForCharacter(characterId)
             .map { highlights -> highlights.map { it.toHighlight() } }
     }
 
-    suspend fun save(characterId: String, highlight: Highlight) {
+    override suspend fun save(characterId: String, highlight: Highlight) {
         withContext(NonCancellable) {
             highlightDao.save(highlight.toEntity(characterId), highlight.toStyleEntities(highlight.id))
         }
     }
 
-    suspend fun saveGlobal(highlight: Highlight) {
+    override suspend fun saveGlobal(highlight: Highlight) {
         save("global", highlight)
     }
 
-    suspend fun deleteByPattern(characterId: String, pattern: String) {
+    override suspend fun deleteByPattern(characterId: String, pattern: String) {
         withContext(NonCancellable) {
             highlightDao.deleteByPattern(pattern = pattern, characterId = characterId)
         }
     }
 
-    suspend fun deleteById(id: UUID) {
+    override suspend fun deleteById(id: UUID) {
         withContext(NonCancellable) {
             highlightDao.deleteById(id)
         }

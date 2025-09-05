@@ -64,18 +64,18 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
-import warlockfe.warlock3.core.prefs.AliasRepository
-import warlockfe.warlock3.core.prefs.AlterationRepository
-import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.HighlightRepository
-import warlockfe.warlock3.core.prefs.MacroRepository
-import warlockfe.warlock3.core.prefs.NameRepository
-import warlockfe.warlock3.core.prefs.PresetRepository
-import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
-import warlockfe.warlock3.core.prefs.defaultStyles
-import warlockfe.warlock3.core.prefs.maxTypeAheadKey
+import warlockfe.warlock3.core.prefs.repositories.AliasRepository
+import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowRepository
+import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
+import warlockfe.warlock3.core.prefs.repositories.defaultStyles
+import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
@@ -99,8 +99,8 @@ class GameViewModel(
     private val client: WarlockClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
-    highlightRepository: HighlightRepository,
-    nameRepository: NameRepository,
+    highlightRepository: HighlightRepositoryImpl,
+    nameRepository: NameRepositoryImpl,
     presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
     val compassTheme: CompassTheme,

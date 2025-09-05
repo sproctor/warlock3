@@ -1,4 +1,4 @@
-package warlockfe.warlock3.core.prefs
+package warlockfe.warlock3.core.prefs.repositories
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.NonCancellable

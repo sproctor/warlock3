@@ -6,6 +6,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 @SerialName("i")
 data class WraythColor(
-    val id: String,
-    val color: String,
+    val id: String? = null,
+    val color: String? = null,
 )

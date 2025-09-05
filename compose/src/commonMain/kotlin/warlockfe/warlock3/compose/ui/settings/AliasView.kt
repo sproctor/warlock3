@@ -34,7 +34,7 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.AliasRepository
+import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.models.AliasEntity
 import java.util.*
 import java.util.regex.PatternSyntaxException

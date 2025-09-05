@@ -14,9 +14,9 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.prefs.HighlightRepository
-import warlockfe.warlock3.core.prefs.NameRepository
-import warlockfe.warlock3.core.prefs.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.script.ScriptManager
@@ -45,8 +45,8 @@ class WslContext(
     scope: CoroutineScope,
     private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRepository: VariableRepository,
-    private val highlightRepository: HighlightRepository,
-    private val nameRepository: NameRepository,
+    private val highlightRepository: HighlightRepositoryImpl,
+    private val nameRepository: NameRepositoryImpl,
     private val commandHandler: suspend (String) -> SendCommandType,
     private val soundPlayer: SoundPlayer,
 ) {
@@ -383,6 +383,12 @@ class WslContext(
     suspend fun deleteHighlight(pattern: String) {
         client.characterId.value?.lowercase()?.let { characterId ->
             highlightRepository.deleteByPattern(characterId, pattern)
+        }
+    }
+
+    suspend fun deleteName(pattern: String) {
+        client.characterId.value?.lowercase()?.let { characterId ->
+            nameRepository.deleteByText(characterId, pattern)
         }
     }
 

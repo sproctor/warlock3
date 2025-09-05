@@ -35,7 +35,7 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.NameRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
@@ -47,7 +47,7 @@ import java.util.*
 fun NamesView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
-    nameRepository: NameRepository,
+    nameRepository: NameRepositoryImpl,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id

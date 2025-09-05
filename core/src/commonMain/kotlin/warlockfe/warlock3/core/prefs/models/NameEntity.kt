@@ -1,11 +1,17 @@
 package warlockfe.warlock3.core.prefs.models
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import warlockfe.warlock3.core.text.WarlockColor
 import java.util.UUID
 
-@Entity("Name")
+@Entity(
+    tableName = "Name",
+    indices = [
+        Index(value = ["text"], unique = true)
+    ]
+)
 data class NameEntity(
     @PrimaryKey
     val id: UUID,

@@ -47,10 +47,10 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.compass.DirectionType
-import warlockfe.warlock3.core.prefs.CharacterRepository
-import warlockfe.warlock3.core.prefs.LoggingRepository
-import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
+import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
+import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowRepository
+import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle

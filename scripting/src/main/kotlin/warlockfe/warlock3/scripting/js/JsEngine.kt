@@ -1,7 +1,7 @@
 package warlockfe.warlock3.scripting.js
 
 import org.mozilla.javascript.ContextFactory
-import warlockfe.warlock3.core.prefs.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.scripting.WarlockScriptEngine

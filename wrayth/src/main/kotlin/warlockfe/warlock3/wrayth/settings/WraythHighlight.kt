@@ -1,12 +1,12 @@
 package warlockfe.warlock3.wrayth.settings
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import nl.adaptivity.xmlutil.serialization.XmlSerialName
 
 @Serializable
-@SerialName("h")
+@XmlSerialName("h")
 data class WraythHighlight(
-    val text: String,
-    val color: String?,
-    val bgcolor: String?,
+    val text: String? = null,
+    val color: String? = null,
+    val bgcolor: String? = null,
 )

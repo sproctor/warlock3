@@ -1,10 +1,16 @@
 package warlockfe.warlock3.core.prefs.models
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.*
 
-@Entity("Highlight")
+@Entity(
+    tableName = "Highlight",
+    indices = [
+        Index(value = ["pattern"], unique = true)
+    ]
+)
 data class HighlightEntity(
     @PrimaryKey
     val id: UUID,

@@ -38,7 +38,7 @@ import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.macro.MacroCommand
 import warlockfe.warlock3.core.macro.MacroKeyCombo
-import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
 // TODO: use a ViewModel to handle business logic
 @OptIn(DelicateCoroutinesApi::class)

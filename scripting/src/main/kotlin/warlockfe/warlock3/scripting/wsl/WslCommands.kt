@@ -79,7 +79,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
         delay((duration * BigDecimal(1000)).toLong())
         context.scriptInstance.waitWhenSuspended()
     },
-    "deletefromhighlightnames" to ::deleteHighlight,
+    "deletefromhighlightnames" to ::deleteName,
     "deletefromhighlightstrings" to ::deleteHighlight,
     "deletevariable" to { context, args ->
         val (name, _) = args.splitFirstWord()
@@ -409,4 +409,24 @@ private suspend fun deleteHighlight(context: WslContext, argString: String) {
         throw WslRuntimeException("\"string\" must be specified for DeleteFromHighlightStrings")
     }
     context.deleteHighlight(pattern = pattern)
+}
+
+private suspend fun deleteName(context: WslContext, argString: String) {
+    val args = parseArguments(argString)
+    var pattern: String? = null
+    args.forEach { pair ->
+        val parts = pair.split("=", limit = 2)
+        if (parts.size != 2) {
+            throw WslRuntimeException("Malformed arguments to DeleteFromHighlightNames")
+        }
+        val arg = parts[1]
+        when (val name = parts[0].lowercase()) {
+            "string" -> pattern = arg
+            else -> throw WslRuntimeException("Invalid argument \"$name\" to DeleteFromHighlightNames")
+        }
+    }
+    if (pattern == null) {
+        throw WslRuntimeException("\"string\" must be specified for DeleteFromHighlightNames")
+    }
+    context.deleteName(pattern = pattern)
 }

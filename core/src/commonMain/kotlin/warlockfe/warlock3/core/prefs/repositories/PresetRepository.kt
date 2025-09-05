@@ -1,4 +1,4 @@
-package warlockfe.warlock3.core.prefs
+package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow

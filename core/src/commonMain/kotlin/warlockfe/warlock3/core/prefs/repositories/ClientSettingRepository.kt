@@ -1,10 +1,11 @@
-package warlockfe.warlock3.core.prefs
+package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 import warlockfe.warlock3.core.util.LogSettings

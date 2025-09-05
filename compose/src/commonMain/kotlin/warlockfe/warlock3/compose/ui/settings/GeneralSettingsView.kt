@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,6 +21,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,13 +47,14 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.ScriptDirRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.ThemeSetting
-import warlockfe.warlock3.core.prefs.defaultMaxTypeAhead
-import warlockfe.warlock3.core.prefs.maxTypeAheadKey
+import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
+import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
 import warlockfe.warlock3.core.util.LogType
+import warlockfe.warlock3.wrayth.settings.WraythImporter
 import java.io.File
 
 @Composable
@@ -61,12 +64,14 @@ fun GeneralSettingsView(
     characters: List<GameCharacter>,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
+    wraythImporter: WraythImporter,
 ) {
     val currentCharacterState =
         remember(initialCharacter, characters) { mutableStateOf(initialCharacter) }
     val currentCharacter = currentCharacterState.value
     val currentCharacterId = currentCharacter?.id ?: "global"
     val scope = rememberCoroutineScope()
+    var showImportDialog by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -75,6 +80,36 @@ fun GeneralSettingsView(
             onSelect = { currentCharacterState.value = it },
             allowGlobal = true
         )
+        Spacer(Modifier.height(16.dp))
+        val wraythSettingsFileLauncher = rememberFilePickerLauncher(
+            title = "Choose Wrayth settings file to import",
+        ) { platformFile ->
+            platformFile?.file?.let {
+                scope.launch(NonCancellable) {
+                    if (!wraythImporter.importFile(currentCharacterId, it)) {
+                        showImportDialog = true
+                    }
+                }
+            }
+        }
+        Button(
+            onClick = {
+                wraythSettingsFileLauncher.launch()
+            }
+        ) {
+            Text("Import settings from Wrayth settings file")
+        }
+        if (showImportDialog) {
+            AlertDialog(
+                onDismissRequest = { showImportDialog = false },
+                confirmButton = {
+                    TextButton(onClick = { showImportDialog = false }) {
+                        Text("OK")
+                    }
+                },
+                text = { Text("Import settings failed") }
+            )
+        }
         Spacer(Modifier.height(16.dp))
         ScrollableColumn {
             val initialMaxLines by clientSettingRepository.observeMaxScrollLines().collectAsState(null)

@@ -20,17 +20,18 @@ import androidx.compose.ui.window.rememberDialogState
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.AliasRepository
-import warlockfe.warlock3.core.prefs.AlterationRepository
-import warlockfe.warlock3.core.prefs.CharacterRepository
-import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.HighlightRepository
-import warlockfe.warlock3.core.prefs.MacroRepository
-import warlockfe.warlock3.core.prefs.NameRepository
-import warlockfe.warlock3.core.prefs.PresetRepository
-import warlockfe.warlock3.core.prefs.ScriptDirRepository
-import warlockfe.warlock3.core.prefs.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.AliasRepository
+import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
 fun SettingsDialog(
@@ -39,13 +40,14 @@ fun SettingsDialog(
     variableRepository: VariableRepository,
     macroRepository: MacroRepository,
     presetRepository: PresetRepository,
-    highlightRepository: HighlightRepository,
-    nameRepository: NameRepository,
+    highlightRepository: HighlightRepositoryImpl,
+    nameRepository: NameRepositoryImpl,
     alterationRepository: AlterationRepository,
     characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
+    wraythImporter: WraythImporter,
     closeDialog: () -> Unit,
 ) {
     DialogWindow(
@@ -86,6 +88,7 @@ fun SettingsDialog(
                         alterationRepository = alterationRepository,
                         characterRepository = characterRepository,
                         clientSettingRepository = clientSettingRepository,
+                        wraythImporter = wraythImporter,
                     )
                 }
             }

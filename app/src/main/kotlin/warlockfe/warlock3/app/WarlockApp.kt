@@ -147,6 +147,7 @@ fun FrameWindowScope.WarlockApp(
                     scriptDirRepository = appContainer.scriptDirRepository,
                     alterationRepository = appContainer.alterationRepository,
                     clientSettingRepository = appContainer.clientSettings,
+                    wraythImporter = appContainer.wraythImporter,
                 )
             }
         }

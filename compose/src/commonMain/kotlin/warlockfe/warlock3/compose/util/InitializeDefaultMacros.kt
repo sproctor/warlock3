@@ -2,7 +2,7 @@ package warlockfe.warlock3.compose.util
 
 import androidx.compose.ui.input.key.Key
 import warlockfe.warlock3.core.macro.MacroKeyCombo
-import warlockfe.warlock3.core.prefs.MacroRepository
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
 // TODO: refactor Macros to use a custom datatype and remove compose dependency
 suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {

@@ -32,7 +32,7 @@ import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
-import warlockfe.warlock3.core.prefs.defaultStyles
+import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 

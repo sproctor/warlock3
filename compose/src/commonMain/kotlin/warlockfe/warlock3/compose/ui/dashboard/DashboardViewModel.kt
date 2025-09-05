@@ -16,9 +16,9 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
-import warlockfe.warlock3.core.prefs.ConnectionRepository
-import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
-import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
+import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
+import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent

@@ -1,6 +1,6 @@
 package warlockfe.warlock3.scripting
 
-import warlockfe.warlock3.core.prefs.ScriptDirRepository
+import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.script.ScriptLaunchResult
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository

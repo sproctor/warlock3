@@ -1,6 +1,6 @@
 package warlockfe.warlock3.scripting.js
 
-import warlockfe.warlock3.core.prefs.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 
 class JsEngineFactory(
     private val variableRepository: VariableRepository,

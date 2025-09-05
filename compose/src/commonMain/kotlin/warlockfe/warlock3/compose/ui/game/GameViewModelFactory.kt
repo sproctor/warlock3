@@ -3,23 +3,23 @@ package warlockfe.warlock3.compose.ui.game
 import kotlinx.coroutines.CoroutineDispatcher
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.prefs.AliasRepository
-import warlockfe.warlock3.core.prefs.AlterationRepository
-import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.HighlightRepository
-import warlockfe.warlock3.core.prefs.MacroRepository
-import warlockfe.warlock3.core.prefs.NameRepository
-import warlockfe.warlock3.core.prefs.PresetRepository
-import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.prefs.WindowRepository
+import warlockfe.warlock3.core.prefs.repositories.AliasRepository
+import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowRepository
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.window.StreamRegistry
 
 class GameViewModelFactory(
     private val macroRepository: MacroRepository,
     private val variableRepository: VariableRepository,
-    private val highlightRepository: HighlightRepository,
-    private val nameRepository: NameRepository,
+    private val highlightRepository: HighlightRepositoryImpl,
+    private val nameRepository: NameRepositoryImpl,
     private val presetRepository: PresetRepository,
     private val compassTheme: CompassTheme,
     private val characterSettingsRepository: CharacterSettingsRepository,

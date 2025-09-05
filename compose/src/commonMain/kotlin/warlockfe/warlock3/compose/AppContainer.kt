@@ -20,24 +20,24 @@ import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
-import warlockfe.warlock3.core.prefs.AccountRepository
-import warlockfe.warlock3.core.prefs.AliasRepository
-import warlockfe.warlock3.core.prefs.AlterationRepository
-import warlockfe.warlock3.core.prefs.CharacterRepository
-import warlockfe.warlock3.core.prefs.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.ClientSettingRepository
-import warlockfe.warlock3.core.prefs.ConnectionRepository
-import warlockfe.warlock3.core.prefs.ConnectionSettingsRepository
-import warlockfe.warlock3.core.prefs.HighlightRepository
-import warlockfe.warlock3.core.prefs.LoggingRepository
-import warlockfe.warlock3.core.prefs.MacroRepository
-import warlockfe.warlock3.core.prefs.NameRepository
+import warlockfe.warlock3.core.prefs.repositories.AccountRepository
+import warlockfe.warlock3.core.prefs.repositories.AliasRepository
+import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
+import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.PrefsDatabase
-import warlockfe.warlock3.core.prefs.PresetRepository
-import warlockfe.warlock3.core.prefs.ScriptDirRepository
-import warlockfe.warlock3.core.prefs.VariableRepository
-import warlockfe.warlock3.core.prefs.WindowRepository
-import warlockfe.warlock3.core.prefs.WindowRepositoryFactory
+import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
@@ -47,6 +47,7 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
+import warlockfe.warlock3.wrayth.settings.WraythImporter
 import java.io.StringReader
 import java.util.*
 
@@ -88,8 +89,8 @@ abstract class AppContainer(
         )
     val macroRepository = MacroRepository(database.macroDao())
     val accountRepository = AccountRepository(database.accountDao())
-    val highlightRepository = HighlightRepository(database.highlightDao())
-    val nameRepository = NameRepository(database.nameDao())
+    val highlightRepository = HighlightRepositoryImpl(database.highlightDao())
+    val nameRepository = NameRepositoryImpl(database.nameDao())
     val presetRepository = PresetRepository(database.presetStyleDao())
     val clientSettings = ClientSettingRepository(database.clientSettingDao(), warlockDirs)
     val loggingRepository = LoggingRepository(clientSettings, externalScope)
@@ -127,6 +128,11 @@ abstract class AppContainer(
     abstract val scriptManagerFactory: ScriptManagerFactory
 
     abstract val soundPlayer: SoundPlayer
+
+    val wraythImporter = WraythImporter(
+        highlightRepository = highlightRepository,
+        nameRepository = nameRepository,
+    )
 
     val gameViewModelFactory by lazy {
         GameViewModelFactory(

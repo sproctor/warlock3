@@ -47,7 +47,7 @@ import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
@@ -61,7 +61,7 @@ import java.util.*
 fun HighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
-    highlightRepository: HighlightRepository,
+    highlightRepository: HighlightRepositoryImpl,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
