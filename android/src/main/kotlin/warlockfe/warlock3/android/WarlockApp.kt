@@ -110,12 +110,14 @@ fun WarlockApp(
                                 macroRepository = appContainer.macroRepository,
                                 presetRepository = appContainer.presetRepository,
                                 highlightRepository = appContainer.highlightRepository,
+                                nameRepository = appContainer.nameRepository,
                                 characterSettingsRepository = appContainer.characterSettingsRepository,
                                 aliasRepository = appContainer.aliasRepository,
                                 scriptDirRepository = appContainer.scriptDirRepository,
                                 alterationRepository = appContainer.alterationRepository,
                                 characterRepository = appContainer.characterRepository,
                                 clientSettingRepository = appContainer.clientSettings,
+                                wraythImporter = appContainer.wraythImporter,
                             )
                         }
                     }

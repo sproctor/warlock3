@@ -47,10 +47,10 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
-import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
 import warlockfe.warlock3.core.util.LogType
@@ -84,9 +84,9 @@ fun GeneralSettingsView(
         val wraythSettingsFileLauncher = rememberFilePickerLauncher(
             title = "Choose Wrayth settings file to import",
         ) { platformFile ->
-            platformFile?.file?.let {
+            if (platformFile != null) {
                 scope.launch(NonCancellable) {
-                    if (!wraythImporter.importFile(currentCharacterId, it)) {
+                    if (!wraythImporter.importFile(currentCharacterId, File(platformFile.absolutePath()))) {
                         showImportDialog = true
                     }
                 }
