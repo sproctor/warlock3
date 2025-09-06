@@ -67,7 +67,6 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         ),
         AutoMigration(from = 12, to = 13),
         AutoMigration(from = 13, to = 14),
-        AutoMigration(from = 14, to = 16),
         AutoMigration(from = 15, to = 16),
     ]
 )

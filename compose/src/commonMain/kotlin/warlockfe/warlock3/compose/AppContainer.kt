@@ -20,6 +20,8 @@ import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.prefs.MIGRATION_10_11
+import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -61,25 +63,7 @@ abstract class AppContainer(
     val database = databaseBuilder
         .setDriver(BundledSQLiteDriver())
         .addMigrations(
-            object : Migration(10, 11) {
-                override fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("DROP TABLE Alteration")
-                    connection.execSQL(
-                        """
-                        CREATE TABLE alteration (
-                            id BLOB NOT NULL PRIMARY KEY,
-                            characterId TEXT NOT NULL,
-                            pattern TEXT NOT NULL,
-                            sourceStream TEXT,
-                            destinationStream TEXT,
-                            result TEXT,
-                            ignoreCase INTEGER NOT NULL,
-                            keepOriginal INTEGER NOT NULL
-                        );
-                    """.trimIndent()
-                    )
-                }
-            }
+            MIGRATION_10_11, MIGRATION_14_16
         )
         .build()
     val variableRepository = VariableRepository(database.variableDao())
