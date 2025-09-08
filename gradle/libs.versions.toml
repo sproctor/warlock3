@@ -3,7 +3,7 @@
 [plugins]
 
 android-application = { id = "com.android.application", version.ref = "agp" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hydraulic-conveyor = { id = "dev.hydraulic.conveyor", version.ref = "conveyor" }

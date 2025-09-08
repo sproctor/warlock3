@@ -9,8 +9,12 @@ plugins {
 val jvmToolchainVersion: String by project
 
 kotlin {
-    androidTarget()
     jvm()
+    androidLibrary {
+        namespace = "warlockfe.warlock3.compose"
+        compileSdk = 36
+        minSdk = 26
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -54,17 +58,6 @@ kotlin {
 
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
-}
-
-android {
-    namespace = "warlockfe.warlock3.compose"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 26
-
-        // consumerProguardFiles("consumer-rules.pro")
     }
 }
 

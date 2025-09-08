@@ -7,7 +7,11 @@ plugins {
 
 kotlin {
     jvm()
-    androidTarget()
+    androidLibrary {
+        namespace = "warlockfe.warlock3.core"
+        compileSdk = 36
+        minSdk = 26
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -38,17 +42,6 @@ dependencies {
     // Room
     add("kspAndroid", libs.room.compiler)
     add("kspJvm", libs.room.compiler)
-}
-
-android {
-    namespace = "warlockfe.warlock3.core"
-    compileSdk = 35
-
-    defaultConfig {
-        minSdk = 26
-
-        // consumerProguardFiles("consumer-rules.pro")
-    }
 }
 
 room {
