@@ -9,4 +9,5 @@ data class WraythHighlight(
     val text: String? = null,
     val color: String? = null,
     val bgcolor: String? = null,
+    val line: String? = null,
 )

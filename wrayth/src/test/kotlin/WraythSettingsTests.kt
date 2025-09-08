@@ -1,10 +1,10 @@
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class WraythSettingsTests {
-    @Test
-    fun testSettings() {
-        val text = """
+    val exampleXml = """
             <settings client="1.0.1.28">
             <strings>
             <h text="some example text" color="@0" sound="C:\\Sounds\file.wav"/>
@@ -128,11 +128,14 @@ class WraythSettingsTests {
             </settings>
         """.trimIndent()
 
+    @Test
+    fun testSettings() {
         val importer = WraythImporter(
             highlightRepository = FakeHighlightRepository(),
             nameRepository = FakeNameRepository(),
         )
-        val settings = importer.importString(text)
-        println(settings)
+        val wraythSettings = importer.importString(exampleXml)
+        val settings = importer.translateSettings(wraythSettings, "test")
+        assertEquals(WarlockColor("#2994F7"), settings.highlights[1].styles[0]!!.backgroundColor)
     }
 }

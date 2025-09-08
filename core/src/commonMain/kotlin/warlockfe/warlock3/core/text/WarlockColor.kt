@@ -7,6 +7,11 @@ data class WarlockColor(val argb: Long) {
     constructor(red: Int, green: Int, blue: Int, alpha: Int = 0xFF)
             : this(argb = alpha * 0x1000000L + red * 0x10000L + green * 0x100L + blue)
 
+    override fun toString(): String {
+        if (isUnspecified()) return "WarlockColor.Unspecified"
+        return "WarlockColor(argb=0x${argb.toString(16)})"
+    }
+
     companion object {
         val Unspecified = WarlockColor(-1)
     }

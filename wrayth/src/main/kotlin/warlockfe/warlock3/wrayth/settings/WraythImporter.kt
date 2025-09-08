@@ -19,50 +19,17 @@ class WraythImporter(
     suspend fun importFile(characterId: String, file: File): Boolean {
         try {
             val contents = file.readText(Charsets.ISO_8859_1)
-            val settings = importString(contents)
-            val colors = mutableMapOf<String, String>()
-            settings.palette.forEach { color ->
-                if (color.id != null && color.color != null) {
-                    colors[color.id] = color.color
-                }
-            }
-            settings.strings.forEach { highlight ->
-                if (highlight.text != null) {
-                    highlightRepository.save(
-                        characterId = characterId,
-                        highlight = Highlight(
-                            id = UUID.randomUUID(),
-                            pattern = highlight.text,
-                            styles = mapOf(
-                                0 to StyleDefinition(
-                                    textColor = highlight.color.toWarlockColor(colors),
-                                    backgroundColor = highlight.bgcolor.toWarlockColor(colors),
-                                )
-                            ),
-                            isRegex = false,
-                            matchPartialWord = true,
-                            ignoreCase = false,
-                        )
-                    )
-                }
+            val wraythSettings = importString(contents)
+            val settings = translateSettings(wraythSettings, characterId)
+
+            settings.highlights.forEach { highlight ->
+                highlightRepository.save(
+                    characterId = characterId,
+                    highlight = highlight
+                )
             }
             settings.names.forEach { name ->
-                if (name.text != null) {
-                    nameRepository.save(
-                        NameEntity(
-                            id = UUID.randomUUID(),
-                            characterId = characterId,
-                            text = name.text,
-                            textColor = name.color.toWarlockColor(colors),
-                            backgroundColor = name.bgcolor.toWarlockColor(colors),
-                            bold = false,
-                            italic = false,
-                            underline = false,
-                            fontFamily = null,
-                            fontSize = null,
-                        )
-                    )
-                }
+                nameRepository.save(name)
             }
             return true
         } catch (e: Exception) {
@@ -71,7 +38,52 @@ class WraythImporter(
         }
     }
 
-    fun importString(text: String): WraythSettings {
+    internal fun translateSettings(settings: WraythSettings, characterId: String): WarlockSettings {
+        val colors = mutableMapOf<String, String>()
+        settings.palette.forEach { color ->
+            if (color.id != null && color.color != null) {
+                colors[color.id] = color.color
+            }
+        }
+        return WarlockSettings(
+            highlights = settings.strings.mapNotNull { highlight ->
+                highlight.text?.let { text ->
+                    Highlight(
+                        id = UUID.randomUUID(),
+                        pattern = text,
+                        styles = mapOf(
+                            0 to StyleDefinition(
+                                textColor = highlight.color.toWarlockColor(colors),
+                                backgroundColor = highlight.bgcolor.toWarlockColor(colors),
+                                entireLine = highlight.line == "y",
+                            )
+                        ),
+                        isRegex = false,
+                        matchPartialWord = true,
+                        ignoreCase = false,
+                    )
+                }
+            },
+            names = settings.names.mapNotNull { name ->
+                name.text?.let { text ->
+                    NameEntity(
+                        id = UUID.randomUUID(),
+                        characterId = characterId,
+                        text = text,
+                        textColor = name.color.toWarlockColor(colors),
+                        backgroundColor = name.bgcolor.toWarlockColor(colors),
+                        bold = false,
+                        italic = false,
+                        underline = false,
+                        fontFamily = null,
+                        fontSize = null,
+                    )
+                }
+            }
+        )
+    }
+
+    internal fun importString(text: String): WraythSettings {
         val parser = XML {
             defaultPolicy {
                 pedantic = false
@@ -92,3 +104,8 @@ private fun String?.toWarlockColor(colors: Map<String, String>): WarlockColor {
     }
     return hex?.toWarlockColor() ?: WarlockColor.Unspecified
 }
+
+internal data class WarlockSettings(
+    val highlights: List<Highlight>,
+    val names: List<NameEntity>,
+)
