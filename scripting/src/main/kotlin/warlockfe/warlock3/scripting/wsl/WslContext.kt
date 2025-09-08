@@ -341,8 +341,10 @@ class WslContext(
         matchPartialWord: Boolean,
         ignoreCase: Boolean,
         isRegex: Boolean,
+        global: Boolean,
     ) {
-        client.characterId.value?.lowercase()?.let { characterId ->
+        val characterId = if (global) "global" else client.characterId.value?.lowercase()
+        characterId?.let { characterId ->
             highlightRepository.save(
                 characterId,
                 Highlight(
@@ -361,8 +363,10 @@ class WslContext(
         pattern: String,
         textColor: WarlockColor,
         backgroundColor: WarlockColor,
+        global: Boolean,
     ) {
-        client.characterId.value?.lowercase()?.let { characterId ->
+        val characterId = if (global) "global" else client.characterId.value?.lowercase()
+        characterId?.let { characterId ->
             nameRepository.save(
                 NameEntity(
                     id = UUID.randomUUID(),

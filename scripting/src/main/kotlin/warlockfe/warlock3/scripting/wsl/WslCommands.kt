@@ -326,6 +326,7 @@ private suspend fun addHighlight(context: WslContext, argString: String) {
     var matchPartialWord = true
     var ignoreCase = true
     var isRegex = false
+    var global = false
     args.forEach { pair ->
         val parts = pair.split("=", limit = 2)
         if (parts.size != 2) {
@@ -340,6 +341,7 @@ private suspend fun addHighlight(context: WslContext, argString: String) {
             "notonwordboundary", "matchpartialword" -> matchPartialWord = arg.toBoolean()
             "caseinsensitive", "ignorecase" -> ignoreCase = arg.toBoolean()
             "isregex" -> isRegex = arg.toBoolean()
+            "global" -> global = arg.toBoolean()
             else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightStrings")
         }
     }
@@ -356,6 +358,7 @@ private suspend fun addHighlight(context: WslContext, argString: String) {
         ignoreCase = ignoreCase,
         matchPartialWord = matchPartialWord,
         isRegex = isRegex,
+        global = global,
     )
 }
 
@@ -364,6 +367,7 @@ private suspend fun addName(context: WslContext, argString: String) {
     var pattern: String? = null
     var textColor: WarlockColor? = null
     var backgroundColor: WarlockColor? = null
+    var global: Boolean = false
     args.forEach { pair ->
         val parts = pair.split("=", limit = 2)
         if (parts.size != 2) {
@@ -378,6 +382,7 @@ private suspend fun addName(context: WslContext, argString: String) {
             "notonwordboundary", "matchpartialword" -> {}
             "caseinsensitive", "ignorecase" -> {}
             "isregex" -> {}
+            "global" -> global = arg.toBoolean()
             else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightStrings")
         }
     }
@@ -388,6 +393,7 @@ private suspend fun addName(context: WslContext, argString: String) {
         pattern = pattern,
         textColor = textColor ?: WarlockColor.Unspecified,
         backgroundColor = backgroundColor ?: WarlockColor.Unspecified,
+        global = global,
     )
 }
 
