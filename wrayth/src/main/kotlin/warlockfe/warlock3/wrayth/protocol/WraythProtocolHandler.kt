@@ -109,6 +109,9 @@ class WraythProtocolHandler {
 
     fun parseLine(line: String): List<WraythEvent> {
         return try {
+            // Ignore lines with Wizard commands
+            if (line.startsWith('\u001C'))
+                return emptyList()
             val inputStream = CharStreams.fromString(line)
             val lexer = WraythLexer(inputStream)
             val tokens = CommonTokenStream(lexer)
