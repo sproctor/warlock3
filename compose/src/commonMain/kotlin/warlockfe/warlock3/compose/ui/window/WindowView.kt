@@ -57,10 +57,7 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -76,8 +73,6 @@ import coil3.size.Size
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import org.nibor.autolink.LinkExtractor
-import org.nibor.autolink.LinkType
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
@@ -85,32 +80,18 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.close
 import warlockfe.warlock3.compose.generated.resources.settings
-import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.createFontFamily
-import warlockfe.warlock3.compose.util.getEntireLineStyles
-import warlockfe.warlock3.compose.util.highlight
-import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.compose.util.toSpanStyle
-import warlockfe.warlock3.compose.util.toStyleDefinition
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.StyledString
-import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
-import warlockfe.warlock3.wrayth.util.CompiledAlteration
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.*
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
-import kotlin.time.toJavaInstant
 
 @Composable
 fun WindowView(

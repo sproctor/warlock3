@@ -187,7 +187,7 @@ class ComposeTextStream(
 
     private suspend fun playSound(line: String) {
         highlights.value.forEach { highlight ->
-            if (highlight.sound != null && highlight.regex.matches(line)) {
+            if (highlight.sound != null && highlight.regex.containsMatchIn(line)) {
                 withContext(ioDispatcher) {
                     launch {
                         soundPlayer.playSound(highlight.sound)
