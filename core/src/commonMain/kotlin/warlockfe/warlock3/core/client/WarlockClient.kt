@@ -24,7 +24,7 @@ interface WarlockClient {
 
     val disconnected: StateFlow<Boolean>
 
-    suspend fun connect(inputStream: InputStream, socket: Socket?, key: String)
+    suspend fun connect(key: String)
 
     fun disconnect()
 
@@ -38,7 +38,7 @@ interface WarlockClient {
 
     suspend fun scriptDebug(message: String)
 
-    fun getStream(name: String): TextStream
+    suspend fun getStream(name: String): TextStream
 
     fun setMaxTypeAhead(value: Int)
 

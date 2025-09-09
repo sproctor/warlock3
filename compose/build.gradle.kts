@@ -14,12 +14,12 @@ kotlin {
         namespace = "warlockfe.warlock3.compose"
         compileSdk = 36
         minSdk = 26
+        androidResources.enable = true
     }
 
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core"))
-            implementation(project(":macro"))
             implementation(project(":wrayth")) // TODO: remove when abstracting DI
 
             implementation(libs.kotlinx.serialization.json)
@@ -46,6 +46,7 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.network.okhttp)
             implementation(libs.autolink)
+            implementation(libs.room.runtime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

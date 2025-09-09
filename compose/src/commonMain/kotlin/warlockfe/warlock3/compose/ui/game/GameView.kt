@@ -114,7 +114,7 @@ fun GameView(
 fun GameTextWindows(
     modifier: Modifier,
     subWindowUiStates: List<WindowUiState>,
-    mainWindowUiState: WindowUiState,
+    mainWindowUiState: WindowUiState?,
     selectedWindow: String,
     topHeight: Int?,
     bottomHeight: Int?,
@@ -181,24 +181,26 @@ fun GameTextWindows(
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
             )
-            WindowView(
-                modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
-                uiState = mainWindowUiState,
-                isSelected = selectedWindow == mainWindowUiState.name,
-                menuData = menuData,
-                onActionClicked = onActionClicked,
-                onMoveClicked = {},
-                onMoveTowardsStart = null,
-                onMoveTowardsEnd = null,
-                onCloseClicked = {},
-                saveStyle = {
-                    saveStyle(mainWindowUiState.name, it)
-                },
-                onSelected = { onWindowSelected(mainWindowUiState.name) },
-                scrollEvents = scrollEvents,
-                handledScrollEvent = handledScrollEvent,
-                clearStream = { clearStream(mainWindowUiState.name) },
-            )
+            if (mainWindowUiState != null) {
+                WindowView(
+                    modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
+                    uiState = mainWindowUiState,
+                    isSelected = selectedWindow == mainWindowUiState.name,
+                    menuData = menuData,
+                    onActionClicked = onActionClicked,
+                    onMoveClicked = {},
+                    onMoveTowardsStart = null,
+                    onMoveTowardsEnd = null,
+                    onCloseClicked = {},
+                    saveStyle = {
+                        saveStyle(mainWindowUiState.name, it)
+                    },
+                    onSelected = { onWindowSelected(mainWindowUiState.name) },
+                    scrollEvents = scrollEvents,
+                    handledScrollEvent = handledScrollEvent,
+                    clearStream = { clearStream(mainWindowUiState.name) },
+                )
+            }
             WindowsAtLocation(
                 location = WindowLocation.BOTTOM,
                 size = bottomHeight,

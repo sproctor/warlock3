@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -42,6 +44,7 @@ import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
@@ -129,6 +132,7 @@ fun HighlightsView(
                     isRegex = false,
                     ignoreCase = true,
                     matchPartialWord = true,
+                    sound = null,
                 )
             }) {
                 Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
@@ -165,6 +169,7 @@ fun EditHighlightDialog(
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
+    var sound by remember { mutableStateOf(highlight.sound ?: "") }
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -180,6 +185,7 @@ fun EditHighlightDialog(
                             isRegex = isRegex,
                             matchPartialWord = matchPartialWord,
                             ignoreCase = ignoreCase,
+                            sound = sound.ifBlank { null },
                         )
                     )
                 }
@@ -324,6 +330,24 @@ fun EditHighlightDialog(
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
                 }
+                val soundLauncher = rememberFilePickerLauncher { file ->
+                    if (file != null) {
+                        sound = file.absolutePath()
+                    }
+                }
+                TextField(
+                    value = sound,
+                    label = { Text("Sound file") },
+                    onValueChange = { sound = it },
+                    trailingIcon = {
+                        IconButton(onClick = { soundLauncher.launch() }) {
+                            Icon(
+                                painter = painterResource(Res.drawable.audio_file),
+                                contentDescription = "Select sound file"
+                            )
+                        }
+                    }
+                )
             }
         }
     )

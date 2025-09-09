@@ -17,17 +17,17 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.client.WarlockSocketFactory
+import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
-import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
-import java.net.Socket
 import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
@@ -41,6 +41,7 @@ class SgeViewModel(
     private val gameViewModelFactory: GameViewModelFactory,
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
+    private val warlockSocketFactory: WarlockSocketFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -122,30 +123,31 @@ class SgeViewModel(
                             }
                         }
 
-                        try {
-                            val windowRepository = windowRepositoryFactory.create()
-                            val streamRegistry = streamRegistryFactory.create()
-                            val sfClient = warlockClientFactory.createClient(
-                                windowRepository = windowRepository,
-                                streamRegistry = streamRegistry,
-                            )
-                            withContext(ioDispatcher) {
-                                val socket = Socket(credentials.host, credentials.port)
-                                sfClient.connect(socket.inputStream, socket, credentials.key)
-                            }
-                            val gameViewModel = gameViewModelFactory.create(
-                                client = sfClient,
-                                windowRepository = windowRepository,
-                                streamRegistry = streamRegistry
-                            )
-                            gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                        } catch (e: UnknownHostException) {
-                            gameState.setScreen(
-                                GameScreen.ErrorState(
-                                    message = "Unknown host: ${e.message}",
-                                    returnTo = GameScreen.NewGameState,
+                        withContext(ioDispatcher) {
+                            try {
+                                val windowRepository = windowRepositoryFactory.create()
+                                val streamRegistry = streamRegistryFactory.create(windowRepository)
+                                val socket = warlockSocketFactory.create(credentials.host, credentials.port)
+                                val sfClient = warlockClientFactory.createClient(
+                                    windowRepository = windowRepository,
+                                    streamRegistry = streamRegistry,
+                                    socket = socket,
                                 )
-                            )
+                                sfClient.connect(credentials.key)
+                                val gameViewModel = gameViewModelFactory.create(
+                                    client = sfClient,
+                                    windowRepository = windowRepository,
+                                    streamRegistry = streamRegistry
+                                )
+                                gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                            } catch (e: UnknownHostException) {
+                                gameState.setScreen(
+                                    GameScreen.ErrorState(
+                                        message = "Unknown host: ${e.message}",
+                                        returnTo = GameScreen.NewGameState,
+                                    )
+                                )
+                            }
                         }
                     }
                 }

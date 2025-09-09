@@ -164,35 +164,36 @@ private class WarlockCommand : CliktCommand() {
             GameState().apply {
                 if (credentials != null || stdin || inputFile != null) {
                     val windowRepository = appContainer.windowRepositoryFactory.create()
-                    val streamRegistry = appContainer.streamRegistryFactory.create()
-                    val client = appContainer.warlockClientFactory.createClient(
-                        windowRepository = windowRepository,
-                        streamRegistry = streamRegistry,
-                    )
+                    val streamRegistry = appContainer.streamRegistryFactory.create(windowRepository)
                     // TODO: move this somewhere we can control it
                     runBlocking {
                         try {
-                            if (stdin) {
-                                client.connect(System.`in`, null, "")
+                            val socket = if (stdin) {
+                                WarlockStreamSocket(System.`in`)
                             } else if (inputFile != null) {
                                 val file = File(inputFile!!)
                                 if (!file.exists()) {
                                     logger.error { "Input file does not exist: $inputFile" }
                                     exitProcess(1)
                                 }
-                                client.connect(file.inputStream(), null, "")
+                                WarlockStreamSocket(file.inputStream())
                             } else {
-                                val socket = Socket(credentials!!.host, credentials.port)
-                                client.connect(socket.inputStream, socket, credentials.key)
+                                appContainer.warlockSocketFactory.create(credentials!!.host, credentials.port)
                             }
+                            val client = appContainer.warlockClientFactory.createClient(
+                                windowRepository = windowRepository,
+                                streamRegistry = streamRegistry,
+                                socket = socket,
+                            )
+                            client.connect(credentials?.key ?: "")
+                            val viewModel =
+                                appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
+                            setScreen(
+                                GameScreen.ConnectedGameState(viewModel)
+                            )
                         } catch (e: IOException) {
                             logger.error(e) { "Failed to connect to Warlock" }
                         }
-                        val viewModel =
-                            appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
-                        setScreen(
-                            GameScreen.ConnectedGameState(viewModel)
-                        )
                     }
                 }
             }

@@ -48,5 +48,6 @@ class GameViewModelFactory(
             alterationRepository = alterationRepository,
             streamRegistry = streamRegistry,
             mainDispatcher = mainDispatcher,
+            ioDispatcher = mainDispatcher,
         )
 }

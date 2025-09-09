@@ -28,5 +28,5 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
 
 data class AnnotatedStringHighlightResult(
     val text: AnnotatedString,
-    val entireLineStyles: List<StyleDefinition>
+    val entireLineStyles: List<StyleDefinition>,
 )

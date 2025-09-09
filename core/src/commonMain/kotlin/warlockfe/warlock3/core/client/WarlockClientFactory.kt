@@ -7,5 +7,6 @@ interface WarlockClientFactory {
     fun createClient(
         windowRepository: WindowRepository,
         streamRegistry: StreamRegistry,
+        socket: WarlockSocket,
     ): WarlockClient
 }

@@ -23,7 +23,6 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -45,7 +44,6 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.macros.macroCommands
-import warlockfe.warlock3.compose.macros.parseMacroCommand
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowUiState
@@ -64,6 +62,7 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
+import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
@@ -109,6 +108,7 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
     private val mainDispatcher: CoroutineDispatcher,
+    private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val logger = KotlinLogging.logger { }
@@ -302,7 +302,8 @@ class GameViewModel(
                                 pattern = pattern,
                                 options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
                             ),
-                            styles = highlight.styles
+                            styles = highlight.styles,
+                            sound = highlight.sound,
                         )
                     } catch (e: Exception) {
                         client.debug("Error while parsing highlight (${e.message}): $highlight")
@@ -319,7 +320,8 @@ class GameViewModel(
                                     textColor = name.textColor,
                                     backgroundColor = name.backgroundColor,
                                 )
-                            )
+                            ),
+                            sound = name.sound,
                         )
                     }  catch (e: Exception) {
                         client.debug("Error while parsing highlight (${e.message}): $name")
@@ -382,7 +384,7 @@ class GameViewModel(
                 initialValue = emptyList(),
             )
 
-    val mainWindowUiState: StateFlow<WindowUiState> =
+    val mainWindowUiState: StateFlow<WindowUiState?> =
         combine(
             windowRepository.windows,
             presets,
@@ -403,19 +405,10 @@ class GameViewModel(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
-                initialValue =
-                    StreamWindowUiState(
-                        name = "main",
-                        stream = streamRegistry.getOrCreateStream("main") as ComposeTextStream,
-                        window = null,
-                        highlights = emptyList(),
-                        presets = emptyMap(),
-                        alterations = emptyList(),
-                        defaultStyle = defaultStyles["default"]!!,
-                    )
+                initialValue = null,
             )
 
-    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(mainWindowUiState.value.name)
+    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(mainWindowUiState.value?.name ?: "main")
     val selectedWindow: StateFlow<String> = _selectedWindow
 
     val disconnected = client.disconnected
@@ -476,9 +469,9 @@ class GameViewModel(
             }
             .launchIn(viewModelScope)
 
-        val scriptStream = client.getStream("warlockscripts")
         runningScripts
             .onEach { scripts ->
+                val scriptStream = client.getStream("warlockscripts")
                 scriptStream.clear()
                 scripts.forEach { entry ->
                     val instance = entry.value.instance
@@ -566,7 +559,7 @@ class GameViewModel(
     }
 
     fun runScript(file: File) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             scriptManager.startScript(client, file, ::commandHandler)
         }
     }
@@ -580,7 +573,7 @@ class GameViewModel(
         val macroString = macros.value[keyString]
 
         if (macroString != null) {
-            val tokens = parseMacroCommand(macroString)
+            val tokens = parseMacro(macroString)
 
             if (tokens == null) {
                 viewModelScope.launch {

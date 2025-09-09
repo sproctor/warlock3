@@ -15,6 +15,7 @@ fun Highlight.toEntity(characterId: String): HighlightEntity {
         isRegex = isRegex,
         matchPartialWord = matchPartialWord,
         ignoreCase = ignoreCase,
+        sound = sound,
     )
 }
 
@@ -44,6 +45,7 @@ fun PopulatedHighlight.toHighlight(): Highlight {
         isRegex = highlight.isRegex,
         matchPartialWord = highlight.matchPartialWord,
         ignoreCase = highlight.ignoreCase,
+        sound = highlight.sound,
     )
 }
 

@@ -19,4 +19,5 @@ data class HighlightEntity(
     val isRegex: Boolean,
     val matchPartialWord: Boolean,
     val ignoreCase: Boolean,
+    val sound: String?,
 )

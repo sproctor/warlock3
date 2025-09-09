@@ -6,7 +6,6 @@ include(":app")
 include(":android")
 include(":compose")
 include(":scripting")
-include(":macro")
 
 pluginManagement {
     repositories {

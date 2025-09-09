@@ -8,6 +8,7 @@ plugins{
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room.schema) apply false
+    alias(libs.plugins.antlr.kotlin) apply false
 }
 
 subprojects {

@@ -16,6 +16,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
@@ -27,7 +28,6 @@ import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.WraythClient
 import java.io.IOException
-import java.net.Socket
 import java.net.UnknownHostException
 
 class DashboardViewModel(
@@ -39,6 +39,7 @@ class DashboardViewModel(
     private val gameViewModelFactory: GameViewModelFactory,
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
+    private val warlockSocketFactory: WarlockSocketFactory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
@@ -161,16 +162,23 @@ class DashboardViewModel(
                 }
             }
             val windowRepository = windowRepositoryFactory.create()
-            val streamRegistry = streamRegistryFactory.create()
-            val sfClient = warlockClientFactory.createClient(
-                windowRepository = windowRepository,
-                streamRegistry = streamRegistry,
-            ) as WraythClient
-            process?.let { sfClient.setProxy(it) }
+            val streamRegistry = streamRegistryFactory.create(windowRepository)
             do {
                 try {
-                    val socket = Socket(loginCredentials.host, loginCredentials.port)
-                    sfClient.connect(socket.inputStream, socket, loginCredentials.key)
+                    val socket = warlockSocketFactory.create(loginCredentials.host, loginCredentials.port)
+                    val sfClient = warlockClientFactory.createClient(
+                        windowRepository = windowRepository,
+                        streamRegistry = streamRegistry,
+                        socket = socket,
+                    ) as WraythClient
+                    process?.let { sfClient.setProxy(it) }
+                    sfClient.connect(loginCredentials.key)
+                    val gameViewModel = gameViewModelFactory.create(
+                        client = sfClient,
+                        windowRepository = windowRepository,
+                        streamRegistry = streamRegistry,
+                    )
+                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                     break
                 } catch (_: UnknownHostException) {
                     logger.debug { "Unknown host" }
@@ -180,12 +188,6 @@ class DashboardViewModel(
                     delay(500L)
                 }
             } while (process != null && process.isAlive)
-            val gameViewModel = gameViewModelFactory.create(
-                client = sfClient,
-                windowRepository = windowRepository,
-                streamRegistry = streamRegistry,
-            )
-            gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
         }
     }
 

@@ -1,13 +1,11 @@
 package warlockfe.warlock3.compose
 
 import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import androidx.sqlite.execSQL
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -20,8 +18,11 @@ import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.client.WarlockSocket
+import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
+import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -34,7 +35,6 @@ import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
-import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
@@ -111,6 +111,8 @@ abstract class AppContainer(
     abstract val scriptEngineRepository: WarlockScriptEngineRepository
     abstract val scriptManagerFactory: ScriptManagerFactory
 
+    abstract val warlockSocketFactory: WarlockSocketFactory
+
     abstract val soundPlayer: SoundPlayer
 
     val wraythImporter = WraythImporter(
@@ -137,7 +139,7 @@ abstract class AppContainer(
     val sgeClientFactory: SgeClientFactory =
         object : SgeClientFactory {
             override fun create(): SgeClient {
-                return SgeClientImpl(Dispatchers.IO)
+                return SgeClientImpl(ioDispatcher)
             }
         }
 
@@ -146,12 +148,15 @@ abstract class AppContainer(
             override fun createClient(
                 windowRepository: WindowRepository,
                 streamRegistry: StreamRegistry,
+                socket: WarlockSocket,
             ): WarlockClient {
                 return WraythClient(
                     windowRepository = windowRepository,
                     characterRepository = characterRepository,
                     streamRegistry = streamRegistry,
                     fileLogging = loggingRepository,
+                    ioDispatcher = ioDispatcher,
+                    socket = socket,
                 )
             }
         }
@@ -168,6 +173,12 @@ abstract class AppContainer(
             mainDispatcher = mainDispatcher,
             externalScope = externalScope,
             settingRepository = clientSettings,
+            ioDispatcher = ioDispatcher,
+            soundPlayer = soundPlayer,
+            highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
+            presetRepository = presetRepository,
+            alterationRepository = alterationRepository,
         )
     }
 
@@ -180,6 +191,7 @@ abstract class AppContainer(
             warlockClientFactory = warlockClientFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
+            warlockSocketFactory = warlockSocketFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )
@@ -195,6 +207,7 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
+            warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
         )
     }

@@ -6,8 +6,6 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 interface TextStream {
 
@@ -20,8 +18,6 @@ interface TextStream {
     suspend fun clear()
 
     suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false)
-
-    suspend fun usesComponent(name: String)
 
     suspend fun updateComponent(name: String, value: StyledString)
 
@@ -38,20 +34,3 @@ fun StyledStringLeaf.getComponent(): String? {
         is StyledStringSubstring -> null
     }
 }
-
-sealed interface StreamLine {
-    val serialNumber: Long
-}
-
-@OptIn(ExperimentalTime::class)
-data class StreamTextLine(
-    val ignoreWhenBlank: Boolean,
-    val text: StyledString,
-    override val serialNumber: Long,
-    val timestamp: Instant,
-) : StreamLine
-
-data class StreamImageLine(
-    val url: String,
-    override val serialNumber: Long,
-) : StreamLine

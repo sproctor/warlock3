@@ -120,6 +120,7 @@ fun NamesView(
                     underline = false,
                     fontFamily = null,
                     fontSize = null,
+                    sound = null,
                 )
             }) {
                 Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
@@ -153,6 +154,7 @@ fun EditNameDialog(
     var backgroundColorValue by remember {
         mutableStateOf(name.backgroundColor.toHexString() ?: "")
     }
+    var sound by remember { mutableStateOf(name.sound) }
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -165,6 +167,7 @@ fun EditNameDialog(
                             text = text,
                             textColor = textColorValue.toWarlockColor() ?: WarlockColor.Unspecified,
                             backgroundColor = backgroundColorValue.toWarlockColor() ?: WarlockColor.Unspecified,
+                            sound = sound,
                         )
                     )
                 }

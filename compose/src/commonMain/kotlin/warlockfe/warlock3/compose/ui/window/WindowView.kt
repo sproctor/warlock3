@@ -102,8 +102,6 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.text.specifiedOrNull
-import warlockfe.warlock3.core.window.StreamImageLine
-import warlockfe.warlock3.core.window.StreamTextLine
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
@@ -216,9 +214,6 @@ fun WindowView(
                         stream = uiState.stream,
                         scrollState = scrollState,
                         window = window,
-                        highlights = uiState.highlights,
-                        alterations = uiState.alterations,
-                        presets = uiState.presets,
                         defaultStyle = uiState.defaultStyle,
                         menuData = menuData,
                         onActionClicked = onActionClicked,
@@ -352,9 +347,6 @@ private fun WindowViewContent(
     stream: ComposeTextStream,
     scrollState: LazyListState,
     window: Window?,
-    highlights: List<ViewHighlight>,
-    alterations: List<CompiledAlteration>,
-    presets: Map<String, StyleDefinition>,
     defaultStyle: StyleDefinition,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?
@@ -367,7 +359,6 @@ private fun WindowViewContent(
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
     val lines = stream.lines
-    val components = stream.components
 
     var clickOffset by remember { mutableStateOf<Offset?>(null) }
     var openMenuId by remember { mutableStateOf<Int?>(null) }
@@ -394,19 +385,19 @@ private fun WindowViewContent(
             items(
                 items = lines,
                 key = { it.serialNumber }
-            ) { streamLine ->
-                when (streamLine) {
+            ) { line ->
+                when (line) {
                     is StreamTextLine -> {
-                        val line = streamLine.toWindowLine(
-                            highlights = highlights,
-                            presets = presets,
-                            components = components,
-                            alterations = alterations,
-                        ) { action ->
-                            logger.debug { "action clicked: $action" }
-                            openMenuId = onActionClicked(action)
-                        }
-                        if (line != null) {
+//                        val line = streamLine.toWindowLine(
+//                            highlights = highlights,
+//                            presets = presets,
+//                            components = components,
+//                            alterations = alterations,
+//                        ) { action ->
+//                            logger.debug { "action clicked: $action" }
+//                            openMenuId = onActionClicked(action)
+//                        }
+                        if (line.text != null) {
                             var positionInParent by remember { mutableStateOf(Offset.Zero) }
                             Box(
                                 modifier = Modifier.fillMaxWidth()
@@ -419,12 +410,6 @@ private fun WindowViewContent(
                                     )
                                     .padding(horizontal = 4.dp)
                             ) {
-                                val text = if (window?.showTimestamps == true) {
-                                    line.text + AnnotatedString(" [${line.timestamp.toTimeString()}]")
-                                } else {
-                                    line.text
-                                }
-
                                 BasicText(
                                     modifier = Modifier
                                         .pointerInput(Unit) {
@@ -439,7 +424,7 @@ private fun WindowViewContent(
                                                 }
                                             }
                                         },
-                                    text = text,
+                                    text = line.text,
                                     style = TextStyle(
                                         color = textColor,
                                         fontFamily = fontFamily,
@@ -455,7 +440,7 @@ private fun WindowViewContent(
                         Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
                             val painter = rememberAsyncImagePainter(
                                 ImageRequest.Builder(LocalPlatformContext.current)
-                                    .data(streamLine.url)
+                                    .data(line.url)
                                     .size(Size.ORIGINAL)
                                     .build()
                             )
@@ -518,14 +503,6 @@ private fun WindowViewContent(
             sticky = true
         }
     }
-}
-
-private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-
-@OptIn(ExperimentalTime::class)
-private fun Instant.toTimeString(timeZone: TimeZone = TimeZone.getDefault()): String {
-    val zonedDateTime = toJavaInstant().atZone(timeZone.toZoneId())
-    return timeFormatter.format(zonedDateTime)
 }
 
 @Composable
@@ -625,81 +602,3 @@ private fun ActionContextMenu(
         }
     }
 }
-
-@OptIn(ExperimentalTime::class)
-fun StreamTextLine.toWindowLine(
-    highlights: List<ViewHighlight>,
-    alterations: List<CompiledAlteration>,
-    presets: Map<String, StyleDefinition>,
-    components: Map<String, StyledString>,
-    actionHandler: (WarlockAction) -> Unit,
-): WindowLine? {
-    val textWithComponents =
-        text.toAnnotatedString(
-            variables = components,
-            styleMap = presets,
-            actionHandler = actionHandler,
-        )
-            .alter(alterations) ?: return null
-    if (ignoreWhenBlank && textWithComponents.isBlank()) {
-        return null
-    }
-    val highlightedResult = textWithComponents.highlight(highlights)
-    val lineStyle = flattenStyles(
-        highlightedResult.entireLineStyles +
-                text.getEntireLineStyles(
-                    variables = components,
-                    styleMap = presets,
-                )
-    )
-    val annotatedString = buildAnnotatedString {
-        lineStyle?.let { pushStyle(it.toSpanStyle()) }
-        append(highlightedResult.text)
-        linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
-            if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
-                addStyle(
-                    style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
-                    start = link.beginIndex,
-                    end = link.endIndex,
-                )
-                val substring = highlightedResult.text.substring(link.beginIndex, link.endIndex)
-                addLink(
-                    url = LinkAnnotation.Url(
-                        if (link.type == LinkType.URL) {
-                            substring
-                        } else {
-                            "http://$substring"
-                        }
-                    ),
-                    start = link.beginIndex,
-                    end = link.endIndex,
-                )
-            }
-        }
-        if (lineStyle != null) pop()
-    }
-    return WindowLine(
-        text = annotatedString,
-        entireLineStyle = lineStyle,
-        timestamp = timestamp,
-    )
-}
-
-private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString? {
-    var result = this
-    alterations.forEach { alteration ->
-        val match = alteration.match(result.text)
-        if (match != null) {
-            result = buildAnnotatedString {
-                append(result.take(match.matchResult.range.first))
-                match.text?.let { append(it) }
-                append(result.substring(match.matchResult.range.last + 1))
-            }
-            if (result.isEmpty())
-                return null
-        }
-    }
-    return result
-}
-
-private val linkExtractor = LinkExtractor.builder().linkTypes(setOf(LinkType.URL, LinkType.WWW)).build()
