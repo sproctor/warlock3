@@ -234,6 +234,11 @@ class WraythClient(
                 sendCommandDirect(command)
             }
         }
+        characterId.onEach {
+            if (it != null) {
+                streamRegistry.setCharacterId(it)
+            }
+        }.launchIn(scope)
     }
 
     override suspend fun connect(key: String) {
