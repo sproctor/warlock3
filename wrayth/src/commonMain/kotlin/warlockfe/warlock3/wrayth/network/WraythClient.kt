@@ -12,7 +12,6 @@ import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
@@ -48,6 +47,7 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.client.WarlockMenuItem
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
@@ -117,7 +117,7 @@ class WraythClient(
     private val characterRepository: CharacterRepository,
     private val streamRegistry: StreamRegistry,
     private val fileLogging: LoggingRepository,
-    ioDispatcher: CoroutineDispatcher,
+    private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
 ) : WarlockClient {
 
@@ -131,7 +131,7 @@ class WraythClient(
 
     private var maxTypeAhead: Int = defaultMaxTypeAhead
 
-    private var proxyProcess: Process? = null
+    private var proxy: WarlockProxy? = null
 
     private var gameCode: String? = null
 
@@ -174,6 +174,30 @@ class WraythClient(
 
     private val cachedMenuItems = mutableListOf<WarlockMenuItem>()
 
+    private val openWindows = windowRepository.openWindows
+        .stateIn(scope, started = SharingStarted.Eagerly, initialValue = emptyList())
+
+    private var parseText = true
+
+    private var currentStream: TextStream? = null
+
+    private var currentStyle: WarlockStyle? = null
+    private val styleStack = ArrayDeque<WarlockStyle>()
+
+    // Output style gets applied to echoed text as well
+    private var outputStyle: WarlockStyle? = null
+
+    private var dialogDataId: String? = null
+    private val directions: HashSet<DirectionType> = hashSetOf()
+    private var componentId: String? = null
+
+    private val _disconnected = MutableStateFlow(false)
+    override val disconnected = _disconnected.asStateFlow()
+
+    private var delta = 0L
+    override val time: Long
+        get() = System.currentTimeMillis() + delta
+
     init {
         listOf(
             WraythStreamWindow(
@@ -211,30 +235,6 @@ class WraythClient(
             }
         }
     }
-
-    private val openWindows = windowRepository.openWindows
-        .stateIn(scope, started = SharingStarted.Eagerly, initialValue = emptyList())
-
-    private var parseText = true
-
-    private var currentStream: TextStream? = null
-
-    private var currentStyle: WarlockStyle? = null
-    private val styleStack = ArrayDeque<WarlockStyle>()
-
-    // Output style gets applied to echoed text as well
-    private var outputStyle: WarlockStyle? = null
-
-    private var dialogDataId: String? = null
-    private val directions: HashSet<DirectionType> = hashSetOf()
-    private var componentId: String? = null
-
-    private val _disconnected = MutableStateFlow(false)
-    override val disconnected = _disconnected.asStateFlow()
-
-    private var delta = 0L
-    override val time: Long
-        get() = System.currentTimeMillis() + delta
 
     override suspend fun connect(key: String) {
         scope.launch {
@@ -804,19 +804,19 @@ class WraythClient(
     }
 
     private suspend fun notifyListeners(event: ClientEvent) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             _eventFlow.emit(event)
         }
     }
 
-    fun setProxy(process: Process) {
-        proxyProcess = process
-        process.inputStream.bufferedReader().lineSequence().asFlow()
+    fun setProxy(proxy: WarlockProxy) {
+        this.proxy = proxy
+        proxy.stdOut
             .onEach {
                 scriptDebug(it)
             }
             .launchIn(scope)
-        process.errorStream.bufferedReader().lineSequence().asFlow()
+        proxy.stdErr
             .onEach {
                 doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
             }
@@ -839,8 +839,8 @@ class WraythClient(
         if (!socket.isClosed) {
             socket.close()
         }
-        proxyProcess?.destroy()
-        proxyProcess = null
+        proxy?.close()
+        proxy = null
         _disconnected.value = true
     }
 

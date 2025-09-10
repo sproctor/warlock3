@@ -16,6 +16,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
@@ -40,6 +41,7 @@ class DashboardViewModel(
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
     private val warlockSocketFactory: WarlockSocketFactory,
+    private val warlockProxyFactory: WarlockProxy.Factory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
@@ -141,7 +143,7 @@ class DashboardViewModel(
     private suspend fun connectToGame(credentials: SimuGameCredentials, proxySettings: ConnectionProxySettings) {
         withContext(ioDispatcher) {
             var loginCredentials = credentials
-            var process: Process? = null
+            var proxy: WarlockProxy? = null
             if (proxySettings.enabled) {
                 val substitutions = mapOf(
                     "{home}" to dirs.homeDir,
@@ -157,8 +159,7 @@ class DashboardViewModel(
                 )
                 if (proxyCommand != null) {
                     logger.debug { "Launching proxy command: $proxyCommand" }
-                    // TODO: manually split args respecting quotes. exec(String) is deprecated in Java 18+, use exec(Array<String>)
-                    process = Runtime.getRuntime().exec(proxyCommand)
+                    proxy = warlockProxyFactory.create(proxyCommand)
                 }
             }
             val windowRepository = windowRepositoryFactory.create()
@@ -171,7 +172,7 @@ class DashboardViewModel(
                         streamRegistry = streamRegistry,
                         socket = socket,
                     ) as WraythClient
-                    process?.let { sfClient.setProxy(it) }
+                    proxy?.let { sfClient.setProxy(it) }
                     sfClient.connect(loginCredentials.key)
                     val gameViewModel = gameViewModelFactory.create(
                         client = sfClient,
@@ -187,7 +188,7 @@ class DashboardViewModel(
                     logger.debug(e) { "Error connecting to $host:$port" }
                     delay(500L)
                 }
-            } while (process != null && process.isAlive)
+            } while (proxy != null && proxy.isAlive)
         }
     }
 

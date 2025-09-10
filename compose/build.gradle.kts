@@ -47,6 +47,7 @@ kotlin {
             implementation(libs.coil.network.okhttp)
             implementation(libs.autolink)
             implementation(libs.room.runtime)
+            implementation(libs.kotlin.logging)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

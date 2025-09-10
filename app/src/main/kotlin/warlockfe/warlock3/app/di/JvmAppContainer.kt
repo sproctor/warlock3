@@ -2,6 +2,8 @@ package warlockfe.warlock3.app.di
 
 import androidx.room.RoomDatabase
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.core.client.JavaProxy
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.PrefsDatabase
@@ -41,6 +43,13 @@ class JvmAppContainer(
         object : WarlockSocketFactory {
             override fun create(host: String, port: Int): WarlockSocket {
                 return JavaSocket(Socket(host, port))
+            }
+        }
+
+    override val warlockProxyFactory: WarlockProxy.Factory =
+        object : WarlockProxy.Factory {
+            override fun create(command: String): WarlockProxy {
+                return JavaProxy(command)
             }
         }
 }

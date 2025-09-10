@@ -18,6 +18,7 @@ import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
@@ -161,6 +162,8 @@ abstract class AppContainer(
             }
         }
 
+    abstract val warlockProxyFactory: WarlockProxy.Factory
+
     val windowRepositoryFactory by lazy {
         WindowRepositoryFactory(
             windowSettingsDao = database.windowSettingsDao(),
@@ -192,6 +195,7 @@ abstract class AppContainer(
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
             warlockSocketFactory = warlockSocketFactory,
+            warlockProxyFactory = warlockProxyFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )
