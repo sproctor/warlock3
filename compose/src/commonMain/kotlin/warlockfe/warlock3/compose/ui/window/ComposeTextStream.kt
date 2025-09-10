@@ -45,7 +45,7 @@ class ComposeTextStream(
     private val soundPlayer: SoundPlayer,
 ) : TextStream {
 
-    val cacheLines = mutableListOf<CachedLine?>()
+    private val cacheLines = mutableListOf<CachedLine?>()
     val lines = mutableStateListOf<StreamLine>()
     private val components = mutableStateMapOf<String, StyledString>()
 
@@ -56,7 +56,7 @@ class ComposeTextStream(
 
     private val componentLocations = mutableMapOf<String, List<Long>>()
 
-    var actionHandler: (WarlockAction) -> Unit = {}
+    var actionHandler: ((WarlockAction) -> Unit)? = null
 
     override suspend fun appendPartial(text: StyledString) {
         withContext(mainDispatcher) {
@@ -125,7 +125,7 @@ class ComposeTextStream(
             presets = presets.value,
             components = components,
             actionHandler = { action ->
-                actionHandler(action)
+                actionHandler?.invoke(action)
             }
         )
         lines.add(line)
@@ -179,7 +179,7 @@ class ComposeTextStream(
                 presets = presets.value,
                 components = components,
                 actionHandler = { action ->
-                    actionHandler(action)
+                    actionHandler?.invoke(action)
                 },
             )
         }

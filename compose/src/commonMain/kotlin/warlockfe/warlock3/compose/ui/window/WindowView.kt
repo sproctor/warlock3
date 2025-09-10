@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -344,6 +345,16 @@ private fun WindowViewContent(
     var clickOffset by remember { mutableStateOf<Offset?>(null) }
     var openMenuId by remember { mutableStateOf<Int?>(null) }
 
+    DisposableEffect(stream) {
+        stream.actionHandler = { action ->
+            logger.debug { "action clicked: $action" }
+            openMenuId = onActionClicked(action)
+        }
+        onDispose {
+            stream.actionHandler = null
+        }
+    }
+
     SelectionContainer {
         ScrollableLazyColumn(
             modifier = Modifier
@@ -369,15 +380,6 @@ private fun WindowViewContent(
             ) { line ->
                 when (line) {
                     is StreamTextLine -> {
-//                        val line = streamLine.toWindowLine(
-//                            highlights = highlights,
-//                            presets = presets,
-//                            components = components,
-//                            alterations = alterations,
-//                        ) { action ->
-//                            logger.debug { "action clicked: $action" }
-//                            openMenuId = onActionClicked(action)
-//                        }
                         if (line.text != null) {
                             var positionInParent by remember { mutableStateOf(Offset.Zero) }
                             Box(
