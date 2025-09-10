@@ -7,21 +7,6 @@ plugins {
     alias(libs.plugins.antlr.kotlin)
 }
 
-//tasks {
-//    generateGrammarSource {
-//        arguments = arguments + listOf("-visitor", "-long-messages", "-package", "warlockfe.warlock3.wrayth.parser")
-//        outputDirectory = File("${layout.buildDirectory.get()}/generated-src/antlr/main/warlockfe/warlock3/wrayth/parser/")
-//    }
-//
-//    compileKotlin {
-//        dependsOn.add(generateGrammarSource)
-//    }
-//
-//    compileTestKotlin {
-//        dependsOn.add(generateTestGrammarSource)
-//    }
-//}
-
 val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
     dependsOn("cleanGenerateKotlinGrammarSource")
 

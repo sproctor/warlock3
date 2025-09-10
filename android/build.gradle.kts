@@ -11,10 +11,10 @@ plugins {
 
 android {
     namespace = "warlockfe.warlock3.android"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         applicationId = "warlockfe.warlock3"
         versionCode = 1
         versionName = version.toString()
