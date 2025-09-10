@@ -33,7 +33,7 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
 kotlin {
     jvm()
     androidLibrary {
-        namespace = "warlockfe.warlock3.wrayth"
+        namespace = "warlockfe.warlock3.scripting"
         compileSdk = 36
         minSdk = 26
     }
