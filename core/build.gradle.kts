@@ -1,4 +1,10 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
+import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
+import com.google.devtools.ksp.gradle.KspAATask
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -31,12 +37,34 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
     outputDirectory = layout.buildDirectory.dir(outDir).get().asFile
 }
 
+// This may or may not be needed
+project.tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    dependsOn.add(generateKotlinGrammarSource)
+}
+
+afterEvaluate {
+    // Needed as of KSP 2.0.3, not sure why
+    project.tasks.withType<KspAATask>().configureEach {
+        dependsOn(generateKotlinGrammarSource)
+    }
+}
+
 kotlin {
     jvm()
     androidLibrary {
         namespace = "warlockfe.warlock3.core"
         compileSdk = 36
         minSdk = 26
+    }
+
+    applyDefaultHierarchyTemplate {
+        common {
+            group("commonJvmAndroid") {
+                withJvm()
+                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+            }
+        }
     }
 
     sourceSets {

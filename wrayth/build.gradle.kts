@@ -1,4 +1,8 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
+import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -40,6 +44,16 @@ kotlin {
 
     val jvmToolchainVersion: String by project
     jvmToolchain(jvmToolchainVersion.toInt())
+
+    applyDefaultHierarchyTemplate {
+        common {
+            group("commonJvmAndroid") {
+                withJvm()
+                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+            }
+        }
+    }
 
     sourceSets {
         commonMain {
