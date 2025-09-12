@@ -79,14 +79,18 @@ fun DialogContent(
                             val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
                             val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
                             val topAnchor = if (data.topAnchor != null) {
-                                refs[data.topAnchor]?.bottom ?: parent.top
-                            } else if (dataTop == null) {
-                                lastRef?.bottom ?: parent.top
+                                refs[data.topAnchor]?.bottom
+                            } else if (dataTop != null) {
+                                parentSkin?.top
+                            } else if (data.leftAnchor != null) {
+                                refs[data.leftAnchor]?.top
+                            } else if (dataLeft != null) {
+                                lastRef?.bottom
                             } else {
-                                parentSkin?.top ?: parent.top
+                                lastRef?.top
                             }
                             top.linkTo(
-                                anchor = topAnchor,
+                                anchor = topAnchor ?: parent.top,
                                 margin = dataTop?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
                             )
                             val leftMargin = dataLeft?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
