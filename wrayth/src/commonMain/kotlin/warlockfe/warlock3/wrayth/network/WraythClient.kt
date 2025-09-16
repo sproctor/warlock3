@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
@@ -517,7 +516,12 @@ class WraythClient(
                                     if (cmd.coord != null) {
                                         val cmdDef = cliCoords[cmd.coord]
                                         if (cmdDef != null) {
-                                            val command = cmdDef.command.replace("@", cmd.noun ?: "")
+                                            val command = replaceTemplateSymbols(
+                                                text = cmdDef.command,
+                                                cmdNoun = cmd.noun,
+                                                cmdId = cmd.exist,
+                                                eventNoun = null,
+                                            )
                                             styleStack.addLast(
                                                 WarlockStyle.Link(WarlockAction.SendCommand(command))
                                             )
@@ -556,20 +560,23 @@ class WraythClient(
                                     cliCoords[event.coord]?.let { command ->
                                         val cmd = currentCmd
                                         if (cmd != null) {
-                                            val existId = cmd.exist?.let { "#$it" }
                                             cachedMenuItems.add(
                                                 WarlockMenuItem(
-                                                    label = command.menu
-                                                        .replace("@", cmd.noun ?: "")
-                                                        .replace("#", existId ?: "")
-                                                        .replace("%", event.noun ?: ""),
+                                                    label = replaceTemplateSymbols(
+                                                        text = command.menu,
+                                                        cmdNoun = cmd.noun,
+                                                        cmdId = cmd.exist,
+                                                        eventNoun = event.noun,
+                                                    ),
                                                     category = command.category,
                                                     action = {
                                                         sendCommand(
-                                                            command.command
-                                                                .replace("@", cmd.noun ?: "")
-                                                                .replace("#", existId ?: "")
-                                                                .replace("%", event.noun ?: "")
+                                                            replaceTemplateSymbols(
+                                                                text = command.command,
+                                                                cmdNoun = cmd.noun,
+                                                                cmdId = cmd.exist,
+                                                                eventNoun = event.noun,
+                                                            )
                                                         )
                                                     }
                                                 )
@@ -866,6 +873,12 @@ class WraythClient(
     }
 
     private suspend fun getMainStream() = getStream("main")
+
+    private fun replaceTemplateSymbols(text: String, cmdNoun: String?, cmdId: String?, eventNoun: String?): String {
+        return text.replace("@", cmdNoun ?: "")
+            .replace("#", cmdId?.let { "#$it" } ?: "")
+            .replace("%", eventNoun ?: "")
+    }
 }
 
 val TextStream?.isMainStream
