@@ -15,7 +15,7 @@ import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 import warlockfe.warlock3.scripting.js.JsEngineFactory
 import warlockfe.warlock3.scripting.wsl.WslEngineFactory
-import warlockfe.warlock3.wrayth.network.AndroidSocket
+import warlockfe.warlock3.wrayth.network.JavaSocket
 import java.net.Socket
 
 class AndroidAppContainer(
@@ -43,7 +43,7 @@ class AndroidAppContainer(
     override val warlockSocketFactory: WarlockSocketFactory =
         object : WarlockSocketFactory {
             override fun create(host: String, port: Int): WarlockSocket {
-                return AndroidSocket(Socket(host, port))
+                return JavaSocket(Socket(host, port))
             }
         }
 
