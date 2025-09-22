@@ -53,7 +53,7 @@ fun SettingsDialog(
     DialogWindow(
         title = "Settings",
         onCloseRequest = closeDialog,
-        state = rememberDialogState(width = 900.dp, height = 600.dp)
+        state = rememberDialogState(width = 900.dp, height = 650.dp)
     ) {
         var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
 
