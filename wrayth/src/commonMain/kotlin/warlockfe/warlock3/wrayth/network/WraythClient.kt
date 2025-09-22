@@ -269,6 +269,7 @@ class WraythClient(
                                     }
 
                                 is WraythStreamEvent -> {
+                                    componentId = null
                                     flushBuffer(true)
                                     currentStream = getStream(event.id ?: "main")
                                 }
@@ -330,6 +331,7 @@ class WraythClient(
                                 is WraythPromptEvent -> {
                                     currentTypeAhead.update { max(0, it - 1) }
                                     styleStack.clear()
+                                    componentId = null
                                     currentStyle = null
                                     currentStream = null
                                     if (!isPrompting) {
@@ -709,10 +711,11 @@ class WraythClient(
 
     // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
-        require(componentId == null)
-        val styledText = streamBuffer ?: StyledString()
-        appendToStream(styledText, currentStream, ignoreWhenBlank)
-        streamBuffer = null
+        if (componentId == null) {
+            val styledText = streamBuffer ?: StyledString()
+            appendToStream(styledText, currentStream, ignoreWhenBlank)
+            streamBuffer = null
+        }
     }
 
     private suspend fun doIfClosed(stream: TextStream, action: suspend (TextStream) -> Unit) {
