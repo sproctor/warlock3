@@ -20,14 +20,14 @@ class ConnectionRepository(
         connectionDao.delete(id)
     }
 
-    suspend fun save(username: String, character: String, gameCode: String) {
+    suspend fun save(username: String, character: String, gameCode: String, name: String) {
         connectionDao.save(
             ConnectionEntity(
                 id = "$gameCode:$character".lowercase(),
                 username = username,
                 character = character,
                 gameCode = gameCode,
-                name = character,
+                name = name,
             )
         )
     }
