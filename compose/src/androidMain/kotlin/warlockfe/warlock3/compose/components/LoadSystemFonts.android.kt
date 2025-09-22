@@ -1,5 +1,5 @@
 package warlockfe.warlock3.compose.components
 
-internal actual fun loadSystemFonts(): List<FontFamilyInfo> {
+internal actual suspend fun loadSystemFonts(): List<FontFamilyInfo> {
     return emptyList()
 }

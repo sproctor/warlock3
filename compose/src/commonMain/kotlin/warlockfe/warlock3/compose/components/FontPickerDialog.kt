@@ -132,4 +132,4 @@ private val genericFontFamilies = listOf(
     FontFamilyInfo("Cursive", FontFamily.Cursive),
 )
 
-internal expect fun loadSystemFonts(): List<FontFamilyInfo>
+internal expect suspend fun loadSystemFonts(): List<FontFamilyInfo>
