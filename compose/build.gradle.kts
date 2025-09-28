@@ -6,14 +6,12 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val jvmToolchainVersion: String by project
-
 kotlin {
     jvm()
     androidLibrary {
         namespace = "warlockfe.warlock3.compose"
-        compileSdk = 36
-        minSdk = 26
+        compileSdk = libs.versions.compileSdk.get().toInt()
+        minSdk = libs.versions.minSdk.get().toInt()
         androidResources.enable = true
     }
 
@@ -56,7 +54,7 @@ kotlin {
         }
     }
 
-    jvmToolchain(jvmToolchainVersion.toInt())
+    jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")

@@ -65,6 +65,11 @@ slf4j = "2.0.17"
 slf4jAndroid = "2.0.17-0"
 xmlutil = "0.91.2"
 
+compileSdk = "36"
+minSdk = "26"
+targetSdk = "36"
+jvmToolchainVersion = "21"
+
 [libraries]
 
 appdirs = { group = "ca.gosyer", name = "kotlin-multiplatform-appdirs", version.ref="appdirs" }

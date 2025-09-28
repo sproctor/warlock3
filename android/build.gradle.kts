@@ -11,10 +11,10 @@ plugins {
 
 android {
     namespace = "warlockfe.warlock3.android"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
-        minSdk = 26
-        targetSdk = 36
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         applicationId = "warlockfe.warlock3"
         versionCode = 1
         versionName = version.toString()
@@ -49,8 +49,7 @@ android {
         }
     }
     kotlin {
-        val jvmToolchainVersion: String by project
-        jvmToolchain(jvmToolchainVersion.toInt())
+        jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
     }
     buildFeatures {
         buildConfig = true

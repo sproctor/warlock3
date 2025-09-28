@@ -45,8 +45,8 @@ kotlin {
     jvm()
     androidLibrary {
         namespace = "warlockfe.warlock3.core"
-        compileSdk = 36
-        minSdk = 26
+        compileSdk = libs.versions.compileSdk.get().toInt()
+        minSdk = libs.versions.minSdk.get().toInt()
     }
 
     applyDefaultHierarchyTemplate {
@@ -85,8 +85,7 @@ kotlin {
             }
         }
     }
-    val jvmToolchainVersion: String by project
-    jvmToolchain(jvmToolchainVersion.toInt())
+    jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 }
 
 dependencies {
