@@ -1,7 +1,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
-import com.google.devtools.ksp.gradle.KspAATask
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
@@ -40,13 +39,6 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
 // This may or may not be needed
 project.tasks.withType<KotlinCompilationTask<*>>().configureEach {
     dependsOn.add(generateKotlinGrammarSource)
-}
-
-afterEvaluate {
-    // Needed as of KSP 2.0.3, not sure why
-    project.tasks.withType<KspAATask>().configureEach {
-        dependsOn(generateKotlinGrammarSource)
-    }
 }
 
 kotlin {
