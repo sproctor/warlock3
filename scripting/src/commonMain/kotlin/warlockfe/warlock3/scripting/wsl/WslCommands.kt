@@ -208,6 +208,17 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>(
     "send" to { context, args ->
         context.sendCommand(args)
     },
+    "setarray" to { context, args ->
+        val (name, rest) = args.splitFirstWord()
+        val variable = context.lookupVariable(name) ?: WslMap(emptyMap()).also { context.setScriptVariable(name, it) }
+        if (!variable.isMap()) {
+            throw WslRuntimeException("Trying to set a property on a non-map variable")
+        }
+        variable.setProperty("0", WslString(rest ?: ""))
+        rest?.let { parseArguments(it) }?.forEachIndexed { index, arg ->
+            variable.setProperty((index + 1).toString(), WslString(arg))
+        }
+    },
     "setvariable" to { context, args ->
         val (name, value) = args.splitFirstWord()
 
@@ -378,7 +389,7 @@ private suspend fun addName(context: WslContext, argString: String) {
     args.forEach { pair ->
         val parts = pair.split("=", limit = 2)
         if (parts.size != 2) {
-            throw WslRuntimeException("Malformed arguments to AddToHighlightStrings")
+            throw WslRuntimeException("Malformed arguments to AddToHighlightNames")
         }
         val arg = parts[1]
         when (val name = parts[0].lowercase()) {
@@ -391,11 +402,11 @@ private suspend fun addName(context: WslContext, argString: String) {
             "isregex" -> {}
             "global" -> global = arg.toBoolean()
             "sound" -> sound = arg
-            else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightStrings")
+            else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightNames")
         }
     }
     if (pattern == null) {
-        throw WslRuntimeException("\"string\" must be specified for AddToHighlightStrings")
+        throw WslRuntimeException("\"string\" must be specified for AddToHighlightNames")
     }
     context.addName(
         pattern = pattern,
