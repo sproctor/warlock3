@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,6 +40,7 @@ import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckExcept
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
@@ -48,6 +49,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -209,25 +211,24 @@ private class WarlockCommand : CliktCommand() {
             val scope = rememberCoroutineScope()
 
             LaunchedEffect(Unit) {
-                if (controller != null && !clientSettings.getIgnoreUpdates()) {
-                    try {
-                        currentVersion = controller.currentVersion ?: return@LaunchedEffect
-                        latestVersion = controller.currentVersionFromRepository
-                            ?: return@LaunchedEffect
-
-                        // Compare versions using the compareTo method
-                        if (latestVersion!! > currentVersion!!) {
-                            // A newer version is available
+                withContext(Dispatchers.IO) {
+                    if (controller != null && !clientSettings.getIgnoreUpdates()) {
+                        try {
                             if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE) {
-                                updateAvailable = true
-                                showUpdateDialog = true
+                                currentVersion = controller.currentVersion
+                                latestVersion = controller.currentVersionFromRepository
+
+                                // Compare versions using the compareTo method
+                                if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
+                                    // A newer version is available
+                                    updateAvailable = true
+                                    showUpdateDialog = true
+                                }
                             }
-                        } else {
-                            // No update available or current version is newer
+                        } catch (e: UpdateCheckException) {
+                            // Handle exception
+                            logger.error(e) { "Update check failed" }
                         }
-                    } catch (e: UpdateCheckException) {
-                        // Handle exception
-                        logger.error(e) { "Update check failed" }
                     }
                 }
             }
@@ -252,7 +253,6 @@ private class WarlockCommand : CliktCommand() {
                             Spacer(Modifier.weight(1f))
                             Row(Modifier.fillMaxWidth()) {
                                 Spacer(Modifier.weight(1f))
-                                val scope = rememberCoroutineScope()
                                 TextButton(
                                     onClick = {
                                         scope.launch {
