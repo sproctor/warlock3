@@ -51,6 +51,7 @@ kotlin {
 
                 // Parsing
                 implementation(libs.antlr.kotlin.runtime)
+                // TODO: make sure this works on android
                 implementation(libs.rhino)
 
                 // Needed for JS scripting implementation
