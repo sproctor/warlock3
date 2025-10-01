@@ -815,8 +815,7 @@ class WraythClient(
     }
 
     override fun setMaxTypeAhead(value: Int) {
-        require(value >= 0)
-        maxTypeAhead = value
+        maxTypeAhead = value.coerceAtLeast(0)
     }
 
     private suspend fun notifyListeners(event: ClientEvent) {
