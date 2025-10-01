@@ -143,21 +143,35 @@ fun GeneralSettingsView(
                     TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
                 )
             }
+            var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
             TextField(
                 value = maxTypeAheadValue,
                 onValueChange = {
                     maxTypeAheadValue = it
-                    scope.launch(NonCancellable) {
-                        characterSettingsRepository.save(
-                            characterId = "global",
-                            key = maxTypeAheadKey,
-                            value = it.text
-                        )
+                    val value = it.text.toIntOrNull()
+                    if (value == null) {
+                        maxTypeAheadError = "Invalid number"
+                    } else if (value < 0) {
+                        maxTypeAheadError = "Must be non-negative"
+                    } else {
+                        maxTypeAheadError = null
+                        scope.launch(NonCancellable) {
+                            characterSettingsRepository.save(
+                                characterId = "global",
+                                key = maxTypeAheadKey,
+                                value = it.text
+                            )
+                        }
                     }
                 },
                 label = {
-                    Text("Maximum commands to type ahead. 0 to disable buffer")
+                    if (maxTypeAheadError != null) {
+                        Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
+                    } else {
+                        Text("Maximum commands to type ahead. 0 to disable buffer")
+                    }
                 },
+                isError = maxTypeAheadError != null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
             )
