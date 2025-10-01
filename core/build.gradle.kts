@@ -43,11 +43,12 @@ project.tasks.withType<KotlinCompilationTask<*>>().configureEach {
 
 kotlin {
     jvm()
-    androidLibrary {
-        namespace = "warlockfe.warlock3.core"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
-    }
+    androidTarget()
+//    androidLibrary {
+//        namespace = "warlockfe.warlock3.core"
+//        compileSdk = libs.versions.compileSdk.get().toInt()
+//        minSdk = libs.versions.minSdk.get().toInt()
+//    }
 
     applyDefaultHierarchyTemplate {
         common {
@@ -92,6 +93,14 @@ dependencies {
     // Room
     add("kspAndroid", libs.room.compiler)
     add("kspJvm", libs.room.compiler)
+}
+
+android {
+    namespace = "warlockfe.warlock3.core"
+        compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig {
+        minSdk = libs.versions.minSdk.get().toInt()
+    }
 }
 
 room {

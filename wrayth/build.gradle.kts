@@ -36,11 +36,7 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
 
 kotlin {
     jvm()
-    androidLibrary {
-        namespace = "warlockfe.warlock3.wrayth"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
-    }
+    androidTarget()
 
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 
@@ -48,8 +44,10 @@ kotlin {
         common {
             group("commonJvmAndroid") {
                 withJvm()
+                withAndroidTarget()
+                // The following is for when we move the android kmp
                 // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                //withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
             }
         }
     }
@@ -77,5 +75,13 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+    }
+}
+
+android {
+    namespace = "warlockfe.warlock3.wrayth"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig {
+        minSdk = libs.versions.minSdk.get().toInt()
     }
 }

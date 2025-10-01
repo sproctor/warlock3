@@ -32,11 +32,12 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
 
 kotlin {
     jvm()
-    androidLibrary {
-        namespace = "warlockfe.warlock3.scripting"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
-    }
+    androidTarget()
+//    androidLibrary {
+//        namespace = "warlockfe.warlock3.scripting"
+//        compileSdk = libs.versions.compileSdk.get().toInt()
+//        minSdk = libs.versions.minSdk.get().toInt()
+//    }
 
     sourceSets {
         commonMain {
@@ -67,4 +68,12 @@ kotlin {
         }
     }
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
+}
+
+android {
+    namespace = "warlockfe.warlock3.scripting"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig {
+        minSdk = libs.versions.minSdk.get().toInt()
+    }
 }

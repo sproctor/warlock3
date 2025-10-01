@@ -8,12 +8,13 @@ plugins {
 
 kotlin {
     jvm()
-    androidLibrary {
-        namespace = "warlockfe.warlock3.compose"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
-        androidResources.enable = true
-    }
+    androidTarget()
+//    androidLibrary {
+//        namespace = "warlockfe.warlock3.compose"
+//        compileSdk = libs.versions.compileSdk.get().toInt()
+//        minSdk = libs.versions.minSdk.get().toInt()
+//        androidResources.enable = true
+//    }
 
     sourceSets {
         commonMain.dependencies {
@@ -59,6 +60,15 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
+}
+
+android {
+    namespace = "warlockfe.warlock3.compose"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig {
+        minSdk = libs.versions.minSdk.get().toInt()
+    }
+    androidResources.enable = true
 }
 
 compose {
