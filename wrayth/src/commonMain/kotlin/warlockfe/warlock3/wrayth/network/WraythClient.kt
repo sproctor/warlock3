@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -830,10 +831,16 @@ class WraythClient(
             .onEach {
                 scriptDebug(it)
             }
+            .catch {
+                logger.error(it) { "Error reading stdout" }
+            }
             .launchIn(scope)
         proxy.stdErr
             .onEach {
                 doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
+            }
+            .catch {
+                logger.error(it) { "Error reading stderr" }
             }
             .launchIn(scope)
     }
