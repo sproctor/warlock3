@@ -3,8 +3,6 @@ package warlockfe.warlock3.android
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,9 +24,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
@@ -85,7 +86,7 @@ fun WarlockApp(
                                 },
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Menu,
+                                    painter = painterResource(Res.drawable.menu),
                                     contentDescription = null
                                 )
                             }
