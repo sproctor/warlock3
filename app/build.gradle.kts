@@ -15,7 +15,7 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
     implementation(compose.uiTooling)
-    implementation(compose.material3)
+    implementation(libs.compose.material3)
     implementation(compose.components.resources)
 
     // Command line options

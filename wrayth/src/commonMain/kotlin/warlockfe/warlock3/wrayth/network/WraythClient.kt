@@ -109,9 +109,6 @@ import java.net.SocketException
 import java.net.URI
 import kotlin.math.max
 
-const val scriptCommandPrefix = '.'
-const val clientCommandPrefix = '/'
-
 class WraythClient(
     private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
@@ -129,6 +126,7 @@ class WraythClient(
 
     private val scope = CoroutineScope(ioDispatcher)
 
+    // Settings
     private var maxTypeAhead: Int = defaultMaxTypeAhead
 
     private var proxy: WarlockProxy? = null

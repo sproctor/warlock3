@@ -5,8 +5,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.TextStream
-import java.io.InputStream
-import java.net.Socket
 
 interface WarlockClient {
 

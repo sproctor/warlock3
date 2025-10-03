@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -24,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +56,7 @@ import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
+import warlockfe.warlock3.core.prefs.repositories.scriptCommandPrefixKey
 import warlockfe.warlock3.core.util.LogType
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 import java.io.File
@@ -135,48 +139,73 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
-            val initialMaxTypeAhead by characterSettingsRepository.observe(
-                characterId = "global", key = maxTypeAheadKey
-            ).collectAsState(null)
-            var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
-                mutableStateOf(
-                    TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
-                )
-            }
-            var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
-            TextField(
-                value = maxTypeAheadValue,
-                onValueChange = {
-                    maxTypeAheadValue = it
-                    val value = it.text.toIntOrNull()
-                    if (value == null) {
-                        maxTypeAheadError = "Invalid number"
-                    } else if (value < 0) {
-                        maxTypeAheadError = "Must be non-negative"
-                    } else {
-                        maxTypeAheadError = null
-                        scope.launch(NonCancellable) {
-                            characterSettingsRepository.save(
-                                characterId = "global",
-                                key = maxTypeAheadKey,
-                                value = it.text
-                            )
+            if (currentCharacterId != "global") {
+                val initialMaxTypeAhead by characterSettingsRepository.observe(
+                    characterId = currentCharacterId, key = maxTypeAheadKey
+                ).collectAsState(null)
+                var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
+                    mutableStateOf(
+                        TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
+                    )
+                }
+                var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
+                TextField(
+                    value = maxTypeAheadValue,
+                    onValueChange = {
+                        maxTypeAheadValue = it
+                        val value = it.text.toIntOrNull()
+                        if (value == null) {
+                            maxTypeAheadError = "Invalid number"
+                        } else if (value < 0) {
+                            maxTypeAheadError = "Must be non-negative"
+                        } else {
+                            maxTypeAheadError = null
+                            scope.launch(NonCancellable) {
+                                characterSettingsRepository.save(
+                                    characterId = currentCharacterId,
+                                    key = maxTypeAheadKey,
+                                    value = it.text
+                                )
+                            }
                         }
-                    }
-                },
-                label = {
-                    if (maxTypeAheadError != null) {
-                        Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
-                    } else {
-                        Text("Maximum commands to type ahead. 0 to disable buffer")
-                    }
-                },
-                isError = maxTypeAheadError != null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-            )
+                    },
+                    label = {
+                        if (maxTypeAheadError != null) {
+                            Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
+                        } else {
+                            Text("Maximum commands to type ahead. 0 to disable buffer")
+                        }
+                    },
+                    isError = maxTypeAheadError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                )
 
-            Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
+
+                val initialScriptCommandPrefix by characterSettingsRepository.observe(
+                    characterId = "global", key = scriptCommandPrefixKey
+                ).collectAsState(null)
+                val scriptCommandPrefixState = rememberTextFieldState(initialScriptCommandPrefix ?: ".")
+                TextField(
+                    state = scriptCommandPrefixState,
+                    label = {
+                        Text("Script command prefix")
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                )
+                LaunchedEffect(scriptCommandPrefixState.text) {
+                    if (scriptCommandPrefixState.text != initialScriptCommandPrefix) {
+                        characterSettingsRepository.save(
+                            characterId = currentCharacterId,
+                            scriptCommandPrefixKey,
+                            scriptCommandPrefixState.text.toString()
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
 
             Text("Script directories", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))

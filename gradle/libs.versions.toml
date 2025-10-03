@@ -35,6 +35,7 @@ bignum = "0.3.10"
 clikt = "5.0.3"
 coil = "3.3.0"
 compose = "1.9.0"
+compose-material3 = "1.9.0-beta06"
 colorpicker = "1.1.2"
 constraintlayout = "0.6.1"
 ##            ⬆ = "0.6.1-shaded"
@@ -78,6 +79,7 @@ clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 constraintlayout = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout" }
 conveyor-control = { module = "dev.hydraulic.conveyor:conveyor-control", version.ref = "conveyor-control" }
 fastscroller-m3 = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-material3", version.ref = "fastscroller" }

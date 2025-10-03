@@ -75,6 +75,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowRepository
 import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
+import warlockfe.warlock3.core.prefs.repositories.scriptCommandPrefixKey
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
@@ -86,11 +87,11 @@ import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
-import warlockfe.warlock3.wrayth.network.clientCommandPrefix
-import warlockfe.warlock3.wrayth.network.scriptCommandPrefix
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import java.io.File
 import kotlin.math.max
+
+const val clientCommandPrefix = '/'
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -133,9 +134,7 @@ class GameViewModel(
 
     val properties: StateFlow<Map<String, String>> = client.properties
 
-    val characterId = client.characterId
-
-    val character = combine(characterId, properties) { characterId, properties ->
+    val character = combine(client.characterId, properties) { characterId, properties ->
         val game = properties["game"]
         val name = properties["character"]
         if (characterId != null && game != null && name != null) {
@@ -144,6 +143,20 @@ class GameViewModel(
             null
         }
     }
+
+    val scriptCommandPrefix = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            characterSettingsRepository.observe(characterId = characterId, key = scriptCommandPrefixKey)
+                .map { it ?: "." }
+        } else {
+            flow {}
+        }
+    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = "."
+        )
 
     val topHeight = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
@@ -236,7 +249,7 @@ class GameViewModel(
         )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val alterations: StateFlow<List<CompiledAlteration>> = characterId.flatMapLatest { characterId ->
+    private val alterations: StateFlow<List<CompiledAlteration>> = client.characterId.flatMapLatest { characterId ->
         if (characterId != null)
             alterationRepository.observeForCharacter(characterId).map { list ->
                 list.mapNotNull {
@@ -459,9 +472,9 @@ class GameViewModel(
             }
             .launchIn(viewModelScope)
 
-        character.transformLatest {
+        client.characterId.transformLatest {
             if (it != null) {
-                emitAll(characterSettingsRepository.observe(it.id, maxTypeAheadKey))
+                emitAll(characterSettingsRepository.observe(it, maxTypeAheadKey))
             }
         }
             .onEach { maxTypeAhead ->
@@ -822,7 +835,7 @@ class GameViewModel(
      * returns true when the command triggers type ahead
      */
     private suspend fun commandHandler(line: String): SendCommandType {
-        return if (line.startsWith(scriptCommandPrefix)) {
+        return if (line.startsWith(scriptCommandPrefix.value)) {
             val scriptCommand = line.drop(1)
             client.print(StyledString(line, WarlockStyle.Command))
             scriptManager.startScript(client, scriptCommand, ::commandHandler)

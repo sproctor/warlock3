@@ -8,6 +8,7 @@ import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 
 const val defaultMaxTypeAhead = 0
 const val maxTypeAheadKey = "typeahead"
+const val scriptCommandPrefixKey = "script_command_prefix"
 
 class CharacterSettingsRepository(
     private val characterSettingsQueries: CharacterSettingDao,
