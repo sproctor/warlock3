@@ -183,7 +183,8 @@ private fun BoxWithConstraintsScope.ProgressBar(
                 modifier = Modifier.align(Alignment.Center),
                 text = text,
                 color = colorGroup.text,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
             )
         }
     }
@@ -210,7 +211,8 @@ private fun BoxWithConstraintsScope.Label(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
         )
     }
 }
@@ -246,6 +248,7 @@ private fun BoxWithConstraintsScope.Link(
             },
             color = colorGroup.text,
             style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
         )
     }
 }
@@ -333,6 +336,7 @@ private fun BoxWithConstraintsScope.DialogButton(
             },
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
         )
     }
 }

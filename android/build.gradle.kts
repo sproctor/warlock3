@@ -70,6 +70,8 @@ dependencies {
     implementation(project(":wrayth"))
     implementation(project(":scripting"))
 
+    implementation(libs.kotlinx.serialization.json)
+
     // Compose dependencies
     implementation(compose.runtime)
     implementation(compose.foundation)
