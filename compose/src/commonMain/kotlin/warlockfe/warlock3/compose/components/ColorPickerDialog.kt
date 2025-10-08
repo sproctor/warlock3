@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -18,10 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
@@ -33,6 +38,7 @@ import com.github.skydoves.colorpicker.compose.AlphaTile
 import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
+import kotlinx.coroutines.flow.collectLatest
 import warlockfe.warlock3.compose.util.parseHexToColorOrNull
 import warlockfe.warlock3.compose.util.toWarlockColor
 import warlockfe.warlock3.core.text.WarlockColor
@@ -44,7 +50,8 @@ fun ColorPickerDialog(
     onColorSelected: (color: WarlockColor) -> Unit,
 ) {
     val controller = rememberColorPickerController()
-    var hexInput by remember { mutableStateOf<String?>(null) }
+    val hexInput = rememberTextFieldState()
+    var initialized by remember { mutableStateOf(false) }
     var hexError by remember { mutableStateOf<String?>(null) }
 
 
@@ -54,7 +61,7 @@ fun ColorPickerDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val parsed = hexInput?.let { parseHexToColorOrNull(it) }
+                    val parsed = parseHexToColorOrNull(hexInput.text.toString())
                     val chosen = parsed ?: controller.selectedColor.value
                     onColorSelected(chosen.toWarlockColor())
                 }
@@ -78,8 +85,9 @@ fun ColorPickerDialog(
                         controller = controller,
                         initialColor = initialColor,
                         onColorChanged = { colorEnvelope ->
-                            if (colorEnvelope.fromUser || hexInput == null) {
-                                hexInput = colorEnvelope.hexCode
+                            if (colorEnvelope.fromUser || !initialized) {
+                                initialized = true
+                                hexInput.setTextAndPlaceCursorAtEnd(colorEnvelope.hexCode)
                                 hexError = null
                             }
                         }
@@ -93,39 +101,37 @@ fun ColorPickerDialog(
                     modifier = Modifier.fillMaxWidth().height(40.dp),
                     controller = controller,
                 )
-                TextField(
-                    value = hexInput ?: "",
-                    onValueChange = { value ->
-                        hexInput = value
-                        if (value.isBlank()) {
-                            hexError = null
-                        } else {
-                            val parsed = hexInput?.let { parseHexToColorOrNull(it) }
-                            hexError = if (parsed == null) "Invalid HEX" else null
-                            if (parsed != null) {
-                                controller.selectByColor(color = parsed, fromUser = false)
+                LaunchedEffect(hexInput) {
+                    snapshotFlow { hexInput.text.toString() }
+                        .collectLatest { hexCode ->
+                            if (hexCode.isBlank()) {
+                                hexError = null
+                            } else {
+                                val parsed = parseHexToColorOrNull(hexCode)
+                                hexError = if (parsed == null) "Invalid hex code" else null
+                                if (parsed != null) {
+                                    controller.selectByColor(color = parsed, fromUser = false)
+                                }
                             }
                         }
-                    },
+                }
+                TextField(
+                    state = hexInput,
                     label = { Text("HEX (RRGGBB or AARRGGBB)") },
                     prefix = { Text("#", style = MaterialTheme.typography.labelMedium) },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     isError = hexError != null,
                     supportingText = {
                         hexError?.let { Text(it) }
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Column(horizontalAlignment = CenterHorizontally) {
-                    Text("#${hexInput.let { it ?: ""}.trim().removePrefix("#")}")
-                    Spacer(Modifier.height(5.dp))
-                    AlphaTile(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .clip(MaterialTheme.shapes.medium),
-                        controller = controller,
-                    )
-                }
+                AlphaTile(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(MaterialTheme.shapes.medium),
+                    controller = controller,
+                )
             }
         }
     )
