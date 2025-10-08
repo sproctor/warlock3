@@ -2,9 +2,9 @@ package warlockfe.warlock3.compose.components
 
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,8 +19,8 @@ import androidx.compose.ui.Modifier
 fun <T> DropdownSelect(
     items: List<T>,
     selected: T,
-    itemLabelBuilder: (T) -> String = { it.toString() },
     modifier: Modifier = Modifier,
+    itemLabelBuilder: (T) -> String = { it.toString() },
     label: @Composable (() -> Unit)? = null,
     onSelect: (T) -> Unit,
 ) {
@@ -33,7 +33,7 @@ fun <T> DropdownSelect(
         }
     ) {
         OutlinedTextField(
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             readOnly = true,
             value = itemLabelBuilder(selected),
             onValueChange = { },
