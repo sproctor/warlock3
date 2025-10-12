@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose.util
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.asAwtTransferable
-import androidx.compose.ui.text.AnnotatedString
 import java.awt.datatransfer.DataFlavor
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -15,6 +14,6 @@ actual fun ClipEntry.getText(): String? {
     return null
 }
 
-actual fun createClipEntry(text: AnnotatedString): ClipEntry {
+actual fun createClipEntry(text: String): ClipEntry {
     return ClipEntry(nativeClipEntry = text)
 }

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,12 +29,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
@@ -147,14 +153,10 @@ fun EditNameDialog(
     saveName: (NameEntity) -> Unit,
     onClose: () -> Unit,
 ) {
-    var text by remember(name.text) { mutableStateOf(name.text) }
-    var textColorValue by remember {
-        mutableStateOf(name.textColor.toHexString() ?: "")
-    }
-    var backgroundColorValue by remember {
-        mutableStateOf(name.backgroundColor.toHexString() ?: "")
-    }
-    var sound by remember { mutableStateOf(name.sound) }
+    val text = rememberTextFieldState(name.text)
+    val textColor = rememberTextFieldState(name.textColor.toHexString() ?: "")
+    val backgroundColor = rememberTextFieldState(name.backgroundColor.toHexString() ?: "")
+    val sound = rememberTextFieldState(name.sound ?: "")
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -164,10 +166,10 @@ fun EditNameDialog(
                 onClick = {
                     saveName(
                         name.copy(
-                            text = text,
-                            textColor = textColorValue.toWarlockColor() ?: WarlockColor.Unspecified,
-                            backgroundColor = backgroundColorValue.toWarlockColor() ?: WarlockColor.Unspecified,
-                            sound = sound,
+                            text = text.text.toString(),
+                            textColor = textColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
+                            backgroundColor = backgroundColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
+                            sound = sound.text.toString(),
                         )
                     )
                 }
@@ -184,14 +186,13 @@ fun EditNameDialog(
             Column(
                 modifier = Modifier.padding(24.dp)
             ) {
-                val hasLowercase = text.firstOrNull()?.isLowerCase() == true
+                val hasLowercase = text.text.firstOrNull()?.isLowerCase() == true
                 TextField(
-                    value = text,
+                    state = text,
                     label = {
                         Text("Name")
                     },
-                    singleLine = true,
-                    onValueChange = { text = it },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     supportingText = {
                         if (hasLowercase) {
                             Text("First letter of name is lowercase")
@@ -207,21 +208,32 @@ fun EditNameDialog(
                     ColorTextField(
                         modifier = Modifier.weight(1f),
                         label = "Text color",
-                        value = textColorValue,
-                        onValueChanged = {
-                            textColorValue = it
-                        }
+                        state = textColor,
                     )
 
                     ColorTextField(
                         modifier = Modifier.weight(1f),
                         label = "Background color",
-                        value = backgroundColorValue,
-                        onValueChanged = {
-                            backgroundColorValue = it
-                        }
+                        state = backgroundColor,
                     )
                 }
+                val soundLauncher = rememberFilePickerLauncher { file ->
+                    if (file != null) {
+                        sound.setTextAndPlaceCursorAtEnd(file.absolutePath())
+                    }
+                }
+                TextField(
+                    state = sound,
+                    label = { Text("Sound file") },
+                    trailingIcon = {
+                        IconButton(onClick = { soundLauncher.launch() }) {
+                            Icon(
+                                painter = painterResource(Res.drawable.audio_file),
+                                contentDescription = "Select sound file"
+                            )
+                        }
+                    }
+                )
             }
         }
     )

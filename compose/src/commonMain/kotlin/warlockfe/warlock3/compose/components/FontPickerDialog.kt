@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ListItem
@@ -35,9 +36,7 @@ fun FontPickerDialog(
     onSaveClicked: (FontUpdate) -> Unit,
 ) {
     val initialFontSize = currentStyle.fontSize ?: MaterialTheme.typography.bodyMedium.fontSize.value
-    var size by remember(initialFontSize) {
-        mutableStateOf(initialFontSize.toString())
-    }
+    val size = rememberTextFieldState(initialFontSize.toString())
     var newFontFamily by remember(currentStyle.fontFamily) {
         mutableStateOf(currentStyle.fontFamily ?: "Default")
     }
@@ -53,7 +52,7 @@ fun FontPickerDialog(
             Button(onClick = {
                 onSaveClicked(
                     FontUpdate(
-                        size = size.toFloatOrNull(),
+                        size = size.text.toString().toFloatOrNull(),
                         newFontFamily
                     )
                 )
@@ -71,7 +70,7 @@ fun FontPickerDialog(
                 modifier = Modifier.padding(16.dp).fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedTextField(value = size, onValueChange = { size = it })
+                OutlinedTextField(state = size)
 
                 ScrollableColumn(
                     modifier = Modifier

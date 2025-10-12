@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,8 +33,8 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.models.VariableEntity
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 
 @Composable
 fun VariablesView(
@@ -118,13 +119,13 @@ fun EditVariableDialog(
     saveVariable: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
-    var newName by remember(name) { mutableStateOf(name) }
-    var newValue by remember(value) { mutableStateOf(value) }
+    val newName = rememberTextFieldState(name)
+    val newValue = rememberTextFieldState(value)
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text("Edit Variable") },
         confirmButton = {
-            TextButton(onClick = { saveVariable(newName, newValue) }) {
+            TextButton(onClick = { saveVariable(newName.text.toString(), newValue.text.toString()) }) {
                 Text("OK")
             }
         },
@@ -136,14 +137,14 @@ fun EditVariableDialog(
         text = {
             Column(Modifier.padding(24.dp)) {
                 TextField(
-                    value = newName,
+                    state = newName,
                     label = { Text("Name") },
-                    onValueChange = { newName = it })
+                )
                 Spacer(Modifier.height(16.dp))
                 TextField(
-                    value = newValue,
+                    state = newValue,
                     label = { Text("Value") },
-                    onValueChange = { newValue = it })
+                )
             }
         }
     )

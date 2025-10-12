@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -33,10 +34,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.PlatformFile
@@ -44,11 +45,14 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.error_filled
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
@@ -117,68 +121,74 @@ fun GeneralSettingsView(
         Spacer(Modifier.height(16.dp))
         ScrollableColumn {
             val initialMaxLines by clientSettingRepository.observeMaxScrollLines().collectAsState(null)
-            var maxLinesValue by remember(initialMaxLines == null) {
-                mutableStateOf(
-                    TextFieldValue(initialMaxLines?.toString() ?: "")
+            val maxLinesValue = rememberTextFieldState()
+            LaunchedEffect(maxLinesValue) {
+                maxLinesValue.setTextAndPlaceCursorAtEnd(
+                    clientSettingRepository.observeMaxScrollLines().first().toString()
                 )
+                snapshotFlow { maxLinesValue.text.toString() }
+                    .collectLatest {
+                        clientSettingRepository.putMaxScrollLines(maxLinesValue.text.toString().toIntOrNull())
+                    }
             }
             TextField(
-                value = maxLinesValue,
-                onValueChange = {
-                    maxLinesValue = it
-                    scope.launch(NonCancellable) {
-                        clientSettingRepository.putMaxScrollLines(it.text.toIntOrNull())
-                    }
-                },
+                state = maxLinesValue,
                 label = {
                     Text("Maximum lines in scroll back buffer")
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
             )
 
             Spacer(Modifier.height(16.dp))
 
             if (currentCharacterId != "global") {
-                val initialMaxTypeAhead by characterSettingsRepository.observe(
-                    characterId = currentCharacterId, key = maxTypeAheadKey
-                ).collectAsState(null)
-                var maxTypeAheadValue by remember(initialMaxTypeAhead == null) {
-                    mutableStateOf(
-                        TextFieldValue(initialMaxTypeAhead ?: defaultMaxTypeAhead.toString())
-                    )
-                }
+                val maxTypeAheadState = rememberTextFieldState(defaultMaxTypeAhead.toString())
                 var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
-                TextField(
-                    value = maxTypeAheadValue,
-                    onValueChange = {
-                        maxTypeAheadValue = it
-                        val value = it.text.toIntOrNull()
-                        if (value == null) {
-                            maxTypeAheadError = "Invalid number"
-                        } else if (value < 0) {
-                            maxTypeAheadError = "Must be non-negative"
-                        } else {
-                            maxTypeAheadError = null
-                            scope.launch(NonCancellable) {
-                                characterSettingsRepository.save(
-                                    characterId = currentCharacterId,
-                                    key = maxTypeAheadKey,
-                                    value = it.text
-                                )
+                LaunchedEffect(maxTypeAheadState) {
+                    val initialMaxTypeAhead =
+                        characterSettingsRepository.observe(characterId = currentCharacterId, key = maxTypeAheadKey)
+                            .first()
+                    if (initialMaxTypeAhead != null) {
+                        maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
+                    }
+                    snapshotFlow { maxTypeAheadState.text.toString() }
+                        .collectLatest {
+                            val value = it.toIntOrNull()
+                            if (value == null) {
+                                maxTypeAheadError = "Invalid number"
+                            } else if (value < 0) {
+                                maxTypeAheadError = "Must be non-negative"
+                            } else {
+                                maxTypeAheadError = null
+                                scope.launch(NonCancellable) {
+                                    characterSettingsRepository.save(
+                                        characterId = currentCharacterId,
+                                        key = maxTypeAheadKey,
+                                        value = it
+                                    )
+                                }
                             }
                         }
-                    },
+                }
+                TextField(
+                    state = maxTypeAheadState,
                     label = {
+                        Text("Maximum commands to type ahead. 0 to disable buffer")
+                    },
+                    supportingText = {
                         if (maxTypeAheadError != null) {
                             Text(maxTypeAheadError!!, color = MaterialTheme.colorScheme.error)
-                        } else {
-                            Text("Maximum commands to type ahead. 0 to disable buffer")
                         }
                     },
                     isError = maxTypeAheadError != null,
+                    trailingIcon = {
+                        if (maxTypeAheadError != null) {
+                            Icon(painterResource(Res.drawable.error_filled), contentDescription = null)
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
 
                 Spacer(Modifier.height(16.dp))

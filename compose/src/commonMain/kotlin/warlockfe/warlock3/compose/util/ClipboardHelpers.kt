@@ -5,4 +5,4 @@ import androidx.compose.ui.text.AnnotatedString
 
 expect fun ClipEntry.getText(): String?
 
-expect fun createClipEntry(text: AnnotatedString): ClipEntry
+expect fun createClipEntry(text: String): ClipEntry

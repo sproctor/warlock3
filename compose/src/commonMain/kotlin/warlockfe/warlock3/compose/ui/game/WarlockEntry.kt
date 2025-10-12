@@ -10,8 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +42,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.min
@@ -55,8 +55,7 @@ fun WarlockEntry(modifier: Modifier, backgroundColor: Color, textColor: Color, v
         modifier = modifier,
         backgroundColor = backgroundColor,
         textColor = textColor,
-        textField = viewModel.entryText,
-        onValueChange = viewModel::updateEntryText,
+        state = viewModel.entryText,
         onKeyPress = { viewModel.handleKeyPress(it, clipboard) },
         roundTime = roundTime,
         castTime = castTime,
@@ -69,8 +68,7 @@ fun WarlockEntryContent(
     modifier: Modifier,
     backgroundColor: Color,
     textColor: Color,
-    textField: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
+    state: TextFieldState,
     onKeyPress: (KeyEvent) -> Boolean,
     sendCommand: () -> Unit,
     roundTime: Int,
@@ -90,7 +88,7 @@ fun WarlockEntryContent(
             val focusRequester = remember { FocusRequester() }
             var skipNextKey by remember { mutableStateOf(false) }
             BasicTextField(
-                value = textField,
+                state = state,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .focusRequester(focusRequester)
@@ -113,18 +111,15 @@ fun WarlockEntryContent(
                     },
                 textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
                 cursorBrush = SolidColor(textColor),
-                onValueChange = onValueChange,
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
                     imeAction = ImeAction.Send,
                 ),
-                keyboardActions = KeyboardActions(
-                    onSend = {
-                        sendCommand()
-                    }
-                )
+                onKeyboardAction = {
+                    sendCommand()
+                }
             )
 
             LaunchedEffect(Unit) {

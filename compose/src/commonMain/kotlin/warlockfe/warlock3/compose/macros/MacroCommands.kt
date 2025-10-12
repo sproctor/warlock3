@@ -28,7 +28,7 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
         // TODO: allow focus on other windows and apply copy there
-        clipboard.setClipEntry(createClipEntry(textField.getSelectedText()))
+        clipboard.setClipEntry(createClipEntry(textField.text.substring(textField.selection.start, textField.selection.end)))
     },
     "linedown" to { viewModel, clipboard ->
         viewModel.scroll(ScrollEvent.LINE_DOWN)

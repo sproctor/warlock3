@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,7 +59,7 @@ fun EditMacroDialog(
     saveMacro: (MacroCommand) -> Unit,
     onClose: () -> Unit,
 ) {
-    var newValue by remember(value) { mutableStateOf(value) }
+    val newValue = rememberTextFieldState(value)
     var selectedKey by remember { mutableStateOf(key) }
     var modifierKeys by remember { mutableStateOf(modifiers) }
     AlertDialog(
@@ -73,7 +75,12 @@ fun EditMacroDialog(
                 enabled = selectedKey != null,
                 onClick = {
                     if (selectedKey != null) {
-                        saveMacro(MacroCommand(buildKeyCombo(selectedKey!!, modifierKeys), newValue))
+                        saveMacro(
+                            MacroCommand(
+                                keyCombo = buildKeyCombo(selectedKey!!, modifierKeys),
+                                command = newValue.text.toString()
+                            )
+                        )
                     }
                 }
             ) {
@@ -112,9 +119,9 @@ fun EditMacroDialog(
                 )
                 Spacer(Modifier.height(16.dp))
                 TextField(
-                    value = newValue,
+                    state = newValue,
                     label = { Text("Command") },
-                    onValueChange = { newValue = it },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
             }
         }

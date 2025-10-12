@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -15,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,10 +31,10 @@ fun CharacterSettingsDialog(
     updateProxySettings: (ConnectionProxySettings) -> Unit,
     closeDialog: () -> Unit,
 ) {
-    var proxyEnabled by remember(proxySettings) { mutableStateOf(proxySettings.enabled) }
-    var proxyCommand by remember(proxySettings) { mutableStateOf(proxySettings.launchCommand ?: "") }
-    var proxyHost by remember(proxySettings) { mutableStateOf(proxySettings.host ?: "") }
-    var proxyPort by remember(proxySettings) { mutableStateOf(proxySettings.port ?: "") }
+    var proxyEnabled by rememberSaveable(proxySettings) { mutableStateOf(proxySettings.enabled) }
+    val proxyCommand = rememberTextFieldState(proxySettings.launchCommand ?: "")
+    val proxyHost = rememberTextFieldState(proxySettings.host ?: "")
+    var proxyPort = rememberTextFieldState(proxySettings.port ?: "")
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = closeDialog,
@@ -42,9 +45,9 @@ fun CharacterSettingsDialog(
                         updateProxySettings(
                             ConnectionProxySettings(
                                 enabled = proxyEnabled,
-                                launchCommand = proxyCommand.ifBlank { null },
-                                host = proxyHost.ifBlank { null },
-                                port = proxyPort.ifBlank { null },
+                                launchCommand = proxyCommand.text.toString().ifBlank { null },
+                                host = proxyHost.text.toString().ifBlank { null },
+                                port = proxyPort.text.toString().ifBlank { null },
                             )
                         )
                         closeDialog()
@@ -70,43 +73,34 @@ fun CharacterSettingsDialog(
                     Text("Enable proxy")
                 }
                 TextField(
-                    value = proxyCommand,
-                    onValueChange = {
-                        proxyCommand = it
-                    },
+                    state = proxyCommand,
                     label = {
                         Text("Lich/proxy launch command")
                     },
                     placeholder = {
                         Text("ruby lich.rbw -g {host}:{port}")
                     },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 TextField(
-                    value = proxyHost,
-                    onValueChange = {
-                        proxyHost = it
-                    },
+                    state = proxyHost,
                     label = {
                         Text("Proxy host")
                     },
                     placeholder = {
                         Text("localhost")
                     },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 TextField(
-                    value = proxyPort,
-                    onValueChange = {
-                        proxyPort = it
-                    },
+                    state = proxyPort,
                     label = {
                         Text("Proxy port")
                     },
                     placeholder = {
                         Text("{port}")
                     },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
             }
         },

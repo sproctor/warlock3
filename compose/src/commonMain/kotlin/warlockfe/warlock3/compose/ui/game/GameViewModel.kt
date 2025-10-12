@@ -1,5 +1,12 @@
 package warlockfe.warlock3.compose.ui.game
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.delete
+import androidx.compose.foundation.text.input.insert
+import androidx.compose.foundation.text.input.selectAll
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.setTextAndSelectAll
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -114,8 +121,7 @@ class GameViewModel(
 
     private val logger = KotlinLogging.logger { }
 
-    var entryText by mutableStateOf(TextFieldValue())
-        private set
+    val entryText = TextFieldState()
 
     private val _scrollEvents = MutableStateFlow<PersistentList<ScrollEvent>>(persistentListOf())
     val scrollEvents = _scrollEvents.asStateFlow()
@@ -336,7 +342,7 @@ class GameViewModel(
                             ),
                             sound = name.sound,
                         )
-                    }  catch (e: Exception) {
+                    } catch (e: Exception) {
                         client.debug("Error while parsing highlight (${e.message}): $name")
                         null
                     }
@@ -513,8 +519,8 @@ class GameViewModel(
     }
 
     fun submit() {
-        var line = entryText.text
-        entryText = TextFieldValue()
+        var line = entryText.text.toString()
+        entryText.clearText()
         aliases.value.forEach { alias ->
             line = alias.replace(line)
         }
@@ -610,24 +616,25 @@ class GameViewModel(
 
     private fun executeMacro(tokens: List<MacroToken>, clipboard: Clipboard) {
         viewModelScope.launch(mainDispatcher) {
-            var movedCursor = false
+            var moveCursor: Int? = null
             tokens.forEach { token ->
                 when (token) {
                     is MacroToken.Entity -> {
-                        handleEntity(token.char, movedCursor)
+                        handleEntity(token.char)
                     }
 
                     MacroToken.At -> {
-                        entryText = entryText.copy(selection = TextRange(entryText.text.length))
-                        movedCursor = true
+                        moveCursor = entryText.selection.start
                     }
 
                     is MacroToken.Text -> {
-                        entryAppend(token.text, !movedCursor)
+                        entryInsert(token.text)
                     }
 
                     is MacroToken.Variable -> {
-                        entryAppend(variables.value[token.name] ?: "", !movedCursor)
+                        variables.value[token.name]?.let {
+                            entryInsert(it)
+                        }
                     }
 
                     is MacroToken.Command -> {
@@ -636,14 +643,19 @@ class GameViewModel(
                     }
                 }
             }
+            if (moveCursor != null) {
+                entryText.edit {
+                    selection = TextRange(moveCursor)
+                }
+            }
         }
     }
 
-    private suspend fun handleEntity(entity: Char, movedCursor: Boolean) {
+    private suspend fun handleEntity(entity: Char) {
         when (entity) {
             'x' -> {
-                storedText = entryText.text
-                entryClear()
+                storedText = entryText.text.toString()
+                entryText.clearText()
             }
 
             'r' -> {
@@ -655,75 +667,52 @@ class GameViewModel(
             }
 
             '?' -> {
-                storedText?.let { entryAppend(it, !movedCursor) }
+                storedText?.let {
+                    entryText.edit {
+                        append(it)
+                    }
+                }
             }
         }
     }
 
     // Must be called from main thread
-    private fun entryClear() {
-        entryText = TextFieldValue()
-    }
-
-    // Must be called from main thread
-    private fun entryAppend(text: String, moveCursor: Boolean) {
-        val newText = entryText.text + text
-        val selection = if (moveCursor) {
-            TextRange(newText.length)
-        } else {
-            entryText.selection
-        }
-        entryText = entryText.copy(text = newText, selection = selection)
-    }
-
-    // Must be called from main thread
     fun entryDelete(range: TextRange) {
-        val newText = entryText.text.removeRange(range.start, range.end)
-        val selection = entryText.selection
-        val newSelection = if (range.start < selection.start) {
-            TextRange(
-                start = selection.start - range.length,
-                end = selection.end - range.length,
-            )
-        } else {
-            selection
+        entryText.edit {
+            delete(range.start, range.end)
         }
-        entryText = entryText.copy(text = newText, selection = newSelection)
     }
 
     // Must be called from main thread
     fun entrySetSelection(selection: TextRange) {
-        entryText = entryText.copy(selection = selection)
+        entryText.edit {
+            this.selection = selection
+        }
     }
 
     fun entryInsert(text: String) {
-        val currentTextField = entryText
-        val prefix = currentTextField.text.substring(0, currentTextField.selection.start)
-        val postfix = currentTextField.text.substring(
-            currentTextField.selection.end,
-            currentTextField.text.length
-        )
-        val newText = prefix + text + postfix
-        val pos = prefix.length + text.length
-        entryText = currentTextField.copy(text = newText, selection = TextRange(pos))
+        entryText.edit {
+            if (selection.length > 0) {
+                delete(selection.start, selection.end)
+            }
+            insert(selection.start, text)
+        }
     }
 
     fun historyPrev() {
         val history = sendHistory
         if (historyPosition < history.size - 1) {
-            sendHistory[historyPosition] = entryText.text
+            sendHistory[historyPosition] = entryText.text.toString()
             historyPosition++
-            val text = history[historyPosition]
-            entryText = TextFieldValue(text = text, selection = TextRange(text.length))
+            entryText.setTextAndPlaceCursorAtEnd(history[historyPosition])
         }
     }
 
     fun historyNext() {
         if (historyPosition > 0) {
-            sendHistory[historyPosition] = entryText.text
+            sendHistory[historyPosition] = entryText.text.toString()
             historyPosition--
-            val text = sendHistory[historyPosition]
-            entryText = TextFieldValue(text = text, selection = TextRange(text.length))
+            entryText.setTextAndPlaceCursorAtEnd(sendHistory[historyPosition])
         }
     }
 
@@ -736,10 +725,6 @@ class GameViewModel(
             shift = event.isShiftPressed,
             meta = event.isMetaPressed,
         )
-    }
-
-    fun updateEntryText(value: TextFieldValue) {
-        entryText = value
     }
 
     fun moveWindow(name: String, location: WindowLocation) {

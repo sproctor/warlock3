@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,15 +20,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -123,8 +128,8 @@ fun EditAliasDialog(
     saveAlias: (AliasEntity) -> Unit,
     onClose: () -> Unit,
 ) {
-    var pattern by remember(alias.pattern) { mutableStateOf(alias.pattern) }
-    var replacement by remember(alias.replacement) { mutableStateOf(alias.replacement) }
+    val pattern = rememberTextFieldState(alias.pattern)
+    val replacement = rememberTextFieldState(alias.replacement)
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -135,8 +140,8 @@ fun EditAliasDialog(
                         AliasEntity(
                             id = alias.id,
                             characterId = alias.characterId,
-                            pattern = pattern,
-                            replacement = replacement,
+                            pattern = pattern.text.toString(),
+                            replacement = replacement.text.toString(),
                         )
                     )
                 }
@@ -155,26 +160,33 @@ fun EditAliasDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 var patternError by remember { mutableStateOf<String?>(null) }
-                TextField(
-                    value = pattern,
-                    label = { Text("Pattern") },
-                    onValueChange = {
-                        pattern = it
-                        try {
-                            Regex(it)
-                            patternError = null
-                        } catch (e: PatternSyntaxException) {
-                            patternError = e.message
+                LaunchedEffect(pattern) {
+                    snapshotFlow { pattern.text.toString() }
+                        .collectLatest {
+                            try {
+                                Regex(it)
+                                patternError = null
+                            } catch (e: PatternSyntaxException) {
+                                patternError = e.message
+                            }
                         }
-                    },
+                }
+                TextField(
+                    state = pattern,
+                    label = { Text("Pattern") },
                     isError = patternError != null,
                     supportingText = {
                         patternError?.let {
                             Text(it)
                         }
-                    }
+                    },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
-                TextField(value = replacement, label = { Text("Replacement") }, onValueChange = { replacement = it })
+                TextField(
+                    state = replacement,
+                    label = { Text("Replacement") },
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                )
             }
         }
     )

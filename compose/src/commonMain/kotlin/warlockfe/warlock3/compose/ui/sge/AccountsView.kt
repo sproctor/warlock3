@@ -1,17 +1,21 @@
 package warlockfe.warlock3.compose.ui.sge
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Button
+import androidx.compose.material3.SecureTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 
@@ -22,8 +26,8 @@ fun AccountsView(
     onAccountSelect: (AccountEntity) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var username by remember(initialUsername) { mutableStateOf(initialUsername ?: "") }
-    var password by remember(initialPassword) { mutableStateOf(initialPassword ?: "") }
+    val username = rememberTextFieldState(initialUsername ?: "")
+    val password = rememberTextFieldState(initialPassword ?: "")
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -37,22 +41,15 @@ fun AccountsView(
             ) {
                 TextField(
                     modifier = Modifier.padding(8.dp),
-                    value = username,
-                    onValueChange = {
-                        username = it
-                    },
+                    state = username,
                     label = { Text("Username") },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
-                TextField(
+                // TODO: add a way to disable the masking here
+                SecureTextField(
                     modifier = Modifier.padding(8.dp),
-                    value = password,
-                    onValueChange = {
-                        password = it
-                    },
+                    state = password,
                     label = { Text("Password") },
-                    visualTransformation = PasswordVisualTransformation('*'),
-                    singleLine = true,
                 )
             }
         }
@@ -69,7 +66,9 @@ fun AccountsView(
                 Text("Cancel")
             }
             Button(
-                onClick = { onAccountSelect(AccountEntity(username.trim(), password.trim())) }
+                onClick = {
+                    onAccountSelect(AccountEntity(username.text.toString().trim(), password.text.toString().trim()))
+                }
             ) {
                 Text("Next")
             }

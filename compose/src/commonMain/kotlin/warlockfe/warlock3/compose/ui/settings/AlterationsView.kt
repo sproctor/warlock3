@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -19,17 +21,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -141,10 +146,10 @@ fun EditAlterationDialog(
     saveAlteration: (AlterationEntity) -> Unit,
     onClose: () -> Unit,
 ) {
-    var pattern by remember { mutableStateOf(alteration.pattern) }
-    var sourceStream by remember { mutableStateOf(alteration.sourceStream ?: "") }
+    val pattern = rememberTextFieldState(alteration.pattern)
+    val sourceStream = rememberTextFieldState(alteration.sourceStream ?: "")
     var destinationStream by remember { mutableStateOf(alteration.destinationStream ?: "") }
-    var replacement by remember { mutableStateOf(alteration.result ?: "") }
+    val replacement = rememberTextFieldState(alteration.result ?: "")
     var keepOriginal by remember { mutableStateOf(alteration.keepOriginal) }
     var ignoreCase by remember { mutableStateOf(alteration.ignoreCase) }
 
@@ -158,10 +163,10 @@ fun EditAlterationDialog(
                         AlterationEntity(
                             id = alteration.id,
                             characterId = alteration.characterId,
-                            pattern = pattern,
-                            sourceStream = sourceStream,
+                            pattern = pattern.text.toString(),
+                            sourceStream = sourceStream.text.toString().ifBlank { null },
                             destinationStream = destinationStream,
-                            result = replacement.ifBlank { null },
+                            result = replacement.text.toString().ifBlank { null },
                             ignoreCase = ignoreCase,
                             keepOriginal = keepOriginal
                         )
@@ -182,34 +187,37 @@ fun EditAlterationDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 var patternError by remember { mutableStateOf<String?>(null) }
-                TextField(
-                    value = pattern,
-                    label = { Text("Pattern") },
-                    onValueChange = {
-                        pattern = it
-                        try {
-                            Regex(it)
-                            patternError = null
-                        } catch (e: PatternSyntaxException) {
-                            patternError = e.message
+                LaunchedEffect(pattern) {
+                    snapshotFlow { pattern.text.toString() }
+                        .collectLatest {
+                            try {
+                                Regex(it)
+                                patternError = null
+                            } catch (e: PatternSyntaxException) {
+                                patternError = e.message
+                            }
                         }
-                    },
+                }
+                TextField(
+                    state = pattern,
+                    label = { Text("Pattern") },
                     isError = patternError != null,
                     supportingText = {
                         patternError?.let {
                             Text(it)
                         }
-                    }
+                    },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 TextField(
-                    value = replacement,
+                    state = replacement,
                     label = { Text("Replacement") },
-                    onValueChange = { replacement = it },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 TextField(
-                    value = sourceStream,
+                    state = sourceStream,
                     label = { Text("Apply alteration to stream (leave blank for any)") },
-                    onValueChange = { sourceStream = it },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                 )
 //                TextField(
 //                    value = destinationStream,
