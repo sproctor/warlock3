@@ -15,6 +15,6 @@ actual fun ClipEntry.getText(): String? {
     return text.toString()
 }
 
-actual fun createClipEntry(text: AnnotatedString): ClipEntry {
+actual fun createClipEntry(text: String): ClipEntry {
     return ClipEntry(ClipData.newPlainText(null, text))
 }
