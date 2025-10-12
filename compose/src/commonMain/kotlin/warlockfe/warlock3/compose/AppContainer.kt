@@ -23,6 +23,7 @@ import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
+import warlockfe.warlock3.core.prefs.MySQLiteDriver
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
@@ -62,7 +63,7 @@ abstract class AppContainer(
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
-        .setDriver(BundledSQLiteDriver())
+        .setDriver(MySQLiteDriver(BundledSQLiteDriver()))
         .addMigrations(
             MIGRATION_10_11, MIGRATION_14_16
         )
