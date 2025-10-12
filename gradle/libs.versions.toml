@@ -50,7 +50,6 @@ kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
 kotlinx-io = "0.8.0"
 kotlinx-serialization = "1.9.0"
-# Cannot update to 2.0.3 until this is fixed: https://github.com/google/ksp/issues/2595
 ksp = "2.2.20-2.0.4"
 rhino = "1.8.0"
 room = "2.8.2"
