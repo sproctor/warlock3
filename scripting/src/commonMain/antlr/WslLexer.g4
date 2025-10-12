@@ -85,6 +85,7 @@ MULT: '*';
 DIV: '/';
 IDENTIFIER: Identifier;
 EXP_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
+EXP_NL: ('\n' | '\r' '\n'?) -> type(NL), popMode;
 
 mode COMMAND;
 

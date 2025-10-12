@@ -1,6 +1,17 @@
 package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
+import com.strumenta.antlrkotlin.runtime.BitSet
+import org.antlr.v4.kotlinruntime.ANTLRErrorListener
+import org.antlr.v4.kotlinruntime.CharStream
+import org.antlr.v4.kotlinruntime.CharStreams
+import org.antlr.v4.kotlinruntime.CommonTokenStream
+import org.antlr.v4.kotlinruntime.Parser
+import org.antlr.v4.kotlinruntime.RecognitionException
+import org.antlr.v4.kotlinruntime.Recognizer
+import org.antlr.v4.kotlinruntime.atn.ATNConfigSet
+import org.antlr.v4.kotlinruntime.dfa.DFA
+import warlockfe.warlock3.scripting.parsers.generated.WslLexer
 import warlockfe.warlock3.scripting.parsers.generated.WslParser
 import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
 import java.io.File
@@ -11,7 +22,11 @@ class WslScript(
 ) {
 
     fun parse(): List<WslLine> {
-        val script = parseWslScript(file)
+        val input: CharStream = CharStreams.fromStream(file.inputStream())
+        val lexer = WslLexer(input)
+        val parser = WslParser(CommonTokenStream(lexer))
+        parser.addErrorListener(ErrorListener())
+        val script = parser.script()
         return script.line().map { parseLine(it) }
     }
 
@@ -26,15 +41,22 @@ class WslScript(
         return if (ifExpression != null) {
             parseIfExpression(ifExpression)
         } else {
-            parseCommand(statement.command()!!)
+            val command = statement.command()
+            if (command != null) {
+                parseCommand(command)
+            } else {
+                throw WslParseException("Invalid statement $statement")
+            }
         }
     }
 
     private fun parseIfExpression(ifExpression: WslParser.IfExpressionContext): WslStatement.ConditionalStatement {
         return WslStatement.ConditionalStatement(
             parseExpression(ifExpression.expression()),
-            parseCommand(ifExpression.command(0)!!),
-            if (ifExpression.ELSE() != null) parseCommand(ifExpression.command(1)!!) else null
+            parseCommand(ifExpression.command(0) ?: throw WslParseException("Invalid if expression")),
+            ifExpression.ELSE()?.let {
+                parseCommand(ifExpression.command(1) ?: throw WslParseException("Else expression missing command"))
+            }
         )
     }
 
@@ -70,21 +92,21 @@ class WslScript(
 
     private fun parseEquality(equality: WslParser.EqualityContext): WslEquality {
         return WslEquality(
-            comparison = parseComparison(equality.comparison(0)!!),
+            comparison = parseComparison(equality.comparison(0) ?: throw WslParseException("Invalid equality expression")),
             otherComparisons = equality.equalityOperator().mapIndexed { index, context ->
                 val operator = when {
                     context.EQ() != null -> WslEqualityOperator.EQ
                     context.NEQ() != null -> WslEqualityOperator.NEQ
                     else -> throw WslParseException("Unhandled equality operator")
                 }
-                Pair(operator, parseComparison(equality.comparison(index + 1)!!))
+                Pair(operator, parseComparison(equality.comparison(index + 1) ?: throw WslParseException("Invalid equality expression")))
             }
         )
     }
 
     private fun parseComparison(comparison: WslParser.ComparisonContext): WslComparison {
         return WslComparison(
-            infixExpression = parseInfixExpression(comparison.infixExpression(0)!!),
+            infixExpression = parseInfixExpression(comparison.infixExpression(0) ?: throw WslParseException("Invalid infix expression")),
             otherInfixExpressions = comparison.comparisonOperator().mapIndexed { index, context ->
                 val operator = when {
                     context.GT() != null -> WslComparisonOperator.GT
@@ -93,21 +115,21 @@ class WslScript(
                     context.LTE() != null -> WslComparisonOperator.LTE
                     else -> throw WslParseException("Unhandled comparison operator")
                 }
-                Pair(operator, parseInfixExpression(comparison.infixExpression(index + 1)!!))
+                Pair(operator, parseInfixExpression(comparison.infixExpression(index + 1) ?: throw WslParseException("Invalid infix expression")))
             }
         )
     }
 
     private fun parseInfixExpression(infixExpression: WslParser.InfixExpressionContext): WslInfixExpression {
         return WslInfixExpression(
-            additiveExpression = parseAdditiveExpression(infixExpression.additiveExpression(0)!!),
+            additiveExpression = parseAdditiveExpression(infixExpression.additiveExpression(0) ?: throw WslParseException("Invalid additive expression")),
             otherAdditiveExpressions = infixExpression.infixOperator().mapIndexed { index, context ->
                 val operator = when {
                     context.CONTAINS() != null -> WslInfixOperator.CONTAINS
                     context.CONTAINSRE() != null -> WslInfixOperator.CONTAINSRE
                     else -> throw WslParseException("Unhandled infix operator")
                 }
-                Pair(operator, parseAdditiveExpression(infixExpression.additiveExpression(index + 1)!!))
+                Pair(operator, parseAdditiveExpression(infixExpression.additiveExpression(index + 1) ?: throw WslParseException("Invalid additive expression")))
             }
         )
     }
@@ -116,14 +138,14 @@ class WslScript(
         additiveExpression: WslParser.AdditiveExpressionContext
     ): WslAdditiveExpression {
         return WslAdditiveExpression(
-            multiplicativeExpression = parseMultiplicativeExpression(additiveExpression.multiplicativeExpression(0)!!),
+            multiplicativeExpression = parseMultiplicativeExpression(additiveExpression.multiplicativeExpression(0) ?: throw WslParseException("Invalid multiplicative expression")),
             otherMultiplicativeExpressions = additiveExpression.additiveOperator().mapIndexed { index, opContext ->
                 val operator = when {
                     opContext.ADD() != null -> WslAdditiveOperator.ADD
                     opContext.SUB() != null -> WslAdditiveOperator.SUB
                     else -> throw WslParseException("Unhandled additive operator")
                 }
-                Pair(operator, parseMultiplicativeExpression(additiveExpression.multiplicativeExpression(index + 1)!!))
+                Pair(operator, parseMultiplicativeExpression(additiveExpression.multiplicativeExpression(index + 1) ?: throw WslParseException("Invalid multiplicative expression")))
             }
         )
     }
@@ -132,14 +154,14 @@ class WslScript(
         multiplicativeExpression: WslParser.MultiplicativeExpressionContext
     ): WslMultiplicativeExpression {
         return WslMultiplicativeExpression(
-            prefixUnaryExpression = parsePrefixUnaryExpression(multiplicativeExpression.prefixUnaryExpression(0)!!),
+            prefixUnaryExpression = parsePrefixUnaryExpression(multiplicativeExpression.prefixUnaryExpression(0) ?: throw WslParseException("Invalid multiplicative expression")),
             otherUnaryExpressions = multiplicativeExpression.multiplicativeOperator().mapIndexed { index, opContext ->
                 val operator = when {
                     opContext.MULT() != null -> WslMultiplicativeOperator.MULT
                     opContext.DIV() != null -> WslMultiplicativeOperator.DIV
                     else -> throw WslParseException("Unhandled multiplicative operator")
                 }
-                Pair(operator, parsePrefixUnaryExpression(multiplicativeExpression.prefixUnaryExpression(index + 1)!!))
+                Pair(operator, parsePrefixUnaryExpression(multiplicativeExpression.prefixUnaryExpression(index + 1) ?: throw WslParseException("Invalid multiplicative expression")))
             }
         )
     }
@@ -561,4 +583,49 @@ sealed class WslStringContent {
     abstract fun getValue(context: WslContext): String
 }
 
-expect fun parseWslScript(script: File): WslParser.ScriptContext
+private class ErrorListener() : ANTLRErrorListener {
+    override fun reportAmbiguity(
+        recognizer: Parser,
+        dfa: DFA,
+        startIndex: Int,
+        stopIndex: Int,
+        exact: Boolean,
+        ambigAlts: BitSet,
+        configs: ATNConfigSet
+    ) {
+        // ignore
+    }
+
+    override fun reportAttemptingFullContext(
+        recognizer: Parser,
+        dfa: DFA,
+        startIndex: Int,
+        stopIndex: Int,
+        conflictingAlts: BitSet,
+        configs: ATNConfigSet
+    ) {
+        // ignore
+    }
+
+    override fun reportContextSensitivity(
+        recognizer: Parser,
+        dfa: DFA,
+        startIndex: Int,
+        stopIndex: Int,
+        prediction: Int,
+        configs: ATNConfigSet
+    ) {
+        // ignore
+    }
+
+    override fun syntaxError(
+        recognizer: Recognizer<*, *>,
+        offendingSymbol: Any?,
+        line: Int,
+        charPositionInLine: Int,
+        msg: String,
+        e: RecognitionException?
+    ) {
+        throw WslParseException("Syntax error: line $line:$charPositionInLine $msg")
+    }
+}
