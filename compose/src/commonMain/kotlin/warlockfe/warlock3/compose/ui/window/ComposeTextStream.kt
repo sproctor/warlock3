@@ -163,7 +163,10 @@ class ComposeTextStream(
             components[name] = value
             componentLocations[name]?.forEach { serialNumber ->
                 val lineNumber = serialNumber - removedLines
-                updateLine(lineNumber)
+                // If the component has scrolled back past the buffer, ignore it
+                if (lineNumber >= 0) {
+                    updateLine(lineNumber)
+                }
             }
         }
     }
