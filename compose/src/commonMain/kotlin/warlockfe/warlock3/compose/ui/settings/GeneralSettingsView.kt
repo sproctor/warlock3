@@ -157,6 +157,8 @@ fun GeneralSettingsView(
                 Text("Mark links in text")
             }
 
+            Spacer(Modifier.height(16.dp))
+
             if (currentCharacterId != "global") {
                 val maxTypeAheadState = rememberTextFieldState(defaultMaxTypeAhead.toString())
                 var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
