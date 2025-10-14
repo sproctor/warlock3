@@ -59,6 +59,10 @@ class ClientSettingRepository(
             .map { it?.toIntOrNull() ?: DEFAULT_MAX_SCROLL_LINES }
     }
 
+    fun observeMarkLinks(): Flow<Boolean> {
+        return observe(MARK_LINKS_KEY).map { it?.toBooleanStrictOrNull() ?: true }
+    }
+
     private suspend fun get(key: String): String? {
         return clientSettingDao.getByKey(key)
     }
@@ -123,6 +127,10 @@ class ClientSettingRepository(
         }
     }
 
+    suspend fun putMarkLinks(value: Boolean) {
+        putBoolean("markLinks", value)
+    }
+
     private suspend fun putInt(key: String, value: Int) {
         put(key, value.toString())
     }
@@ -150,5 +158,6 @@ class ClientSettingRepository(
     companion object {
         const val DEFAULT_MAX_SCROLL_LINES = 2_000
         const val SCROLLBACK_KEY = "scrollback"
+        const val MARK_LINKS_KEY = "markLinks"
     }
 }

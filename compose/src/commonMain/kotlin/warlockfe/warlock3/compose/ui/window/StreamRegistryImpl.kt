@@ -21,7 +21,6 @@ import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.StreamRegistry
@@ -59,6 +58,19 @@ class StreamRegistryImpl(
             initialValue = ClientSettingRepository.DEFAULT_MAX_SCROLL_LINES,
         )
 
+    private val markLinks = settingRepository
+        .observeMarkLinks()
+        .onEach {
+            streams.values.forEach { stream ->
+                stream.setMarkLinks(it)
+            }
+        }
+        .stateIn(
+            scope = externalScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true,
+        )
+
     private val characterId = MutableStateFlow<String>("global")
 
     private val highlights: StateFlow<List<ViewHighlight>> = characterId.flatMapLatest { characterId ->
@@ -86,7 +98,7 @@ class StreamRegistryImpl(
                         styles = highlight.styles,
                         sound = highlight.sound,
                     )
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // client.debug("Error while parsing highlight (${e.message}): $highlight")
                     null
                 }
@@ -104,7 +116,7 @@ class StreamRegistryImpl(
                         ),
                         sound = name.sound,
                     )
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // client.debug("Error while parsing highlight (${e.message}): $name")
                     null
                 }
@@ -150,6 +162,7 @@ class StreamRegistryImpl(
                 mainDispatcher = mainDispatcher,
                 ioDispatcher = ioDispatcher,
                 soundPlayer = soundPlayer,
+                markLinks = markLinks.value,
             )
                 .also { streams = streams.put(name, it) }
         }

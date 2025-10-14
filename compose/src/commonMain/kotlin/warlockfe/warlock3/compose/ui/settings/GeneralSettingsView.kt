@@ -120,15 +120,15 @@ fun GeneralSettingsView(
         }
         Spacer(Modifier.height(16.dp))
         ScrollableColumn {
-            val initialMaxLines by clientSettingRepository.observeMaxScrollLines().collectAsState(null)
             val maxLinesValue = rememberTextFieldState()
             LaunchedEffect(maxLinesValue) {
-                maxLinesValue.setTextAndPlaceCursorAtEnd(
-                    clientSettingRepository.observeMaxScrollLines().first().toString()
-                )
+                val initialMaxLines = clientSettingRepository.observeMaxScrollLines().first().toString()
+                maxLinesValue.setTextAndPlaceCursorAtEnd(initialMaxLines)
                 snapshotFlow { maxLinesValue.text.toString() }
                     .collectLatest {
-                        clientSettingRepository.putMaxScrollLines(maxLinesValue.text.toString().toIntOrNull())
+                        if (maxLinesValue.text.toString() != initialMaxLines) {
+                            clientSettingRepository.putMaxScrollLines(maxLinesValue.text.toString().toIntOrNull())
+                        }
                     }
             }
             TextField(
@@ -141,6 +141,21 @@ fun GeneralSettingsView(
             )
 
             Spacer(Modifier.height(16.dp))
+
+            Row {
+                val markLinks by clientSettingRepository.observeMarkLinks().collectAsState(initial = true)
+                Switch(
+                    checked = markLinks,
+                    onCheckedChange = {
+                        // TODO: this change should happen synchronously
+                        scope.launch {
+                            clientSettingRepository.putMarkLinks(it)
+                        }
+                    }
+                )
+                Spacer(Modifier.width(16.dp))
+                Text("Mark links in text")
+            }
 
             if (currentCharacterId != "global") {
                 val maxTypeAheadState = rememberTextFieldState(defaultMaxTypeAhead.toString())
@@ -193,10 +208,12 @@ fun GeneralSettingsView(
 
                 Spacer(Modifier.height(16.dp))
 
-                val initialScriptCommandPrefix by characterSettingsRepository.observe(
-                    characterId = "global", key = scriptCommandPrefixKey
-                ).collectAsState(null)
-                val scriptCommandPrefixState = rememberTextFieldState(initialScriptCommandPrefix ?: ".")
+                val scriptCommandPrefixState = rememberTextFieldState(".")
+                LaunchedEffect(currentCharacterId) {
+                    characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)?.let { prefix ->
+                        scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
+                    }
+                }
                 TextField(
                     state = scriptCommandPrefixState,
                     label = {
@@ -206,7 +223,8 @@ fun GeneralSettingsView(
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 LaunchedEffect(scriptCommandPrefixState.text) {
-                    if (scriptCommandPrefixState.text != initialScriptCommandPrefix) {
+                    val initialScriptCommandPrefix = characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)
+                    if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
                         characterSettingsRepository.save(
                             characterId = currentCharacterId,
                             scriptCommandPrefixKey,

@@ -36,6 +36,7 @@ import kotlin.time.Instant
 class ComposeTextStream(
     override val id: String,
     private var maxLines: Int,
+    private var markLinks: Boolean,
     private val highlights: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
@@ -106,7 +107,6 @@ class ComposeTextStream(
 
     // Must be called from main thread
     private suspend fun doAppendLine(text: StyledString, ignoreWhenBlank: Boolean) {
-        // usedComponents += text.getComponents()
         removeLines()
         text.getComponents().forEach { name ->
             val existingLocations = componentLocations[name] ?: emptyList()
@@ -126,7 +126,8 @@ class ComposeTextStream(
             components = components,
             actionHandler = { action ->
                 actionHandler?.invoke(action)
-            }
+            },
+            markLinks = markLinks,
         )
         lines.add(line)
         line.text?.let { playSound(it.text) }
@@ -184,6 +185,7 @@ class ComposeTextStream(
                 actionHandler = { action ->
                     actionHandler?.invoke(action)
                 },
+                markLinks = markLinks,
             )
         }
     }
@@ -210,6 +212,10 @@ class ComposeTextStream(
             }
         }
     }
+
+    fun setMarkLinks(markLinks: Boolean) {
+        this.markLinks = markLinks
+    }
 }
 
 @OptIn(ExperimentalTime::class)
@@ -225,6 +231,7 @@ data class CachedLine(
         presets: Map<String, StyleDefinition>,
         components: Map<String, StyledString>,
         actionHandler: (WarlockAction) -> Unit,
+        markLinks: Boolean,
     ): StreamTextLine {
         return text.toStreamLine(
             ignoreWhenBlank = ignoreWhenBlank,
@@ -235,6 +242,7 @@ data class CachedLine(
             presets = presets,
             components = components,
             actionHandler = actionHandler,
+            markLinks = markLinks,
         )
     }
 }
@@ -249,6 +257,7 @@ fun StyledString.toStreamLine(
     presets: Map<String, StyleDefinition>,
     components: Map<String, StyledString>,
     actionHandler: (WarlockAction) -> Unit,
+    markLinks: Boolean,
 ): StreamTextLine {
     val text = if (timestamp != null) {
         this + StyledString(" [${timestamp.toTimeString()}]")
@@ -275,25 +284,27 @@ fun StyledString.toStreamLine(
             buildAnnotatedString {
                 lineStyle?.let { pushStyle(it.toSpanStyle()) }
                 append(highlightedResult.text)
-                linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
-                    if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
-                        addStyle(
-                            style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
-                            start = link.beginIndex,
-                            end = link.endIndex,
-                        )
-                        val substring = highlightedResult.text.substring(link.beginIndex, link.endIndex)
-                        addLink(
-                            url = LinkAnnotation.Url(
-                                if (link.type == LinkType.URL) {
-                                    substring
-                                } else {
-                                    "http://$substring"
-                                }
-                            ),
-                            start = link.beginIndex,
-                            end = link.endIndex,
-                        )
+                if (markLinks) {
+                    linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
+                        if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
+                            addStyle(
+                                style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
+                                start = link.beginIndex,
+                                end = link.endIndex,
+                            )
+                            val substring = highlightedResult.text.substring(link.beginIndex, link.endIndex)
+                            addLink(
+                                url = LinkAnnotation.Url(
+                                    if (link.type == LinkType.URL) {
+                                        substring
+                                    } else {
+                                        "http://$substring"
+                                    }
+                                ),
+                                start = link.beginIndex,
+                                end = link.endIndex,
+                            )
+                        }
                     }
                 }
                 if (lineStyle != null) pop()
