@@ -164,7 +164,7 @@ class DashboardViewModel(
             }
             val windowRepository = windowRepositoryFactory.create()
             val streamRegistry = streamRegistryFactory.create(windowRepository)
-            do {
+            while (true) {
                 try {
                     val socket = warlockSocketFactory.create(loginCredentials.host, loginCredentials.port)
                     val sfClient = warlockClientFactory.createClient(
@@ -181,14 +181,24 @@ class DashboardViewModel(
                     )
                     gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                     break
-                } catch (_: UnknownHostException) {
+                } catch (e: UnknownHostException) {
                     logger.debug { "Unknown host" }
+                    gameState.setScreen(GameScreen.ErrorState(e.message ?: "Uknown host", returnTo = GameScreen.Dashboard))
                     break
                 } catch (e: IOException) {
                     logger.debug(e) { "Error connecting to $host:$port" }
+                    if (proxy == null) {
+                        gameState.setScreen(GameScreen.ErrorState("Error connecting to $host:$port", returnTo = GameScreen.Dashboard))
+                        break
+                    }
+                    if (!proxy.isAlive) {
+                        gameState.setScreen(GameScreen.ErrorState("Proxy process terminated before connecting", returnTo = GameScreen.Dashboard))
+                        break
+                    }
                     delay(500L)
                 }
-            } while (proxy != null && proxy.isAlive)
+            }
+            // TODO: test if proxy is dead, and throw an error if we never connected
         }
     }
 
