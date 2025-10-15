@@ -212,16 +212,15 @@ private class WarlockCommand : CliktCommand() {
 
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
-                    if (controller != null && !clientSettings.getIgnoreUpdates()) {
+                    if (controller != null) {
                         try {
-                            if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE) {
-                                currentVersion = controller.currentVersion
-                                latestVersion = controller.currentVersionFromRepository
+                            currentVersion = controller.currentVersion
+                            latestVersion = controller.currentVersionFromRepository
 
-                                // Compare versions using the compareTo method
-                                if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
-                                    // A newer version is available
-                                    updateAvailable = true
+                            if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
+                                // A newer version is available
+                                updateAvailable = true
+                                if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE && !clientSettings.getIgnoreUpdates()) {
                                     showUpdateDialog = true
                                 }
                             }
@@ -238,44 +237,65 @@ private class WarlockCommand : CliktCommand() {
                 LocalSkin provides skin.value,
             ) {
                 if (showUpdateDialog) {
+                    var updateSupported by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        val availability = controller?.canTriggerUpdateCheckUI()
+                        if (availability == SoftwareUpdateController.Availability.AVAILABLE) {
+                            updateSupported = true
+                        }
+                    }
                     DialogWindow(
                         onCloseRequest = { showUpdateDialog = false },
                         title = "Warlock update available",
                         state = rememberDialogState(width = 400.dp, height = 300.dp),
                     ) {
                         Column(Modifier.fillMaxSize().padding(8.dp)) {
-                            if (updateAvailable) {
-                                Text("An update to Warlock is available. You are currently running \"$currentVersion\" and \"$latestVersion\" is available.")
-                            } else {
-                                Text("Current version: ${currentVersion ?: "unknown"}")
-                                Text("Available version: ${latestVersion ?: "unknown"}")
+                            Text("Current version: ${currentVersion ?: "unknown"}")
+                            Text("Latest version: ${latestVersion ?: "unknown"}")
+                            if (!updateSupported) {
+                                Text("Automated updates are not supported for your installation")
                             }
                             Spacer(Modifier.weight(1f))
                             Row(Modifier.fillMaxWidth()) {
                                 Spacer(Modifier.weight(1f))
-                                TextButton(
-                                    onClick = {
-                                        scope.launch {
-                                            clientSettings.putIgnoreUpdates(true)
-                                            showUpdateDialog = false
-                                        }
-                                    },
-                                ) {
-                                    Text("Ignore updates")
+                                val ignoreUpdates by clientSettings.observeIgnoreUpdates().collectAsState(false)
+                                if (!ignoreUpdates) {
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                clientSettings.putIgnoreUpdates(true)
+                                                showUpdateDialog = false
+                                            }
+                                        },
+                                    ) {
+                                        Text("Ignore updates")
+                                    }
+                                } else {
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                clientSettings.putIgnoreUpdates(false)
+                                            }
+                                        },
+                                    ) {
+                                        Text("Stop ignoring updates")
+                                    }
                                 }
                                 TextButton(
                                     onClick = { showUpdateDialog = false },
                                 ) {
                                     Text("Close")
                                 }
-                                if (updateAvailable) {
-                                    TextButton(
-                                        onClick = {
-                                            controller.triggerUpdateCheckUI()
+                                TextButton(
+                                    onClick = {
+                                        scope.launch {
+                                            clientSettings.putIgnoreUpdates(false)
                                         }
-                                    ) {
-                                        Text("Update")
-                                    }
+                                        controller.triggerUpdateCheckUI()
+                                    },
+                                    enabled = updateAvailable && updateSupported
+                                ) {
+                                    Text("Update")
                                 }
                             }
                         }
@@ -370,4 +390,12 @@ private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<Pref
     return Room.databaseBuilder<PrefsDatabase>(
         name = filename,
     )
+}
+
+fun SoftwareUpdateController.Version.prettyString(): String {
+    var result = version
+    if (revision > 0) {
+        result += "-$revision"
+    }
+    return result
 }

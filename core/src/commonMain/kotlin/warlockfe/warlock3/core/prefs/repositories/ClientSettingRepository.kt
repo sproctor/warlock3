@@ -28,6 +28,10 @@ class ClientSettingRepository(
         return getBoolean("ignoreUpdates") ?: false
     }
 
+    fun observeIgnoreUpdates(): Flow<Boolean> {
+        return observe("ignoreUpdates").map { it?.toBoolean() ?: false }
+    }
+
     suspend fun getLastUsername(): String? {
         return get("lastUsername")
     }
