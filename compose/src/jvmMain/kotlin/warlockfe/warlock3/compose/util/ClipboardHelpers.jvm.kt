@@ -4,6 +4,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.asAwtTransferable
 import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
 
 @OptIn(ExperimentalComposeUiApi::class)
 actual fun ClipEntry.getText(): String? {
@@ -15,5 +16,5 @@ actual fun ClipEntry.getText(): String? {
 }
 
 actual fun createClipEntry(text: String): ClipEntry {
-    return ClipEntry(nativeClipEntry = text)
+    return ClipEntry(nativeClipEntry = StringSelection(text))
 }

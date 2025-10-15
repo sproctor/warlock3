@@ -3,7 +3,7 @@ package warlockfe.warlock3.compose.macros
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.getSelectedText
+import androidx.compose.ui.text.substring
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.util.createClipEntry
@@ -28,12 +28,13 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
     "copy" to { viewModel, clipboard ->
         val textField = viewModel.entryText
         // TODO: allow focus on other windows and apply copy there
-        clipboard.setClipEntry(createClipEntry(textField.text.substring(textField.selection.start, textField.selection.end)))
+        val text = textField.text.substring(textField.selection)
+        clipboard.setClipEntry(createClipEntry(text))
     },
-    "linedown" to { viewModel, clipboard ->
+    "linedown" to { viewModel, _ ->
         viewModel.scroll(ScrollEvent.LINE_DOWN)
     },
-    "lineup" to { viewModel, clipboard ->
+    "lineup" to { viewModel, _ ->
         viewModel.scroll(ScrollEvent.LINE_UP)
     },
     "movecursortostart" to { viewModel, _ ->
@@ -49,10 +50,10 @@ val macroCommands = mapOf<String, suspend (GameViewModel, Clipboard) -> Unit>(
             viewModel.entryDelete(TextRange(index, text.selection.start))
         }
     },
-    "pagedown" to { viewModel, clipboard ->
+    "pagedown" to { viewModel, _ ->
         viewModel.scroll(ScrollEvent.PAGE_DOWN)
     },
-    "pageup" to { viewModel, clipboard ->
+    "pageup" to { viewModel, _ ->
         viewModel.scroll(ScrollEvent.PAGE_UP)
     },
     "paste" to { viewModel, clipboard ->
