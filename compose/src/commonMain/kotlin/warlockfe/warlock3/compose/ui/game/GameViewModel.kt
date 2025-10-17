@@ -4,12 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
-import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.foundation.text.input.setTextAndSelectAll
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -21,7 +16,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -624,7 +618,7 @@ class GameViewModel(
                     }
 
                     MacroToken.At -> {
-                        moveCursor = entryText.selection.start
+                        moveCursor = entryText.selection.min
                     }
 
                     is MacroToken.Text -> {
@@ -679,7 +673,7 @@ class GameViewModel(
     // Must be called from main thread
     fun entryDelete(range: TextRange) {
         entryText.edit {
-            delete(range.start, range.end)
+            delete(range.min, range.max)
         }
     }
 
@@ -693,9 +687,9 @@ class GameViewModel(
     fun entryInsert(text: String) {
         entryText.edit {
             if (selection.length > 0) {
-                delete(selection.start, selection.end)
+                delete(selection.min, selection.max)
             }
-            insert(selection.start, text)
+            insert(selection.min, text)
         }
     }
 
