@@ -33,6 +33,9 @@ import java.net.UnknownHostException
 // FIXME: This needs some re-organization
 class SgeViewModel(
     private val gameState: GameState,
+    private val host: String,
+    private val port: Int,
+    private val simuCert: ByteArray,
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
     private val connectionRepository: ConnectionRepository,
@@ -46,10 +49,6 @@ class SgeViewModel(
 ) : ViewModel() {
 
     private val logger = KotlinLogging.logger { }
-
-    // TODO: Make these configurable?
-    private val host = "eaccess.play.net"
-    private val port = 7900
 
     private val _state = mutableStateOf<SgeViewState>(SgeViewState.SgeConnecting)
     val state: State<SgeViewState> = _state
@@ -72,7 +71,7 @@ class SgeViewModel(
 
     init {
         job = viewModelScope.launch {
-            if (!client.connect(host = host, port = port)) {
+            if (!client.connect(host = host, port = port, certificate = simuCert)) {
                 logger.debug { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
                 return@launch

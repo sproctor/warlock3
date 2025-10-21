@@ -22,19 +22,22 @@ import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeWizard
 import warlockfe.warlock3.core.client.GameCharacter
 
+// TODO: use navigation here
 @Composable
 fun MainScreen(
     sgeViewModelFactory: SgeViewModelFactory,
     dashboardViewModelFactory: DashboardViewModelFactory,
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
+    sgeHost: String,
+    sgePort: Int,
 ) {
     val scope = rememberCoroutineScope()
 
     when (val screen = gameState.screen) {
         GameScreen.Dashboard -> {
             val viewModel = remember {
-                dashboardViewModelFactory.create(gameState)
+                dashboardViewModelFactory.create(gameState, sgeHost, sgePort)
             }
             DashboardView(
                 viewModel = viewModel,
@@ -48,7 +51,7 @@ fun MainScreen(
 
         GameScreen.NewGameState -> {
             val viewModel = remember {
-                sgeViewModelFactory.create(gameState)
+                sgeViewModelFactory.create(gameState, sgeHost, sgePort)
             }
             SgeWizard(
                 viewModel = viewModel,

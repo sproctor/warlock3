@@ -23,12 +23,17 @@ class SgeViewModelFactory(
     private val streamRegistryFactory: StreamRegistryFactory,
     private val warlockSocketFactory: WarlockSocketFactory,
     private val ioDispatcher: CoroutineDispatcher,
+    private val simuCert: ByteArray,
 ) {
     fun create(
         gameState: GameState,
+        host: String,
+        port: Int,
     ): SgeViewModel {
         return SgeViewModel(
             gameState = gameState,
+            host = host,
+            port = port,
             clientSettingRepository = clientSettingRepository,
             accountRepository = accountRepository,
             connectionRepository = connectionRepository,
@@ -39,6 +44,7 @@ class SgeViewModelFactory(
             streamRegistryFactory = streamRegistryFactory,
             warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
+            simuCert = simuCert,
         )
     }
 }

@@ -33,6 +33,9 @@ import java.net.UnknownHostException
 
 class DashboardViewModel(
     private val gameState: GameState,
+    private val sgeHost: String,
+    private val sgePort: Int,
+    private val simuCert: ByteArray,
     private val connectionRepository: ConnectionRepository,
     private val connectionSettingsRepository: ConnectionSettingsRepository,
     private val sgeClientFactory: SgeClientFactory,
@@ -56,10 +59,6 @@ class DashboardViewModel(
     var message: String? by mutableStateOf(null)
         private set
 
-    // TODO: Make these configurable?
-    private val host = "eaccess.play.net"
-    private val port = 7900
-
     private var connectJob: Job? = null
 
     fun connect(connection: StoredConnection) {
@@ -70,7 +69,7 @@ class DashboardViewModel(
             try {
                 message = "Connecting..."
                 val sgeClient = sgeClientFactory.create()
-                if (!sgeClient.connect(host = host, port = port)) {
+                if (!sgeClient.connect(host = sgeHost, port = sgePort, certificate = simuCert)) {
                     logger.error { "Unable to connect to server" }
                     message = "Could not connect to SGE"
                     return@launch
@@ -186,9 +185,10 @@ class DashboardViewModel(
                     gameState.setScreen(GameScreen.ErrorState(e.message ?: "Uknown host", returnTo = GameScreen.Dashboard))
                     break
                 } catch (e: IOException) {
-                    logger.debug(e) { "Error connecting to $host:$port" }
+                    val message = "Error connecting to ${loginCredentials.host}:$loginCredentials.port"
+                    logger.debug(e) { message }
                     if (proxy == null) {
-                        gameState.setScreen(GameScreen.ErrorState("Error connecting to $host:$port", returnTo = GameScreen.Dashboard))
+                        gameState.setScreen(GameScreen.ErrorState(message, returnTo = GameScreen.Dashboard))
                         break
                     }
                     if (!proxy.isAlive) {

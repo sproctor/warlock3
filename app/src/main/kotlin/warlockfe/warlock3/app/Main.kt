@@ -31,6 +31,7 @@ import androidx.room.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
+import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
@@ -85,6 +86,8 @@ private class WarlockCommand : CliktCommand() {
     val debug: Boolean by option("-d", "--debug", help = "Enable debug output").flag()
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
     val inputFile: String? by option("-i", "--input", help = "Read input from file")
+    val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
+    val sgePort: Int by option("--sge-port", help = "Credentials/SGE port").int().default(7910)
 
     override fun run() {
 
@@ -124,7 +127,9 @@ private class WarlockCommand : CliktCommand() {
         println("Loading preferences from ${dbFile.absolutePath}")
         val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
 
-        val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
+        val appContainer = runBlocking {
+            JvmAppContainer(databaseBuilder, warlockDirs, Res.readBytes("files/simu.pem"))
+        }
 
         val json = Json {
             ignoreUnknownKeys = true
@@ -250,8 +255,8 @@ private class WarlockCommand : CliktCommand() {
                         state = rememberDialogState(width = 400.dp, height = 300.dp),
                     ) {
                         Column(Modifier.fillMaxSize().padding(8.dp)) {
-                            Text("Current version: ${currentVersion ?: "unknown"}")
-                            Text("Latest version: ${latestVersion ?: "unknown"}")
+                            Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
+                            Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
                             if (!updateSupported) {
                                 Text("Automated updates are not supported for your installation")
                             }
@@ -341,6 +346,8 @@ private class WarlockCommand : CliktCommand() {
                                     games.add(GameState())
                                 },
                                 showUpdateDialog = { showUpdateDialog = true },
+                                sgeHost = sgeHost,
+                                sgePort = sgePort,
                             )
                             LaunchedEffect(windowState) {
                                 snapshotFlow { windowState.size }

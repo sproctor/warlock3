@@ -31,6 +31,8 @@ fun FrameWindowScope.WarlockApp(
     gameState: GameState,
     newWindow: () -> Unit,
     showUpdateDialog: () -> Unit,
+    sgeHost: String,
+    sgePort: Int,
 ) {
     var showSettings by remember { mutableStateOf(false) }
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
@@ -129,7 +131,9 @@ fun FrameWindowScope.WarlockApp(
                 sgeViewModelFactory = appContainer.sgeViewModelFactory,
                 dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
                 gameState = gameState,
-                updateCurrentCharacter = { currentCharacter = it }
+                updateCurrentCharacter = { currentCharacter = it },
+                sgeHost = sgeHost,
+                sgePort = sgePort,
             )
 
             if (showSettings) {

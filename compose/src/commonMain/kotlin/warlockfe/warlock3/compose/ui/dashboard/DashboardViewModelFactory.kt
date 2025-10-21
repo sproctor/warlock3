@@ -25,12 +25,17 @@ class DashboardViewModelFactory(
     private val warlockProxyFactory: WarlockProxy.Factory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
+    private val simuCert: ByteArray,
 ) {
     fun create(
         gameState: GameState,
+        sgeHost: String,
+        sgePort: Int,
     ): DashboardViewModel {
         return DashboardViewModel(
             gameState = gameState,
+            sgeHost = sgeHost,
+            sgePort = sgePort,
             connectionRepository = connectionRepository,
             connectionSettingsRepository = connectionSettingsRepository,
             gameViewModelFactory = gameViewModelFactory,
@@ -42,6 +47,7 @@ class DashboardViewModelFactory(
             ioDispatcher = ioDispatcher,
             warlockSocketFactory = warlockSocketFactory,
             warlockProxyFactory = warlockProxyFactory,
+            simuCert = simuCert,
         )
     }
 }

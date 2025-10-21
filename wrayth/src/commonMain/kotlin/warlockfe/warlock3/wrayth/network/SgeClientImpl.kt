@@ -9,56 +9,83 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SimuGameCredentials
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.io.OutputStream
 import java.lang.Integer.min
-import java.net.Socket
 import java.nio.charset.Charset
-import kotlinx.io.IOException
+import java.security.KeyStore
+import java.security.SecureRandom
+import java.security.cert.CertificateFactory
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.TrustManagerFactory
 
 private const val charsetName = "windows-1252"
 private val charset = Charset.forName(charsetName)
+private const val passwordHashLength = 32
 
 class SgeClientImpl(
     private val ioDispatcher: CoroutineDispatcher,
 ) : SgeClient {
 
     private val logger = KotlinLogging.logger {}
-    private var outputStream: OutputStream? = null
+    private lateinit var outputStream: OutputStream
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
     override val eventFlow = _eventFlow.asSharedFlow()
-    private var passwordHash: ByteArray? = null
+    private val buffer = ByteArray(8192)
+    private val passwordHash: ByteArray = ByteArray(32)
     private var username: String? = null
 
     private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
 
-    override suspend fun connect(host: String, port: Int): Boolean {
+    override suspend fun connect(host: String, port: Int, certificate: ByteArray): Boolean {
         return withContext(ioDispatcher) {
             try {
                 logger.debug { "connecting..." }
 
-                val socket = Socket(host, port)
-                val reader = BufferedReader(InputStreamReader(socket.inputStream, charsetName))
-                outputStream = socket.outputStream
+                // Add certificate to key store
+                val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                keyStore.load(null)
+                val certFactory = CertificateFactory.getInstance("X.509")
+                val cert = certFactory.generateCertificate(certificate.inputStream())
+                keyStore.setCertificateEntry("ca", cert)
+                val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+                trustManagerFactory.init(keyStore)
+
+                // Create socket factory
+                val sslContext = SSLContext.getInstance("TLS")
+                sslContext.init(null, trustManagerFactory.trustManagers, SecureRandom())
+
+                val socket = sslContext.socketFactory.createSocket(host, port) as SSLSocket
+                socket.startHandshake()
 
                 // request password hash
+                outputStream = socket.outputStream
                 send("K\n")
-                passwordHash = reader.readLine()?.toByteArray(Charsets.US_ASCII)
-                    ?: return@withContext false
+
+                val inputStream = socket.inputStream
+                val hashLength = inputStream.read(buffer)
+                if (hashLength <= 0) {
+                    logger.error { "Error reading password hash" }
+                    return@withContext false
+                }
+                buffer.copyInto(passwordHash, endIndex = hashLength)
 
                 scope.launch {
                     try {
                         while (!stopped) {
-                            val line = reader.readLine()
-                            if (line != null) {
+                            val buf = ByteArray(4096)
+                            val len = inputStream.read(buf)
+                            if (len > 0) {
+                                val line = buf.decodeToString(0, len)
+                                println("read ($len): \"$line\"")
                                 handleData(line)
                             } else {
                                 // connection closed by server
@@ -71,12 +98,13 @@ class SgeClientImpl(
                         _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                     } finally {
                         logger.debug { "Closing socket" }
-                        reader.close()
+                        //reader.close()
                         socket.close()
                     }
                 }
                 true
-            } catch (_: IOException) {
+            } catch (e: IOException) {
+                logger.debug(e) { "SGE  exception: ${e.message}" }
                 false
             }
         }
@@ -187,16 +215,16 @@ class SgeClientImpl(
     private suspend fun send(string: String) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: $string" }
-            outputStream?.write(string.toByteArray(charset))
-            outputStream?.flush()
+            outputStream.write(string.toByteArray(charset))
+            outputStream.flush()
         }
     }
 
     private suspend fun send(bytes: ByteArray) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: ${bytes.decodeToString()}" }
-            outputStream?.write(bytes)
-            outputStream?.flush()
+            outputStream.write(bytes)
+            outputStream.flush()
         }
     }
 
@@ -208,10 +236,13 @@ class SgeClientImpl(
     }
 
     private fun encryptPassword(password: ByteArray): ByteArray {
-        val hash = passwordHash!!
-        val length = min(password.size, hash.size)
+        val length = min(password.size, passwordHash.size)
         return ByteArray(length) { n ->
-            ((hash[n].toInt() xor (password[n].toInt() - 32)) + 32).toByte()
+            val hashByte = passwordHash[n]
+            val passwordByte = password[n]
+            val b = passwordByte.toInt().minus(32).xor(hashByte.toInt()).plus(32)
+            println("byte $n: f($passwordByte, $hashByte) -> $b")
+            b.toByte()
         }
     }
 
