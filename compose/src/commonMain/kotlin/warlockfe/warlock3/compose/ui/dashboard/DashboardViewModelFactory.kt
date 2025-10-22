@@ -11,6 +11,7 @@ import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.SgeClientFactory
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.util.WarlockDirs
 
 class DashboardViewModelFactory(
@@ -25,17 +26,14 @@ class DashboardViewModelFactory(
     private val warlockProxyFactory: WarlockProxy.Factory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
-    private val simuCert: ByteArray,
 ) {
     fun create(
         gameState: GameState,
-        sgeHost: String,
-        sgePort: Int,
+        sgeSettings: SgeSettings,
     ): DashboardViewModel {
         return DashboardViewModel(
             gameState = gameState,
-            sgeHost = sgeHost,
-            sgePort = sgePort,
+            sgeSettings = sgeSettings,
             connectionRepository = connectionRepository,
             connectionSettingsRepository = connectionSettingsRepository,
             gameViewModelFactory = gameViewModelFactory,
@@ -47,7 +45,6 @@ class DashboardViewModelFactory(
             ioDispatcher = ioDispatcher,
             warlockSocketFactory = warlockSocketFactory,
             warlockProxyFactory = warlockProxyFactory,
-            simuCert = simuCert,
         )
     }
 }

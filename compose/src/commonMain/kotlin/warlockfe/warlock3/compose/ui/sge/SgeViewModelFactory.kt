@@ -11,6 +11,7 @@ import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.SgeClientFactory
+import warlockfe.warlock3.core.sge.SgeSettings
 
 class SgeViewModelFactory(
     private val clientSettingRepository: ClientSettingRepository,
@@ -23,17 +24,14 @@ class SgeViewModelFactory(
     private val streamRegistryFactory: StreamRegistryFactory,
     private val warlockSocketFactory: WarlockSocketFactory,
     private val ioDispatcher: CoroutineDispatcher,
-    private val simuCert: ByteArray,
 ) {
     fun create(
         gameState: GameState,
-        host: String,
-        port: Int,
+        settings: SgeSettings,
     ): SgeViewModel {
         return SgeViewModel(
             gameState = gameState,
-            host = host,
-            port = port,
+            settings = settings,
             clientSettingRepository = clientSettingRepository,
             accountRepository = accountRepository,
             connectionRepository = connectionRepository,
@@ -44,7 +42,6 @@ class SgeViewModelFactory(
             streamRegistryFactory = streamRegistryFactory,
             warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
-            simuCert = simuCert,
         )
     }
 }

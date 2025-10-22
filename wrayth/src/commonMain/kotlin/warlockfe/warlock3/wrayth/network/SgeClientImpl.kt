@@ -15,9 +15,14 @@ import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.io.OutputStream
 import java.lang.Integer.min
+import java.net.Socket
 import java.nio.charset.Charset
 import java.security.KeyStore
 import java.security.SecureRandom
@@ -36,56 +41,66 @@ class SgeClientImpl(
 
     private val logger = KotlinLogging.logger {}
     private lateinit var outputStream: OutputStream
+    private lateinit var inputStream: InputStream
+    private var reader: BufferedReader? = null
     private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
     override val eventFlow = _eventFlow.asSharedFlow()
     private val buffer = ByteArray(8192)
     private val passwordHash: ByteArray = ByteArray(32)
     private var username: String? = null
+    private var secure: Boolean = true
 
     private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
 
-    override suspend fun connect(host: String, port: Int, certificate: ByteArray): Boolean {
+    override suspend fun connect(settings: SgeSettings): Boolean {
+        secure = settings.secure
         return withContext(ioDispatcher) {
             try {
                 logger.debug { "connecting..." }
 
-                // Add certificate to key store
-                val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
-                keyStore.load(null)
-                val certFactory = CertificateFactory.getInstance("X.509")
-                val cert = certFactory.generateCertificate(certificate.inputStream())
-                keyStore.setCertificateEntry("ca", cert)
-                val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-                trustManagerFactory.init(keyStore)
+                val socket: Socket
+                if (secure) {
+                    // Add certificate to key store
+                    val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                    keyStore.load(null)
+                    val certFactory = CertificateFactory.getInstance("X.509")
+                    val cert = certFactory.generateCertificate(settings.certificate.inputStream())
+                    keyStore.setCertificateEntry("ca", cert)
+                    val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+                    trustManagerFactory.init(keyStore)
 
-                // Create socket factory
-                val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, trustManagerFactory.trustManagers, SecureRandom())
+                    // Create socket factory
+                    val sslContext = SSLContext.getInstance("TLS")
+                    sslContext.init(null, trustManagerFactory.trustManagers, SecureRandom())
 
-                val socket = sslContext.socketFactory.createSocket(host, port) as SSLSocket
-                socket.startHandshake()
+                    val sslSocket = sslContext.socketFactory.createSocket(settings.host, settings.port) as SSLSocket
+                    sslSocket.startHandshake()
+                    socket = sslSocket
+                } else {
+                    socket = Socket(settings.host, settings.port)
+                }
+                outputStream = socket.outputStream
+                inputStream = socket.inputStream
+                if (!secure) {
+                    reader = BufferedReader(InputStreamReader(inputStream))
+                }
 
                 // request password hash
-                outputStream = socket.outputStream
                 send("K\n")
 
-                val inputStream = socket.inputStream
                 val hashLength = inputStream.read(buffer)
                 if (hashLength <= 0) {
                     logger.error { "Error reading password hash" }
                     return@withContext false
                 }
-                buffer.copyInto(passwordHash, endIndex = hashLength)
+                buffer.copyInto(passwordHash, endIndex = min(hashLength, passwordHashLength))
 
                 scope.launch {
                     try {
                         while (!stopped) {
-                            val buf = ByteArray(4096)
-                            val len = inputStream.read(buf)
-                            if (len > 0) {
-                                val line = buf.decodeToString(0, len)
-                                println("read ($len): \"$line\"")
+                            val line = readline()
+                            if (line != null) {
                                 handleData(line)
                             } else {
                                 // connection closed by server
@@ -212,6 +227,19 @@ class SgeClientImpl(
         }
     }
 
+    private fun readline(): String? {
+        return if (secure) {
+            val len = inputStream.read(buffer)
+            if (len > 0) {
+                buffer.decodeToString(0, len)
+            } else {
+                null
+            }
+        } else {
+            reader?.readLine()
+        }
+    }
+
     private suspend fun send(string: String) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: $string" }
@@ -238,11 +266,7 @@ class SgeClientImpl(
     private fun encryptPassword(password: ByteArray): ByteArray {
         val length = min(password.size, passwordHash.size)
         return ByteArray(length) { n ->
-            val hashByte = passwordHash[n]
-            val passwordByte = password[n]
-            val b = passwordByte.toInt().minus(32).xor(hashByte.toInt()).plus(32)
-            println("byte $n: f($passwordByte, $hashByte) -> $b")
-            b.toByte()
+            ((passwordHash[n].toInt() xor (password[n].toInt() - 32)) + 32).toByte()
         }
     }
 

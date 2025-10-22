@@ -23,6 +23,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.window.Window
 
 @Composable
@@ -31,8 +32,7 @@ fun FrameWindowScope.WarlockApp(
     gameState: GameState,
     newWindow: () -> Unit,
     showUpdateDialog: () -> Unit,
-    sgeHost: String,
-    sgePort: Int,
+    sgeSettings: SgeSettings,
 ) {
     var showSettings by remember { mutableStateOf(false) }
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
@@ -132,8 +132,7 @@ fun FrameWindowScope.WarlockApp(
                 dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
                 gameState = gameState,
                 updateCurrentCharacter = { currentCharacter = it },
-                sgeHost = sgeHost,
-                sgePort = sgePort,
+                sgeSettings = sgeSettings,
             )
 
             if (showSettings) {

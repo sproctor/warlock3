@@ -35,6 +35,7 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
+import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
@@ -67,6 +68,7 @@ import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import java.io.File
@@ -88,6 +90,7 @@ private class WarlockCommand : CliktCommand() {
     val inputFile: String? by option("-i", "--input", help = "Read input from file")
     val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
     val sgePort: Int by option("--sge-port", help = "Credentials/SGE port").int().default(7910)
+    val sgeSecure: Boolean by option("--sge-secure", help = "Credentials/SGE uses encryption").boolean().default(true)
 
     override fun run() {
 
@@ -127,9 +130,7 @@ private class WarlockCommand : CliktCommand() {
         println("Loading preferences from ${dbFile.absolutePath}")
         val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
 
-        val appContainer = runBlocking {
-            JvmAppContainer(databaseBuilder, warlockDirs, Res.readBytes("files/simu.pem"))
-        }
+        val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
 
         val json = Json {
             ignoreUnknownKeys = true
@@ -162,6 +163,7 @@ private class WarlockCommand : CliktCommand() {
             )
             appContainer.macroRepository.insertDefaultMacrosIfNeeded()
         }
+        val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 
         val clientSettings = appContainer.clientSettings
         val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
@@ -346,8 +348,12 @@ private class WarlockCommand : CliktCommand() {
                                     games.add(GameState())
                                 },
                                 showUpdateDialog = { showUpdateDialog = true },
-                                sgeHost = sgeHost,
-                                sgePort = sgePort,
+                                sgeSettings = SgeSettings(
+                                    host = sgeHost,
+                                    port = sgePort,
+                                    certificate = simuCert,
+                                    secure = sgeSecure,
+                                ),
                             )
                             LaunchedEffect(windowState) {
                                 snapshotFlow { windowState.size }

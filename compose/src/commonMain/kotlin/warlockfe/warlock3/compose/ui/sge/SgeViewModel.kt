@@ -28,14 +28,13 @@ import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
+import warlockfe.warlock3.core.sge.SgeSettings
 import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
 class SgeViewModel(
     private val gameState: GameState,
-    private val host: String,
-    private val port: Int,
-    private val simuCert: ByteArray,
+    private val settings: SgeSettings,
     private val clientSettingRepository: ClientSettingRepository,
     private val accountRepository: AccountRepository,
     private val connectionRepository: ConnectionRepository,
@@ -71,7 +70,7 @@ class SgeViewModel(
 
     init {
         job = viewModelScope.launch {
-            if (!client.connect(host = host, port = port, certificate = simuCert)) {
+            if (!client.connect(settings)) {
                 logger.debug { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
                 return@launch

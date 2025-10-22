@@ -66,6 +66,7 @@ compose {
                 targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
                 // args("--input=/home/sproctor/Downloads/20250929185631.log")
+                // args("--sge-port=7900", "--sge-secure=off")
 
                 windows {
                     menu = true

@@ -60,7 +60,6 @@ abstract class AppContainer(
     warlockDirs: WarlockDirs,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
-    simuCert: ByteArray,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
@@ -200,7 +199,6 @@ abstract class AppContainer(
             warlockProxyFactory = warlockProxyFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
-            simuCert = simuCert,
         )
     }
 
@@ -216,7 +214,6 @@ abstract class AppContainer(
             streamRegistryFactory = streamRegistryFactory,
             warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
-            simuCert = simuCert,
         )
     }
 }

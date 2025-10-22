@@ -21,11 +21,9 @@ import java.net.Socket
 class JvmAppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
-    simuCert: ByteArray,
 ) : AppContainer(
     databaseBuilder = databaseBuilder,
     warlockDirs = warlockDirs,
-    simuCert = simuCert,
 ) {
     override val soundPlayer: SoundPlayer = DesktopSoundPlayer(warlockDirs)
 

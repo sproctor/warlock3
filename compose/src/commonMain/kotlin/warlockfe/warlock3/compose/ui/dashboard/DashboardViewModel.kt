@@ -24,6 +24,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent
+import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -33,9 +34,7 @@ import java.net.UnknownHostException
 
 class DashboardViewModel(
     private val gameState: GameState,
-    private val sgeHost: String,
-    private val sgePort: Int,
-    private val simuCert: ByteArray,
+    private val sgeSettings: SgeSettings,
     private val connectionRepository: ConnectionRepository,
     private val connectionSettingsRepository: ConnectionSettingsRepository,
     private val sgeClientFactory: SgeClientFactory,
@@ -69,7 +68,7 @@ class DashboardViewModel(
             try {
                 message = "Connecting..."
                 val sgeClient = sgeClientFactory.create()
-                if (!sgeClient.connect(host = sgeHost, port = sgePort, certificate = simuCert)) {
+                if (!sgeClient.connect(sgeSettings)) {
                     logger.error { "Unable to connect to server" }
                     message = "Could not connect to SGE"
                     return@launch
