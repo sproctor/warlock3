@@ -217,25 +217,30 @@ private class WarlockCommand : CliktCommand() {
             var latestVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
             val scope = rememberCoroutineScope()
 
+            suspend fun checkUpdate() {
+                if (controller != null) {
+                    try {
+                        currentVersion = controller.currentVersion
+                        latestVersion = controller.currentVersionFromRepository
+
+                        if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
+                            // A newer version is available
+                            updateAvailable = true
+                            if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE
+                                && !clientSettings.getIgnoreUpdates()) {
+                                showUpdateDialog = true
+                            }
+                        }
+                    } catch (e: UpdateCheckException) {
+                        // Handle exception
+                        logger.error(e) { "Update check failed" }
+                    }
+                }
+            }
+
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
-                    if (controller != null) {
-                        try {
-                            currentVersion = controller.currentVersion
-                            latestVersion = controller.currentVersionFromRepository
-
-                            if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
-                                // A newer version is available
-                                updateAvailable = true
-                                if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE && !clientSettings.getIgnoreUpdates()) {
-                                    showUpdateDialog = true
-                                }
-                            }
-                        } catch (e: UpdateCheckException) {
-                            // Handle exception
-                            logger.error(e) { "Update check failed" }
-                        }
-                    }
+                    checkUpdate()
                 }
             }
 
@@ -246,9 +251,12 @@ private class WarlockCommand : CliktCommand() {
                 if (showUpdateDialog) {
                     var updateSupported by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
-                        val availability = controller?.canTriggerUpdateCheckUI()
-                        if (availability == SoftwareUpdateController.Availability.AVAILABLE) {
-                            updateSupported = true
+                        withContext(Dispatchers.IO) {
+                            val availability = controller?.canTriggerUpdateCheckUI()
+                            if (availability == SoftwareUpdateController.Availability.AVAILABLE) {
+                                updateSupported = true
+                            }
+                            checkUpdate()
                         }
                     }
                     DialogWindow(
