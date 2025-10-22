@@ -40,10 +40,10 @@ class SgeClientImpl(
 ) : SgeClient {
 
     private val logger = KotlinLogging.logger {}
+    private var socket: Socket? = null
     private lateinit var outputStream: OutputStream
     private lateinit var inputStream: InputStream
     private var reader: BufferedReader? = null
-    private var stopped = false
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
     override val eventFlow = _eventFlow.asSharedFlow()
     private val buffer = ByteArray(8192)
@@ -80,11 +80,10 @@ class SgeClientImpl(
                 } else {
                     socket = Socket(settings.host, settings.port)
                 }
+                this@SgeClientImpl.socket = socket
                 outputStream = socket.outputStream
                 inputStream = socket.inputStream
-                if (!secure) {
-                    reader = BufferedReader(InputStreamReader(inputStream))
-                }
+                reader = BufferedReader(InputStreamReader(inputStream))
 
                 // request password hash
                 send("K\n")
@@ -98,13 +97,13 @@ class SgeClientImpl(
 
                 scope.launch {
                     try {
-                        while (!stopped) {
+                        while (!socket.isClosed) {
                             val line = readline()
                             if (line != null) {
                                 handleData(line)
                             } else {
                                 // connection closed by server
-                                stopped = true
+                                socket.close()
                             }
                         }
                     } catch (e: IOException) {
@@ -113,7 +112,6 @@ class SgeClientImpl(
                         _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                     } finally {
                         logger.debug { "Closing socket" }
-                        //reader.close()
                         socket.close()
                     }
                 }
@@ -148,7 +146,7 @@ class SgeClientImpl(
             )
 
             is SgeResponse.SgeReadyToPlayResponse -> {
-                stopped = true
+                socket?.close()
                 val properties = response.properties
                 val credentials = SimuGameCredentials(
                     host = properties["GAMEHOST"]!!,
@@ -288,7 +286,7 @@ class SgeClientImpl(
     }
 
     override fun close() {
-        stopped = true
+        socket?.close()
         scope.cancel()
     }
 }

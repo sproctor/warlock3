@@ -22,6 +22,7 @@ import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
+import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -60,6 +61,8 @@ class DashboardViewModel(
 
     private var connectJob: Job? = null
 
+    private var sgeClient: SgeClient? = null
+
     fun connect(connection: StoredConnection) {
         if (busy) return
         busy = true
@@ -68,6 +71,7 @@ class DashboardViewModel(
             try {
                 message = "Connecting..."
                 val sgeClient = sgeClientFactory.create()
+                this@DashboardViewModel.sgeClient = sgeClient
                 if (!sgeClient.connect(sgeSettings)) {
                     logger.error { "Unable to connect to server" }
                     message = "Could not connect to SGE"
@@ -128,8 +132,10 @@ class DashboardViewModel(
     }
 
     fun cancelConnect() {
+        sgeClient?.close()
         connectJob?.cancel()
         connectJob = null
+        message = null
     }
 
     fun updateProxySettings(characterId: String, proxySettings: ConnectionProxySettings) {
