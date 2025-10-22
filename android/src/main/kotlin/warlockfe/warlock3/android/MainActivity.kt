@@ -11,11 +11,13 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.core.sge.SgeSettings
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -55,12 +57,22 @@ class MainActivity : ComponentActivity() {
             }
             .launchIn(appContainer.externalScope)
 
+        val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
+
         setContent {
             CompositionLocalProvider(
                 LocalLogger provides logger,
                 LocalSkin provides skin.value,
             ) {
-                WarlockApp(appContainer = appContainer)
+                WarlockApp(
+                    appContainer = appContainer,
+                    sgeSettings = SgeSettings(
+                        host = "eaccess.play.net",
+                        port = 7910,
+                        certificate = simuCert,
+                        secure = true,
+                    ),
+                )
             }
         }
     }

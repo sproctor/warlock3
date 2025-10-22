@@ -36,11 +36,13 @@ import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.sge.SgeSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WarlockApp(
     appContainer: AppContainer,
+    sgeSettings: SgeSettings,
 ) {
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
     AppTheme(
@@ -101,6 +103,7 @@ fun WarlockApp(
                             dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
                             gameState = gameState,
                             updateCurrentCharacter = { currentCharacter = it },
+                            sgeSettings = sgeSettings,
                         )
                     } else {
                         Box(Modifier.padding(16.dp)) {
