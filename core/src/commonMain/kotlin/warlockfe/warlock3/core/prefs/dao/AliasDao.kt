@@ -16,6 +16,9 @@ interface AliasDao {
     @Query("SELECT * FROM Alias WHERE characterId = :characterId")
     fun observeByCharacter(characterId: String): Flow<List<AliasEntity>>
 
+    @Query("SELECT * FROM Alias WHERE characterId = :characterId")
+    suspend fun getByCharacter(characterId: String): List<AliasEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(alias: AliasEntity)
 

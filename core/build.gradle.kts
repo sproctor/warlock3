@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room.schema)
     alias(libs.plugins.antlr.kotlin)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
@@ -69,6 +70,7 @@ kotlin {
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.collections.immutable)
                 api(libs.kotlin.logging)
+                implementation(libs.kotlinx.serialization.json)
 
                 // Preferences
                 api(libs.room.runtime)
@@ -87,6 +89,9 @@ kotlin {
         }
     }
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
+    compilerOptions {
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+    }
 }
 
 dependencies {

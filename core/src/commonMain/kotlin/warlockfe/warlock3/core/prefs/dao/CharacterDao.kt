@@ -15,6 +15,9 @@ interface CharacterDao {
     @Query("SELECT * FROM Character")
     fun observeAll(): Flow<List<CharacterEntity>>
 
+    @Query("SELECT * FROM Character")
+    suspend fun getAll(): List<CharacterEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(character: CharacterEntity)
 

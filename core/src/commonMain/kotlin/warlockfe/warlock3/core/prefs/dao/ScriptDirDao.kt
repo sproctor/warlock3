@@ -21,6 +21,9 @@ interface ScriptDirDao {
     )
     suspend fun getByCharacterWithGlobal(characterId: String): List<String>
 
+    @Query("SELECT path FROM ScriptDir WHERE characterId = :characterId")
+    suspend fun getByCharacter(characterId: String): List<String>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun save(scriptDir: ScriptDirEntity)
 

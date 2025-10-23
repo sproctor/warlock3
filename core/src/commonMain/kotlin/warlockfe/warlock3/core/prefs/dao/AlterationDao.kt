@@ -13,6 +13,9 @@ interface AlterationDao {
     @Query("SELECT * FROM Alteration WHERE characterId = :characterId")
     fun observeAlterationsByCharacter(characterId: String): Flow<List<AlterationEntity>>
 
+    @Query("SELECT * FROM Alteration WHERE characterId = :characterId")
+    suspend fun getAlterationsByCharacter(characterId: String): List<AlterationEntity>
+
     @Query("SELECT * FROM Alteration WHERE characterId = :characterId OR characterId = 'global'")
     fun observeAlterationsByCharacterWithGlobals(characterId: String): Flow<List<AlterationEntity>>
 

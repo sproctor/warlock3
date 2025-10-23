@@ -12,6 +12,9 @@ interface VariableDao {
     @Query("SELECT * FROM Variable WHERE characterId = :characterId;")
     fun observeByCharacter(characterId: String): Flow<List<VariableEntity>>
 
+    @Query("SELECT * FROM Variable WHERE characterId = :characterId;")
+    suspend fun getByCharacter(characterId: String): List<VariableEntity>
+
     @Query("DELETE FROM Variable WHERE characterId = :characterId AND name = :name;")
     suspend fun delete(characterId: String, name: String)
 
