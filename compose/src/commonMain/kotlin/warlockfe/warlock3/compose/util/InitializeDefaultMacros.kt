@@ -31,5 +31,7 @@ suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
         put("global", MacroKeyCombo(Key.NumPadEnter.keyCode), "{RepeatLast}")
         put("global", MacroKeyCombo(Key.PageUp.keyCode), "{PageUp}")
         put("global", MacroKeyCombo(Key.PageDown.keyCode), "{PageDown}")
+        put("global", MacroKeyCombo(Key.U.keyCode, ctrl = true), "{ClearToStart}")
+        put("global", MacroKeyCombo(Key.K.keyCode, ctrl = true), "{ClearToEnd}")
     }
 }
