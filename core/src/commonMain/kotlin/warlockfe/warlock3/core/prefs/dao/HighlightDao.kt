@@ -18,6 +18,10 @@ interface HighlightDao {
     fun observeHighlightsByCharacter(characterId: String): Flow<List<PopulatedHighlight>>
 
     @Transaction
+    @Query("SELECT * FROM Highlight WHERE characterId = :characterId")
+    suspend fun getHighlightsByCharacter(characterId: String): List<PopulatedHighlight>
+
+    @Transaction
     @Query("SELECT * FROM Highlight WHERE characterId = :characterId OR characterId = 'global'")
     fun observeHighlightsForCharacter(characterId: String): Flow<List<PopulatedHighlight>>
 

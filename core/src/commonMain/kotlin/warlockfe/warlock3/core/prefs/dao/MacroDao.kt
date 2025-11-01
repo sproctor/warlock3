@@ -22,6 +22,9 @@ interface MacroDao {
     @Query("SELECT * FROM Macro WHERE characterId = :characterId")
     fun observeByCharacter(characterId: String): Flow<List<MacroEntity>>
 
+    @Query("SELECT * FROM Macro WHERE characterId = :characterId")
+    suspend fun getByCharacter(characterId: String): List<MacroEntity>
+
     @Query("SELECT * FROM Macro WHERE characterId = :characterId OR characterId = 'global'")
     fun observeByCharacterWithGlobals(characterId: String): Flow<List<MacroEntity>>
 

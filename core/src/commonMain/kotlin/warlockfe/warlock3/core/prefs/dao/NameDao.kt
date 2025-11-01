@@ -17,6 +17,10 @@ interface NameDao {
     fun observeNamesByCharacter(characterId: String): Flow<List<NameEntity>>
 
     @Transaction
+    @Query("SELECT * FROM Name WHERE characterId = :characterId")
+    suspend fun getByCharacter(characterId: String): List<NameEntity>
+
+    @Transaction
     @Query("SELECT * FROM Name WHERE characterId = :characterId OR characterId = 'global'")
     fun observeNamesForCharacter(characterId: String): Flow<List<NameEntity>>
 

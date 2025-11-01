@@ -16,8 +16,13 @@ import warlockfe.warlock3.core.prefs.dao.VariableDao
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.export.AccountExport
 import warlockfe.warlock3.core.prefs.export.AliasExport
+import warlockfe.warlock3.core.prefs.export.AlterationExport
 import warlockfe.warlock3.core.prefs.export.CharacterExport
+import warlockfe.warlock3.core.prefs.export.HighlightExport
+import warlockfe.warlock3.core.prefs.export.MacroExport
+import warlockfe.warlock3.core.prefs.export.StyleExport
 import warlockfe.warlock3.core.prefs.export.WarlockExport
+import warlockfe.warlock3.core.prefs.mappers.toStyleDefinition
 import warlockfe.warlock3.core.prefs.models.CharacterEntity
 
 class ExportRepository(
@@ -37,11 +42,10 @@ class ExportRepository(
     private val windowSettingsDao: WindowSettingsDao,
 ) {
     suspend fun getExport(): WarlockExport {
-        val accounts = accountDao.getAll()
         val characters = characterDao.getAll() + CharacterEntity(id = "global", name = "global", gameCode = "global")
         val clientSettings = clientSettingDao.getAll()
         return WarlockExport(
-            accounts = accounts.map {
+            accounts = accountDao.getAll().map {
                 AccountExport(
                     username = it.username,
                     password = it.password,
@@ -65,10 +69,48 @@ class ExportRepository(
                             replacement = it.replacement,
                         )
                     },
-                    alterations = emptyList(),
-                    highlights = emptyList(),
-                    macros = emptyList(),
-                    names = emptyList(),
+                    alterations = alterationDao.getAlterationsByCharacter(character.id).map {
+                        AlterationExport(
+                            pattern = it.pattern,
+                            sourceStream = it.sourceStream,
+                            destinationStream = it.destinationStream,
+                            result = it.result,
+                            ignoreCase = it.ignoreCase,
+                            keepOriginal = it.keepOriginal,
+                        )
+                    },
+                    highlights = highlightDao.getHighlightsByCharacter(character.id).map {
+                        HighlightExport(
+                            pattern = it.highlight.pattern,
+                            isRegex = it.highlight.isRegex,
+                            matchPartialWord = it.highlight.matchPartialWord,
+                            ignoreCase = it.highlight.ignoreCase,
+                            sound = it.highlight.sound,
+                            styles = it.styles.associate { style ->
+                                style.groupNumber to StyleExport(
+                                    textColor = style.textColor,
+                                    backgroundColor = style.backgroundColor,
+                                    entireLine = style.entireLine,
+                                    bold = style.bold,
+                                    italic = style.italic,
+                                    underline = style.underline,
+                                    fontFamily = style.fontFamily,
+                                    fontSize = style.fontSize,
+                                )
+                            }
+                        )
+                    },
+                    macros = macroDao.getByCharacter(character.id).map {
+                        MacroExport(
+                            value = it.value,
+                            keyCode = it.keyCode,
+                            ctrl = it.ctrl,
+                            alt = it.alt,
+                            shift = it.shift,
+                            meta = it.meta,
+                        )
+                    },
+                    names = nameDao.get,
                     presets = emptyList(),
                     windows = emptyList(),
                 )
