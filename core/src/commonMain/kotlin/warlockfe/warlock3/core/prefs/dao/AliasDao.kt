@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.AliasEntity
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Dao
 interface AliasDao {
@@ -20,5 +20,5 @@ interface AliasDao {
     suspend fun save(alias: AliasEntity)
 
     @Query("DELETE FROM Alias WHERE id = :id")
-    suspend fun delete(id: UUID)
+    suspend fun delete(id: Uuid)
 }

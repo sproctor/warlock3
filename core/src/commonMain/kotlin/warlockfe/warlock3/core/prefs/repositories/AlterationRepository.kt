@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.AlterationDao
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
-import java.util.*
+import kotlin.uuid.Uuid
 
 class AlterationRepository(
     private val alterationDao: AlterationDao,
@@ -28,7 +28,7 @@ class AlterationRepository(
         }
     }
 
-    suspend fun deleteById(id: UUID) {
+    suspend fun deleteById(id: Uuid) {
         withContext(NonCancellable) {
             alterationDao.deleteById(id)
         }

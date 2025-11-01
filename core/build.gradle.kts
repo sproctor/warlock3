@@ -1,6 +1,5 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
@@ -44,6 +43,16 @@ project.tasks.withType<KotlinCompilationTask<*>>().configureEach {
 kotlin {
     jvm()
     androidTarget()
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "core"
+            isStatic = true
+        }
+    }
 //    androidLibrary {
 //        namespace = "warlockfe.warlock3.core"
 //        compileSdk = libs.versions.compileSdk.get().toInt()
@@ -54,8 +63,9 @@ kotlin {
         common {
             group("commonJvmAndroid") {
                 withJvm()
+                withAndroidTarget()
                 // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                //withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
             }
         }
     }
@@ -69,11 +79,13 @@ kotlin {
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.collections.immutable)
                 api(libs.kotlin.logging)
+                implementation(libs.kotlinx.datetime)
 
                 // Preferences
                 api(libs.room.runtime)
 
-                implementation(libs.appdirs)
+                //implementation(libs.appdirs)
+                implementation(libs.uri)
 
                 api(libs.kotlinx.io.core)
 
@@ -87,6 +99,12 @@ kotlin {
         }
     }
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.experimental.ExperimentalNativeApi")
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 }
 
 dependencies {

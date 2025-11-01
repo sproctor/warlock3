@@ -37,6 +37,16 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
 kotlin {
     jvm()
     androidTarget()
+//    listOf(
+//        iosX64(),
+//        iosArm64(),
+//        iosSimulatorArm64()
+//    ).forEach { iosTarget ->
+//        iosTarget.binaries.framework {
+//            baseName = "wrayth"
+//            isStatic = true
+//        }
+//    }
 
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 

@@ -1,5 +1,7 @@
 package warlockfe.warlock3.core.client
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 value class Percentage(val value: Int) {
     init {

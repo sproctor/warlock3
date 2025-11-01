@@ -3,7 +3,7 @@ package warlockfe.warlock3.core.prefs.models
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.util.*
+import kotlin.uuid.Uuid
 
 @Entity(
     tableName = "Highlight",
@@ -13,7 +13,7 @@ import java.util.*
 )
 data class HighlightEntity(
     @PrimaryKey
-    val id: UUID,
+    val id: Uuid,
     val characterId: String,
     val pattern: String,
     val isRegex: Boolean,

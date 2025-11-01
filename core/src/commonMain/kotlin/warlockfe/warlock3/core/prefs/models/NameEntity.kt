@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import warlockfe.warlock3.core.text.WarlockColor
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Entity(
     tableName = "Name",
@@ -14,7 +14,7 @@ import java.util.UUID
 )
 data class NameEntity(
     @PrimaryKey
-    val id: UUID,
+    val id: Uuid,
     val characterId: String,
     val text: String,
     val textColor: WarlockColor,

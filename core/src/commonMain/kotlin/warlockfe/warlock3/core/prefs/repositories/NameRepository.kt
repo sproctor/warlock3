@@ -2,7 +2,7 @@ package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.NameEntity
-import java.util.*
+import kotlin.uuid.Uuid
 
 interface NameRepository {
     fun observeGlobal(): Flow<List<NameEntity>>
@@ -15,5 +15,5 @@ interface NameRepository {
 
     suspend fun deleteByText(characterId: String, text: String)
 
-    suspend fun deleteById(id: UUID)
+    suspend fun deleteById(id: Uuid)
 }

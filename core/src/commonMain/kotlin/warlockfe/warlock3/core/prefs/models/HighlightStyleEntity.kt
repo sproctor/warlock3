@@ -3,7 +3,7 @@ package warlockfe.warlock3.core.prefs.models
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import warlockfe.warlock3.core.text.WarlockColor
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Entity(
     tableName = "highlightstyle",
@@ -18,7 +18,7 @@ import java.util.UUID
     ]
 )
 data class HighlightStyleEntity(
-    val highlightId: UUID,
+    val highlightId: Uuid,
     val groupNumber: Int,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,

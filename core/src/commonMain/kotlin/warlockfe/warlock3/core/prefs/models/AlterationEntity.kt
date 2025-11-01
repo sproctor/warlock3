@@ -2,12 +2,12 @@ package warlockfe.warlock3.core.prefs.models
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Entity(tableName = "alteration")
 data class AlterationEntity(
     @PrimaryKey
-    val id: UUID,
+    val id: Uuid,
     val characterId: String,
     val pattern: String,
     val sourceStream: String?,

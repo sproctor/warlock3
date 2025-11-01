@@ -1,10 +1,9 @@
 package warlockfe.warlock3.core.script
 
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
-import java.io.File
 
 interface ScriptManager {
 
@@ -12,7 +11,7 @@ interface ScriptManager {
 
     suspend fun startScript(client: WarlockClient, command: String, commandHandler: suspend (String) -> SendCommandType)
 
-    suspend fun startScript(client: WarlockClient, file: File, commandHandler: suspend (String) -> SendCommandType)
+    suspend fun startScript(client: WarlockClient, file: Path, commandHandler: suspend (String) -> SendCommandType)
 
     fun findScriptInstance(description: String): ScriptInstance?
 

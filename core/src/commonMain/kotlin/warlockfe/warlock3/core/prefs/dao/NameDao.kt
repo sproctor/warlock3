@@ -7,8 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.NameEntity
-import warlockfe.warlock3.core.prefs.models.PopulatedHighlight
-import java.util.*
+import kotlin.uuid.Uuid
 
 @Dao
 interface NameDao {
@@ -24,7 +23,7 @@ interface NameDao {
     suspend fun deleteByText(text: String, characterId: String)
 
     @Query("DELETE FROM Name WHERE id = :id")
-    suspend fun deleteById(id: UUID)
+    suspend fun deleteById(id: Uuid)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(name: NameEntity)

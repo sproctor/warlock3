@@ -9,7 +9,7 @@ import warlockfe.warlock3.core.prefs.mappers.toEntity
 import warlockfe.warlock3.core.prefs.mappers.toHighlight
 import warlockfe.warlock3.core.prefs.mappers.toStyleEntities
 import warlockfe.warlock3.core.prefs.models.Highlight
-import java.util.*
+import kotlin.uuid.Uuid
 
 class HighlightRepositoryImpl(
     private val highlightDao: HighlightDao,
@@ -46,7 +46,7 @@ class HighlightRepositoryImpl(
         }
     }
 
-    override suspend fun deleteById(id: UUID) {
+    override suspend fun deleteById(id: Uuid) {
         withContext(NonCancellable) {
             highlightDao.deleteById(id)
         }

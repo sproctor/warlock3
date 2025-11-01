@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Dao
 interface AlterationDao {
@@ -17,7 +17,7 @@ interface AlterationDao {
     fun observeAlterationsByCharacterWithGlobals(characterId: String): Flow<List<AlterationEntity>>
 
     @Query("DELETE FROM Alteration WHERE id = :id")
-    suspend fun deleteById(id: UUID)
+    suspend fun deleteById(id: Uuid)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(alteration: AlterationEntity)

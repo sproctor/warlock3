@@ -3,6 +3,7 @@ package warlockfe.warlock3.scripting.wsl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
@@ -25,18 +28,18 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
-import warlockfe.warlock3.core.util.toCaseInsensitiveMap
-import java.io.File
+import warlockfe.warlock3.scripting.util.toCaseInsensitiveMap
 
 class WslScriptInstance(
     override val id: Long,
     override val name: String,
-    val file: File,
+    val file: Path,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepositoryImpl,
     private val nameRepository: NameRepositoryImpl,
     private val scriptManager: ScriptManager,
     private val soundPlayer: SoundPlayer,
+    private val fileSystem: FileSystem,
 ) : ScriptInstance {
 
     private val script: WslScript = WslScript(name, file)
@@ -91,6 +94,7 @@ class WslScriptInstance(
                     nameRepository = nameRepository,
                     commandHandler = commandHandler,
                     soundPlayer = soundPlayer,
+                    fileSystem = fileSystem,
                 )
                 context.setScriptVariable("0", WslString(argumentString))
                 arguments.forEachIndexed { index, arg ->

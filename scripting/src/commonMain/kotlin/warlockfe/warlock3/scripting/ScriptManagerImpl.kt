@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.script.ScriptData
@@ -19,9 +21,9 @@ import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.splitFirstWord
-import java.io.File
 
 class ScriptManagerImpl(
+    private val fileSystem: FileSystem,
     private val scriptEngineRepository: WarlockScriptEngineRepository,
     private val externalScope: CoroutineScope,
 ) : ScriptManager {
@@ -46,8 +48,8 @@ class ScriptManagerImpl(
         }
     }
 
-    override suspend fun startScript(client: WarlockClient, file: File, commandHandler: suspend (String) -> SendCommandType) {
-        if (file.exists()) {
+    override suspend fun startScript(client: WarlockClient, file: Path, commandHandler: suspend (String) -> SendCommandType) {
+        if (fileSystem.exists(file)) {
             val result = scriptEngineRepository.getScript(file, this)
             when (result) {
                 is ScriptLaunchResult.Success -> {
