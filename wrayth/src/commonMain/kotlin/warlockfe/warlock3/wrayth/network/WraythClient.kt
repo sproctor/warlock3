@@ -1,5 +1,6 @@
 package warlockfe.warlock3.wrayth.network
 
+import com.eygraber.uri.Uri
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.PersistentMap
@@ -105,9 +106,11 @@ import warlockfe.warlock3.wrayth.protocol.WraythUpdateVerbsEvent
 import warlockfe.warlock3.wrayth.util.CmdDefinition
 import warlockfe.warlock3.wrayth.util.WraythCmd
 import warlockfe.warlock3.wrayth.util.WraythStreamWindow
+import warlockfe.warlock3.wrayth.util.resolve
 import java.net.SocketException
-import java.net.URI
 import kotlin.math.max
+
+private val baseUri = Uri.parse("https://www.play.net/")
 
 class WraythClient(
     private val windowRepository: WindowRepository,
@@ -483,8 +486,7 @@ class WraythClient(
 
                                 is WraythOpenUrlEvent -> {
                                     try {
-                                        val url = URI("https://www.play.net/")
-                                            .resolve(event.url)
+                                        val url = resolve(baseUri, Uri.parse(event.url))
                                         notifyListeners(ClientOpenUrlEvent(url))
                                     } catch (_: Exception) {
                                         // Silently ignore exceptions

@@ -85,7 +85,7 @@ kotlin {
                 api(libs.room.runtime)
 
                 //implementation(libs.appdirs)
-                implementation(libs.uri)
+                api(libs.uri)
 
                 api(libs.kotlinx.io.core)
 

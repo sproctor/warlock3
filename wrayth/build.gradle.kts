@@ -75,10 +75,7 @@ kotlin {
                 implementation(libs.xmlutil.serialization)
                 implementation(libs.antlr.kotlin.runtime)
                 implementation(libs.apache.commons.text)
-                // Dependencies that can be removed when api() bug is fixed
-                implementation(libs.kotlinx.collections.immutable)
-                implementation(libs.kotlin.logging)
-                implementation(libs.kotlinx.io.core)
+                implementation(libs.ktor.client.core)
             }
         }
 

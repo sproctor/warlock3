@@ -53,17 +53,17 @@ kotlin {
         }
     }
 
-//    applyDefaultHierarchyTemplate {
-//        common {
-//            group("commonJvmAndroid") {
-//                withJvm()
-//                withAndroidTarget()
-//                // The following is for when we move the android kmp
-//                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-//                withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
-//            }
-//        }
-//    }
+    applyDefaultHierarchyTemplate {
+        common {
+            group("commonJvmAndroid") {
+                withJvm()
+                withAndroidTarget()
+                // The following is for when we move the android kmp
+                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+            }
+        }
+    }
 
     sourceSets {
         commonMain {
@@ -93,20 +93,11 @@ kotlin {
             }
         }
 
-        val commonJvmAndroidMain by creating {
-            dependsOn(commonMain.get())
+        val commonJvmAndroidMain by getting {
             dependencies {
                 // TODO: make sure this works on android
                 implementation(libs.rhino)
             }
-        }
-
-        jvmMain {
-            dependsOn(commonJvmAndroidMain)
-        }
-
-        androidMain {
-            dependsOn(commonJvmAndroidMain)
         }
     }
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())

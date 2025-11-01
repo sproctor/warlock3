@@ -42,7 +42,7 @@ class WslScriptInstance(
     private val fileSystem: FileSystem,
 ) : ScriptInstance {
 
-    private val script: WslScript = WslScript(name, file)
+    private val script: WslScript = WslScript(name, file, fileSystem)
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {

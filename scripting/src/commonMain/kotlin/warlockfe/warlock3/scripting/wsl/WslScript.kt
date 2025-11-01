@@ -2,9 +2,10 @@ package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.strumenta.antlrkotlin.runtime.BitSet
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import org.antlr.v4.kotlinruntime.ANTLRErrorListener
 import org.antlr.v4.kotlinruntime.CharStream
-import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
 import org.antlr.v4.kotlinruntime.Parser
 import org.antlr.v4.kotlinruntime.RecognitionException
@@ -14,15 +15,16 @@ import org.antlr.v4.kotlinruntime.dfa.DFA
 import warlockfe.warlock3.scripting.parsers.generated.WslLexer
 import warlockfe.warlock3.scripting.parsers.generated.WslParser
 import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
-import java.io.File
+import warlockfe.warlock3.scripting.util.toCharStream
 
 class WslScript(
     val name: String,
-    private val file: File,
+    private val file: Path,
+    private val fileSystem: FileSystem,
 ) {
 
     fun parse(): List<WslLine> {
-        val input: CharStream = CharStreams.fromStream(file.inputStream())
+        val input: CharStream = file.toCharStream(fileSystem)
         val lexer = WslLexer(input)
         val parser = WslParser(CommonTokenStream(lexer))
         parser.addErrorListener(ErrorListener())
