@@ -39,10 +39,10 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.models.AliasEntity
-import java.util.*
+import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import java.util.regex.PatternSyntaxException
+import kotlin.uuid.Uuid
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -98,7 +98,7 @@ fun AliasView(
         ) {
             IconButton(onClick = {
                 editingAlias = AliasEntity(
-                    id = UUID.randomUUID(),
+                    id = Uuid.random(),
                     characterId = currentCharacterId,
                     pattern = "",
                     replacement = "",

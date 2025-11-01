@@ -28,7 +28,7 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
-import warlockfe.warlock3.scripting.util.toCaseInsensitiveMap
+import warlockfe.warlock3.core.util.toCaseInsensitiveMap
 
 class WslScriptInstance(
     override val id: Long,

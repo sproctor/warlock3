@@ -5,9 +5,9 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.files.FileSystem
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -60,6 +60,7 @@ abstract class AppContainer(
     warlockDirs: WarlockDirs,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    fileSystem: FileSystem,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
@@ -120,6 +121,7 @@ abstract class AppContainer(
     val wraythImporter = WraythImporter(
         highlightRepository = highlightRepository,
         nameRepository = nameRepository,
+        fileSystem = fileSystem,
     )
 
     val gameViewModelFactory by lazy {

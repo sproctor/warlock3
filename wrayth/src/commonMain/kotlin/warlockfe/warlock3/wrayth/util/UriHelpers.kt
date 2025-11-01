@@ -85,7 +85,7 @@ internal fun resolve(base: Uri, child: Uri): Uri {
 }
 
 // RFC2396 5.2 (6)
-private fun resolvePath(base: String, child: String, absolute: Boolean): String? {
+private fun resolvePath(base: String, child: String, absolute: Boolean): String {
     val i = base.lastIndexOf('/')
     val cn = child.length
     var path = ""
@@ -103,7 +103,7 @@ private fun resolvePath(base: String, child: String, absolute: Boolean): String?
     }
 
     // 5.2 (6c-f)
-    val np: String? = normalize(path)
+    val np: String = normalize(path)
 
     // 5.2 (6g): If the result is absolute but the path begins with "../",
     // then we simply leave the path as-is
@@ -136,7 +136,7 @@ private fun normalize(ps: String): String {
     maybeAddLeadingDot(path, segs)
 
     // Join the remaining segments and return the result
-    val s = String(path, 0, join(path, segs))
+    val s = path.concatToString(0, join(path, segs))
     if (s == ps) {
         // string was already normalized
         return ps
@@ -231,7 +231,7 @@ private fun split(path: CharArray, segs: IntArray) {
         }
     }
 
-    if (i != segs.size) throw InternalError() // ASSERT
+    if (i != segs.size) error("invalid size") // ASSERT
 }
 
 // Join the segments in the given path according to the given segment-index
@@ -275,7 +275,7 @@ private fun join(path: CharArray, segs: IntArray): Int {
                 // Preserve trailing slash
                 path[p++] = '/'
             }
-        } else throw InternalError() // ASSERT false
+        } else error("ASSERT") // ASSERT false
     }
 
     return p

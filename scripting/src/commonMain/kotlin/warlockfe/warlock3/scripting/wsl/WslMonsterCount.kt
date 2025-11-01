@@ -4,7 +4,7 @@ import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.text.StyledStringSubstring
-import warlockfe.warlock3.scripting.util.getIgnoringCase
+import warlockfe.warlock3.core.util.getIgnoringCase
 
 class WslMonsterCount(
     private val client: WarlockClient

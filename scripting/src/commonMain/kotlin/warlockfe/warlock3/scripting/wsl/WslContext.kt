@@ -30,7 +30,7 @@ import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
-import warlockfe.warlock3.scripting.util.CaseInsensitiveMap
+import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.incrementAndFetch

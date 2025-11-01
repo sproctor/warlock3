@@ -1,12 +1,12 @@
 package warlockfe.warlock3.compose.util
 
+import com.eygraber.uri.Uri
+import com.eygraber.uri.toURI
 import java.awt.Desktop
-import java.net.URI
-import java.net.URL
 
-actual fun openUrl(url: URI) {
+actual fun openUrl(url: Uri) {
     try {
-        Desktop.getDesktop().browse(url)
+        Desktop.getDesktop().browse(url.toURI())
     } catch (_: Exception) {
         // Silently ignore problems
     }

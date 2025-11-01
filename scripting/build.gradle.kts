@@ -77,7 +77,6 @@ kotlin {
 
                 // Parsing
                 implementation(libs.antlr.kotlin.runtime)
-                implementation(libs.ktor.utils)
 
                 // Needed for JS scripting implementation
                 implementation(libs.kotlin.reflect)

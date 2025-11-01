@@ -41,12 +41,12 @@ import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.models.NameEntity
+import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
 import warlockfe.warlock3.core.util.toWarlockColor
-import java.util.*
+import kotlin.uuid.Uuid
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -116,7 +116,7 @@ fun NamesView(
         ) {
             IconButton(onClick = {
                 editingName = NameEntity(
-                    id = UUID.randomUUID(),
+                    id = Uuid.random(),
                     text = "",
                     characterId = currentCharacterId ?: "global",
                     textColor = WarlockColor.Unspecified,

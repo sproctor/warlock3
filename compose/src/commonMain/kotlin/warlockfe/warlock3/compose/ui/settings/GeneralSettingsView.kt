@@ -48,6 +48,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -94,7 +95,7 @@ fun GeneralSettingsView(
         ) { platformFile ->
             if (platformFile != null) {
                 scope.launch(NonCancellable) {
-                    if (!wraythImporter.importFile(currentCharacterId, File(platformFile.absolutePath()))) {
+                    if (!wraythImporter.importFile(currentCharacterId, Path(platformFile.absolutePath()))) {
                         showImportDialog = true
                     }
                 }

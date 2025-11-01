@@ -2,7 +2,7 @@ package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.scripting.util.getIgnoringCase
+import warlockfe.warlock3.core.util.getIgnoringCase
 
 class WslComponents(
     private val client: WarlockClient

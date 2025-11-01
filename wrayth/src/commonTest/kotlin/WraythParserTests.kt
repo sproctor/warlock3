@@ -1,10 +1,10 @@
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
 import kotlin.test.assertEquals
-import org.junit.Test
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 import warlockfe.warlock3.wrayth.protocol.WraythNodeVisitor
+import kotlin.test.Test
 
 class WraythParserTests {
     @Test

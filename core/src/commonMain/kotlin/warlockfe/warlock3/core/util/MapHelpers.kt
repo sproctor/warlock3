@@ -1,4 +1,4 @@
-package warlockfe.warlock3.scripting.util
+package warlockfe.warlock3.core.util
 
 import io.ktor.util.CaseInsensitiveMap
 

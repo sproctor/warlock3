@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.macros.macroCommands
@@ -571,7 +572,7 @@ class GameViewModel(
         }
     }
 
-    fun runScript(file: File) {
+    fun runScript(file: Path) {
         viewModelScope.launch(ioDispatcher) {
             scriptManager.startScript(client, file, ::commandHandler)
         }

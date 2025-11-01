@@ -58,6 +58,9 @@ kotlin {
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 
     compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.experimental.ExperimentalNativeApi")
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 }

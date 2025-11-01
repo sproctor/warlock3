@@ -86,6 +86,7 @@ kotlin {
 
                 //implementation(libs.appdirs)
                 api(libs.uri)
+                api(libs.ktor.utils)
 
                 api(libs.kotlinx.io.core)
 

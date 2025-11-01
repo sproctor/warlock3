@@ -1,5 +1,9 @@
 package warlockfe.warlock3.wrayth.settings
 
+import kotlinx.io.buffered
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
+import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
 import warlockfe.warlock3.core.prefs.models.Highlight
@@ -8,17 +12,19 @@ import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.toWarlockColor
-import java.io.File
-import java.util.*
+import kotlin.uuid.Uuid
 
 class WraythImporter(
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
+    private val fileSystem: FileSystem,
 ) {
-    suspend fun importFile(characterId: String, file: File): Boolean {
+    suspend fun importFile(characterId: String, file: Path): Boolean {
         try {
-            val contents = file.readText(Charsets.ISO_8859_1)
+            val source = fileSystem.source(file).buffered()
+            val contents = source.readByteArray().decodeWindows1252()
             val wraythSettings = importString(contents)
             val settings = translateSettings(wraythSettings, characterId)
 
@@ -49,7 +55,7 @@ class WraythImporter(
             highlights = settings.strings.mapNotNull { highlight ->
                 highlight.text?.let { text ->
                     Highlight(
-                        id = UUID.randomUUID(),
+                        id = Uuid.random(),
                         pattern = text,
                         styles = mapOf(
                             0 to StyleDefinition(
@@ -68,7 +74,7 @@ class WraythImporter(
             names = settings.names.mapNotNull { name ->
                 name.text?.let { text ->
                     NameEntity(
-                        id = UUID.randomUUID(),
+                        id = Uuid.random(),
                         characterId = characterId,
                         text = text,
                         textColor = name.color.toWarlockColor(colors),

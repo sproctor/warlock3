@@ -107,8 +107,8 @@ import warlockfe.warlock3.wrayth.util.CmdDefinition
 import warlockfe.warlock3.wrayth.util.WraythCmd
 import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 import warlockfe.warlock3.wrayth.util.resolve
-import java.net.SocketException
 import kotlin.math.max
+import kotlin.time.Clock
 
 private val baseUri = Uri.parse("https://www.play.net/")
 
@@ -197,7 +197,7 @@ class WraythClient(
 
     private var delta = 0L
     override val time: Long
-        get() = System.currentTimeMillis() + delta
+        get() = Clock.System.now().toEpochMilliseconds() + delta
 
     init {
         listOf(
@@ -350,10 +350,10 @@ class WraythClient(
                                     val currentTime = time
                                     if (newTime > currentTime + 1000L) {
                                         // We're more than 1s slow
-                                        delta = newTime - System.currentTimeMillis() - 1000L
+                                        delta = newTime - Clock.System.now().toEpochMilliseconds() - 1000L
                                     } else if (newTime < currentTime - 1000L) {
                                         // We're more than 1s fast
-                                        delta = newTime - System.currentTimeMillis() + 1000L
+                                        delta = newTime - Clock.System.now().toEpochMilliseconds() + 1000L
                                     }
                                 }
 
@@ -751,7 +751,7 @@ class WraythClient(
 
                 logSimple { ">$command" }
                 logComplete { "<command>$command</command>" }
-            } catch (e: SocketException) {
+            } catch (e: IOException) {
                 print(StyledString("Could not send command: ${e.message}", WarlockStyle.Error))
             }
         }

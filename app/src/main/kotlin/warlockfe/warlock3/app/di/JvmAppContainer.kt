@@ -1,6 +1,7 @@
 package warlockfe.warlock3.app.di
 
 import androidx.room.RoomDatabase
+import kotlinx.io.files.FileSystem
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockProxy
@@ -13,28 +14,34 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
-import warlockfe.warlock3.scripting.js.JsEngineFactory
-import warlockfe.warlock3.scripting.wsl.WslEngineFactory
+import warlockfe.warlock3.scripting.js.JsEngine
+import warlockfe.warlock3.scripting.wsl.WslEngine
 import warlockfe.warlock3.wrayth.network.JavaSocket
 import java.net.Socket
 
 class JvmAppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
+    fileSystem: FileSystem,
 ) : AppContainer(
     databaseBuilder = databaseBuilder,
     warlockDirs = warlockDirs,
+    fileSystem = fileSystem,
 ) {
     override val soundPlayer: SoundPlayer = DesktopSoundPlayer(warlockDirs)
 
     override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
-            wslEngineFactory = WslEngineFactory(highlightRepository, nameRepository, variableRepository, soundPlayer),
-            jsEngineFactory = JsEngineFactory(variableRepository),
+            engines = listOf(
+                WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
+                JsEngine(variableRepository),
+            ),
             scriptDirRepository = scriptDirRepository,
+            fileSystem = fileSystem,
         )
     override val scriptManagerFactory: ScriptManagerFactory =
         ScriptManagerFactoryImpl(
+            fileSystem = fileSystem,
             scriptEngineRepository = scriptEngineRepository,
             externalScope = externalScope,
         )
