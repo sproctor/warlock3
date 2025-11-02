@@ -41,7 +41,6 @@ import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.AliasEntity
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
-import java.util.regex.PatternSyntaxException
 import kotlin.uuid.Uuid
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -166,7 +165,7 @@ fun EditAliasDialog(
                             try {
                                 Regex(it)
                                 patternError = null
-                            } catch (e: PatternSyntaxException) {
+                            } catch (e: Exception) {
                                 patternError = e.message
                             }
                         }

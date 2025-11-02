@@ -357,7 +357,6 @@ fun GameBottomBar(viewModel: GameViewModel) {
         CompassView(
             modifier = Modifier.padding(4.dp),
             state = viewModel.compassState.collectAsState().value,
-            theme = viewModel.compassTheme,
             onClick = {
                 viewModel.sendCommand(it.abbreviation)
             }

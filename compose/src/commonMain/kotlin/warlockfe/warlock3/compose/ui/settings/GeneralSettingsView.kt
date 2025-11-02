@@ -64,7 +64,6 @@ import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
 import warlockfe.warlock3.core.prefs.repositories.scriptCommandPrefixKey
 import warlockfe.warlock3.core.util.LogType
 import warlockfe.warlock3.wrayth.settings.WraythImporter
-import java.io.File
 
 @Composable
 fun GeneralSettingsView(
@@ -341,7 +340,7 @@ fun GeneralSettingsView(
             val skinFileLauncher = rememberFilePickerLauncher(
                 title = "Choose a skin file",
                 directory = currentSkin
-                    ?.takeIf { File(it).exists() }
+                    //?.takeIf { File(it).exists() }
                     ?.let { PlatformFile(it) }
             ) { file ->
                 if (file != null) {

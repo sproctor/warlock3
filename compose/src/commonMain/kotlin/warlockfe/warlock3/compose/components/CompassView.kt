@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.util.LocalCompassTheme
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.core.compass.DirectionType
 
@@ -18,11 +19,11 @@ import warlockfe.warlock3.core.compass.DirectionType
 fun CompassView(
     modifier: Modifier,
     state: CompassState,
-    theme: CompassTheme,
     onClick: (DirectionType) -> Unit
 ) {
     val scale = LocalDensity.current.density * 1.5f
     val logger = LocalLogger.current
+    val theme = LocalCompassTheme.current
     val backgroundPainter = painterResource(theme.background)
     // TODO: Scale compass to fit height instead of using density
     Box(
@@ -30,7 +31,7 @@ fun CompassView(
     ) {
         Image(
             painter = backgroundPainter,
-            contentDescription = theme.description,
+            contentDescription = "Compass",
             contentScale = FixedScale(scale),
         )
         state.directions.forEach {
@@ -56,7 +57,6 @@ data class CompassState(
 
 data class CompassTheme(
     val background: DrawableResource,
-    val description: String,
     val directions: Map<DirectionType, CompassDirection>
 )
 

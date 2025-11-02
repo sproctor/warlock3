@@ -9,8 +9,10 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.IOException
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
@@ -30,8 +32,6 @@ import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import warlockfe.warlock3.wrayth.network.WraythClient
-import java.io.IOException
-import java.net.UnknownHostException
 
 class DashboardViewModel(
     private val gameState: GameState,
@@ -96,17 +96,14 @@ class DashboardViewModel(
                             is SgeEvent.SgeReadyToPlayEvent -> {
                                 try {
                                     connectToGame(event.credentials, connection.proxySettings)
-                                } catch (e: UnknownHostException) {
-                                    gameState.setScreen(
-                                        GameScreen.ErrorState(
-                                            "Unknown host: ${e.message}",
-                                            returnTo = GameScreen.Dashboard
-                                        )
-                                    )
-                                } catch (e: IOException) {
+                                } catch (e: Exception) {
+                                    ensureActive()
                                     logger.error(e) { "Error connecting to server" }
                                     gameState.setScreen(
-                                        GameScreen.ErrorState("Error: ${e.message}", returnTo = GameScreen.Dashboard)
+                                        GameScreen.ErrorState(
+                                            message = "Error: ${e.message}",
+                                            returnTo = GameScreen.Dashboard,
+                                        )
                                     )
                                 }
                                 sgeClient.close()
@@ -185,11 +182,8 @@ class DashboardViewModel(
                     )
                     gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                     break
-                } catch (e: UnknownHostException) {
-                    logger.debug { "Unknown host" }
-                    gameState.setScreen(GameScreen.ErrorState(e.message ?: "Uknown host", returnTo = GameScreen.Dashboard))
-                    break
-                } catch (e: IOException) {
+                } catch (e: Exception) {
+                    ensureActive()
                     val message = "Error connecting to ${loginCredentials.host}:$loginCredentials.port"
                     logger.debug(e) { message }
                     if (proxy == null) {

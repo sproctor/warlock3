@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
@@ -29,7 +30,6 @@ import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.wrayth.network.NetworkSocket
-import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
 class SgeViewModel(
@@ -139,7 +139,8 @@ class SgeViewModel(
                                     streamRegistry = streamRegistry
                                 )
                                 gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                            } catch (e: UnknownHostException) {
+                            } catch (e: Exception) {
+                                ensureActive()
                                 gameState.setScreen(
                                     GameScreen.ErrorState(
                                         message = "Unknown host: ${e.message}",

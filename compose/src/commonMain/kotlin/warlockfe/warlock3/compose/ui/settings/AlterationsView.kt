@@ -45,7 +45,6 @@ import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
-import java.util.regex.PatternSyntaxException
 import kotlin.uuid.Uuid
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -193,7 +192,7 @@ fun EditAlterationDialog(
                             try {
                                 Regex(it)
                                 patternError = null
-                            } catch (e: PatternSyntaxException) {
+                            } catch (e: Exception) {
                                 patternError = e.message
                             }
                         }

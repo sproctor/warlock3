@@ -5,17 +5,13 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.FileSystem
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import warlockfe.warlock3.compose.components.CompassTheme
-import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
-import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
@@ -51,8 +47,6 @@ import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
-import java.io.StringReader
-import java.util.*
 
 abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
@@ -104,12 +98,6 @@ abstract class AppContainer(
             database.alterationDao(),
         )
 
-    @OptIn(ExperimentalResourceApi::class)
-    val themeProperties = Properties().apply {
-        val themeText = runBlocking { Res.readBytes("files/theme.properties").decodeToString() }
-        load(StringReader(themeText))
-    }
-    val compassTheme: CompassTheme = loadCompassTheme(themeProperties)
     abstract val scriptEngineRepository: WarlockScriptEngineRepository
     abstract val scriptManagerFactory: ScriptManagerFactory
 
@@ -125,7 +113,6 @@ abstract class AppContainer(
         GameViewModelFactory(
             macroRepository = macroRepository,
             variableRepository = variableRepository,
-            compassTheme = compassTheme,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
             presetRepository = presetRepository,

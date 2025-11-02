@@ -3,25 +3,21 @@ package warlockfe.warlock3.compose.ui.window
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.nibor.autolink.LinkExtractor
-import org.nibor.autolink.LinkType
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.highlight
+import warlockfe.warlock3.compose.util.markLinks
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toSpanStyle
-import warlockfe.warlock3.compose.util.toStyleDefinition
 import warlockfe.warlock3.compose.util.toTimeString
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
-import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.TextStream
@@ -282,30 +278,10 @@ fun StyledString.toStreamLine(
     return StreamTextLine(
         text = highlightedResult?.let {
             buildAnnotatedString {
-                lineStyle?.let { pushStyle(it.toSpanStyle()) }
-                append(highlightedResult.text)
+                lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
+                append(it.text)
                 if (markLinks) {
-                    linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
-                        if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
-                            addStyle(
-                                style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
-                                start = link.beginIndex,
-                                end = link.endIndex,
-                            )
-                            val substring = highlightedResult.text.substring(link.beginIndex, link.endIndex)
-                            addLink(
-                                url = LinkAnnotation.Url(
-                                    if (link.type == LinkType.URL) {
-                                        substring
-                                    } else {
-                                        "http://$substring"
-                                    }
-                                ),
-                                start = link.beginIndex,
-                                end = link.endIndex,
-                            )
-                        }
-                    }
+                    markLinks(highlightedResult, presets)
                 }
                 if (lineStyle != null) pop()
             }
@@ -331,5 +307,3 @@ private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): Annota
     }
     return result
 }
-
-private val linkExtractor = LinkExtractor.builder().linkTypes(setOf(LinkType.URL, LinkType.WWW)).build()

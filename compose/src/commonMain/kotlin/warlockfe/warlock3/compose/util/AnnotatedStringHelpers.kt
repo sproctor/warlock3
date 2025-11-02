@@ -30,3 +30,8 @@ data class AnnotatedStringHighlightResult(
     val text: AnnotatedString,
     val entireLineStyles: List<StyleDefinition>,
 )
+
+expect fun AnnotatedString.Builder.markLinks(
+    highlightedResult: AnnotatedStringHighlightResult,
+    presets: Map<String, StyleDefinition>
+)
