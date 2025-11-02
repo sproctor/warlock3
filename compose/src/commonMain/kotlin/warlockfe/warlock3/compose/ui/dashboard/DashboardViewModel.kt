@@ -17,7 +17,6 @@ import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
-import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
@@ -29,6 +28,7 @@ import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.wrayth.network.NetworkSocket
 import warlockfe.warlock3.wrayth.network.WraythClient
 import java.io.IOException
 import java.net.UnknownHostException
@@ -43,7 +43,6 @@ class DashboardViewModel(
     private val gameViewModelFactory: GameViewModelFactory,
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
-    private val warlockSocketFactory: WarlockSocketFactory,
     private val warlockProxyFactory: WarlockProxy.Factory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
@@ -170,7 +169,8 @@ class DashboardViewModel(
             val streamRegistry = streamRegistryFactory.create(windowRepository)
             while (true) {
                 try {
-                    val socket = warlockSocketFactory.create(loginCredentials.host, loginCredentials.port)
+                    val socket = NetworkSocket(ioDispatcher)
+                    socket.connect(loginCredentials.host, loginCredentials.port)
                     val sfClient = warlockClientFactory.createClient(
                         windowRepository = windowRepository,
                         streamRegistry = streamRegistry,

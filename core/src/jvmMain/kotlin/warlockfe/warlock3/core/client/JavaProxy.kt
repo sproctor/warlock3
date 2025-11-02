@@ -2,6 +2,7 @@ package warlockfe.warlock3.core.client
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
+import java.net.Socket
 
 class JavaProxy(command: String) : WarlockProxy {
     // TODO: manually split args respecting quotes. exec(String) is deprecated in Java 18+, use exec(Array<String>)

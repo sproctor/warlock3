@@ -17,7 +17,6 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
-import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -29,6 +28,7 @@ import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SgeSettings
+import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.net.UnknownHostException
 
 // FIXME: This needs some re-organization
@@ -43,7 +43,6 @@ class SgeViewModel(
     private val gameViewModelFactory: GameViewModelFactory,
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
-    private val warlockSocketFactory: WarlockSocketFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -126,7 +125,8 @@ class SgeViewModel(
                             try {
                                 val windowRepository = windowRepositoryFactory.create()
                                 val streamRegistry = streamRegistryFactory.create(windowRepository)
-                                val socket = warlockSocketFactory.create(credentials.host, credentials.port)
+                                val socket = NetworkSocket(ioDispatcher)
+                                socket.connect(credentials.host, credentials.port)
                                 val sfClient = warlockClientFactory.createClient(
                                     windowRepository = windowRepository,
                                     streamRegistry = streamRegistry,

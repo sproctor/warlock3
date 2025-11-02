@@ -5,7 +5,6 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
-import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
@@ -22,7 +21,6 @@ class SgeViewModelFactory(
     private val gameViewModelFactory: GameViewModelFactory,
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
-    private val warlockSocketFactory: WarlockSocketFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
@@ -40,7 +38,6 @@ class SgeViewModelFactory(
             gameViewModelFactory = gameViewModelFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
-            warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
         )
     }

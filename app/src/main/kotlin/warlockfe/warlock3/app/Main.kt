@@ -72,6 +72,7 @@ import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.exists
@@ -187,7 +188,10 @@ private class WarlockCommand : CliktCommand() {
                                 }
                                 WarlockStreamSocket(file.inputStream())
                             } else {
-                                appContainer.warlockSocketFactory.create(credentials!!.host, credentials.port)
+                                NetworkSocket(Dispatchers.IO)
+                                    .also { socket ->
+                                        socket.connect(credentials!!.host, credentials.port)
+                                    }
                             }
                             val client = appContainer.warlockClientFactory.createClient(
                                 windowRepository = windowRepository,

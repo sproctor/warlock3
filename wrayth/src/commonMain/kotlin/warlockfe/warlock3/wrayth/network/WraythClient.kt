@@ -331,6 +331,7 @@ class WraythClient(
                                     styleStack.removeLastOrNull()
 
                                 is WraythPromptEvent -> {
+                                    logger.debug { "got prompt" }
                                     currentTypeAhead.update { max(0, it - 1) }
                                     styleStack.clear()
                                     componentId = null
@@ -627,38 +628,15 @@ class WraythClient(
                         }
                     } else {
                         // This is the strange mode to read books and create characters
-                        val buffer = StringBuilder()
-                        val c = socket.read()
-                        if (c == -1) {
-                            // connection was closed by server
-                            disconnected()
-                            break
-                        }
-                        val char = c.toChar()
-                        buffer.append(char)
+                        val text = socket.readAvailable()
                         // check for <mode> tag
-                        if (char == '<') {
-                            buffer.append(socket.readLine())
-                            val line = buffer.toString()
-                            if (buffer.contains("<mode")) {
-                                // if the line starts with a mode tag, drop back to the normal parser
-                                parseText = true
-                                protocolHandler.parseLine(line)
-                            } else {
-                                logComplete { line }
-                                logSimple { line }
-                                rawPrint(line)
-                            }
+                        val sections = text.split(modeRegex, limit = 2)
+                        if (sections.size > 1) {
+                            rawPrint(sections[0])
+                            parseText = true
+                            protocolHandler.parseLine(sections[1])
                         } else {
-                            while (socket.ready()) {
-                                val c = socket.read()
-                                if (c == -1) {
-                                    break
-                                } else {
-                                    buffer.append(c.toChar())
-                                }
-                            }
-                            rawPrint(buffer.toString())
+                            rawPrint(text)
                         }
                     }
                 } catch (e: IOException) {
@@ -747,6 +725,7 @@ class WraythClient(
     override suspend fun sendCommandDirect(command: String) {
         withContext(writeContext) {
             try {
+                logger.debug { "Writing command: $command" }
                 socket.write("<c>$command\n")
 
                 logSimple { ">$command" }
@@ -781,6 +760,8 @@ class WraythClient(
     }
 
     private suspend fun rawPrint(text: String) {
+        logComplete { text }
+        logSimple { text }
         isPrompting = false
         val lines = text.split(newLinePattern)
         val mainStream = getMainStream()
@@ -887,6 +868,10 @@ class WraythClient(
         return text.replace("@", cmdNoun ?: "")
             .replace("#", cmdId?.let { "#$it" } ?: "")
             .replace("%", eventNoun ?: "")
+    }
+
+    companion object {
+        private val modeRegex = Regex("(?=<mode)")
     }
 }
 

@@ -9,9 +9,13 @@ class WarlockStreamSocket(private val inputStream: InputStream) : WarlockSocket 
 
     override var isClosed: Boolean = false
 
+    override suspend fun connect(host: String, port: Int) {
+        // No-op
+    }
+
     override suspend fun readLine(): String? = reader.readLine()
 
-    override suspend fun read(): Int = reader.read()
+    override suspend fun readAvailable(min: Int): String = reader.readLine()
 
     override fun ready(): Boolean = reader.ready()
 

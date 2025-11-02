@@ -20,7 +20,6 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
-import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MySQLiteDriver
@@ -114,8 +113,6 @@ abstract class AppContainer(
     abstract val scriptEngineRepository: WarlockScriptEngineRepository
     abstract val scriptManagerFactory: ScriptManagerFactory
 
-    abstract val warlockSocketFactory: WarlockSocketFactory
-
     abstract val soundPlayer: SoundPlayer
 
     val wraythImporter = WraythImporter(
@@ -197,7 +194,6 @@ abstract class AppContainer(
             warlockClientFactory = warlockClientFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
-            warlockSocketFactory = warlockSocketFactory,
             warlockProxyFactory = warlockProxyFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
@@ -214,7 +210,6 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
-            warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
         )
     }
