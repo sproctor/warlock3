@@ -77,18 +77,18 @@ kotlin {
                 srcDir(generateKotlinGrammarSource)
             }
             dependencies {
+                api(libs.kotlinx.io.core)
                 api(libs.kotlinx.coroutines.core)
+                api(libs.kotlinx.datetime)
                 api(libs.kotlinx.collections.immutable)
                 api(libs.kotlin.logging)
 
                 // Preferences
                 api(libs.room.runtime)
 
-                //implementation(libs.appdirs)
+                // Networking libs
                 api(libs.uri)
                 api(libs.ktor.utils)
-
-                api(libs.kotlinx.io.core)
 
                 implementation(libs.antlr.kotlin.runtime)
             }
@@ -116,7 +116,7 @@ dependencies {
 
 android {
     namespace = "warlockfe.warlock3.core"
-        compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
     }

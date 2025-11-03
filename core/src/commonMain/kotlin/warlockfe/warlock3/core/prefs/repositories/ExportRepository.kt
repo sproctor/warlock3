@@ -110,7 +110,7 @@ class ExportRepository(
                             meta = it.meta,
                         )
                     },
-                    names = nameDao.get,
+                    names = emptyList(),
                     presets = emptyList(),
                     windows = emptyList(),
                 )
