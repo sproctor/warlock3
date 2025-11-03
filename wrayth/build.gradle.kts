@@ -38,6 +38,17 @@ kotlin {
     jvm()
     androidTarget()
 
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "wrayth"
+            isStatic = true
+        }
+    }
+
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 
     applyDefaultHierarchyTemplate {
@@ -64,17 +75,27 @@ kotlin {
                 implementation(libs.kotlinx.serialization.core)
                 implementation(libs.xmlutil.serialization)
                 implementation(libs.antlr.kotlin.runtime)
-                implementation(libs.apache.commons.text)
-                // Dependencies that can be removed when api() bug is fixed
-                implementation(libs.kotlinx.collections.immutable)
-                implementation(libs.kotlin.logging)
-                implementation(libs.kotlinx.io.core)
+                implementation(libs.ktor.network)
+                implementation(libs.ktor.network.tls)
             }
         }
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+
+        val commonJvmAndroidMain by getting {
+            dependencies {
+                implementation(libs.apache.commons.text)
+            }
+        }
+    }
+
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.experimental.ExperimentalNativeApi")
+        freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 }
 

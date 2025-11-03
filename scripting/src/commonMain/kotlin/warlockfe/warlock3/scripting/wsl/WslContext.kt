@@ -9,32 +9,35 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.timeout
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.core.prefs.models.Highlight
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
+import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
-import java.io.File
-import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.incrementAndFetch
+import kotlin.concurrent.atomics.update
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.uuid.Uuid
 
 // TODO: generate constructor with a factory
 class WslContext(
@@ -49,6 +52,7 @@ class WslContext(
     private val nameRepository: NameRepositoryImpl,
     private val commandHandler: suspend (String) -> SendCommandType,
     private val soundPlayer: SoundPlayer,
+    private val fileSystem: FileSystem,
 ) {
 
     private val scriptVariables = CaseInsensitiveMap(
@@ -70,7 +74,7 @@ class WslContext(
     private var loggingLevel = 20
 
     private var maxTypeAhead = 2
-    private var typeAhead = AtomicInteger(0)
+    private val typeAhead = AtomicInt(0)
 
     private val navChannel = Channel<Unit>(0)
     private val promptChannel = Channel<Unit>(0)
@@ -80,7 +84,7 @@ class WslContext(
             .onEach { event ->
                 when (event) {
                     is ClientPromptEvent -> {
-                        typeAhead.getAndUpdate { max(0, it - 1) }
+                        typeAhead.update { max(0, it - 1) }
                         promptChannel.trySend(Unit)
                     }
 
@@ -198,12 +202,12 @@ class WslContext(
     }
 
     suspend fun sendCommand(command: String) {
-        while (typeAhead.get() >= maxTypeAhead) {
+        while (typeAhead.load() >= maxTypeAhead) {
             waitForPrompt()
         }
         val result = commandHandler(command)
         if (result == SendCommandType.COMMAND) {
-            typeAhead.incrementAndGet()
+            typeAhead.incrementAndFetch()
         }
         log(ScriptLoggingLevel.VERBOSE, "Sent: $command")
         if (result == SendCommandType.SCRIPT) {
@@ -349,7 +353,7 @@ class WslContext(
             highlightRepository.save(
                 characterId,
                 Highlight(
-                    id = UUID.randomUUID(),
+                    id = Uuid.random(),
                     pattern = pattern,
                     styles = mapOf(0 to style),
                     matchPartialWord = matchPartialWord,
@@ -372,7 +376,7 @@ class WslContext(
         characterId?.let { characterId ->
             nameRepository.save(
                 NameEntity(
-                    id = UUID.randomUUID(),
+                    id = Uuid.random(),
                     text = pattern,
                     textColor = textColor,
                     backgroundColor = backgroundColor,
@@ -405,9 +409,7 @@ class WslContext(
     }
 
     fun removeListener(name: String) {
-        listeners.removeIf { (varName, _) ->
-            varName == name
-        }
+        listeners.removeAll { (varName, _) -> varName == name }
     }
 
     fun clearListeners() {
@@ -419,8 +421,8 @@ class WslContext(
     }
 
     suspend fun playSound(name: String) {
-        val file = File(scriptInstance.file.parent, name)
-        val filename = if (file.exists()) file.absolutePath else name
+        val file = scriptInstance.file.parent?.let { Path(it, name) } ?: Path(name)
+        val filename = if (fileSystem.exists(file)) file.toString() else name
         val error = soundPlayer.playSound(filename)
         if (error == null) {
             echo("Playing sound: $name")

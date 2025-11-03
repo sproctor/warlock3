@@ -1,12 +1,12 @@
 package warlockfe.warlock3.core.script
 
-import java.io.File
+import kotlinx.io.files.Path
 
 interface WarlockScriptEngineRepository {
 
     suspend fun getScript(name: String, characterId: String, scriptManager: ScriptManager): ScriptLaunchResult
 
-    suspend fun getScript(file: File, scriptManager: ScriptManager): ScriptLaunchResult
+    suspend fun getScript(file: Path, scriptManager: ScriptManager): ScriptLaunchResult
 
     fun supportsExtension(extension: String): Boolean
 }

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.HighlightEntity
 import warlockfe.warlock3.core.prefs.models.HighlightStyleEntity
 import warlockfe.warlock3.core.prefs.models.PopulatedHighlight
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @Dao
 interface HighlightDao {
@@ -29,7 +29,7 @@ interface HighlightDao {
     suspend fun deleteByPattern(pattern: String, characterId: String)
 
     @Query("DELETE FROM Highlight WHERE id = :id")
-    suspend fun deleteById(id: UUID)
+    suspend fun deleteById(id: Uuid)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(highlight: HighlightEntity)

@@ -5,7 +5,7 @@ import warlockfe.warlock3.core.prefs.models.HighlightEntity
 import warlockfe.warlock3.core.prefs.models.HighlightStyleEntity
 import warlockfe.warlock3.core.prefs.models.PopulatedHighlight
 import warlockfe.warlock3.core.text.StyleDefinition
-import java.util.*
+import kotlin.uuid.Uuid
 
 fun Highlight.toEntity(characterId: String): HighlightEntity {
     return HighlightEntity(
@@ -19,7 +19,7 @@ fun Highlight.toEntity(characterId: String): HighlightEntity {
     )
 }
 
-fun Highlight.toStyleEntities(highlightId: UUID): List<HighlightStyleEntity> {
+fun Highlight.toStyleEntities(highlightId: Uuid): List<HighlightStyleEntity> {
     return styles.map { entry ->
         val style = entry.value
         HighlightStyleEntity(

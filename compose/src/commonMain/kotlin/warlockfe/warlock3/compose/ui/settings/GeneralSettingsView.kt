@@ -48,6 +48,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -63,7 +64,6 @@ import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
 import warlockfe.warlock3.core.prefs.repositories.scriptCommandPrefixKey
 import warlockfe.warlock3.core.util.LogType
 import warlockfe.warlock3.wrayth.settings.WraythImporter
-import java.io.File
 
 @Composable
 fun GeneralSettingsView(
@@ -94,7 +94,7 @@ fun GeneralSettingsView(
         ) { platformFile ->
             if (platformFile != null) {
                 scope.launch(NonCancellable) {
-                    if (!wraythImporter.importFile(currentCharacterId, File(platformFile.absolutePath()))) {
+                    if (!wraythImporter.importFile(currentCharacterId, Path(platformFile.absolutePath()))) {
                         showImportDialog = true
                     }
                 }
@@ -340,7 +340,7 @@ fun GeneralSettingsView(
             val skinFileLauncher = rememberFilePickerLauncher(
                 title = "Choose a skin file",
                 directory = currentSkin
-                    ?.takeIf { File(it).exists() }
+                    //?.takeIf { File(it).exists() }
                     ?.let { PlatformFile(it) }
             ) { file ->
                 if (file != null) {

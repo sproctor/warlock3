@@ -1,6 +1,7 @@
 package warlockfe.warlock3.scripting.js
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.util.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.files.Path
 import org.mozilla.javascript.Context
 import org.mozilla.javascript.EcmaError
 import org.mozilla.javascript.EvaluatorException
@@ -24,7 +26,6 @@ import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.util.toCaseInsensitiveMap
 import java.io.File
 import java.io.InputStreamReader
 import kotlin.concurrent.thread
@@ -33,7 +34,7 @@ import kotlin.reflect.jvm.javaMethod
 class JsInstance(
     override val id: Long,
     override val name: String,
-    private val file: File,
+    private val file: Path,
     private val variableRepository: VariableRepository,
     private val scriptManager: ScriptManager,
 ) : ScriptInstance {
@@ -70,7 +71,7 @@ class JsInstance(
             context.languageVersion = Context.VERSION_ES6
             try {
                 val jsScope = context.initStandardObjects()
-                val reader = InputStreamReader(file.inputStream())
+                val reader = InputStreamReader(File(file.toString()).inputStream())
                 jsScope.put(
                     "client",
                     jsScope,
@@ -87,8 +88,10 @@ class JsInstance(
                             variableRepository.observeCharacterVariables(id).map {
                                 logger.debug { "reloading variables $it" }
                                 it.associate { variable -> Pair(variable.name, variable.value) }
-                                    .toCaseInsensitiveMap()
-                                    .toMutableMap()
+                                    .let { entries ->
+                                        CaseInsensitiveMap<String>()
+                                            .apply { putAll(entries) }
+                                    }
                             }
                         } else {
                             flow<MutableMap<String, String>> {

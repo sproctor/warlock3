@@ -42,8 +42,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.CompassState
-import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.macros.macroCommands
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
@@ -89,7 +89,6 @@ import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
-import java.io.File
 import kotlin.math.max
 
 const val clientCommandPrefix = '/'
@@ -104,7 +103,6 @@ class GameViewModel(
     nameRepository: NameRepositoryImpl,
     presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
-    val compassTheme: CompassTheme,
     val characterSettingsRepository: CharacterSettingsRepository,
     private val alterationRepository: AlterationRepository,
     aliasRepository: AliasRepository,
@@ -571,7 +569,7 @@ class GameViewModel(
         }
     }
 
-    fun runScript(file: File) {
+    fun runScript(file: Path) {
         viewModelScope.launch(ioDispatcher) {
             scriptManager.startScript(client, file, ::commandHandler)
         }

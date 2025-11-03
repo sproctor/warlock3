@@ -51,7 +51,6 @@ import warlockfe.warlock3.wrayth.protocol.elements.SpellHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
-import java.util.LinkedList
 
 class WraythProtocolHandler {
 
@@ -127,14 +126,14 @@ class WraythProtocolHandler {
     private fun handleContent(contents: List<Content>): List<WraythEvent> {
         // open/close tags must occur on the same line
         var lineHasTags = false
-        val tagStack = LinkedList<String>()
-        val events = LinkedList<WraythEvent>()
+        val tagStack = ArrayDeque<String>()
+        val events = mutableListOf<WraythEvent>()
         for (content in contents) {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
                     val tagName = content.name.lowercase()
-                    tagStack.push(tagName)
+                    tagStack.addFirst(tagName)
                     val listener = elementListeners[tagName]
                     if (listener != null) {
                         listener.startElement(content)?.let {

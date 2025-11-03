@@ -7,20 +7,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.runBlocking
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import warlockfe.warlock3.compose.components.CompassTheme
-import warlockfe.warlock3.compose.generated.resources.Res
+import kotlinx.io.files.FileSystem
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
-import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
-import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MySQLiteDriver
@@ -52,14 +47,13 @@ import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
-import java.io.StringReader
-import java.util.*
 
 abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    fileSystem: FileSystem,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
@@ -104,29 +98,21 @@ abstract class AppContainer(
             database.alterationDao(),
         )
 
-    @OptIn(ExperimentalResourceApi::class)
-    val themeProperties = Properties().apply {
-        val themeText = runBlocking { Res.readBytes("files/theme.properties").decodeToString() }
-        load(StringReader(themeText))
-    }
-    val compassTheme: CompassTheme = loadCompassTheme(themeProperties)
     abstract val scriptEngineRepository: WarlockScriptEngineRepository
     abstract val scriptManagerFactory: ScriptManagerFactory
-
-    abstract val warlockSocketFactory: WarlockSocketFactory
 
     abstract val soundPlayer: SoundPlayer
 
     val wraythImporter = WraythImporter(
         highlightRepository = highlightRepository,
         nameRepository = nameRepository,
+        fileSystem = fileSystem,
     )
 
     val gameViewModelFactory by lazy {
         GameViewModelFactory(
             macroRepository = macroRepository,
             variableRepository = variableRepository,
-            compassTheme = compassTheme,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
             presetRepository = presetRepository,
@@ -195,7 +181,6 @@ abstract class AppContainer(
             warlockClientFactory = warlockClientFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
-            warlockSocketFactory = warlockSocketFactory,
             warlockProxyFactory = warlockProxyFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
@@ -212,7 +197,6 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
-            warlockSocketFactory = warlockSocketFactory,
             ioDispatcher = ioDispatcher,
         )
     }

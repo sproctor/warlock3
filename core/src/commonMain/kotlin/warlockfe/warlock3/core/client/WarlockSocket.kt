@@ -4,8 +4,9 @@ interface WarlockSocket {
 
     val isClosed: Boolean
 
+    suspend fun connect(host: String, port: Int)
     suspend fun readLine(): String?
-    suspend fun read(): Int
+    suspend fun readAvailable(min: Int = 1): String
     fun ready(): Boolean
     suspend fun write(text: String)
     fun close()

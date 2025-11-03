@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import kotlinx.coroutines.runBlocking
+import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.android.di.AndroidAppContainer
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
@@ -27,7 +28,7 @@ class WarlockApplication : Application() {
         )
         configDir.mkdirs()
         val database = getPrefsDatabaseBuilder(getDatabasePath("prefs.db").absolutePath)
-        appContainer = AndroidAppContainer(database, warlockDirs)
+        appContainer = AndroidAppContainer(database, warlockDirs, SystemFileSystem)
         runBlocking {
             appContainer.macroRepository.insertDefaultMacrosIfNeeded()
         }

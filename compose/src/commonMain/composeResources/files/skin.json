@@ -199,5 +199,57 @@
       "type": "image/png",
       "data": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAAd0SU1FB9oECxEeFxeGx3cAAADvSURBVDjLY/z//z8DJYAFl8Q7WVUMk4Ue32ZEF2NEdwE2jfgMQjEAofkrQ9GT5wwLkTSZCsgz7OBhxTAEbgCKzT9eMQi/+YRhMzZDmHA5M15EheGtjArDWxl5hlY2iNjp37+wByKGvznEGPqwGGrKyoYRXjhjYc/7OwzhX3E7HwaYiI3v0x/eM+zBIs74//9/AlH3m2HGq4cM1b8YGBjYRBjOiAkwKJLmAlaGDD4+CPPXL4a72LyAnsL2vH+F4tw936FRysbGoIyWoHAE4ieG8CeY6SCeD9X5KF5AdoUyKwfWdNHHwYA7JVIlL5CTGwG6/mkATIxTAAAAAABJRU5ErkJgggo="
     }
+  },
+  "compass": {
+    "children": {
+      "background_image": {
+        "type": "image/png",
+        "resource": "compass_main.png"
+      },
+      "north": {
+        "left": 23,
+        "top": -2
+      },
+      "northeast": {
+        "left": 39,
+        "top": 6
+      },
+      "east": {
+        "left": 47,
+        "top": 22
+      },
+      "southeast": {
+        "left": 39,
+        "top": 39
+      },
+      "south": {
+        "left": 23,
+        "top": 47
+      },
+      "southwest": {
+        "left": 6,
+        "top": 39
+      },
+      "west": {
+        "left": -1,
+        "top": 23
+      },
+      "northwest": {
+        "left": 6,
+        "top": 6
+      },
+      "up": {
+        "left": 23,
+        "top": 13
+      },
+      "down": {
+        "left": 23,
+        "top": 32
+      },
+      "out": {
+        "left": 23,
+        "top": 23
+      }
+    }
   }
 }

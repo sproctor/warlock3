@@ -2,7 +2,7 @@ package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.Highlight
-import java.util.*
+import kotlin.uuid.Uuid
 
 interface HighlightRepository {
     fun observeGlobal(): Flow<List<Highlight>>
@@ -17,5 +17,5 @@ interface HighlightRepository {
 
     suspend fun deleteByPattern(characterId: String, pattern: String)
 
-    suspend fun deleteById(id: UUID)
+    suspend fun deleteById(id: Uuid)
 }

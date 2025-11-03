@@ -10,9 +10,10 @@ import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.window.Window
-import java.io.File
 
 @Composable
 fun FrameWindowScope.AppMenuBar(
@@ -20,7 +21,7 @@ fun FrameWindowScope.AppMenuBar(
     windows: List<Window>,
     openWindows: Set<String>,
     scriptDirectory: String?,
-    runScript: (File) -> Unit,
+    runScript: (Path) -> Unit,
     newWindow: () -> Unit,
     showSettings: () -> Unit,
     showUpdateDialog: () -> Unit,
@@ -36,7 +37,7 @@ fun FrameWindowScope.AppMenuBar(
         directory = scriptDirectory?.let { PlatformFile(it) },
     ) { file ->
         if (file != null) {
-            runScript(file.file)
+            runScript(file.file.toKotlinxIoPath())
         }
     }
     MenuBar {

@@ -1,3 +1,4 @@
+import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 import kotlin.test.Test
@@ -133,6 +134,7 @@ class WraythSettingsTests {
         val importer = WraythImporter(
             highlightRepository = FakeHighlightRepository(),
             nameRepository = FakeNameRepository(),
+            fileSystem = SystemFileSystem,
         )
         val wraythSettings = importer.importString(exampleXml)
         val settings = importer.translateSettings(wraythSettings, "test")

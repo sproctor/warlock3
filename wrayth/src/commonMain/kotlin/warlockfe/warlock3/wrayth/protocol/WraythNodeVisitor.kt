@@ -2,8 +2,7 @@ package warlockfe.warlock3.wrayth.protocol
 
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParserBaseVisitor
-import org.apache.commons.text.StringEscapeUtils
-import java.util.*
+import warlockfe.warlock3.wrayth.util.unescapeXml
 
 object WraythNodeVisitor : WraythParserBaseVisitor<List<Content>>() {
     override fun visitDocument(ctx: WraythParser.DocumentContext): List<Content> {
@@ -14,7 +13,7 @@ object WraythNodeVisitor : WraythParserBaseVisitor<List<Content>>() {
         if (ctx.children == null) {
             return emptyList()
         }
-        val result = LinkedList<Content>()
+        val result = mutableListOf<Content>()
         for (child in ctx.children) {
             val content = visit(child)
             result.addAll(content)
@@ -41,7 +40,7 @@ object WraythNodeVisitor : WraythParserBaseVisitor<List<Content>>() {
 
     override fun visitReference(ctx: WraythParser.ReferenceContext): List<Content> {
         val ref = ctx.EntityRef()?.text ?: ctx.CharRef()?.text ?: return emptyList()
-        return listOf(CharData(StringEscapeUtils.unescapeXml(ref)))
+        return listOf(CharData(unescapeXml(ref)))
     }
 
     private fun getAttributes(contextList: List<WraythParser.AttributeContext>): Map<String, String> {

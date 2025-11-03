@@ -15,14 +15,14 @@ import warlockfe.warlock3.compose.generated.resources.southeast_on
 import warlockfe.warlock3.compose.generated.resources.southwest_on
 import warlockfe.warlock3.compose.generated.resources.up_on
 import warlockfe.warlock3.compose.generated.resources.west_on
+import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.core.compass.DirectionType
-import java.util.*
 
-fun loadCompassTheme(themeProperties: Properties): CompassTheme {
-
+fun loadCompassTheme(skin: Map<String, SkinObject>): CompassTheme {
+    val compassTheme = skin["compass"]
     val directions = DirectionType.entries.associateWith { direction ->
-        val xy = themeProperties.getProperty("position.${direction.value}").split(",")
-        val position = Pair(xy[0].toInt(), xy[1].toInt())
+        val skinObject = compassTheme?.children?.get(direction.value)
+        val position = Pair(skinObject?.left ?: 0, skinObject?.top ?: 0)
         val image = when (direction) {
             DirectionType.North -> Res.drawable.north_on
             DirectionType.Northwest -> Res.drawable.northwest_on
@@ -45,7 +45,6 @@ fun loadCompassTheme(themeProperties: Properties): CompassTheme {
     }
     return CompassTheme(
         background = Res.drawable.compass_main,
-        description = themeProperties.getProperty("theme.description", ""),
         directions = directions
     )
 }

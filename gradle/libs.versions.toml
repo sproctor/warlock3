@@ -48,14 +48,17 @@ kotlin = "2.2.21"
 kotlin-logging = "7.0.13"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
+kotlinx-datetime = "0.7.1"
 kotlinx-io = "0.8.0"
 kotlinx-serialization = "1.9.0"
 ksp = "2.3.0"
+ktor = "3.3.1"
 rhino = "1.8.0"
 room = "2.8.3"
 sentryKotlin = "0.19.0"
 slf4j = "2.0.17"
 slf4jAndroid = "2.0.17-0"
+uri = "0.0.21"
 xmlutil = "0.91.3"
 
 compileSdk = "36"
@@ -88,9 +91,13 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
+ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
+ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
@@ -99,4 +106,5 @@ slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version.ref = "slf4jAn
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
+uri = { module = "com.eygraber:uri-kmp", version.ref = "uri" }
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }

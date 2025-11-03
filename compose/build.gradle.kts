@@ -1,3 +1,7 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose)
@@ -15,6 +19,27 @@ kotlin {
 //        minSdk = libs.versions.minSdk.get().toInt()
 //        androidResources.enable = true
 //    }
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "core"
+            isStatic = true
+        }
+    }
+
+    applyDefaultHierarchyTemplate {
+        common {
+            group("commonJvmAndroid") {
+                withJvm()
+                withAndroidTarget()
+                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
+                //withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+            }
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -30,7 +55,7 @@ kotlin {
             implementation(compose.components.resources)
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.constraintlayout)
-            implementation(compose.uiTooling)
+            //implementation(compose.uiTooling)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.fastscroller.m3)
 
@@ -41,10 +66,8 @@ kotlin {
             // Other stuff
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.sqlite.bundled)
-            implementation(libs.appdirs)
+            //implementation(libs.appdirs)
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.okhttp)
-            implementation(libs.autolink)
             implementation(libs.room.runtime)
             implementation(libs.kotlin.logging)
         }
@@ -53,11 +76,21 @@ kotlin {
 //            implementation(libs.kotlinx.coroutines.test)
 //            implementation(libs.turbine)
         }
+
+        val commonJvmAndroidMain by getting {
+            dependencies {
+                implementation(libs.coil.network.okhttp)
+                implementation(libs.autolink)
+            }
+        }
     }
 
     jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
 
     compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.experimental.ExperimentalNativeApi")
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 }

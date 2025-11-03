@@ -7,7 +7,7 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.AliasDao
 import warlockfe.warlock3.core.prefs.models.AliasEntity
 import warlockfe.warlock3.core.text.Alias
-import java.util.*
+import kotlin.uuid.Uuid
 
 class AliasRepository(
     private val aliasDao: AliasDao,
@@ -35,7 +35,7 @@ class AliasRepository(
         }
     }
 
-    suspend fun deleteById(id: UUID) {
+    suspend fun deleteById(id: Uuid) {
         withContext(NonCancellable) {
             aliasDao.delete(id)
         }

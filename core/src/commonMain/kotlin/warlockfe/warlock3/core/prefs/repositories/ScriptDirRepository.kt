@@ -3,10 +3,10 @@ package warlockfe.warlock3.core.prefs.repositories
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.util.WarlockDirs
-import java.io.File
 
 class ScriptDirRepository(
     private val scriptDirDao: ScriptDirDao,
@@ -22,7 +22,7 @@ class ScriptDirRepository(
     }
 
     fun getDefaultDir(): String {
-        return File(warlockDirs.dataDir, "scripts").absolutePath
+        return Path(warlockDirs.dataDir, "scripts").toString()
     }
 
     suspend fun save(characterId: String, path: String) {

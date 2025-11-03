@@ -1,7 +1,7 @@
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 class FakeNameRepository : NameRepository {
     override fun observeGlobal(): Flow<List<NameEntity>> {
@@ -24,7 +24,7 @@ class FakeNameRepository : NameRepository {
         TODO("Not yet implemented")
     }
 
-    override suspend fun deleteById(id: UUID) {
+    override suspend fun deleteById(id: Uuid) {
         TODO("Not yet implemented")
     }
 }

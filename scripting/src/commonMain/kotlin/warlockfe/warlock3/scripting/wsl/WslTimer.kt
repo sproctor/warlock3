@@ -2,11 +2,12 @@ package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
+import kotlin.time.Clock
 
 class WslTimer : WslNumeric() {
-    private val startTime = System.currentTimeMillis()
+    private val startTime = Clock.System.now().toEpochMilliseconds()
 
     override fun toNumber(): BigDecimal {
-        return ((System.currentTimeMillis() - startTime) / 1000L).toBigDecimal()
+        return ((Clock.System.now().toEpochMilliseconds() - startTime) / 1000L).toBigDecimal()
     }
 }

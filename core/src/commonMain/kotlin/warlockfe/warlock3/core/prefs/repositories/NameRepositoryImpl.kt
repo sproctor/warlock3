@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.NameDao
 import warlockfe.warlock3.core.prefs.models.NameEntity
-import java.util.*
+import kotlin.uuid.Uuid
 
 class NameRepositoryImpl(
     private val nameDao: NameDao,
@@ -34,7 +34,7 @@ class NameRepositoryImpl(
         }
     }
 
-    override suspend fun deleteById(id: UUID) {
+    override suspend fun deleteById(id: Uuid) {
         withContext(NonCancellable) {
             nameDao.deleteById(id)
         }

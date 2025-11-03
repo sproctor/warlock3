@@ -3,8 +3,7 @@ package warlockfe.warlock3.core.prefs.adapters
 import androidx.room.TypeConverter
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
-import java.nio.ByteBuffer
-import java.util.*
+import kotlin.uuid.Uuid
 
 class DatabaseConverters {
     @TypeConverter
@@ -18,23 +17,13 @@ class DatabaseConverters {
     }
 
     @TypeConverter
-    fun toUUID(databaseValue: ByteArray): UUID {
-        val byteBuffer = ByteBuffer.wrap(databaseValue)
-        val high = byteBuffer.long
-        val low = byteBuffer.long
-        return UUID(high, low)
+    fun toUuid(databaseValue: ByteArray): Uuid {
+        return Uuid.fromByteArray(databaseValue)
     }
 
     @TypeConverter
-    fun fromUUID(value: UUID): ByteArray {
+    fun fromUUID(value: Uuid): ByteArray {
         return value.toByteArray()
-    }
-
-    private fun UUID.toByteArray(): ByteArray {
-        val buffer = ByteBuffer.wrap(ByteArray(16))
-        buffer.putLong(mostSignificantBits)
-        buffer.putLong(leastSignificantBits)
-        return buffer.array()
     }
 
     @TypeConverter

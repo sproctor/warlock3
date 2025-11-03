@@ -63,7 +63,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.text.toHexString
 import warlockfe.warlock3.core.util.toWarlockColor
-import java.util.*
+import kotlin.uuid.Uuid
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
@@ -132,7 +132,7 @@ fun HighlightsView(
         ) {
             IconButton(onClick = {
                 editingHighlight = Highlight(
-                    id = UUID.randomUUID(),
+                    id = Uuid.random(),
                     pattern = "",
                     styles = emptyMap(),
                     isRegex = false,

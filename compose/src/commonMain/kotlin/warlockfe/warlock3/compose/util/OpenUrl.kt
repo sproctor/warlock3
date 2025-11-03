@@ -1,5 +1,5 @@
 package warlockfe.warlock3.compose.util
 
-import java.net.URI
+import com.eygraber.uri.Uri
 
-expect fun openUrl(url: URI)
+expect fun openUrl(url: Uri)

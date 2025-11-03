@@ -1,6 +1,11 @@
 package warlockfe.warlock3.wrayth.network
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.network.selector.*
+import io.ktor.network.sockets.*
+import io.ktor.network.tls.*
+import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -17,22 +22,11 @@ import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.OutputStream
-import java.lang.Integer.min
-import java.net.Socket
-import java.nio.charset.Charset
-import java.security.KeyStore
-import java.security.SecureRandom
-import java.security.cert.CertificateFactory
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.TrustManagerFactory
+import warlockfe.warlock3.core.util.decodeWindows1252
+import warlockfe.warlock3.core.util.encodeWindows1252
+import warlockfe.warlock3.wrayth.util.configureTLS
+import kotlin.math.min
 
-private const val charsetName = "windows-1252"
-private val charset = Charset.forName(charsetName)
 private const val passwordHashLength = 32
 
 class SgeClientImpl(
@@ -40,10 +34,10 @@ class SgeClientImpl(
 ) : SgeClient {
 
     private val logger = KotlinLogging.logger {}
+    val selectorManager: SelectorManager = SelectorManager()
     private var socket: Socket? = null
-    private lateinit var outputStream: OutputStream
-    private lateinit var inputStream: InputStream
-    private var reader: BufferedReader? = null
+    private lateinit var receiveChannel: ByteReadChannel
+    private lateinit var sendChannel: ByteWriteChannel
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
     override val eventFlow = _eventFlow.asSharedFlow()
     private val buffer = ByteArray(8192)
@@ -61,34 +55,23 @@ class SgeClientImpl(
 
                 val socket: Socket
                 if (secure) {
-                    // Add certificate to key store
-                    val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
-                    keyStore.load(null)
-                    val certFactory = CertificateFactory.getInstance("X.509")
-                    val cert = certFactory.generateCertificate(settings.certificate.inputStream())
-                    keyStore.setCertificateEntry("ca", cert)
-                    val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-                    trustManagerFactory.init(keyStore)
-
-                    // Create socket factory
-                    val sslContext = SSLContext.getInstance("TLS")
-                    sslContext.init(null, trustManagerFactory.trustManagers, SecureRandom())
-
-                    val sslSocket = sslContext.socketFactory.createSocket(settings.host, settings.port) as SSLSocket
-                    sslSocket.startHandshake()
-                    socket = sslSocket
+                    socket = aSocket(selectorManager)
+                        .tcp()
+                        .connect(settings.host, settings.port)
+                        .tls(coroutineContext = scope.coroutineContext) {
+                            configureTLS(settings.certificate)
+                        }
                 } else {
-                    socket = Socket(settings.host, settings.port)
+                    socket = aSocket(selectorManager).tcp().connect(settings.host, settings.port)
                 }
                 this@SgeClientImpl.socket = socket
-                outputStream = socket.outputStream
-                inputStream = socket.inputStream
-                reader = BufferedReader(InputStreamReader(inputStream))
+                receiveChannel = socket.openReadChannel()
+                sendChannel = socket.openWriteChannel(autoFlush = true)
 
                 // request password hash
                 send("K\n")
 
-                val hashLength = inputStream.read(buffer)
+                val hashLength = receiveChannel.readAvailable(buffer)
                 if (hashLength <= 0) {
                     logger.error { "Error reading password hash" }
                     return@withContext false
@@ -225,39 +208,34 @@ class SgeClientImpl(
         }
     }
 
-    private fun readline(): String? {
-        return if (secure) {
-            val len = inputStream.read(buffer)
-            if (len > 0) {
-                buffer.decodeToString(0, len)
-            } else {
-                null
-            }
+    private suspend fun readline(): String? {
+        // TODO: should we implement readline for this?
+        val len = receiveChannel.readAvailable(buffer)
+        return if (len > 0) {
+            buffer.decodeWindows1252(0, len)
         } else {
-            reader?.readLine()
+            null
         }
     }
 
     private suspend fun send(string: String) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: $string" }
-            outputStream.write(string.toByteArray(charset))
-            outputStream.flush()
+            sendChannel.writeByteArray(string.encodeWindows1252())
         }
     }
 
     private suspend fun send(bytes: ByteArray) {
         withContext(ioDispatcher) {
             logger.debug { "SGE send: ${bytes.decodeToString()}" }
-            outputStream.write(bytes)
-            outputStream.flush()
+            sendChannel.writeByteArray(bytes)
         }
     }
 
     override suspend fun login(username: String, password: String) {
         this@SgeClientImpl.username = username
-        val encryptedPassword = encryptPassword(password.toByteArray(Charsets.US_ASCII))
-        val output = "A\t$username\t".toByteArray(Charsets.US_ASCII) + encryptedPassword + '\n'.code.toByte()
+        val encryptedPassword = encryptPassword(password.encodeWindows1252())
+        val output = "A\t$username\t".encodeWindows1252() + encryptedPassword + '\n'.code.toByte()
         send(output)
     }
 

@@ -1,22 +1,19 @@
 package warlockfe.warlock3.scripting
 
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.script.ScriptLaunchResult
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
-import warlockfe.warlock3.scripting.js.JsEngineFactory
-import warlockfe.warlock3.scripting.wsl.WslEngineFactory
-import java.io.File
+import warlockfe.warlock3.scripting.util.extension
+import warlockfe.warlock3.scripting.util.nameWithoutExtension
 
 class WarlockScriptEngineRepositoryImpl(
-    wslEngineFactory: WslEngineFactory,
-    jsEngineFactory: JsEngineFactory,
+    private val engines: List<WarlockScriptEngine>,
+    private val fileSystem: FileSystem,
     private val scriptDirRepository: ScriptDirRepository,
 ) : WarlockScriptEngineRepository {
-    private val engines = listOf(
-        wslEngineFactory.create(),
-        jsEngineFactory.create(),
-    )
 
     private var nextId = 0L
 
@@ -25,17 +22,19 @@ class WarlockScriptEngineRepositoryImpl(
         characterId: String,
         scriptManager: ScriptManager
     ): ScriptLaunchResult {
-        val matchedFiles = mutableListOf<Pair<WarlockScriptEngine, File>>()
+        val matchedFiles = mutableListOf<Pair<WarlockScriptEngine, Path>>()
         for (engine in engines) {
             for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
-                File(scriptDir)
-                    .listFiles { file ->
-                        engine.extensions.any { file.extension.equals(it, ignoreCase = true) } &&
-                                (file.nameWithoutExtension.equals(name, ignoreCase = true)
-                                        || file.name.equals(name, ignoreCase = true))
+                fileSystem.list(Path(scriptDir))
+                    .filter { file ->
+                        engine.extensions.any { extension ->
+                            file.name.endsWith(extension, ignoreCase = true) &&
+                                    (file.nameWithoutExtension.equals(file.name, ignoreCase = true)
+                                            || name.equals(file.name, ignoreCase = true))
+                        }
                     }
-                    ?.map { engine to it }
-                    ?.let { matchedFiles.addAll(it) }
+                    .map { engine to it }
+                    .let { matchedFiles.addAll(it) }
             }
         }
         return if (matchedFiles.isNotEmpty()) {
@@ -52,8 +51,8 @@ class WarlockScriptEngineRepositoryImpl(
         }
     }
 
-    override suspend fun getScript(file: File, scriptManager: ScriptManager): ScriptLaunchResult {
-        return if (file.exists()) {
+    override suspend fun getScript(file: Path, scriptManager: ScriptManager): ScriptLaunchResult {
+        return if (fileSystem.exists(file)) {
             val engine = getEngineForExtension(file.extension)
                 ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
             ScriptLaunchResult.Success(engine.createInstance(nextId++, file.name, file, scriptManager))

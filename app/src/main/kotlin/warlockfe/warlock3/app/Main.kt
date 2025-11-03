@@ -53,6 +53,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -62,17 +63,17 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.keyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
-import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.io.File
-import java.net.Socket
 import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
@@ -130,7 +131,7 @@ private class WarlockCommand : CliktCommand() {
         println("Loading preferences from ${dbFile.absolutePath}")
         val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
 
-        val appContainer = JvmAppContainer(databaseBuilder, warlockDirs)
+        val appContainer = JvmAppContainer(databaseBuilder, warlockDirs, SystemFileSystem)
 
         val json = Json {
             ignoreUnknownKeys = true
@@ -187,7 +188,10 @@ private class WarlockCommand : CliktCommand() {
                                 }
                                 WarlockStreamSocket(file.inputStream())
                             } else {
-                                appContainer.warlockSocketFactory.create(credentials!!.host, credentials.port)
+                                NetworkSocket(Dispatchers.IO)
+                                    .also { socket ->
+                                        socket.connect(credentials!!.host, credentials.port)
+                                    }
                             }
                             val client = appContainer.warlockClientFactory.createClient(
                                 windowRepository = windowRepository,

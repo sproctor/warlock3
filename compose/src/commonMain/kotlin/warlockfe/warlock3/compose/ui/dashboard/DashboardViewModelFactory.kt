@@ -6,7 +6,6 @@ import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
-import warlockfe.warlock3.core.client.WarlockSocketFactory
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
@@ -22,7 +21,6 @@ class DashboardViewModelFactory(
     private val warlockClientFactory: WarlockClientFactory,
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
-    private val warlockSocketFactory: WarlockSocketFactory,
     private val warlockProxyFactory: WarlockProxy.Factory,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
@@ -43,7 +41,6 @@ class DashboardViewModelFactory(
             streamRegistryFactory = streamRegistryFactory,
             dirs = dirs,
             ioDispatcher = ioDispatcher,
-            warlockSocketFactory = warlockSocketFactory,
             warlockProxyFactory = warlockProxyFactory,
         )
     }

@@ -1,7 +1,7 @@
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 class FakeHighlightRepository : HighlightRepository {
     override fun observeGlobal(): Flow<List<Highlight>> {
@@ -28,7 +28,7 @@ class FakeHighlightRepository : HighlightRepository {
         TODO("Not yet implemented")
     }
 
-    override suspend fun deleteById(id: UUID) {
+    override suspend fun deleteById(id: Uuid) {
         TODO("Not yet implemented")
     }
 }
