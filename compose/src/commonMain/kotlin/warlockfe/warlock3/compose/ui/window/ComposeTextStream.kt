@@ -51,7 +51,7 @@ class ComposeTextStream(
 
     private var partialLine: StyledString? = null
 
-    private val componentLocations = mutableMapOf<String, List<Long>>()
+    private val componentLocations = mutableMapOf<String, Set<Long>>()
 
     var actionHandler: ((WarlockAction) -> Unit)? = null
 
@@ -64,16 +64,21 @@ class ComposeTextStream(
     override suspend fun appendPartialAndEol(text: StyledString) {
         withContext(mainDispatcher) {
             doAppendPartial(text)
-            doAppendLine(partialLine!!, ignoreWhenBlank = false)
             partialLine = null
         }
     }
 
-    private fun doAppendPartial(text: StyledString) {
+    private suspend fun doAppendPartial(text: StyledString) {
         if (partialLine == null) {
             partialLine = text
+            doAppendLine(text = text, ignoreWhenBlank = false)
         } else {
+            val serialNumber = lines.last().serialNumber
             partialLine = partialLine!! + text
+            addComponentLocations(text, serialNumber)
+            val cachedLine = styledStringToCachedLine(partialLine!!, ignoreWhenBlank = false)
+            cacheLines[cacheLines.lastIndex] = cachedLine
+            lines[lines.lastIndex] = cachedLineToStreamLine(cachedLine, serialNumber)
         }
     }
 
@@ -93,10 +98,7 @@ class ComposeTextStream(
         // It's possible a component is added that is set prior
         // I don't think this happens in DR, so it's probably OK that we don't handle that case.
         withContext(mainDispatcher) {
-            if (partialLine != null) {
-                doAppendLine(partialLine!!, ignoreWhenBlank = false)
-                partialLine = null
-            }
+            partialLine = null
             doAppendLine(text, ignoreWhenBlank)
         }
     }
@@ -104,29 +106,28 @@ class ComposeTextStream(
     // Must be called from main thread
     private suspend fun doAppendLine(text: StyledString, ignoreWhenBlank: Boolean) {
         removeLines()
+        val serialNumber = nextSerialNumber++
+        addComponentLocations(text, serialNumber)
+        val cachedLine = styledStringToCachedLine(text, ignoreWhenBlank)
+        cacheLines.add(cachedLine)
+        val line = cachedLineToStreamLine(cachedLine, serialNumber)
+        lines.add(line)
+        line.text?.let { playSound(it.text) }
+    }
+
+    private fun addComponentLocations(text: StyledString, serialNumber: Long) {
         text.getComponents().forEach { name ->
-            val existingLocations = componentLocations[name] ?: emptyList()
-            componentLocations[name] = existingLocations + nextSerialNumber
+            val existingLocations = componentLocations[name] ?: emptySet()
+            componentLocations[name] = existingLocations + serialNumber
         }
-        val cachedLine = CachedLine(
+    }
+
+    private fun styledStringToCachedLine(text: StyledString, ignoreWhenBlank: Boolean): CachedLine {
+        return CachedLine(
             text = text,
             timestamp = if (windows.value[id]?.showTimestamps ?: false) Clock.System.now() else null,
             ignoreWhenBlank = ignoreWhenBlank,
         )
-        cacheLines.add(cachedLine)
-        val line = cachedLine.toStreamLine(
-            serialNumber = nextSerialNumber++,
-            highlights = highlights.value,
-            alterations = alterations.value,
-            presets = presets.value,
-            components = components,
-            actionHandler = { action ->
-                actionHandler?.invoke(action)
-            },
-            markLinks = markLinks,
-        )
-        lines.add(line)
-        line.text?.let { playSound(it.text) }
     }
 
     private fun removeLines() {
@@ -172,18 +173,22 @@ class ComposeTextStream(
         val cachedLine = cacheLines[lineNumber.toInt()]
         if (cachedLine != null) {
             val line = lines[lineNumber.toInt()]
-            lines[lineNumber.toInt()] = cachedLine.toStreamLine(
-                serialNumber = line.serialNumber,
-                highlights = highlights.value,
-                alterations = alterations.value,
-                presets = presets.value,
-                components = components,
-                actionHandler = { action ->
-                    actionHandler?.invoke(action)
-                },
-                markLinks = markLinks,
-            )
+            lines[lineNumber.toInt()] = cachedLineToStreamLine(cachedLine, line.serialNumber)
         }
+    }
+
+    private fun cachedLineToStreamLine(cachedLine: CachedLine, serialNumber: Long): StreamTextLine {
+        return cachedLine.toStreamLine(
+            serialNumber = serialNumber,
+            highlights = highlights.value,
+            alterations = alterations.value,
+            presets = presets.value,
+            components = components,
+            actionHandler = { action ->
+                actionHandler?.invoke(action)
+            },
+            markLinks = markLinks,
+        )
     }
 
     private suspend fun playSound(line: String) {

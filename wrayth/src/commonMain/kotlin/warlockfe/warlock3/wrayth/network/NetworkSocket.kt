@@ -5,7 +5,6 @@ import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.charsets.*
-import io.ktor.utils.io.core.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.io.Buffer
 import kotlinx.io.UnsafeIoApi
@@ -38,11 +37,9 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
     }
 
     override suspend fun readLine(): String? {
-        logger.debug { "Reading line" }
         val result = StringBuilder()
         val completed = readWindows1252LineTo(result)
-        logger.debug { "Completed line: $completed" }
-        return if (!completed) null else result.toString().also { logger.debug { "read line: $it" } }
+        return if (!completed) null else result.toString()
     }
 
     private suspend fun readWindows1252LineTo(
@@ -59,12 +56,10 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
                     while (!exhausted()) {
                         when (val b = readByte()) {
                             CR -> {
-                                logger.debug { "got CR" }
                                 // Check if LF follows CR after awaiting
                                 awaitContent()
                                 val nextByte = peek(1) ?: return true
                                 if (nextByte[0] == LF) {
-                                    logger.debug { "got following LF" }
                                     discard(1)
                                 }
                                 out.append(lineBuffer.readString())
@@ -72,7 +67,6 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
                             }
 
                             LF -> {
-                                logger.debug { "got LF" }
                                 out.append(lineBuffer.readString())
                                 return true
                             }
@@ -98,10 +92,8 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
 
     override suspend fun readAvailable(min: Int): String {
         check(socket != null)
-        logger.debug { "Reading available" }
         receiveChannel.awaitContent(min)
         val len = receiveChannel.readAvailable(buffer)
-        logger.debug { "read available: $len" }
         return buffer.decodeWindows1252(0, len)
     }
 
