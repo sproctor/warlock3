@@ -680,6 +680,9 @@ class WraythClient(
             isPrompting = false
         }
         doIfClosed(actualStream) { targetStream ->
+            if (targetStream.isMainStream) {
+                isPrompting = false
+            }
             val style = windows[actualStream.id]?.styleIfClosed
             targetStream.appendLine(
                 text = style?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
