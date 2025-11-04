@@ -25,16 +25,19 @@ class WarlockScriptEngineRepositoryImpl(
         val matchedFiles = mutableListOf<Pair<WarlockScriptEngine, Path>>()
         for (engine in engines) {
             for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
-                fileSystem.list(Path(scriptDir))
-                    .filter { file ->
-                        engine.extensions.any { extension ->
-                            file.name.endsWith(extension, ignoreCase = true) &&
-                                    (file.nameWithoutExtension.equals(file.name, ignoreCase = true)
-                                            || name.equals(file.name, ignoreCase = true))
+                if (fileSystem.exists(scriptDir)) {
+                    fileSystem.list(scriptDir)
+                        .filter { file ->
+                            engine.extensions.any { extension ->
+                                file.extension.equals(extension, ignoreCase = true) &&
+                                        (file.nameWithoutExtension.equals(name, ignoreCase = true)
+                                                || file.name.equals(name, ignoreCase = true))
+                            }
                         }
-                    }
-                    .map { engine to it }
-                    .let { matchedFiles.addAll(it) }
+                        .forEach {
+                            matchedFiles.add(engine to it)
+                        }
+                }
             }
         }
         return if (matchedFiles.isNotEmpty()) {

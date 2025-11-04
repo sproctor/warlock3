@@ -16,9 +16,9 @@ class ScriptDirRepository(
         return scriptDirDao.observeByCharacter(characterId)
     }
 
-    suspend fun getMappedScriptDirs(characterId: String): List<String> {
+    suspend fun getMappedScriptDirs(characterId: String): List<Path> {
         return (scriptDirDao.getByCharacterWithGlobal(characterId) + getDefaultDir())
-            .toSet().toList()
+            .toSet().map { Path(it) }
     }
 
     fun getDefaultDir(): String {
