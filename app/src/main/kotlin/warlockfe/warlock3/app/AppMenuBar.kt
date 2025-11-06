@@ -11,7 +11,6 @@ import androidx.compose.ui.window.MenuBar
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
-import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import warlockfe.warlock3.core.window.Window
 
@@ -31,7 +30,6 @@ fun FrameWindowScope.AppMenuBar(
     warlockVersion: String,
 ) {
     var showAbout by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val scriptFilePickerLauncher = rememberFilePickerLauncher(
         title = "Run script",
         directory = scriptDirectory?.let { PlatformFile(it) },
@@ -68,7 +66,7 @@ fun FrameWindowScope.AppMenuBar(
 
         Menu(
             text = "Windows",
-            enabled = windows.isNotEmpty(),
+            enabled = windows.isNotEmpty() || isRunningOnMac(),
         ) {
             windows.sortedBy { it.title }.forEach { window ->
                 CheckboxItem(
@@ -89,13 +87,15 @@ fun FrameWindowScope.AppMenuBar(
                 showUpdateDialog()
             }
             Item("About") {
-                scope.launch {
-                    showAbout = true
-                }
+                showAbout = true
             }
         }
     }
     if (showAbout) {
         AboutDialog(warlockVersion) { showAbout = false }
     }
+}
+
+private fun isRunningOnMac(): Boolean {
+    return System.getProperty("os.name").contains("mac", ignoreCase = true)
 }
