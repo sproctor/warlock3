@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -61,26 +62,20 @@ fun FrameWindowScope.WarlockApp(
                         }
                         screen.viewModel.windowRepository.windows
                             .onEach { windowsMap ->
-                                scope.launch {
-                                    windows = windowsMap.values.toList()
-                                }
+                                windows = windowsMap.values.toList()
                             }
                             .launchIn(this)
                         screen.viewModel.windowRepository.openWindows
                             .onEach {
-                                scope.launch {
-                                    openWindows = it
-                                }
+                                openWindows = it
                             }
                             .launchIn(this)
                     }
 
                     else -> {
-                        scope.launch {
-                            isConnected = false
-                            windows = emptyList()
-                            openWindows = emptySet()
-                        }
+                        isConnected = false
+                        windows = emptyList()
+                        openWindows = emptySet()
                     }
                 }
             }
@@ -102,9 +97,7 @@ fun FrameWindowScope.WarlockApp(
                 },
                 newWindow = newWindow,
                 showSettings = {
-                    scope.launch {
-                        showSettings = true
-                    }
+                    showSettings = true
                 },
                 disconnect = {
                     val screen = gameState.screen
