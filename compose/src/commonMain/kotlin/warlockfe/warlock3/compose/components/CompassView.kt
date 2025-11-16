@@ -35,18 +35,20 @@ fun CompassView(
             contentScale = FixedScale(scale),
         )
         state.directions.forEach {
-            val direction = theme.directions[it]!!
-            Image(
-                modifier = Modifier
-                    .offset { IntOffset(direction.position.first, direction.position.second) * scale }
-                    .clickable {
-                        logger.debug { "Clicked on direction: ${direction.direction}" }
-                        onClick(direction.direction)
-                    },
-                painter = painterResource(direction.image),
-                contentDescription = it.value,
-                contentScale = FixedScale(scale),
-            )
+            val direction = theme.directions[it]
+            if (direction != null) {
+                Image(
+                    modifier = Modifier
+                        .offset { IntOffset(direction.position.first, direction.position.second) * scale }
+                        .clickable {
+                            logger.debug { "Clicked on direction: ${direction.direction}" }
+                            onClick(direction.direction)
+                        },
+                    painter = painterResource(direction.image),
+                    contentDescription = it.value,
+                    contentScale = FixedScale(scale),
+                )
+            }
         }
     }
 }
