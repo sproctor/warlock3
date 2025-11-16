@@ -1,6 +1,6 @@
 package warlockfe.warlock3.compose.ui.window
 
-import kotlinx.collections.immutable.persistentHashMapOf
+import co.touchlab.stately.collections.ConcurrentMutableMap
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -23,6 +21,7 @@ import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
+import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
@@ -41,9 +40,9 @@ class StreamRegistryImpl(
     private val windowRepository: WindowRepository,
 ) : StreamRegistry {
 
-    private var streams = persistentHashMapOf<String, ComposeTextStream>()
+    private val streams = ConcurrentMutableMap<String, ComposeTextStream>()
 
-    private val mutex = Mutex()
+    private val dialogs = ConcurrentMutableMap<String, ComposeDialogState>()
 
     private val maxLines = settingRepository
         .observeMaxScrollLines()
@@ -149,10 +148,9 @@ class StreamRegistryImpl(
         }
             .stateIn(scope = externalScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
-    override suspend fun getOrCreateStream(name: String): TextStream {
-        mutex.withLock {
-            streams[name]?.let { return it }
-            return ComposeTextStream(
+    override fun getOrCreateStream(name: String): TextStream {
+        return streams.computeIfAbsent(name) {
+            ComposeTextStream(
                 id = name,
                 maxLines = maxLines.value,
                 highlights = highlights,
@@ -164,13 +162,19 @@ class StreamRegistryImpl(
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
             )
-                .also { streams = streams.put(name, it) }
         }
     }
 
-
     override fun getStreams(): Collection<TextStream> {
         return streams.values
+    }
+
+    override fun getOrCreateDialog(name: String): DialogState {
+        return dialogs.computeIfAbsent(name) {
+            ComposeDialogState(
+                id = name,
+            )
+        }
     }
 
     override fun setCharacterId(characterId: String) {

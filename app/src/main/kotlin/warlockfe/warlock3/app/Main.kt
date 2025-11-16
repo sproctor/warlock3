@@ -44,7 +44,6 @@ import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -392,7 +391,7 @@ private fun GameState.getTitle(): Flow<String> {
             flow { emit("Dashboard") }
 
         is GameScreen.ConnectedGameState ->
-            screen.viewModel.properties.map { value -> value["character"] ?: "Loading..." }.distinctUntilChanged()
+            screen.viewModel.character.map { it?.name ?: "Loading..." }
 
         is GameScreen.NewGameState ->
             flow { emit("New game") }

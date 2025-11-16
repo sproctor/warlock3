@@ -1,8 +1,8 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
-import warlockfe.warlock3.wrayth.protocol.WraythPropertyEvent
+import warlockfe.warlock3.wrayth.protocol.WraythLeftEvent
 
 class LeftHandler : BaseElementListener() {
-    override fun characters(data: String) = WraythPropertyEvent("left", data)
+    override fun characters(data: String) = WraythLeftEvent(data)
 }

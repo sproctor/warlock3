@@ -30,7 +30,7 @@ import warlockfe.warlock3.compose.generated.resources.webbed
 
 @Composable
 fun IndicatorView(
-    properties: Map<String, String>,
+    indicators: Set<String>,
     backgroundColor: Color,
     defaultColor: Color,
     modifier: Modifier = Modifier,
@@ -128,7 +128,7 @@ fun IndicatorView(
     Row(modifier = modifier.background(backgroundColor)) {
         statusKeysList.forEachIndexed { index, statusKeys ->
             Box(modifier = Modifier.aspectRatio(1f).fillMaxHeight().padding(4.dp)) {
-                statusKeys.filter { properties.containsKey(it.key) }.forEach { it.value() }
+                statusKeys.filter { indicators.contains(it.key) }.forEach { it.value() }
             }
             if (index != statusKeysList.lastIndex) {
                 VerticalDivider()

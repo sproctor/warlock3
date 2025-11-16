@@ -58,7 +58,7 @@ class WslContext(
     private val scriptVariables = CaseInsensitiveMap(
         "components" to WslComponents(client),
         "monstercount" to WslMonsterCount(client),
-        "properties" to WslProperties(client),
+        //"properties" to WslProperties(client),
         "variables" to WslVariables(this),
     )
 
@@ -326,7 +326,7 @@ class WslContext(
     suspend fun waitForRoundTime() {
         log(ScriptLoggingLevel.DEBUG, "waiting for round time")
         while (true) {
-            val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: 0
+            val roundEnd = client.roundTime.value?.let { it * 1000L } ?: 0
             val currentTime = client.time
             if (roundEnd <= currentTime) {
                 break

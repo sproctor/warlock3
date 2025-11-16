@@ -22,16 +22,7 @@ import warlockfe.warlock3.compose.generated.resources.wand_stars
 import warlockfe.warlock3.compose.util.mirror
 
 @Composable
-fun HandsView(properties: Map<String, String>) {
-    HandsViewContent(
-        left = properties["left"] ?: "",
-        right = properties["right"] ?: "",
-        spell = properties["spell"] ?: ""
-    )
-}
-
-@Composable
-fun HandsViewContent(left: String, right: String, spell: String) {
+fun HandsView(left: String?, right: String?, spell: String?) {
     Row(modifier = Modifier.fillMaxWidth()) {
         HandBox(
             icon = {
@@ -41,7 +32,7 @@ fun HandsViewContent(left: String, right: String, spell: String) {
                     contentDescription = "Left hand",
                 )
             },
-            value = left
+            value = left ?: ""
         )
         HandBox(
             icon = {
@@ -51,7 +42,7 @@ fun HandsViewContent(left: String, right: String, spell: String) {
                     contentDescription = "Right hand",
                 )
             },
-            value = right
+            value = right ?: ""
         )
         HandBox(
             icon = {
@@ -60,7 +51,7 @@ fun HandsViewContent(left: String, right: String, spell: String) {
                     contentDescription = "Spell",
                 )
             },
-            value = spell,
+            value = spell ?: "",
         )
     }
 }

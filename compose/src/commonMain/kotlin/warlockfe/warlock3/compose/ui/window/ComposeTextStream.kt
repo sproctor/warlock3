@@ -44,7 +44,7 @@ class ComposeTextStream(
 
     private val cacheLines = mutableListOf<CachedLine?>()
     val lines = mutableStateListOf<StreamLine>()
-    private val components = mutableStateMapOf<String, StyledString>()
+    private val components = mutableMapOf<String, StyledString>()
 
     private var nextSerialNumber = 0L
     private var removedLines = 0L
@@ -157,12 +157,12 @@ class ComposeTextStream(
     }
 
     override suspend fun updateComponent(name: String, value: StyledString) {
-        withContext(mainDispatcher) {
-            components[name] = value
-            componentLocations[name]?.forEach { serialNumber ->
-                val lineNumber = serialNumber - removedLines
-                // If the component has scrolled back past the buffer, ignore it
-                if (lineNumber >= 0) {
+        components[name] = value
+        componentLocations[name]?.forEach { serialNumber ->
+            val lineNumber = serialNumber - removedLines
+            // If the component has scrolled back past the buffer, ignore it
+            if (lineNumber >= 0) {
+                withContext(mainDispatcher) {
                     updateLine(lineNumber)
                 }
             }

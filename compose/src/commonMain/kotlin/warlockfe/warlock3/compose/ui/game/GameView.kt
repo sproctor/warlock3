@@ -319,8 +319,6 @@ fun WindowsAtLocation(
 
 @Composable
 fun GameBottomBar(viewModel: GameViewModel) {
-    val properties = viewModel.properties.collectAsState()
-
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.weight(1f)) {
             Row(
@@ -338,13 +336,14 @@ fun GameBottomBar(viewModel: GameViewModel) {
                     textColor = textColor,
                     viewModel = viewModel,
                 )
+                val indicators by viewModel.indicators.collectAsState(emptySet())
                 IndicatorView(
                     backgroundColor = backgroundColor,
                     defaultColor = textColor,
-                    properties = properties.value,
+                    indicators = indicators,
                 )
             }
-            val vitalBars by viewModel.vitalBars.collectAsState(emptyList())
+            val vitalBars by viewModel.vitalBars.objects.collectAsState()
             DialogContent(
                 dataObjects = vitalBars,
                 modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 2.dp),
@@ -352,7 +351,11 @@ fun GameBottomBar(viewModel: GameViewModel) {
                     // Cannot execute commands from vitals bar
                 }
             )
-            HandsView(viewModel.properties.collectAsState().value)
+            HandsView(
+                left = viewModel.leftHand.collectAsState(null).value,
+                right = viewModel.rightHand.collectAsState(null).value,
+                spell = viewModel.spellHand.collectAsState(null).value,
+            )
         }
         CompassView(
             modifier = Modifier.padding(4.dp),

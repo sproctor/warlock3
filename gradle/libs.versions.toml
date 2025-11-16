@@ -60,6 +60,7 @@ room = "2.8.3"
 sentryKotlin = "0.21.0"
 slf4j = "2.0.17"
 slf4jAndroid = "2.0.17-0"
+stately = "2.1.0"
 uri = "0.0.21"
 xmlutil = "0.91.3"
 
@@ -107,6 +108,7 @@ room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version.ref = "slf4jAndroid" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
+stately = { module = "co.touchlab:stately-concurrent-collections", version.ref = "stately" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
 uri = { module = "com.eygraber:uri-kmp", version.ref = "uri" }
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }

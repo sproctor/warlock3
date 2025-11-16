@@ -202,8 +202,9 @@ fun WindowView(
 
                 is DialogWindowUiState ->
                     ScrollableColumn(Modifier.background(uiState.style.backgroundColor.toColor())) {
+                        val dataObjects by uiState.dialogData.objects.collectAsState()
                         DialogContent(
-                            dataObjects = uiState.dialogData,
+                            dataObjects = dataObjects,
                             modifier = Modifier.fillMaxSize()
                                 .padding(8.dp),
                             executeCommand = { command ->

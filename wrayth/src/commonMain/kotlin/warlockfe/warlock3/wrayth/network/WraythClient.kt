@@ -1,14 +1,11 @@
 package warlockfe.warlock3.wrayth.network
 
+import co.touchlab.stately.collections.ConcurrentMutableMap
 import com.eygraber.uri.Uri
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.collections.immutable.ImmutableMap
-import kotlinx.collections.immutable.PersistentMap
-import kotlinx.collections.immutable.minus
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.collections.immutable.plus
 import kotlinx.collections.immutable.toPersistentHashSet
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineDispatcher
@@ -34,14 +31,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import warlockfe.warlock3.core.client.ClientCompassEvent
-import warlockfe.warlock3.core.client.ClientDialogClearEvent
-import warlockfe.warlock3.core.client.ClientDialogEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
-import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
@@ -59,6 +53,7 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isBlank
+import warlockfe.warlock3.core.util.getIgnoringCase
 import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowType
@@ -79,6 +74,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEndCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythEolEvent
 import warlockfe.warlock3.wrayth.protocol.WraythHandledEvent
+import warlockfe.warlock3.wrayth.protocol.WraythIndicatorEvent
+import warlockfe.warlock3.wrayth.protocol.WraythLeftEvent
 import warlockfe.warlock3.wrayth.protocol.WraythMenuEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythMenuItemEvent
 import warlockfe.warlock3.wrayth.protocol.WraythMenuStartEvent
@@ -89,13 +86,14 @@ import warlockfe.warlock3.wrayth.protocol.WraythOutputEvent
 import warlockfe.warlock3.wrayth.protocol.WraythParseErrorEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPopStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPromptEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPropertyEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import warlockfe.warlock3.wrayth.protocol.WraythPushCmdEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPushStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythResourceEvent
+import warlockfe.warlock3.wrayth.protocol.WraythRightEvent
 import warlockfe.warlock3.wrayth.protocol.WraythRoundTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythSettingsInfoEvent
+import warlockfe.warlock3.wrayth.protocol.WraythSpellEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStartCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStreamWindowEvent
@@ -142,11 +140,31 @@ class WraythClient(
     private val _characterId = MutableStateFlow<String?>(null)
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
 
-    private val _properties = MutableStateFlow<PersistentMap<String, String>>(persistentMapOf())
-    override val properties: StateFlow<ImmutableMap<String, String>> = _properties.asStateFlow()
+    private val _roundTime = MutableStateFlow<Long?>(null)
+    override val roundTime = _roundTime.asStateFlow()
 
-    private val _components = MutableStateFlow<PersistentMap<String, StyledString>>(persistentMapOf())
-    override val components: StateFlow<ImmutableMap<String, StyledString>> = _components.asStateFlow()
+    private val _castTime = MutableStateFlow<Long?>(null)
+    override val castTime = _castTime.asStateFlow()
+
+    private val _gameName = MutableStateFlow<String?>(null)
+    override val gameName = _gameName.asStateFlow()
+
+    private val _characterName = MutableStateFlow<String?>(null)
+    override val characterName = _characterName.asStateFlow()
+
+    private val _leftHand = MutableStateFlow<String?>(null)
+    override val leftHand = _leftHand.asStateFlow()
+
+    private val _rightHand = MutableStateFlow<String?>(null)
+    override val rightHand = _rightHand.asStateFlow()
+
+    private val _spellHand = MutableStateFlow<String?>(null)
+    override val spellHand = _spellHand.asStateFlow()
+
+    private val _indicators = MutableStateFlow<Set<String>>(emptySet())
+    override val indicators = _indicators.asStateFlow()
+
+    private val components = ConcurrentMutableMap<String, StyledString>()
 
     private val logBuffer = mutableListOf<suspend () -> Unit>()
     private var logName: String? = null
@@ -312,10 +330,8 @@ class WraythClient(
                                     } else {
                                         null
                                     }
-                                    val newProperties = _properties.value
-                                        .plus("character" to (event.character ?: ""))
-                                        .plus("game" to (event.game ?: ""))
-                                    _properties.value = newProperties
+                                    _gameName.value = game
+                                    _characterName.value = character
                                 }
 
                                 is WraythOutputEvent ->
@@ -359,10 +375,22 @@ class WraythClient(
                                 }
 
                                 is WraythRoundTimeEvent ->
-                                    _properties.value += "roundtime" to event.time
+                                    event.time.toLongOrNull()?.let {
+                                        _roundTime.value = it
+                                    }
 
                                 is WraythCastTimeEvent ->
-                                    _properties.value += "casttime" to event.time
+                                    event.time.toLongOrNull()?.let {
+                                        _castTime.value = it
+                                    }
+
+                                is WraythIndicatorEvent -> {
+                                    if (event.visible) {
+                                        _indicators.update { it + event.iconId }
+                                    } else {
+                                        _indicators.update { it - event.iconId }
+                                    }
+                                }
 
                                 is WraythSettingsInfoEvent -> {
                                     gameCode = event.instance
@@ -379,19 +407,20 @@ class WraythClient(
                                 is WraythDialogDataEvent -> {
                                     dialogDataId = event.id
                                     if (event.clear && event.id != null) {
-                                        notifyListeners(ClientDialogClearEvent(event.id))
+                                        streamRegistry.getOrCreateDialog(event.id).clear()
                                     }
                                 }
 
                                 is WraythDialogObjectEvent -> {
-                                    val data = event.data
-                                    if (data is DialogObject.ProgressBar) {
-                                        _properties.value = _properties.value +
-                                                (data.id to data.value.value.toString()) +
-                                                ((data.id + "text") to (data.text ?: ""))
-                                    }
+                                    // TODO: record this data somewhere
+                                    // val data = event.data
+                                    //if (data is DialogObject.ProgressBar) {
+                                    //    _properties.value = _properties.value +
+                                    //(data.id to data.value.value.toString()) +
+                                    //            ((data.id + "text") to (data.text ?: ""))
+                                    //}
                                     dialogDataId?.let {
-                                        notifyListeners(ClientDialogEvent(it, data))
+                                        streamRegistry.getOrCreateDialog(it).setObject(event.data)
                                     }
                                 }
 
@@ -404,12 +433,14 @@ class WraythClient(
                                     directions += event.direction
                                 }
 
-                                is WraythPropertyEvent -> {
-                                    if (event.value != null)
-                                        _properties.value += event.key to event.value
-                                    else
-                                        _properties.value -= event.key
-                                }
+                                is WraythLeftEvent ->
+                                    _leftHand.value = event.value
+
+                                is WraythRightEvent ->
+                                    _rightHand.value = event.value
+
+                                is WraythSpellEvent ->
+                                    _spellHand.value = event.value
 
                                 is WraythComponentDefinitionEvent -> {
                                     // Should not happen on main stream, so don't clear prompt
@@ -438,9 +469,9 @@ class WraythClient(
                                         // Either replace the component in the map with the new value
                                         //  or remove the component from the map (if we got an empty one)
                                         if (elementBuffer?.substrings.isNullOrEmpty()) {
-                                            _components.value -= componentId!!
+                                            components.remove(componentId)
                                         } else {
-                                            _components.value += (componentId!! to elementBuffer!!)
+                                            components[componentId!!] = elementBuffer!!
                                         }
                                         val newValue = elementBuffer ?: StyledString()
                                         streamRegistry.getStreams().forEach { stream ->
@@ -775,15 +806,19 @@ class WraythClient(
     }
 
     override suspend fun print(message: StyledString) {
-        val style = outputStyle
-        getMainStream().appendLine(if (style != null) message.applyStyle(style) else message)
-        notifyListeners(ClientTextEvent(message.toString()))
+        withContext(ioDispatcher) {
+            val style = outputStyle
+            getMainStream().appendLine(if (style != null) message.applyStyle(style) else message)
+            notifyListeners(ClientTextEvent(message.toString()))
+        }
     }
 
     suspend fun printCommand(command: String) {
-        val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
-        getMainStream().appendPartialAndEol(StyledString(command, styles))
-        notifyListeners(ClientTextEvent(command))
+        withContext(ioDispatcher) {
+            val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
+            getMainStream().appendPartialAndEol(StyledString(command, styles))
+            notifyListeners(ClientTextEvent(command))
+        }
     }
 
     override suspend fun debug(message: String) {
@@ -803,9 +838,7 @@ class WraythClient(
     }
 
     private suspend fun notifyListeners(event: ClientEvent) {
-        withContext(ioDispatcher) {
-            _eventFlow.emit(event)
-        }
+        _eventFlow.emit(event)
     }
 
     fun setProxy(proxy: WarlockProxy) {
@@ -837,6 +870,14 @@ class WraythClient(
             windowType = WindowType.STREAM,
             showTimestamps = window.timestamp,
         )
+    }
+
+    override fun getComponents(): Map<String, StyledString> {
+        return components
+    }
+
+    override fun getComponent(name: String): StyledString? {
+        return components.getIgnoringCase(name)
     }
 
     override fun close() {

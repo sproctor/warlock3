@@ -28,7 +28,7 @@ data class StreamWindowUiState(
 data class DialogWindowUiState(
     override val name: String,
     override val window: Window?,
-    val dialogData: List<DialogObject>,
+    val dialogData: ComposeDialogState,
     val style: StyleDefinition,
     val width: Int?,
     val height: Int?,

@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -22,7 +23,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -46,6 +46,7 @@ import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.macros.macroCommands
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowUiState
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
@@ -53,10 +54,7 @@ import warlockfe.warlock3.compose.ui.window.StreamWindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.core.client.ClientCompassEvent
-import warlockfe.warlock3.core.client.ClientDialogClearEvent
-import warlockfe.warlock3.core.client.ClientDialogEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
-import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
@@ -121,22 +119,23 @@ class GameViewModel(
     private val _compassState = MutableStateFlow(CompassState(emptySet()))
     val compassState: StateFlow<CompassState> = _compassState
 
-    private val _dialogs = MutableStateFlow<Map<String, List<DialogObject>>>(emptyMap())
+    val vitalBars: ComposeDialogState = streamRegistry.getOrCreateDialog("minivitals") as ComposeDialogState
 
-    val vitalBars: Flow<List<DialogObject>> = _dialogs.map { dialogs ->
-        dialogs["minivitals"] ?: emptyList()
-    }
+    val indicators = client.indicators
+    val leftHand = client.leftHand
+    val rightHand = client.leftHand
+    val spellHand = client.spellHand
 
     // Saved by macros
-    private var storedText: String? = null
+    private var storedText: String = ""
 
-    val properties: StateFlow<Map<String, String>> = client.properties
-
-    val character = combine(client.characterId, properties) { characterId, properties ->
-        val game = properties["game"]
-        val name = properties["character"]
-        if (characterId != null && game != null && name != null) {
-            GameCharacter(id = characterId, gameCode = game, name = name)
+    val character = combine(
+        client.characterId,
+        client.gameName,
+        client.characterName,
+    ) { characterId, game, character ->
+        if (characterId != null && game != null && character != null) {
+            GameCharacter(id = characterId, gameCode = game, name = character)
         } else {
             null
         }
@@ -266,24 +265,24 @@ class GameViewModel(
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
-    private val currentTime: Flow<Int> = flow {
+    private val currentTime: Flow<Long> = flow {
         while (true) {
             val time = client.time
-            emit((time / 1000L).toInt())
+            emit(time / 1000L)
             val nextSecond = 1000L - (time % 1000)
             delay(max(10L, nextSecond))
         }
     }
 
-    val roundTime = combine(currentTime, properties) { currentTime, properties ->
-        val roundEnd = properties["roundtime"]?.toIntOrNull() ?: 0
-        max(0, roundEnd - currentTime)
+    val roundTime = combine(currentTime, client.roundTime) { currentTime, roundTime ->
+        val roundEnd = roundTime ?: 0
+        max(0, roundEnd - currentTime).toInt()
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
-    val castTime = combine(currentTime, properties) { currentTime, properties ->
-        val roundEnd = properties["casttime"]?.toIntOrNull() ?: 0
-        max(0, roundEnd - currentTime)
+    val castTime = combine(currentTime, client.castTime) { currentTime, castTime ->
+        val roundEnd = castTime ?: 0
+        max(0, roundEnd - currentTime).toInt()
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
 
@@ -356,14 +355,12 @@ class GameViewModel(
             presets,
             highlights,
             alterations,
-            _dialogs,
         ) { flows ->
             val openWindows = flows[0] as Set<String>
             val windows = flows[1] as Map<String, Window>
             val presets = flows[2] as Map<String, StyleDefinition>
             val highlights = flows[3] as List<ViewHighlight>
             val alterations = flows[4] as List<CompiledAlteration>
-            val dialogs = flows[5] as Map<String, List<DialogObject>>
 
             openWindows.map { name ->
                 val window = windows[name]
@@ -371,7 +368,7 @@ class GameViewModel(
                     DialogWindowUiState(
                         name = name,
                         window = window,
-                        dialogData = dialogs[name] ?: emptyList(),
+                        dialogData = streamRegistry.getOrCreateDialog(name) as ComposeDialogState,
                         style = presets["default"] ?: defaultStyles["default"]!!,
                         width = null,
                         height = null,
@@ -430,30 +427,6 @@ class GameViewModel(
         client.eventFlow
             .onEach { event ->
                 when (event) {
-                    is ClientDialogEvent -> {
-                        _dialogs.update { origDialogs ->
-                            val data = origDialogs[event.id]?.toMutableList() ?: mutableListOf()
-                            val existingIndex = data.indexOfFirst {
-                                it.id.equals(other = event.data.id, ignoreCase = true)
-                            }
-                            if (existingIndex != -1) {
-                                data[existingIndex] = event.data
-                            } else {
-                                data.add(event.data)
-                            }
-                            val dialogs = origDialogs.toMutableMap()
-                            dialogs[event.id] = data
-                            dialogs.toPersistentMap()
-                        }
-                    }
-
-                    is ClientDialogClearEvent -> {
-                        _dialogs.update { origDialogs ->
-                            val newDialogs = origDialogs.toMutableMap()
-                            newDialogs[event.id] = emptyList()
-                            newDialogs.toPersistentMap()
-                        }
-                    }
 
                     is ClientCompassEvent -> {
                         _compassState.value = CompassState(directions = event.directions.toSet())

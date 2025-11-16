@@ -3,10 +3,10 @@ package warlockfe.warlock3.wrayth.protocol
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 import warlockfe.warlock3.wrayth.util.CmdDefinition
 import warlockfe.warlock3.wrayth.util.WraythCmd
 import warlockfe.warlock3.wrayth.util.WraythDialogWindow
+import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 
 sealed interface WraythEvent
 
@@ -29,7 +29,10 @@ data class WraythDialogObjectEvent(val data: DialogObject) : WraythEvent
 data class WraythDialogDataEvent(val id: String?, val clear: Boolean) : WraythEvent
 data object WraythCompassEndEvent : WraythEvent
 data class WraythDirectionEvent(val direction: DirectionType) : WraythEvent
-data class WraythPropertyEvent(val key: String, val value: String?) : WraythEvent
+data class WraythLeftEvent(val value: String) : WraythEvent
+data class WraythRightEvent(val value: String) : WraythEvent
+data class WraythSpellEvent(val value: String) : WraythEvent
+data class WraythIndicatorEvent(val iconId: String, val visible: Boolean) : WraythEvent
 data class WraythComponentStartEvent(val id: String) : WraythEvent
 data object WraythComponentEndEvent : WraythEvent
 data class WraythComponentDefinitionEvent(val id: String) : WraythEvent

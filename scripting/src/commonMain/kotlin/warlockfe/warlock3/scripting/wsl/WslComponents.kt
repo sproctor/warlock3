@@ -2,13 +2,12 @@ package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.util.getIgnoringCase
 
 class WslComponents(
     private val client: WarlockClient
 ) : WslValue {
     override fun toString(): String {
-        return client.components.value.toString()
+        return client.getComponents().toString()
     }
 
     override fun toBoolean(): Boolean {
@@ -28,7 +27,7 @@ class WslComponents(
     }
 
     override fun getProperty(key: String): WslValue {
-        return client.components.value.getIgnoringCase(key)?.let { WslString(it.toString()) } ?: WslNull
+        return client.getComponent(key)?.let { WslString(it.toString()) } ?: WslNull
     }
 
     override fun setProperty(key: String, value: WslValue) {

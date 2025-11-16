@@ -105,7 +105,7 @@ class JavascriptClient(
         log(5, "waiting for round time")
         while (true) {
             instance.checkStatus()
-            val roundEnd = client.properties.value["roundtime"]?.toLongOrNull()?.let { it * 1000L } ?: return
+            val roundEnd = client.roundTime.value?.let { it * 1000L } ?: return
             val currentTime = client.time
             if (roundEnd < currentTime) {
                 break
