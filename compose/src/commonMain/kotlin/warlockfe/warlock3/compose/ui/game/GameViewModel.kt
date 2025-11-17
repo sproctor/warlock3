@@ -123,7 +123,7 @@ class GameViewModel(
 
     val indicators = client.indicators
     val leftHand = client.leftHand
-    val rightHand = client.leftHand
+    val rightHand = client.rightHand
     val spellHand = client.spellHand
 
     // Saved by macros

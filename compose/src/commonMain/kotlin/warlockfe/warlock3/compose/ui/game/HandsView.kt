@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.front_hand
 import warlockfe.warlock3.compose.generated.resources.wand_stars
@@ -79,8 +80,8 @@ fun RowScope.HandBox(icon: @Composable () -> Unit, value: String) {
     }
 }
 
-//@Preview
-//@Composable
-//fun HandsViewPreview() {
-//    HandsViewContent(left = "some item", right = "", spell = "a spell")
-//}
+@Preview
+@Composable
+fun HandsViewPreview() {
+    HandsView(left = "some item", right = "", spell = "a spell")
+}
