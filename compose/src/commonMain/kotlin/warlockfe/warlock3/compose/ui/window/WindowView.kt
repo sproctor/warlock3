@@ -340,7 +340,7 @@ private fun WindowViewContent(
     val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { createFontFamily(it) }
     val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
-    val lines = stream.lines
+    val lines by stream.lines.collectAsState(emptyList())
 
     var clickOffset by remember { mutableStateOf<Offset?>(null) }
     var openMenuId by remember { mutableStateOf<Int?>(null) }
@@ -558,7 +558,10 @@ private fun ActionContextMenu(
                             },
                             onClick = { expanded = true },
                             trailingIcon = {
-                                Icon(painter = painterResource(Res.drawable.arrow_right), contentDescription = "expandable")
+                                Icon(
+                                    painter = painterResource(Res.drawable.arrow_right),
+                                    contentDescription = "expandable"
+                                )
                             }
                         )
                         DropdownMenu(

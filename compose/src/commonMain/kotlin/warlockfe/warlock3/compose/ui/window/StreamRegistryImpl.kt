@@ -28,7 +28,6 @@ import warlockfe.warlock3.wrayth.util.CompiledAlteration
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StreamRegistryImpl(
-    private val mainDispatcher: CoroutineDispatcher,
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
     externalScope: CoroutineScope,
@@ -157,7 +156,6 @@ class StreamRegistryImpl(
                 alterations = alterations,
                 presets = presets,
                 windows = windowRepository.windows,
-                mainDispatcher = mainDispatcher,
                 ioDispatcher = ioDispatcher,
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
@@ -183,7 +181,6 @@ class StreamRegistryImpl(
 }
 
 class StreamRegistryFactory(
-    private val mainDispatcher: CoroutineDispatcher,
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
     private val externalScope: CoroutineScope,
@@ -195,7 +192,6 @@ class StreamRegistryFactory(
 ) {
     fun create(windowRepository: WindowRepository): StreamRegistry {
         return StreamRegistryImpl(
-            mainDispatcher = mainDispatcher,
             ioDispatcher = ioDispatcher,
             soundPlayer = soundPlayer,
             externalScope = externalScope,

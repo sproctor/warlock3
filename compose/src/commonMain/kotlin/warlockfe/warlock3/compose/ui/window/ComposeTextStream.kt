@@ -1,12 +1,13 @@
 package warlockfe.warlock3.compose.ui.window
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.getEntireLineStyles
@@ -37,13 +38,13 @@ class ComposeTextStream(
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
     private val windows: StateFlow<Map<String, Window>>,
-    private val mainDispatcher: CoroutineDispatcher,
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
 ) : TextStream {
 
-    private val cacheLines = mutableListOf<CachedLine?>()
-    val lines = mutableStateListOf<StreamLine>()
+    private val cacheLines = ArrayList<CachedLine?>(maxLines)
+    private val finishedLines = ArrayList<StreamLine>(maxLines)
+    val lines = MutableStateFlow<List<StreamLine>>(emptyList())
     private val components = mutableMapOf<String, StyledString>()
 
     private var nextSerialNumber = 0L
@@ -55,14 +56,16 @@ class ComposeTextStream(
 
     var actionHandler: ((WarlockAction) -> Unit)? = null
 
+    val mutex = Mutex()
+
     override suspend fun appendPartial(text: StyledString) {
-        withContext(mainDispatcher) {
+        mutex.withLock {
             doAppendPartial(text)
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
-        withContext(mainDispatcher) {
+        mutex.withLock {
             doAppendPartial(text)
             partialLine = null
         }
@@ -73,31 +76,33 @@ class ComposeTextStream(
             partialLine = text
             doAppendLine(text = text, ignoreWhenBlank = false)
         } else {
-            val serialNumber = lines.last().serialNumber
+            val serialNumber = finishedLines.last().serialNumber
             partialLine = partialLine!! + text
             addComponentLocations(text, serialNumber)
             val cachedLine = styledStringToCachedLine(partialLine!!, ignoreWhenBlank = false)
             cacheLines[cacheLines.lastIndex] = cachedLine
-            lines[lines.lastIndex] = cachedLineToStreamLine(cachedLine, serialNumber)
+            finishedLines[finishedLines.lastIndex] = cachedLineToStreamLine(cachedLine, serialNumber)
+            linesUpdated()
         }
     }
 
     override suspend fun clear() {
-        withContext(mainDispatcher) {
-            lines.clear()
+        mutex.withLock {
+            finishedLines.clear()
             partialLine = null
             componentLocations.clear()
             components.clear()
             nextSerialNumber = 0L
             removedLines = 0L
             cacheLines.clear()
+            linesUpdated()
         }
     }
 
     override suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
-        // It's possible a component is added that is set prior
-        // I don't think this happens in DR, so it's probably OK that we don't handle that case.
-        withContext(mainDispatcher) {
+        mutex.withLock {
+            // It's possible a component is added that is set prior
+            // I don't think this happens in DR, so it's probably OK that we don't handle that case.
             partialLine = null
             doAppendLine(text, ignoreWhenBlank)
         }
@@ -111,8 +116,9 @@ class ComposeTextStream(
         val cachedLine = styledStringToCachedLine(text, ignoreWhenBlank)
         cacheLines.add(cachedLine)
         val line = cachedLineToStreamLine(cachedLine, serialNumber)
-        lines.add(line)
+        finishedLines.add(line)
         line.text?.let { playSound(it.text) }
+        linesUpdated()
     }
 
     private fun addComponentLocations(text: StyledString, serialNumber: Long) {
@@ -131,49 +137,46 @@ class ComposeTextStream(
     }
 
     private fun removeLines() {
-        if (maxLines > 0 && lines.size >= maxLines) {
-            lines.removeAt(0)
-            cacheLines.removeAt(0)
+        if (maxLines > 0 && finishedLines.size >= maxLines) {
+            finishedLines.removeFirst()
+            cacheLines.removeFirst()
             removedLines++
             // TODO: remove componentLocations if their line was removed
         }
     }
 
     override suspend fun appendResource(url: String) {
-        withContext(mainDispatcher) {
-            if (maxLines > 0 && lines.size >= maxLines) {
-                lines.removeAt(0)
-                cacheLines.removeAt(0)
-                removedLines++
-            }
+        mutex.withLock {
             cacheLines.add(null)
-            lines.add(
+            finishedLines.add(
                 StreamImageLine(
                     url = url,
                     serialNumber = nextSerialNumber++,
                 )
             )
+            linesUpdated()
         }
     }
 
     override suspend fun updateComponent(name: String, value: StyledString) {
-        components[name] = value
-        componentLocations[name]?.forEach { serialNumber ->
-            val lineNumber = serialNumber - removedLines
-            // If the component has scrolled back past the buffer, ignore it
-            if (lineNumber >= 0) {
-                withContext(mainDispatcher) {
+        mutex.withLock {
+            components[name] = value
+            componentLocations[name]?.forEach { serialNumber ->
+                val lineNumber = (serialNumber - removedLines).toInt()
+                // If the component has scrolled back past the buffer, ignore it
+                if (lineNumber >= 0) {
                     updateLine(lineNumber)
                 }
             }
         }
     }
 
-    private fun updateLine(lineNumber: Long) {
-        val cachedLine = cacheLines[lineNumber.toInt()]
+    private fun updateLine(lineNumber: Int) {
+        val cachedLine = cacheLines[lineNumber]
         if (cachedLine != null) {
-            val line = lines[lineNumber.toInt()]
-            lines[lineNumber.toInt()] = cachedLineToStreamLine(cachedLine, line.serialNumber)
+            val serialNumber = finishedLines[lineNumber].serialNumber
+            finishedLines[lineNumber] = cachedLineToStreamLine(cachedLine, serialNumber)
+            linesUpdated()
         }
     }
 
@@ -204,18 +207,23 @@ class ComposeTextStream(
     }
 
     suspend fun setMaxLines(maxLines: Int) {
-        withContext(mainDispatcher) {
+        mutex.withLock {
             this@ComposeTextStream.maxLines = maxLines
-            if (lines.size > maxLines && maxLines > 0) {
-                val oldSize = lines.size
-                lines.removeRange(maxLines - 1, lines.lastIndex)
-                removedLines += oldSize - lines.size
+            while (finishedLines.size > maxLines && maxLines > 0) {
+                finishedLines.removeFirst()
+                cacheLines.removeFirst()
+                removedLines++
             }
+            linesUpdated()
         }
     }
 
     fun setMarkLinks(markLinks: Boolean) {
         this.markLinks = markLinks
+    }
+
+    private fun linesUpdated() {
+        lines.value = finishedLines.toList()
     }
 }
 

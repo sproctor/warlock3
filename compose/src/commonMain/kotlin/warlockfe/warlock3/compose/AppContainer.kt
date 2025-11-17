@@ -160,7 +160,6 @@ abstract class AppContainer(
 
     val streamRegistryFactory by lazy {
         StreamRegistryFactory(
-            mainDispatcher = mainDispatcher,
             externalScope = externalScope,
             settingRepository = clientSettings,
             ioDispatcher = ioDispatcher,
