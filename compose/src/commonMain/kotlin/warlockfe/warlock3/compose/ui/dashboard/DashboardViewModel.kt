@@ -22,6 +22,7 @@ import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
+import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -60,75 +61,39 @@ class DashboardViewModel(
 
     private var connectJob: Job? = null
 
-    private var sgeClient: SgeClient? = null
-
     fun connect(connection: StoredConnection) {
         if (busy) return
         busy = true
         connectJob?.cancel()
         connectJob = viewModelScope.launch {
-            try {
-                message = "Connecting..."
-                val sgeClient = sgeClientFactory.create()
-                this@DashboardViewModel.sgeClient = sgeClient
-                if (!sgeClient.connect(sgeSettings)) {
-                    logger.error { "Unable to connect to server" }
-                    message = "Could not connect to SGE"
-                    return@launch
-                }
-                sgeClient.login(username = connection.username, password = connection.password ?: "")
-
-                sgeClient.eventFlow
-                    .collect { event ->
-                        when (event) {
-                            is SgeEvent.SgeLoginSucceededEvent -> sgeClient.selectGame(connection.code)
-                            is SgeEvent.SgeGameSelectedEvent -> sgeClient.requestCharacterList()
-                            is SgeEvent.SgeCharactersReadyEvent -> {
-                                val characters = event.characters
-                                val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
-                                if (sgeCharacter == null) {
-                                    message = "Could not find character: ${connection.character}"
-                                } else {
-                                    sgeClient.selectCharacter(sgeCharacter.code)
-                                }
-                            }
-
-                            is SgeEvent.SgeReadyToPlayEvent -> {
-                                try {
-                                    connectToGame(event.credentials, connection.proxySettings)
-                                } catch (e: Exception) {
-                                    ensureActive()
-                                    logger.error(e) { "Error connecting to server" }
-                                    gameState.setScreen(
-                                        GameScreen.ErrorState(
-                                            message = "Error: ${e.message}",
-                                            returnTo = GameScreen.Dashboard,
-                                        )
-                                    )
-                                }
-                                sgeClient.close()
-                                cancelConnect()
-                            }
-
-                            is SgeEvent.SgeErrorEvent -> {
-                                message = "Error code (${event.errorCode})"
-                                connectJob?.cancel()
-                            }
-
-                            else -> Unit // we don't care?
-                        }
+            message = "Connecting..."
+            val sgeClient = sgeClientFactory.create()
+            val result = sgeClient.autoConnect(sgeSettings, connection)
+            sgeClient.close()
+            when (result) {
+                is AutoConnectResult.Failure ->
+                    message = result.reason
+                is AutoConnectResult.Success -> {
+                    try {
+                        connectToGame(result.credentials, connection.proxySettings)
+                    } catch (e: Exception) {
+                        ensureActive()
+                        logger.error(e) { "Error connecting to server" }
+                        gameState.setScreen(
+                            GameScreen.ErrorState(
+                                message = "Error: ${e.message}",
+                                returnTo = GameScreen.Dashboard,
+                            )
+                        )
                     }
-            } catch (_: IOException) {
-                // Do we care?
-            } finally {
-                connectJob = null
-                busy = false
+                }
             }
+            connectJob = null
+            busy = false
         }
     }
 
     fun cancelConnect() {
-        sgeClient?.close()
         connectJob?.cancel()
         connectJob = null
         message = null

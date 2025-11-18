@@ -12,9 +12,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeError
@@ -22,6 +24,7 @@ import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.encodeWindows1252
 import warlockfe.warlock3.wrayth.util.configureTLS
@@ -266,6 +269,43 @@ class SgeClientImpl(
     override fun close() {
         socket?.close()
         scope.cancel()
+    }
+
+    override suspend fun autoConnect(
+        settings: SgeSettings,
+        connection: StoredConnection
+    ): AutoConnectResult {
+        if (!connect(settings)) {
+            logger.error { "Unable to connect to server" }
+            return AutoConnectResult.Failure("Could not connect to SGE")
+        }
+        login(username = connection.username, password = connection.password ?: "")
+
+        while (true) {
+            when (val event = eventFlow.first()) {
+                is SgeEvent.SgeLoginSucceededEvent -> selectGame(connection.code)
+                is SgeEvent.SgeGameSelectedEvent -> requestCharacterList()
+                is SgeEvent.SgeCharactersReadyEvent -> {
+                    val characters = event.characters
+                    val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
+                    if (sgeCharacter == null) {
+                        return AutoConnectResult.Failure("Could not find character: ${connection.character}")
+                    } else {
+                        selectCharacter(sgeCharacter.code)
+                    }
+                }
+
+                is SgeEvent.SgeReadyToPlayEvent ->
+                    return AutoConnectResult.Success(event.credentials)
+
+                is SgeEvent.SgeErrorEvent -> {
+                    return AutoConnectResult.Failure("Error code (${event.errorCode})")
+                }
+
+                else ->
+                    logger.info { "Unrecognized event: $event" }
+            }
+        }
     }
 }
 

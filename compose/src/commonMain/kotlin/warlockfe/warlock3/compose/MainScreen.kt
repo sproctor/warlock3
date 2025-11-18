@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassTheme
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -62,7 +63,7 @@ fun MainScreen(
     ) {
         when (val screen = gameState.screen) {
             GameScreen.Dashboard -> {
-                val viewModel = remember {
+                val viewModel = viewModel {
                     dashboardViewModelFactory.create(gameState, sgeSettings)
                 }
                 DashboardView(

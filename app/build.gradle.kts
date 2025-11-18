@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.appdirs)
     implementation(libs.filekit.dialogs)
 
+    implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
 
     // Logging and error reporting
@@ -64,6 +65,7 @@ compose {
 
                 targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
+                // args("--connection=Tefrin")
                 // args("--input=/home/sproctor/Downloads/20251116072204.log")
                 // args("--sge-port=7900", "--sge-secure=off")
 

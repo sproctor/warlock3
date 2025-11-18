@@ -18,5 +18,13 @@ interface SgeClient {
 
     suspend fun selectCharacter(characterCode: String)
 
+    suspend fun autoConnect(settings: SgeSettings, connection: StoredConnection): AutoConnectResult
+
     fun close()
+}
+
+sealed interface AutoConnectResult {
+    data class Failure(val reason: String) : AutoConnectResult
+
+    data class Success(val credentials: SimuGameCredentials) : AutoConnectResult
 }

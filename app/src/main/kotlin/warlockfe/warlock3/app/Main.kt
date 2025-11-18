@@ -43,6 +43,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
@@ -68,6 +69,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -88,11 +90,38 @@ private class WarlockCommand : CliktCommand() {
     val debug: Boolean by option("-d", "--debug", help = "Enable debug output").flag()
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
     val inputFile: String? by option("-i", "--input", help = "Read input from file")
+    val autoconnectName: String? by option("-c", "--connection", help = "Auto-connect to the named connection")
     val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
     val sgePort: Int by option("--sge-port", help = "Credentials/SGE port").int().default(7910)
     val sgeSecure: Boolean by option("--sge-secure", help = "Credentials/SGE uses encryption").boolean().default(true)
+    val width: Int? by option(
+        "--width",
+        help = "Window width in \"display pixels\" (1 physical pixel at 160 DPI)"
+    ).int()
+    val height: Int? by option(
+        "--height",
+        help = "Window height in \"display pixels\" (1 physical pixel at 160 DPI)"
+    ).int()
 
     override fun run() {
+
+        val loginOptions = mutableSetOf<String>()
+        if (key != null) {
+            loginOptions.add("key")
+        }
+        if (stdin) {
+            loginOptions.add("stdin")
+        }
+        if (inputFile != null) {
+            loginOptions.add("inputFile")
+        }
+        if (autoconnectName != null) {
+            loginOptions.add("connection")
+        }
+        if (loginOptions.size > 1) {
+            println("More than one login method was specified. Please only use one of the following methods: $loginOptions")
+            exitProcess(-1)
+        }
 
         val version = System.getProperty("app.version")
         version?.let {
@@ -105,13 +134,15 @@ private class WarlockCommand : CliktCommand() {
 
         FileKit.init("warlock")
 
-        val credentials =
-            if (port != null && host != null && key != null) {
-                logger.debug { "Connecting to $host:$port with $key" }
-                SimuGameCredentials(host = host!!, port = port!!, key = key!!)
-            } else {
-                null
-            }
+        val credentials = if (port != null && host != null && key != null) {
+            logger.debug { "Connecting to $host:$port with $key" }
+            SimuGameCredentials(host = host!!, port = port!!, key = key!!)
+        } else if (port != null || key != null || key != null) {
+            println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
+            exitProcess(-1)
+        } else {
+            null
+        }
 
         val appDirs = AppDirs {
             appName = "warlock"
@@ -166,8 +197,15 @@ private class WarlockCommand : CliktCommand() {
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 
         val clientSettings = appContainer.clientSettings
-        val initialWidth = runBlocking { clientSettings.getWidth() } ?: 640
-        val initialHeight = runBlocking { clientSettings.getHeight() } ?: 480
+        val initialWidth = width ?: runBlocking { clientSettings.getWidth() } ?: 640
+        val initialHeight = height ?: runBlocking { clientSettings.getHeight() } ?: 480
+
+        val sgeSettings = SgeSettings(
+            host = sgeHost,
+            port = sgePort,
+            certificate = simuCert,
+            secure = sgeSecure,
+        )
 
         val games = mutableStateListOf(
             GameState().apply {
@@ -207,6 +245,54 @@ private class WarlockCommand : CliktCommand() {
                             logger.error(e) { "Failed to connect to Warlock" }
                         }
                     }
+                } else if (autoconnectName != null) {
+                    runBlocking {
+                        val connection = appContainer.connectionRepository.getByName(autoconnectName!!)
+                        if (connection == null) {
+                            println("Invalid connection name: $autoconnectName")
+                            exitProcess(-1)
+                        }
+                        val sgeClient = appContainer.sgeClientFactory.create()
+                        val result = sgeClient.autoConnect(sgeSettings, connection)
+                        sgeClient.close()
+                        when (result) {
+                            is AutoConnectResult.Failure -> {
+                                println(result.reason)
+                                exitProcess(-1)
+                            }
+
+                            is AutoConnectResult.Success ->
+                                // TODO: merge with the above, and probably below
+                                try {
+                                    val credentials = result.credentials
+                                    val socket = NetworkSocket(Dispatchers.IO)
+                                        .also { socket ->
+                                            socket.connect(credentials.host, credentials.port)
+                                        }
+                                    val windowRepository = appContainer.windowRepositoryFactory.create()
+                                    val streamRegistry = appContainer.streamRegistryFactory.create(windowRepository)
+                                    val client = appContainer.warlockClientFactory.createClient(
+                                        windowRepository = windowRepository,
+                                        streamRegistry = streamRegistry,
+                                        socket = socket,
+                                    )
+                                    client.connect(credentials.key)
+                                    val viewModel =
+                                        appContainer.gameViewModelFactory.create(
+                                            client,
+                                            windowRepository,
+                                            streamRegistry
+                                        )
+                                    setScreen(
+                                        GameScreen.ConnectedGameState(viewModel)
+                                    )
+                                } catch (e: Exception) {
+                                    ensureActive()
+                                    println("Error connecting to server: ${e.message}")
+                                    exitProcess(-1)
+                                }
+                        }
+                    }
                 }
             }
         )
@@ -230,7 +316,8 @@ private class WarlockCommand : CliktCommand() {
                             // A newer version is available
                             updateAvailable = true
                             if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE
-                                && !clientSettings.getIgnoreUpdates()) {
+                                && !clientSettings.getIgnoreUpdates()
+                            ) {
                                 showUpdateDialog = true
                             }
                         }
@@ -359,12 +446,7 @@ private class WarlockCommand : CliktCommand() {
                                     games.add(GameState())
                                 },
                                 showUpdateDialog = { showUpdateDialog = true },
-                                sgeSettings = SgeSettings(
-                                    host = sgeHost,
-                                    port = sgePort,
-                                    certificate = simuCert,
-                                    secure = sgeSecure,
-                                ),
+                                sgeSettings = sgeSettings,
                             )
                             LaunchedEffect(windowState) {
                                 snapshotFlow { windowState.size }

@@ -115,7 +115,7 @@ class SgeViewModel(
                                     username = it,
                                     character = characterName!!,
                                     gameCode = gameCode!!,
-                                    name = "$characterName $gameCode",
+                                    name = "${characterName}_$gameCode",
                                 )
                                 clientSettingRepository.putLastUsername(it)
                             }

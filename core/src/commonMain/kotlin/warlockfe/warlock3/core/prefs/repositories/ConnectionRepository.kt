@@ -16,8 +16,12 @@ class ConnectionRepository(
         }
     }
 
-    suspend fun deleteConnection(id: String) {
-        connectionDao.delete(id)
+    suspend fun deleteConnection(name: String) {
+        connectionDao.delete(name)
+    }
+
+    suspend fun rename(oldName: String, newName: String) {
+        connectionDao.rename(oldName, newName)
     }
 
     suspend fun save(username: String, character: String, gameCode: String, name: String) {
@@ -30,5 +34,9 @@ class ConnectionRepository(
                 name = name,
             )
         )
+    }
+
+    suspend fun getByName(name: String): StoredConnection? {
+        return connectionDao.getByName(name)?.toDomain()
     }
 }

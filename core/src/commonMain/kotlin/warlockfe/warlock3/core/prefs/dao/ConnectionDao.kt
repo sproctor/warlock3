@@ -11,8 +11,8 @@ import warlockfe.warlock3.core.prefs.models.ConnectionWithSettings
 
 @Dao
 interface ConnectionDao {
-    @Query("SELECT * FROM connection WHERE id = :id")
-    suspend fun getById(id: String): ConnectionEntity?
+    @Query("SELECT * FROM connection WHERE name = :name")
+    suspend fun getByName(name: String): ConnectionWithSettings?
 
     @Transaction
     @Query("SELECT * FROM connection")
@@ -23,4 +23,7 @@ interface ConnectionDao {
 
     @Query("DELETE FROM connection WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("UPDATE connection SET name = :newName WHERE name = :oldName")
+    suspend fun rename(oldName: String, newName: String)
 }
