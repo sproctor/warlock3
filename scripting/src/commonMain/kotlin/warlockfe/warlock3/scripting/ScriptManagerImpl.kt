@@ -50,8 +50,7 @@ class ScriptManagerImpl(
 
     override suspend fun startScript(client: WarlockClient, file: Path, commandHandler: suspend (String) -> SendCommandType) {
         if (fileSystem.exists(file)) {
-            val result = scriptEngineRepository.getScript(file, this)
-            when (result) {
+            when (val result = scriptEngineRepository.getScript(file, this)) {
                 is ScriptLaunchResult.Success -> {
                     startInstance(client, result.instance, null, commandHandler)
                 }

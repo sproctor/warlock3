@@ -120,7 +120,7 @@ abstract class AppContainer(
             aliasRepository = aliasRepository,
             scriptManagerFactory = scriptManagerFactory,
             alterationRepository = alterationRepository,
-            mainDispatcher = mainDispatcher,
+            ioDispatcher = ioDispatcher,
         )
     }
 

@@ -105,7 +105,6 @@ class GameViewModel(
     private val alterationRepository: AlterationRepository,
     aliasRepository: AliasRepository,
     private val streamRegistry: StreamRegistry,
-    private val mainDispatcher: CoroutineDispatcher,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -580,7 +579,7 @@ class GameViewModel(
     }
 
     private fun executeMacro(tokens: List<MacroToken>, clipboard: Clipboard) {
-        viewModelScope.launch(mainDispatcher) {
+        viewModelScope.launch {
             var moveCursor: Int? = null
             tokens.forEach { token ->
                 when (token) {

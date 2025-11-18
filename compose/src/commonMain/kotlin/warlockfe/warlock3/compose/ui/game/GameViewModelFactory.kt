@@ -25,7 +25,7 @@ class GameViewModelFactory(
     private val aliasRepository: AliasRepository,
     private val alterationRepository: AlterationRepository,
     private val scriptManagerFactory: ScriptManagerFactory,
-    private val mainDispatcher: CoroutineDispatcher,
+    private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
         client: WarlockClient,
@@ -45,7 +45,6 @@ class GameViewModelFactory(
             aliasRepository = aliasRepository,
             alterationRepository = alterationRepository,
             streamRegistry = streamRegistry,
-            mainDispatcher = mainDispatcher,
-            ioDispatcher = mainDispatcher,
+            ioDispatcher = ioDispatcher,
         )
 }
