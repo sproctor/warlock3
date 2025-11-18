@@ -20,9 +20,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
@@ -102,6 +104,8 @@ private class WarlockCommand : CliktCommand() {
         "--height",
         help = "Window height in \"display pixels\" (1 physical pixel at 160 DPI)"
     ).int()
+    val positionX: Int? by option("-x", "--position-x", help = "Position to place the window on the X-axis").int()
+    val positionY: Int? by option("-y", "--position-y", help = "Position to place the window on the Y-axis").int()
 
     override fun run() {
 
@@ -199,6 +203,11 @@ private class WarlockCommand : CliktCommand() {
         val clientSettings = appContainer.clientSettings
         val initialWidth = width ?: runBlocking { clientSettings.getWidth() } ?: 640
         val initialHeight = height ?: runBlocking { clientSettings.getHeight() } ?: 480
+        val position = if (positionX != null && positionY != null) {
+            WindowPosition(positionX?.dp ?: Dp.Unspecified, positionY?.dp ?: Dp.Unspecified)
+        } else {
+            WindowPosition.PlatformDefault
+        }
 
         val sgeSettings = SgeSettings(
             host = sgeHost,
@@ -408,7 +417,7 @@ private class WarlockCommand : CliktCommand() {
                 }
 
                 games.forEachIndexed { index, gameState ->
-                    val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp) }
+                    val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp, position = position) }
                     val title by gameState.getTitle().collectAsState("Loading...")
                     // app.dir is set when packaged to point at our collected inputs.
                     val appIcon = remember {

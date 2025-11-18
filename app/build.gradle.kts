@@ -65,7 +65,6 @@ compose {
 
                 targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
-                // args("--connection=Tefrin")
                 // args("--input=/home/sproctor/Downloads/20251116072204.log")
                 // args("--sge-port=7900", "--sge-secure=off")
 
