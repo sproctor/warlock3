@@ -51,9 +51,8 @@ import warlockfe.warlock3.wrayth.settings.WraythImporter
 abstract class AppContainer(
     databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
     warlockDirs: WarlockDirs,
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     fileSystem: FileSystem,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     val database = databaseBuilder
