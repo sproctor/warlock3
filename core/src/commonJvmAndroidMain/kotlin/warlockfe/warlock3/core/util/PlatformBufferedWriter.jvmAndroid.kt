@@ -1,6 +1,5 @@
 package warlockfe.warlock3.core.util
 
-import kotlinx.io.IOException
 import kotlinx.io.files.Path
 import java.io.BufferedWriter
 import java.io.File
@@ -11,13 +10,9 @@ actual class PlatformBufferedWriter(path: Path) {
     var writer: BufferedWriter? = null
 
     init {
-        try {
-            val file = File(path.toString())
-            file.parentFile?.mkdirs()
-            writer = FileOutputStream(file, true).bufferedWriter()
-        } catch (_: IOException) {
-            // ignore exceptions
-        }
+        val file = File(path.toString())
+        file.parentFile?.mkdirs()
+        writer = FileOutputStream(file, true).bufferedWriter()
     }
 
     actual fun write(message: String) {

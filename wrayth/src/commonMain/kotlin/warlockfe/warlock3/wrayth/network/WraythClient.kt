@@ -671,7 +671,7 @@ class WraythClient(
                         }
                     }
                 } catch (e: IOException) {
-                    logger.debug { "IO exception: " + e.message }
+                    logger.debug(e) { "IO exception: " + e.message }
                     disconnected()
                     break
                 }

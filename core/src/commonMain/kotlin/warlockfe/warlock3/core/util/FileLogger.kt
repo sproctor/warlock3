@@ -1,40 +1,47 @@
 package warlockfe.warlock3.core.util
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import kotlinx.coroutines.CloseableCoroutineDispatcher
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.io.files.FileNotFoundException
+import kotlinx.io.IOException
 import kotlinx.io.files.Path
 import kotlin.time.Clock
 
+@OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
 class FileLogger private constructor(
     private val writer: PlatformBufferedWriter,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    private val dispatcher: CloseableCoroutineDispatcher = newSingleThreadContext("FileLogger"),
 ) : AutoCloseable {
 
     suspend fun write(message: String, addTimestamps: Boolean, logType: LogType) {
         withContext(dispatcher) {
-            if (addTimestamps) {
-                val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-                val dateString = now.toString()
-                if (logType == LogType.COMPLETE) {
-                    writer.write("<timestamp time=\"$dateString\"/>$message\n")
+            try {
+                if (addTimestamps) {
+                    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+                    val dateString = now.toString()
+                    if (logType == LogType.COMPLETE) {
+                        writer.write("<timestamp time=\"$dateString\"/>$message\n")
+                    } else {
+                        writer.write("[$dateString] $message\n")
+                    }
                 } else {
-                    writer.write("[$dateString] $message\n")
+                    writer.write("$message\n")
                 }
-            } else {
-                writer.write("$message\n")
+                writer.flush()
+            } catch (e: IOException) {
+                logger.error(e) { "Error while logging: $message" }
             }
-            writer.flush()
         }
     }
 
     override fun close() {
+        dispatcher.close()
         writer.close()
     }
 
@@ -47,15 +54,10 @@ class FileLogger private constructor(
         ): FileLogger? {
             val formattedDate = fileDateFormat.format(timestamp)
             val path = Path(directory, "$formattedDate.log")
-//            val file = File(path.toString())
-//            file.parentFile?.mkdirs()
             try {
-                return FileLogger(
-                    createPlatformBufferedWriter(path)
-//                    outputStream = FileOutputStream(file, true)
-                )
-            } catch (_: FileNotFoundException) {
-                logger.warn { "Failed to create file logger for $path" }
+                return FileLogger(createPlatformBufferedWriter(path))
+            } catch (e: IOException) {
+                logger.warn(e) { "Failed to create file logger for $path" }
                 return null
             }
         }
