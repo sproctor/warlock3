@@ -45,8 +45,10 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -82,6 +84,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.math.roundToInt
 import kotlin.system.exitProcess
+import kotlin.time.Duration.Companion.seconds
 
 private val version = System.getProperty("app.version")
 
@@ -107,6 +110,7 @@ private class WarlockCommand : CliktCommand() {
     val positionX: Int? by option("-x", "--position-x", help = "Position to place the window on the X-axis").int()
     val positionY: Int? by option("-y", "--position-y", help = "Position to place the window on the Y-axis").int()
 
+    @OptIn(FlowPreview::class)
     override fun run() {
 
         val loginOptions = mutableSetOf<String>()
@@ -459,6 +463,7 @@ private class WarlockCommand : CliktCommand() {
                             )
                             LaunchedEffect(windowState) {
                                 snapshotFlow { windowState.size }
+                                    .debounce(2.seconds)
                                     .onEach { size ->
                                         clientSettings.putWidth(size.width.value.roundToInt())
                                         clientSettings.putHeight(size.height.value.roundToInt())
