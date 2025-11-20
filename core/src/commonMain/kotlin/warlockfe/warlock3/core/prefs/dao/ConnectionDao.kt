@@ -11,6 +11,7 @@ import warlockfe.warlock3.core.prefs.models.ConnectionWithSettings
 
 @Dao
 interface ConnectionDao {
+    @Transaction
     @Query("SELECT * FROM connection WHERE name = :name")
     suspend fun getByName(name: String): ConnectionWithSettings?
 
