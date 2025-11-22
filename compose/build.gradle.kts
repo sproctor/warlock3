@@ -70,7 +70,6 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
             implementation(libs.kotlin.logging)
-            implementation(libs.stately)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -1,6 +1,6 @@
 package warlockfe.warlock3.compose.ui.window
 
-import co.touchlab.stately.collections.ConcurrentMutableMap
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,9 +39,9 @@ class StreamRegistryImpl(
     private val windowRepository: WindowRepository,
 ) : StreamRegistry {
 
-    private val streams = ConcurrentMutableMap<String, ComposeTextStream>()
+    private var streams = persistentMapOf<String, ComposeTextStream>()
 
-    private val dialogs = ConcurrentMutableMap<String, ComposeDialogState>()
+    private var dialogs = persistentMapOf<String, ComposeDialogState>()
 
     private val maxLines = settingRepository
         .observeMaxScrollLines()
@@ -148,7 +148,7 @@ class StreamRegistryImpl(
             .stateIn(scope = externalScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     override fun getOrCreateStream(name: String): TextStream {
-        return streams.computeIfAbsent(name) {
+        return streams.getOrElse(name) {
             ComposeTextStream(
                 id = name,
                 maxLines = maxLines.value,
@@ -160,6 +160,7 @@ class StreamRegistryImpl(
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
             )
+                .also { streams =  streams.put(name, it) }
         }
     }
 
@@ -168,10 +169,11 @@ class StreamRegistryImpl(
     }
 
     override fun getOrCreateDialog(name: String): DialogState {
-        return dialogs.computeIfAbsent(name) {
+        return dialogs.getOrElse(name) {
             ComposeDialogState(
                 id = name,
             )
+                .also { dialogs = dialogs.put(name, it) }
         }
     }
 

@@ -1,6 +1,5 @@
 package warlockfe.warlock3.wrayth.network
 
-import co.touchlab.stately.collections.ConcurrentMutableMap
 import com.eygraber.uri.Uri
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.mutate
@@ -28,6 +27,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import warlockfe.warlock3.core.client.ClientCompassEvent
@@ -164,7 +165,8 @@ class WraythClient(
     private val _indicators = MutableStateFlow<Set<String>>(emptySet())
     override val indicators = _indicators.asStateFlow()
 
-    private val components = ConcurrentMutableMap<String, StyledString>()
+    private val componentsMutex = Mutex()
+    private var components = persistentMapOf<String, StyledString>()
 
     private val logBuffer = mutableListOf<suspend () -> Unit>()
     private var logName: String? = null
@@ -468,10 +470,12 @@ class WraythClient(
                                     if (componentId != null) {
                                         // Either replace the component in the map with the new value
                                         //  or remove the component from the map (if we got an empty one)
-                                        if (elementBuffer?.substrings.isNullOrEmpty()) {
-                                            components.remove(componentId)
-                                        } else {
-                                            components[componentId!!] = elementBuffer!!
+                                        componentsMutex.withLock {
+                                            components = if (elementBuffer?.substrings.isNullOrEmpty()) {
+                                                components.remove(componentId!!)
+                                            } else {
+                                                components.put(componentId!!, elementBuffer!!)
+                                            }
                                         }
                                         val newValue = elementBuffer ?: StyledString()
                                         streamRegistry.getStreams().forEach { stream ->
@@ -488,7 +492,7 @@ class WraythClient(
 
                                 is WraythStreamWindowEvent -> {
                                     val window = event.window
-                                    if (windows.get(event.window.id) == null && window.id != "main") {
+                                    if (windows[event.window.id] == null && window.id != "main") {
                                         sendCommandDirect("_swclose s${event.window.id}")
                                     }
                                     addWindow(window)
