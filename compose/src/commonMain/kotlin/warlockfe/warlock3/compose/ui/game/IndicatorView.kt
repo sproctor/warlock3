@@ -17,11 +17,13 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.death
+import warlockfe.warlock3.compose.generated.resources.diseased
 import warlockfe.warlock3.compose.generated.resources.hidden
 import warlockfe.warlock3.compose.generated.resources.invisible
 import warlockfe.warlock3.compose.generated.resources.joined
 import warlockfe.warlock3.compose.generated.resources.kneeling
 import warlockfe.warlock3.compose.generated.resources.local_hospital
+import warlockfe.warlock3.compose.generated.resources.poisoned
 import warlockfe.warlock3.compose.generated.resources.prone
 import warlockfe.warlock3.compose.generated.resources.sitting
 import warlockfe.warlock3.compose.generated.resources.standing
@@ -63,6 +65,18 @@ fun IndicatorView(
                     painter = painterResource(Res.drawable.standing),
                     contentDescription = "standing",
                     tint = defaultColor,
+                )
+            },
+            "poisoned" to {
+                Image(
+                    painter = painterResource(Res.drawable.poisoned),
+                    contentDescription = "poisoned",
+                )
+            },
+            "diseased" to {
+                Image(
+                    painter = painterResource(Res.drawable.diseased),
+                    contentDescription = "diseased",
                 )
             },
         ),
