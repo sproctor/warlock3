@@ -407,6 +407,9 @@ class WraythClient(
                                 }
 
                                 is WraythDialogDataEvent -> {
+                                    if (event.id == null) {
+                                        dialogDataId?.let { streamRegistry.getOrCreateDialog(it) }
+                                    }
                                     dialogDataId = event.id
                                     if (event.clear && event.id != null) {
                                         streamRegistry.getOrCreateDialog(event.id).clear()
@@ -568,24 +571,22 @@ class WraythClient(
                                             debug("Could not find cli for coord: ${cmd.coord}")
                                             styleStack.addLast(WarlockStyle(""))
                                         }
-                                    } else {
-                                        if (cmd.exist != null) {
-                                            styleStack.addLast(
-                                                WarlockStyle.Link(
-                                                    WarlockAction.OpenMenu {
-                                                        val menuId = menuCount++
-                                                        _menuData.value = WarlockMenuData(menuId, emptyList())
-                                                        currentCmd = cmd
-                                                        scope.launch {
-                                                            sendCommandDirect("_menu #${cmd.exist} $menuId")
-                                                        }
-                                                        menuId
+                                    } else if (cmd.exist != null) {
+                                        styleStack.addLast(
+                                            WarlockStyle.Link(
+                                                WarlockAction.OpenMenu {
+                                                    val menuId = menuCount++
+                                                    _menuData.value = WarlockMenuData(menuId, emptyList())
+                                                    currentCmd = cmd
+                                                    scope.launch {
+                                                        sendCommandDirect("_menu #${cmd.exist} $menuId")
                                                     }
-                                                )
+                                                    menuId
+                                                }
                                             )
-                                        } else {
-                                            styleStack.addLast(WarlockStyle(""))
-                                        }
+                                        )
+                                    } else {
+                                        styleStack.addLast(WarlockStyle(""))
                                     }
                                 }
 

@@ -8,4 +8,6 @@ interface DialogState {
     suspend fun setObject(value: DialogObject)
 
     suspend fun clear()
+
+    suspend fun updateState()
 }

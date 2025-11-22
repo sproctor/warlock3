@@ -17,11 +17,13 @@ class ComposeDialogState(
     override suspend fun setObject(value: DialogObject) {
         cachedList.removeAll { it.id == value.id }
         cachedList.add(value)
-        _objects.value = cachedList.toPersistentList()
     }
 
     override suspend fun clear() {
         cachedList.clear()
+    }
+
+    override suspend fun updateState() {
         _objects.value = cachedList.toPersistentList()
     }
 }
