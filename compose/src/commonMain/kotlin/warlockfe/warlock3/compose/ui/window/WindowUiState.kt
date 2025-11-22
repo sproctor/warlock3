@@ -11,6 +11,7 @@ import warlockfe.warlock3.wrayth.util.CompiledAlteration
 sealed interface WindowUiState {
     val name: String
     val window: Window?
+    val defaultStyle: StyleDefinition
 }
 
 @Stable
@@ -18,7 +19,7 @@ data class StreamWindowUiState(
     override val name: String,
     val stream: ComposeTextStream,
     override val window: Window?,
-    val defaultStyle: StyleDefinition,
+    override val defaultStyle: StyleDefinition,
     val highlights: List<ViewHighlight>,
     val alterations: List<CompiledAlteration>,
     val presets: Map<String, StyleDefinition>,
@@ -29,7 +30,7 @@ data class DialogWindowUiState(
     override val name: String,
     override val window: Window?,
     val dialogData: ComposeDialogState,
-    val style: StyleDefinition,
+    override val defaultStyle: StyleDefinition,
     val width: Int?,
     val height: Int?,
 ) : WindowUiState

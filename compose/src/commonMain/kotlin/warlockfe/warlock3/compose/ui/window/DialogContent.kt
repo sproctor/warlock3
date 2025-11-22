@@ -30,15 +30,15 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.broken_image
-import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.Percentage
+import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
 import warlockfe.warlock3.core.util.toWarlockColor
-import kotlin.collections.get
 import kotlin.io.encoding.Base64
 import kotlin.math.min
 
@@ -47,6 +47,7 @@ fun DialogContent(
     dataObjects: List<DialogObject>,
     modifier: Modifier = Modifier,
     executeCommand: (String) -> Unit,
+    style: StyleDefinition,
 ) {
     val skin = LocalSkin.current
     val skinObjects = mutableMapOf<String, SkinObject>()
@@ -64,6 +65,7 @@ fun DialogContent(
             }
         }
     }
+
     BoxWithConstraints(modifier) {
         ConstraintLayout(
             Modifier.fillMaxSize()
@@ -128,6 +130,7 @@ fun DialogContent(
                     skinObject = skinObjects.getIgnoringCase(data.id),
                     dataObject = data,
                     executeCommand = executeCommand,
+                    defaultStyle = style,
                 )
             }
         }
@@ -140,13 +143,14 @@ private fun BoxWithConstraintsScope.DataObjectContent(
     skinObject: SkinObject?,
     dataObject: DialogObject,
     executeCommand: (String) -> Unit,
+    defaultStyle: StyleDefinition,
 ) {
     when (dataObject) {
         is DialogObject.Skin -> DialogSkin(modifier, dataObject)
-        is DialogObject.ProgressBar -> ProgressBar(modifier, skinObject, dataObject)
-        is DialogObject.Label -> Label(modifier, skinObject, dataObject)
-        is DialogObject.Link -> Link(modifier, skinObject, dataObject, executeCommand)
-        is DialogObject.Image -> DialogImage(modifier, skinObject, dataObject, executeCommand)
+        is DialogObject.ProgressBar -> ProgressBar(modifier, skinObject, dataObject, defaultStyle)
+        is DialogObject.Label -> Label(modifier, skinObject, dataObject, defaultStyle)
+        is DialogObject.Link -> Link(modifier, skinObject, dataObject, executeCommand, defaultStyle)
+        is DialogObject.Image -> DialogImage(modifier, skinObject, dataObject, executeCommand, defaultStyle)
         is DialogObject.Button -> DialogButton(modifier, skinObject, dataObject, executeCommand)
     }
 }
@@ -163,8 +167,9 @@ private fun BoxWithConstraintsScope.ProgressBar(
     modifier: Modifier,
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
+    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup()
+    val colorGroup = skinObject.getColorGroup(defaultStyle)
     BoxWithConstraints(
         modifier = modifier
             .size(
@@ -195,8 +200,9 @@ private fun BoxWithConstraintsScope.Label(
     modifier: Modifier,
     skinObject: SkinObject?,
     data: DialogObject.Label,
+    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup()
+    val colorGroup = skinObject.getColorGroup(defaultStyle)
     Box(
         modifier = modifier
             .size(
@@ -223,8 +229,9 @@ private fun BoxWithConstraintsScope.Link(
     skinObject: SkinObject?,
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
+    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup()
+    val colorGroup = skinObject.getColorGroup(defaultStyle)
     Box(
         modifier = modifier
             .size(
@@ -259,9 +266,10 @@ private fun BoxWithConstraintsScope.DialogImage(
     skinObject: SkinObject?,
     data: DialogObject.Image,
     executeCommand: (String) -> Unit,
+    defaultStyle: StyleDefinition,
 ) {
     val skin = LocalSkin.current
-    val colorGroup = skinObject.getColorGroup()
+    val colorGroup = skinObject.getColorGroup(defaultStyle)
     val imageData = data.name?.let { skin.getIgnoringCase(it) }
     Box(
         modifier = modifier
@@ -496,6 +504,7 @@ fun VitalBarsPreview() {
             dataObjects = dialogData,
             modifier = Modifier.size(400.dp, 24.dp),
             executeCommand = {},
+            style = StyleDefinition(),
         )
     }
 }
@@ -788,6 +797,7 @@ fun CombatDialogPreview() {
         dataObjects = dialogData,
         modifier = Modifier.size(190.dp, 219.dp),
         executeCommand = {},
+        style = StyleDefinition(),
     )
 }
 
@@ -914,13 +924,14 @@ fun ExperiencePreview() {
         dataObjects = dialogData,
         modifier = Modifier.size(190.dp, 200.dp),
         executeCommand = {},
+        style = StyleDefinition(),
     )
 }
 
-private fun SkinObject?.getColorGroup(): ColorGroup {
+private fun SkinObject?.getColorGroup(defaultStyle: StyleDefinition): ColorGroup {
     return ColorGroup(
-        text = this?.color?.toWarlockColor()?.toColor() ?: Color.White,
+        text = (this?.color?.toWarlockColor() ?: defaultStyle.textColor).toColor(),
         bar = this?.bar?.toWarlockColor()?.toColor() ?: Color.Blue,
-        background = this?.background?.toWarlockColor()?.toColor() ?: Color.Gray
+        background = (this?.background?.toWarlockColor() ?: defaultStyle.backgroundColor).toColor()
     )
 }

@@ -368,7 +368,7 @@ class GameViewModel(
                         name = name,
                         window = window,
                         dialogData = streamRegistry.getOrCreateDialog(name) as ComposeDialogState,
-                        style = presets["default"] ?: defaultStyles["default"]!!,
+                        defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
                         width = null,
                         height = null,
                     )

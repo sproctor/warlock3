@@ -349,7 +349,8 @@ fun GameBottomBar(viewModel: GameViewModel) {
                 modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 2.dp),
                 executeCommand = {
                     // Cannot execute commands from vitals bar
-                }
+                },
+                style = defaultStyles["default"]!!,
             )
             HandsView(
                 left = viewModel.leftHand.collectAsState(null).value,

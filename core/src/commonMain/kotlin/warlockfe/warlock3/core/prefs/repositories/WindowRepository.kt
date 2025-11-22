@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
@@ -40,10 +39,7 @@ class WindowRepository(
                 position = 0,
                 width = null,
                 height = null,
-                textColor = WarlockColor.Unspecified,
-                backgroundColor = WarlockColor.Unspecified,
-                fontFamily = null,
-                fontSize = null,
+                style = StyleDefinition(),
                 showTimestamps = false,
             )
         )
@@ -86,10 +82,12 @@ class WindowRepository(
                                 position = windowSetting.position ?: window.position,
                                 width = windowSetting.width,
                                 height = windowSetting.height,
-                                textColor = windowSetting.textColor,
-                                backgroundColor = windowSetting.backgroundColor,
-                                fontFamily = windowSetting.fontFamily,
-                                fontSize = windowSetting.fontSize,
+                                style = StyleDefinition(
+                                    textColor = windowSetting.textColor,
+                                    backgroundColor = windowSetting.backgroundColor,
+                                    fontFamily = windowSetting.fontFamily,
+                                    fontSize = windowSetting.fontSize,
+                                )
                             )
                         }
                         existingWindows.toPersistentMap()
@@ -126,10 +124,12 @@ class WindowRepository(
                         position = settings.position,
                         width = settings.width,
                         height = settings.height,
-                        textColor = settings.textColor,
-                        backgroundColor = settings.backgroundColor,
-                        fontFamily = settings.fontFamily,
-                        fontSize = settings.fontSize,
+                        style = StyleDefinition(
+                            textColor = settings.textColor,
+                            backgroundColor = settings.backgroundColor,
+                            fontFamily = settings.fontFamily,
+                            fontSize = settings.fontSize,
+                        ),
                         showTimestamps = showTimestamps,
                     )
                 }
@@ -142,10 +142,7 @@ class WindowRepository(
                     position = null,
                     width = null,
                     height = null,
-                    textColor = WarlockColor.Unspecified,
-                    backgroundColor = WarlockColor.Unspecified,
-                    fontFamily = null,
-                    fontSize = null,
+                    style = StyleDefinition(),
                     showTimestamps = showTimestamps,
                 )
             existingWindows

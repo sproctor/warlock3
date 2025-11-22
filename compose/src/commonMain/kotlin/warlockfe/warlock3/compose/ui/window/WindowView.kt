@@ -200,8 +200,11 @@ fun WindowView(
                         onActionClicked = onActionClicked,
                     )
 
-                is DialogWindowUiState ->
-                    ScrollableColumn(Modifier.background(uiState.style.backgroundColor.toColor())) {
+                is DialogWindowUiState -> {
+                    ScrollableColumn(
+                        Modifier.background((window?.style?.backgroundColor?.specifiedOrNull()
+                            ?: uiState.defaultStyle.backgroundColor).toColor())
+                    ) {
                         val dataObjects by uiState.dialogData.objects.collectAsState()
                         DialogContent(
                             dataObjects = dataObjects,
@@ -210,21 +213,18 @@ fun WindowView(
                             executeCommand = { command ->
                                 onActionClicked(WarlockAction.SendCommand(command))
                             },
+                            style = window?.style?.mergeWith(uiState.defaultStyle) ?: uiState.defaultStyle,
                         )
                     }
+                }
             }
         }
     }
 
-    if (showWindowSettingsDialog && window != null && uiState is StreamWindowUiState) {
+    if (showWindowSettingsDialog && window != null) {
         WindowSettingsDialog(
             onCloseRequest = { showWindowSettingsDialog = false },
-            style = StyleDefinition(
-                textColor = window.textColor,
-                backgroundColor = window.backgroundColor,
-                fontFamily = window.fontFamily,
-                fontSize = window.fontSize
-            ),
+            style = window.style,
             defaultStyle = uiState.defaultStyle,
             saveStyle = saveStyle,
         )
@@ -335,10 +335,12 @@ private fun WindowViewContent(
 ) {
     val logger = LocalLogger.current
 
-    val backgroundColor = (window?.backgroundColor?.specifiedOrNull() ?: defaultStyle.backgroundColor).toColor()
-    val textColor = (window?.textColor?.specifiedOrNull() ?: defaultStyle.textColor).toColor()
-    val fontFamily = (window?.fontFamily ?: defaultStyle.fontFamily)?.let { createFontFamily(it) }
-    val fontSize = (window?.fontSize ?: defaultStyle.fontSize)?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
+    val style = window?.style?.mergeWith(defaultStyle) ?: defaultStyle
+
+    val backgroundColor = style.backgroundColor.toColor()
+    val textColor = style.textColor.toColor()
+    val fontFamily = style.fontFamily?.let { createFontFamily(it) }
+    val fontSize = style.fontSize?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
     val lines by stream.lines.collectAsState(emptyList())
 

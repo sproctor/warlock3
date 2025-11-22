@@ -1,6 +1,6 @@
 package warlockfe.warlock3.core.window
 
-import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.StyleDefinition
 
 data class Window(
     val name: String,
@@ -11,10 +11,7 @@ data class Window(
     val position: Int?,
     val width: Int?,
     val height: Int?,
-    val textColor: WarlockColor,
-    val backgroundColor: WarlockColor,
-    val fontFamily: String?,
-    val fontSize: Float?,
+    val style: StyleDefinition,
     val showTimestamps: Boolean,
 )
 
