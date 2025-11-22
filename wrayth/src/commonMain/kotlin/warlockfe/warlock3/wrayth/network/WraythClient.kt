@@ -408,7 +408,7 @@ class WraythClient(
 
                                 is WraythDialogDataEvent -> {
                                     if (event.id == null) {
-                                        dialogDataId?.let { streamRegistry.getOrCreateDialog(it) }
+                                        dialogDataId?.let { streamRegistry.getOrCreateDialog(it).updateState() }
                                     }
                                     dialogDataId = event.id
                                     if (event.clear && event.id != null) {
