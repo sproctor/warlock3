@@ -174,15 +174,8 @@ abstract class AppContainer(
         DashboardViewModelFactory(
             connectionRepository = connectionRepository,
             connectionSettingsRepository = connectionSettingsRepository,
-            gameViewModelFactory = gameViewModelFactory,
             sgeClientFactory = sgeClientFactory,
-            warlockClientFactory = warlockClientFactory,
-            windowRepositoryFactory = windowRepositoryFactory,
-            streamRegistryFactory = streamRegistryFactory,
-            warlockProxyFactory = warlockProxyFactory,
             connectToGameUseCase = connectToGameUseCase,
-            dirs = warlockDirs,
-            ioDispatcher = ioDispatcher,
         )
     }
 
