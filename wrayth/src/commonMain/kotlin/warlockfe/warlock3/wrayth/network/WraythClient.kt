@@ -850,6 +850,7 @@ class WraythClient(
         this.proxy = proxy
         proxy.stdOut
             .onEach {
+                logger.debug { "Proxy output: $it" }
                 scriptDebug(it)
             }
             .catch {
@@ -858,6 +859,7 @@ class WraythClient(
             .launchIn(scope)
         proxy.stdErr
             .onEach {
+                logger.debug { "Proxy error: $it" }
                 doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
             }
             .catch {

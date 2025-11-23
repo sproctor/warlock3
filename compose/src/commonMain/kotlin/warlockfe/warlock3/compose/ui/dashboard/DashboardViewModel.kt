@@ -56,10 +56,8 @@ class DashboardViewModel(
                     is AutoConnectResult.Failure ->
                         message = result.reason
 
-                    is AutoConnectResult.Success -> {
+                    is AutoConnectResult.Success ->
                         connectToGame(result.credentials, connection.proxySettings, gameState)
-
-                    }
                 }
             } catch (e: Exception) {
                 ensureActive()
