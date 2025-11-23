@@ -12,6 +12,8 @@ OPEN        :   '<'                     -> pushMode(INSIDE) ;
 
 TEXT        :   ~[<&]+ ;
 
+COMMENT     :   '<!--' .*? '-->'         -> skip ;
+
 // Everything inside of a tag
 mode INSIDE;
 
