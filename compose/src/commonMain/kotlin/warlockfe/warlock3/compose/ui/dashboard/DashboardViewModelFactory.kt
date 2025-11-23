@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
 import kotlinx.coroutines.CoroutineDispatcher
+import warlockfe.warlock3.compose.ConnectToGameUseCase
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
@@ -22,6 +23,7 @@ class DashboardViewModelFactory(
     private val windowRepositoryFactory: WindowRepositoryFactory,
     private val streamRegistryFactory: StreamRegistryFactory,
     private val warlockProxyFactory: WarlockProxy.Factory,
+    private val connectToGameUseCase: ConnectToGameUseCase,
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -39,6 +41,7 @@ class DashboardViewModelFactory(
             warlockClientFactory = warlockClientFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
+            connectToGame = connectToGameUseCase,
             dirs = dirs,
             ioDispatcher = ioDispatcher,
             warlockProxyFactory = warlockProxyFactory,

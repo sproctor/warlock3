@@ -277,27 +277,10 @@ private class WarlockCommand : CliktCommand() {
                             is AutoConnectResult.Success ->
                                 // TODO: merge with the above, and probably below
                                 try {
-                                    val credentials = result.credentials
-                                    val socket = NetworkSocket(Dispatchers.IO)
-                                        .also { socket ->
-                                            socket.connect(credentials.host, credentials.port)
-                                        }
-                                    val windowRepository = appContainer.windowRepositoryFactory.create()
-                                    val streamRegistry = appContainer.streamRegistryFactory.create(windowRepository)
-                                    val client = appContainer.warlockClientFactory.createClient(
-                                        windowRepository = windowRepository,
-                                        streamRegistry = streamRegistry,
-                                        socket = socket,
-                                    )
-                                    client.connect(credentials.key)
-                                    val viewModel =
-                                        appContainer.gameViewModelFactory.create(
-                                            client,
-                                            windowRepository,
-                                            streamRegistry
-                                        )
-                                    setScreen(
-                                        GameScreen.ConnectedGameState(viewModel)
+                                    appContainer.connectToGameUseCase(
+                                        credentials = result.credentials,
+                                        proxySettings = connection.proxySettings,
+                                        gameState = this@apply,
                                     )
                                 } catch (e: Exception) {
                                     ensureActive()
@@ -421,7 +404,13 @@ private class WarlockCommand : CliktCommand() {
                 }
 
                 games.forEachIndexed { index, gameState ->
-                    val windowState = remember { WindowState(width = initialWidth.dp, height = initialHeight.dp, position = position) }
+                    val windowState = remember {
+                        WindowState(
+                            width = initialWidth.dp,
+                            height = initialHeight.dp,
+                            position = position
+                        )
+                    }
                     val title by gameState.getTitle().collectAsState("Loading...")
                     // app.dir is set when packaged to point at our collected inputs.
                     val appIcon = remember {

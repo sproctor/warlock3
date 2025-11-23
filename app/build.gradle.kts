@@ -68,6 +68,7 @@ compose {
                 // args("--input=/home/sproctor/Downloads/20251116072204.log")
                 // args("--input=/home/sproctor/.local/state/warlock/logs/DR_Tefrin/20251122120309.log")
                 // args("--sge-port=7900", "--sge-secure=off")
+                // args("--connection=Tefrin")
 
                 windows {
                     menu = true

@@ -180,6 +180,7 @@ abstract class AppContainer(
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
             warlockProxyFactory = warlockProxyFactory,
+            connectToGameUseCase = connectToGameUseCase,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )
@@ -195,6 +196,18 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             windowRepositoryFactory = windowRepositoryFactory,
             streamRegistryFactory = streamRegistryFactory,
+            ioDispatcher = ioDispatcher,
+        )
+    }
+
+    val connectToGameUseCase by lazy {
+        ConnectToGameUseCase(
+            warlockProxyFactory = warlockProxyFactory,
+            windowRepositoryFactory = windowRepositoryFactory,
+            streamRegistryFactory = streamRegistryFactory,
+            warlockClientFactory = warlockClientFactory,
+            gameViewModelFactory = gameViewModelFactory,
+            dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
         )
     }
