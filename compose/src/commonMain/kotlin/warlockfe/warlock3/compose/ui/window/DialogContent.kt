@@ -23,6 +23,7 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstrainedLayoutReference
 import androidx.constraintlayout.compose.ConstraintLayout
 import coil3.compose.AsyncImage
@@ -188,7 +189,7 @@ private fun BoxWithConstraintsScope.ProgressBar(
                 modifier = Modifier.align(Alignment.Center),
                 text = text,
                 color = colorGroup.text,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                 maxLines = 1,
             )
         }
@@ -217,7 +218,7 @@ private fun BoxWithConstraintsScope.Label(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             maxLines = 1,
         )
     }
@@ -254,7 +255,7 @@ private fun BoxWithConstraintsScope.Link(
                 pop()
             },
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             maxLines = 1,
         )
     }
@@ -343,7 +344,7 @@ private fun BoxWithConstraintsScope.DialogButton(
                 pop()
             },
             color = MaterialTheme.colorScheme.onPrimaryContainer,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             maxLines = 1,
         )
     }
