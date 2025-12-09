@@ -4,7 +4,6 @@ import androidx.compose.foundation.LocalScrollbarStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,20 +35,6 @@ fun DecoratedWindowScope.WarlockApp(
             unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
         )
     ) {
-        var isConnected by remember { mutableStateOf(false) }
-        LaunchedEffect(gameState.screen) {
-            when (gameState.screen) {
-                is GameScreen.ConnectedGameState -> {
-                    scope.launch {
-                        isConnected = true
-                    }
-                }
-
-                else -> {
-                    isConnected = false
-                }
-            }
-        }
         var showAboutDialog by remember { mutableStateOf(false) }
         var sideBarVisible by remember { mutableStateOf(false) }
         TitleBarView(
