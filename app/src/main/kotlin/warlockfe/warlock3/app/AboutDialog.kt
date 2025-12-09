@@ -24,9 +24,9 @@ import warlockfe.warlock3.app.resources.icon
 
 @Composable
 fun AboutDialog(
-    warlockVersion: String,
     onCloseRequest: () -> Unit,
 ) {
+    val warlockVersion = System.getProperty("app.version", "development")
     DialogWindow(
         state = rememberDialogState(width = 400.dp, height = 300.dp),
         onCloseRequest = onCloseRequest,

@@ -1,5 +1,6 @@
 package warlockfe.warlock3.app
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
@@ -61,6 +61,17 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
+import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
+import org.jetbrains.jewel.intui.standalone.theme.default
+import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
+import org.jetbrains.jewel.intui.window.decoratedWindow
+import org.jetbrains.jewel.intui.window.styling.dark
+import org.jetbrains.jewel.intui.window.styling.light
+import org.jetbrains.jewel.ui.ComponentStyling
+import org.jetbrains.jewel.window.DecoratedWindow
+import org.jetbrains.jewel.window.styling.TitleBarStyle
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -68,11 +79,13 @@ import warlockfe.warlock3.compose.macros.keyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
@@ -95,7 +108,7 @@ private class WarlockCommand : CliktCommand() {
     val debug: Boolean by option("-d", "--debug", help = "Enable debug output").flag()
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
     val inputFile: String? by option("-i", "--input", help = "Read input from file")
-    val autoconnectName: String? by option("-c", "--connection", help = "Auto-connect to the named connection")
+    val autoConnectName: String? by option("-c", "--connection", help = "Auto-connect to the named connection")
     val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
     val sgePort: Int by option("--sge-port", help = "Credentials/SGE port").int().default(7910)
     val sgeSecure: Boolean by option("--sge-secure", help = "Credentials/SGE uses encryption").boolean().default(true)
@@ -123,7 +136,7 @@ private class WarlockCommand : CliktCommand() {
         if (inputFile != null) {
             loginOptions.add("inputFile")
         }
-        if (autoconnectName != null) {
+        if (autoConnectName != null) {
             loginOptions.add("connection")
         }
         if (loginOptions.size > 1) {
@@ -258,11 +271,11 @@ private class WarlockCommand : CliktCommand() {
                             logger.error(e) { "Failed to connect to Warlock" }
                         }
                     }
-                } else if (autoconnectName != null) {
+                } else if (autoConnectName != null) {
                     runBlocking {
-                        val connection = appContainer.connectionRepository.getByName(autoconnectName!!)
+                        val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
                         if (connection == null) {
-                            println("Invalid connection name: $autoconnectName")
+                            println("Invalid connection name: $autoConnectName")
                             exitProcess(-1)
                         }
                         val sgeClient = appContainer.sgeClientFactory.create()
@@ -296,168 +309,188 @@ private class WarlockCommand : CliktCommand() {
         val controller = SoftwareUpdateController.getInstance()
 
         application {
-            var updateAvailable by remember { mutableStateOf(false) }
-            var showUpdateDialog by remember { mutableStateOf(false) }
-            var currentVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
-            var latestVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
-            val scope = rememberCoroutineScope()
+            val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
+            val darkMode = when (themeSetting) {
+                ThemeSetting.AUTO -> isSystemInDarkTheme()
+                ThemeSetting.LIGHT -> false
+                ThemeSetting.DARK -> true
+            }
+            AppTheme(useDarkTheme = darkMode) {
+                IntUiTheme(
+                    theme = if (darkMode) {
+                        JewelTheme.darkThemeDefinition()
+                    } else {
+                        JewelTheme.lightThemeDefinition()
+                    },
+                    styling = ComponentStyling.default()
+                        .decoratedWindow(titleBarStyle = if (darkMode) TitleBarStyle.dark() else TitleBarStyle.light())
+                ) {
+                    var updateAvailable by remember { mutableStateOf(false) }
+                    var showUpdateDialog by remember { mutableStateOf(false) }
+                    var currentVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
+                    var latestVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
+                    val scope = rememberCoroutineScope()
 
-            suspend fun checkUpdate() {
-                if (controller != null) {
-                    try {
-                        currentVersion = controller.currentVersion
-                        latestVersion = controller.currentVersionFromRepository
+                    suspend fun checkUpdate() {
+                        if (controller != null) {
+                            try {
+                                currentVersion = controller.currentVersion
+                                latestVersion = controller.currentVersionFromRepository
 
-                        if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
-                            // A newer version is available
-                            updateAvailable = true
-                            if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE
-                                && !clientSettings.getIgnoreUpdates()
-                            ) {
-                                showUpdateDialog = true
+                                if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
+                                    // A newer version is available
+                                    updateAvailable = true
+                                    if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE
+                                        && !clientSettings.getIgnoreUpdates()
+                                    ) {
+                                        showUpdateDialog = true
+                                    }
+                                }
+                            } catch (e: UpdateCheckException) {
+                                // Handle exception
+                                logger.error(e) { "Update check failed" }
                             }
                         }
-                    } catch (e: UpdateCheckException) {
-                        // Handle exception
-                        logger.error(e) { "Update check failed" }
                     }
-                }
-            }
 
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.IO) {
-                    checkUpdate()
-                }
-            }
-
-            CompositionLocalProvider(
-                LocalLogger provides logger,
-                LocalSkin provides skin.value,
-            ) {
-                if (showUpdateDialog) {
-                    var updateSupported by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
                         withContext(Dispatchers.IO) {
-                            val availability = controller?.canTriggerUpdateCheckUI()
-                            if (availability == SoftwareUpdateController.Availability.AVAILABLE) {
-                                updateSupported = true
-                            }
                             checkUpdate()
                         }
                     }
-                    DialogWindow(
-                        onCloseRequest = { showUpdateDialog = false },
-                        title = "Warlock update available",
-                        state = rememberDialogState(width = 400.dp, height = 300.dp),
+
+                    CompositionLocalProvider(
+                        LocalLogger provides logger,
+                        LocalSkin provides skin.value,
                     ) {
-                        Column(Modifier.fillMaxSize().padding(8.dp)) {
-                            Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
-                            Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
-                            if (!updateSupported) {
-                                Text("Automated updates are not supported for your installation")
+                        if (showUpdateDialog) {
+                            var updateSupported by remember { mutableStateOf(false) }
+                            LaunchedEffect(Unit) {
+                                withContext(Dispatchers.IO) {
+                                    val availability = controller?.canTriggerUpdateCheckUI()
+                                    if (availability == SoftwareUpdateController.Availability.AVAILABLE) {
+                                        updateSupported = true
+                                    }
+                                    checkUpdate()
+                                }
                             }
-                            Spacer(Modifier.weight(1f))
-                            Row(Modifier.fillMaxWidth()) {
-                                Spacer(Modifier.weight(1f))
-                                val ignoreUpdates by clientSettings.observeIgnoreUpdates().collectAsState(false)
-                                if (!ignoreUpdates) {
-                                    TextButton(
-                                        onClick = {
-                                            scope.launch {
-                                                clientSettings.putIgnoreUpdates(true)
-                                                showUpdateDialog = false
-                                            }
-                                        },
-                                    ) {
-                                        Text("Ignore updates")
+                            DialogWindow(
+                                onCloseRequest = { showUpdateDialog = false },
+                                title = "Warlock update available",
+                                state = rememberDialogState(width = 400.dp, height = 300.dp),
+                            ) {
+                                Column(Modifier.fillMaxSize().padding(8.dp)) {
+                                    Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
+                                    Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
+                                    if (!updateSupported) {
+                                        Text("Automated updates are not supported for your installation")
                                     }
-                                } else {
-                                    TextButton(
-                                        onClick = {
-                                            scope.launch {
-                                                clientSettings.putIgnoreUpdates(false)
+                                    Spacer(Modifier.weight(1f))
+                                    Row(Modifier.fillMaxWidth()) {
+                                        Spacer(Modifier.weight(1f))
+                                        val ignoreUpdates by clientSettings.observeIgnoreUpdates().collectAsState(false)
+                                        if (!ignoreUpdates) {
+                                            TextButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        clientSettings.putIgnoreUpdates(true)
+                                                        showUpdateDialog = false
+                                                    }
+                                                },
+                                            ) {
+                                                Text("Ignore updates")
                                             }
-                                        },
-                                    ) {
-                                        Text("Stop ignoring updates")
-                                    }
-                                }
-                                TextButton(
-                                    onClick = { showUpdateDialog = false },
-                                ) {
-                                    Text("Close")
-                                }
-                                TextButton(
-                                    onClick = {
-                                        scope.launch {
-                                            clientSettings.putIgnoreUpdates(false)
+                                        } else {
+                                            TextButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        clientSettings.putIgnoreUpdates(false)
+                                                    }
+                                                },
+                                            ) {
+                                                Text("Stop ignoring updates")
+                                            }
                                         }
-                                        controller.triggerUpdateCheckUI()
-                                    },
-                                    enabled = updateAvailable && updateSupported
-                                ) {
-                                    Text("Update")
+                                        TextButton(
+                                            onClick = { showUpdateDialog = false },
+                                        ) {
+                                            Text("Close")
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    clientSettings.putIgnoreUpdates(false)
+                                                }
+                                                controller.triggerUpdateCheckUI()
+                                            },
+                                            enabled = updateAvailable && updateSupported
+                                        ) {
+                                            Text("Update")
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
 
-                games.forEachIndexed { index, gameState ->
-                    val windowState = remember {
-                        WindowState(
-                            width = initialWidth.dp,
-                            height = initialHeight.dp,
-                            position = position
-                        )
-                    }
-                    val title by gameState.getTitle().collectAsState("Loading...")
-                    // app.dir is set when packaged to point at our collected inputs.
-                    val appIcon = remember {
-                        System.getProperty("app.dir")
-                            ?.let { Paths.get(it, "icon-512.png") }
-                            ?.takeIf { it.exists() }
-                            ?.inputStream()
-                            ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
-                    }
-                    Window(
-                        title = "Warlock - $title",
-                        state = windowState,
-                        icon = appIcon,
-                        onCloseRequest = {
-                            scope.launch {
-                                val game = games[index]
-                                val screen = game.screen
-                                if (screen is GameScreen.ConnectedGameState) {
-                                    screen.viewModel.close()
-                                }
-                                games.removeAt(index)
-                                if (games.isEmpty()) {
-                                    exitApplication()
-                                }
+                        games.forEachIndexed { index, gameState ->
+                            val windowState = remember {
+                                WindowState(
+                                    width = initialWidth.dp,
+                                    height = initialHeight.dp,
+                                    position = position
+                                )
                             }
-                        },
-                    ) {
-                        CompositionLocalProvider(
-                            LocalWindowComponent provides window,
-                        ) {
-                            WarlockApp(
-                                appContainer = appContainer,
-                                gameState = gameState,
-                                newWindow = {
-                                    games.add(GameState())
-                                },
-                                showUpdateDialog = { showUpdateDialog = true },
-                                sgeSettings = sgeSettings,
-                            )
-                            LaunchedEffect(windowState) {
-                                snapshotFlow { windowState.size }
-                                    .debounce(2.seconds)
-                                    .onEach { size ->
-                                        clientSettings.putWidth(size.width.value.roundToInt())
-                                        clientSettings.putHeight(size.height.value.roundToInt())
+                            val subtitle by gameState.getTitle().collectAsState("loading")
+                            val title = "Warlock - $subtitle"
+                            // app.dir is set when packaged to point at our collected inputs.
+                            val appIcon = remember {
+                                System.getProperty("app.dir")
+                                    ?.let { Paths.get(it, "icon-512.png") }
+                                    ?.takeIf { it.exists() }
+                                    ?.inputStream()
+                                    ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
+                            }
+                            DecoratedWindow(
+                                title = title,
+                                state = windowState,
+                                icon = appIcon,
+                                onCloseRequest = {
+                                    scope.launch {
+                                        val game = games[index]
+                                        val screen = game.screen
+                                        if (screen is GameScreen.ConnectedGameState) {
+                                            screen.viewModel.close()
+                                        }
+                                        games.removeAt(index)
+                                        if (games.isEmpty()) {
+                                            exitApplication()
+                                        }
                                     }
-                                    .launchIn(this)
+                                },
+                            ) {
+                                CompositionLocalProvider(
+                                    LocalWindowComponent provides window,
+                                ) {
+                                    WarlockApp(
+                                        title = title,
+                                        appContainer = appContainer,
+                                        gameState = gameState,
+                                        openNewWindow = {
+                                            games.add(GameState())
+                                        },
+                                        showUpdateDialog = { showUpdateDialog = true },
+                                        sgeSettings = sgeSettings,
+                                    )
+                                    LaunchedEffect(windowState) {
+                                        snapshotFlow { windowState.size }
+                                            .debounce(2.seconds)
+                                            .onEach { size ->
+                                                clientSettings.putWidth(size.width.value.roundToInt())
+                                                clientSettings.putHeight(size.height.value.roundToInt())
+                                            }
+                                            .launchIn(this)
+                                    }
+                                }
                             }
                         }
                     }

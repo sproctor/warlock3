@@ -1,15 +1,21 @@
 package warlockfe.warlock3.compose.ui.game
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -18,13 +24,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
+import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.visibility_filled
+import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
@@ -34,12 +48,14 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 
 @Composable
 fun GameView(
     viewModel: GameViewModel,
     navigateToDashboard: () -> Unit,
+    sideBarVisible: Boolean,
 ) {
     val disconnected by viewModel.disconnected.collectAsState()
 
@@ -64,48 +80,88 @@ fun GameView(
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
 
-        GameTextWindows(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            subWindowUiStates = subWindows.value,
-            mainWindowUiState = mainWindow.value,
-            selectedWindow = viewModel.selectedWindow.collectAsState().value,
-            topHeight = viewModel.topHeight.collectAsState(null).value,
-            bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
-            leftWidth = viewModel.leftWidth.collectAsState(null).value,
-            rightWidth = viewModel.rightWidth.collectAsState(null).value,
-            menuData = menuData,
-            onActionClicked = { action ->
-                when (action) {
-                    is WarlockAction.SendCommand -> {
-                        viewModel.sendCommand(action.command)
-                        null
+        Row(modifier = Modifier.weight(1f)) {
+            if (sideBarVisible) {
+                val windows by viewModel.windowRepository.windows.collectAsState()
+                val openWindows by viewModel.windowRepository.openWindows.collectAsState(emptyList())
+                val scope = rememberCoroutineScope()
+                val uiState by viewModel.mainWindowUiState.collectAsState()
+                ScrollableColumn(
+                    Modifier
+                        .padding(2.dp)
+                        .fillMaxHeight()
+                        .width(240.dp)
+                        .background(
+                            color = uiState?.defaultStyle?.backgroundColor?.toColor()
+                                ?: MaterialTheme.colorScheme.surface,
+                            shape = MaterialTheme.shapes.extraSmall,
+                        )
+                        .border(
+                            width = Dp.Hairline,
+                            color = MaterialTheme.colorScheme.outline,
+                            shape = MaterialTheme.shapes.extraSmall,
+                        )
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    windows.values.sortedBy { it.title }.forEach { window ->
+                        WindowListItem(
+                            color = uiState?.defaultStyle?.textColor?.toColor() ?: MaterialTheme.colorScheme.onSurface,
+                            window = window,
+                            isOpen = openWindows.contains(window.name),
+                            onClick = { open ->
+                                scope.launch {
+                                    if (open) viewModel.windowRepository.openWindow(window.name)
+                                    else viewModel.windowRepository.closeWindow(window.name)
+                                }
+                            },
+                        )
                     }
-
-                    is WarlockAction.OpenMenu -> {
-                        action.onClick()
-                    }
-
-                    else -> null
                 }
-            },
-            onMoveClicked = { name, location ->
-                viewModel.moveWindow(name = name, location = location)
-            },
-            onWidthChanged = { name, width ->
-                viewModel.setWindowWidth(name, width)
-            },
-            onHeightChanged = { name, height ->
-                viewModel.setWindowHeight(name, height)
-            },
-            onSizeChanged = viewModel::setLocationSize,
-            onSwapWindows = viewModel::changeWindowPositions,
-            onCloseClicked = viewModel::closeWindow,
-            saveStyle = viewModel::saveWindowStyle,
-            onWindowSelected = viewModel::selectWindow,
-            scrollEvents = viewModel.scrollEvents.collectAsState().value,
-            handledScrollEvent = viewModel::handledScrollEvent,
-            clearStream = viewModel::clearStream,
-        )
+            }
+            GameTextWindows(
+                modifier = Modifier.weight(1f),
+                subWindowUiStates = subWindows.value,
+                mainWindowUiState = mainWindow.value,
+                selectedWindow = viewModel.selectedWindow.collectAsState().value,
+                topHeight = viewModel.topHeight.collectAsState(null).value,
+                bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
+                leftWidth = viewModel.leftWidth.collectAsState(null).value,
+                rightWidth = viewModel.rightWidth.collectAsState(null).value,
+                menuData = menuData,
+                onActionClicked = { action ->
+                    when (action) {
+                        is WarlockAction.SendCommand -> {
+                            viewModel.sendCommand(action.command)
+                            null
+                        }
+
+                        is WarlockAction.OpenMenu -> {
+                            action.onClick()
+                        }
+
+                        else -> null
+                    }
+                },
+                onMoveClicked = { name, location ->
+                    viewModel.moveWindow(name = name, location = location)
+                },
+                onWidthChanged = { name, width ->
+                    viewModel.setWindowWidth(name, width)
+                },
+                onHeightChanged = { name, height ->
+                    viewModel.setWindowHeight(name, height)
+                },
+                onSizeChanged = viewModel::setLocationSize,
+                onSwapWindows = viewModel::changeWindowPositions,
+                onCloseClicked = viewModel::closeWindow,
+                saveStyle = viewModel::saveWindowStyle,
+                onWindowSelected = viewModel::selectWindow,
+                scrollEvents = viewModel.scrollEvents.collectAsState().value,
+                handledScrollEvent = viewModel::handledScrollEvent,
+                clearStream = viewModel::clearStream,
+            )
+        }
         GameBottomBar(viewModel)
     }
 }
@@ -433,5 +489,26 @@ fun WindowViews(
         } else {
             content(Modifier.fillMaxSize())
         }
+    }
+}
+
+@Composable
+private fun WindowListItem(color: Color, window: Window, isOpen: Boolean, onClick: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = { onClick(!isOpen) }),
+    ) {
+        Icon(
+            painterResource(
+                if (isOpen) {
+                    Res.drawable.visibility_filled
+                } else {
+                    Res.drawable.visibility_off_filled
+                }
+            ),
+            tint = color,
+            contentDescription = null,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text = window.title, color = color)
     }
 }

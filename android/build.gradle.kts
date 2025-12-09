@@ -73,10 +73,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     // Compose dependencies
-    implementation(compose.runtime)
-    implementation(compose.foundation)
+//    implementation(compose.runtime)
+//    implementation(compose.foundation)
     implementation(libs.compose.material3)
-    implementation(compose.components.resources)
 
     // Android presentation components
     implementation(libs.androidx.activity.compose)

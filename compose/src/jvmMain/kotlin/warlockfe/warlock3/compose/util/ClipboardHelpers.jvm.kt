@@ -20,6 +20,7 @@ actual fun ClipEntry.getText(): String? {
     return null
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 actual fun createClipEntry(text: String): ClipEntry {
     return ClipEntry(nativeClipEntry = StringSelection(text))
 }

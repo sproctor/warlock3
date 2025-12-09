@@ -43,6 +43,7 @@ fun MainScreen(
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
     sgeSettings: SgeSettings,
+    sideBarVisible: Boolean,
 ) {
     var compassTheme by remember {
         mutableStateOf(
@@ -100,7 +101,8 @@ fun MainScreen(
                             screen.viewModel.close()
                             gameState.setScreen(GameScreen.Dashboard)
                         }
-                    }
+                    },
+                    sideBarVisible = sideBarVisible,
                 )
             }
 
