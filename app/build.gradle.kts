@@ -13,10 +13,14 @@ dependencies {
     implementation(project(":scripting"))
     implementation(project(":compose"))
 
-    implementation(compose.desktop.currentOs)
-    implementation(compose.uiTooling)
+    implementation(libs.jewel.standalone)
+    implementation(libs.jewel.decorated.window)
+
+    implementation(compose.desktop.currentOs) {
+        exclude(group = "org.jetbrains.compose.material")
+    }
     implementation(libs.compose.material3)
-    implementation(compose.components.resources)
+    implementation(libs.compose.components.resources)
 
     // Command line options
     implementation(libs.clikt)
@@ -36,11 +40,11 @@ dependencies {
     implementation(libs.conveyor.control)
 
     // Required by conveyor
-    linuxAmd64(compose.desktop.linux_x64)
-    linuxAarch64(compose.desktop.linux_arm64)
-    macAmd64(compose.desktop.macos_x64)
-    macAarch64(compose.desktop.macos_arm64)
-    windowsAmd64(compose.desktop.windows_x64)
+    linuxAmd64(libs.compose.desktop.linux.x64)
+    linuxAarch64(libs.compose.desktop.linux.arm64)
+    macAmd64(libs.compose.desktop.macos.x64)
+    macAarch64(libs.compose.desktop.macos.arm64)
+    windowsAmd64(libs.compose.desktop.windows.x64)
 }
 
 kotlin {

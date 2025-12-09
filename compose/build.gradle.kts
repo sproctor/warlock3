@@ -49,14 +49,11 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
 
             // Compose
-            implementation(compose.runtime)
-            implementation(compose.foundation)
             implementation(libs.compose.material3)
-            implementation(compose.components.resources)
+            api(libs.compose.components.resources)
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.constraintlayout)
-            //implementation(compose.uiTooling)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.compose.ui.tooling.preview)
             implementation(libs.fastscroller.m3)
 
             // Third party UI
@@ -66,21 +63,24 @@ kotlin {
             // Other stuff
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.sqlite.bundled)
-            //implementation(libs.appdirs)
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
             implementation(libs.kotlin.logging)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-//            implementation(libs.kotlinx.coroutines.test)
-//            implementation(libs.turbine)
         }
 
-        val commonJvmAndroidMain by getting {
+        getByName("commonJvmAndroidMain") {
             dependencies {
                 implementation(libs.coil.network.okhttp)
                 implementation(libs.autolink)
+            }
+        }
+        invokeWhenCreated("androidDebug") {
+            dependencies {
+                // For previews
+                implementation(libs.compose.ui.tooling)
             }
         }
     }

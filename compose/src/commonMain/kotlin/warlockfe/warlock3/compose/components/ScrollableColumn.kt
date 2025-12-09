@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,10 +24,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,6 +47,7 @@ import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
 @Composable
 fun ScrollableColumn(
     modifier: Modifier = Modifier,
+    innerModifier: @Composable BoxScope.() -> Modifier = { Modifier },
     state: ScrollState = rememberScrollState(),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
@@ -48,27 +56,53 @@ fun ScrollableColumn(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(modifier) {
-        val layoutDirection = LocalLayoutDirection.current
-        Column(
-            modifier
-                .padding(
-                    start = contentPadding.calculateStartPadding(layoutDirection),
-                    end = contentPadding.calculateEndPadding(layoutDirection)
-                )
-                .verticalScroll(state),
-            verticalArrangement,
-            horizontalAlignment,
-        ) {
-            Spacer(Modifier.height(contentPadding.calculateTopPadding()))
-            content()
-            Spacer(Modifier.height(contentPadding.calculateBottomPadding()))
-        }
-        VerticalScrollbar(
-            adapter = rememberScrollbarAdapter(state),
-            style = scrollbarStyle,
-            modifier = Modifier.align(Alignment.CenterEnd)
+        ScrollableColumn(
+            modifier = innerModifier(),
+            state = state,
+            verticalArrangement = verticalArrangement,
+            horizontalAlignment = horizontalAlignment,
+            contentPadding = contentPadding,
+            scrollbarStyle = scrollbarStyle,
+            content = content,
         )
     }
+}
+
+@Composable
+fun BoxScope.ScrollableColumn(
+    modifier: Modifier = Modifier,
+    state: ScrollState = rememberScrollState(),
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    scrollbarStyle: ScrollbarStyle = defaultMaterialScrollbarStyle(),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val layoutDirection = LocalLayoutDirection.current
+    var height by remember { mutableIntStateOf(0) }
+    Column(
+        modifier
+            .padding(
+                start = contentPadding.calculateStartPadding(layoutDirection),
+                end = contentPadding.calculateEndPadding(layoutDirection)
+            )
+            .onGloballyPositioned { coordinates ->
+                height = coordinates.size.height
+            }
+            .verticalScroll(state),
+        verticalArrangement,
+        horizontalAlignment,
+    ) {
+        Spacer(Modifier.height(contentPadding.calculateTopPadding()))
+        content()
+        Spacer(Modifier.height(contentPadding.calculateBottomPadding()))
+    }
+    VerticalScrollbar(
+        adapter = rememberScrollbarAdapter(state),
+        style = scrollbarStyle,
+        modifier = Modifier.align(Alignment.CenterEnd)
+            .height(with(LocalDensity.current) { height.toDp() }),
+    )
 }
 
 @Composable
@@ -86,7 +120,11 @@ fun ScrollableLazyColumn(
     content: LazyListScope.() -> Unit
 ) {
     Box(modifier) {
+        var height by remember { mutableIntStateOf(0) }
         LazyColumn(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                height = coordinates.size.height
+            },
             state = state,
             contentPadding = contentPadding,
             reverseLayout = reverseLayout,
@@ -100,10 +138,12 @@ fun ScrollableLazyColumn(
             adapter = rememberScrollbarAdapter(state),
             style = scrollbarStyle,
             modifier = Modifier.align(Alignment.CenterEnd)
+                .height(with(LocalDensity.current) { height.toDp() }),
         )
     }
 }
 
+// Make scrollbar properties individually configurable
 @Composable
 fun defaultScrollbarStyle(
     minimalHeight: Dp = 52.dp,
