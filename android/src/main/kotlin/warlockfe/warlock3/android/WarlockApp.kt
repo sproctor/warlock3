@@ -104,6 +104,7 @@ fun WarlockApp(
                             gameState = gameState,
                             updateCurrentCharacter = { currentCharacter = it },
                             sgeSettings = sgeSettings,
+                            sideBarVisible = false,
                         )
                     } else {
                         Box(Modifier.padding(16.dp)) {
