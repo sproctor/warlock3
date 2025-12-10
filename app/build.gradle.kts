@@ -16,9 +16,6 @@ dependencies {
     implementation(libs.jewel.standalone)
     implementation(libs.jewel.decorated.window)
 
-    implementation(compose.desktop.currentOs) {
-        exclude(group = "org.jetbrains.compose.material")
-    }
     implementation(libs.compose.material3)
     implementation(libs.compose.components.resources)
 
@@ -40,11 +37,21 @@ dependencies {
     implementation(libs.conveyor.control)
 
     // Required by conveyor
-    linuxAmd64(libs.compose.desktop.linux.x64)
-    linuxAarch64(libs.compose.desktop.linux.arm64)
-    macAmd64(libs.compose.desktop.macos.x64)
-    macAarch64(libs.compose.desktop.macos.arm64)
-    windowsAmd64(libs.compose.desktop.windows.x64)
+    linuxAmd64(libs.compose.desktop.linux.x64) {
+        exclude(group = "org.jetbrains.compose.material")
+    }
+    linuxAarch64(libs.compose.desktop.linux.arm64) {
+        exclude(group = "org.jetbrains.compose.material")
+    }
+    macAmd64(libs.compose.desktop.macos.x64) {
+        exclude(group = "org.jetbrains.compose.material")
+    }
+    macAarch64(libs.compose.desktop.macos.arm64) {
+        exclude(group = "org.jetbrains.compose.material")
+    }
+    windowsAmd64(libs.compose.desktop.windows.x64) {
+        exclude(group = "org.jetbrains.compose.material")
+    }
 }
 
 kotlin {
