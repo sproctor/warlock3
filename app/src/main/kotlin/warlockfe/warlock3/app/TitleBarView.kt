@@ -113,6 +113,12 @@ internal fun DecoratedWindowScope.TitleBarView(
                             }
                             selectableItem(
                                 selected = false,
+                                onClick = showSettingsDialog,
+                            ) {
+                                Text("Settings...")
+                            }
+                            selectableItem(
+                                selected = false,
                                 enabled = isConnected,
                                 onClick = scriptFilePickerLauncher::launch,
                             ) {
