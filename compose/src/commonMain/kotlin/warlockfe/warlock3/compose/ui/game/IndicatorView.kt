@@ -39,10 +39,11 @@ fun IndicatorView(
     backgroundColor: Color,
     defaultColor: Color,
 ) {
-    val statusKeysList: Array<Map<String, @Composable () -> Unit>> = arrayOf(
+    val statusKeysList: Array<Map<String, @Composable (Modifier) -> Unit>> = arrayOf(
         mapOf(
             "kneeling" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.kneeling),
                     contentDescription = "kneeling",
                     tint = defaultColor,
@@ -50,6 +51,7 @@ fun IndicatorView(
             },
             "prone" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.prone),
                     contentDescription = "prone",
                     tint = defaultColor,
@@ -57,6 +59,7 @@ fun IndicatorView(
             },
             "sitting" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.sitting),
                     contentDescription = "sitting",
                     tint = defaultColor,
@@ -64,6 +67,7 @@ fun IndicatorView(
             },
             "standing" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.standing),
                     contentDescription = "standing",
                     tint = defaultColor,
@@ -71,12 +75,14 @@ fun IndicatorView(
             },
             "poisoned" to {
                 Image(
+                    modifier = it,
                     painter = painterResource(Res.drawable.poisoned),
                     contentDescription = "poisoned",
                 )
             },
             "diseased" to {
                 Image(
+                    modifier = it,
                     painter = painterResource(Res.drawable.diseased),
                     contentDescription = "diseased",
                 )
@@ -85,6 +91,7 @@ fun IndicatorView(
         mapOf(
             "joined" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.joined),
                     contentDescription = "joined",
                     tint = defaultColor,
@@ -94,6 +101,7 @@ fun IndicatorView(
         mapOf(
             "bleeding" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.local_hospital),
                     contentDescription = "bleeding",
                     tint = Color.Red,
@@ -101,6 +109,7 @@ fun IndicatorView(
             },
             "dead" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.death),
                     contentDescription = "dead",
                     tint = defaultColor,
@@ -110,6 +119,7 @@ fun IndicatorView(
         mapOf(
             "invisible" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.invisible),
                     contentDescription = "invisible",
                     tint = defaultColor,
@@ -117,13 +127,14 @@ fun IndicatorView(
             },
             "hidden" to {
                 Image(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = it,
                     painter = painterResource(Res.drawable.hidden),
                     contentDescription = "hidden",
                 )
             },
             "webbed" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.webbed),
                     contentDescription = "standing",
                     tint = defaultColor,
@@ -133,6 +144,7 @@ fun IndicatorView(
         mapOf(
             "stunned" to {
                 Icon(
+                    modifier = it,
                     painter = painterResource(Res.drawable.stunned),
                     contentDescription = "stunned",
                     tint = defaultColor,
@@ -147,10 +159,10 @@ fun IndicatorView(
                 modifier = Modifier
                     .size(60.dp)
                     .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-                    .padding(4.dp),
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                statusKeys.filter { indicators.contains(it.key) }.forEach { it.value() }
+                statusKeys.filter { indicators.contains(it.key) }.forEach { it.value(Modifier.fillMaxSize()) }
             }
         }
     }
