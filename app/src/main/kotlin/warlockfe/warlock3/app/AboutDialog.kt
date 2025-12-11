@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,25 +33,27 @@ fun AboutDialog(
         onCloseRequest = onCloseRequest,
         title = "About Warlock",
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth()) {
-                Image(
-                    modifier = Modifier.size(50.dp),
-                    painter = painterResource(Res.drawable.icon),
-                    contentDescription = "Warlock logo",
-                )
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Warlock FE")
-                    Text("Version: $warlockVersion")
+        Surface {
+            Column(Modifier.padding(16.dp)) {
+                Row(Modifier.fillMaxWidth()) {
+                    Image(
+                        modifier = Modifier.size(50.dp),
+                        painter = painterResource(Res.drawable.icon),
+                        contentDescription = "Warlock logo",
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text("Warlock FE")
+                        Text("Version: $warlockVersion")
+                    }
                 }
-            }
-            Box(Modifier.fillMaxSize()) {
-                Button(
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                    onClick = onCloseRequest
-                ) {
-                    Text("OK")
+                Box(Modifier.fillMaxSize()) {
+                    Button(
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                        onClick = onCloseRequest
+                    ) {
+                        Text("OK")
+                    }
                 }
             }
         }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
@@ -379,53 +380,56 @@ private class WarlockCommand : CliktCommand() {
                                 title = "Warlock update available",
                                 state = rememberDialogState(width = 400.dp, height = 300.dp),
                             ) {
-                                Column(Modifier.fillMaxSize().padding(8.dp)) {
-                                    Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
-                                    Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
-                                    if (!updateSupported) {
-                                        Text("Automated updates are not supported for your installation")
-                                    }
-                                    Spacer(Modifier.weight(1f))
-                                    Row(Modifier.fillMaxWidth()) {
+                                Surface {
+                                    Column(Modifier.fillMaxSize().padding(8.dp)) {
+                                        Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
+                                        Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
+                                        if (!updateSupported) {
+                                            Text("Automated updates are not supported for your installation")
+                                        }
                                         Spacer(Modifier.weight(1f))
-                                        val ignoreUpdates by clientSettings.observeIgnoreUpdates().collectAsState(false)
-                                        if (!ignoreUpdates) {
-                                            TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        clientSettings.putIgnoreUpdates(true)
-                                                        showUpdateDialog = false
-                                                    }
-                                                },
-                                            ) {
-                                                Text("Ignore updates")
+                                        Row(Modifier.fillMaxWidth()) {
+                                            Spacer(Modifier.weight(1f))
+                                            val ignoreUpdates by clientSettings.observeIgnoreUpdates()
+                                                .collectAsState(false)
+                                            if (!ignoreUpdates) {
+                                                TextButton(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            clientSettings.putIgnoreUpdates(true)
+                                                            showUpdateDialog = false
+                                                        }
+                                                    },
+                                                ) {
+                                                    Text("Ignore updates")
+                                                }
+                                            } else {
+                                                TextButton(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            clientSettings.putIgnoreUpdates(false)
+                                                        }
+                                                    },
+                                                ) {
+                                                    Text("Stop ignoring updates")
+                                                }
                                             }
-                                        } else {
+                                            TextButton(
+                                                onClick = { showUpdateDialog = false },
+                                            ) {
+                                                Text("Close")
+                                            }
                                             TextButton(
                                                 onClick = {
                                                     scope.launch {
                                                         clientSettings.putIgnoreUpdates(false)
                                                     }
+                                                    controller.triggerUpdateCheckUI()
                                                 },
+                                                enabled = updateAvailable && updateSupported
                                             ) {
-                                                Text("Stop ignoring updates")
+                                                Text("Update")
                                             }
-                                        }
-                                        TextButton(
-                                            onClick = { showUpdateDialog = false },
-                                        ) {
-                                            Text("Close")
-                                        }
-                                        TextButton(
-                                            onClick = {
-                                                scope.launch {
-                                                    clientSettings.putIgnoreUpdates(false)
-                                                }
-                                                controller.triggerUpdateCheckUI()
-                                            },
-                                            enabled = updateAvailable && updateSupported
-                                        ) {
-                                            Text("Update")
                                         }
                                     }
                                 }
