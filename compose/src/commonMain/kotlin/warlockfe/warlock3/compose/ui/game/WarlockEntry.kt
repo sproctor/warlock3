@@ -87,7 +87,7 @@ fun WarlockEntryContent(
         color = backgroundColor,
     ) {
         Box(
-            modifier = Modifier.padding(2.dp)
+            modifier = Modifier.padding(4.dp)
         ) {
             RoundTimeBar(roundTime, castTime)
 
@@ -96,7 +96,7 @@ fun WarlockEntryContent(
             BasicTextField(
                 state = state,
                 modifier = Modifier
-                    .padding(2.dp)
+                    .padding(4.dp)
                     .align(Alignment.CenterStart)
                     .focusRequester(focusRequester)
                     .fillMaxWidth()
