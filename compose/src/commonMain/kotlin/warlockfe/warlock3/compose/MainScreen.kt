@@ -48,6 +48,7 @@ fun MainScreen(
     var compassTheme by remember {
         mutableStateOf(
             CompassTheme(
+                size = 63,
                 background = Res.drawable.compass_main,
                 directions = emptyMap()
             )

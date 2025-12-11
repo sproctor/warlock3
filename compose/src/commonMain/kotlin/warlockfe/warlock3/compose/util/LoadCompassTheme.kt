@@ -44,6 +44,7 @@ fun loadCompassTheme(skin: Map<String, SkinObject>): CompassTheme {
         )
     }
     return CompassTheme(
+        size = 63, // Modify this when changing the compass image
         background = Res.drawable.compass_main,
         directions = directions
     )

@@ -4,13 +4,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.FixedScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.util.LocalCompassTheme
@@ -20,17 +23,17 @@ import warlockfe.warlock3.core.compass.DirectionType
 
 @Composable
 fun CompassView(
-    modifier: Modifier,
+    size: Dp,
     state: CompassState,
     onClick: (DirectionType) -> Unit
 ) {
-    val scale = LocalDensity.current.density * 1.25f
     val logger = LocalLogger.current
     val theme = LocalCompassTheme.current
     val backgroundPainter = painterResource(theme.background)
+    val scale = with(LocalDensity.current) { size.toPx() } / theme.size
     // TODO: Scale compass to fit height instead of using density
     Box(
-        modifier = modifier
+        modifier = Modifier.size(size)
     ) {
         Image(
             painter = backgroundPainter,
@@ -61,6 +64,7 @@ data class CompassState(
 )
 
 data class CompassTheme(
+    val size: Int,
     val background: DrawableResource,
     val directions: Map<DirectionType, CompassDirection>
 )
@@ -78,7 +82,7 @@ fun EmptyCompassPreview() {
         LocalCompassTheme provides loadCompassTheme(emptyMap())
     ) {
         CompassView(
-            modifier = Modifier,
+            size = 80.dp,
             state = CompassState(directions = emptySet()),
             onClick = {}
         )
@@ -92,7 +96,7 @@ fun CompassPreview() {
         LocalCompassTheme provides loadCompassTheme(emptyMap())
     ) {
         CompassView(
-            modifier = Modifier,
+            size = 80.dp,
             state = CompassState(directions = setOf(DirectionType.North, DirectionType.West)),
             onClick = {}
         )
