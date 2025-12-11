@@ -2,17 +2,20 @@ package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -35,7 +38,6 @@ fun IndicatorView(
     indicators: Set<String>,
     backgroundColor: Color,
     defaultColor: Color,
-    modifier: Modifier = Modifier,
 ) {
     val statusKeysList: Array<Map<String, @Composable () -> Unit>> = arrayOf(
         mapOf(
@@ -139,30 +141,31 @@ fun IndicatorView(
         ),
     )
 
-    Row(modifier = modifier.background(backgroundColor)) {
-        statusKeysList.forEachIndexed { index, statusKeys ->
-            Box(modifier = Modifier.aspectRatio(1f).fillMaxHeight().padding(4.dp)) {
+    Row(modifier = Modifier.background(backgroundColor)) {
+        statusKeysList.forEach { statusKeys ->
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+                    .padding(4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 statusKeys.filter { indicators.contains(it.key) }.forEach { it.value() }
-            }
-            if (index != statusKeysList.lastIndex) {
-                VerticalDivider()
             }
         }
     }
 }
 
-//@Preview
-//@Composable
-//private fun IndicatorPreview() {
-//    IndicatorView(
-//        modifier = Modifier
-//            .height(36.dp)
-//            .padding(2.dp)
-//            .background(Color(25, 25, 50)),
-//        properties = mapOf(
-//            "standing" to "1",
-//            "stunned" to "1",
-//            "webbed" to "1",
-//        )
-//    )
-//}
+@Preview
+@Composable
+private fun IndicatorPreview() {
+    IndicatorView(
+        indicators = setOf(
+            "standing",
+            "stunned",
+            "webbed",
+        ),
+        backgroundColor = Color.DarkGray,
+        defaultColor = Color.LightGray,
+    )
+}

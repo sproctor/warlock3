@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -179,17 +180,18 @@ private fun BoxWithConstraintsScope.ProgressBar(
                 height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
                     ?: Dp.Unspecified,
             )
-            .background(colorGroup.background)
+            .background(colorGroup.background),
+        contentAlignment = Alignment.Center,
     ) {
         val percent = min(data.value.value, 100)
         val width = maxWidth * percent / 100
         Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
         data.text?.let { text ->
             Text(
-                modifier = Modifier.align(Alignment.Center),
                 text = text,
                 color = colorGroup.text,
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                style = MaterialTheme.typography.labelSmall,
+                autoSize = TextAutoSize.StepBased(minFontSize = 8.sp),
                 maxLines = 1,
             )
         }

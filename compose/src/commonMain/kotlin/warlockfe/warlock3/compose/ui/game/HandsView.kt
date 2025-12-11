@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +25,10 @@ import warlockfe.warlock3.compose.util.mirror
 
 @Composable
 fun HandsView(left: String?, right: String?, spell: String?) {
-    Row(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         HandBox(
             icon = {
                 Icon(
@@ -61,9 +65,7 @@ fun HandsView(left: String?, right: String?, spell: String?) {
 fun RowScope.HandBox(icon: @Composable () -> Unit, value: String) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        modifier = Modifier
-            .weight(1f)
-            .padding(4.dp),
+        modifier = Modifier.weight(1f),
         color = MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {

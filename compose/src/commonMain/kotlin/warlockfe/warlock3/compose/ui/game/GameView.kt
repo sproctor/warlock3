@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.ui.game
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -375,34 +374,31 @@ fun WindowsAtLocation(
 
 @Composable
 fun GameBottomBar(viewModel: GameViewModel) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(40.dp).padding(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                val presets by viewModel.presets.collectAsState(emptyMap())
-                val style = presets["default"] ?: defaultStyles["default"]
-                val backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified
-                val textColor = style?.textColor?.toColor()
-                    ?: MaterialTheme.colorScheme.contentColorFor(backgroundColor)
-                WarlockEntry(
-                    modifier = Modifier.weight(1f),
-                    backgroundColor = backgroundColor,
-                    textColor = textColor,
-                    viewModel = viewModel,
-                )
-                val indicators by viewModel.indicators.collectAsState(emptySet())
-                IndicatorView(
-                    backgroundColor = backgroundColor,
-                    defaultColor = textColor,
-                    indicators = indicators,
-                )
-            }
+    val presets by viewModel.presets.collectAsState(emptyMap())
+    val style = presets["default"] ?: defaultStyles["default"]
+    val backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified
+    val textColor = style?.textColor?.toColor()
+        ?: MaterialTheme.colorScheme.contentColorFor(backgroundColor)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            WarlockEntry(
+                backgroundColor = backgroundColor,
+                textColor = textColor,
+                viewModel = viewModel,
+            )
             val vitalBars by viewModel.vitalBars.objects.collectAsState()
             DialogContent(
                 dataObjects = vitalBars,
-                modifier = Modifier.fillMaxWidth().height(24.dp).padding(horizontal = 2.dp),
+                modifier = Modifier.fillMaxWidth().height(20.dp),
                 executeCommand = {
                     // Cannot execute commands from vitals bar
                 },
@@ -414,8 +410,14 @@ fun GameBottomBar(viewModel: GameViewModel) {
                 spell = viewModel.spellHand.collectAsState(null).value,
             )
         }
+        val indicators by viewModel.indicators.collectAsState(emptySet())
+        IndicatorView(
+            backgroundColor = backgroundColor,
+            defaultColor = textColor,
+            indicators = indicators,
+        )
         CompassView(
-            modifier = Modifier.padding(4.dp),
+            modifier = Modifier, // TODO: size compass here
             state = viewModel.compassState.collectAsState().value,
             onClick = {
                 viewModel.sendCommand(it.abbreviation)

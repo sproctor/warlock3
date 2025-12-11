@@ -24,7 +24,7 @@ fun CompassView(
     state: CompassState,
     onClick: (DirectionType) -> Unit
 ) {
-    val scale = LocalDensity.current.density * 1.5f
+    val scale = LocalDensity.current.density * 1.25f
     val logger = LocalLogger.current
     val theme = LocalCompassTheme.current
     val backgroundPainter = painterResource(theme.background)

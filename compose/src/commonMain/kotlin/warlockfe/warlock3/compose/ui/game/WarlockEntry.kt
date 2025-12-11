@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,17 +44,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.min
 
 @Composable
-fun WarlockEntry(modifier: Modifier, backgroundColor: Color, textColor: Color, viewModel: GameViewModel) {
+fun WarlockEntry(backgroundColor: Color, textColor: Color, viewModel: GameViewModel) {
     val roundTime by viewModel.roundTime.collectAsState()
     val castTime by viewModel.castTime.collectAsState()
     val clipboard = LocalClipboard.current
     WarlockEntryContent(
-        modifier = modifier,
         backgroundColor = backgroundColor,
         textColor = textColor,
         state = viewModel.entryText,
@@ -65,7 +67,6 @@ fun WarlockEntry(modifier: Modifier, backgroundColor: Color, textColor: Color, v
 
 @Composable
 fun WarlockEntryContent(
-    modifier: Modifier,
     backgroundColor: Color,
     textColor: Color,
     state: TextFieldState,
@@ -75,7 +76,6 @@ fun WarlockEntryContent(
     castTime: Int,
 ) {
     Surface(
-        modifier = modifier,
         shape = MaterialTheme.shapes.extraSmall,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         color = backgroundColor,
@@ -92,7 +92,7 @@ fun WarlockEntryContent(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .focusRequester(focusRequester)
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .onPreviewKeyEvent { event ->
                         // skipNextKey only has an effect on desktop
                         // We're catching KEY_DOWN in AWT, KEY_TYPED gets through
@@ -174,25 +174,24 @@ fun BoxScope.RoundTimeBar(
     }
 }
 
-//@Preview
-//@Composable
-//fun WarlockEntryPreview() {
-//    WarlockEntryContent(
-//        modifier = Modifier.fillMaxWidth().padding(2.dp),
-//        textField = TextFieldValue("test"),
-//        roundTime = 8,
-//        castTime = 4,
-//        onKeyPress = { true },
-//        onValueChange = {},
-//        backgroundColor = Color.Unspecified,
-//        textColor = Color.Black,
-//    )
-//}
-//
-//@Preview
-//@Composable
-//fun RoundTimeBarPreview() {
-//    Box(Modifier.width(800.dp).height(50.dp).background(Color.DarkGray)) {
-//        RoundTimeBar(8, 0)
-//    }
-//}
+@Preview(widthDp = 800, backgroundColor = 0xFF444444)
+@Composable
+fun WarlockEntryPreview() {
+    WarlockEntryContent(
+        state = rememberTextFieldState("test"),
+        roundTime = 8,
+        castTime = 4,
+        onKeyPress = { true },
+        backgroundColor = Color.Unspecified,
+        textColor = Color.Black,
+        sendCommand = {},
+    )
+}
+
+@Preview(widthDp = 800, heightDp = 50, backgroundColor = 0xFF444444)
+@Composable
+fun RoundTimeBarPreview() {
+    Box(Modifier.fillMaxSize()) {
+        RoundTimeBar(8, 0)
+    }
+}
