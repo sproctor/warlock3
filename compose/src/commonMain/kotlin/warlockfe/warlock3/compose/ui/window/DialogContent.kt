@@ -181,17 +181,17 @@ private fun BoxWithConstraintsScope.ProgressBar(
                     ?: Dp.Unspecified,
             )
             .background(colorGroup.background),
-        contentAlignment = Alignment.Center,
     ) {
         val percent = min(data.value.value, 100)
         val width = maxWidth * percent / 100
         Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
         data.text?.let { text ->
             Text(
+                modifier = Modifier.align(Alignment.Center).padding(2.dp),
                 text = text,
                 color = colorGroup.text,
                 style = MaterialTheme.typography.labelSmall,
-                autoSize = TextAutoSize.StepBased(minFontSize = 8.sp),
+                autoSize = TextAutoSize.StepBased(minFontSize = 9.sp),
                 maxLines = 1,
             )
         }
