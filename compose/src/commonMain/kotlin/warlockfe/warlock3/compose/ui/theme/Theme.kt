@@ -1,10 +1,11 @@
 package warlockfe.warlock3.compose.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,
@@ -73,17 +74,23 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun AppTheme(
-  useDarkTheme: Boolean,
-  content: @Composable () -> Unit
+    useDarkTheme: Boolean,
+    content: @Composable () -> Unit
 ) {
-  val colors = if (!useDarkTheme) {
-    LightColors
-  } else {
-    DarkColors
-  }
+    val colors = if (!useDarkTheme) {
+        LightColors
+    } else {
+        DarkColors
+    }
 
-  MaterialTheme(
-    colorScheme = colors,
-    content = content
-  )
+    CompositionLocalProvider(
+        LocalDarkMode provides useDarkTheme,
+    ) {
+        MaterialTheme(
+            colorScheme = colors,
+            content = content
+        )
+    }
 }
+
+val LocalDarkMode = staticCompositionLocalOf { false }

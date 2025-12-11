@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,13 +41,18 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import warlockfe.warlock3.compose.ui.theme.LocalDarkMode
+import warlockfe.warlock3.compose.ui.theme.md_theme_dark_onSurface
+import warlockfe.warlock3.compose.ui.theme.md_theme_dark_surface
+import warlockfe.warlock3.compose.ui.theme.md_theme_light_onSurface
+import warlockfe.warlock3.compose.ui.theme.md_theme_light_surface
 import kotlin.math.min
 
 @Composable
@@ -77,11 +83,11 @@ fun WarlockEntryContent(
 ) {
     Surface(
         shape = MaterialTheme.shapes.extraSmall,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
         color = backgroundColor,
     ) {
         Box(
-            modifier = Modifier.padding(4.dp)
+            modifier = Modifier.padding(2.dp)
         ) {
             RoundTimeBar(roundTime, castTime)
 
@@ -90,6 +96,7 @@ fun WarlockEntryContent(
             BasicTextField(
                 state = state,
                 modifier = Modifier
+                    .padding(2.dp)
                     .align(Alignment.CenterStart)
                     .focusRequester(focusRequester)
                     .fillMaxWidth()
@@ -135,21 +142,32 @@ fun BoxScope.RoundTimeBar(
     roundTime: Int,
     castTime: Int,
 ) {
-    val rtColor = Color(0xe0, 0x3c, 0x31, 189)
-    val stColor = Color(0x31, 0x3c, 0xe0, 189)
+    // TODO: get these colors from the skin
+    val rtColor = if (LocalDarkMode.current) {
+        Color(0xff, 0x50, 0x50)
+    } else {
+        Color(0xe0, 0x3c, 0x31)
+    }
+    val stColor = if (LocalDarkMode.current) {
+        Color(0x60, 0x80, 0xff)
+    } else {
+        Color(0x10, 0x10, 0xff)
+    }
     Canvas(Modifier.matchParentSize().padding(horizontal = 2.dp).clipToBounds()) {
+        val segmentSize = Size(width = 12.dp.toPx(), height = 3.dp.toPx())
+        val segmentSpacing = 4.dp.toPx()
         for (i in 0 until min(100, roundTime)) {
             drawRect(
-                color = rtColor,
-                topLeft = Offset(x = i * 16.dp.toPx(), y = size.height - 3.dp.toPx()),
-                size = Size(width = 12.dp.toPx(), height = 3.dp.toPx())
+                color = rtColor.copy(alpha = 0.5f),
+                topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = size.height - segmentSize.height),
+                size = segmentSize,
             )
         }
         for (i in 0 until min(100, castTime)) {
             drawRect(
-                color = stColor,
-                topLeft = Offset(x = i * 16.dp.toPx(), y = 0f),
-                size = Size(width = 12.dp.toPx(), height = 3.dp.toPx())
+                color = stColor.copy(alpha = 0.5f),
+                topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = 0f),
+                size = segmentSize,
             )
         }
     }
@@ -157,18 +175,16 @@ fun BoxScope.RoundTimeBar(
         if (castTime > 0) {
             Text(
                 text = castTime.toString(),
-                color = Color(0x31, 0x3c, 0xe0),
+                color = stColor,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
             )
         }
         if (roundTime > 0) {
             Spacer(Modifier.width(12.dp))
             Text(
                 text = roundTime.toString(),
-                color = Color(0xe0, 0x3c, 0x31),
+                color = rtColor,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
             )
         }
     }
@@ -176,14 +192,30 @@ fun BoxScope.RoundTimeBar(
 
 @Preview(widthDp = 800, backgroundColor = 0xFF444444)
 @Composable
-fun WarlockEntryPreview() {
+fun WarlockEntryDarkPreview() {
+    CompositionLocalProvider(LocalDarkMode provides true) {
+        WarlockEntryContent(
+            state = rememberTextFieldState("test"),
+            roundTime = 8,
+            castTime = 4,
+            onKeyPress = { true },
+            backgroundColor = md_theme_dark_surface,
+            textColor = md_theme_dark_onSurface,
+            sendCommand = {},
+        )
+    }
+}
+
+@Preview(widthDp = 800, backgroundColor = 0xFFFFFFFF)
+@Composable
+fun WarlockEntryLightPreview() {
     WarlockEntryContent(
         state = rememberTextFieldState("test"),
         roundTime = 8,
         castTime = 4,
         onKeyPress = { true },
-        backgroundColor = Color.Unspecified,
-        textColor = Color.Black,
+        backgroundColor = md_theme_light_surface,
+        textColor = md_theme_light_onSurface,
         sendCommand = {},
     )
 }
