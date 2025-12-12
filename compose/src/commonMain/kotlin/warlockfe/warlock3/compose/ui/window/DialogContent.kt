@@ -187,7 +187,15 @@ private fun BoxWithConstraintsScope.ProgressBar(
         Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
         data.text?.let { text ->
             Text(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(
+                        if (maxHeight >= 20.dp) {
+                            2.dp
+                        } else {
+                            0.dp
+                        }
+                    ),
                 text = text,
                 color = colorGroup.text,
                 style = MaterialTheme.typography.labelSmall,
