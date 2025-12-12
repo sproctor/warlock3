@@ -35,6 +35,7 @@ import warlockfe.warlock3.compose.generated.resources.webbed
 
 @Composable
 fun IndicatorView(
+    indicatorSize: Dp,
     indicators: Set<String>,
     backgroundColor: Color,
     defaultColor: Color,
@@ -157,9 +158,9 @@ fun IndicatorView(
         statusKeysList.forEach { statusKeys ->
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(indicatorSize)
                     .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-                    .padding(8.dp),
+                    .padding(indicatorSize / 7.5f),
                 contentAlignment = Alignment.Center,
             ) {
                 statusKeys.filter { indicators.contains(it.key) }.forEach { it.value(Modifier.fillMaxSize()) }
@@ -172,6 +173,7 @@ fun IndicatorView(
 @Composable
 private fun IndicatorPreview() {
     IndicatorView(
+        indicatorSize = 60.dp,
         indicators = setOf(
             "standing",
             "stunned",
