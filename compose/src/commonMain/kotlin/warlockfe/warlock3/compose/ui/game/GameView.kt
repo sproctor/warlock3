@@ -25,8 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -70,9 +72,19 @@ fun GameView(
     val disconnected by viewModel.disconnected.collectAsState()
 
     val entryFocusRequester = remember { FocusRequester() }
+    // On JVM, KeyDown is followed by an Unknown/KEY_TYPED event
+    var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
     Surface(
         modifier = Modifier.onPreviewKeyEvent { event ->
+            if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
+                ignoreNextUnknownKeyEvent = false
+                return@onPreviewKeyEvent true
+            }
+            ignoreNextUnknownKeyEvent = false
             viewModel.handleKeyPress(event).also {
+                // on JVM, the next event will update the TextEntry, ignore it if we handled this one
+                // on Android, the next event will be a KeyUp and we don't care
+                ignoreNextUnknownKeyEvent = it
                 // Focus the entry on normal key presses
                 if (!it && event.type == KeyEventType.KeyDown && !event.isAltPressed && !event.isCtrlPressed
                     && !event.isMetaPressed && !event.isShiftPressed) {
