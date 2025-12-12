@@ -5,7 +5,6 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -15,7 +14,6 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -124,6 +122,9 @@ class GameViewModel(
     val leftHand = client.leftHand
     val rightHand = client.rightHand
     val spellHand = client.spellHand
+
+    private val _macroError = MutableStateFlow<String?>(null)
+    val macroError = _macroError.asStateFlow()
 
     // Saved by macros
     private var storedText: String = ""
@@ -547,7 +548,7 @@ class GameViewModel(
         }
     }
 
-    fun handleKeyPress(event: KeyEvent, clipboard: Clipboard): Boolean {
+    fun handleKeyPress(event: KeyEvent): Boolean {
         if (event.type != KeyEventType.KeyDown) {
             return false
         }
@@ -565,7 +566,7 @@ class GameViewModel(
                 return false
             }
 
-            executeMacro(tokens, clipboard)
+            executeMacro(tokens)
 
             return true
         }
@@ -578,7 +579,7 @@ class GameViewModel(
         return false
     }
 
-    private fun executeMacro(tokens: List<MacroToken>, clipboard: Clipboard) {
+    private fun executeMacro(tokens: List<MacroToken>) {
         viewModelScope.launch {
             var moveCursor: Int? = null
             tokens.forEach { token ->
@@ -603,7 +604,11 @@ class GameViewModel(
 
                     is MacroToken.Command -> {
                         val command = macroCommands[token.name]
-                        command?.invoke(this@GameViewModel, clipboard)
+                        if (command != null) {
+                            command(this@GameViewModel)
+                        } else {
+                            _macroError.value = "Macro command not found: ${token.name}"
+                        }
                     }
                 }
             }
@@ -870,5 +875,9 @@ class GameViewModel(
                 presetRepository.save(characterId = characterId, key = "entry", style = style)
             }
         }
+    }
+
+    fun handledMacroError() {
+        _macroError.value = null
     }
 }

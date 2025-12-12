@@ -14,12 +14,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,10 +36,8 @@ import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -54,7 +53,6 @@ import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
-import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -71,11 +69,10 @@ fun GameView(
 ) {
     val disconnected by viewModel.disconnected.collectAsState()
 
-    val clipboard = LocalClipboard.current
     val entryFocusRequester = remember { FocusRequester() }
     Surface(
         modifier = Modifier.onPreviewKeyEvent { event ->
-            viewModel.handleKeyPress(event, clipboard).also {
+            viewModel.handleKeyPress(event).also {
                 // Focus the entry on normal key presses
                 if (!it && event.type == KeyEventType.KeyDown && !event.isAltPressed && !event.isCtrlPressed
                     && !event.isMetaPressed && !event.isShiftPressed) {
@@ -189,6 +186,26 @@ fun GameView(
                 )
             }
             GameBottomBar(viewModel, entryFocusRequester)
+        }
+        val macroError by viewModel.macroError.collectAsState()
+        if (macroError != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    viewModel.handledMacroError()
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.handledMacroError()
+                        }
+                    ) {
+                        Text("Ok")
+                    }
+                },
+                text = {
+                    Text(macroError!!)
+                }
+            )
         }
     }
 }
