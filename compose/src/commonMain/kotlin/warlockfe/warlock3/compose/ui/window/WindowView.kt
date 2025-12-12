@@ -210,7 +210,7 @@ fun WindowView(
 
                 is DialogWindowUiState -> {
                     ScrollableColumn(
-                        Modifier.background(
+                        Modifier.fillMaxSize().background(
                             (window?.style?.backgroundColor?.specifiedOrNull()
                                 ?: uiState.defaultStyle.backgroundColor).toColor()
                         )
@@ -218,8 +218,7 @@ fun WindowView(
                         val dataObjects by uiState.dialogData.objects.collectAsState()
                         DialogContent(
                             dataObjects = dataObjects,
-                            modifier = Modifier.fillMaxSize()
-                                .padding(8.dp),
+                            modifier = Modifier.padding(8.dp),
                             executeCommand = { command ->
                                 onActionClicked(WarlockAction.SendCommand(command))
                             },

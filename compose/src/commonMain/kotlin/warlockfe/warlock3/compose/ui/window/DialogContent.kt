@@ -177,8 +177,8 @@ private fun BoxWithConstraintsScope.ProgressBar(
             .size(
                 width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
                     ?: Dp.Unspecified,
-                height = (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                    ?: Dp.Unspecified,
+                height = ((skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
+                    ?: 16.dp).coerceAtLeast(16.dp),
             )
             .background(colorGroup.background),
     ) {
@@ -187,7 +187,7 @@ private fun BoxWithConstraintsScope.ProgressBar(
         Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
         data.text?.let { text ->
             Text(
-                modifier = Modifier.align(Alignment.Center).padding(2.dp),
+                modifier = Modifier.align(Alignment.Center),
                 text = text,
                 color = colorGroup.text,
                 style = MaterialTheme.typography.labelSmall,
