@@ -25,6 +25,7 @@ import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.window.DecoratedWindowScope
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
+import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
 import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
@@ -67,7 +68,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                                 Res.drawable.space_dashboard_outlined
                             }
                         ),
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        tint = LocalTitleBarStyle.current.colors.content,
                         contentDescription = null,
                     )
                 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -379,50 +380,53 @@ fun GameBottomBar(viewModel: GameViewModel) {
     val backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified
     val textColor = style?.textColor?.toColor()
         ?: MaterialTheme.colorScheme.contentColorFor(backgroundColor)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+    BoxWithConstraints {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            WarlockEntry(
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                WarlockEntry(
+                    backgroundColor = backgroundColor,
+                    textColor = textColor,
+                    viewModel = viewModel,
+                )
+                val vitalBars by viewModel.vitalBars.objects.collectAsState()
+                DialogContent(
+                    dataObjects = vitalBars,
+                    modifier = Modifier.fillMaxWidth().height(20.dp),
+                    executeCommand = {
+                        // Cannot execute commands from vitals bar
+                    },
+                    style = defaultStyles["default"]!!,
+                )
+                HandsView(
+                    left = viewModel.leftHand.collectAsState(null).value,
+                    right = viewModel.rightHand.collectAsState(null).value,
+                    spell = viewModel.spellHand.collectAsState(null).value,
+                )
+            }
+            val indicators by viewModel.indicators.collectAsState(emptySet())
+            IndicatorView(
+                indicatorSize = (this@BoxWithConstraints.maxWidth / 20).coerceIn(24.dp, 60.dp),
                 backgroundColor = backgroundColor,
-                textColor = textColor,
-                viewModel = viewModel,
+                defaultColor = textColor,
+                indicators = indicators,
             )
-            val vitalBars by viewModel.vitalBars.objects.collectAsState()
-            DialogContent(
-                dataObjects = vitalBars,
-                modifier = Modifier.fillMaxWidth().height(20.dp),
-                executeCommand = {
-                    // Cannot execute commands from vitals bar
-                },
-                style = defaultStyles["default"]!!,
-            )
-            HandsView(
-                left = viewModel.leftHand.collectAsState(null).value,
-                right = viewModel.rightHand.collectAsState(null).value,
-                spell = viewModel.spellHand.collectAsState(null).value,
+            CompassView(
+                size = 92.dp,
+                state = viewModel.compassState.collectAsState().value,
+                onClick = {
+                    viewModel.sendCommand(it.abbreviation)
+                }
             )
         }
-        val indicators by viewModel.indicators.collectAsState(emptySet())
-        IndicatorView(
-            backgroundColor = backgroundColor,
-            defaultColor = textColor,
-            indicators = indicators,
-        )
-        CompassView(
-            size = 92.dp,
-            state = viewModel.compassState.collectAsState().value,
-            onClick = {
-                viewModel.sendCommand(it.abbreviation)
-            }
-        )
     }
 }
 
