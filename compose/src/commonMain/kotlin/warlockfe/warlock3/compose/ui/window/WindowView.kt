@@ -45,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -121,8 +123,10 @@ fun WindowView(
             .onLayoutRectChanged { bounds ->
                 viewportHeight = bounds.height
             }
-            .clickable(interactionSource = null, indication = null) {
-                onSelected()
+            .onFocusChanged { focusState ->
+                if (focusState.hasFocus) {
+                    onSelected()
+                }
             }
             .semantics {
                 paneTitle = title

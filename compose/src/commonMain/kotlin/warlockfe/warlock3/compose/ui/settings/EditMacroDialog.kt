@@ -37,19 +37,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.toPersistentSet
 import warlockfe.warlock3.compose.util.getLabel
+import warlockfe.warlock3.compose.util.isModifier
 import warlockfe.warlock3.core.macro.MacroCommand
 import warlockfe.warlock3.core.macro.MacroKeyCombo
-
-private val allModifierKeys = arrayOf(
-    Key.CtrlLeft,
-    Key.CtrlRight,
-    Key.AltLeft,
-    Key.AltRight,
-    Key.ShiftLeft,
-    Key.ShiftRight,
-    Key.MetaLeft,
-    Key.MetaRight,
-)
 
 @Composable
 fun EditMacroDialog(
@@ -100,7 +90,7 @@ fun EditMacroDialog(
                 TextField(
                     modifier = Modifier
                         .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && !allModifierKeys.contains(event.key)) {
+                            if (event.type == KeyEventType.KeyDown && !event.key.isModifier()) {
                                 modifierKeys = event.getKeyModifiers()
                                 selectedKey = event.key
                             } else if (selectedKey == null) {

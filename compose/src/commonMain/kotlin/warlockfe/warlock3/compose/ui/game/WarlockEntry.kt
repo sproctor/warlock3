@@ -23,9 +23,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -35,11 +33,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -56,15 +49,19 @@ import warlockfe.warlock3.compose.ui.theme.md_theme_light_surface
 import kotlin.math.min
 
 @Composable
-fun WarlockEntry(backgroundColor: Color, textColor: Color, viewModel: GameViewModel) {
+fun WarlockEntry(
+    backgroundColor: Color,
+    textColor: Color,
+    viewModel: GameViewModel,
+    entryFocusRequester: FocusRequester,
+) {
     val roundTime by viewModel.roundTime.collectAsState()
     val castTime by viewModel.castTime.collectAsState()
-    val clipboard = LocalClipboard.current
     WarlockEntryContent(
         backgroundColor = backgroundColor,
         textColor = textColor,
         state = viewModel.entryText,
-        onKeyPress = { viewModel.handleKeyPress(it, clipboard) },
+        entryFocusRequester = entryFocusRequester,
         roundTime = roundTime,
         castTime = castTime,
         sendCommand = viewModel::submit,
@@ -76,7 +73,7 @@ fun WarlockEntryContent(
     backgroundColor: Color,
     textColor: Color,
     state: TextFieldState,
-    onKeyPress: (KeyEvent) -> Boolean,
+    entryFocusRequester: FocusRequester,
     sendCommand: () -> Unit,
     roundTime: Int,
     castTime: Int,
@@ -91,31 +88,13 @@ fun WarlockEntryContent(
         ) {
             RoundTimeBar(roundTime, castTime)
 
-            val focusRequester = remember { FocusRequester() }
-            var skipNextKey by remember { mutableStateOf(false) }
             BasicTextField(
                 state = state,
                 modifier = Modifier
                     .padding(4.dp)
                     .align(Alignment.CenterStart)
-                    .focusRequester(focusRequester)
-                    .fillMaxWidth()
-                    .onPreviewKeyEvent { event ->
-                        // skipNextKey only has an effect on desktop
-                        // We're catching KEY_DOWN in AWT, KEY_TYPED gets through
-                        // When we match a key, skip the next key event if it's not a KEY_DOWN
-                        if (skipNextKey && event.type != KeyEventType.KeyDown) {
-                            skipNextKey = false
-                            return@onPreviewKeyEvent true
-                        }
-                        // Only skip the immediately following event
-                        skipNextKey = false
-                        val result = onKeyPress(event)
-                        if (result) {
-                            skipNextKey = true
-                        }
-                        result
-                    },
+                    .focusRequester(entryFocusRequester)
+                    .fillMaxWidth(),
                 textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
                 cursorBrush = SolidColor(textColor),
                 lineLimits = TextFieldLineLimits.SingleLine,
@@ -130,11 +109,18 @@ fun WarlockEntryContent(
             )
 
             LaunchedEffect(Unit) {
-                focusRequester.requestFocus()
-                focusRequester.captureFocus()
+                entryFocusRequester.requestFocus()
             }
         }
     }
+//    if (showWindowSettingsDialog && window != null) {
+//        WindowSettingsDialog(
+//            onCloseRequest = { showWindowSettingsDialog = false },
+//            style = window.style,
+//            defaultStyle = uiState.defaultStyle,
+//            saveStyle = saveStyle,
+//        )
+//    }
 }
 
 @Composable
@@ -198,7 +184,7 @@ fun WarlockEntryDarkPreview() {
             state = rememberTextFieldState("test"),
             roundTime = 8,
             castTime = 4,
-            onKeyPress = { true },
+            entryFocusRequester = remember { FocusRequester() },
             backgroundColor = md_theme_dark_surface,
             textColor = md_theme_dark_onSurface,
             sendCommand = {},
@@ -213,7 +199,7 @@ fun WarlockEntryLightPreview() {
         state = rememberTextFieldState("test"),
         roundTime = 8,
         castTime = 4,
-        onKeyPress = { true },
+        entryFocusRequester = remember { FocusRequester() },
         backgroundColor = md_theme_light_surface,
         textColor = md_theme_light_onSurface,
         sendCommand = {},
