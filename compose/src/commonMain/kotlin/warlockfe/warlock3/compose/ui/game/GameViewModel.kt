@@ -99,7 +99,7 @@ class GameViewModel(
     val variableRepository: VariableRepository,
     highlightRepository: HighlightRepositoryImpl,
     nameRepository: NameRepositoryImpl,
-    presetRepository: PresetRepository,
+    private val presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
     val characterSettingsRepository: CharacterSettingsRepository,
     private val alterationRepository: AlterationRepository,
@@ -861,6 +861,14 @@ class GameViewModel(
         } else {
             client.sendCommand(line)
             SendCommandType.COMMAND
+        }
+    }
+
+    fun saveEntryStyle(style: StyleDefinition) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                presetRepository.save(characterId = characterId, key = "entry", style = style)
+            }
         }
     }
 }

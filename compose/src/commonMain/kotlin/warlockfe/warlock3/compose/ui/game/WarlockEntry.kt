@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
@@ -12,9 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,7 +26,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -33,7 +38,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -41,62 +45,87 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.ui.theme.LocalDarkMode
-import warlockfe.warlock3.compose.ui.theme.md_theme_dark_onSurface
-import warlockfe.warlock3.compose.ui.theme.md_theme_dark_surface
-import warlockfe.warlock3.compose.ui.theme.md_theme_light_onSurface
-import warlockfe.warlock3.compose.ui.theme.md_theme_light_surface
+import warlockfe.warlock3.compose.util.addItem
+import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.prefs.repositories.defaultStyles
+import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
 
 @Composable
 fun WarlockEntry(
-    backgroundColor: Color,
-    textColor: Color,
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
 ) {
     val roundTime by viewModel.roundTime.collectAsState()
     val castTime by viewModel.castTime.collectAsState()
+    val presets by viewModel.presets.collectAsState(emptyMap())
+    val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+    val style = presets["entry"] ?: StyleDefinition()
     WarlockEntryContent(
-        backgroundColor = backgroundColor,
-        textColor = textColor,
+        style = style,
+        defaultStyle = defaultStyle,
         state = viewModel.entryText,
         entryFocusRequester = entryFocusRequester,
         roundTime = roundTime,
         castTime = castTime,
         sendCommand = viewModel::submit,
+        saveStyle = viewModel::saveEntryStyle,
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WarlockEntryContent(
-    backgroundColor: Color,
-    textColor: Color,
+    style: StyleDefinition,
+    defaultStyle: StyleDefinition,
     state: TextFieldState,
     entryFocusRequester: FocusRequester,
     sendCommand: () -> Unit,
     roundTime: Int,
     castTime: Int,
+    saveStyle: (StyleDefinition) -> Unit,
 ) {
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    val usableStyle = style.mergeWith(defaultStyle)
     Surface(
         shape = MaterialTheme.shapes.extraSmall,
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
-        color = backgroundColor,
+        color = usableStyle.backgroundColor.toColor(),
     ) {
         Box(
             modifier = Modifier.padding(4.dp)
         ) {
             RoundTimeBar(roundTime, castTime)
 
+            val defaultTextStyle = LocalTextStyle.current
+            val textStyle = remember(usableStyle) {
+                val fontSize = (usableStyle.fontSize ?: 16f).sp
+                defaultTextStyle.copy(
+                    fontSize = fontSize,
+                    fontFamily = usableStyle.fontFamily?.let { createFontFamily(it) } ?: defaultTextStyle.fontFamily,
+                    lineHeight = fontSize,
+                    color = usableStyle.textColor.toColor()
+                )
+            }
             BasicTextField(
                 state = state,
                 modifier = Modifier
                     .padding(4.dp)
                     .align(Alignment.CenterStart)
                     .focusRequester(entryFocusRequester)
-                    .fillMaxWidth(),
-                textStyle = TextStyle.Default.copy(fontSize = 16.sp, color = textColor),
-                cursorBrush = SolidColor(textColor),
+                    .fillMaxWidth()
+                    .appendTextContextMenuComponents {
+                        separator()
+                        addItem(key = style, label = "Settings") {
+                            showSettingsDialog = true
+                            close()
+                        }
+                    },
+                textStyle = textStyle,
+                cursorBrush = SolidColor(usableStyle.textColor.toColor()),
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
@@ -113,14 +142,14 @@ fun WarlockEntryContent(
             }
         }
     }
-//    if (showWindowSettingsDialog && window != null) {
-//        WindowSettingsDialog(
-//            onCloseRequest = { showWindowSettingsDialog = false },
-//            style = window.style,
-//            defaultStyle = uiState.defaultStyle,
-//            saveStyle = saveStyle,
-//        )
-//    }
+    if (showSettingsDialog) {
+        WindowSettingsDialog(
+            onCloseRequest = { showSettingsDialog = false },
+            style = style,
+            defaultStyle = defaultStyle,
+            saveStyle = saveStyle,
+        )
+    }
 }
 
 @Composable
@@ -185,8 +214,9 @@ fun WarlockEntryDarkPreview() {
             roundTime = 8,
             castTime = 4,
             entryFocusRequester = remember { FocusRequester() },
-            backgroundColor = md_theme_dark_surface,
-            textColor = md_theme_dark_onSurface,
+            style = defaultStyles["default"]!!,
+            defaultStyle = defaultStyles["default"]!!,
+            saveStyle = {},
             sendCommand = {},
         )
     }
@@ -200,8 +230,9 @@ fun WarlockEntryLightPreview() {
         roundTime = 8,
         castTime = 4,
         entryFocusRequester = remember { FocusRequester() },
-        backgroundColor = md_theme_light_surface,
-        textColor = md_theme_light_onSurface,
+        style = defaultStyles["default"]!!,
+        defaultStyle = defaultStyles["default"]!!,
+        saveStyle = {},
         sendCommand = {},
     )
 }

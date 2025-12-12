@@ -71,12 +71,10 @@ fun GameView(
 ) {
     val disconnected by viewModel.disconnected.collectAsState()
 
-    val logger = LocalLogger.current
     val clipboard = LocalClipboard.current
     val entryFocusRequester = remember { FocusRequester() }
     Surface(
         modifier = Modifier.onPreviewKeyEvent { event ->
-            logger.debug { "preview key: $event" }
             viewModel.handleKeyPress(event, clipboard).also {
                 // Focus the entry on normal key presses
                 if (!it && event.type == KeyEventType.KeyDown && !event.isAltPressed && !event.isCtrlPressed
@@ -84,11 +82,7 @@ fun GameView(
                     entryFocusRequester.requestFocus()
                 }
             }
-        }
-            .onKeyEvent {
-                logger.debug { "game view key event" }
-                false
-            },
+        },
     ) {
         Column {
             if (disconnected) {
@@ -412,10 +406,9 @@ fun GameBottomBar(
     entryFocusRequester: FocusRequester,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
-    val style = presets["default"] ?: defaultStyles["default"]
-    val backgroundColor = style?.backgroundColor?.toColor() ?: Color.Unspecified
-    val textColor = style?.textColor?.toColor()
-        ?: MaterialTheme.colorScheme.contentColorFor(backgroundColor)
+    val style = presets["default"] ?: defaultStyles["default"]!!
+    val backgroundColor = style.backgroundColor.toColor()
+    val textColor = style.textColor.toColor()
     BoxWithConstraints {
         Row(
             modifier = Modifier
@@ -429,8 +422,6 @@ fun GameBottomBar(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 WarlockEntry(
-                    backgroundColor = backgroundColor,
-                    textColor = textColor,
                     viewModel = viewModel,
                     entryFocusRequester = entryFocusRequester,
                 )
@@ -441,7 +432,7 @@ fun GameBottomBar(
                     executeCommand = {
                         // Cannot execute commands from vitals bar
                     },
-                    style = defaultStyles["default"]!!,
+                    style = style,
                 )
                 HandsView(
                     left = viewModel.leftHand.collectAsState(null).value,

@@ -1,5 +1,7 @@
 package warlockfe.warlock3.app
 
+import androidx.compose.foundation.ComposeFoundationFlags
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -124,8 +126,9 @@ private class WarlockCommand : CliktCommand() {
     val positionX: Int? by option("-x", "--position-x", help = "Position to place the window on the X-axis").int()
     val positionY: Int? by option("-y", "--position-y", help = "Position to place the window on the Y-axis").int()
 
-    @OptIn(FlowPreview::class)
+    @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
     override fun run() {
+        ComposeFoundationFlags.isNewContextMenuEnabled = true
 
         val loginOptions = mutableSetOf<String>()
         if (key != null) {
