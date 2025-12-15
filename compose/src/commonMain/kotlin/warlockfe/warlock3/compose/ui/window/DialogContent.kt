@@ -1,17 +1,15 @@
 package warlockfe.warlock3.compose.ui.window
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,10 +17,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,7 +45,6 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
 import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.io.encoding.Base64
-import kotlin.math.min
 
 @Composable
 fun DialogContent(
@@ -172,35 +174,39 @@ private fun BoxWithConstraintsScope.ProgressBar(
     defaultStyle: StyleDefinition,
 ) {
     val colorGroup = skinObject.getColorGroup(defaultStyle)
-    BoxWithConstraints(
+    val percent = data.value.value
+    val textMeasurer = rememberTextMeasurer()
+    val font = MaterialTheme.typography.labelSmall
+    Canvas(
         modifier = modifier
             .size(
                 width = (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
                     ?: Dp.Unspecified,
                 height = ((skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                    ?: 16.dp).coerceAtLeast(16.dp),
+                    ?: 16.dp),
             )
-            .background(colorGroup.background),
     ) {
-        val percent = min(data.value.value, 100)
-        val width = maxWidth * percent / 100
-        Box(modifier = Modifier.width(width).fillMaxHeight().background(colorGroup.bar))
+        drawRect(
+            color = colorGroup.background,
+            topLeft = Offset(1f, 1f),
+            size = Size(height = size.height - 2f, width = size.width - 2f),
+        )
+        drawRect(
+            color = colorGroup.bar,
+            topLeft = Offset(1f, 1f),
+            size = Size(width = (size.width - 2f) * percent / 100, height = size.height - 2f),
+        )
         data.text?.let { text ->
-            Text(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(
-                        if (maxHeight >= 20.dp) {
-                            2.dp
-                        } else {
-                            0.dp
-                        }
-                    ),
+            val measuredText = textMeasurer.measure(
                 text = text,
-                color = colorGroup.text,
-                style = MaterialTheme.typography.labelSmall,
-                autoSize = TextAutoSize.StepBased(minFontSize = 9.sp),
+                constraints = Constraints(maxWidth = size.width.toInt()),
                 maxLines = 1,
+                style = font,
+            )
+            drawText(
+                textLayoutResult = measuredText,
+                color = colorGroup.text,
+                topLeft = Offset(x = (size.width - measuredText.size.width) / 2f, y = (size.height - measuredText.size.height) / 2f),
             )
         }
     }
