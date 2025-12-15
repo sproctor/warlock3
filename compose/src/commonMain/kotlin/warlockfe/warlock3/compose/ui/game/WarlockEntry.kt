@@ -163,7 +163,7 @@ fun BoxScope.RoundTimeBar(
     } else {
         Color(0xe0, 0x3c, 0x31)
     }
-    val stColor = if (LocalDarkMode.current) {
+    val ctColor = if (LocalDarkMode.current) {
         Color(0x60, 0x80, 0xff)
     } else {
         Color(0x10, 0x10, 0xff)
@@ -180,7 +180,7 @@ fun BoxScope.RoundTimeBar(
         }
         for (i in 0 until min(100, castTime)) {
             drawRect(
-                color = stColor.copy(alpha = 0.5f),
+                color = ctColor.copy(alpha = 0.5f),
                 topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = 0f),
                 size = segmentSize,
             )
@@ -190,7 +190,7 @@ fun BoxScope.RoundTimeBar(
         if (castTime > 0) {
             Text(
                 text = castTime.toString(),
-                color = stColor,
+                color = ctColor,
                 fontWeight = FontWeight.Bold,
             )
         }
