@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.ui.game
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
@@ -22,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,6 +38,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -46,7 +47,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
-import warlockfe.warlock3.compose.ui.theme.LocalDarkMode
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
@@ -90,15 +90,16 @@ fun WarlockEntryContent(
 ) {
     var showSettingsDialog by remember { mutableStateOf(false) }
     val usableStyle = style.mergeWith(defaultStyle)
+    val backgroundColor = usableStyle.backgroundColor.toColor()
     Surface(
         shape = MaterialTheme.shapes.extraSmall,
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
-        color = usableStyle.backgroundColor.toColor(),
+        color = backgroundColor,
     ) {
         Box(
-            modifier = Modifier.padding(4.dp)
+            modifier = Modifier.padding(3.dp)
         ) {
-            RoundTimeBar(roundTime, castTime)
+            RoundTimeBar(backgroundColor, roundTime, castTime)
 
             val defaultTextStyle = LocalTextStyle.current
             val textStyle = remember(usableStyle) {
@@ -113,7 +114,7 @@ fun WarlockEntryContent(
             BasicTextField(
                 state = state,
                 modifier = Modifier
-                    .padding(4.dp)
+                    .padding(5.dp)
                     .align(Alignment.CenterStart)
                     .focusRequester(entryFocusRequester)
                     .fillMaxWidth()
@@ -154,33 +155,36 @@ fun WarlockEntryContent(
 
 @Composable
 fun BoxScope.RoundTimeBar(
+    backgroundColor: Color,
     roundTime: Int,
     castTime: Int,
 ) {
+    val darkMode = backgroundColor.luminance() < 0.5f
     // TODO: get these colors from the skin
-    val rtColor = if (LocalDarkMode.current) {
+    val rtColor = if (darkMode) {
         Color(0xff, 0x50, 0x50)
     } else {
         Color(0xe0, 0x3c, 0x31)
     }
-    val ctColor = if (LocalDarkMode.current) {
+    val ctColor = if (darkMode) {
         Color(0x60, 0x80, 0xff)
     } else {
-        Color(0x10, 0x10, 0xff)
+        Color(0x30, 0x30, 0xff)
     }
-    Canvas(Modifier.matchParentSize().padding(horizontal = 2.dp).clipToBounds()) {
-        val segmentSize = Size(width = 12.dp.toPx(), height = 3.dp.toPx())
-        val segmentSpacing = 4.dp.toPx()
+    println("Luminance: ${backgroundColor.luminance()}, darkmode: $darkMode")
+    Canvas(Modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
+        val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
+        val segmentSpacing = 5.dp.toPx()
         for (i in 0 until min(100, roundTime)) {
             drawRect(
-                color = rtColor.copy(alpha = 0.5f),
+                color = rtColor,
                 topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = size.height - segmentSize.height),
                 size = segmentSize,
             )
         }
         for (i in 0 until min(100, castTime)) {
             drawRect(
-                color = ctColor.copy(alpha = 0.5f),
+                color = ctColor,
                 topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = 0f),
                 size = segmentSize,
             )
@@ -208,18 +212,16 @@ fun BoxScope.RoundTimeBar(
 @Preview(widthDp = 800, backgroundColor = 0xFF444444)
 @Composable
 fun WarlockEntryDarkPreview() {
-    CompositionLocalProvider(LocalDarkMode provides true) {
-        WarlockEntryContent(
-            state = rememberTextFieldState("test"),
-            roundTime = 8,
-            castTime = 4,
-            entryFocusRequester = remember { FocusRequester() },
-            style = defaultStyles["default"]!!,
-            defaultStyle = defaultStyles["default"]!!,
-            saveStyle = {},
-            sendCommand = {},
-        )
-    }
+    WarlockEntryContent(
+        state = rememberTextFieldState("test"),
+        roundTime = 8,
+        castTime = 4,
+        entryFocusRequester = remember { FocusRequester() },
+        style = defaultStyles["default"]!!,
+        defaultStyle = defaultStyles["default"]!!,
+        saveStyle = {},
+        sendCommand = {},
+    )
 }
 
 @Preview(widthDp = 800, backgroundColor = 0xFFFFFFFF)
@@ -240,7 +242,16 @@ fun WarlockEntryLightPreview() {
 @Preview(widthDp = 800, heightDp = 50, backgroundColor = 0xFF444444)
 @Composable
 fun RoundTimeBarPreview() {
-    Box(Modifier.fillMaxSize()) {
-        RoundTimeBar(8, 0)
+    val backgroundColor = Color(0xFF444444)
+    Box(Modifier.fillMaxSize().background(backgroundColor).padding(2.dp)) {
+        RoundTimeBar(Color(0xFF444444), 8, 6)
+    }
+}
+
+@Preview(widthDp = 800, heightDp = 50, backgroundColor = 0xFFFFFFFF)
+@Composable
+fun RoundTimeBarLightPreview() {
+    Box(Modifier.fillMaxSize().background(Color.White).padding(2.dp)) {
+        RoundTimeBar(Color.White, 8, 6)
     }
 }
