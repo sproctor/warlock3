@@ -40,10 +40,14 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
@@ -55,6 +59,7 @@ import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
+import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -87,7 +92,8 @@ fun GameView(
                 ignoreNextUnknownKeyEvent = it
                 // Focus the entry on normal key presses
                 if (!it && event.type == KeyEventType.KeyDown && !event.isAltPressed && !event.isCtrlPressed
-                    && !event.isMetaPressed && !event.isShiftPressed) {
+                    && !event.isMetaPressed && !event.isShiftPressed
+                ) {
                     entryFocusRequester.requestFocus()
                 }
             }
@@ -188,7 +194,7 @@ fun GameView(
                         viewModel.setWindowHeight(name, height)
                     },
                     onSizeChanged = viewModel::setLocationSize,
-                    onSwapWindows = viewModel::changeWindowPositions,
+                    onMoveWindow = viewModel::changeWindowPositions,
                     onCloseClicked = viewModel::closeWindow,
                     saveStyle = viewModel::saveWindowStyle,
                     onWindowSelected = viewModel::selectWindow,
@@ -238,7 +244,7 @@ fun GameTextWindows(
     onHeightChanged: (String, Int) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
     onSizeChanged: (WindowLocation, Int) -> Unit,
-    onSwapWindows: (WindowLocation, Int, Int) -> Unit,
+    onMoveWindow: (WindowLocation, Int, Int) -> Unit,
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
     onWindowSelected: (String) -> Unit,
@@ -262,7 +268,7 @@ fun GameTextWindows(
             onMoveClicked = onMoveClicked,
             onHeightChanged = onHeightChanged,
             onWidthChanged = onWidthChanged,
-            onSwapWindows = onSwapWindows,
+            onMoveWindow = { from, to -> onMoveWindow(WindowLocation.LEFT, from, to) },
             onCloseClicked = onCloseClicked,
             saveStyle = saveStyle,
             onWindowSelected = onWindowSelected,
@@ -285,7 +291,7 @@ fun GameTextWindows(
                 onMoveClicked = onMoveClicked,
                 onHeightChanged = onHeightChanged,
                 onWidthChanged = onWidthChanged,
-                onSwapWindows = onSwapWindows,
+                onMoveWindow = { from, to -> onMoveWindow(WindowLocation.TOP, from, to) },
                 onCloseClicked = onCloseClicked,
                 saveStyle = saveStyle,
                 onWindowSelected = onWindowSelected,
@@ -296,13 +302,12 @@ fun GameTextWindows(
             if (mainWindowUiState != null) {
                 WindowView(
                     modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
+                    headerModifier = Modifier,
                     uiState = mainWindowUiState,
                     isSelected = selectedWindow == mainWindowUiState.name,
                     menuData = menuData,
                     onActionClicked = onActionClicked,
                     onMoveClicked = {},
-                    onMoveTowardsStart = null,
-                    onMoveTowardsEnd = null,
                     onCloseClicked = {},
                     saveStyle = {
                         saveStyle(mainWindowUiState.name, it)
@@ -326,7 +331,7 @@ fun GameTextWindows(
                 onMoveClicked = onMoveClicked,
                 onHeightChanged = onHeightChanged,
                 onWidthChanged = onWidthChanged,
-                onSwapWindows = onSwapWindows,
+                onMoveWindow = { from, to -> onMoveWindow(WindowLocation.BOTTOM, from, to) },
                 onCloseClicked = onCloseClicked,
                 saveStyle = saveStyle,
                 onWindowSelected = onWindowSelected,
@@ -349,7 +354,7 @@ fun GameTextWindows(
             onMoveClicked = onMoveClicked,
             onHeightChanged = onHeightChanged,
             onWidthChanged = onWidthChanged,
-            onSwapWindows = onSwapWindows,
+            onMoveWindow = { from, to -> onMoveWindow(WindowLocation.RIGHT, from, to) },
             onCloseClicked = onCloseClicked,
             saveStyle = saveStyle,
             onWindowSelected = onWindowSelected,
@@ -357,75 +362,6 @@ fun GameTextWindows(
             handledScrollEvent = handledScrollEvent,
             clearStream = clearStream,
         )
-    }
-}
-
-@Composable
-fun WindowsAtLocation(
-    location: WindowLocation,
-    size: Int?,
-    windowUiStates: List<WindowUiState>,
-    horizontalPanel: Boolean,
-    handleBefore: Boolean,
-    selectedWindow: String,
-    onSizeChanged: (Int) -> Unit,
-    menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onMoveClicked: (String, WindowLocation) -> Unit,
-    onHeightChanged: (String, Int) -> Unit,
-    onWidthChanged: (String, Int) -> Unit,
-    onSwapWindows: (WindowLocation, Int, Int) -> Unit,
-    onCloseClicked: (String) -> Unit,
-    saveStyle: (String, StyleDefinition) -> Unit,
-    onWindowSelected: (String) -> Unit,
-    scrollEvents: List<ScrollEvent>,
-    handledScrollEvent: (ScrollEvent) -> Unit,
-    clearStream: (String) -> Unit,
-) {
-    val windows = windowUiStates.filter { it.window?.location == location }.sortedBy { it.window?.position }
-    if (windows.isNotEmpty()) {
-        val panelState = remember(size == null) {
-            ResizablePanelState(initialSize = size?.dp ?: 0.dp, minSize = 16.dp)
-        }
-        ResizablePanel(
-            isHorizontal = horizontalPanel,
-            handleBefore = handleBefore,
-            state = panelState,
-        ) {
-            val content = @Composable {
-                WindowViews(
-                    windowStates = windows,
-                    selectedWindow = selectedWindow,
-                    menuData = menuData,
-                    onActionClicked = onActionClicked,
-                    isHorizontal = !horizontalPanel,
-                    onMoveClicked = onMoveClicked,
-                    onHeightChanged = onHeightChanged,
-                    onWidthChanged = onWidthChanged,
-                    onSwapWindows = onSwapWindows,
-                    onCloseClicked = onCloseClicked,
-                    saveStyle = saveStyle,
-                    onWindowSelected = onWindowSelected,
-                    scrollEvents = scrollEvents,
-                    handledScrollEvent = handledScrollEvent,
-                    clearStream = clearStream,
-                )
-            }
-            if (horizontalPanel) {
-                Column {
-                    content()
-                }
-            } else {
-                Row {
-                    content()
-                }
-            }
-        }
-        LaunchedEffect(panelState.currentSize) {
-            if (size != null) {
-                onSizeChanged(panelState.currentSize.value.toInt())
-            }
-        }
     }
 }
 
@@ -483,74 +419,6 @@ fun GameBottomBar(
                     viewModel.sendCommand(it.abbreviation)
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun WindowViews(
-    windowStates: List<WindowUiState>,
-    selectedWindow: String,
-    isHorizontal: Boolean,
-    menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onMoveClicked: (String, WindowLocation) -> Unit,
-    onWidthChanged: (String, Int) -> Unit,
-    onHeightChanged: (String, Int) -> Unit,
-    onSwapWindows: (WindowLocation, Int, Int) -> Unit,
-    onCloseClicked: (String) -> Unit,
-    saveStyle: (String, StyleDefinition) -> Unit,
-    onWindowSelected: (String) -> Unit,
-    scrollEvents: List<ScrollEvent>,
-    handledScrollEvent: (ScrollEvent) -> Unit,
-    clearStream: (String) -> Unit,
-) {
-    windowStates.forEachIndexed { index, uiState ->
-        val content = @Composable { modifier: Modifier ->
-            WindowView(
-                modifier = modifier,
-                uiState = uiState,
-                isSelected = selectedWindow == uiState.name,
-                menuData = menuData,
-                onActionClicked = onActionClicked,
-                onMoveClicked = { onMoveClicked(uiState.name, it) },
-                onMoveTowardsStart = if (index > 0) {
-                    { onSwapWindows(uiState.window!!.location!!, index, index - 1) }
-                } else null,
-                onMoveTowardsEnd = if (index < windowStates.lastIndex) {
-                    { onSwapWindows(uiState.window!!.location!!, index, index + 1) }
-                } else null,
-                onCloseClicked = { onCloseClicked(uiState.name) },
-                saveStyle = { saveStyle(uiState.name, it) },
-                onSelected = { onWindowSelected(uiState.name) },
-                scrollEvents = scrollEvents,
-                handledScrollEvent = handledScrollEvent,
-                clearStream = { clearStream(uiState.name) },
-            )
-        }
-
-        if (index != windowStates.lastIndex) {
-            val panelState = remember(uiState.name) {
-                val size = if (isHorizontal) uiState.window?.width else uiState.window?.height
-                ResizablePanelState(initialSize = size?.dp ?: 160.dp, minSize = 16.dp)
-            }
-            ResizablePanel(
-                modifier = if (isHorizontal) Modifier.fillMaxHeight() else Modifier.fillMaxWidth(),
-                isHorizontal = isHorizontal,
-                state = panelState,
-            ) {
-                content(Modifier.matchParentSize())
-            }
-            LaunchedEffect(panelState.currentSize) {
-                val size = panelState.currentSize.value.toInt()
-                if (isHorizontal) {
-                    onWidthChanged(uiState.name, size)
-                } else {
-                    onHeightChanged(uiState.name, size)
-                }
-            }
-        } else {
-            content(Modifier.fillMaxSize())
         }
     }
 }

@@ -362,27 +362,28 @@ class GameViewModel(
             val highlights = flows[3] as List<ViewHighlight>
             val alterations = flows[4] as List<CompiledAlteration>
 
-            openWindows.map { name ->
-                val window = windows[name]
-                if (window?.windowType == WindowType.DIALOG) {
-                    DialogWindowUiState(
-                        name = name,
-                        window = window,
-                        dialogData = streamRegistry.getOrCreateDialog(name) as ComposeDialogState,
-                        defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                        width = null,
-                        height = null,
-                    )
-                } else {
-                    StreamWindowUiState(
-                        name = name,
-                        stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-                        window = window,
-                        highlights = highlights,
-                        presets = presets,
-                        alterations = alterations.filter { it.appliesToStream(name) },
-                        defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                    )
+            openWindows.mapNotNull { name ->
+                windows[name]?.let { window ->
+                    if (window.windowType == WindowType.DIALOG) {
+                        DialogWindowUiState(
+                            name = name,
+                            window = window,
+                            dialogData = streamRegistry.getOrCreateDialog(name) as ComposeDialogState,
+                            defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
+                            width = null,
+                            height = null,
+                        )
+                    } else {
+                        StreamWindowUiState(
+                            name = name,
+                            stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
+                            window = window,
+                            highlights = highlights,
+                            presets = presets,
+                            alterations = alterations.filter { it.appliesToStream(name) },
+                            defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
+                        )
+                    }
                 }
             }
         }
@@ -403,7 +404,7 @@ class GameViewModel(
             StreamWindowUiState(
                 name = name,
                 stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-                window = windows[name],
+                window = windows[name]!!,
                 highlights = highlights,
                 presets = presets,
                 alterations = alterations.filter { it.appliesToStream(name) },
@@ -636,10 +637,8 @@ class GameViewModel(
             }
 
             '?' -> {
-                storedText?.let {
-                    entryText.edit {
-                        append(it)
-                    }
+                entryText.edit {
+                    append(storedText)
                 }
             }
         }
@@ -738,10 +737,15 @@ class GameViewModel(
         }
     }
 
-    fun changeWindowPositions(location: WindowLocation, curPos: Int, newPos: Int) {
+    fun changeWindowPositions(location: WindowLocation, fromPos: Int, toPos: Int) {
         viewModelScope.launch {
-            logger.debug { "Swapping $curPos and $newPos" }
-            windowRepository.switchPositions(location, curPos, newPos)
+            logger.debug { "Moving window at $location from $fromPos to $toPos" }
+            var currentPos = fromPos
+            while (currentPos != toPos) {
+                val nextStep = if (toPos < currentPos) currentPos - 1 else currentPos + 1
+                windowRepository.switchPositions(location, currentPos, nextStep)
+                currentPos = nextStep
+            }
         }
     }
 

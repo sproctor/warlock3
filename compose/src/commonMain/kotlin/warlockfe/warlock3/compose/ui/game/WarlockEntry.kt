@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
+import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
@@ -120,7 +121,7 @@ fun WarlockEntryContent(
                     .fillMaxWidth()
                     .appendTextContextMenuComponents {
                         separator()
-                        addItem(key = style, label = "Settings") {
+                        addItem(key = SettingsContextMenuItemKey, label = "Settings") {
                             showSettingsDialog = true
                             close()
                         }

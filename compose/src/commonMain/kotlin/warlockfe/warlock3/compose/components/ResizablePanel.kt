@@ -32,6 +32,7 @@ fun ResizablePanel(
     modifier: Modifier = Modifier,
     isHorizontal: Boolean = true,
     handleBefore: Boolean = false,
+    showHandle: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (isHorizontal) {
@@ -41,6 +42,7 @@ fun ResizablePanel(
                 state = state,
                 isHorizontal = true,
                 handleBefore = handleBefore,
+                showHandle = showHandle,
                 content = content
             )
         }
@@ -51,6 +53,7 @@ fun ResizablePanel(
                 state = state,
                 isHorizontal = false,
                 handleBefore = handleBefore,
+                showHandle = showHandle,
                 content = content
             )
         }
@@ -63,15 +66,16 @@ private fun PanelContent(
     state: ResizablePanelState,
     isHorizontal: Boolean,
     handleBefore: Boolean,
+    showHandle: Boolean,
     content: @Composable BoxScope.() -> Unit
 ) {
-    if (handleBefore) {
+    if (handleBefore && showHandle) {
         ResizablePanelHandle(isHorizontal, true, state)
     }
     Box(modifier) {
         content()
     }
-    if (!handleBefore) {
+    if (!handleBefore && showHandle) {
         ResizablePanelHandle(isHorizontal, false, state)
     }
 }

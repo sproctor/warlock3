@@ -4,12 +4,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,13 +22,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -75,20 +74,22 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
-import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
 import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.close
-import warlockfe.warlock3.compose.generated.resources.settings
+import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
+import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
+import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
 import warlockfe.warlock3.compose.util.LocalLogger
+import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
+import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -99,16 +100,16 @@ import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WindowView(
     modifier: Modifier,
+    headerModifier: Modifier,
     uiState: WindowUiState,
     isSelected: Boolean,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?,
     onMoveClicked: (WindowLocation) -> Unit,
-    onMoveTowardsStart: (() -> Unit)?,
-    onMoveTowardsEnd: (() -> Unit)?,
     onCloseClicked: () -> Unit,
     saveStyle: (StyleDefinition) -> Unit,
     onSelected: () -> Unit,
@@ -117,10 +118,11 @@ fun WindowView(
     clearStream: () -> Unit,
 ) {
     val window = uiState.window
+    val windowLocation = window.location ?: return // Can't display anything without a location
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
     val scrollState = rememberLazyListState()
 
-    val title = (uiState.window?.title ?: "") + (uiState.window?.subtitle ?: "")
+    val title = window.title + (window.subtitle ?: "")
     var viewportHeight by remember { mutableIntStateOf(0) }
     Surface(
         modifier.padding(2.dp)
@@ -136,70 +138,36 @@ fun WindowView(
                 paneTitle = title
             },
         shape = MaterialTheme.shapes.extraSmall,
-        shadowElevation = 2.dp,
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
     ) {
         Column {
-            Row(
-                Modifier
+            Box(
+                headerModifier
                     .background(
                         if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest
                         else MaterialTheme.colorScheme.surfaceContainer
                     )
                     .fillMaxWidth()
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Box(Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-
-                Box {
-                    var showDropdown by remember { mutableStateOf(false) }
-                    IconButton(
-                        modifier = Modifier.size(24.dp),
-                        onClick = { showDropdown = !showDropdown }
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.settings),
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                    WindowViewDropdownMenu(
-                        expanded = showDropdown,
-                        onDismissRequest = { showDropdown = false },
-                        onSettingsClicked = { showWindowSettingsDialog = true },
-                        onMoveClicked = onMoveClicked,
-                        onMoveTowardsStart = onMoveTowardsStart,
-                        onMoveTowardsEnd = onMoveTowardsEnd,
-                        location = uiState.window?.location,
-                        clearStream = clearStream,
-                    )
-                }
-                if (uiState.window?.location != WindowLocation.MAIN) {
-                    IconButton(
-                        modifier = Modifier.size(24.dp),
-                        onClick = onCloseClicked
-                    ) {
-                        Icon(
-                            painter = painterResource(Res.drawable.close),
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                }
+                Text(
+                    text = title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                )
             }
             when (uiState) {
                 is StreamWindowUiState ->
                     WindowViewContent(
+                        modifier = Modifier.addTextContextMenuOptions(
+                            windowLocation = windowLocation,
+                            showSettingsDialog = { showWindowSettingsDialog = true },
+                            onMoveClicked = onMoveClicked,
+                            onClearClicked = clearStream,
+                            onCloseClicked = onCloseClicked,
+                        ),
                         stream = uiState.stream,
                         scrollState = scrollState,
                         window = window,
@@ -210,10 +178,11 @@ fun WindowView(
 
                 is DialogWindowUiState -> {
                     ScrollableColumn(
-                        Modifier.fillMaxSize().background(
-                            (window?.style?.backgroundColor?.specifiedOrNull()
-                                ?: uiState.defaultStyle.backgroundColor).toColor()
-                        )
+                        Modifier.fillMaxSize()
+                            .background(
+                                (window.style.backgroundColor.specifiedOrNull()
+                                    ?: uiState.defaultStyle.backgroundColor).toColor()
+                            )
                     ) {
                         val dataObjects by uiState.dialogData.objects.collectAsState()
                         DialogContent(
@@ -222,7 +191,7 @@ fun WindowView(
                             executeCommand = { command ->
                                 onActionClicked(WarlockAction.SendCommand(command))
                             },
-                            style = window?.style?.mergeWith(uiState.defaultStyle) ?: uiState.defaultStyle,
+                            style = window.style.mergeWith(uiState.defaultStyle),
                         )
                     }
                 }
@@ -230,7 +199,7 @@ fun WindowView(
         }
     }
 
-    if (showWindowSettingsDialog && window != null) {
+    if (showWindowSettingsDialog) {
         WindowSettingsDialog(
             onCloseRequest = { showWindowSettingsDialog = false },
             style = window.style,
@@ -264,6 +233,42 @@ fun WindowView(
                     }
                 }
                 handledScrollEvent(event)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Modifier.addTextContextMenuOptions(
+    windowLocation: WindowLocation,
+    showSettingsDialog: () -> Unit,
+    onMoveClicked: (WindowLocation) -> Unit,
+    onClearClicked: () -> Unit,
+    onCloseClicked: () -> Unit,
+): Modifier {
+    return this.appendTextContextMenuComponents {
+        separator()
+        addItem(key = SettingsContextMenuItemKey, label = "Settings") {
+            showSettingsDialog()
+            close()
+        }
+        addItem(key = ClearContextMenuItemKey, label = "Clear") {
+            onClearClicked()
+            close()
+        }
+        addItem(key = CloseContextMenuItemKey, label = "Hide window") {
+            onCloseClicked()
+            close()
+        }
+        if (windowLocation != WindowLocation.MAIN) {
+            separator()
+            WindowLocation.entries.forEach { otherLocation ->
+                if (windowLocation != otherLocation && otherLocation != WindowLocation.MAIN) {
+                    addItem(key = otherLocation, label = "Move to ${otherLocation.value.lowercase()} slot") {
+                        onMoveClicked(otherLocation)
+                        close()
+                    }
+                }
             }
         }
     }
@@ -335,6 +340,7 @@ private fun WindowViewDropdownMenu(
 @OptIn(ExperimentalTime::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun WindowViewContent(
+    modifier: Modifier,
     stream: ComposeTextStream,
     scrollState: LazyListState,
     window: Window?,
@@ -366,7 +372,7 @@ private fun WindowViewContent(
         }
     }
 
-    SelectionContainer {
+    SelectionContainer(modifier = modifier) {
         Box {
             LazyColumn(
                 modifier = Modifier
