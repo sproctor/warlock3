@@ -141,23 +141,30 @@ fun WindowView(
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
     ) {
         Column {
-            Box(
-                headerModifier
+            WindowHeader(
+                modifier = headerModifier
                     .background(
                         if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest
                         else MaterialTheme.colorScheme.surfaceContainer
                     )
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-            }
+                    .fillMaxWidth(),
+                title = {
+                    Text(
+                        text = title,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                },
+                location = windowLocation,
+                isSelected = isSelected,
+                onSettingsClicked = { showWindowSettingsDialog = true },
+                onClearClicked = clearStream,
+                onCloseClicked = onCloseClicked,
+                onMoveClicked = onMoveClicked,
+            )
+
             when (uiState) {
                 is StreamWindowUiState ->
                     WindowViewContent(
@@ -248,11 +255,11 @@ private fun Modifier.addTextContextMenuOptions(
 ): Modifier {
     return this.appendTextContextMenuComponents {
         separator()
-        addItem(key = SettingsContextMenuItemKey, label = "Settings") {
+        addItem(key = SettingsContextMenuItemKey, label = "Window settings ...") {
             showSettingsDialog()
             close()
         }
-        addItem(key = ClearContextMenuItemKey, label = "Clear") {
+        addItem(key = ClearContextMenuItemKey, label = "Clear window") {
             onClearClicked()
             close()
         }
@@ -269,69 +276,6 @@ private fun Modifier.addTextContextMenuOptions(
                         close()
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WindowViewDropdownMenu(
-    expanded: Boolean,
-    onDismissRequest: () -> Unit,
-    onSettingsClicked: () -> Unit,
-    location: WindowLocation?,
-    onMoveClicked: (WindowLocation) -> Unit,
-    onMoveTowardsStart: (() -> Unit)?,
-    onMoveTowardsEnd: (() -> Unit)?,
-    clearStream: () -> Unit,
-) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest
-    ) {
-        DropdownMenuItem(
-            onClick = {
-                onSettingsClicked()
-                onDismissRequest()
-            },
-            text = { Text("Window Settings ...") }
-        )
-        DropdownMenuItem(
-            onClick = {
-                clearStream()
-                onDismissRequest()
-            },
-            text = { Text("Clear window") },
-        )
-        if (location != null && location != WindowLocation.MAIN) {
-            WindowLocation.entries.forEach { otherLocation ->
-                if (location != otherLocation && otherLocation != WindowLocation.MAIN) {
-                    DropdownMenuItem(
-                        text = { Text("Move to ${otherLocation.value.lowercase()} slot") },
-                        onClick = {
-                            onMoveClicked(otherLocation)
-                            onDismissRequest()
-                        }
-                    )
-                }
-            }
-            if (onMoveTowardsStart != null) {
-                DropdownMenuItem(
-                    text = { Text("Move towards start") },
-                    onClick = {
-                        onMoveTowardsStart()
-                        onDismissRequest()
-                    },
-                )
-            }
-            if (onMoveTowardsEnd != null) {
-                DropdownMenuItem(
-                    text = { Text("Move towards end") },
-                    onClick = {
-                        onMoveTowardsEnd()
-                        onDismissRequest()
-                    }
-                )
             }
         }
     }
