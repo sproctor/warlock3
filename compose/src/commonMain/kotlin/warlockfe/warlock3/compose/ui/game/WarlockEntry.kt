@@ -171,7 +171,6 @@ fun BoxScope.RoundTimeBar(
     } else {
         Color(0x30, 0x30, 0xff)
     }
-    println("Luminance: ${backgroundColor.luminance()}, darkmode: $darkMode")
     Canvas(Modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
         val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
         val segmentSpacing = 5.dp.toPx()
