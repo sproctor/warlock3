@@ -222,8 +222,8 @@ private class WarlockCommand : CliktCommand() {
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 
         val clientSettings = appContainer.clientSettings
-        val initialWidth = width ?: runBlocking { clientSettings.getWidth() } ?: 640
-        val initialHeight = height ?: runBlocking { clientSettings.getHeight() } ?: 480
+        val initialWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it > 0 } ?: 640
+        val initialHeight = height ?: runBlocking { clientSettings.getHeight() }?.takeIf { it > 0 } ?: 480
         val position = if (positionX != null && positionY != null) {
             WindowPosition(positionX?.dp ?: Dp.Unspecified, positionY?.dp ?: Dp.Unspecified)
         } else {
