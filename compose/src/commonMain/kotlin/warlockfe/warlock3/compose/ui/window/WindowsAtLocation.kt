@@ -3,14 +3,10 @@ package warlockfe.warlock3.compose.ui.window
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import sh.calvin.reorderable.ReorderableColumn
@@ -19,8 +15,6 @@ import sh.calvin.reorderable.ReorderableListScope
 import sh.calvin.reorderable.ReorderableRow
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
-import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
-import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -126,7 +120,6 @@ private fun ReorderableListScope.WindowViewSlot(
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: (String) -> Unit,
 ) {
-    var showSettingsDialog by remember { mutableStateOf(false) }
     val content: @Composable ReorderableListItemScope.(Modifier) -> Unit = { modifier ->
         WindowView(
             modifier = modifier,
