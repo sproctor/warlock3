@@ -33,7 +33,7 @@ fi
 
 if [[ $1 == "" ]]; then
   echo "Building desktop release"
-#  ./gradlew :app:proguardReleaseJars
+#  ./gradlew :desktopApp:proguardReleaseJars
   ./gradlew jar
 fi
 

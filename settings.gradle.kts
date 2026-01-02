@@ -2,10 +2,12 @@ rootProject.name = "warlock3"
 
 include(":core")
 include(":wrayth")
-include(":app")
-include(":android")
 include(":compose")
 include(":scripting")
+
+// Apps
+include(":desktopApp")
+include(":androidApp")
 
 pluginManagement {
     repositories {
