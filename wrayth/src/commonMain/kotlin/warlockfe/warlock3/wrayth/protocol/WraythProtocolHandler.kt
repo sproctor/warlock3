@@ -48,6 +48,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.RoundTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SettingsInfoHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SkinHandler
 import warlockfe.warlock3.wrayth.protocol.elements.SpellHandler
+import warlockfe.warlock3.wrayth.protocol.elements.StreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
@@ -100,8 +101,9 @@ class WraythProtocolHandler {
         "roundtime" to RoundTimeHandler(),
         "settingsinfo" to SettingsInfoHandler(),
         "skin" to SkinHandler(),
-        "streamwindow" to StreamWindowHandler(),
         "spell" to SpellHandler(),
+        "stream" to StreamHandler(),
+        "streamwindow" to StreamWindowHandler(),
         "style" to StyleHandler(),
         "updateverbs" to UpdateVerbsHandler(),
     )
