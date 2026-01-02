@@ -2,10 +2,13 @@ package warlockfe.warlock3.core.util
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CloseableCoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -19,24 +22,43 @@ class FileLogger private constructor(
     private val dispatcher: CloseableCoroutineDispatcher = newSingleThreadContext("FileLogger"),
 ) : AutoCloseable {
 
-    suspend fun write(message: String, addTimestamps: Boolean, logType: LogType) {
-        withContext(dispatcher) {
+    private var job: Job? = null
+    private val channel = Channel<String>(Channel.UNLIMITED)
+
+    init {
+        job = CoroutineScope(dispatcher).launch {
             try {
+                while (true) {
+                    val message = channel.receive()
+                    writer.write(message)
+                    if (channel.isEmpty) {
+                        writer.flush()
+                    }
+                }
+            } catch (e: IOException) {
+                logger.error(e) { "Error monitoring log channel" }
+                close()
+            }
+        }
+    }
+
+    suspend fun write(message: String, addTimestamps: Boolean, logType: LogType) {
+        try {
+            channel.send(
                 if (addTimestamps) {
                     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                     val dateString = now.toString()
                     if (logType == LogType.COMPLETE) {
-                        writer.write("<timestamp time=\"$dateString\"/>$message\n")
+                        "<timestamp time=\"$dateString\"/>$message\n"
                     } else {
-                        writer.write("[$dateString] $message\n")
+                        "[$dateString] $message\n"
                     }
                 } else {
-                    writer.write("$message\n")
+                    "$message\n"
                 }
-                writer.flush()
-            } catch (e: IOException) {
-                logger.error(e) { "Error while logging: $message" }
-            }
+            )
+        } catch (e: IOException) {
+            logger.error(e) { "Error while logging: $message" }
         }
     }
 
