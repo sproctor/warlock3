@@ -504,6 +504,12 @@ class GameViewModel(
         }
     }
 
+    fun sendCommand(command: suspend () -> String) {
+        viewModelScope.launch {
+            commandHandler(command())
+        }
+    }
+
     suspend fun stopScripts() {
         val scripts = scriptManager.runningScripts.value.values
         val count = scripts.size

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,7 +21,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,17 +38,11 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.CompassView
-import warlockfe.warlock3.compose.components.ResizablePanel
-import warlockfe.warlock3.compose.components.ResizablePanelState
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
@@ -173,6 +165,11 @@ fun GameView(
                     onActionClicked = { action ->
                         when (action) {
                             is WarlockAction.SendCommand -> {
+                                viewModel.sendCommand(action.command)
+                                null
+                            }
+
+                            is WarlockAction.SendCommandWithLookup -> {
                                 viewModel.sendCommand(action.command)
                                 null
                             }

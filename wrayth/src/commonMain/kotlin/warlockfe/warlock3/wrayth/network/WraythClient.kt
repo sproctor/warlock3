@@ -556,21 +556,23 @@ class WraythClient(
                                 is WraythPushCmdEvent -> {
                                     val cmd = event.cmd
                                     if (cmd.coord != null) {
-                                        val cmdDef = cliCoords[cmd.coord]
-                                        if (cmdDef != null) {
-                                            val command = replaceTemplateSymbols(
-                                                text = cmdDef.command,
-                                                cmdNoun = cmd.noun,
-                                                cmdId = cmd.exist,
-                                                eventNoun = null,
-                                            )
-                                            styleStack.addLast(
-                                                WarlockStyle.Link(WarlockAction.SendCommand(command))
-                                            )
-                                        } else {
-                                            debug("Could not find cli for coord: ${cmd.coord}")
-                                            styleStack.addLast(WarlockStyle(""))
+                                        val action = WarlockAction.SendCommandWithLookup {
+                                            val cmdDef = cliCoords[cmd.coord]
+                                            if (cmdDef != null) {
+                                                replaceTemplateSymbols(
+                                                    text = cmdDef.command,
+                                                    cmdNoun = cmd.noun,
+                                                    cmdId = cmd.exist,
+                                                    eventNoun = null,
+                                                )
+                                            } else {
+                                                print(StyledString("Could not find cli for coord: ${cmd.coord}", WarlockStyle.Error))
+                                                ""
+                                            }
                                         }
+                                        styleStack.addLast(
+                                            WarlockStyle.Link(action)
+                                        )
                                     } else if (cmd.exist != null) {
                                         styleStack.addLast(
                                             WarlockStyle.Link(
