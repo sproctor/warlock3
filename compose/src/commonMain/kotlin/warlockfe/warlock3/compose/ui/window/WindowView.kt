@@ -346,7 +346,7 @@ private fun WindowViewContent(
                                             line.entireLineStyle?.backgroundColor?.toColor()
                                                 ?: Color.Unspecified
                                         )
-                                        .padding(horizontal = 4.dp)
+                                        .padding(start = 4.dp, end = 8.dp /* width of scrollbar */)
                                 ) {
                                     BasicText(
                                         modifier = Modifier
