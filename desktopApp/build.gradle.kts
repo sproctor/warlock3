@@ -69,7 +69,7 @@ compose {
             nativeDistributions {
                 packageName = "warlock"
                 packageVersion = project.version.toString()
-                copyright = "Copyright 2025 Sean Proctor"
+                copyright = "Copyright 2026 Sean Proctor"
                 licenseFile.set(project.file("../LICENSE"))
                 description = "Warlock Front-end"
                 vendor = "Warlock Project"
@@ -114,12 +114,3 @@ compose {
         packageOfResClass = "warlockfe.warlock3.app.resources"
     }
 }
-
-// region Work around temporary Compose bugs.
-configurations.all {
-    attributes {
-        // https://github.com/JetBrains/compose-jb/issues/1404#issuecomment-1146894731
-        attribute(Attribute.of("ui", String::class.java), "awt")
-    }
-}
-// endregion
