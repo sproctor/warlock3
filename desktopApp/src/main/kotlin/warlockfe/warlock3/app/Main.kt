@@ -94,11 +94,11 @@ import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
+import java.awt.Dimension
 import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
-import kotlin.math.roundToInt
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
@@ -222,8 +222,8 @@ private class WarlockCommand : CliktCommand() {
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 
         val clientSettings = appContainer.clientSettings
-        val initialWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it > 0 } ?: 640
-        val initialHeight = height ?: runBlocking { clientSettings.getHeight() }?.takeIf { it > 0 } ?: 480
+        val initialWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it >= 240 } ?: 640
+        val initialHeight = height ?: runBlocking { clientSettings.getHeight() }?.takeIf { it >= 240 } ?: 480
         val position = if (positionX != null && positionY != null) {
             WindowPosition(positionX?.dp ?: Dp.Unspecified, positionY?.dp ?: Dp.Unspecified)
         } else {
@@ -475,6 +475,7 @@ private class WarlockCommand : CliktCommand() {
                                     }
                                 },
                             ) {
+                                window.minimumSize = Dimension(240, 240)
                                 CompositionLocalProvider(
                                     LocalWindowComponent provides window,
                                 ) {
@@ -492,8 +493,14 @@ private class WarlockCommand : CliktCommand() {
                                         snapshotFlow { windowState.size }
                                             .debounce(2.seconds)
                                             .onEach { size ->
-                                                clientSettings.putWidth(size.width.value.roundToInt())
-                                                clientSettings.putHeight(size.height.value.roundToInt())
+                                                val width = size.width.value.toInt()
+                                                if (width >= 240) {
+                                                    clientSettings.putWidth(width)
+                                                }
+                                                val height = size.height.value.toInt()
+                                                if (height >= 240) {
+                                                    clientSettings.putHeight(height)
+                                                }
                                             }
                                             .launchIn(this)
                                     }
