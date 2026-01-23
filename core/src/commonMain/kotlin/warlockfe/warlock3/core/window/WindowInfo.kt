@@ -1,17 +1,10 @@
 package warlockfe.warlock3.core.window
 
-import warlockfe.warlock3.core.text.StyleDefinition
-
-data class Window(
+data class WindowInfo(
     val name: String,
     val title: String,
     val subtitle: String?,
-    val location: WindowLocation?,
     val windowType: WindowType,
-    val position: Int?,
-    val width: Int?,
-    val height: Int?,
-    val style: StyleDefinition,
     val showTimestamps: Boolean,
 )
 

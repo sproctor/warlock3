@@ -57,7 +57,8 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.window.Window
+import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 
 @Composable
@@ -108,23 +109,23 @@ fun GameView(
                 }
             }
 
-            val subWindows = viewModel.windowUiStates.collectAsState()
             val mainWindow = viewModel.mainWindowUiState.collectAsState()
             val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
+            val presets by viewModel.presets.collectAsState(emptyMap())
+            val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+            val openWindows by viewModel.openWindows.collectAsState(emptyList())
 
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {
-                    val windows by viewModel.windowRepository.windows.collectAsState()
-                    val openWindows by viewModel.windowRepository.openWindows.collectAsState(emptyList())
+                    val windows by viewModel.windows.collectAsState()
                     val scope = rememberCoroutineScope()
-                    val uiState by viewModel.mainWindowUiState.collectAsState()
                     ScrollableColumn(
                         Modifier
                             .padding(2.dp)
                             .fillMaxHeight()
                             .width(240.dp)
                             .background(
-                                color = uiState?.defaultStyle?.backgroundColor?.toColor()
+                                color = defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
                                     ?: MaterialTheme.colorScheme.surface,
                                 shape = MaterialTheme.shapes.extraSmall,
                             )
@@ -136,27 +137,36 @@ fun GameView(
                             .padding(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        windows.values.sortedBy { it.title }.forEach { window ->
+                        windows.sortedBy { it.title }.forEach { window ->
                             WindowListItem(
-                                color = uiState?.defaultStyle?.textColor?.toColor()
+                                color = defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
                                     ?: MaterialTheme.colorScheme.onSurface,
-                                window = window,
+                                windowInfo = window,
                                 isOpen = openWindows.contains(window.name),
                                 onClick = { open ->
                                     scope.launch {
-                                        if (open) viewModel.windowRepository.openWindow(window.name)
-                                        else viewModel.windowRepository.closeWindow(window.name)
+                                        if (open) viewModel.openWindow(window.name)
+                                        else viewModel.closeWindow(window.name)
                                     }
                                 },
                             )
                         }
                     }
                 }
+                val leftWindows by viewModel.leftWindowUiStates.collectAsState()
+                val rightWindows by viewModel.rightWindowUiStates.collectAsState()
+                val topWindows by viewModel.topWindowUiStates.collectAsState()
+                val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
                 GameTextWindows(
                     modifier = Modifier.weight(1f),
-                    subWindowUiStates = subWindows.value,
+                    leftWindowUiStates = leftWindows,
+                    rightWindowUiStates = rightWindows,
+                    topWindowUiStates = topWindows,
+                    bottomWindowUiStates = bottomWindows,
                     mainWindowUiState = mainWindow.value,
+                    defaultStyle = defaultStyle,
                     selectedWindow = viewModel.selectedWindow.collectAsState().value,
+                    openWindows = openWindows,
                     topHeight = viewModel.topHeight.collectAsState(null).value,
                     bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
                     leftWidth = viewModel.leftWidth.collectAsState(null).value,
@@ -228,9 +238,14 @@ fun GameView(
 @Composable
 fun GameTextWindows(
     modifier: Modifier,
-    subWindowUiStates: List<WindowUiState>,
+    topWindowUiStates: List<WindowUiState>,
+    bottomWindowUiStates: List<WindowUiState>,
+    leftWindowUiStates: List<WindowUiState>,
+    rightWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState?,
+    defaultStyle: StyleDefinition,
     selectedWindow: String,
+    openWindows: List<String>,
     topHeight: Int?,
     bottomHeight: Int?,
     leftWidth: Int?,
@@ -255,7 +270,9 @@ fun GameTextWindows(
         WindowsAtLocation(
             location = WindowLocation.LEFT,
             size = leftWidth,
-            windowUiStates = subWindowUiStates,
+            windowUiStates = leftWindowUiStates,
+            defaultStyle = defaultStyle,
+            openWindows = openWindows,
             horizontalPanel = true,
             handleBefore = false,
             selectedWindow = selectedWindow,
@@ -278,7 +295,9 @@ fun GameTextWindows(
             WindowsAtLocation(
                 location = WindowLocation.TOP,
                 size = topHeight,
-                windowUiStates = subWindowUiStates,
+                windowUiStates = topWindowUiStates,
+                defaultStyle = defaultStyle,
+                openWindows = openWindows,
                 horizontalPanel = false,
                 handleBefore = false,
                 selectedWindow = selectedWindow,
@@ -301,7 +320,10 @@ fun GameTextWindows(
                     modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
                     headerModifier = Modifier,
                     uiState = mainWindowUiState,
+                    location = WindowLocation.MAIN,
+                    defaultStyle = defaultStyle,
                     isSelected = selectedWindow == mainWindowUiState.name,
+                    openWindows = openWindows,
                     menuData = menuData,
                     onActionClicked = onActionClicked,
                     onMoveClicked = {},
@@ -318,7 +340,9 @@ fun GameTextWindows(
             WindowsAtLocation(
                 location = WindowLocation.BOTTOM,
                 size = bottomHeight,
-                windowUiStates = subWindowUiStates,
+                windowUiStates = bottomWindowUiStates,
+                defaultStyle = defaultStyle,
+                openWindows = openWindows,
                 horizontalPanel = false,
                 handleBefore = true,
                 selectedWindow = selectedWindow,
@@ -341,7 +365,9 @@ fun GameTextWindows(
         WindowsAtLocation(
             location = WindowLocation.RIGHT,
             size = rightWidth,
-            windowUiStates = subWindowUiStates,
+            windowUiStates = rightWindowUiStates,
+            defaultStyle = defaultStyle,
+            openWindows = openWindows,
             horizontalPanel = true,
             handleBefore = true,
             selectedWindow = selectedWindow,
@@ -421,7 +447,7 @@ fun GameBottomBar(
 }
 
 @Composable
-private fun WindowListItem(color: Color, window: Window, isOpen: Boolean, onClick: (Boolean) -> Unit) {
+private fun WindowListItem(color: Color, windowInfo: WindowInfo, isOpen: Boolean, onClick: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = { onClick(!isOpen) }),
     ) {
@@ -437,6 +463,6 @@ private fun WindowListItem(color: Color, window: Window, isOpen: Boolean, onClic
             contentDescription = null,
         )
         Spacer(Modifier.width(8.dp))
-        Text(text = window.title, color = color)
+        Text(text = windowInfo.title, color = color)
     }
 }

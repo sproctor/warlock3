@@ -23,6 +23,8 @@ import warlockfe.warlock3.core.window.WindowLocation
 @Composable
 fun WindowsAtLocation(
     location: WindowLocation,
+    defaultStyle: StyleDefinition,
+    openWindows: List<String>,
     size: Int?,
     windowUiStates: List<WindowUiState>,
     horizontalPanel: Boolean,
@@ -42,8 +44,7 @@ fun WindowsAtLocation(
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: (String) -> Unit,
 ) {
-    val windows = windowUiStates.filter { it.window.location == location }.sortedBy { it.window.position }
-    if (windows.isNotEmpty()) {
+    if (windowUiStates.isNotEmpty()) {
         val panelState = remember(size == null) {
             ResizablePanelState(initialSize = size?.dp ?: 0.dp, minSize = 16.dp)
         }
@@ -56,6 +57,9 @@ fun WindowsAtLocation(
                 { uiState, isLast, isDragging ->
                     WindowViewSlot(
                         uiState = uiState,
+                        location = location,
+                        defaultStyle = defaultStyle,
+                        openWindows = openWindows,
                         isDragging = isDragging,
                         isLast = isLast,
                         selectedWindow = selectedWindow,
@@ -75,20 +79,26 @@ fun WindowsAtLocation(
                 }
             if (horizontalPanel) {
                 ReorderableColumn(
-                    list = windows,
-                    onSettle = onMoveWindow
+                    list = windowUiStates,
+                    onSettle = { fromIndex, toIndex ->
+                        println("from: $fromIndex, to: $toIndex")
+                        onMoveWindow(fromIndex, toIndex)
+                    }
                 ) { index, uiState, isDragging ->
                     key(uiState.name) {
-                        content(uiState, index == windows.lastIndex, isDragging)
+                        content(uiState, index == windowUiStates.lastIndex, isDragging)
                     }
                 }
             } else {
                 ReorderableRow(
-                    list = windows,
-                    onSettle = onMoveWindow,
+                    list = windowUiStates,
+                    onSettle = { fromIndex, toIndex ->
+                        println("from: $fromIndex, to: $toIndex")
+                        onMoveWindow(fromIndex, toIndex)
+                    }
                 ) { index, uiState, isDragging ->
                     key(uiState.name) {
-                        content(uiState, index == windows.lastIndex, isDragging)
+                        content(uiState, index == windowUiStates.lastIndex, isDragging)
                     }
                 }
             }
@@ -104,6 +114,9 @@ fun WindowsAtLocation(
 @Composable
 private fun ReorderableListScope.WindowViewSlot(
     uiState: WindowUiState,
+    location: WindowLocation,
+    defaultStyle: StyleDefinition,
+    openWindows: List<String>,
     isDragging: Boolean,
     isLast: Boolean,
     selectedWindow: String,
@@ -125,7 +138,10 @@ private fun ReorderableListScope.WindowViewSlot(
             modifier = modifier,
             headerModifier = Modifier.draggableHandle(),
             uiState = uiState,
+            location = location,
+            defaultStyle = defaultStyle,
             isSelected = selectedWindow == uiState.name,
+            openWindows = openWindows,
             menuData = menuData,
             onActionClicked = onActionClicked,
             onMoveClicked = { onMoveClicked(uiState.name, it) },
@@ -141,7 +157,7 @@ private fun ReorderableListScope.WindowViewSlot(
     ReorderableItem {
         if (!isLast) {
             val panelState = remember(uiState.name) {
-                val size = if (isHorizontal) uiState.window.width else uiState.window.height
+                val size = if (isHorizontal) uiState.width else uiState.height
                 ResizablePanelState(initialSize = size?.dp ?: 160.dp, minSize = 16.dp)
             }
             ResizablePanel(

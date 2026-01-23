@@ -79,6 +79,8 @@ fun AppearanceView(
                 .toAnnotatedString(emptyMap(), presets, {}),
             entireLineStyle = WarlockStyle.RoomName.toStyleDefinition(presets),
             serialNumber = 0L,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = StyledString(
@@ -87,6 +89,8 @@ fun AppearanceView(
             ).toAnnotatedString(emptyMap(), presets, {}),
             entireLineStyle = null,
             serialNumber = 1L,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = (StyledString("You also see a ") + StyledString(
@@ -95,12 +99,16 @@ fun AppearanceView(
             ) + StyledString(".")).toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 2L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = StyledString("say Hello", style = WarlockStyle.Command)
                 .toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 3L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = (StyledString(
@@ -110,6 +118,8 @@ fun AppearanceView(
                 .toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 4L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = StyledString(
@@ -118,6 +128,8 @@ fun AppearanceView(
             ).toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 5L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = StyledString(
@@ -126,6 +138,8 @@ fun AppearanceView(
             ).toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 6L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = (
@@ -136,6 +150,8 @@ fun AppearanceView(
                     ).toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 7L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         ),
         StreamTextLine(
             text = StyledString(
@@ -149,6 +165,8 @@ fun AppearanceView(
             ).toAnnotatedString(emptyMap(), presets, {}),
             serialNumber = 8L,
             entireLineStyle = null,
+            showWhenClosed = null,
+            isPrompt = false,
         )
     )
 

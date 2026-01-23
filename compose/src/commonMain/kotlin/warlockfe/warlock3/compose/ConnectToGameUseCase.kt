@@ -8,10 +8,9 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
-import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
+import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
-import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -21,8 +20,7 @@ import warlockfe.warlock3.wrayth.network.WraythClient
 // TODO: put this someplace more sensible
 class ConnectToGameUseCase(
     private val warlockProxyFactory: WarlockProxy.Factory,
-    private val windowRepositoryFactory: WindowRepositoryFactory,
-    private val streamRegistryFactory: StreamRegistryFactory,
+    private val windowRegistryFactory: WindowRegistryFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
     private val dirs: WarlockDirs,
@@ -55,23 +53,20 @@ class ConnectToGameUseCase(
                     proxy = warlockProxyFactory.create(proxyCommand)
                 }
             }
-            val windowRepository = windowRepositoryFactory.create()
-            val streamRegistry = streamRegistryFactory.create(windowRepository)
+            val streamRegistry = windowRegistryFactory.create()
             while (true) {
                 try {
                     val socket = NetworkSocket(ioDispatcher)
                     socket.connect(loginCredentials.host, loginCredentials.port)
                     val sfClient = warlockClientFactory.createClient(
-                        windowRepository = windowRepository,
-                        streamRegistry = streamRegistry,
+                        windowRegistry = streamRegistry,
                         socket = socket,
                     ) as WraythClient
                     proxy?.let { sfClient.setProxy(it) }
                     sfClient.connect(loginCredentials.key)
                     val gameViewModel = gameViewModelFactory.create(
                         client = sfClient,
-                        windowRepository = windowRepository,
-                        streamRegistry = streamRegistry,
+                        windowRegistry = streamRegistry,
                     )
                     gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                     break

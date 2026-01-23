@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.TextStream
+import warlockfe.warlock3.core.window.WindowInfo
 
 interface WarlockClient {
 
@@ -22,6 +23,7 @@ interface WarlockClient {
     val menuData: StateFlow<WarlockMenuData>
 
     val characterId: StateFlow<String?>
+    val windowInfo: StateFlow<List<WindowInfo>>
 
     val time: Long
 

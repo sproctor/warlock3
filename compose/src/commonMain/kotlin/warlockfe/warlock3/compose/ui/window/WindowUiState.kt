@@ -1,35 +1,37 @@
 package warlockfe.warlock3.compose.ui.window
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
-import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.window.Window
-import warlockfe.warlock3.wrayth.util.CompiledAlteration
+import warlockfe.warlock3.core.window.WindowInfo
+import warlockfe.warlock3.core.window.WindowLocation
 
 @Stable
-sealed interface WindowUiState {
-    val name: String
-    val window: Window
-    val defaultStyle: StyleDefinition
-}
-
-@Stable
-data class StreamWindowUiState(
-    override val name: String,
-    val stream: ComposeTextStream,
-    override val window: Window,
-    override val defaultStyle: StyleDefinition,
-    val highlights: List<ViewHighlight>,
-    val alterations: List<CompiledAlteration>,
-    val presets: Map<String, StyleDefinition>,
-) : WindowUiState
-
-@Stable
-data class DialogWindowUiState(
-    override val name: String,
-    override val window: Window,
-    val dialogData: ComposeDialogState,
-    override val defaultStyle: StyleDefinition,
+data class WindowUiState(
+    val name: String,
+    val windowInfo: MutableState<WindowInfo?>,
+    val style: StyleDefinition,
     val width: Int?,
     val height: Int?,
-) : WindowUiState
+    val data: WindowData?,
+)
+
+sealed interface WindowData
+
+data class StreamWindowData(
+    val stream: ComposeTextStream,
+) : WindowData
+
+data class DialogWindowData(
+    val dialogData: ComposeDialogState,
+) : WindowData
+
+fun WindowSettingsEntity.getStyle(): StyleDefinition {
+    return StyleDefinition(
+        textColor = textColor,
+        backgroundColor = backgroundColor,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+    )
+}

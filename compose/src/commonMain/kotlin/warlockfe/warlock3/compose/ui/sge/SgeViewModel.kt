@@ -16,13 +16,12 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
-import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
+import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
 import warlockfe.warlock3.core.sge.SgeCharacter
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeError
@@ -41,8 +40,7 @@ class SgeViewModel(
     private val warlockClientFactory: WarlockClientFactory,
     sgeClientFactory: SgeClientFactory,
     private val gameViewModelFactory: GameViewModelFactory,
-    private val windowRepositoryFactory: WindowRepositoryFactory,
-    private val streamRegistryFactory: StreamRegistryFactory,
+    private val windowRegistryFactory: WindowRegistryFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -123,20 +121,17 @@ class SgeViewModel(
 
                         withContext(ioDispatcher) {
                             try {
-                                val windowRepository = windowRepositoryFactory.create()
-                                val streamRegistry = streamRegistryFactory.create(windowRepository)
+                                val streamRegistry = windowRegistryFactory.create()
                                 val socket = NetworkSocket(ioDispatcher)
                                 socket.connect(credentials.host, credentials.port)
                                 val sfClient = warlockClientFactory.createClient(
-                                    windowRepository = windowRepository,
-                                    streamRegistry = streamRegistry,
+                                    windowRegistry = streamRegistry,
                                     socket = socket,
                                 )
                                 sfClient.connect(credentials.key)
                                 val gameViewModel = gameViewModelFactory.create(
                                     client = sfClient,
-                                    windowRepository = windowRepository,
-                                    streamRegistry = streamRegistry
+                                    windowRegistry = streamRegistry
                                 )
                                 gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                             } catch (e: Exception) {

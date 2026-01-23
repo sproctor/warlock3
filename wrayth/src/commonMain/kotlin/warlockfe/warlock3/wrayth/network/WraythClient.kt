@@ -16,7 +16,6 @@ import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -37,6 +35,7 @@ import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
@@ -48,15 +47,16 @@ import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepository
 import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isBlank
 import warlockfe.warlock3.core.util.getIgnoringCase
-import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.util.replaceOrAdd
 import warlockfe.warlock3.core.window.TextStream
+import warlockfe.warlock3.core.window.WindowInfo
+import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythAppEvent
@@ -112,9 +112,8 @@ import kotlin.time.Clock
 private val baseUri = Uri.parse("https://www.play.net/")
 
 class WraythClient(
-    private val windowRepository: WindowRepository,
     private val characterRepository: CharacterRepository,
-    private val streamRegistry: StreamRegistry,
+    private val windowRegistry: WindowRegistry,
     private val fileLogging: LoggingRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
@@ -173,6 +172,9 @@ class WraythClient(
 
     private val windows = mutableMapOf<String, WraythStreamWindow>()
 
+    private val _windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())
+    override val windowInfo = _windowInfo.asStateFlow()
+
     private val commandQueue = Channel<String>(Channel.UNLIMITED)
     private val currentTypeAhead = MutableStateFlow(0)
 
@@ -194,9 +196,6 @@ class WraythClient(
     private var currentMenuId: Int = 0
 
     private val cachedMenuItems = mutableListOf<WarlockMenuItem>()
-
-    private val openWindows = windowRepository.openWindows
-        .stateIn(scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     private var parseText = true
 
@@ -220,33 +219,33 @@ class WraythClient(
         get() = Clock.System.now().toEpochMilliseconds() + delta
 
     init {
-        listOf(
-            WraythStreamWindow(
-                id = "warlockscripts",
-                title = "Running scripts",
-                subtitle = null,
-                ifClosed = "",
-                styleIfClosed = null,
-                timestamp = false,
-            ),
-            WraythStreamWindow(
-                id = "scriptoutput",
-                title = "Script output",
-                subtitle = null,
-                ifClosed = "main",
-                styleIfClosed = "echo",
-                timestamp = false,
-            ),
-            WraythStreamWindow(
-                id = "debug",
-                title = "Debug",
-                subtitle = null,
-                ifClosed = "",
-                styleIfClosed = null,
-                timestamp = false,
-            ),
-        ).forEach { addWindow(it) }
         scope.launch {
+            listOf(
+                WraythStreamWindow(
+                    name = "warlockscripts",
+                    title = "Running scripts",
+                    subtitle = null,
+                    ifClosed = null,
+                    styleIfClosed = null,
+                    timestamp = false,
+                ),
+                WraythStreamWindow(
+                    name = "scriptoutput",
+                    title = "Script output",
+                    subtitle = null,
+                    ifClosed = "main",
+                    styleIfClosed = "echo",
+                    timestamp = false,
+                ),
+                WraythStreamWindow(
+                    name = "debug",
+                    title = "Debug",
+                    subtitle = null,
+                    ifClosed = null,
+                    styleIfClosed = null,
+                    timestamp = false,
+                ),
+            ).forEach { addWindow(it) }
             commandQueue.consumeEach { command ->
                 if (maxTypeAhead > 0) {
                     currentTypeAhead.first { it < maxTypeAhead }
@@ -257,7 +256,7 @@ class WraythClient(
         }
         characterId.onEach {
             if (it != null) {
-                streamRegistry.setCharacterId(it)
+                windowRegistry.setCharacterId(it)
             }
         }.launchIn(scope)
     }
@@ -311,9 +310,9 @@ class WraythClient(
                                 is WraythAppEvent -> {
                                     val game = event.game
                                     val character = event.character
-                                    _characterId.value = if (game != null && character != null) {
+                                    if (game != null && character != null) {
                                         val characterId = "${event.game}:${event.character}".lowercase()
-                                        windowRepository.setCharacterId(characterId)
+                                        _characterId.value = characterId
                                         logName = "${event.game}_${event.character}"
                                         logBuffer.forEach {
                                             it()
@@ -328,12 +327,9 @@ class WraythClient(
                                                 )
                                             )
                                         }
-                                        characterId
-                                    } else {
-                                        null
+                                        _gameName.value = game
+                                        _characterName.value = character
                                     }
-                                    _gameName.value = game
-                                    _characterName.value = character
                                 }
 
                                 is WraythOutputEvent ->
@@ -349,7 +345,6 @@ class WraythClient(
                                     styleStack.removeLastOrNull()
 
                                 is WraythPromptEvent -> {
-                                    logger.debug { "got prompt" }
                                     currentTypeAhead.update { max(0, it - 1) }
                                     styleStack.clear()
                                     componentId = null
@@ -357,7 +352,8 @@ class WraythClient(
                                     currentStream = null
                                     if (!isPrompting) {
                                         getMainStream().appendPartial(
-                                            StyledString(event.text, listOfNotNull(outputStyle))
+                                            StyledString(event.text, listOfNotNull(outputStyle)),
+                                            isPrompt = true
                                         )
                                         isPrompting = true
                                     }
@@ -408,11 +404,11 @@ class WraythClient(
 
                                 is WraythDialogDataEvent -> {
                                     if (event.id == null) {
-                                        dialogDataId?.let { streamRegistry.getOrCreateDialog(it).updateState() }
+                                        dialogDataId?.let { windowRegistry.getOrCreateDialog(it).updateState() }
                                     }
                                     dialogDataId = event.id
                                     if (event.clear && event.id != null) {
-                                        streamRegistry.getOrCreateDialog(event.id).clear()
+                                        this@WraythClient.windowRegistry.getOrCreateDialog(event.id).clear()
                                     }
                                 }
 
@@ -425,7 +421,7 @@ class WraythClient(
                                     //            ((data.id + "text") to (data.text ?: ""))
                                     //}
                                     dialogDataId?.let {
-                                        streamRegistry.getOrCreateDialog(it).setObject(event.data)
+                                        windowRegistry.getOrCreateDialog(it).setObject(event.data)
                                     }
                                 }
 
@@ -481,7 +477,7 @@ class WraythClient(
                                             }
                                         }
                                         val newValue = elementBuffer ?: StyledString()
-                                        streamRegistry.getStreams().forEach { stream ->
+                                        windowRegistry.getStreams().forEach { stream ->
                                             stream.updateComponent(componentId!!, newValue)
                                         }
                                         elementBuffer = null
@@ -495,8 +491,8 @@ class WraythClient(
 
                                 is WraythStreamWindowEvent -> {
                                     val window = event.window
-                                    if (windows[event.window.id] == null && window.id != "main") {
-                                        sendCommandDirect("_swclose s${event.window.id}")
+                                    if (windows[event.window.name] == null && window.name != "main") {
+                                        sendCommandDirect("_swclose s${event.window.name}")
                                     }
                                     addWindow(window)
                                 }
@@ -504,13 +500,17 @@ class WraythClient(
                                 is WraythDialogWindowEvent -> {
                                     val window = event.window
                                     if (window.resident) {
-                                        windowRepository.setWindowTitle(
+                                        val window = WindowInfo(
                                             name = window.id,
                                             title = window.title,
                                             subtitle = null,
                                             windowType = WindowType.DIALOG,
                                             showTimestamps = false,
                                         )
+                                        _windowInfo.update { windowInfo ->
+                                            windowInfo.replaceOrAdd(window) { it.name == window.name }
+                                        }
+                                        notifyListeners(ClientWindowInfoEvent(window))
                                     }
                                 }
 
@@ -566,7 +566,12 @@ class WraythClient(
                                                     eventNoun = null,
                                                 )
                                             } else {
-                                                print(StyledString("Could not find cli for coord: ${cmd.coord}", WarlockStyle.Error))
+                                                print(
+                                                    StyledString(
+                                                        "Could not find cli for coord: ${cmd.coord}",
+                                                        WarlockStyle.Error
+                                                    )
+                                                )
                                                 ""
                                             }
                                         }
@@ -698,9 +703,9 @@ class WraythClient(
         }
     }
 
-    private suspend fun appendToStream(styledText: StyledString, stream: TextStream?, ignoreWhenBlank: Boolean) {
+    private suspend fun appendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
         doAppendToStream(styledText, stream, ignoreWhenBlank)
-        if (stream.isMainStream || ifClosedStream(stream!!).isMainStream) {
+        if (stream.isMainStream || windows[stream.id]?.ifClosed == "main") {
             val text = styledText.toString()
             if (text.isNotBlank()) {
                 logSimple { text }
@@ -709,23 +714,26 @@ class WraythClient(
         }
     }
 
-    private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream?, ignoreWhenBlank: Boolean) {
+    private suspend fun doAppendToStream(styledText: StyledString, stream: TextStream, ignoreWhenBlank: Boolean) {
         if (ignoreWhenBlank && styledText.isBlank())
             return
-        val actualStream = stream ?: getMainStream()
-        actualStream.appendLine(styledText, ignoreWhenBlank)
+        stream.appendLine(styledText, ignoreWhenBlank)
         if (stream.isMainStream) {
             isPrompting = false
-        }
-        doIfClosed(actualStream) { targetStream ->
-            if (targetStream.isMainStream) {
-                isPrompting = false
+        } else {
+            // send text to `ifClosed` stream, if stream isn't main
+            windows[stream.id]?.ifClosed?.let { ifClosed ->
+                val ifClosedStream = getStream(ifClosed)
+                if (ifClosedStream.isMainStream) {
+                    isPrompting = false
+                }
+                val style = windows[stream.id]?.styleIfClosed
+                ifClosedStream.appendLine(
+                    text = style?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
+                    ignoreWhenBlank = ignoreWhenBlank,
+                    showWhenClosed = stream.id,
+                )
             }
-            val style = windows[actualStream.id]?.styleIfClosed
-            targetStream.appendLine(
-                text = style?.let { styledText.applyStyle(WarlockStyle(it)) } ?: styledText,
-                ignoreWhenBlank = ignoreWhenBlank
-            )
         }
     }
 
@@ -733,26 +741,8 @@ class WraythClient(
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
         if (componentId == null) {
             val styledText = streamBuffer ?: StyledString()
-            appendToStream(styledText, currentStream, ignoreWhenBlank)
+            appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank)
             streamBuffer = null
-        }
-    }
-
-    private suspend fun doIfClosed(stream: TextStream, action: suspend (TextStream) -> Unit) {
-        if (!openWindows.value.contains(stream.id)) {
-            ifClosedStream(stream)?.let { closedStream ->
-                action(closedStream)
-            }
-        }
-    }
-
-    private suspend fun ifClosedStream(stream: TextStream): TextStream? {
-        val window = windows[stream.id] ?: return null
-        val ifClosedName = window.ifClosed ?: "main"
-        return if (stream.id != ifClosedName && ifClosedName.isNotBlank()) {
-            getStream(ifClosedName)
-        } else {
-            null
         }
     }
 
@@ -809,7 +799,7 @@ class WraythClient(
         lines.dropLast(1).forEach { fullLine ->
             mainStream.appendPartialAndEol(StyledString(fullLine, WarlockStyle.Mono))
         }
-        mainStream.appendPartial(StyledString(lines.last(), WarlockStyle.Mono))
+        mainStream.appendPartial(StyledString(lines.last(), WarlockStyle.Mono), isPrompt = false)
     }
 
     override suspend fun print(message: StyledString) {
@@ -837,7 +827,7 @@ class WraythClient(
     }
 
     override suspend fun getStream(name: String): TextStream {
-        return streamRegistry.getOrCreateStream(name)
+        return windowRegistry.getOrCreateStream(name)
     }
 
     override fun setMaxTypeAhead(value: Int) {
@@ -870,14 +860,22 @@ class WraythClient(
             .launchIn(scope)
     }
 
-    private fun addWindow(window: WraythStreamWindow) {
-        windows[window.id] = window
-        windowRepository.setWindowTitle(
-            name = window.id,
+    private suspend fun addWindow(window: WraythStreamWindow) {
+        val stream = getStream(window.name)
+        stream.showTimestamps(window.timestamp)
+        windows[window.name] = window
+        val info = WindowInfo(
+            name = window.name,
             title = window.title,
             subtitle = window.subtitle,
             windowType = WindowType.STREAM,
             showTimestamps = window.timestamp,
+        )
+        _windowInfo.update { windowInfo ->
+            windowInfo.replaceOrAdd(info) { it.name == window.name }
+        }
+        notifyListeners(
+            ClientWindowInfoEvent(info)
         )
     }
 

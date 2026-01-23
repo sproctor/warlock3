@@ -1,12 +1,10 @@
 package warlockfe.warlock3.core.client
 
-import warlockfe.warlock3.core.prefs.repositories.WindowRepository
-import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.window.WindowRegistry
 
 interface WarlockClientFactory {
     fun createClient(
-        windowRepository: WindowRepository,
-        streamRegistry: StreamRegistry,
+        windowRegistry: WindowRegistry,
         socket: WarlockSocket,
     ): WarlockClient
 }

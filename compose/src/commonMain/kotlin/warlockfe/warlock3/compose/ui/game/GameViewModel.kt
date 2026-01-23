@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -17,6 +18,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
@@ -43,16 +46,17 @@ import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.macros.macroCommands
-import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
-import warlockfe.warlock3.compose.ui.window.DialogWindowUiState
+import warlockfe.warlock3.compose.ui.window.DialogWindowData
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
-import warlockfe.warlock3.compose.ui.window.StreamWindowUiState
+import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
+import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
+import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
@@ -61,14 +65,11 @@ import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
-import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
-import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
@@ -80,29 +81,24 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.splitFirstWord
-import warlockfe.warlock3.core.window.StreamRegistry
-import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
-import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.math.max
 
 const val clientCommandPrefix = '/'
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
-    val windowRepository: WindowRepository,
+    private val windowSettingsRepository: WindowSettingsRepository,
     private val client: WarlockClient,
     val macroRepository: MacroRepository,
     val variableRepository: VariableRepository,
-    highlightRepository: HighlightRepositoryImpl,
-    nameRepository: NameRepositoryImpl,
     private val presetRepository: PresetRepository,
     private val scriptManager: ScriptManager,
     val characterSettingsRepository: CharacterSettingsRepository,
-    private val alterationRepository: AlterationRepository,
     aliasRepository: AliasRepository,
-    private val streamRegistry: StreamRegistry,
+    private val windowRegistry: WindowRegistry,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
@@ -116,7 +112,7 @@ class GameViewModel(
     private val _compassState = MutableStateFlow(CompassState(emptySet()))
     val compassState: StateFlow<CompassState> = _compassState
 
-    val vitalBars: ComposeDialogState = streamRegistry.getOrCreateDialog("minivitals") as ComposeDialogState
+    val vitalBars: ComposeDialogState = windowRegistry.getOrCreateDialog("minivitals") as ComposeDialogState
 
     val indicators = client.indicators
     val leftHand = client.leftHand
@@ -140,6 +136,23 @@ class GameViewModel(
             null
         }
     }
+
+    val windowSettings = client.characterId.flatMapLatest { characterId ->
+        if (characterId != null) {
+            windowSettingsRepository.observeWindowSettings(characterId)
+        } else {
+            flow {}
+        }
+    }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val openWindows = windowSettings.map { currentWindowSettings ->
+        currentWindowSettings.mapNotNull { entity ->
+            entity.takeIf { it.position != null }?.name
+        }
+    }
+
+    val windows = client.windowInfo
 
     val scriptCommandPrefix = client.characterId.flatMapLatest { characterId ->
         if (characterId != null) {
@@ -207,15 +220,6 @@ class GameViewModel(
             initialValue = emptyMap()
         )
 
-    val presets: Flow<Map<String, StyleDefinition>> =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                presetRepository.observePresetsForCharacter(characterId)
-            } else {
-                flow { emit(emptyMap()) }
-            }
-        }
-
     private val variables: StateFlow<Map<String, String>> =
         client.characterId.flatMapLatest { characterId ->
             if (characterId != null) {
@@ -245,22 +249,7 @@ class GameViewModel(
             initialValue = emptyList()
         )
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val alterations: StateFlow<List<CompiledAlteration>> = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null)
-            alterationRepository.observeForCharacter(characterId).map { list ->
-                list.mapNotNull {
-                    try {
-                        CompiledAlteration(it)
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-            }
-        else
-            flow { }
-    }
-        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = emptyList())
+    val presets = windowRegistry.presets
 
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
@@ -289,135 +278,36 @@ class GameViewModel(
     private var historyPosition = 0
     private val sendHistory = mutableListOf("")
 
-    private val highlights: Flow<List<ViewHighlight>> = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            combine(
-                highlightRepository.observeForCharacter(characterId),
-                nameRepository.observeForCharacter(characterId)
-            ) { highlights, names ->
-                val generalHighlights = highlights.mapNotNull { highlight ->
-                    val pattern = if (highlight.isRegex) {
-                        highlight.pattern
-                    } else {
-                        val subpattern = Regex.escape(highlight.pattern)
-                        if (highlight.matchPartialWord) {
-                            subpattern
-                        } else {
-                            "\\b$subpattern\\b"
-                        }
-                    }
-                    try {
-                        ViewHighlight(
-                            regex = Regex(
-                                pattern = pattern,
-                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-                            ),
-                            styles = highlight.styles,
-                            sound = highlight.sound,
-                        )
-                    } catch (e: Exception) {
-                        client.debug("Error while parsing highlight (${e.message}): $highlight")
-                        null
-                    }
-                }
-                val nameHighlights = names.mapNotNull { name ->
-                    val pattern = Regex.escape(name.text).let { "\\b$it\\b" }
-                    try {
-                        ViewHighlight(
-                            regex = Regex(pattern = pattern),
-                            styles = mapOf(
-                                0 to StyleDefinition(
-                                    textColor = name.textColor,
-                                    backgroundColor = name.backgroundColor,
-                                )
-                            ),
-                            sound = name.sound,
-                        )
-                    } catch (e: Exception) {
-                        client.debug("Error while parsing highlight (${e.message}): $name")
-                        null
-                    }
-                }
-                generalHighlights + nameHighlights
-            }
-        } else {
-            flow {
-                emit(emptyList())
-            }
-        }
-    }
+    private val _leftWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
+    val leftWindowUiStates: StateFlow<List<WindowUiState>> = _leftWindowUiStates.asStateFlow()
 
-    @Suppress("UNCHECKED_CAST")
-    val windowUiStates: StateFlow<List<WindowUiState>> =
-        combine(
-            windowRepository.openWindows,
-            windowRepository.windows,
-            presets,
-            highlights,
-            alterations,
-        ) { flows ->
-            val openWindows = flows[0] as Set<String>
-            val windows = flows[1] as Map<String, Window>
-            val presets = flows[2] as Map<String, StyleDefinition>
-            val highlights = flows[3] as List<ViewHighlight>
-            val alterations = flows[4] as List<CompiledAlteration>
+    private val _rightWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
+    val rightWindowUiStates: StateFlow<List<WindowUiState>> = _rightWindowUiStates.asStateFlow()
 
-            openWindows.mapNotNull { name ->
-                windows[name]?.let { window ->
-                    if (window.windowType == WindowType.DIALOG) {
-                        DialogWindowUiState(
-                            name = name,
-                            window = window,
-                            dialogData = streamRegistry.getOrCreateDialog(name) as ComposeDialogState,
-                            defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                            width = null,
-                            height = null,
-                        )
-                    } else {
-                        StreamWindowUiState(
-                            name = name,
-                            stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-                            window = window,
-                            highlights = highlights,
-                            presets = presets,
-                            alterations = alterations.filter { it.appliesToStream(name) },
-                            defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-                        )
-                    }
-                }
-            }
-        }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyList(),
-            )
+    private val _topWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
+    val topWindowUiStates: StateFlow<List<WindowUiState>> = _topWindowUiStates.asStateFlow()
 
-    val mainWindowUiState: StateFlow<WindowUiState?> =
-        combine(
-            windowRepository.windows,
-            presets,
-            highlights,
-            alterations
-        ) { windows, presets, highlights, alterations ->
-            val name = "main"
-            StreamWindowUiState(
-                name = name,
-                stream = streamRegistry.getOrCreateStream(name) as ComposeTextStream,
-                window = windows[name]!!,
-                highlights = highlights,
-                presets = presets,
-                alterations = alterations.filter { it.appliesToStream(name) },
-                defaultStyle = presets["default"] ?: defaultStyles["default"]!!,
-            )
-        }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = null,
-            )
+    private val _bottomWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
+    val bottomWindowUiStates: StateFlow<List<WindowUiState>> = _bottomWindowUiStates.asStateFlow()
 
-    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow(mainWindowUiState.value?.name ?: "main")
+    private val uiStateLists
+        get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
+
+    private val _mainWindowUiState = MutableStateFlow<WindowUiState>(
+        WindowUiState(
+            name = "main",
+            windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),
+            style = defaultStyles["default"]!!,
+            data = StreamWindowData(
+                stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
+            ),
+            width = null,
+            height = null,
+        )
+    )
+    val mainWindowUiState: StateFlow<WindowUiState> = _mainWindowUiState.asStateFlow()
+
+    private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
     val selectedWindow: StateFlow<String> = _selectedWindow
 
     val disconnected = client.disconnected
@@ -425,6 +315,65 @@ class GameViewModel(
     val menuData = client.menuData
 
     init {
+        // Load initial
+        client.characterId
+            .onEach { characterId ->
+                if (characterId != null) {
+                    val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
+                    settings.filter { it.location != null }.forEach { entity ->
+                        logger.debug { "Loading entity: $entity" }
+                        val window = windows.value.firstOrNull { it.name == entity.name }
+                        val uiState = WindowUiState(
+                            name = entity.name,
+                            windowInfo = mutableStateOf(window),
+                            style = defaultStyles["default"]!!,
+                            width = entity.width,
+                            height = entity.height,
+                            data = when (window?.windowType) {
+                                WindowType.STREAM -> StreamWindowData(
+                                    windowRegistry.getOrCreateStream(window.name) as ComposeTextStream,
+                                )
+                                WindowType.DIALOG ->
+                                    DialogWindowData(windowRegistry.getOrCreateDialog(window.name) as ComposeDialogState)
+                                else -> null
+                            },
+                        )
+                        when (entity.location) {
+                            WindowLocation.MAIN -> _mainWindowUiState.value = uiState
+                            WindowLocation.TOP -> _topWindowUiStates.update { it + uiState }
+                            WindowLocation.BOTTOM -> _bottomWindowUiStates.update { it + uiState }
+                            WindowLocation.LEFT -> _leftWindowUiStates.update { it + uiState }
+                            WindowLocation.RIGHT -> _rightWindowUiStates.update { it + uiState }
+                            else -> Unit // Nothing to do
+                        }
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+        windowSettings
+            .onEach { currentWindowSettings ->
+                currentWindowSettings.forEach { singleWindowSettings ->
+                    if (singleWindowSettings.name == "main") {
+                        _mainWindowUiState.update {
+                            it.copy(style = singleWindowSettings.getStyle())
+                        }
+                    } else {
+                        uiStateLists.forEach { stateList ->
+                            stateList.update { states ->
+                                val index = states.indexOfFirst { it.name == singleWindowSettings.name }
+                                if (index != -1) {
+                                    val mutableStates = states.toMutableList()
+                                    mutableStates[index] = states[index].copy(style = singleWindowSettings.getStyle())
+                                    mutableStates
+                                } else {
+                                    states
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
         client.eventFlow
             .onEach { event ->
                 when (event) {
@@ -435,6 +384,38 @@ class GameViewModel(
 
                     is ClientOpenUrlEvent -> {
                         openUrl(event.url)
+                    }
+
+                    is ClientWindowInfoEvent -> {
+                        if (event.info.name == "main") {
+                            _mainWindowUiState.value.windowInfo.value = event.info
+                        } else {
+                            uiStateLists.forEach { windowUiStates ->
+                                windowUiStates.value
+                                    .indexOfFirst { it.name == event.info.name }
+                                    .takeIf { it != -1 }
+                                    ?.let { index ->
+                                        val uiState = windowUiStates.value[index]
+                                        uiState.windowInfo.value = event.info
+                                        if (uiState.data == null) {
+                                            windowUiStates.update { states ->
+                                                val mutableStates = states.toMutableList()
+                                                mutableStates[index] = uiState.copy(
+                                                    data = when (event.info.windowType) {
+                                                        WindowType.STREAM -> StreamWindowData(
+                                                            windowRegistry.getOrCreateStream(event.info.name) as ComposeTextStream,
+                                                        )
+
+                                                        WindowType.DIALOG ->
+                                                            DialogWindowData(windowRegistry.getOrCreateDialog(event.info.name) as ComposeDialogState)
+                                                    }
+                                                )
+                                                mutableStates
+                                            }
+                                        }
+                                    }
+                            }
+                        }
                     }
 
                     else -> {
@@ -701,30 +682,40 @@ class GameViewModel(
         )
     }
 
+    // TODO: listen to WindowUIStates to implement these
     fun moveWindow(name: String, location: WindowLocation) {
         viewModelScope.launch {
-            windowRepository.moveWindow(
-                name = name,
-                location = location
-            )
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.moveWindow(
+                    characterId = characterId,
+                    name = name,
+                    location = location
+                )
+            }
         }
     }
 
     fun setWindowWidth(name: String, width: Int) {
         viewModelScope.launch {
-            windowRepository.setWindowWidth(
-                name = name,
-                width = width
-            )
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.setWindowWidth(
+                    characterId = characterId,
+                    name = name,
+                    width = width
+                )
+            }
         }
     }
 
     fun setWindowHeight(name: String, height: Int) {
         viewModelScope.launch {
-            windowRepository.setWindowHeight(
-                name = name,
-                height = height
-            )
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.setWindowHeight(
+                    characterId = characterId,
+                    name = name,
+                    height = height
+                )
+            }
         }
     }
 
@@ -743,34 +734,96 @@ class GameViewModel(
         }
     }
 
-    fun changeWindowPositions(location: WindowLocation, fromPos: Int, toPos: Int) {
+    fun changeWindowPositions(location: WindowLocation, fromIndex: Int, toIndex: Int) {
+        val windowUiStates = when (location) {
+            WindowLocation.LEFT -> _leftWindowUiStates
+            WindowLocation.RIGHT -> _rightWindowUiStates
+            WindowLocation.TOP -> _topWindowUiStates
+            WindowLocation.BOTTOM -> _bottomWindowUiStates
+            else -> error("Change position error: Invalid window location")
+        }
+        windowUiStates.update { states ->
+            val mutableStates = states.toMutableList()
+            val item = mutableStates.removeAt(fromIndex)
+            mutableStates.add(toIndex, item)
+            mutableStates
+        }
         viewModelScope.launch {
-            logger.debug { "Moving window at $location from $fromPos to $toPos" }
-            var currentPos = fromPos
-            while (currentPos != toPos) {
-                val nextStep = if (toPos < currentPos) currentPos - 1 else currentPos + 1
-                windowRepository.switchPositions(location, currentPos, nextStep)
-                currentPos = nextStep
+            client.characterId.value?.let { characterId ->
+                logger.debug { "Moving window at $location from $fromIndex to $toIndex" }
+                for (index in fromIndex .. toIndex) {
+                    windowSettingsRepository.setPosition(characterId, windowUiStates.value[index].name, index)
+                }
+            }
+        }
+    }
+
+    fun openWindow(name: String) {
+        var newState: WindowUiState? = null
+        _topWindowUiStates.update { states ->
+            if (states.any { it.name == name }) {
+                states
+            } else {
+                val entity = windowSettings.value.firstOrNull { it.name == name }
+                val windowInfo = windows.value.firstOrNull { it.name == name }
+                newState = WindowUiState(
+                    name = name,
+                    windowInfo = mutableStateOf(windowInfo),
+                    style = entity?.getStyle() ?: defaultStyles["default"]!!,
+                    width = null,
+                    height = null,
+                    data = when (windowInfo?.windowType) {
+                        WindowType.STREAM -> StreamWindowData(
+                            stream = windowRegistry.getOrCreateStream(name) as ComposeTextStream,
+                        )
+
+                        WindowType.DIALOG -> DialogWindowData(
+                            dialogData = windowRegistry.getOrCreateDialog(name) as ComposeDialogState
+                        )
+
+                        else -> null
+                    },
+                )
+                states + newState
+            }
+        }
+        if (newState != null) {
+            viewModelScope.launch {
+                client.characterId.value?.let { characterId ->
+                    windowSettingsRepository.openWindow(
+                        characterId = characterId,
+                        name = name,
+                        location = WindowLocation.TOP,
+                        position = _topWindowUiStates.value.lastIndex,
+                    )
+                }
             }
         }
     }
 
     fun closeWindow(name: String) {
+        uiStateLists.forEach { windowUiStates ->
+            windowUiStates.update { states -> states.filter { it.name != name } }
+        }
         viewModelScope.launch {
-            windowRepository.closeWindow(name = name)
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.closeWindow(characterId = characterId, name = name)
+            }
         }
     }
 
     fun clearStream(name: String) {
         viewModelScope.launch {
-            val stream = streamRegistry.getOrCreateStream(name)
+            val stream = windowRegistry.getOrCreateStream(name)
             stream.clear()
         }
     }
 
     fun saveWindowStyle(name: String, style: StyleDefinition) {
         viewModelScope.launch {
-            windowRepository.setStyle(name = name, style = style)
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.setStyle(characterId = characterId, name = name, style = style)
+            }
         }
     }
 

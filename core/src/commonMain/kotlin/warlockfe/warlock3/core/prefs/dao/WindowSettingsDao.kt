@@ -12,16 +12,7 @@ import warlockfe.warlock3.core.window.WindowLocation
 
 @Dao
 interface WindowSettingsDao {
-    @Query(
-        """
-        SELECT name
-        FROM WindowSettings
-        WHERE characterId = :characterId AND location IS NOT NULL AND position IS NOT NULL;
-    """
-    )
-    fun observeOpenWindows(characterId: String): Flow<List<String>>
-
-    @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId;")
+    @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId ORDER BY position")
     fun observeByCharacter(characterId: String): Flow<List<WindowSettingsEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -61,17 +52,6 @@ interface WindowSettingsDao {
         fontFamily: String?,
         fontSize: Float?,
     )
-
-    @Transaction
-    suspend fun openWindow(characterId: String, name: String) {
-        val openWindows = getByLocation(characterId, location = WindowLocation.TOP)
-        openWindow(
-            characterId = characterId,
-            name = name,
-            location = WindowLocation.TOP,
-            position = openWindows.size
-        )
-    }
 
     @Query(
         """
@@ -164,4 +144,13 @@ interface WindowSettingsDao {
     """
     )
     suspend fun switchPositions(characterId: String, location: WindowLocation, curpos: Int, newpos: Int)
+
+    @Query(
+        """
+        UPDATE WindowSettings
+        SET position = :pos
+        WHERE characterId = :characterId AND name = :name;
+    """
+    )
+    suspend fun setPosition(characterId: String, name: String, pos: Int)
 }

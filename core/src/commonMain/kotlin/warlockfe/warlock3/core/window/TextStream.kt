@@ -11,17 +11,19 @@ interface TextStream {
 
     val id: String
 
-    suspend fun appendPartial(text: StyledString)
+    suspend fun appendPartial(text: StyledString, isPrompt: Boolean)
 
     suspend fun appendPartialAndEol(text: StyledString)
 
     suspend fun clear()
 
-    suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false)
+    suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false, showWhenClosed: String? = null)
 
     suspend fun updateComponent(name: String, value: StyledString)
 
     suspend fun appendResource(url: String)
+
+    fun showTimestamps(value: Boolean)
 }
 
 fun StyledString.getComponents(): PersistentSet<String> {

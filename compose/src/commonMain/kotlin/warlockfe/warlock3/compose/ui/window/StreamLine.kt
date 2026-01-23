@@ -8,11 +8,12 @@ sealed interface StreamLine {
     val serialNumber: Long
 }
 
-@OptIn(ExperimentalTime::class)
 data class StreamTextLine(
     val text: AnnotatedString?,
     val entireLineStyle: StyleDefinition?,
     override val serialNumber: Long,
+    val showWhenClosed: String?,
+    val isPrompt: Boolean,
 ) : StreamLine
 
 data class StreamImageLine(

@@ -11,7 +11,7 @@ import kotlinx.io.files.FileSystem
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
-import warlockfe.warlock3.compose.ui.window.StreamRegistryFactory
+import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
@@ -35,15 +35,14 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepositoryFactory
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.core.window.StreamRegistry
+import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
@@ -66,6 +65,7 @@ abstract class AppContainer(
         CharacterRepository(
             characterDao = database.characterDao(),
         )
+    val windowSettingRepository = WindowSettingsRepository(database.windowSettingsDao())
     val macroRepository = MacroRepository(database.macroDao())
     val accountRepository = AccountRepository(database.accountDao())
     val highlightRepository = HighlightRepositoryImpl(database.highlightDao())
@@ -112,13 +112,11 @@ abstract class AppContainer(
         GameViewModelFactory(
             macroRepository = macroRepository,
             variableRepository = variableRepository,
-            highlightRepository = highlightRepository,
-            nameRepository = nameRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
             scriptManagerFactory = scriptManagerFactory,
-            alterationRepository = alterationRepository,
+            windowSettingsRepository = windowSettingRepository,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -133,14 +131,12 @@ abstract class AppContainer(
     val warlockClientFactory: WarlockClientFactory =
         object : WarlockClientFactory {
             override fun createClient(
-                windowRepository: WindowRepository,
-                streamRegistry: StreamRegistry,
+                windowRegistry: WindowRegistry,
                 socket: WarlockSocket,
             ): WarlockClient {
                 return WraythClient(
-                    windowRepository = windowRepository,
                     characterRepository = characterRepository,
-                    streamRegistry = streamRegistry,
+                    windowRegistry = windowRegistry,
                     fileLogging = loggingRepository,
                     ioDispatcher = ioDispatcher,
                     socket = socket,
@@ -150,15 +146,8 @@ abstract class AppContainer(
 
     abstract val warlockProxyFactory: WarlockProxy.Factory
 
-    val windowRepositoryFactory by lazy {
-        WindowRepositoryFactory(
-            windowSettingsDao = database.windowSettingsDao(),
-            externalScope = externalScope,
-        )
-    }
-
-    val streamRegistryFactory by lazy {
-        StreamRegistryFactory(
+    val windowRegistryFactory by lazy {
+        WindowRegistryFactory(
             externalScope = externalScope,
             settingRepository = clientSettings,
             ioDispatcher = ioDispatcher,
@@ -187,8 +176,7 @@ abstract class AppContainer(
             warlockClientFactory = warlockClientFactory,
             sgeClientFactory = sgeClientFactory,
             gameViewModelFactory = gameViewModelFactory,
-            windowRepositoryFactory = windowRepositoryFactory,
-            streamRegistryFactory = streamRegistryFactory,
+            windowRegistryFactory = windowRegistryFactory,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -196,8 +184,7 @@ abstract class AppContainer(
     val connectToGameUseCase by lazy {
         ConnectToGameUseCase(
             warlockProxyFactory = warlockProxyFactory,
-            windowRepositoryFactory = windowRepositoryFactory,
-            streamRegistryFactory = streamRegistryFactory,
+            windowRegistryFactory = windowRegistryFactory,
             warlockClientFactory = warlockClientFactory,
             gameViewModelFactory = gameViewModelFactory,
             dirs = warlockDirs,

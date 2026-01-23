@@ -10,17 +10,14 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
@@ -29,8 +26,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,7 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -82,8 +76,6 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
-import warlockfe.warlock3.compose.generated.resources.close
-import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
@@ -95,10 +87,7 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.specifiedOrNull
-import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.WindowLocation
-import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -106,7 +95,10 @@ fun WindowView(
     modifier: Modifier,
     headerModifier: Modifier,
     uiState: WindowUiState,
+    location: WindowLocation,
+    defaultStyle: StyleDefinition,
     isSelected: Boolean,
+    openWindows: List<String>,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?,
     onMoveClicked: (WindowLocation) -> Unit,
@@ -117,12 +109,11 @@ fun WindowView(
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: () -> Unit,
 ) {
-    val window = uiState.window
-    val windowLocation = window.location ?: return // Can't display anything without a location
+    val window by uiState.windowInfo
     var showWindowSettingsDialog by remember { mutableStateOf(false) }
     val scrollState = rememberLazyListState()
 
-    val title = window.title + (window.subtitle ?: "")
+    val title = (window?.title ?: uiState.name) + (window?.subtitle ?: "")
     var viewportHeight by remember { mutableIntStateOf(0) }
     Surface(
         modifier.padding(2.dp)
@@ -157,7 +148,7 @@ fun WindowView(
                         style = MaterialTheme.typography.titleSmall,
                     )
                 },
-                location = windowLocation,
+                location = location,
                 isSelected = isSelected,
                 onSettingsClicked = { showWindowSettingsDialog = true },
                 onClearClicked = clearStream,
@@ -165,42 +156,43 @@ fun WindowView(
                 onMoveClicked = onMoveClicked,
             )
 
-            when (uiState) {
-                is StreamWindowUiState ->
+            when (val data = uiState.data) {
+                is StreamWindowData ->
                     WindowViewContent(
                         modifier = Modifier.addTextContextMenuOptions(
-                            windowLocation = windowLocation,
+                            windowLocation = location,
                             showSettingsDialog = { showWindowSettingsDialog = true },
                             onMoveClicked = onMoveClicked,
                             onClearClicked = clearStream,
                             onCloseClicked = onCloseClicked,
                         ),
-                        stream = uiState.stream,
+                        stream = data.stream,
                         scrollState = scrollState,
-                        window = window,
-                        defaultStyle = uiState.defaultStyle,
+                        style = uiState.style.mergeWith(defaultStyle),
+                        openWindows = openWindows,
                         menuData = menuData,
                         onActionClicked = onActionClicked,
                     )
 
-                is DialogWindowUiState -> {
+                is DialogWindowData -> {
                     ScrollableColumn(
                         Modifier.fillMaxSize()
-                            .background(
-                                (window.style.backgroundColor.specifiedOrNull()
-                                    ?: uiState.defaultStyle.backgroundColor).toColor()
-                            )
+                            .background(uiState.style.mergeWith(defaultStyle).backgroundColor.toColor())
                     ) {
-                        val dataObjects by uiState.dialogData.objects.collectAsState()
+                        val dataObjects by data.dialogData.objects.collectAsState()
                         DialogContent(
                             dataObjects = dataObjects,
                             modifier = Modifier.padding(8.dp),
                             executeCommand = { command ->
                                 onActionClicked(WarlockAction.SendCommand(command))
                             },
-                            style = window.style.mergeWith(uiState.defaultStyle),
+                            style = uiState.style.mergeWith(defaultStyle),
                         )
                     }
+                }
+
+                else -> {
+                    // Loading
                 }
             }
         }
@@ -209,8 +201,8 @@ fun WindowView(
     if (showWindowSettingsDialog) {
         WindowSettingsDialog(
             onCloseRequest = { showWindowSettingsDialog = false },
-            style = window.style,
-            defaultStyle = uiState.defaultStyle,
+            style = uiState.style,
+            defaultStyle = defaultStyle,
             saveStyle = saveStyle,
         )
     }
@@ -281,20 +273,17 @@ private fun Modifier.addTextContextMenuOptions(
     }
 }
 
-@OptIn(ExperimentalTime::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun WindowViewContent(
     modifier: Modifier,
     stream: ComposeTextStream,
     scrollState: LazyListState,
-    window: Window?,
-    defaultStyle: StyleDefinition,
+    style: StyleDefinition,
+    openWindows: List<String>,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?
 ) {
     val logger = LocalLogger.current
-
-    val style = window?.style?.mergeWith(defaultStyle) ?: defaultStyle
 
     val backgroundColor = style.backgroundColor.toColor()
     val textColor = style.textColor.toColor()
@@ -330,12 +319,12 @@ private fun WindowViewContent(
                 state = scrollState,
             ) {
                 items(
-                    items = lines,
-                    key = { it.serialNumber }
-                ) { line ->
-                    when (line) {
+                    count = lines.size,
+                    key = { index -> lines[index].serialNumber }
+                ) { index ->
+                    when (val line = lines[index]) {
                         is StreamTextLine -> {
-                            if (line.text != null) {
+                            if (line.text != null && line.isShowing(openWindows) && (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))) {
                                 var positionInParent by remember { mutableStateOf(Offset.Zero) }
                                 Box(
                                     modifier = Modifier.fillMaxWidth()
@@ -549,4 +538,20 @@ private fun ActionContextMenu(
             }
         }
     }
+}
+
+private fun StreamTextLine.isShowing(openWindows: List<String>): Boolean {
+    return this.showWhenClosed == null || openWindows.none { it == this.showWhenClosed }
+}
+
+private fun List<StreamLine>.isPreviousPrompt(index: Int, openWindows: List<String>): Boolean {
+    var currentIndex = index - 1
+    while (currentIndex >= 0) {
+        val line = this[currentIndex] as? StreamTextLine ?: return false
+        if (line.isShowing(openWindows)) {
+            return line.isPrompt
+        }
+        currentIndex--
+    }
+    return false
 }

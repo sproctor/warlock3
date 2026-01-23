@@ -240,8 +240,7 @@ private class WarlockCommand : CliktCommand() {
         val games = mutableStateListOf(
             GameState().apply {
                 if (credentials != null || stdin || inputFile != null) {
-                    val windowRepository = appContainer.windowRepositoryFactory.create()
-                    val streamRegistry = appContainer.streamRegistryFactory.create(windowRepository)
+                    val windowRegistry = appContainer.windowRegistryFactory.create()
                     // TODO: move this somewhere we can control it
                     runBlocking {
                         try {
@@ -261,13 +260,12 @@ private class WarlockCommand : CliktCommand() {
                                     }
                             }
                             val client = appContainer.warlockClientFactory.createClient(
-                                windowRepository = windowRepository,
-                                streamRegistry = streamRegistry,
+                                windowRegistry = windowRegistry,
                                 socket = socket,
                             )
                             client.connect(credentials?.key ?: "")
                             val viewModel =
-                                appContainer.gameViewModelFactory.create(client, windowRepository, streamRegistry)
+                                appContainer.gameViewModelFactory.create(client, windowRegistry)
                             setScreen(
                                 GameScreen.ConnectedGameState(viewModel)
                             )

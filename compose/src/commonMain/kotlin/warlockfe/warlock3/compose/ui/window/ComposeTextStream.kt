@@ -22,7 +22,6 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.TextStream
-import warlockfe.warlock3.core.window.Window
 import warlockfe.warlock3.core.window.getComponents
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.time.Clock
@@ -34,10 +33,10 @@ class ComposeTextStream(
     override val id: String,
     private var maxLines: Int,
     private var markLinks: Boolean,
+    private var showTimestamps: Boolean,
     private val highlights: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
-    private val windows: StateFlow<Map<String, Window>>,
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
 ) : TextStream {
@@ -58,28 +57,33 @@ class ComposeTextStream(
 
     val mutex = Mutex()
 
-    override suspend fun appendPartial(text: StyledString) {
+    override suspend fun appendPartial(text: StyledString, isPrompt: Boolean) {
         mutex.withLock {
-            doAppendPartial(text)
+            doAppendPartial(text, isPrompt)
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
         mutex.withLock {
-            doAppendPartial(text)
+            doAppendPartial(text, isPrompt = false)
             partialLine = null
         }
     }
 
-    private suspend fun doAppendPartial(text: StyledString) {
+    private suspend fun doAppendPartial(text: StyledString, isPrompt: Boolean) {
         if (partialLine == null) {
             partialLine = text
-            doAppendLine(text = text, ignoreWhenBlank = false)
+            doAppendLine(text = text, ignoreWhenBlank = false, showWhenClosed = null, isPrompt = isPrompt)
         } else {
             val serialNumber = finishedLines.last().serialNumber
             partialLine = partialLine!! + text
             addComponentLocations(text, serialNumber)
-            val cachedLine = styledStringToCachedLine(partialLine!!, ignoreWhenBlank = false)
+            val cachedLine = styledStringToCachedLine(
+                text = partialLine!!,
+                ignoreWhenBlank = false,
+                showWhenClosed = null,
+                isPrompt = isPrompt,
+            )
             cacheLines[cacheLines.lastIndex] = cachedLine
             finishedLines[finishedLines.lastIndex] = cachedLineToStreamLine(cachedLine, serialNumber)
             linesUpdated()
@@ -99,21 +103,26 @@ class ComposeTextStream(
         }
     }
 
-    override suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean) {
+    override suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean, showWhenClosed: String?) {
         mutex.withLock {
             // It's possible a component is added that is set prior
             // I don't think this happens in DR, so it's probably OK that we don't handle that case.
             partialLine = null
-            doAppendLine(text, ignoreWhenBlank)
+            doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
         }
     }
 
     // Must be called from main thread
-    private suspend fun doAppendLine(text: StyledString, ignoreWhenBlank: Boolean) {
+    private suspend fun doAppendLine(
+        text: StyledString,
+        ignoreWhenBlank: Boolean,
+        showWhenClosed: String?,
+        isPrompt: Boolean,
+    ) {
         removeLines()
         val serialNumber = nextSerialNumber++
         addComponentLocations(text, serialNumber)
-        val cachedLine = styledStringToCachedLine(text, ignoreWhenBlank)
+        val cachedLine = styledStringToCachedLine(text, ignoreWhenBlank, showWhenClosed, isPrompt)
         cacheLines.add(cachedLine)
         val line = cachedLineToStreamLine(cachedLine, serialNumber)
         finishedLines.add(line)
@@ -128,11 +137,18 @@ class ComposeTextStream(
         }
     }
 
-    private fun styledStringToCachedLine(text: StyledString, ignoreWhenBlank: Boolean): CachedLine {
+    private fun styledStringToCachedLine(
+        text: StyledString,
+        ignoreWhenBlank: Boolean,
+        showWhenClosed: String?,
+        isPrompt: Boolean,
+    ): CachedLine {
         return CachedLine(
             text = text,
-            timestamp = if (windows.value[id]?.showTimestamps ?: false) Clock.System.now() else null,
+            timestamp = Clock.System.now(),
             ignoreWhenBlank = ignoreWhenBlank,
+            showWhenClosed = showWhenClosed,
+            isPrompt = isPrompt,
         )
     }
 
@@ -180,8 +196,12 @@ class ComposeTextStream(
         }
     }
 
-    private fun cachedLineToStreamLine(cachedLine: CachedLine, serialNumber: Long): StreamTextLine {
+    private fun cachedLineToStreamLine(
+        cachedLine: CachedLine,
+        serialNumber: Long,
+    ): StreamTextLine {
         return cachedLine.toStreamLine(
+            showTimestamp = showTimestamps,
             serialNumber = serialNumber,
             highlights = highlights.value,
             alterations = alterations.value,
@@ -225,15 +245,22 @@ class ComposeTextStream(
     private fun linesUpdated() {
         lines.value = finishedLines.toList()
     }
+
+    override fun showTimestamps(value: Boolean) {
+        showTimestamps = value
+    }
 }
 
 @OptIn(ExperimentalTime::class)
 data class CachedLine(
     val text: StyledString,
-    val timestamp: Instant?,
+    val timestamp: Instant,
     val ignoreWhenBlank: Boolean,
+    val showWhenClosed: String?,
+    val isPrompt: Boolean,
 ) {
     fun toStreamLine(
+        showTimestamp: Boolean,
         serialNumber: Long,
         highlights: List<ViewHighlight>,
         alterations: List<CompiledAlteration>,
@@ -243,8 +270,10 @@ data class CachedLine(
         markLinks: Boolean,
     ): StreamTextLine {
         return text.toStreamLine(
+            showTimestamp = showTimestamp,
             ignoreWhenBlank = ignoreWhenBlank,
             serialNumber = serialNumber,
+            isPrompt = isPrompt,
             timestamp = timestamp,
             highlights = highlights,
             alterations = alterations,
@@ -252,15 +281,19 @@ data class CachedLine(
             components = components,
             actionHandler = actionHandler,
             markLinks = markLinks,
+            showWhenClosed = showWhenClosed,
         )
     }
 }
 
 @OptIn(ExperimentalTime::class)
 fun StyledString.toStreamLine(
+    showTimestamp: Boolean,
     ignoreWhenBlank: Boolean,
     serialNumber: Long,
-    timestamp: Instant?,
+    showWhenClosed: String?,
+    isPrompt: Boolean,
+    timestamp: Instant,
     highlights: List<ViewHighlight>,
     alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,
@@ -268,7 +301,7 @@ fun StyledString.toStreamLine(
     actionHandler: (WarlockAction) -> Unit,
     markLinks: Boolean,
 ): StreamTextLine {
-    val text = if (timestamp != null) {
+    val text = if (showTimestamp) {
         this + StyledString(" [${timestamp.toTimeString()}]")
     } else {
         this
@@ -301,6 +334,8 @@ fun StyledString.toStreamLine(
         },
         entireLineStyle = lineStyle,
         serialNumber = serialNumber,
+        showWhenClosed = showWhenClosed,
+        isPrompt = isPrompt,
     )
 }
 

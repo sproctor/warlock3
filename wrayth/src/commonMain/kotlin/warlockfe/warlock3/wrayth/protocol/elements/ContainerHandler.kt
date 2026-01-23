@@ -11,7 +11,7 @@ class ContainerHandler : BaseElementListener() {
         val name = element.attributes["id"] ?: return null
         return WraythStreamWindowEvent(
             WraythStreamWindow(
-                id = name,
+                name = name,
                 title = element.attributes["title"] ?: "",
                 subtitle = null,
                 ifClosed = "",

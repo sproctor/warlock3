@@ -18,16 +18,15 @@ import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
-import warlockfe.warlock3.core.prefs.repositories.WindowRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
-import warlockfe.warlock3.core.window.StreamRegistry
 import warlockfe.warlock3.core.window.TextStream
+import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class StreamRegistryImpl(
+class WindowRegistryImpl(
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
     externalScope: CoroutineScope,
@@ -36,8 +35,7 @@ class StreamRegistryImpl(
     nameRepository: NameRepository,
     alterationRepository: AlterationRepository,
     presetRepository: PresetRepository,
-    private val windowRepository: WindowRepository,
-) : StreamRegistry {
+) : WindowRegistry {
 
     private var streams = persistentMapOf<String, ComposeTextStream>()
 
@@ -141,7 +139,7 @@ class StreamRegistryImpl(
     }
         .stateIn(scope = externalScope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
-    val presets: StateFlow<Map<String, StyleDefinition>> =
+    override val presets: StateFlow<Map<String, StyleDefinition>> =
         characterId.flatMapLatest { characterId ->
             presetRepository.observePresetsForCharacter(characterId)
         }
@@ -155,12 +153,12 @@ class StreamRegistryImpl(
                 highlights = highlights,
                 alterations = alterations,
                 presets = presets,
-                windows = windowRepository.windows,
                 ioDispatcher = ioDispatcher,
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
+                showTimestamps = false,
             )
-                .also { streams =  streams.put(name, it) }
+                .also { streams = streams.put(name, it) }
         }
     }
 
@@ -182,7 +180,7 @@ class StreamRegistryImpl(
     }
 }
 
-class StreamRegistryFactory(
+class WindowRegistryFactory(
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
     private val externalScope: CoroutineScope,
@@ -192,8 +190,8 @@ class StreamRegistryFactory(
     private val alterationRepository: AlterationRepository,
     private val presetRepository: PresetRepository,
 ) {
-    fun create(windowRepository: WindowRepository): StreamRegistry {
-        return StreamRegistryImpl(
+    fun create(): WindowRegistry {
+        return WindowRegistryImpl(
             ioDispatcher = ioDispatcher,
             soundPlayer = soundPlayer,
             externalScope = externalScope,
@@ -202,7 +200,6 @@ class StreamRegistryFactory(
             nameRepository = nameRepository,
             alterationRepository = alterationRepository,
             presetRepository = presetRepository,
-            windowRepository = windowRepository,
         )
     }
 }

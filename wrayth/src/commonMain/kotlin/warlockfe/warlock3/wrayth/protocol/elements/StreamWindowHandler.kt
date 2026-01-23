@@ -10,12 +10,14 @@ class StreamWindowHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
         // We receive a location here that we're ignoring to have a bit more control over where things are placed
         val id = element.attributes["id"] ?: return null
+        // ifClosed defaults to "main" and is set to null if it was blank
+        // Consumers should
         return WraythStreamWindowEvent(
             WraythStreamWindow(
-                id = id,
+                name = id,
                 title = element.attributes["title"] ?: id,
                 subtitle = element.attributes["subtitle"],
-                ifClosed = element.attributes["ifClosed"],
+                ifClosed = (element.attributes["ifClosed"] ?: "main").takeIf { it.isNotBlank() },
                 styleIfClosed = element.attributes["styleIfClosed"],
                 timestamp = element.attributes["timestamp"] != null,
             )
