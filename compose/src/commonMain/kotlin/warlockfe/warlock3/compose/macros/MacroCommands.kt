@@ -11,25 +11,13 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
     "bufferstart" to { viewModel ->
         viewModel.scroll(ScrollEvent.BUFFER_START)
     },
-    "cleartostart" to { viewModel ->
-        val text = viewModel.entryText
-        viewModel.entryDelete(TextRange(0, text.selection.start))
-    },
     "cleartoend" to { viewModel ->
         val text = viewModel.entryText
         viewModel.entryDelete(TextRange(text.selection.end, text.text.length))
     },
-    "linedown" to { viewModel ->
-        viewModel.scroll(ScrollEvent.LINE_DOWN)
-    },
-    "lineup" to { viewModel ->
-        viewModel.scroll(ScrollEvent.LINE_UP)
-    },
-    "movecursortostart" to { viewModel ->
-        viewModel.entrySetSelection(TextRange(0))
-    },
-    "movecursortoend" to { viewModel ->
-        viewModel.entrySetSelection(TextRange(viewModel.entryText.text.length))
+    "cleartostart" to { viewModel ->
+        val text = viewModel.entryText
+        viewModel.entryDelete(TextRange(0, text.selection.start))
     },
     "deletelastword" to { viewModel ->
         val text = viewModel.entryText
@@ -38,23 +26,32 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
             viewModel.entryDelete(TextRange(index, text.selection.start))
         }
     },
+    "linedown" to { viewModel ->
+        viewModel.scroll(ScrollEvent.LINE_DOWN)
+    },
+    "lineup" to { viewModel ->
+        viewModel.scroll(ScrollEvent.LINE_UP)
+    },
+    "movecursortoend" to { viewModel ->
+        viewModel.entrySetSelection(TextRange(viewModel.entryText.text.length))
+    },
+    "movecursortostart" to { viewModel ->
+        viewModel.entrySetSelection(TextRange(0))
+    },
+    "nexthistory" to { viewModel ->
+        viewModel.historyNext()
+    },
     "pagedown" to { viewModel ->
         viewModel.scroll(ScrollEvent.PAGE_DOWN)
     },
     "pageup" to { viewModel ->
         viewModel.scroll(ScrollEvent.PAGE_UP)
     },
-    "prevhistory" to { viewModel ->
-        viewModel.historyPrev()
-    },
-    "nexthistory" to { viewModel ->
-        viewModel.historyNext()
-    },
-    "stopscript" to { viewModel ->
-        viewModel.stopScripts()
-    },
     "pausescript" to { viewModel ->
         viewModel.pauseScripts()
+    },
+    "prevhistory" to { viewModel ->
+        viewModel.historyPrev()
     },
     "repeatlast" to { viewModel ->
         viewModel.repeatCommand(1)
@@ -68,5 +65,8 @@ val macroCommands = mapOf<String, suspend (GameViewModel) -> Unit>(
     },
     "repeatsecondtolast" to { viewModel ->
         viewModel.repeatCommand(2)
+    },
+    "stopscript" to { viewModel ->
+        viewModel.stopScripts()
     },
 )
