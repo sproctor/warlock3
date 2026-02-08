@@ -55,17 +55,15 @@ class SgeClientImpl(
         return withContext(ioDispatcher) {
             try {
                 logger.debug { "connecting..." }
-
-                val socket: Socket
-                if (secure) {
-                    socket = aSocket(selectorManager)
+                val socket: Socket = if (secure) {
+                    aSocket(selectorManager)
                         .tcp()
                         .connect(settings.host, settings.port)
                         .tls(coroutineContext = scope.coroutineContext) {
                             configureTLS(settings.certificate)
                         }
                 } else {
-                    socket = aSocket(selectorManager).tcp().connect(settings.host, settings.port)
+                    aSocket(selectorManager).tcp().connect(settings.host, settings.port)
                 }
                 this@SgeClientImpl.socket = socket
                 receiveChannel = socket.openReadChannel()
@@ -102,8 +100,8 @@ class SgeClientImpl(
                     }
                 }
                 true
-            } catch (e: IOException) {
-                logger.debug(e) { "SGE  exception: ${e.message}" }
+            } catch (e: Exception) {
+                logger.debug(e) { "SGE exception: ${e.message}" }
                 false
             }
         }
