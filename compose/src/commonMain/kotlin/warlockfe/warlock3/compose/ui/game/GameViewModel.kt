@@ -18,7 +18,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -310,6 +309,8 @@ class GameViewModel(
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
     val selectedWindow: StateFlow<String> = _selectedWindow
 
+    private var minHistoryLen = 0
+
     val disconnected = client.disconnected
 
     val menuData = client.menuData
@@ -333,8 +334,10 @@ class GameViewModel(
                                 WindowType.STREAM -> StreamWindowData(
                                     windowRegistry.getOrCreateStream(window.name) as ComposeTextStream,
                                 )
+
                                 WindowType.DIALOG ->
                                     DialogWindowData(windowRegistry.getOrCreateDialog(window.name) as ComposeDialogState)
+
                                 else -> null
                             },
                         )
@@ -468,15 +471,21 @@ class GameViewModel(
     fun submit() {
         var line = entryText.text.toString()
         entryText.clearText()
-        aliases.value.forEach { alias ->
-            line = alias.replace(line)
-        }
-        if (sendHistory.getOrNull(1) != line) {
+        updateHistory(line)
+        historyPosition = 0
+        line = applyAliases(line)
+        sendCommand(line)
+    }
+
+    private fun applyAliases(line: String): String {
+        return aliases.value.fold(line) { acc, alias -> alias.replace(acc) }
+    }
+
+    private fun updateHistory(line: String) {
+        if (line.length >= minHistoryLen && sendHistory.getOrNull(1) != line) {
             sendHistory[0] = line
             sendHistory.add(0, "")
         }
-        historyPosition = 0
-        sendCommand(line)
     }
 
     fun sendCommand(command: String) {
@@ -573,7 +582,13 @@ class GameViewModel(
             tokens.forEach { token ->
                 when (token) {
                     is MacroToken.Entity -> {
-                        handleEntity(token.char)
+                        handleEntity(
+                            entity = token.char,
+                            onEntryCleared = {
+                                // TODO: report this as an error
+                                moveCursor = null
+                            },
+                        )
                     }
 
                     MacroToken.At -> {
@@ -602,21 +617,28 @@ class GameViewModel(
             }
             if (moveCursor != null) {
                 entryText.edit {
-                    selection = TextRange(moveCursor)
+                    selection = TextRange(moveCursor!!)
                 }
             }
         }
     }
 
-    private suspend fun handleEntity(entity: Char) {
+    private suspend fun handleEntity(entity: Char, onEntryCleared: () -> Unit) {
         when (entity) {
             'x' -> {
                 storedText = entryText.text.toString()
                 entryText.clearText()
+                onEntryCleared()
             }
 
             'r' -> {
-                submit()
+                val line = entryText.text.toString()
+                entryText.clearText()
+                updateHistory(line)
+                historyPosition = 0
+                val aliasedLine = applyAliases(line)
+                commandHandler(aliasedLine)
+                onEntryCleared()
             }
 
             'p' -> {
@@ -751,7 +773,7 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.debug { "Moving window at $location from $fromIndex to $toIndex" }
-                for (index in fromIndex .. toIndex) {
+                for (index in fromIndex..toIndex) {
                     windowSettingsRepository.setPosition(characterId, windowUiStates.value[index].name, index)
                 }
             }
