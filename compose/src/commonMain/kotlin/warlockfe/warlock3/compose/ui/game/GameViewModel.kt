@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -289,7 +290,7 @@ class GameViewModel(
     private val _bottomWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
     val bottomWindowUiStates: StateFlow<List<WindowUiState>> = _bottomWindowUiStates.asStateFlow()
 
-    private val uiStateLists
+    private val windowUiStateLists
         get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
 
     private val _mainWindowUiState = MutableStateFlow<WindowUiState>(
@@ -361,7 +362,7 @@ class GameViewModel(
                             it.copy(style = singleWindowSettings.getStyle())
                         }
                     } else {
-                        uiStateLists.forEach { stateList ->
+                        windowUiStateLists.forEach { stateList ->
                             stateList.update { states ->
                                 val index = states.indexOfFirst { it.name == singleWindowSettings.name }
                                 if (index != -1) {
@@ -393,7 +394,7 @@ class GameViewModel(
                         if (event.info.name == "main") {
                             _mainWindowUiState.value.windowInfo.value = event.info
                         } else {
-                            uiStateLists.forEach { windowUiStates ->
+                            windowUiStateLists.forEach { windowUiStates ->
                                 windowUiStates.value
                                     .indexOfFirst { it.name == event.info.name }
                                     .takeIf { it != -1 }
@@ -706,6 +707,16 @@ class GameViewModel(
 
     // TODO: listen to WindowUIStates to implement these
     fun moveWindow(name: String, location: WindowLocation) {
+        val uiState = windowUiStateLists.flatMap { it.value }.firstOrNull { it.name == name } ?: return
+        windowUiStateLists.forEach { uiState ->
+            uiState.update { state ->
+                state.filter { it.name != name }
+            }
+        }
+        val windowUiStates = getWindowUiStatesForLocation(location)
+        windowUiStates.update { states ->
+            states + uiState
+        }
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.moveWindow(
@@ -757,13 +768,7 @@ class GameViewModel(
     }
 
     fun changeWindowPositions(location: WindowLocation, fromIndex: Int, toIndex: Int) {
-        val windowUiStates = when (location) {
-            WindowLocation.LEFT -> _leftWindowUiStates
-            WindowLocation.RIGHT -> _rightWindowUiStates
-            WindowLocation.TOP -> _topWindowUiStates
-            WindowLocation.BOTTOM -> _bottomWindowUiStates
-            else -> error("Change position error: Invalid window location")
-        }
+        val windowUiStates = getWindowUiStatesForLocation(location)
         windowUiStates.update { states ->
             val mutableStates = states.toMutableList()
             val item = mutableStates.removeAt(fromIndex)
@@ -824,7 +829,7 @@ class GameViewModel(
     }
 
     fun closeWindow(name: String) {
-        uiStateLists.forEach { windowUiStates ->
+        windowUiStateLists.forEach { windowUiStates ->
             windowUiStates.update { states -> states.filter { it.name != name } }
         }
         viewModelScope.launch {
@@ -964,5 +969,15 @@ class GameViewModel(
 
     fun handledMacroError() {
         _macroError.value = null
+    }
+
+    private fun getWindowUiStatesForLocation(location: WindowLocation): MutableStateFlow<List<WindowUiState>> {
+        return when (location) {
+            WindowLocation.LEFT -> _leftWindowUiStates
+            WindowLocation.RIGHT -> _rightWindowUiStates
+            WindowLocation.TOP -> _topWindowUiStates
+            WindowLocation.BOTTOM -> _bottomWindowUiStates
+            else -> error("Change position error: Invalid window location")
+        }
     }
 }
