@@ -97,7 +97,7 @@ fun GameView(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .background(color = Color(red = 0xff, green = 0xcc, blue = 0))
+                        .border(width = 8.dp, color = Color(red = 0xff, green = 0xcc, blue = 0))
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
