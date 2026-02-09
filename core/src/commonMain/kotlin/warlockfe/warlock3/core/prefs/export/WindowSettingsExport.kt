@@ -1,8 +1,10 @@
 package warlockfe.warlock3.core.prefs.export
 
+import kotlinx.serialization.Serializable
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
 
+@Serializable
 data class WindowSettingsExport(
     val name: String,
     val width: Int?,

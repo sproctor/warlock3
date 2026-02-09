@@ -1,7 +1,8 @@
 package warlockfe.warlock3.core.prefs.export
 
-import kotlin.uuid.Uuid
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class AlterationExport(
     val pattern: String, // pattern serves as unique id
     val sourceStream: String?,

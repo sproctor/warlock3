@@ -1,15 +1,22 @@
 package warlockfe.warlock3.app
 
 import androidx.compose.foundation.LocalScrollbarStyle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToStream
 import org.jetbrains.jewel.window.DecoratedWindowScope
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
@@ -18,6 +25,7 @@ import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.sge.SgeSettings
 
+@OptIn(ExperimentalSerializationApi::class)
 @Composable
 fun DecoratedWindowScope.WarlockApp(
     title: String,
@@ -28,6 +36,7 @@ fun DecoratedWindowScope.WarlockApp(
     sgeSettings: SgeSettings,
 ) {
     var showSettings by remember { mutableStateOf(false) }
+    var exportMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     CompositionLocalProvider(
         LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
@@ -67,8 +76,35 @@ fun DecoratedWindowScope.WarlockApp(
             showAboutDialog = {
                 showAboutDialog = !showAboutDialog
             },
+            exportSettings = { file ->
+                // TODO: move this out of UI
+                scope.launch {
+                    try {
+                        file.outputStream().use { outputStream ->
+                            val exportData = appContainer.exportRepository.getExport()
+                            Json.encodeToStream(exportData, outputStream)
+                        }
+                        exportMessage = "Settings exported successfully"
+                    } catch (e: Exception) {
+                        exportMessage = "Failed to export settings: ${e.message}"
+                    }
+                }
+            }
         )
 
+        if (exportMessage != null) {
+            AlertDialog(
+                onDismissRequest = { exportMessage = null },
+                text = { Text(exportMessage!!) },
+                confirmButton = {
+                    TextButton(
+                        onClick = { exportMessage = null }
+                    ) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
         if (showAboutDialog) {
             AboutDialog { showAboutDialog = false }
         }

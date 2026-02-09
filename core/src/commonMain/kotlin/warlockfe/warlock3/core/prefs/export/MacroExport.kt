@@ -1,5 +1,8 @@
 package warlockfe.warlock3.core.prefs.export
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class MacroExport(
     val value: String,
     // All of these values make up the id

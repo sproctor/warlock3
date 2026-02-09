@@ -20,6 +20,8 @@ import warlockfe.warlock3.core.prefs.export.AlterationExport
 import warlockfe.warlock3.core.prefs.export.CharacterExport
 import warlockfe.warlock3.core.prefs.export.HighlightExport
 import warlockfe.warlock3.core.prefs.export.MacroExport
+import warlockfe.warlock3.core.prefs.export.NameExport
+import warlockfe.warlock3.core.prefs.export.PresetStyleExport
 import warlockfe.warlock3.core.prefs.export.StyleExport
 import warlockfe.warlock3.core.prefs.export.WarlockExport
 import warlockfe.warlock3.core.prefs.mappers.toStyleDefinition
@@ -110,8 +112,37 @@ class ExportRepository(
                             meta = it.meta,
                         )
                     },
-                    names = emptyList(),
-                    presets = emptyList(),
+                    names = nameDao.getByCharacter(character.id).map {
+                        NameExport(
+                            text = it.text,
+                            sound = it.sound,
+                            style = StyleExport(
+                                textColor = it.textColor,
+                                backgroundColor = it.backgroundColor,
+                                bold = it.bold,
+                                italic = it.italic,
+                                underline = it.underline,
+                                fontFamily = it.fontFamily,
+                                fontSize = it.fontSize,
+                                entireLine = false,
+                            )
+                        )
+                    },
+                    presets = presetStyleDao.getByCharacter(character.id).map { preset ->
+                        PresetStyleExport(
+                            id = preset.presetId,
+                            style = StyleExport(
+                                textColor = preset.textColor,
+                                backgroundColor = preset.backgroundColor,
+                                bold = preset.bold,
+                                italic = preset.italic,
+                                underline = preset.underline,
+                                fontFamily = preset.fontFamily,
+                                fontSize = preset.fontSize,
+                                entireLine = preset.entireLine,
+                            )
+                        )
+                    },
                     windows = emptyList(),
                 )
             },

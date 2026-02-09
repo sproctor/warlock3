@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -15,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
@@ -30,6 +30,7 @@ import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_outlined
+import java.io.File
 
 @Suppress("DEPRECATION")
 @Composable
@@ -45,6 +46,7 @@ internal fun DecoratedWindowScope.TitleBarView(
     runScript: (Path) -> Unit,
     showUpdateDialog: () -> Unit,
     showAboutDialog: () -> Unit,
+    exportSettings: (File) -> Unit,
 ) {
     val scriptFilePickerLauncher = rememberFilePickerLauncher(
         title = "Run script",
@@ -52,6 +54,11 @@ internal fun DecoratedWindowScope.TitleBarView(
     ) { file ->
         if (file != null) {
             runScript(file.file.toKotlinxIoPath())
+        }
+    }
+    val exportFileSaveLauncher = rememberFileSaverLauncher { file ->
+        if (file != null) {
+            exportSettings(file.file)
         }
     }
     TitleBar(
@@ -82,6 +89,9 @@ internal fun DecoratedWindowScope.TitleBarView(
                     runScript = scriptFilePickerLauncher::launch,
                     showUpdateDialog = showUpdateDialog,
                     showAboutDialog = showAboutDialog,
+                    exportSettings = {
+                        exportFileSaveLauncher.launch("settings", "json")
+                    },
                 )
             } else {
                 var active by remember { mutableStateOf(false) }
@@ -114,16 +124,25 @@ internal fun DecoratedWindowScope.TitleBarView(
                             }
                             selectableItem(
                                 selected = false,
-                                onClick = showSettingsDialog,
-                            ) {
-                                Text("Settings...")
-                            }
-                            selectableItem(
-                                selected = false,
                                 enabled = isConnected,
                                 onClick = scriptFilePickerLauncher::launch,
                             ) {
                                 Text("Run script...")
+                            }
+                            separator()
+                            selectableItem(
+                                selected = false,
+                                onClick = {
+                                    exportFileSaveLauncher.launch("settings", "json")
+                                },
+                            ) {
+                                Text("Export settings...")
+                            }
+                            selectableItem(
+                                selected = false,
+                                onClick = showSettingsDialog,
+                            ) {
+                                Text("Settings...")
                             }
                             separator()
                             selectableItem(

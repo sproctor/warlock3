@@ -28,6 +28,7 @@ import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.ExportRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
@@ -189,6 +190,25 @@ abstract class AppContainer(
             gameViewModelFactory = gameViewModelFactory,
             dirs = warlockDirs,
             ioDispatcher = ioDispatcher,
+        )
+    }
+
+    val exportRepository by lazy {
+        ExportRepository(
+            accountDao = database.accountDao(),
+            aliasDao = database.aliasDao(),
+            alterationDao = database.alterationDao(),
+            characterDao = database.characterDao(),
+            characterSettingDao = database.characterSettingDao(),
+            clientSettingDao = database.clientSettingDao(),
+            connectionDao = database.connectionDao(),
+            highlightDao = database.highlightDao(),
+            macroDao = database.macroDao(),
+            nameDao = database.nameDao(),
+            presetStyleDao = database.presetStyleDao(),
+            scriptDirDao = database.scriptDirDao(),
+            variableDao = database.variableDao(),
+            windowSettingsDao = database.windowSettingsDao(),
         )
     }
 }

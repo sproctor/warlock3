@@ -12,6 +12,9 @@ interface PresetStyleDao {
     @Query("SELECT * FROM PresetStyle WHERE characterId = :characterId")
     fun observeByCharacter(characterId: String): Flow<List<PresetStyleEntity>>
 
+    @Query("SELECT * FROM PresetStyle WHERE characterId = :characterId")
+    suspend fun getByCharacter(characterId: String): List<PresetStyleEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(presetStyle: PresetStyleEntity)
 }

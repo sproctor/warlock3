@@ -1,7 +1,9 @@
 package warlockfe.warlock3.core.text
 
+import kotlinx.serialization.Serializable
 import warlockfe.warlock3.core.util.toWarlockColor
 
+@Serializable
 data class WarlockColor(val argb: Long) {
     constructor(value: String) : this(value.toWarlockColor()?.argb ?: -1)
     constructor(red: Int, green: Int, blue: Int, alpha: Int = 0xFF)
