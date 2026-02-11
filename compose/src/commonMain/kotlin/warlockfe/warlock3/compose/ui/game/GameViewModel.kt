@@ -5,7 +5,6 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -328,7 +327,7 @@ class GameViewModel(
                         val uiState = WindowUiState(
                             name = entity.name,
                             windowInfo = mutableStateOf(window),
-                            style = defaultStyles["default"]!!,
+                            style = entity.getStyle(),
                             width = entity.width,
                             height = entity.height,
                             data = when (window?.windowType) {
