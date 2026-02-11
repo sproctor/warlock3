@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -74,12 +75,13 @@ fun GeneralSettingsView(
     clientSettingRepository: ClientSettingRepository,
     wraythImporter: WraythImporter,
 ) {
-    val currentCharacterState =
-        remember(initialCharacter, characters) { mutableStateOf(initialCharacter) }
+    val currentCharacterState = remember(initialCharacter, characters) {
+        mutableStateOf(initialCharacter)
+    }
     val currentCharacter = currentCharacterState.value
     val currentCharacterId = currentCharacter?.id ?: "global"
     val scope = rememberCoroutineScope()
-    var showImportDialog by remember { mutableStateOf(false) }
+    var importResultMessages by remember { mutableStateOf(emptyList<String>()) }
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -93,10 +95,9 @@ fun GeneralSettingsView(
             title = "Choose Wrayth settings file to import",
         ) { platformFile ->
             if (platformFile != null) {
-                scope.launch(NonCancellable) {
-                    if (!wraythImporter.importFile(currentCharacterId, Path(platformFile.absolutePath()))) {
-                        showImportDialog = true
-                    }
+                scope.launch {
+                    importResultMessages =
+                        wraythImporter.importFile(currentCharacterId, Path(platformFile.absolutePath()))
                 }
             }
         }
@@ -107,15 +108,23 @@ fun GeneralSettingsView(
         ) {
             Text("Import settings from Wrayth settings file")
         }
-        if (showImportDialog) {
+        if (importResultMessages.isNotEmpty()) {
             AlertDialog(
-                onDismissRequest = { showImportDialog = false },
+                onDismissRequest = { importResultMessages = emptyList() },
                 confirmButton = {
-                    TextButton(onClick = { showImportDialog = false }) {
+                    TextButton(onClick = { importResultMessages = emptyList() }) {
                         Text("OK")
                     }
                 },
-                text = { Text("Import settings failed") }
+                text = {
+                    SelectionContainer {
+                        ScrollableColumn {
+                            importResultMessages.forEach { message ->
+                                Text(message)
+                            }
+                        }
+                    }
+                }
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -225,7 +234,8 @@ fun GeneralSettingsView(
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 LaunchedEffect(scriptCommandPrefixState.text) {
-                    val initialScriptCommandPrefix = characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)
+                    val initialScriptCommandPrefix =
+                        characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)
                     if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
                         characterSettingsRepository.save(
                             characterId = currentCharacterId,

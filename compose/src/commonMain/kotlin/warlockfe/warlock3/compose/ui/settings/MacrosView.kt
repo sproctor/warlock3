@@ -89,7 +89,7 @@ fun MacrosView(
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
-                                    GlobalScope.launch {
+                                    scope.launch {
                                         macroRepository.delete(
                                             currentCharacter?.id ?: "global",
                                             macro.keyCombo

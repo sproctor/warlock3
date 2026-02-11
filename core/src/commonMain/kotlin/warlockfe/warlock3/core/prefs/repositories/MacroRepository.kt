@@ -10,9 +10,11 @@ import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 
+// TODO: Make Keyboard mappings an interface and pass it here
 class MacroRepository(
     val macroDao: MacroDao,
     private val keyMap: Map<String, Long>,
+    private val reverseKeyMap: Map<Long, String>,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -51,11 +53,7 @@ class MacroRepository(
         withContext(NonCancellable) {
             macroDao.delete(
                 characterId = characterId,
-                keyCode = keyCombo.keyCode,
-                ctrl = keyCombo.ctrl,
-                alt = keyCombo.alt,
-                shift = keyCombo.shift,
-                meta = keyCombo.meta,
+                keyString = keyCombo.toKeyString(reverseKeyMap),
             )
         }
     }
@@ -65,7 +63,7 @@ class MacroRepository(
             macroDao.save(
                 MacroEntity(
                     characterId = characterId,
-                    key = "",
+                    key = keyCombo.toKeyString(reverseKeyMap),
                     value = value,
                     keyCode = keyCombo.keyCode,
                     ctrl = keyCombo.ctrl,
@@ -134,4 +132,14 @@ private fun MacroEntity.toMacroCommand(
         ),
         command = value,
     )
+}
+
+private fun MacroKeyCombo.toKeyString(keyMap: Map<Long, String>): String {
+    return buildString {
+        if (ctrl) append("ctrl ")
+        if (alt) append("alt ")
+        if (shift) append("shift ")
+        if (meta) append("meta ")
+        append(keyMap[keyCode] ?: "UNKNOWN")
+    }
 }

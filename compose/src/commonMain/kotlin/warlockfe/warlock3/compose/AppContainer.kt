@@ -9,6 +9,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.io.files.FileSystem
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
+import warlockfe.warlock3.compose.macros.MacroCommands
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
@@ -68,7 +69,11 @@ abstract class AppContainer(
             characterDao = database.characterDao(),
         )
     val windowSettingRepository = WindowSettingsRepository(database.windowSettingsDao())
-    val macroRepository = MacroRepository(database.macroDao(), KeyboardKeyMappings.keyCodeMap)
+    val macroRepository = MacroRepository(
+        database.macroDao(),
+        KeyboardKeyMappings.keyCodeMap,
+        KeyboardKeyMappings.reverseKeyCodeMap,
+    )
     val accountRepository = AccountRepository(database.accountDao())
     val highlightRepository = HighlightRepositoryImpl(database.highlightDao())
     val nameRepository = NameRepositoryImpl(database.nameDao())
@@ -107,7 +112,9 @@ abstract class AppContainer(
     val wraythImporter = WraythImporter(
         highlightRepository = highlightRepository,
         nameRepository = nameRepository,
+        macroDao = database.macroDao(),
         fileSystem = fileSystem,
+        validMacroCommands = MacroCommands.commandMap.keys,
     )
 
     val gameViewModelFactory by lazy {

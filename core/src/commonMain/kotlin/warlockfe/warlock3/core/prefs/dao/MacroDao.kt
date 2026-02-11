@@ -35,14 +35,10 @@ interface MacroDao {
         """
         DELETE FROM Macro
         WHERE characterId = :characterId
-            AND keyCode = :keyCode
-            AND ctrl = :ctrl
-            AND alt = :alt
-            AND shift = :shift
-            AND meta = :meta
+            AND "key" = :keyString
     """
     )
-    suspend fun delete(characterId: String, keyCode: Long, ctrl: Boolean, alt: Boolean, shift: Boolean, meta: Boolean)
+    suspend fun delete(characterId: String, keyString: String)
 
     @Query("DELETE FROM Macro WHERE characterId = :characterId AND `key` = :key")
     suspend fun deleteByKey(characterId: String, key: String)

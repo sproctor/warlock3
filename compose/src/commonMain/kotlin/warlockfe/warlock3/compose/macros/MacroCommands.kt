@@ -5,7 +5,7 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.ScrollEvent
 
 object MacroCommands {
-    private val commandMap = mapOf<String, suspend (GameViewModel) -> Unit>(
+    val commandMap = mapOf<String, suspend (GameViewModel) -> Unit>(
         "bufferend" to { viewModel ->
             viewModel.scroll(ScrollEvent.BUFFER_END)
         },
@@ -27,6 +27,12 @@ object MacroCommands {
                 viewModel.entryDelete(TextRange(index, text.selection.start))
             }
         },
+        "historynext" to { viewModel ->
+            viewModel.historyNext()
+        },
+        "historyprev" to { viewModel ->
+            viewModel.historyPrev()
+        },
         "linedown" to { viewModel ->
             viewModel.scroll(ScrollEvent.LINE_DOWN)
         },
@@ -39,9 +45,6 @@ object MacroCommands {
         "movecursortostart" to { viewModel ->
             viewModel.entrySetSelection(TextRange(0))
         },
-        "nexthistory" to { viewModel ->
-            viewModel.historyNext()
-        },
         "pagedown" to { viewModel ->
             viewModel.scroll(ScrollEvent.PAGE_DOWN)
         },
@@ -50,9 +53,6 @@ object MacroCommands {
         },
         "pausescript" to { viewModel ->
             viewModel.pauseScripts()
-        },
-        "prevhistory" to { viewModel ->
-            viewModel.historyPrev()
         },
         "repeatlast" to { viewModel ->
             viewModel.repeatCommand(1)

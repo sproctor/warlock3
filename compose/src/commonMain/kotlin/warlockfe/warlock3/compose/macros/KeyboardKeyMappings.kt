@@ -130,7 +130,7 @@ object KeyboardKeyMappings {
         "PERIOD" to Key.Period,
         "SLASH" to Key.Slash,
         "PLUS" to Key.Plus,
-        "ASTERISK" to Key.Multiply,
+        "MULTIPLY" to Key.Multiply,
         "POUND" to Key.Pound,
         "AT" to Key.At,
 
@@ -160,7 +160,6 @@ object KeyboardKeyMappings {
         "REFRESH" to Key.Refresh,
         "BROWSER" to Key.Browser,
         "SEARCH" to Key.Search,
-        "BROWSER_HOME" to Key.Home,
 
         // Application Control Keys
         "APP_SWITCH" to Key.AppSwitch,
@@ -224,6 +223,8 @@ object KeyboardKeyMappings {
         "ALT" to Key.AltLeft, // Generic Alt
         "SHIFT" to Key.ShiftLeft, // Generic Shift
         "META" to Key.MetaLeft, // Generic Meta/Windows/Command
+
+        "UNKNOWN" to Key.Unknown,
     )
 
     /**

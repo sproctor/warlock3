@@ -8,8 +8,8 @@ import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
     val globals = getGlobalCount()
     if (globals == 0) {
-        put("global", MacroKeyCombo(Key.DirectionUp.keyCode), "{PrevHistory}")
-        put("global", MacroKeyCombo(Key.DirectionDown.keyCode), "{NextHistory}")
+        put("global", MacroKeyCombo(Key.DirectionUp.keyCode), "{HistoryPrev}")
+        put("global", MacroKeyCombo(Key.DirectionDown.keyCode), "{HistoryNext}")
         put("global", MacroKeyCombo(Key.NumPad1.keyCode), "\\xsw\\r\\?")
         put("global", MacroKeyCombo(Key.NumPad2.keyCode), "\\xs\\r\\?")
         put("global", MacroKeyCombo(Key.NumPad3.keyCode), "\\xse\\r\\?")

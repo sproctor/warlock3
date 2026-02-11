@@ -126,6 +126,19 @@ class WraythSettingsTests {
             <i id="108" color="#FFFFFF"/>
             <i id="109" color="#FFFFFF"/>
             </palette>
+            <macros set="1">
+            <keys id="0" name="(default)">
+            <k key="Alt-C" action="\xxml toggle containers\r"/>
+            <k key="Alt-D" action="\xxml toggle dialogs\r"/>
+            <k key="Alt-Ctrl-E" action="{ExportDialog}"/>
+            <k key="Alt-Ctrl-H" action="{HighlightsDialog}"/>
+            <k key="Alt-Ctrl-I" action="{ImportDialog}"/>
+            <k key="Ctrl-Enter" action="{RepeatLast}"/>
+            <k key="Alt-Enter" action="{RepeatSecondToLast}"/>
+            <k key="Keypad Enter" action="{ReturnOrRepeatLast}"/>
+            <k key="Keypad -" action="info\r"/>
+            </keys>
+            </macros>
             </settings>
         """.trimIndent()
 
@@ -134,10 +147,13 @@ class WraythSettingsTests {
         val importer = WraythImporter(
             highlightRepository = FakeHighlightRepository(),
             nameRepository = FakeNameRepository(),
+            macroDao = FakeMacroDao(),
             fileSystem = SystemFileSystem,
+            validMacroCommands = setOf("repeatlast", "repeatsecondtolast"),
         )
         val wraythSettings = importer.importString(exampleXml)
         val settings = importer.translateSettings(wraythSettings, "test")
         assertEquals(WarlockColor("#2994F7"), settings.highlights[1].styles[0]!!.backgroundColor)
+        assertEquals(9, wraythSettings.macros.first().macros.size)
     }
 }

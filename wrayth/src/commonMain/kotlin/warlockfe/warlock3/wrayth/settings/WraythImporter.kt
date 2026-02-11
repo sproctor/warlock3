@@ -6,10 +6,12 @@ import kotlinx.io.files.Path
 import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
+import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
@@ -20,9 +22,12 @@ import kotlin.uuid.Uuid
 class WraythImporter(
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
+    private val macroDao: MacroDao,
     private val fileSystem: FileSystem,
+    private val validMacroCommands: Set<String>,
 ) {
-    suspend fun importFile(characterId: String, file: Path): Boolean {
+    suspend fun importFile(characterId: String, file: Path): List<String> {
+        val messages = mutableListOf<String>()
         try {
             val source = fileSystem.source(file).buffered()
             val contents = source.readByteArray().decodeWindows1252()
@@ -35,13 +40,25 @@ class WraythImporter(
                     highlight = highlight
                 )
             }
+            messages.add("Imported ${settings.highlights.size} highlights")
             settings.names.forEach { name ->
                 nameRepository.save(name)
             }
-            return true
+            messages.add("Imported ${settings.names.size} names")
+            settings.macros.forEach { macro ->
+                macroDao.save(macro)
+            }
+            messages.add("Imported ${settings.macros.size} macros")
+            if (settings.ignoredMacros.isNotEmpty()) {
+                messages.add("Ignored ${settings.ignoredMacros.size} invalid macros:")
+                settings.ignoredMacros.forEach { ignoredMacro ->
+                    messages.add("${ignoredMacro.key} - ${ignoredMacro.action}")
+                }
+            }
+            return messages
         } catch (e: Exception) {
-            e.printStackTrace()
-            return false
+            messages.add(e.stackTraceToString())
+            return messages
         }
     }
 
@@ -52,6 +69,7 @@ class WraythImporter(
                 colors[color.id] = color.color
             }
         }
+        val ignoredMacros = mutableListOf<WraythMacro>()
         return WarlockSettings(
             highlights = settings.strings.mapNotNull { highlight ->
                 highlight.text?.let { text ->
@@ -89,12 +107,41 @@ class WraythImporter(
                     )
                 }
             },
-            macros = settings.macroSets.firstOrNull { it.id == "0" }
-                ?.macros?.map { wraythMacro ->
-                    TODO()
+            macros = settings.macros.firstOrNull { it.id == "0" }
+                ?.macros?.mapNotNull { wraythMacro ->
+                    var wraythKey = wraythMacro.key
+                    wraythKey = wraythKey.replace("Alt-", "")
+                    wraythKey = wraythKey.replace("Ctrl-", "")
+                    wraythKey = wraythKey.replace("Shift-", "")
+                    val keyCode = WraythKeyMapping.keyMap[wraythKey] ?: wraythKey.uppercase()
+
+                    // Map shouldn't have side-effects, I'm lazy
+                    if (keyCode.isBlank() || keyCode.contains(' ')) {
+                        ignoredMacros.add(wraythMacro)
+                        return@mapNotNull null
+                    }
+
+                    // This is a quick and sloppy way to make sure we can handle the macro command
+                    if (wraythMacro.action.startsWith('{')
+                        && !validMacroCommands.contains(wraythMacro.action.removePrefix("{").removeSuffix("}").lowercase())) {
+                        ignoredMacros.add(wraythMacro)
+                        return@mapNotNull null
+                    }
+                    val keyString = buildString {
+                        if (wraythMacro.key.contains("Ctrl-")) {
+                            append("ctrl ")
+                        }
+                        if (wraythMacro.key.contains("Alt-")) {
+                            append("alt ")
+                        }
+                        if (wraythMacro.key.contains("Shift-")) {
+                            append("shift ")
+                        }
+                        append(keyCode)
+                    }
                     MacroEntity(
                         characterId = characterId,
-                        key = "",
+                        key = keyString,
                         value = wraythMacro.action,
                         keyCode = 0,
                         ctrl = false,
@@ -103,7 +150,7 @@ class WraythImporter(
                         meta = false,
                     )
                 } ?: emptyList(),
-            ignoredMacros = emptyList(),
+            ignoredMacros = ignoredMacros,
         )
     }
 
