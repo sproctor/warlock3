@@ -15,4 +15,6 @@ data class WraythSettings(
     val names: List<WraythHighlight>,
     @XmlChildrenName("palette")
     val palette: List<WraythColor>,
+    @XmlChildrenName("macros")
+    val macroSets: List<WraythMacroSet>,
 )

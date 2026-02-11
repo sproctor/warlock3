@@ -12,6 +12,7 @@ import warlockfe.warlock3.core.prefs.models.MacroEntity
 
 class MacroRepository(
     val macroDao: MacroDao,
+    private val keyMap: Map<String, Long>,
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -24,25 +25,25 @@ class MacroRepository(
         return macroDao
             .observeGlobals()
             .map { list ->
-                list.map { it.toMacroCommand() }
+                list.map { it.toMacroCommand(keyMap) }
             }
     }
 
     fun observeCharacterMacros(characterId: String): Flow<List<MacroCommand>> {
-        assert(characterId != "global")
+        require(characterId != "global")
         return macroDao
             .observeByCharacterWithGlobals(characterId)
             .map { list ->
-                list.map { it.toMacroCommand() }
+                list.map { it.toMacroCommand(keyMap) }
             }
     }
 
     fun observeOnlyCharacterMacros(characterId: String): Flow<List<MacroCommand>> {
-        assert(characterId != "global")
+        require(characterId != "global")
         return macroDao
             .observeByCharacter(characterId)
             .map { list ->
-                list.map { it.toMacroCommand() }
+                list.map { it.toMacroCommand(keyMap) }
             }
     }
 
@@ -82,37 +83,55 @@ class MacroRepository(
         }
     }
 
-    suspend fun migrateMacros(keyMap: Map<String, Long>) {
+    suspend fun migrateMacros(keyMap: Map<Long, String>): List<String> {
         val oldMacros = macroDao.getOldMacros()
+        val failedMacros = mutableListOf<String>()
 
         oldMacros.forEach { oldMacro ->
             logger.debug { "Migrating macro: $oldMacro" }
-            val parts = oldMacro.key.split("+")
-            val keyCode = keyMap[parts.last()]
+            val keyCode = keyMap[oldMacro.keyCode]
             if (keyCode != null) {
+                val keyString = buildString {
+                    if (oldMacro.ctrl) append("ctrl ")
+                    if (oldMacro.alt) append("alt ")
+                    if (oldMacro.shift) append("shift ")
+                    if (oldMacro.meta) append("meta ")
+                    append(keyCode)
+                }
                 val entity = MacroEntity(
                     characterId = oldMacro.characterId,
-                    key = "",
+                    key = keyString,
                     value = oldMacro.value,
-                    keyCode = keyCode,
-                    ctrl = parts.contains("ctrl"),
-                    alt = parts.contains("alt"),
-                    shift = parts.contains("shift"),
-                    meta = parts.contains("meta"),
+                    keyCode = oldMacro.keyCode,
+                    ctrl = oldMacro.ctrl,
+                    alt = oldMacro.alt,
+                    shift = oldMacro.shift,
+                    meta = oldMacro.meta,
                 )
                 logger.debug { "New macro: $entity" }
                 macroDao.save(entity)
                 macroDao.deleteByKey(characterId = oldMacro.characterId, key = oldMacro.key)
             } else {
                 logger.error { "Could not find keycode for: $oldMacro" }
+                failedMacros.add(oldMacro.toString())
             }
         }
+        return failedMacros
     }
 }
 
-private fun MacroEntity.toMacroCommand(): MacroCommand {
+private fun MacroEntity.toMacroCommand(
+    keyMap: Map<String, Long>
+): MacroCommand {
+    val parts = key.split(" ")
     return MacroCommand(
-        keyCombo = MacroKeyCombo(keyCode = keyCode, ctrl = ctrl, alt = alt, shift = shift, meta = meta),
+        keyCombo = MacroKeyCombo(
+            keyCode = keyMap[parts.last()] ?: 0,
+            ctrl = parts.contains("ctrl"),
+            alt = parts.contains("alt"),
+            shift = parts.contains("shift"),
+            meta = parts.contains("meta"),
+        ),
         command = value,
     )
 }

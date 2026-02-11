@@ -13,7 +13,7 @@ interface MacroDao {
     @Query("SELECT COUNT(*) FROM Macro WHERE characterId = 'global'")
     suspend fun getGlobalCount(): Int
 
-    @Query("SELECT * FROM Macro WHERE `key` != ''")
+    @Query("SELECT * FROM Macro WHERE `key` = ''")
     suspend fun getOldMacros(): List<MacroEntity>
 
     @Query("SELECT * FROM Macro WHERE characterId = 'global'")

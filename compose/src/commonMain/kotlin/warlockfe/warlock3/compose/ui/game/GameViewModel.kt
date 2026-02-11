@@ -44,7 +44,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.CompassState
-import warlockfe.warlock3.compose.macros.macroCommands
+import warlockfe.warlock3.compose.macros.MacroCommands
 import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
@@ -606,10 +606,7 @@ class GameViewModel(
                     }
 
                     is MacroToken.Command -> {
-                        val command = macroCommands[token.name]
-                        if (command != null) {
-                            command(this@GameViewModel)
-                        } else {
+                        if (!MacroCommands.execute(token.name, this@GameViewModel)) {
                             _macroError.value = "Macro command not found: ${token.name}"
                         }
                     }

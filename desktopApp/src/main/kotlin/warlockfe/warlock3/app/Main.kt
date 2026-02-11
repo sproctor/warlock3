@@ -78,7 +78,7 @@ import org.jetbrains.jewel.window.styling.TitleBarStyle
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.macros.keyMappings
+import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
@@ -212,11 +212,7 @@ private class WarlockCommand : CliktCommand() {
             .launchIn(appContainer.externalScope)
 
         runBlocking {
-            appContainer.macroRepository.migrateMacros(
-                keyMappings.map { entry ->
-                    entry.value to entry.key.keyCode
-                }.toMap()
-            )
+            appContainer.macroRepository.migrateMacros(KeyboardKeyMappings.reverseKeyCodeMap)
             appContainer.macroRepository.insertDefaultMacrosIfNeeded()
         }
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }

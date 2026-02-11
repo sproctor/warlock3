@@ -7,6 +7,7 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.models.MacroEntity
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
@@ -87,7 +88,22 @@ class WraythImporter(
                         sound = name.sound,
                     )
                 }
-            }
+            },
+            macros = settings.macroSets.firstOrNull { it.id == "0" }
+                ?.macros?.map { wraythMacro ->
+                    TODO()
+                    MacroEntity(
+                        characterId = characterId,
+                        key = "",
+                        value = wraythMacro.action,
+                        keyCode = 0,
+                        ctrl = false,
+                        alt = false,
+                        shift = false,
+                        meta = false,
+                    )
+                } ?: emptyList(),
+            ignoredMacros = emptyList(),
         )
     }
 
@@ -116,4 +132,6 @@ private fun String?.toWarlockColor(colors: Map<String, String>): WarlockColor {
 internal data class WarlockSettings(
     val highlights: List<Highlight>,
     val names: List<NameEntity>,
+    val macros: List<MacroEntity>,
+    val ignoredMacros: List<WraythMacro>,
 )
