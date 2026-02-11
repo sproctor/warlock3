@@ -39,7 +39,7 @@ import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
 import kotlinx.coroutines.flow.collectLatest
-import warlockfe.warlock3.compose.util.parseHexToColorOrNull
+import warlockfe.warlock3.compose.util.parseHexOrNull
 import warlockfe.warlock3.compose.util.toWarlockColor
 import warlockfe.warlock3.core.text.WarlockColor
 
@@ -54,6 +54,11 @@ fun ColorPickerDialog(
     var initialized by remember { mutableStateOf(false) }
     var hexError by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(initialColor) {
+        if (initialColor != null) {
+            controller.selectByColor(initialColor, fromUser = false)
+        }
+    }
 
     AlertDialog(
         title = { Text("Choose color") },
@@ -61,7 +66,7 @@ fun ColorPickerDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val parsed = parseHexToColorOrNull(hexInput.text.toString())
+                    val parsed = Color.parseHexOrNull(hexInput.text.toString())
                     val chosen = parsed ?: controller.selectedColor.value
                     onColorSelected(chosen.toWarlockColor())
                 }
@@ -83,7 +88,6 @@ fun ColorPickerDialog(
                     HsvColorPicker(
                         modifier = Modifier,
                         controller = controller,
-                        initialColor = initialColor,
                         onColorChanged = { colorEnvelope ->
                             if (colorEnvelope.fromUser || !initialized) {
                                 initialized = true
@@ -107,7 +111,7 @@ fun ColorPickerDialog(
                             if (hexCode.isBlank()) {
                                 hexError = null
                             } else {
-                                val parsed = parseHexToColorOrNull(hexCode)
+                                val parsed = Color.parseHexOrNull(hexCode)
                                 hexError = if (parsed == null) "Invalid hex code" else null
                                 if (parsed != null) {
                                     controller.selectByColor(color = parsed, fromUser = false)

@@ -19,7 +19,7 @@ fun Color.toWarlockColor(): WarlockColor {
     )
 }
 
-fun parseHexToColorOrNull(text: String): Color? {
+fun Color.Companion.parseHexOrNull(text: String): Color? {
     val trimmed = text.trim().removePrefix("#")
         .takeIf { it.length == 6 || it.length == 8 }
 
