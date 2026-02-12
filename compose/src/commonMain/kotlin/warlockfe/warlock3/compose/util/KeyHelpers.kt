@@ -4,6 +4,8 @@ import androidx.compose.ui.input.key.Key
 
 expect fun Key.getLabel(): String
 
+expect val Key.Companion.NumPadDotFix: Key
+
 private val allModifierKeys = arrayOf(
     Key.CtrlLeft,
     Key.CtrlRight,

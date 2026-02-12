@@ -7,3 +7,6 @@ import androidx.compose.ui.input.key.Key
 actual fun Key.getLabel(): String {
     return "??"
 }
+
+actual val Key.Companion.NumPadDotFix: Key
+    get() = Key.NumPadDot
