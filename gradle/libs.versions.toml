@@ -18,10 +18,6 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 [versions]
 
 agp = "8.12.3"
-##⬆= "8.13.0"
-##⬆= "8.13.1"
-##⬆= "8.13.2"
-##⬆= "9.0.0"
 androidx-activity = "1.12.4"
 androidx-core-splashscreen = "1.2.0"
 androidxLifecycleViewmodel = "2.9.6"
