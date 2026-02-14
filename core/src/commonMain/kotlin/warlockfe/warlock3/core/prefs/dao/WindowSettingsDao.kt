@@ -134,20 +134,6 @@ interface WindowSettingsDao {
     @Query(
         """
         UPDATE WindowSettings
-        SET position =
-        CASE
-        WHEN position = :curpos THEN :newpos
-        WHEN position = :newpos THEN :curpos
-        ELSE position
-        END
-        WHERE characterId = :characterId AND location = :location;
-    """
-    )
-    suspend fun switchPositions(characterId: String, location: WindowLocation, curpos: Int, newpos: Int)
-
-    @Query(
-        """
-        UPDATE WindowSettings
         SET position = :pos
         WHERE characterId = :characterId AND name = :name;
     """

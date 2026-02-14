@@ -774,7 +774,10 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.debug { "Moving window at $location from $fromIndex to $toIndex" }
-                for (index in fromIndex..toIndex) {
+                val range = if (fromIndex < toIndex) fromIndex..toIndex else toIndex..fromIndex
+                for (index in range) {
+                    val name = windowUiStates.value[index].name
+                    logger.debug { "Setting window $name position to $index" }
                     windowSettingsRepository.setPosition(characterId, windowUiStates.value[index].name, index)
                 }
             }

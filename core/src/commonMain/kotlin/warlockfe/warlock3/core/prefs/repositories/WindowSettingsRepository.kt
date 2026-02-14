@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.prefs.repositories
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -14,12 +15,14 @@ class WindowSettingsRepository(
     private val windowSettingsDao: WindowSettingsDao,
 ) {
 
+    private val logger = KotlinLogging.logger {}
+
     fun observeWindowSettings(characterId: String): Flow<List<WindowSettingsEntity>> {
         return windowSettingsDao.observeByCharacter(characterId)
     }
 
     suspend fun openWindow(characterId: String, name: String, location: WindowLocation, position: Int) {
-        println("openWindow: $characterId, $name, $location, $position")
+        logger.debug { "openWindow: $characterId, $name, $location, $position" }
         withContext(NonCancellable) {
             windowSettingsDao.openWindow(characterId, name, location, position)
         }
@@ -64,18 +67,8 @@ class WindowSettingsRepository(
 
     suspend fun setPosition(characterId: String, name: String, pos: Int) {
         withContext(NonCancellable) {
+            logger.debug { "setPosition: $characterId, $name, $pos" }
             windowSettingsDao.setPosition(characterId, name, pos)
-        }
-    }
-
-    suspend fun switchPositions(characterId: String, location: WindowLocation, pos1: Int, pos2: Int) {
-        withContext(NonCancellable) {
-            windowSettingsDao.switchPositions(
-                characterId = characterId,
-                location = location,
-                curpos = pos1,
-                newpos = pos2,
-            )
         }
     }
 }
