@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -44,7 +44,7 @@ class SgeViewModel(
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    private val logger = KotlinLogging.logger { }
+    private val logger = Logger.withTag("SgeViewModel")
 
     private val _state = mutableStateOf<SgeViewState>(SgeViewState.SgeConnecting)
     val state: State<SgeViewState> = _state
@@ -68,13 +68,13 @@ class SgeViewModel(
     init {
         job = viewModelScope.launch {
             if (!client.connect(settings)) {
-                logger.debug { "Failed to connect to server" }
+                logger.d { "Failed to connect to server" }
                 _state.value = SgeViewState.SgeError("Failed to connect to server")
                 return@launch
             }
             navigate(SgeViewState.SgeAccountSelector)
             client.eventFlow.collect { event ->
-                logger.debug { "Got event: $event" }
+                logger.d { "Got event: $event" }
                 when (event) {
                     SgeEvent.SgeLoginSucceededEvent -> client.requestGameList()
                     is SgeEvent.SgeGamesReadyEvent -> navigate(SgeViewState.SgeGameSelector(event.games))
@@ -89,7 +89,7 @@ class SgeViewModel(
                                 )
                             )
                         } else {
-                            logger.debug { "Got character list in unexpected state" }
+                            logger.d { "Got character list in unexpected state" }
                         }
                     }
 
@@ -184,7 +184,7 @@ class SgeViewModel(
     }
 
     fun saveAccount(account: AccountEntity) {
-        logger.debug { "Saving account" }
+        logger.d { "Saving account" }
         viewModelScope.launch {
             accountRepository.save(account)
         }

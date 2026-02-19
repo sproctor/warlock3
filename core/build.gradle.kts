@@ -81,7 +81,7 @@ kotlin {
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.collections.immutable)
-                api(libs.kotlin.logging)
+                api(libs.kermit)
 
                 // Preferences
                 api(libs.room.runtime)

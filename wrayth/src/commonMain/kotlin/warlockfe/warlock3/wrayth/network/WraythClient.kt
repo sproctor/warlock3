@@ -1,7 +1,7 @@
 package warlockfe.warlock3.wrayth.network
 
+import co.touchlab.kermit.Logger
 import com.eygraber.uri.Uri
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
@@ -121,7 +121,7 @@ class WraythClient(
 
     private val writeContext = ioDispatcher.limitedParallelism(1)
 
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("WraythClient")
 
     private val newLinePattern = Regex("\r?\n")
 
@@ -660,7 +660,7 @@ class WraythClient(
                                     flushBuffer(true)
                                     gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
                                         val url = "https://www.play.net/bfe/$code-art/${event.picture}.jpg"
-                                        logger.debug { "Got resource: $url" }
+                                        logger.d { "Got resource: $url" }
                                         (currentStream ?: getMainStream()).appendResource(url)
                                         if (currentStream.isMainStream) {
                                             isPrompting = false
@@ -683,7 +683,7 @@ class WraythClient(
                         }
                     }
                 } catch (e: IOException) {
-                    logger.debug(e) { "IO exception: " + e.message }
+                    logger.d(e) { "IO exception: " + e.message }
                     disconnected()
                     break
                 }
@@ -756,7 +756,7 @@ class WraythClient(
     override suspend fun sendCommandDirect(command: String) {
         withContext(writeContext) {
             try {
-                logger.debug { "Writing command: $command" }
+                logger.d { "Writing command: $command" }
                 socket.write("<c>$command\n")
 
                 logSimple { ">$command" }
@@ -842,20 +842,20 @@ class WraythClient(
         this.proxy = proxy
         proxy.stdOut
             .onEach {
-                logger.debug { "Proxy output: $it" }
+                logger.d { "Proxy output: $it" }
                 scriptDebug(it)
             }
             .catch {
-                logger.error(it) { "Error reading stdout" }
+                logger.e(it) { "Error reading stdout" }
             }
             .launchIn(scope)
         proxy.stdErr
             .onEach {
-                logger.debug { "Proxy error: $it" }
+                logger.d { "Proxy error: $it" }
                 doAppendToStream(StyledString(it, listOf(WarlockStyle.Error)), getStream("scriptoutput"), false)
             }
             .catch {
-                logger.error(it) { "Error reading stderr" }
+                logger.e(it) { "Error reading stderr" }
             }
             .launchIn(scope)
     }

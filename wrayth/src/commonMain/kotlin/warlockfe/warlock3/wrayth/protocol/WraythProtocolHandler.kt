@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.protocol
 
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
@@ -55,7 +55,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
 
 class WraythProtocolHandler {
 
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("WraythProtocolHandler")
 
     private val elementListeners: Map<String, ElementListener> = mapOf(
         // all keys must be lowercase
@@ -120,7 +120,7 @@ class WraythProtocolHandler {
             val contents = WraythNodeVisitor.visitDocument(parser.document())
             handleContent(contents)
         } catch (e: Exception) {
-            logger.error(e) { "Error parsing line" }
+            logger.e(e) { "Error parsing line" }
             listOf(WraythParseErrorEvent(line))
         }
     }
@@ -158,7 +158,7 @@ class WraythProtocolHandler {
                         ?: continue // rule #1
                     val tagName = content.name.lowercase()
                     if (topOfStack != tagName) {
-                        logger.error { "Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!" }
+                        logger.e { "Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!" }
                         if (tagStack.contains(tagName)) {
                             while (tagName != tagStack.first()) {
                                 // close excess tags - rule #3

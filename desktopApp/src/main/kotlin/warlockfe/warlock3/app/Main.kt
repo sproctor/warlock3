@@ -34,6 +34,7 @@ import androidx.compose.ui.window.rememberDialogState
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
+import co.touchlab.kermit.Logger
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.parameters.options.default
@@ -44,7 +45,6 @@ import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
 import dev.hydraulic.conveyor.control.SoftwareUpdateController
 import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
@@ -155,12 +155,12 @@ private class WarlockCommand : CliktCommand() {
         if (debug || version == null) {
             System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
         }
-        val logger = KotlinLogging.logger("main")
+        val logger = Logger.withTag("Main")
 
         FileKit.init("warlock")
 
         val credentials = if (port != null && host != null && key != null) {
-            logger.debug { "Connecting to $host:$port with $key" }
+            logger.d { "Connecting to $host:$port with $key" }
             SimuGameCredentials(host = host!!, port = port!!, key = key!!)
         } else if (port != null || key != null || key != null) {
             println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
@@ -206,7 +206,7 @@ private class WarlockCommand : CliktCommand() {
                     skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
                 } catch (e: Exception) {
                     // TODO: notify user of error
-                    logger.error(e) { "Failed to load skin file" }
+                    logger.e(e) { "Failed to load skin file" }
                 }
             }
             .launchIn(appContainer.externalScope)
@@ -245,7 +245,7 @@ private class WarlockCommand : CliktCommand() {
                             } else if (inputFile != null) {
                                 val file = File(inputFile!!)
                                 if (!file.exists()) {
-                                    logger.error { "Input file does not exist: $inputFile" }
+                                    logger.e { "Input file does not exist: $inputFile" }
                                     exitProcess(1)
                                 }
                                 WarlockStreamSocket(file.inputStream())
@@ -266,7 +266,7 @@ private class WarlockCommand : CliktCommand() {
                                 GameScreen.ConnectedGameState(viewModel)
                             )
                         } catch (e: IOException) {
-                            logger.error(e) { "Failed to connect to Warlock" }
+                            logger.e(e) { "Failed to connect to Warlock" }
                         }
                     }
                 } else if (autoConnectName != null) {
@@ -346,7 +346,7 @@ private class WarlockCommand : CliktCommand() {
                                 }
                             } catch (e: UpdateCheckException) {
                                 // Handle exception
-                                logger.error(e) { "Update check failed" }
+                                logger.e(e) { "Update check failed" }
                             }
                         }
                     }

@@ -1,7 +1,7 @@
 package warlockfe.warlock3.scripting.js
 
-import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.util.*
+import co.touchlab.kermit.Logger
+import io.ktor.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,7 +39,7 @@ class JsInstance(
     private val scriptManager: ScriptManager,
 ) : ScriptInstance {
 
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("JsInstance")
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
@@ -86,7 +86,7 @@ class JsInstance(
                     val globalVariables = client.characterId.flatMapLatest { id ->
                         if (id != null) {
                             variableRepository.observeCharacterVariables(id).map {
-                                logger.debug { "reloading variables $it" }
+                                logger.d { "reloading variables $it" }
                                 it.associate { variable -> Pair(variable.name, variable.value) }
                                     .let { entries ->
                                         CaseInsensitiveMap<String>()

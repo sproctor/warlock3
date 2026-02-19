@@ -1,6 +1,6 @@
 package warlockfe.warlock3.core.util
 
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CloseableCoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -36,7 +36,7 @@ class FileLogger private constructor(
                     }
                 }
             } catch (e: IOException) {
-                logger.error(e) { "Error monitoring log channel" }
+                logger.e(e) { "Error monitoring log channel" }
                 close()
             }
         }
@@ -58,7 +58,7 @@ class FileLogger private constructor(
                 }
             )
         } catch (e: IOException) {
-            logger.error(e) { "Error while logging: $message" }
+            logger.e(e) { "Error while logging: $message" }
         }
     }
 
@@ -68,7 +68,7 @@ class FileLogger private constructor(
     }
 
     companion object {
-        private val logger = KotlinLogging.logger {}
+        private val logger = Logger.withTag("FileLogger")
 
         fun getLogger(
             directory: Path,
@@ -79,7 +79,7 @@ class FileLogger private constructor(
             try {
                 return FileLogger(createPlatformBufferedWriter(path))
             } catch (e: IOException) {
-                logger.warn(e) { "Failed to create file logger for $path" }
+                logger.w(e) { "Failed to create file logger for $path" }
                 return null
             }
         }

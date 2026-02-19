@@ -1,6 +1,6 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -17,7 +17,7 @@ class MacroRepository(
     private val reverseKeyMap: Map<Long, String>,
 ) {
 
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("MacroRepository")
 
     suspend fun getGlobalCount(): Int {
         return macroDao.getGlobalCount()
@@ -86,7 +86,7 @@ class MacroRepository(
         val failedMacros = mutableListOf<String>()
 
         oldMacros.forEach { oldMacro ->
-            logger.debug { "Migrating macro: $oldMacro" }
+            logger.d { "Migrating macro: $oldMacro" }
             val keyCode = keyMap[oldMacro.keyCode]
             if (keyCode != null) {
                 val keyString = buildString {
@@ -106,11 +106,11 @@ class MacroRepository(
                     shift = oldMacro.shift,
                     meta = oldMacro.meta,
                 )
-                logger.debug { "New macro: $entity" }
+                logger.d { "New macro: $entity" }
                 macroDao.save(entity)
                 macroDao.deleteByKey(characterId = oldMacro.characterId, key = oldMacro.key)
             } else {
-                logger.error { "Could not find keycode for: $oldMacro" }
+                logger.e { "Could not find keycode for: $oldMacro" }
                 failedMacros.add(oldMacro.toString())
             }
         }

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -31,7 +31,7 @@ class DashboardViewModel(
 
     val connections = connectionRepository.observeAllConnections()
 
-    private val logger = KotlinLogging.logger { }
+    private val logger = Logger.withTag("DashboardViewModel")
 
     var busy by mutableStateOf(false)
         private set
@@ -60,7 +60,7 @@ class DashboardViewModel(
                 }
             } catch (e: Exception) {
                 ensureActive()
-                logger.error(e) { "Error connecting to server" }
+                logger.e(e) { "Error connecting to server" }
                 gameState.setScreen(
                     GameScreen.ErrorState(
                         message = "Error: ${e.message}",

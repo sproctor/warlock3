@@ -17,7 +17,9 @@ room-schema = { id = "androidx.room", version.ref = "room"  }
 
 [versions]
 
-agp = "8.12.3"
+agp = "8.13.2"
+##⬆= "9.0.0"
+##⬆= "9.0.1"
 androidx-activity = "1.12.4"
 androidx-core-splashscreen = "1.2.0"
 androidxLifecycleViewmodel = "2.9.6"
@@ -43,18 +45,18 @@ conveyor-control = "1.1"
 fastscroller = "0.3.2"
 filekit = "0.12.0"
 jewel = "0.33.0-253.30387.90"
+kermit = "2.0.8"
 kotlin = "2.3.10"
-kotlin-logging = "7.0.14"
 kotlinx-collections-immutable = "0.4.0"
 kotlinx-coroutines =  "1.10.2"
 kotlinx-datetime = "0.7.1"
 ##            ⬆ = "0.7.1-0.6.x-compat"
 kotlinx-io = "0.8.2"
 kotlinx-serialization = "1.10.0"
-ksp = "2.3.5"
+ksp = "2.3.6"
 ktor = "3.4.0"
 reorderable = "3.0.0"
-rhino = "1.9.0"
+rhino = "1.9.1"
 room = "2.8.4"
 sentryKotlin = "0.24.0"
 slf4j = "2.0.17"
@@ -96,7 +98,7 @@ fastscroller-m3 = { module = "io.github.oikvpqya.compose.fastscroller:fastscroll
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
-kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging", version.ref = "kotlin-logging" }
+kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }

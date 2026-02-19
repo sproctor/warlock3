@@ -1,6 +1,6 @@
 package warlockfe.warlock3.compose
 
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -26,7 +26,7 @@ class ConnectToGameUseCase(
     private val dirs: WarlockDirs,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("ConnectToGameUseCase")
     suspend operator fun invoke(
         credentials: SimuGameCredentials,
         proxySettings: ConnectionProxySettings,
@@ -49,7 +49,7 @@ class ConnectToGameUseCase(
                     port = proxyPort,
                 )
                 if (proxyCommand != null) {
-                    logger.debug { "Launching proxy command: $proxyCommand" }
+                    logger.d { "Launching proxy command: $proxyCommand" }
                     proxy = warlockProxyFactory.create(proxyCommand)
                 }
             }
@@ -73,7 +73,7 @@ class ConnectToGameUseCase(
                 } catch (e: Exception) {
                     ensureActive()
                     val message = "Error connecting to ${loginCredentials.host}:$loginCredentials.port"
-                    logger.debug(e) { message }
+                    logger.d(e) { message }
                     if (proxy == null) {
                         gameState.setScreen(GameScreen.ErrorState(message, returnTo = GameScreen.Dashboard))
                         break

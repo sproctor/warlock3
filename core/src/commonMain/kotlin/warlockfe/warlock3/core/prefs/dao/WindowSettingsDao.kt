@@ -63,7 +63,12 @@ interface WindowSettingsDao {
             position = :position;
     """
     )
-    suspend fun openWindow(characterId: String, name: String, location: WindowLocation, position: Int)
+    suspend fun openWindow(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+        position: Int,
+    )
 
     @Query(
         """
@@ -99,7 +104,10 @@ interface WindowSettingsDao {
     }
 
     @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId AND location = :location")
-    suspend fun getByLocation(characterId: String, location: WindowLocation): List<WindowSettingsEntity>
+    suspend fun getByLocation(
+        characterId: String,
+        location: WindowLocation,
+    ): List<WindowSettingsEntity>
 
     @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId AND name = :name")
     suspend fun getByName(characterId: String, name: String): WindowSettingsEntity?

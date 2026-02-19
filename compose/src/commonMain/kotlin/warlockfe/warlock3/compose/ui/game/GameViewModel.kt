@@ -18,7 +18,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
@@ -101,7 +101,7 @@ class GameViewModel(
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
-    private val logger = KotlinLogging.logger { }
+    private val logger = Logger.withTag("GameViewModel")
 
     val entryText = TextFieldState()
 
@@ -322,7 +322,7 @@ class GameViewModel(
                 if (characterId != null) {
                     val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
                     settings.filter { it.location != null }.forEach { entity ->
-                        logger.debug { "Loading entity: $entity" }
+                        logger.d { "Loading entity: $entity" }
                         val window = windows.value.firstOrNull { it.name == entity.name }
                         val uiState = WindowUiState(
                             name = entity.name,
@@ -773,11 +773,11 @@ class GameViewModel(
         }
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                logger.debug { "Moving window at $location from $fromIndex to $toIndex" }
+                logger.d { "Moving window at $location from $fromIndex to $toIndex" }
                 val range = if (fromIndex < toIndex) fromIndex..toIndex else toIndex..fromIndex
                 for (index in range) {
                     val name = windowUiStates.value[index].name
-                    logger.debug { "Setting window $name position to $index" }
+                    logger.d { "Setting window $name position to $index" }
                     windowSettingsRepository.setPosition(characterId, windowUiStates.value[index].name, index)
                 }
             }

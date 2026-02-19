@@ -66,7 +66,6 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
-            implementation(libs.kotlin.logging)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

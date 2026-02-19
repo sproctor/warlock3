@@ -1,10 +1,22 @@
 package warlockfe.warlock3.wrayth.network
 
-import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.charsets.*
+import co.touchlab.kermit.Logger
+import io.ktor.network.selector.SelectorManager
+import io.ktor.network.sockets.Socket
+import io.ktor.network.sockets.aSocket
+import io.ktor.network.sockets.isClosed
+import io.ktor.network.sockets.openReadChannel
+import io.ktor.network.sockets.openWriteChannel
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.availableForRead
+import io.ktor.utils.io.charsets.TooLongLineException
+import io.ktor.utils.io.discard
+import io.ktor.utils.io.exhausted
+import io.ktor.utils.io.peek
+import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.readByte
+import io.ktor.utils.io.writeByteArray
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.io.Buffer
 import kotlinx.io.UnsafeIoApi
@@ -19,7 +31,7 @@ import kotlin.math.min
 
 class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
 
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("NetworkSocket")
     private val selector = SelectorManager(dispatcher)
     private var socket: Socket? = null
     private lateinit var sendChannel: ByteWriteChannel
@@ -30,7 +42,7 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
         get() = socket?.isClosed == true
 
     override suspend fun connect(host: String, port: Int) {
-        logger.trace { "Connecting to $host:$port" }
+        logger.d { "Connecting to $host:$port" }
         socket = aSocket(selector).tcp().connect(host, port)
         sendChannel = socket!!.openWriteChannel(autoFlush = true)
         receiveChannel = socket!!.openReadChannel()

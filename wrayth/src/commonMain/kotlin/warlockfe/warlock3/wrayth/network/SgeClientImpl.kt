@@ -1,11 +1,18 @@
 package warlockfe.warlock3.wrayth.network
 
-import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
-import io.ktor.network.tls.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.core.*
+import co.touchlab.kermit.Logger
+import io.ktor.network.selector.SelectorManager
+import io.ktor.network.sockets.Socket
+import io.ktor.network.sockets.aSocket
+import io.ktor.network.sockets.isClosed
+import io.ktor.network.sockets.openReadChannel
+import io.ktor.network.sockets.openWriteChannel
+import io.ktor.network.tls.tls
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.core.toByteArray
+import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.writeByteArray
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -36,7 +43,7 @@ class SgeClientImpl(
     private val ioDispatcher: CoroutineDispatcher,
 ) : SgeClient {
 
-    private val logger = KotlinLogging.logger {}
+    private val logger = Logger.withTag("SgeClient")
     val selectorManager: SelectorManager = SelectorManager()
     private var socket: Socket? = null
     private lateinit var receiveChannel: ByteReadChannel
@@ -54,7 +61,7 @@ class SgeClientImpl(
         secure = settings.secure
         return withContext(ioDispatcher) {
             try {
-                logger.debug { "connecting..." }
+                logger.d { "connecting..." }
                 val socket: Socket = if (secure) {
                     aSocket(selectorManager)
                         .tcp()
@@ -74,7 +81,7 @@ class SgeClientImpl(
 
                 val hashLength = receiveChannel.readAvailable(buffer)
                 if (hashLength <= 0) {
-                    logger.error { "Error reading password hash" }
+                    logger.e { "Error reading password hash" }
                     return@withContext false
                 }
                 buffer.copyInto(passwordHash, endIndex = min(hashLength, passwordHashLength))
@@ -92,23 +99,23 @@ class SgeClientImpl(
                         }
                     } catch (e: IOException) {
                         // not sure why, but let's retry!
-                        logger.debug { "SGE  exception: ${e.message}" }
+                        logger.d { "SGE  exception: ${e.message}" }
                         _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                     } finally {
-                        logger.debug { "Closing socket" }
+                        logger.d { "Closing socket" }
                         socket.close()
                     }
                 }
                 true
             } catch (e: Exception) {
-                logger.debug(e) { "SGE exception: ${e.message}" }
+                logger.d(e) { "SGE exception: ${e.message}" }
                 false
             }
         }
     }
 
     private suspend fun handleData(line: String) {
-        logger.debug { "SGE receive: $line" }
+        logger.d { "SGE receive: $line" }
 
         when (val response = parseServerResponse(line)) {
             is SgeResponse.SgeErrorResponse -> {
@@ -148,8 +155,8 @@ class SgeClientImpl(
         return when (line[0]) {
             'A' -> {
                 // response from login attempt
-                logger.debug { "A line ($line)" }
-                logger.debug {
+                logger.d { "A line ($line)" }
+                logger.d {
                     val bytes = line.toByteArray()
                         .map { it.toInt().toString(radix = 16).padStart(2, '0') }
                     "as bytes: $bytes"
@@ -221,14 +228,14 @@ class SgeClientImpl(
 
     private suspend fun send(string: String) {
         withContext(ioDispatcher) {
-            logger.debug { "SGE send: $string" }
+            logger.d { "SGE send: $string" }
             sendChannel.writeByteArray(string.encodeWindows1252())
         }
     }
 
     private suspend fun send(bytes: ByteArray) {
         withContext(ioDispatcher) {
-            logger.debug { "SGE send: ${bytes.decodeToString()}" }
+            logger.d { "SGE send: ${bytes.decodeToString()}" }
             sendChannel.writeByteArray(bytes)
         }
     }
@@ -274,7 +281,7 @@ class SgeClientImpl(
         connection: StoredConnection
     ): AutoConnectResult {
         if (!connect(settings)) {
-            logger.error { "Unable to connect to server" }
+            logger.e { "Unable to connect to server" }
             return AutoConnectResult.Failure("Could not connect to SGE")
         }
         login(username = connection.username, password = connection.password ?: "")
@@ -301,7 +308,7 @@ class SgeClientImpl(
                 }
 
                 else ->
-                    logger.info { "Unrecognized event: $event" }
+                    logger.i { "Unrecognized event: $event" }
             }
         }
     }

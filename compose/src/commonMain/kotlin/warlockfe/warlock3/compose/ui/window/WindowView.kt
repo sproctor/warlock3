@@ -297,7 +297,7 @@ private fun WindowViewContent(
 
     DisposableEffect(stream) {
         stream.actionHandler = { action ->
-            logger.debug { "action clicked: $action" }
+            logger.d { "action clicked: $action" }
             openMenuId = onActionClicked(action)
         }
         onDispose {
@@ -344,7 +344,7 @@ private fun WindowViewContent(
                                                     while (true) {
                                                         val event = awaitPointerEvent()
                                                         if (event.type == PointerEventType.Press) {
-                                                            logger.debug { "Click: $event" }
+                                                            logger.d { "Click: $event" }
                                                             clickOffset = event.changes.firstOrNull()
                                                                 ?.position?.let { it + positionInParent }
                                                         }
@@ -376,7 +376,7 @@ private fun WindowViewContent(
                                     is AsyncImagePainter.State.Success -> {
                                         val interactionSource = remember { MutableInteractionSource() }
                                         val hovered by interactionSource.collectIsHoveredAsState()
-                                        LocalLogger.current.debug { "Hovered: $hovered" }
+                                        LocalLogger.current.d { "Hovered: $hovered" }
                                         val height = if (hovered) {
                                             with(LocalDensity.current) {
                                                 max(state.result.image.height.toDp(), defaultHeight)
@@ -458,7 +458,7 @@ private fun ActionContextMenu(
             val items = groups[category]!!
             if (!category.contains('_')) {
                 items.forEach { item ->
-                    logger.debug { "Menu item: $item" }
+                    logger.d { "Menu item: $item" }
                     DropdownMenuItem(
                         text = {
                             Text(item.label)

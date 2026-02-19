@@ -47,7 +47,7 @@ fun CompassView(
                     modifier = Modifier
                         .offset { IntOffset(direction.position.first, direction.position.second) * scale }
                         .clickable {
-                            logger.debug { "Clicked on direction: ${direction.direction}" }
+                            logger.d { "Clicked on direction: ${direction.direction}" }
                             onClick(direction.direction)
                         },
                     painter = painterResource(direction.image),
