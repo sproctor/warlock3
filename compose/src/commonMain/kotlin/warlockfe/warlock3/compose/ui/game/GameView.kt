@@ -48,7 +48,7 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.window.DialogContent
-import warlockfe.warlock3.compose.ui.window.ScrollEvent
+import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation

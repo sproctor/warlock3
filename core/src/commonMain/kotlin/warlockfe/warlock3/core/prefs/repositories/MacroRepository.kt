@@ -5,7 +5,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import warlockfe.warlock3.core.macro.MacroCommand
+import warlockfe.warlock3.core.macro.Macro
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.models.MacroEntity
@@ -23,7 +23,7 @@ class MacroRepository(
         return macroDao.getGlobalCount()
     }
 
-    fun observeGlobalMacros(): Flow<List<MacroCommand>> {
+    fun observeGlobalMacros(): Flow<List<Macro>> {
         return macroDao
             .observeGlobals()
             .map { list ->
@@ -31,7 +31,7 @@ class MacroRepository(
             }
     }
 
-    fun observeCharacterMacros(characterId: String): Flow<List<MacroCommand>> {
+    fun observeCharacterMacros(characterId: String): Flow<List<Macro>> {
         require(characterId != "global")
         return macroDao
             .observeByCharacterWithGlobals(characterId)
@@ -40,7 +40,7 @@ class MacroRepository(
             }
     }
 
-    fun observeOnlyCharacterMacros(characterId: String): Flow<List<MacroCommand>> {
+    fun observeOnlyCharacterMacros(characterId: String): Flow<List<Macro>> {
         require(characterId != "global")
         return macroDao
             .observeByCharacter(characterId)
@@ -120,9 +120,9 @@ class MacroRepository(
 
 private fun MacroEntity.toMacroCommand(
     keyMap: Map<String, Long>
-): MacroCommand {
+): Macro {
     val parts = key.split(" ")
-    return MacroCommand(
+    return Macro(
         keyCombo = MacroKeyCombo(
             keyCode = keyMap[parts.last()] ?: 0,
             ctrl = parts.contains("ctrl"),
@@ -130,7 +130,7 @@ private fun MacroEntity.toMacroCommand(
             shift = parts.contains("shift"),
             meta = parts.contains("meta"),
         ),
-        command = value,
+        action = value,
     )
 }
 

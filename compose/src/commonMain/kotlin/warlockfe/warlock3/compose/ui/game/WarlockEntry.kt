@@ -68,7 +68,7 @@ fun WarlockEntry(
     WarlockEntryContent(
         style = style,
         defaultStyle = defaultStyle,
-        state = viewModel.entryText,
+        state = viewModel.entryTextState,
         entryFocusRequester = entryFocusRequester,
         roundTime = roundTime,
         castTime = castTime,

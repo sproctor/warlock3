@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.ui.window
+package warlockfe.warlock3.core.macro
 
 enum class ScrollEvent {
     PAGE_UP,

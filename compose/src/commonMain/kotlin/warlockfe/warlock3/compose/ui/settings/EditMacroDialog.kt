@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.toPersistentSet
 import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.isModifier
-import warlockfe.warlock3.core.macro.MacroCommand
+import warlockfe.warlock3.core.macro.Macro
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 
 @Composable
@@ -46,7 +46,7 @@ fun EditMacroDialog(
     key: Key?,
     modifiers: Set<String>,
     value: String,
-    saveMacro: (MacroCommand) -> Unit,
+    saveMacro: (Macro) -> Unit,
     onClose: () -> Unit,
 ) {
     val newValue = rememberTextFieldState(value)
@@ -66,9 +66,9 @@ fun EditMacroDialog(
                 onClick = {
                     if (selectedKey != null) {
                         saveMacro(
-                            MacroCommand(
+                            Macro(
                                 keyCombo = buildKeyCombo(selectedKey!!, modifierKeys),
-                                command = newValue.text.toString()
+                                action = newValue.text.toString()
                             )
                         )
                     }

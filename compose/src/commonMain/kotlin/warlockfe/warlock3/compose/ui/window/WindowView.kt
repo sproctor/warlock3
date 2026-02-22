@@ -86,6 +86,7 @@ import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
+import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 

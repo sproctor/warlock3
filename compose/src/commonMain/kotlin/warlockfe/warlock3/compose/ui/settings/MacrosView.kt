@@ -36,7 +36,7 @@ import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.macro.MacroCommand
+import warlockfe.warlock3.core.macro.Macro
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
@@ -75,7 +75,7 @@ fun MacrosView(
             macros.forEach { macro ->
                 ListItem(
                     headlineContent = { Text(macro.keyCombo.toDisplayString()) },
-                    supportingContent = { Text(macro.command) },
+                    supportingContent = { Text(macro.action) },
                     trailingContent = {
                         Row {
                             IconButton(
@@ -140,12 +140,12 @@ fun MacrosView(
     }
     when (val state = editingMacro) {
         is EditMacroState.Edit -> {
-            val macro = state.macroCommand
+            val macro = state.macro
             val (initialKey, modifiers) = macro?.let { keyComboToKey(it.keyCombo) } ?: (null to emptySet())
             EditMacroDialog(
                 key = initialKey,
                 modifiers = modifiers,
-                value = macro?.command ?: "",
+                value = macro?.action ?: "",
                 saveMacro = { newMacro ->
                     scope.launch {
                         val oldKeyCombo = macro?.keyCombo
@@ -157,9 +157,9 @@ fun MacrosView(
                             }
                         }
                         if (currentCharacter != null) {
-                            macroRepository.put(currentCharacter!!.id, newMacro.keyCombo, newMacro.command)
+                            macroRepository.put(currentCharacter!!.id, newMacro.keyCombo, newMacro.action)
                         } else {
-                            macroRepository.put("global", newMacro.keyCombo, newMacro.command)
+                            macroRepository.put("global", newMacro.keyCombo, newMacro.action)
                         }
                         editingMacro = EditMacroState.Closed
                     }
@@ -209,5 +209,5 @@ private fun MacroKeyCombo.toDisplayString(): String {
 
 sealed class EditMacroState {
     data object Closed : EditMacroState()
-    data class Edit(val macroCommand: MacroCommand?) : EditMacroState()
+    data class Edit(val macro: Macro?) : EditMacroState()
 }

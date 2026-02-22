@@ -44,11 +44,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.components.CompassState
-import warlockfe.warlock3.compose.macros.MacroCommands
 import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
-import warlockfe.warlock3.compose.ui.window.ScrollEvent
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
@@ -60,8 +58,11 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.macro.MacroCommands
+import warlockfe.warlock3.core.macro.MacroHandler
 import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
+import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
@@ -99,11 +100,14 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val windowRegistry: WindowRegistry,
     private val ioDispatcher: CoroutineDispatcher,
-) : ViewModel() {
+) : ViewModel(), MacroHandler {
 
     private val logger = Logger.withTag("GameViewModel")
 
-    val entryText = TextFieldState()
+    val entryTextState = TextFieldState()
+
+    override val entryText: CharSequence
+        get() = entryTextState.text
 
     private val _scrollEvents = MutableStateFlow<PersistentList<ScrollEvent>>(persistentListOf())
     val scrollEvents = _scrollEvents.asStateFlow()
@@ -210,7 +214,7 @@ class GameViewModel(
             macroRepository.observeGlobalMacros()
         }
             .map { macroCommands ->
-                macroCommands.associate { it.keyCombo to it.command }
+                macroCommands.associate { it.keyCombo to it.action }
             }
     }
         .stateIn(
@@ -468,9 +472,9 @@ class GameViewModel(
             .launchIn(viewModelScope)
     }
 
-    fun submit() {
-        var line = entryText.text.toString()
-        entryText.clearText()
+    override fun submit() {
+        var line = entryTextState.text.toString()
+        entryTextState.clearText()
         updateHistory(line)
         historyPosition = 0
         line = applyAliases(line)
@@ -500,7 +504,7 @@ class GameViewModel(
         }
     }
 
-    suspend fun stopScripts() {
+    override suspend fun stopScripts() {
         val scripts = scriptManager.runningScripts.value.values
         val count = scripts.size
         if (count > 0) {
@@ -511,7 +515,7 @@ class GameViewModel(
         }
     }
 
-    suspend fun pauseScripts() {
+    override suspend fun pauseScripts() {
         val scriptInstances = scriptManager.runningScripts.value.values.map { it.instance }
         if (scriptInstances.isNotEmpty()) {
             val paused = !scriptInstances.any { it.status == ScriptStatus.Running }
@@ -532,7 +536,7 @@ class GameViewModel(
         }
     }
 
-    suspend fun repeatCommand(index: Int) {
+    override suspend fun repeatCommand(index: Int) {
         val command = sendHistory.getOrNull(index)
         if (command != null) {
             client.sendCommand(command)
@@ -592,7 +596,7 @@ class GameViewModel(
                     }
 
                     MacroToken.At -> {
-                        moveCursor = entryText.selection.min
+                        moveCursor = entryTextState.selection.min
                     }
 
                     is MacroToken.Text -> {
@@ -613,7 +617,7 @@ class GameViewModel(
                 }
             }
             if (moveCursor != null) {
-                entryText.edit {
+                entryTextState.edit {
                     selection = TextRange(moveCursor!!)
                 }
             }
@@ -623,14 +627,14 @@ class GameViewModel(
     private suspend fun handleEntity(entity: Char, onEntryCleared: () -> Unit) {
         when (entity) {
             'x' -> {
-                storedText = entryText.text.toString()
-                entryText.clearText()
+                storedText = entryTextState.text.toString()
+                entryTextState.clearText()
                 onEntryCleared()
             }
 
             'r' -> {
-                val line = entryText.text.toString()
-                entryText.clearText()
+                val line = entryTextState.text.toString()
+                entryTextState.clearText()
                 updateHistory(line)
                 historyPosition = 0
                 val aliasedLine = applyAliases(line)
@@ -643,7 +647,7 @@ class GameViewModel(
             }
 
             '?' -> {
-                entryText.edit {
+                entryTextState.edit {
                     append(storedText)
                 }
             }
@@ -651,21 +655,21 @@ class GameViewModel(
     }
 
     // Must be called from main thread
-    fun entryDelete(range: TextRange) {
-        entryText.edit {
-            delete(range.min, range.max)
+    private fun entryDelete(min: Int, max: Int) {
+        entryTextState.edit {
+            delete(min, max)
         }
     }
 
     // Must be called from main thread
-    fun entrySetSelection(selection: TextRange) {
-        entryText.edit {
+    private fun entrySetSelection(selection: TextRange) {
+        entryTextState.edit {
             this.selection = selection
         }
     }
 
     fun entryInsert(text: String) {
-        entryText.edit {
+        entryTextState.edit {
             if (selection.length > 0) {
                 delete(selection.min, selection.max)
             }
@@ -673,20 +677,20 @@ class GameViewModel(
         }
     }
 
-    fun historyPrev() {
+    override fun historyPrev() {
         val history = sendHistory
         if (historyPosition < history.size - 1) {
-            sendHistory[historyPosition] = entryText.text.toString()
+            sendHistory[historyPosition] = entryTextState.text.toString()
             historyPosition++
-            entryText.setTextAndPlaceCursorAtEnd(history[historyPosition])
+            entryTextState.setTextAndPlaceCursorAtEnd(history[historyPosition])
         }
     }
 
-    fun historyNext() {
+    override fun historyNext() {
         if (historyPosition > 0) {
-            sendHistory[historyPosition] = entryText.text.toString()
+            sendHistory[historyPosition] = entryTextState.text.toString()
             historyPosition--
-            entryText.setTextAndPlaceCursorAtEnd(sendHistory[historyPosition])
+            entryTextState.setTextAndPlaceCursorAtEnd(sendHistory[historyPosition])
         }
     }
 
@@ -857,7 +861,7 @@ class GameViewModel(
         _selectedWindow.value = window
     }
 
-    fun scroll(event: ScrollEvent) {
+    override fun scroll(event: ScrollEvent) {
         _scrollEvents.update { it.add(event) }
     }
 
@@ -978,5 +982,24 @@ class GameViewModel(
             WindowLocation.BOTTOM -> _bottomWindowUiStates
             else -> error("Change position error: Invalid window location")
         }
+    }
+
+    override fun entryClearToEnd() {
+        entryDelete(entryTextState.selection.end, entryTextState.text.length)
+    }
+
+    override fun entryClearToStart() {
+        entryDelete(0, entryTextState.selection.start)
+    }
+
+    override fun entryDeleteLastWord() {
+        val index = entryText.substring(0, entryTextState.selection.start).trim().lastIndexOfAny(listOf(" ", "\t")) + 1
+        if (index < entryText.length) {
+            entryDelete(index, entryTextState.selection.start)
+        }
+    }
+
+    override fun entrySetCursorPosition(pos: Int) {
+        entrySetSelection(TextRange(pos))
     }
 }

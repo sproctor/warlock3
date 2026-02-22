@@ -6,12 +6,12 @@ import kotlinx.io.files.Path
 import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
+import warlockfe.warlock3.core.macro.MacroCommands
 import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
-import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
@@ -24,7 +24,6 @@ class WraythImporter(
     private val nameRepository: NameRepository,
     private val macroDao: MacroDao,
     private val fileSystem: FileSystem,
-    private val validMacroCommands: Set<String>,
 ) {
     suspend fun importFile(characterId: String, file: Path): List<String> {
         val messages = mutableListOf<String>()
@@ -121,6 +120,7 @@ class WraythImporter(
                         return@mapNotNull null
                     }
 
+                    val validMacroCommands = MacroCommands.commands.map { it.name } + MacroCommands.commands.flatMap { it.aliases }
                     // This is a quick and sloppy way to make sure we can handle the macro command
                     if (wraythMacro.action.startsWith('{')
                         && !validMacroCommands.contains(wraythMacro.action.removePrefix("{").removeSuffix("}").lowercase())) {
