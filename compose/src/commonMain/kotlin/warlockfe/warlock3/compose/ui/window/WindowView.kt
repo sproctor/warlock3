@@ -291,7 +291,7 @@ private fun WindowViewContent(
     val fontFamily = style.fontFamily?.let { createFontFamily(it) }
     val fontSize = style.fontSize?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
 
-    val lines by stream.lines.collectAsState(emptyList())
+    val lines = stream.lines.collectAsState(emptyList()).value
 
     var clickOffset by remember { mutableStateOf<Offset?>(null) }
     var openMenuId by remember { mutableStateOf<Int?>(null) }
