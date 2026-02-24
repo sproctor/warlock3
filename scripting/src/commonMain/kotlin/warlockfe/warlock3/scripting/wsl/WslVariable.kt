@@ -42,10 +42,10 @@ class WslVariable(
     }
 
     override fun setProperty(key: String, value: WslValue) {
-        val map = getter() as? MutableMap<String, String>
-        if (map != null) {
-            map[key] = value.toString()
-        }
+        @Suppress("UNCHECKED_CAST")
+        val map = getter()
+            ?.takeIf { it is MutableMap<*, *> } as? MutableMap<String, String>
+        map?.set(key, value.toString())
     }
 
     override fun isMap(): Boolean {

@@ -149,7 +149,6 @@ class WraythSettingsTests {
             nameRepository = FakeNameRepository(),
             macroDao = FakeMacroDao(),
             fileSystem = SystemFileSystem,
-            validMacroCommands = setOf("repeatlast", "repeatsecondtolast"),
         )
         val wraythSettings = importer.importString(exampleXml)
         val settings = importer.translateSettings(wraythSettings, "test")

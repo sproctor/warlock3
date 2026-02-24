@@ -6,7 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import io.github.oshai.kotlinlogging.KotlinLogging
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.platformLogWriter
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.coroutines.flow.launchIn
@@ -22,8 +23,12 @@ import java.io.File
 
 class MainActivity : ComponentActivity() {
 
+    private val logger = Logger.withTag("MainActivity")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        Logger.setLogWriters(platformLogWriter())
 
         installSplashScreen()
 
@@ -31,7 +36,6 @@ class MainActivity : ComponentActivity() {
 
         val warlockApplication = application as WarlockApplication
         val appContainer = warlockApplication.appContainer
-        val logger = KotlinLogging.logger("main")
 
         // TODO: Move skin loading into common code
         val json = Json {
@@ -52,7 +56,7 @@ class MainActivity : ComponentActivity() {
                     skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
                 } catch (e: Exception) {
                     // TODO: notify user of error
-                    logger.error(e) { "Failed to load skin file" }
+                    logger.e(e) { "Failed to load skin file" }
                 }
             }
             .launchIn(appContainer.externalScope)

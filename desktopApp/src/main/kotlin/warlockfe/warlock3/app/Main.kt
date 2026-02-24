@@ -35,6 +35,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import co.touchlab.kermit.Logger
+import co.touchlab.kermit.platformLogWriter
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.parameters.options.default
@@ -128,6 +129,7 @@ private class WarlockCommand : CliktCommand() {
 
     @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
     override fun run() {
+        Logger.setLogWriters(platformLogWriter())
         ComposeFoundationFlags.isNewContextMenuEnabled = true
 
         val loginOptions = mutableSetOf<String>()
