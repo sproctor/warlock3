@@ -526,8 +526,7 @@ class GameViewModel(
     suspend fun repeatCommand(index: Int) {
         val command = sendHistory.getOrNull(index)
         if (command != null) {
-            entryText.setTextAndPlaceCursorAtEnd(command)
-            submit()
+            commandHandler(command)
         }
     }
 
