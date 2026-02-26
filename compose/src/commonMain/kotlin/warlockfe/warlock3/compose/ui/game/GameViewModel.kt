@@ -526,7 +526,7 @@ class GameViewModel(
     suspend fun repeatCommand(index: Int) {
         val command = sendHistory.getOrNull(index)
         if (command != null) {
-            client.sendCommand(command)
+            commandHandler(command)
         }
     }
 
