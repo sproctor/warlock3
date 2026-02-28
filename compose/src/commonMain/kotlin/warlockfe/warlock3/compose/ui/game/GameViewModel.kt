@@ -466,11 +466,8 @@ class GameViewModel(
     }
 
     fun submit() {
-        var line = entryText.text.toString()
+        val line = entryText.text.toString()
         entryText.clearText()
-        aliases.value.forEach { alias ->
-            line = alias.replace(line)
-        }
         if (sendHistory.getOrNull(1) != line) {
             sendHistory[0] = line
             sendHistory.add(0, "")
@@ -852,14 +849,15 @@ class GameViewModel(
      * returns true when the command triggers type ahead
      */
     private suspend fun commandHandler(line: String): SendCommandType {
-        return if (line.startsWith(scriptCommandPrefix.value)) {
-            val scriptCommand = line.drop(1)
-            client.print(StyledString(line, WarlockStyle.Command))
+        val aliasedLine = applyAliases(line)
+        return if (aliasedLine.startsWith(scriptCommandPrefix.value)) {
+            val scriptCommand = aliasedLine.drop(1)
+            client.print(StyledString(aliasedLine, WarlockStyle.Command))
             scriptManager.startScript(client, scriptCommand, ::commandHandler)
             SendCommandType.SCRIPT
-        } else if (line.startsWith(clientCommandPrefix)) {
-            client.print(StyledString(line, WarlockStyle.Command))
-            val clientCommand = line.drop(1)
+        } else if (aliasedLine.startsWith(clientCommandPrefix)) {
+            client.print(StyledString(aliasedLine, WarlockStyle.Command))
+            val clientCommand = aliasedLine.drop(1)
             val (command, args) = clientCommand.splitFirstWord()
             when (command) {
                 "kill" -> {
@@ -927,9 +925,17 @@ class GameViewModel(
             }
             SendCommandType.ACTION
         } else {
-            client.sendCommand(line)
+            client.sendCommand(aliasedLine)
             SendCommandType.COMMAND
         }
+    }
+
+    private fun applyAliases(text: String): String {
+        var result = text
+        aliases.value.forEach { alias ->
+            result = alias.replace(result)
+        }
+        return result
     }
 
     fun saveEntryStyle(style: StyleDefinition) {
