@@ -473,11 +473,10 @@ class GameViewModel(
     }
 
     override fun submit() {
-        var line = entryTextState.text.toString()
+        val line = entryTextState.text.toString()
         entryTextState.clearText()
         updateHistory(line)
         historyPosition = 0
-        line = applyAliases(line)
         sendCommand(line)
     }
 
@@ -539,7 +538,7 @@ class GameViewModel(
     override suspend fun repeatCommand(index: Int) {
         val command = sendHistory.getOrNull(index)
         if (command != null) {
-            client.sendCommand(command)
+            commandHandler(command)
         }
     }
 
@@ -882,14 +881,15 @@ class GameViewModel(
      * returns true when the command triggers type ahead
      */
     private suspend fun commandHandler(line: String): SendCommandType {
-        return if (line.startsWith(scriptCommandPrefix.value)) {
-            val scriptCommand = line.drop(1)
-            client.print(StyledString(line, WarlockStyle.Command))
+        val aliasedLine = applyAliases(line)
+        return if (aliasedLine.startsWith(scriptCommandPrefix.value)) {
+            val scriptCommand = aliasedLine.drop(1)
+            client.print(StyledString(aliasedLine, WarlockStyle.Command))
             scriptManager.startScript(client, scriptCommand, ::commandHandler)
             SendCommandType.SCRIPT
-        } else if (line.startsWith(clientCommandPrefix)) {
-            client.print(StyledString(line, WarlockStyle.Command))
-            val clientCommand = line.drop(1)
+        } else if (aliasedLine.startsWith(clientCommandPrefix)) {
+            client.print(StyledString(aliasedLine, WarlockStyle.Command))
+            val clientCommand = aliasedLine.drop(1)
             val (command, args) = clientCommand.splitFirstWord()
             when (command) {
                 "kill" -> {
@@ -957,7 +957,7 @@ class GameViewModel(
             }
             SendCommandType.ACTION
         } else {
-            client.sendCommand(line)
+            client.sendCommand(aliasedLine)
             SendCommandType.COMMAND
         }
     }
