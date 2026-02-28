@@ -20,6 +20,9 @@ echo "Version: ${VERSION}"
 
 read -p "Press enter to continue"
 
+# Stop gradle daemon to prevent IDE JDK bleed-through
+./gradlew --stop
+
 if [[ $1 == "" ]]; then
   echo "Running tests"
   ./gradlew check
