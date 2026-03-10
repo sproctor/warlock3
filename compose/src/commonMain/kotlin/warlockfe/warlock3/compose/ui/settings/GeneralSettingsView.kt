@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.NonCancellable
@@ -55,6 +56,7 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.error_filled
+import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
@@ -92,7 +94,7 @@ fun GeneralSettingsView(
         )
         Spacer(Modifier.height(16.dp))
         val wraythSettingsFileLauncher = rememberFilePickerLauncher(
-            title = "Choose Wrayth settings file to import",
+            dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose Wrayth settings file to import"),
         ) { platformFile ->
             if (platformFile != null) {
                 scope.launch {
@@ -286,7 +288,7 @@ fun GeneralSettingsView(
             }
 
             val scriptDirLauncher = rememberDirectoryPickerLauncher(
-                title = "Choose a script directory",
+                dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a script directory"),
             ) { directory ->
                 if (directory != null) {
                     scope.launch {
@@ -348,7 +350,7 @@ fun GeneralSettingsView(
                 Text("Use default skin")
             }
             val skinFileLauncher = rememberFilePickerLauncher(
-                title = "Choose a skin file",
+                dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a skin file"),
                 directory = currentSkin
                     //?.takeIf { File(it).exists() }
                     ?.let { PlatformFile(it) }
@@ -379,7 +381,7 @@ fun GeneralSettingsView(
                     singleLine = true,
                 )
                 val loggingDirectoryLauncher = rememberDirectoryPickerLauncher(
-                    title = "Choose a base logging directory",
+                    dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a base logging directory"),
                     directory = PlatformFile(loggingSettings!!.basePath)
                 ) { directory ->
                     if (directory != null) {

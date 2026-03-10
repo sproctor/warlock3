@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
@@ -30,6 +31,7 @@ import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_outlined
+import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import java.io.File
 
 @Suppress("DEPRECATION")
@@ -49,7 +51,7 @@ internal fun DecoratedWindowScope.TitleBarView(
     exportSettings: (File) -> Unit,
 ) {
     val scriptFilePickerLauncher = rememberFilePickerLauncher(
-        title = "Run script",
+        dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Run script"),
         directory = scriptDirectory?.let { PlatformFile(it) },
     ) { file ->
         if (file != null) {
