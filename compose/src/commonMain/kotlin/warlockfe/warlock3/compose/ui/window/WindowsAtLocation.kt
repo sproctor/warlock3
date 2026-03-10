@@ -9,6 +9,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import co.touchlab.kermit.Logger
 import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableListItemScope
 import sh.calvin.reorderable.ReorderableListScope
@@ -82,7 +83,7 @@ fun WindowsAtLocation(
                 ReorderableColumn(
                     list = windowUiStates,
                     onSettle = { fromIndex, toIndex ->
-                        println("from: $fromIndex, to: $toIndex")
+                        Logger.d { "from: $fromIndex, to: $toIndex" }
                         onMoveWindow(fromIndex, toIndex)
                     }
                 ) { index, uiState, isDragging ->
@@ -94,7 +95,7 @@ fun WindowsAtLocation(
                 ReorderableRow(
                     list = windowUiStates,
                     onSettle = { fromIndex, toIndex ->
-                        println("from: $fromIndex, to: $toIndex")
+                        Logger.d { "from: $fromIndex, to: $toIndex" }
                         onMoveWindow(fromIndex, toIndex)
                     }
                 ) { index, uiState, isDragging ->
