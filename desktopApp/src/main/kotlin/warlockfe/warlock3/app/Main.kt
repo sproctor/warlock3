@@ -35,6 +35,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
 import co.touchlab.kermit.platformLogWriter
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
@@ -156,6 +157,9 @@ private class WarlockCommand : CliktCommand() {
         }
         if (debug || version == null) {
             System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
+            Logger.setMinSeverity(Severity.Debug)
+        } else {
+            Logger.setMinSeverity(Severity.Info)
         }
         val logger = Logger.withTag("Main")
 
