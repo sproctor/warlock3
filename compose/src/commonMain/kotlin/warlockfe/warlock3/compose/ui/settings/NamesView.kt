@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -48,7 +47,6 @@ import warlockfe.warlock3.core.text.toHexString
 import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.uuid.Uuid
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun NamesView(
     currentCharacter: GameCharacter?,
@@ -64,7 +62,7 @@ fun NamesView(
     }
         .collectAsState(emptyList())
     var editingName by remember { mutableStateOf<NameEntity?>(null) }
-    val scope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -97,7 +95,7 @@ fun NamesView(
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
-                                    scope.launch { nameRepository.deleteById(name.id) }
+                                    coroutineScope.launch { nameRepository.deleteById(name.id) }
                                 }
                             ) {
                                 Icon(
@@ -114,30 +112,32 @@ fun NamesView(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            IconButton(onClick = {
-                editingName = NameEntity(
-                    id = Uuid.random(),
-                    text = "",
-                    characterId = currentCharacterId ?: "global",
-                    textColor = WarlockColor.Unspecified,
-                    backgroundColor = WarlockColor.Unspecified,
-                    bold = false,
-                    italic = false,
-                    underline = false,
-                    fontFamily = null,
-                    fontSize = null,
-                    sound = null,
-                )
-            }) {
-                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-            }
+            ExtendedFloatingActionButton(
+                onClick = {
+                    editingName = NameEntity(
+                        id = Uuid.random(),
+                        text = "",
+                        characterId = currentCharacterId ?: "global",
+                        textColor = WarlockColor.Unspecified,
+                        backgroundColor = WarlockColor.Unspecified,
+                        bold = false,
+                        italic = false,
+                        underline = false,
+                        fontFamily = null,
+                        fontSize = null,
+                        sound = null,
+                    )
+                },
+                icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
+                text = { Text("New name") },
+            )
         }
     }
     editingName?.let { name ->
         EditNameDialog(
             name = name,
             saveName = { newName ->
-                scope.launch {
+                coroutineScope.launch {
                     nameRepository.save(newName)
                     editingName = null
                 }
@@ -160,7 +160,7 @@ fun EditNameDialog(
 
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("Edit Highlight") },
+        title = { Text("Edit name") },
         confirmButton = {
             TextButton(
                 onClick = {
@@ -169,7 +169,7 @@ fun EditNameDialog(
                             text = text.text.toString(),
                             textColor = textColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
                             backgroundColor = backgroundColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
-                            sound = sound.text.toString(),
+                            sound = sound.text.toString().ifBlank { null },
                         )
                     )
                 }
@@ -183,9 +183,7 @@ fun EditNameDialog(
             }
         },
         text = {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val hasLowercase = text.text.firstOrNull()?.isLowerCase() == true
                 TextField(
                     state = text,
