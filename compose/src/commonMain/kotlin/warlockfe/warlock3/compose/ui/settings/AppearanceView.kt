@@ -24,14 +24,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
@@ -50,9 +49,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
-import kotlin.time.ExperimentalTime
 
-@OptIn(DelicateCoroutinesApi::class, ExperimentalTime::class)
 @Composable
 fun AppearanceView(
     presetRepository: PresetRepository,
@@ -73,102 +70,105 @@ fun AppearanceView(
     val presetFlow =
         remember(currentCharacter.id) { presetRepository.observePresetsForCharacter(currentCharacter.id) }
     val presets by presetFlow.collectAsState(emptyMap())
-    val previewLines = listOf(
-        StreamTextLine(
-            text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName)
-                .toAnnotatedString(emptyMap(), presets, {}),
-            entireLineStyle = WarlockStyle.RoomName.toStyleDefinition(presets),
-            serialNumber = 0L,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = StyledString(
-                "This is the room description for some room in Riverhaven. It didn't exist in our old preview, so we're putting arbitrary text here.",
-                style = WarlockStyle("roomdescription")
-            ).toAnnotatedString(emptyMap(), presets, {}),
-            entireLineStyle = null,
-            serialNumber = 1L,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = (StyledString("You also see a ") + StyledString(
-                "Sir Robyn",
-                style = WarlockStyle.Bold
-            ) + StyledString(".")).toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 2L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = StyledString("say Hello", style = WarlockStyle.Command)
-                .toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 3L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = (StyledString(
-                "You say",
-                style = WarlockStyle.Speech
-            ) + StyledString(", \"Hello.\""))
-                .toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 4L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = StyledString(
-                "Your mind hears Someone thinking, \"hello everyone\"",
-                style = WarlockStyle.Thought
-            ).toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 5L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = StyledString(
-                "Some text you are watching",
-                style = WarlockStyle.Watching
-            ).toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 6L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = (
-                    StyledString(
-                "Someone whispers",
-                style = WarlockStyle.Whisper
-            ) + StyledString(", \"Hi\"")
-                    ).toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 7L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
-        ),
-        StreamTextLine(
-            text = StyledString(
-                " __      __              .__                 __    \n" +
-                        "/  \\    /  \\_____ _______|  |   ____   ____ |  | __\n" +
-                        "\\   \\/\\/   /\\__  \\\\_  __ \\  |  /  _ \\_/ ___\\|  |/ /\n" +
-                        " \\        /  / __ \\|  | \\/  |_(  <_> )  \\___|    < \n" +
-                        "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
-                        "       \\/        \\/                       \\/     \\/",
-                style = WarlockStyle.Mono
-            ).toAnnotatedString(emptyMap(), presets, {}),
-            serialNumber = 8L,
-            entireLineStyle = null,
-            showWhenClosed = null,
-            isPrompt = false,
+    val previewLines = remember(presets) {
+        listOf(
+            StreamTextLine(
+                text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName)
+                    .toAnnotatedString(emptyMap(), presets, {}),
+                entireLineStyle = WarlockStyle.RoomName.toStyleDefinition(presets),
+                serialNumber = 0L,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = StyledString(
+                    "This is the room description for some room in Riverhaven. It didn't exist in our old preview, so we're putting arbitrary text here.",
+                    style = WarlockStyle("roomdescription")
+                ).toAnnotatedString(emptyMap(), presets, {}),
+                entireLineStyle = null,
+                serialNumber = 1L,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = (StyledString("You also see a ") + StyledString(
+                    "Sir Robyn",
+                    style = WarlockStyle.Bold
+                ) + StyledString(".")).toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 2L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = StyledString("say Hello", style = WarlockStyle.Command)
+                    .toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 3L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = (StyledString(
+                    "You say",
+                    style = WarlockStyle.Speech
+                ) + StyledString(", \"Hello.\""))
+                    .toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 4L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = StyledString(
+                    "Your mind hears Someone thinking, \"hello everyone\"",
+                    style = WarlockStyle.Thought
+                ).toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 5L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = StyledString(
+                    "Some text you are watching",
+                    style = WarlockStyle.Watching
+                ).toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 6L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = (
+                        StyledString(
+                            "Someone whispers",
+                            style = WarlockStyle.Whisper
+                        ) + StyledString(", \"Hi\"")
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 7L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            ),
+            StreamTextLine(
+                text = StyledString(
+                    " __      __              .__                 __    \n" +
+                            "/  \\    /  \\_____ _______|  |   ____   ____ |  | __\n" +
+                            "\\   \\/\\/   /\\__  \\\\_  __ \\  |  /  _ \\_/ ___\\|  |/ /\n" +
+                            " \\        /  / __ \\|  | \\/  |_(  <_> )  \\___|    < \n" +
+                            "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
+                            "       \\/        \\/                       \\/     \\/",
+                    style = WarlockStyle.Mono
+                ).toAnnotatedString(emptyMap(), presets, {}),
+                serialNumber = 8L,
+                entireLineStyle = null,
+                showWhenClosed = null,
+                isPrompt = false,
+            )
         )
-    )
+    }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -214,7 +214,7 @@ fun AppearanceView(
         PresetSettings(
             styleMap = presets,
             saveStyle = { name, styleDefinition ->
-                GlobalScope.launch {
+                coroutineScope.launch {
                     presetRepository.save(currentCharacter.id, name, styleDefinition)
                 }
             },
