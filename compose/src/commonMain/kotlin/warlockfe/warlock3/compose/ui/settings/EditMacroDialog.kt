@@ -1,17 +1,11 @@
 package warlockfe.warlock3.compose.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -64,29 +58,19 @@ fun EditMacroDialog(
             TextButton(
                 enabled = selectedKey != null,
                 onClick = {
-                    if (selectedKey != null) {
-                        saveMacro(
-                            Macro(
-                                keyCombo = buildKeyCombo(selectedKey!!, modifierKeys),
-                                action = newValue.text.toString()
-                            )
+                    saveMacro(
+                        Macro(
+                            keyCombo = buildKeyCombo(selectedKey!!, modifierKeys),
+                            action = newValue.text.toString()
                         )
-                    }
+                    )
                 }
             ) {
-                Text("OK")
+                Text("Save")
             }
         },
         text = {
-            Column(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(24.dp)
-                    .scrollable(
-                        state = rememberScrollState(),
-                        orientation = Orientation.Horizontal
-                    )
-            ) {
+            Column {
                 TextField(
                     modifier = Modifier
                         .onPreviewKeyEvent { event ->
