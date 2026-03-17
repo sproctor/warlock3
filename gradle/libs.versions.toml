@@ -57,7 +57,6 @@ kotlinx-io = "0.9.0"
 kotlinx-serialization = "1.10.0"
 ksp = "2.3.6"
 ktor = "3.4.1"
-reorderable = "3.0.0"
 rhino = "1.9.1"
 room = "2.8.4"
 sentryKotlin = "0.24.0"
@@ -113,7 +112,6 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
-reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

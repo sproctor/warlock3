@@ -13,5 +13,4 @@ expect fun WindowHeader(
     onSettingsClicked: () -> Unit,
     onClearClicked: () -> Unit,
     onCloseClicked: () -> Unit,
-    onMoveClicked: (WindowLocation) -> Unit,
 )

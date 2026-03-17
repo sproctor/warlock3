@@ -115,6 +115,25 @@ interface WindowSettingsDao {
     @Query(
         """
         UPDATE WindowSettings
+        SET position = position + 1
+        WHERE characterId = :characterId AND location = :location AND position >= :position
+    """
+    )
+    suspend fun openGap(characterId: String, location: WindowLocation, position: Int)
+
+    @Transaction
+    suspend fun moveWindowToPosition(characterId: String, name: String, location: WindowLocation, position: Int) {
+        val oldWindow = getByName(characterId, name)
+        if (oldWindow != null) {
+            closeGap(characterId, oldWindow.location, oldWindow.position)
+        }
+        openGap(characterId, location, position)
+        openWindow(characterId, name, location, position)
+    }
+
+    @Query(
+        """
+        UPDATE WindowSettings
         SET position = position - 1
         WHERE characterId = :characterId AND location = :location AND position > :position;
     """

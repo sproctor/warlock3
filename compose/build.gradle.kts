@@ -59,7 +59,6 @@ kotlin {
             // Third party UI
             implementation(libs.colorpicker)
             implementation(libs.filekit.dialogs)
-            implementation(libs.reorderable)
 
             // Other stuff
             implementation(libs.kotlinx.collections.immutable)

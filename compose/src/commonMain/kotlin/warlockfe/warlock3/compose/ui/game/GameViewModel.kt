@@ -704,24 +704,26 @@ class GameViewModel(
         )
     }
 
-    // TODO: listen to WindowUIStates to implement these
-    fun moveWindow(name: String, location: WindowLocation) {
+    fun moveWindowToPosition(name: String, targetLocation: WindowLocation, targetIndex: Int) {
         val uiState = windowUiStateLists.flatMap { it.value }.firstOrNull { it.name == name } ?: return
-        windowUiStateLists.forEach { uiState ->
-            uiState.update { state ->
+        windowUiStateLists.forEach { states ->
+            states.update { state ->
                 state.filter { it.name != name }
             }
         }
-        val windowUiStates = getWindowUiStatesForLocation(location)
-        windowUiStates.update { states ->
-            states + uiState
+        val targetStates = getWindowUiStatesForLocation(targetLocation)
+        targetStates.update { states ->
+            val mutableStates = states.toMutableList()
+            mutableStates.add(targetIndex.coerceAtMost(mutableStates.size), uiState)
+            mutableStates
         }
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                windowSettingsRepository.moveWindow(
+                windowSettingsRepository.moveWindowToPosition(
                     characterId = characterId,
                     name = name,
-                    location = location
+                    location = targetLocation,
+                    position = targetIndex,
                 )
             }
         }

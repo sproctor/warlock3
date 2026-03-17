@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -48,13 +50,16 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.window.DialogContent
-import warlockfe.warlock3.core.macro.ScrollEvent
+import warlockfe.warlock3.compose.ui.window.DragDropState
+import warlockfe.warlock3.compose.ui.window.DragOverlay
+import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
+import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.isSpecified
@@ -191,9 +196,6 @@ fun GameView(
                             else -> null
                         }
                     },
-                    onMoveClicked = { name, location ->
-                        viewModel.moveWindow(name = name, location = location)
-                    },
                     onWidthChanged = { name, width ->
                         viewModel.setWindowWidth(name, width)
                     },
@@ -201,7 +203,21 @@ fun GameView(
                         viewModel.setWindowHeight(name, height)
                     },
                     onSizeChanged = viewModel::setLocationSize,
-                    onMoveWindow = viewModel::changeWindowPositions,
+                    onDrop = { result ->
+                        if (result.sourceLocation == result.target.location) {
+                            viewModel.changeWindowPositions(
+                                result.sourceLocation,
+                                result.sourceIndex,
+                                result.target.insertionIndex,
+                            )
+                        } else {
+                            viewModel.moveWindowToPosition(
+                                result.name,
+                                result.target.location,
+                                result.target.insertionIndex,
+                            )
+                        }
+                    },
                     onCloseClicked = viewModel::closeWindow,
                     saveStyle = viewModel::saveWindowStyle,
                     onWindowSelected = viewModel::selectWindow,
@@ -252,11 +268,10 @@ fun GameTextWindows(
     rightWidth: Int?,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?,
-    onMoveClicked: (name: String, WindowLocation) -> Unit,
     onHeightChanged: (String, Int) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
     onSizeChanged: (WindowLocation, Int) -> Unit,
-    onMoveWindow: (WindowLocation, Int, Int) -> Unit,
+    onDrop: (DropResult) -> Unit,
     onCloseClicked: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
     onWindowSelected: (String) -> Unit,
@@ -264,127 +279,131 @@ fun GameTextWindows(
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: (String) -> Unit,
 ) {
-    // Container for all window views
-    Row(modifier = modifier) {
-        // Left column
-        WindowsAtLocation(
-            location = WindowLocation.LEFT,
-            size = leftWidth,
-            windowUiStates = leftWindowUiStates,
-            defaultStyle = defaultStyle,
-            openWindows = openWindows,
-            horizontalPanel = true,
-            handleBefore = false,
-            selectedWindow = selectedWindow,
-            onSizeChanged = { onSizeChanged(WindowLocation.LEFT, it) },
-            menuData = menuData,
-            onActionClicked = onActionClicked,
-            onMoveClicked = onMoveClicked,
-            onHeightChanged = onHeightChanged,
-            onWidthChanged = onWidthChanged,
-            onMoveWindow = { from, to -> onMoveWindow(WindowLocation.LEFT, from, to) },
-            onCloseClicked = onCloseClicked,
-            saveStyle = saveStyle,
-            onWindowSelected = onWindowSelected,
-            scrollEvents = scrollEvents,
-            handledScrollEvent = handledScrollEvent,
-            clearStream = clearStream,
-        )
-        // Center column
-        Column(modifier = Modifier.weight(1f)) {
+    val dragDropState = remember { DragDropState() }
+
+    Box(modifier = modifier) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Left column
             WindowsAtLocation(
-                location = WindowLocation.TOP,
-                size = topHeight,
-                windowUiStates = topWindowUiStates,
+                location = WindowLocation.LEFT,
+                size = leftWidth,
+                windowUiStates = leftWindowUiStates,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
-                horizontalPanel = false,
+                horizontalPanel = true,
                 handleBefore = false,
                 selectedWindow = selectedWindow,
-                onSizeChanged = { onSizeChanged(WindowLocation.TOP, it) },
+                onSizeChanged = { onSizeChanged(WindowLocation.LEFT, it) },
                 menuData = menuData,
                 onActionClicked = onActionClicked,
-                onMoveClicked = onMoveClicked,
                 onHeightChanged = onHeightChanged,
                 onWidthChanged = onWidthChanged,
-                onMoveWindow = { from, to -> onMoveWindow(WindowLocation.TOP, from, to) },
                 onCloseClicked = onCloseClicked,
                 saveStyle = saveStyle,
                 onWindowSelected = onWindowSelected,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
+                dragDropState = dragDropState,
+                onDrop = onDrop,
             )
-            if (mainWindowUiState != null) {
-                WindowView(
-                    modifier = Modifier.fillMaxWidth().weight(1f), //.focusRequester(focusRequester),
-                    headerModifier = Modifier,
-                    uiState = mainWindowUiState,
-                    location = WindowLocation.MAIN,
+            // Center column
+            Column(modifier = Modifier.weight(1f)) {
+                WindowsAtLocation(
+                    location = WindowLocation.TOP,
+                    size = topHeight,
+                    windowUiStates = topWindowUiStates,
                     defaultStyle = defaultStyle,
-                    isSelected = selectedWindow == mainWindowUiState.name,
                     openWindows = openWindows,
+                    horizontalPanel = false,
+                    handleBefore = false,
+                    selectedWindow = selectedWindow,
+                    onSizeChanged = { onSizeChanged(WindowLocation.TOP, it) },
                     menuData = menuData,
                     onActionClicked = onActionClicked,
-                    onMoveClicked = {},
-                    onCloseClicked = {},
-                    saveStyle = {
-                        saveStyle(mainWindowUiState.name, it)
-                    },
-                    onSelected = { onWindowSelected(mainWindowUiState.name) },
+                    onHeightChanged = onHeightChanged,
+                    onWidthChanged = onWidthChanged,
+                    onCloseClicked = onCloseClicked,
+                    saveStyle = saveStyle,
+                    onWindowSelected = onWindowSelected,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
-                    clearStream = { clearStream(mainWindowUiState.name) },
+                    clearStream = clearStream,
+                    dragDropState = dragDropState,
+                    onDrop = onDrop,
+                )
+                if (mainWindowUiState != null) {
+                    WindowView(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        headerModifier = Modifier,
+                        uiState = mainWindowUiState,
+                        location = WindowLocation.MAIN,
+                        defaultStyle = defaultStyle,
+                        isSelected = selectedWindow == mainWindowUiState.name,
+                        openWindows = openWindows,
+                        menuData = menuData,
+                        onActionClicked = onActionClicked,
+                        onCloseClicked = {},
+                        saveStyle = {
+                            saveStyle(mainWindowUiState.name, it)
+                        },
+                        onSelected = { onWindowSelected(mainWindowUiState.name) },
+                        scrollEvents = scrollEvents,
+                        handledScrollEvent = handledScrollEvent,
+                        clearStream = { clearStream(mainWindowUiState.name) },
+                    )
+                }
+                WindowsAtLocation(
+                    location = WindowLocation.BOTTOM,
+                    size = bottomHeight,
+                    windowUiStates = bottomWindowUiStates,
+                    defaultStyle = defaultStyle,
+                    openWindows = openWindows,
+                    horizontalPanel = false,
+                    handleBefore = true,
+                    selectedWindow = selectedWindow,
+                    onSizeChanged = { onSizeChanged(WindowLocation.BOTTOM, it) },
+                    menuData = menuData,
+                    onActionClicked = onActionClicked,
+                    onHeightChanged = onHeightChanged,
+                    onWidthChanged = onWidthChanged,
+                    onCloseClicked = onCloseClicked,
+                    saveStyle = saveStyle,
+                    onWindowSelected = onWindowSelected,
+                    scrollEvents = scrollEvents,
+                    handledScrollEvent = handledScrollEvent,
+                    clearStream = clearStream,
+                    dragDropState = dragDropState,
+                    onDrop = onDrop,
                 )
             }
+            // Right Column
             WindowsAtLocation(
-                location = WindowLocation.BOTTOM,
-                size = bottomHeight,
-                windowUiStates = bottomWindowUiStates,
+                location = WindowLocation.RIGHT,
+                size = rightWidth,
+                windowUiStates = rightWindowUiStates,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
-                horizontalPanel = false,
+                horizontalPanel = true,
                 handleBefore = true,
                 selectedWindow = selectedWindow,
-                onSizeChanged = { onSizeChanged(WindowLocation.BOTTOM, it) },
+                onSizeChanged = { onSizeChanged(WindowLocation.RIGHT, it) },
                 menuData = menuData,
                 onActionClicked = onActionClicked,
-                onMoveClicked = onMoveClicked,
                 onHeightChanged = onHeightChanged,
                 onWidthChanged = onWidthChanged,
-                onMoveWindow = { from, to -> onMoveWindow(WindowLocation.BOTTOM, from, to) },
                 onCloseClicked = onCloseClicked,
                 saveStyle = saveStyle,
                 onWindowSelected = onWindowSelected,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
+                dragDropState = dragDropState,
+                onDrop = onDrop,
             )
         }
-        // Right Column
-        WindowsAtLocation(
-            location = WindowLocation.RIGHT,
-            size = rightWidth,
-            windowUiStates = rightWindowUiStates,
-            defaultStyle = defaultStyle,
-            openWindows = openWindows,
-            horizontalPanel = true,
-            handleBefore = true,
-            selectedWindow = selectedWindow,
-            onSizeChanged = { onSizeChanged(WindowLocation.RIGHT, it) },
-            menuData = menuData,
-            onActionClicked = onActionClicked,
-            onMoveClicked = onMoveClicked,
-            onHeightChanged = onHeightChanged,
-            onWidthChanged = onWidthChanged,
-            onMoveWindow = { from, to -> onMoveWindow(WindowLocation.RIGHT, from, to) },
-            onCloseClicked = onCloseClicked,
-            saveStyle = saveStyle,
-            onWindowSelected = onWindowSelected,
-            scrollEvents = scrollEvents,
-            handledScrollEvent = handledScrollEvent,
-            clearStream = clearStream,
-        )
+        // Drag overlay rendered on top of everything
+        DragOverlay(dragDropState = dragDropState)
     }
 }
 

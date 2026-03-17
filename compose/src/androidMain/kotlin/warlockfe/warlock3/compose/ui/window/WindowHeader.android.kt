@@ -27,7 +27,6 @@ actual fun WindowHeader(
     onSettingsClicked: () -> Unit,
     onClearClicked: () -> Unit,
     onCloseClicked: () -> Unit,
-    onMoveClicked: (WindowLocation) -> Unit
 ) {
     Row(modifier = modifier) {
         Box(modifier = Modifier.weight(1f)) {
@@ -41,63 +40,31 @@ actual fun WindowHeader(
                     contentDescription = null,
                 )
             }
-            WindowViewDropdownMenu(
+            DropdownMenu(
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                onSettingsClicked = onSettingsClicked,
-                location = location,
-                onMoveClicked = onMoveClicked,
-                onClearClicked = onClearClicked,
-                onCloseClicked = onCloseClicked,
-            )
-        }
-    }
-}
-
-@Composable
-private fun WindowViewDropdownMenu(
-    expanded: Boolean,
-    onDismissRequest: () -> Unit,
-    onSettingsClicked: () -> Unit,
-    location: WindowLocation,
-    onMoveClicked: (WindowLocation) -> Unit,
-    onClearClicked: () -> Unit,
-    onCloseClicked: () -> Unit,
-) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest
-    ) {
-        DropdownMenuItem(
-            onClick = {
-                onSettingsClicked()
-                onDismissRequest()
-            },
-            text = { Text("Window Settings ...") }
-        )
-        DropdownMenuItem(
-            onClick = {
-                onClearClicked()
-                onDismissRequest()
-            },
-            text = { Text("Clear window") },
-        )
-        DropdownMenuItem(
-            onClick = {
-                onCloseClicked()
-                onDismissRequest()
-            },
-            text = { Text("Hide window") },
-        )
-        if (location != WindowLocation.MAIN) {
-            WindowLocation.entries.forEach { otherLocation ->
-                if (location != otherLocation && otherLocation != WindowLocation.MAIN) {
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    onClick = {
+                        onSettingsClicked()
+                        showMenu = false
+                    },
+                    text = { Text("Window Settings ...") }
+                )
+                DropdownMenuItem(
+                    onClick = {
+                        onClearClicked()
+                        showMenu = false
+                    },
+                    text = { Text("Clear window") },
+                )
+                if (location != WindowLocation.MAIN) {
                     DropdownMenuItem(
-                        text = { Text("Move to ${otherLocation.value.lowercase()} slot") },
                         onClick = {
-                            onMoveClicked(otherLocation)
-                            onDismissRequest()
-                        }
+                            onCloseClicked()
+                            showMenu = false
+                        },
+                        text = { Text("Hide window") },
                     )
                 }
             }

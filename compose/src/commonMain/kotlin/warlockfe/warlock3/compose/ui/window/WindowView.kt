@@ -102,7 +102,6 @@ fun WindowView(
     openWindows: List<String>,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?,
-    onMoveClicked: (WindowLocation) -> Unit,
     onCloseClicked: () -> Unit,
     saveStyle: (StyleDefinition) -> Unit,
     onSelected: () -> Unit,
@@ -154,7 +153,6 @@ fun WindowView(
                 onSettingsClicked = { showWindowSettingsDialog = true },
                 onClearClicked = clearStream,
                 onCloseClicked = onCloseClicked,
-                onMoveClicked = onMoveClicked,
             )
 
             when (val data = uiState.data) {
@@ -163,7 +161,6 @@ fun WindowView(
                         modifier = Modifier.addTextContextMenuOptions(
                             windowLocation = location,
                             showSettingsDialog = { showWindowSettingsDialog = true },
-                            onMoveClicked = onMoveClicked,
                             onClearClicked = clearStream,
                             onCloseClicked = onCloseClicked,
                         ),
@@ -242,7 +239,6 @@ fun WindowView(
 private fun Modifier.addTextContextMenuOptions(
     windowLocation: WindowLocation,
     showSettingsDialog: () -> Unit,
-    onMoveClicked: (WindowLocation) -> Unit,
     onClearClicked: () -> Unit,
     onCloseClicked: () -> Unit,
 ): Modifier {
@@ -256,19 +252,10 @@ private fun Modifier.addTextContextMenuOptions(
             onClearClicked()
             close()
         }
-        addItem(key = CloseContextMenuItemKey, label = "Hide window") {
-            onCloseClicked()
-            close()
-        }
         if (windowLocation != WindowLocation.MAIN) {
-            separator()
-            WindowLocation.entries.forEach { otherLocation ->
-                if (windowLocation != otherLocation && otherLocation != WindowLocation.MAIN) {
-                    addItem(key = otherLocation, label = "Move to ${otherLocation.value.lowercase()} slot") {
-                        onMoveClicked(otherLocation)
-                        close()
-                    }
-                }
+            addItem(key = CloseContextMenuItemKey, label = "Hide window") {
+                onCloseClicked()
+                close()
             }
         }
     }

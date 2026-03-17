@@ -34,9 +34,9 @@ class WindowSettingsRepository(
         }
     }
 
-    suspend fun moveWindow(characterId: String, name: String, location: WindowLocation) {
+    suspend fun moveWindowToPosition(characterId: String, name: String, location: WindowLocation, position: Int) {
         withContext(NonCancellable) {
-            windowSettingsDao.moveWindow(characterId, name, location)
+            windowSettingsDao.moveWindowToPosition(characterId, name, location, position)
         }
     }
 
