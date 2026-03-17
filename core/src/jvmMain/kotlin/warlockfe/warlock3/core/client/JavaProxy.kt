@@ -5,8 +5,7 @@ import kotlinx.coroutines.flow.asFlow
 import java.net.Socket
 
 class JavaProxy(command: String) : WarlockProxy {
-    // TODO: manually split args respecting quotes. exec(String) is deprecated in Java 18+, use exec(Array<String>)
-    private val process = Runtime.getRuntime().exec(command)
+    private val process = ProcessBuilder(splitCommand(command)).start()
 
     override val isAlive: Boolean
         get() = process.isAlive
@@ -18,4 +17,36 @@ class JavaProxy(command: String) : WarlockProxy {
     override fun close() {
         process.destroy()
     }
+}
+
+private fun splitCommand(command: String): List<String> {
+    val args = mutableListOf<String>()
+    val current = StringBuilder()
+    var inQuotes = false
+    var quoteChar = ' '
+    var escaped = false
+
+    for (ch in command) {
+        when {
+            escaped -> {
+                current.append(ch)
+                escaped = false
+            }
+            ch == '\\' -> escaped = true
+            inQuotes && ch == quoteChar -> inQuotes = false
+            !inQuotes && (ch == '"' || ch == '\'') -> {
+                inQuotes = true
+                quoteChar = ch
+            }
+            !inQuotes && ch == ' ' -> {
+                if (current.isNotEmpty()) {
+                    args.add(current.toString())
+                    current.clear()
+                }
+            }
+            else -> current.append(ch)
+        }
+    }
+    if (current.isNotEmpty()) args.add(current.toString())
+    return args
 }
