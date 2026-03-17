@@ -1,9 +1,7 @@
 package warlockfe.warlock3.compose.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -14,7 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
@@ -64,7 +61,7 @@ fun WindowSettingsDialog(
             }
         },
         text = {
-            Column(Modifier.padding(24.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 val textColor = style.textColor.ifUnspecified(defaultStyle.textColor)
                 ColorPickerButton(
                     text = "Content",
@@ -75,7 +72,6 @@ fun WindowSettingsDialog(
                         }
                     }
                 )
-                Spacer(Modifier.width(16.dp))
                 val backgroundColor = style.backgroundColor.ifUnspecified(defaultStyle.backgroundColor)
                 ColorPickerButton(
                     text = "Background",
@@ -88,7 +84,6 @@ fun WindowSettingsDialog(
                         }
                     }
                 )
-                Spacer(Modifier.width(16.dp))
                 OutlinedButton(
                     onClick = {
                         editFont = Pair(style) { fontUpdate ->
@@ -98,13 +93,11 @@ fun WindowSettingsDialog(
                 ) {
                     Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
                 }
-                Spacer(Modifier.width(16.dp))
                 Button(onClick = {
                     saveStyle(StyleDefinition())
                 }) {
                     Text("Revert to defaults")
                 }
-                Spacer(Modifier.width(8.dp))
             }
         }
     )
