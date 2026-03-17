@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.ui.settings
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -38,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,7 +49,6 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -99,7 +101,10 @@ fun GeneralSettingsView(
             if (platformFile != null) {
                 scope.launch {
                     importResultMessages =
-                        wraythImporter.importFile(currentCharacterId, Path(platformFile.absolutePath()))
+                        wraythImporter.importFile(
+                            currentCharacterId,
+                            Path(platformFile.absolutePath())
+                        )
                 }
             }
         }
@@ -132,13 +137,16 @@ fun GeneralSettingsView(
         Spacer(Modifier.height(16.dp))
         ScrollableColumn {
             val maxLinesValue = rememberTextFieldState()
-            LaunchedEffect(maxLinesValue) {
-                val initialMaxLines = clientSettingRepository.observeMaxScrollLines().first().toString()
+            LaunchedEffect(Unit) {
+                val initialMaxLines =
+                    clientSettingRepository.observeMaxScrollLines().first().toString()
                 maxLinesValue.setTextAndPlaceCursorAtEnd(initialMaxLines)
                 snapshotFlow { maxLinesValue.text.toString() }
                     .collectLatest {
-                        if (maxLinesValue.text.toString() != initialMaxLines) {
-                            clientSettingRepository.putMaxScrollLines(maxLinesValue.text.toString().toIntOrNull())
+                        if (maxLinesValue.text.toString() != initialMaxLines && maxLinesValue.text.isNotBlank()) {
+                            clientSettingRepository.putMaxScrollLines(
+                                maxLinesValue.text.toString().toIntOrNull()
+                            )
                         }
                     }
             }
@@ -153,16 +161,22 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
-            Row {
-                val markLinks by clientSettingRepository.observeMarkLinks().collectAsState(initial = true)
-                Switch(
-                    checked = markLinks,
-                    onCheckedChange = {
-                        // TODO: this change should happen synchronously
+            val markLinks by clientSettingRepository.observeMarkLinks()
+                .collectAsState(initial = true)
+            Row(
+                modifier = Modifier.toggleable(
+                    value = markLinks,
+                    onValueChange = {
                         scope.launch {
                             clientSettingRepository.putMarkLinks(it)
                         }
-                    }
+                    },
+                    role = Role.Switch,
+                )
+            ) {
+                Switch(
+                    checked = markLinks,
+                    onCheckedChange = null
                 )
                 Spacer(Modifier.width(16.dp))
                 Text("Mark links in text")
@@ -175,7 +189,10 @@ fun GeneralSettingsView(
                 var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
                 LaunchedEffect(maxTypeAheadState) {
                     val initialMaxTypeAhead =
-                        characterSettingsRepository.observe(characterId = currentCharacterId, key = maxTypeAheadKey)
+                        characterSettingsRepository.observe(
+                            characterId = currentCharacterId,
+                            key = maxTypeAheadKey
+                        )
                             .first()
                     if (initialMaxTypeAhead != null) {
                         maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
@@ -189,7 +206,7 @@ fun GeneralSettingsView(
                                 maxTypeAheadError = "Must be non-negative"
                             } else {
                                 maxTypeAheadError = null
-                                scope.launch(NonCancellable) {
+                                scope.launch {
                                     characterSettingsRepository.save(
                                         characterId = currentCharacterId,
                                         key = maxTypeAheadKey,
@@ -212,7 +229,10 @@ fun GeneralSettingsView(
                     isError = maxTypeAheadError != null,
                     trailingIcon = {
                         if (maxTypeAheadError != null) {
-                            Icon(painterResource(Res.drawable.error_filled), contentDescription = null)
+                            Icon(
+                                painterResource(Res.drawable.error_filled),
+                                contentDescription = null
+                            )
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -223,16 +243,17 @@ fun GeneralSettingsView(
 
                 val scriptCommandPrefixState = rememberTextFieldState(".")
                 LaunchedEffect(currentCharacterId) {
-                    characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)?.let { prefix ->
-                        scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
-                    }
+                    characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)
+                        ?.let { prefix ->
+                            scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
+                        }
                 }
                 TextField(
                     state = scriptCommandPrefixState,
                     label = {
                         Text("Script command prefix")
                     },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
                 LaunchedEffect(scriptCommandPrefixState.text) {
@@ -254,7 +275,11 @@ fun GeneralSettingsView(
             val scriptDirs by scriptDirRepository.observeScriptDirs(characterId = currentCharacterId)
                 .collectAsState(emptyList())
             Column(
-                Modifier.border(Dp.Hairline, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium)
+                Modifier.border(
+                    Dp.Hairline,
+                    MaterialTheme.colorScheme.outline,
+                    MaterialTheme.shapes.medium
+                )
                     .padding(8.dp)
                     .fillMaxWidth()
             ) {
@@ -269,7 +294,7 @@ fun GeneralSettingsView(
                         trailingContent = {
                             IconButton(
                                 onClick = {
-                                    scope.launch(NonCancellable) {
+                                    scope.launch {
                                         scriptDirRepository.delete(
                                             characterId = currentCharacterId,
                                             path = scriptDir
@@ -308,24 +333,32 @@ fun GeneralSettingsView(
 
             val currentTheme by clientSettingRepository.observeTheme().collectAsState(null)
             Text("Select theme")
-            ThemeSetting.entries.forEach { entry ->
-                Row(
-                    Modifier.clickable {
-                        scope.launch {
-                            clientSettingRepository.putTheme(entry)
-                        }
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(
-                        selected = currentTheme == entry,
-                        onClick = {
-                            scope.launch(NonCancellable) {
-                                clientSettingRepository.putTheme(entry)
-                            }
-                        }
-                    )
-                    Text(entry.name)
+            Column(Modifier.selectableGroup()) {
+                ThemeSetting.entries.forEach { entry ->
+                    Row(
+                        Modifier
+                            .height(48.dp)
+                            .selectable(
+                                selected = currentTheme == entry,
+                                onClick = {
+                                    scope.launch {
+                                        clientSettingRepository.putTheme(entry)
+                                    }
+                                },
+                                role = Role.RadioButton,
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = currentTheme == entry,
+                            onClick = null
+                        )
+                        Text(
+                            text = entry.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 16.dp),
+                        )
+                    }
                 }
             }
 
@@ -399,44 +432,53 @@ fun GeneralSettingsView(
                 }
 
                 Text("Select logging style")
-                LogType.entries.forEach { entry ->
-                    Row(
-                        modifier = Modifier.clickable {
-                            scope.launch(NonCancellable) {
-                                clientSettingRepository.putLoggingType(entry)
-                            }
-                        },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = loggingSettings!!.type == entry,
-                            onClick = {
-                                scope.launch(NonCancellable) {
-                                    clientSettingRepository.putLoggingType(entry)
-                                }
-                            }
-                        )
-                        Text(entry.name)
+                Column(Modifier.selectableGroup()) {
+                    LogType.entries.forEach { entry ->
+                        Row(
+                            modifier = Modifier
+                                .height(48.dp)
+                                .selectable(
+                                    selected = loggingSettings!!.type == entry,
+                                    onClick = {
+                                        scope.launch {
+                                            clientSettingRepository.putLoggingType(entry)
+                                        }
+                                    },
+                                    role = Role.RadioButton,
+                                ),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = loggingSettings!!.type == entry,
+                                onClick = null
+                            )
+                            Text(
+                                text = entry.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 16.dp),
+                            )
+                        }
                     }
                 }
 
                 Row(
-                    modifier = Modifier.clickable {
-                        scope.launch(NonCancellable) {
-                            clientSettingRepository.putLoggingTimestamps(!loggingSettings!!.logTimestamps)
-                        }
-                    },
+                    modifier = Modifier
+                        .toggleable(
+                            value = loggingSettings!!.logTimestamps,
+                            onValueChange = {
+                                scope.launch {
+                                    clientSettingRepository.putLoggingTimestamps(it)
+                                }
+                            },
+                            role = Role.Switch,
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Switch(
                         checked = loggingSettings!!.logTimestamps,
-                        onCheckedChange = {
-                            scope.launch(NonCancellable) {
-                                clientSettingRepository.putLoggingTimestamps(!loggingSettings!!.logTimestamps)
-                            }
-                        }
+                        onCheckedChange = null,
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(16.dp))
                     Text("Add timestamps to logs")
                 }
             }
