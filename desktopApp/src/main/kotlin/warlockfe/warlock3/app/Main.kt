@@ -310,6 +310,20 @@ private class WarlockCommand : CliktCommand() {
             }
         )
 
+        // Workaround for https://issuetracker.google.com/issues/399134381
+        val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val cause = throwable.cause ?: throwable
+            val isKnownComposeBug = cause is NoSuchElementException &&
+                    cause.message?.contains("Cannot find value for key") == true
+
+            if (isKnownComposeBug) {
+                // Swallow silently — known upstream bug, see https://issuetracker.google.com/issues/399134381
+            } else {
+                existingHandler?.uncaughtException(thread, throwable)
+            }
+        }
+
         val controller = SoftwareUpdateController.getInstance()
 
         application {
