@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -31,6 +31,7 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
+import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.VariableEntity
@@ -50,12 +51,14 @@ fun VariablesView(
         }
     val currentCharacter = currentCharacterState.value
     if (currentCharacter == null) {
-        Text("no characters created")
+        Text("No characters created")
         return
     }
     val characterId = currentCharacter.id
     var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
     val scope = rememberCoroutineScope()
+    val variables by variableRepository.observeCharacterVariables(characterId)
+        .collectAsState(emptyList())
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -66,18 +69,27 @@ fun VariablesView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Variables", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        val variables by variableRepository.observeCharacterVariables(characterId)
-            .collectAsState(emptyList())
         ScrollableColumn(Modifier.weight(1f)) {
             variables.forEach { variable ->
                 ListItem(
                     headlineContent = { Text(variable.name) },
                     supportingContent = { Text(variable.value) },
                     trailingContent = {
-                        IconButton(
-                            onClick = { editingVariable = variable }
-                        ) {
-                            Icon(painter = painterResource(Res.drawable.edit), contentDescription = "edit")
+                        Row {
+                            IconButton(
+                                onClick = { editingVariable = variable }
+                            ) {
+                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Edit")
+                            }
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        variableRepository.delete(characterId, variable.name)
+                                    }
+                                }
+                            ) {
+                                Icon(painter = painterResource(Res.drawable.delete), contentDescription = "Delete")
+                            }
                         }
                     }
                 )
@@ -87,11 +99,11 @@ fun VariablesView(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            IconButton(
-                onClick = { editingVariable = VariableEntity(characterId, "", "") }
-            ) {
-                Icon(painter = painterResource(Res.drawable.add), contentDescription = "add")
-            }
+            ExtendedFloatingActionButton(
+                onClick = { editingVariable = VariableEntity(characterId, "", "") },
+                icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
+                text = { Text("New variable") },
+            )
         }
     }
     editingVariable?.let { variable ->
@@ -135,12 +147,11 @@ fun EditVariableDialog(
             }
         },
         text = {
-            Column(Modifier.padding(24.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 TextField(
                     state = newName,
                     label = { Text("Name") },
                 )
-                Spacer(Modifier.height(16.dp))
                 TextField(
                     state = newValue,
                     label = { Text("Value") },
