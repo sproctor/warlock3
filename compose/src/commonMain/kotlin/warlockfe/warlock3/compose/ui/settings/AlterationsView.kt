@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -32,8 +32,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -47,7 +45,6 @@ import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import kotlin.uuid.Uuid
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun AlterationsView(
     currentCharacter: GameCharacter?,
@@ -59,6 +56,7 @@ fun AlterationsView(
     val alterations by alterationRepository.observeByCharacter(currentCharacterId)
         .collectAsState(emptyList())
     var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -91,7 +89,11 @@ fun AlterationsView(
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
-                                    GlobalScope.launch { alterationRepository.deleteById(alteration.id) }
+                                    coroutineScope.launch {
+                                        alterationRepository.deleteById(
+                                            alteration.id
+                                        )
+                                    }
                                 }
                             ) {
                                 Icon(
@@ -108,28 +110,31 @@ fun AlterationsView(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            IconButton(onClick = {
-                editingAlteration = AlterationEntity(
-                    id = Uuid.random(),
-                    characterId = currentCharacterId,
-                    pattern = "",
-                    sourceStream = null,
-                    destinationStream = null,
-                    result = null,
-                    ignoreCase = true,
-                    keepOriginal = false,
-                )
-            }) {
-                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-            }
+            ExtendedFloatingActionButton(
+                onClick = {
+                    editingAlteration = AlterationEntity(
+                        id = Uuid.random(),
+                        characterId = currentCharacterId,
+                        pattern = "",
+                        sourceStream = null,
+                        destinationStream = null,
+                        result = null,
+                        ignoreCase = true,
+                        keepOriginal = false,
+                    )
+                },
+                icon = {
+                    Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
+                },
+                text = { Text("New alteration") }
+            )
         }
     }
-    val scope = rememberCoroutineScope()
     editingAlteration?.let { alteration ->
         EditAlterationDialog(
             alteration = alteration,
             saveAlteration = { newAlteration ->
-                scope.launch {
+                coroutineScope.launch {
                     alterationRepository.save(newAlteration)
                     editingAlteration = null
                 }
@@ -147,14 +152,14 @@ fun EditAlterationDialog(
 ) {
     val pattern = rememberTextFieldState(alteration.pattern)
     val sourceStream = rememberTextFieldState(alteration.sourceStream ?: "")
-    var destinationStream by remember { mutableStateOf(alteration.destinationStream ?: "") }
     val replacement = rememberTextFieldState(alteration.result ?: "")
     var keepOriginal by remember { mutableStateOf(alteration.keepOriginal) }
     var ignoreCase by remember { mutableStateOf(alteration.ignoreCase) }
+    var patternError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("Edit Highlight") },
+        title = { Text("Edit alteration") },
         confirmButton = {
             TextButton(
                 onClick = {
@@ -164,15 +169,16 @@ fun EditAlterationDialog(
                             characterId = alteration.characterId,
                             pattern = pattern.text.toString(),
                             sourceStream = sourceStream.text.toString().ifBlank { null },
-                            destinationStream = destinationStream,
+                            destinationStream = null,
                             result = replacement.text.toString().ifBlank { null },
                             ignoreCase = ignoreCase,
                             keepOriginal = keepOriginal
                         )
                     )
-                }
+                },
+                enabled = patternError == null && pattern.text.isNotBlank(),
             ) {
-                Text("OK")
+                Text("Save")
             }
         },
         dismissButton = {
@@ -182,10 +188,8 @@ fun EditAlterationDialog(
         },
         text = {
             Column(
-                modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                var patternError by remember { mutableStateOf<String?>(null) }
                 LaunchedEffect(pattern) {
                     snapshotFlow { pattern.text.toString() }
                         .collectLatest {
