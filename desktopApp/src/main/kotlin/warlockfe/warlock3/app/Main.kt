@@ -168,7 +168,7 @@ private class WarlockCommand : CliktCommand() {
         val credentials = if (port != null && host != null && key != null) {
             logger.d { "Connecting to $host:$port with $key" }
             SimuGameCredentials(host = host!!, port = port!!, key = key!!)
-        } else if (port != null || key != null || key != null) {
+        } else if (port != null || host != null || key != null) {
             println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
             exitProcess(-1)
         } else {
