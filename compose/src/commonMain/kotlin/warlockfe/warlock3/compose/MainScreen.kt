@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.CompassTheme
@@ -31,6 +32,7 @@ import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeWizard
 import warlockfe.warlock3.compose.util.LocalCompassTheme
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.SafeUriHandler
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -60,8 +62,10 @@ fun MainScreen(
     }
     val scope = rememberCoroutineScope()
 
+    val uriHandler = LocalUriHandler.current
     CompositionLocalProvider(
         LocalCompassTheme provides compassTheme,
+        LocalUriHandler provides SafeUriHandler(uriHandler),
     ) {
         when (val screen = gameState.screen) {
             GameScreen.Dashboard -> {
