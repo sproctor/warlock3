@@ -10,10 +10,12 @@ import io.ktor.network.sockets.openWriteChannel
 import io.ktor.network.tls.tls
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.ClosedWriteChannelException
 import io.ktor.utils.io.core.toByteArray
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.writeByteArray
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -55,7 +57,17 @@ class SgeClientImpl(
     private var username: String? = null
     private var secure: Boolean = true
 
-    private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
+    private val tlsExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        if (throwable is ClosedWriteChannelException) {
+            logger.d { "TLS channel closed during handshake: ${throwable.message}" }
+        } else {
+            logger.e(throwable) { "Unexpected TLS error" }
+        }
+        if (!_eventFlow.tryEmit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))) {
+            logger.e { "Failed to emit SgeErrorEvent" }
+        }
+    }
+    private val scope = CoroutineScope(ioDispatcher + SupervisorJob() + tlsExceptionHandler)
 
     override suspend fun connect(settings: SgeSettings): Boolean {
         secure = settings.secure
