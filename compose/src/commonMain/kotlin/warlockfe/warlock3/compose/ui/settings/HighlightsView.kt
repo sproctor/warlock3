@@ -1,20 +1,26 @@
 package warlockfe.warlock3.compose.ui.settings
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -37,12 +43,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -65,7 +71,6 @@ import warlockfe.warlock3.core.text.toHexString
 import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.uuid.Uuid
 
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun HighlightsView(
     currentCharacter: GameCharacter?,
@@ -81,6 +86,7 @@ fun HighlightsView(
     }
         .collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize()) {
         SettingsCharacterSelector(
@@ -113,7 +119,7 @@ fun HighlightsView(
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
-                                    GlobalScope.launch { highlightRepository.deleteById(highlight.id) }
+                                    coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
                                 }
                             ) {
                                 Icon(
@@ -130,27 +136,30 @@ fun HighlightsView(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            IconButton(onClick = {
-                editingHighlight = Highlight(
-                    id = Uuid.random(),
-                    pattern = "",
-                    styles = emptyMap(),
-                    isRegex = false,
-                    ignoreCase = true,
-                    matchPartialWord = true,
-                    sound = null,
-                )
-            }) {
-                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-            }
+            ExtendedFloatingActionButton(
+                onClick = {
+                    editingHighlight = Highlight(
+                        id = Uuid.random(),
+                        pattern = "",
+                        styles = emptyMap(),
+                        isRegex = false,
+                        ignoreCase = true,
+                        matchPartialWord = true,
+                        sound = null,
+                    )
+                },
+                text = { Text("Add highlight") },
+                icon = {
+                    Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
+                }
+            )
         }
     }
-    val scope = rememberCoroutineScope()
     editingHighlight?.let { highlight ->
         EditHighlightDialog(
             highlight = highlight,
             saveHighlight = { newHighlight ->
-                scope.launch {
+                coroutineScope.launch {
                     if (currentCharacterId != null) {
                         highlightRepository.save(currentCharacterId, newHighlight)
                     } else {
@@ -171,7 +180,8 @@ fun EditHighlightDialog(
     onClose: () -> Unit,
 ) {
     val pattern = rememberTextFieldState(highlight.pattern)
-    val styles = remember { mutableStateListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
+    val styles =
+        remember { mutableStateListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
@@ -187,7 +197,8 @@ fun EditHighlightDialog(
                         Highlight(
                             id = highlight.id,
                             pattern = pattern.text.toString(),
-                            styles = styles.mapIndexed { index, style -> Pair(index, style) }.toMap(),
+                            styles = styles.mapIndexed { index, style -> Pair(index, style) }
+                                .toMap(),
                             isRegex = isRegex,
                             matchPartialWord = matchPartialWord,
                             ignoreCase = ignoreCase,
@@ -196,7 +207,7 @@ fun EditHighlightDialog(
                     )
                 }
             ) {
-                Text("OK")
+                Text("Save")
             }
         },
         dismissButton = {
@@ -206,25 +217,39 @@ fun EditHighlightDialog(
         },
         text = {
             Column(
-                modifier = Modifier.padding(24.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row {
-                    Row(Modifier.clickable { isRegex = false }) {
-                        RadioButton(
+                Row(Modifier.selectableGroup()) {
+                    Row(
+                        Modifier.selectable(
                             selected = !isRegex,
                             onClick = { isRegex = false },
+                            role = Role.RadioButton,
                         )
+                    ) {
+                        RadioButton(
+                            selected = !isRegex,
+                            onClick = null,
+                        )
+                        Spacer(Modifier.width(16.dp))
                         Text(
                             text = "Text highlight",
                             modifier = Modifier.align(Alignment.CenterVertically)
                         )
                     }
                     Spacer(Modifier.width(16.dp))
-                    Row(Modifier.clickable { isRegex = true }) {
+                    Row(
+                        Modifier.selectable(
+                            selected = isRegex,
+                            onClick = { isRegex = true },
+                            role = Role.RadioButton,
+                        )
+                    ) {
                         RadioButton(
                             selected = isRegex,
-                            onClick = { isRegex = true }
+                            onClick = null,
                         )
+                        Spacer(Modifier.width(16.dp))
                         Text(
                             text = "Regex highlight",
                             modifier = Modifier.align(Alignment.CenterVertically)
@@ -270,12 +295,14 @@ fun EditHighlightDialog(
                             if (isRegex) {
                                 Text("$i:", Modifier.align(Alignment.CenterVertically))
                             }
-                            val textColorState = rememberTextFieldState(style.textColor.toHexString() ?: "")
+                            val textColorState =
+                                rememberTextFieldState(style.textColor.toHexString() ?: "")
                             LaunchedEffect(textColorState) {
                                 snapshotFlow { textColorState.text.toString() }
                                     .collectLatest {
-                                        styles[i] = style.copy(
-                                            textColor = it.toWarlockColor() ?: WarlockColor.Unspecified
+                                        styles[i] = styles[i].copy(
+                                            textColor = it.toWarlockColor()
+                                                ?: WarlockColor.Unspecified
                                         )
                                     }
                             }
@@ -285,15 +312,15 @@ fun EditHighlightDialog(
                                 state = textColorState,
                             )
 
-                            val backgroundColorState = rememberTextFieldState(style.backgroundColor.toHexString() ?: "")
+                            val backgroundColorState =
+                                rememberTextFieldState(style.backgroundColor.toHexString() ?: "")
                             LaunchedEffect(backgroundColorState) {
                                 snapshotFlow { backgroundColorState.text.toString() }
                                     .collectLatest {
-                                        styles[i] =
-                                            style.copy(
-                                                backgroundColor = it.toWarlockColor()
-                                                    ?: WarlockColor.Unspecified
-                                            )
+                                        styles[i] = styles[i].copy(
+                                            backgroundColor = it.toWarlockColor()
+                                                ?: WarlockColor.Unspecified
+                                        )
                                     }
                             }
                             ColorTextField(
@@ -305,35 +332,49 @@ fun EditHighlightDialog(
                     }
                 }
                 if (!isRegex) {
-                    Row {
-                        val style = styles[0]
+                    val style = styles[0]
+                    Row(
+                        Modifier.toggleable(
+                            value = style.entireLine,
+                            onValueChange = { styles[0] = style.copy(entireLine = it) },
+                            role = Role.Checkbox,
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Checkbox(
                             checked = style.entireLine,
-                            onCheckedChange = {
-                                styles[0] = style.copy(entireLine = it)
-                            }
+                            onCheckedChange = null,
                         )
-                        Text(
-                            text = "Highlight entire line",
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(text = "Highlight entire line")
                     }
-                    Row {
+                    Row(
+                        Modifier.toggleable(
+                            value = matchPartialWord,
+                            onValueChange = { matchPartialWord = it },
+                            role = Role.Checkbox,
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Checkbox(
                             checked = matchPartialWord,
-                            onCheckedChange = { matchPartialWord = it })
-                        Text(
-                            text = "Match partial words",
-                            modifier = Modifier.align(Alignment.CenterVertically)
+                            onCheckedChange = null,
                         )
+                        Spacer(Modifier.width(16.dp))
+                        Text(text = "Match partial words")
                     }
                 }
-                Row {
-                    Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
-                    Text(
-                        text = "Ignore case",
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
+                Row(
+                    Modifier.toggleable(
+                        value = ignoreCase,
+                        onValueChange = { ignoreCase = it },
+                        role = Role.Checkbox,
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = ignoreCase, onCheckedChange = null)
+                    Spacer(Modifier.width(16.dp))
+                    Text(text = "Ignore case")
                 }
                 val soundLauncher = rememberFilePickerLauncher { file ->
                     if (file != null) {
@@ -385,6 +426,17 @@ fun ColorTextField(
         },
         modifier = modifier,
         state = state,
+        leadingIcon = {
+            val currentColor = state.text.toString().toWarlockColor()?.toColor()
+            if (currentColor != null && currentColor.isSpecified) {
+                Box(
+                    Modifier
+                        .size(20.dp)
+                        .border(width = 1.dp, color = MaterialTheme.colorScheme.outline)
+                        .background(currentColor)
+                )
+            }
+        },
         trailingIcon = {
             IconButton(
                 onClick = {
