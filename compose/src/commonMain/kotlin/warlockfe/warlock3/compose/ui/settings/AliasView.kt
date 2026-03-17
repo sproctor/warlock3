@@ -158,7 +158,7 @@ fun EditAliasDialog(
                         )
                     )
                 },
-                enabled = patternError == null,
+                enabled = patternError == null && pattern.text.isNotBlank(),
             ) {
                 Text("Save")
             }
