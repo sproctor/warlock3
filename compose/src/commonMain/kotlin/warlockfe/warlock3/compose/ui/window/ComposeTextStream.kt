@@ -2,7 +2,9 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -24,6 +26,7 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
+import kotlin.coroutines.coroutineContext
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -201,6 +204,7 @@ class ComposeTextStream(
         serialNumber: Long,
     ): StreamTextLine {
         return cachedLine.toStreamLine(
+            streamName = id,
             showTimestamp = showTimestamps,
             serialNumber = serialNumber,
             highlights = highlights.value,
@@ -260,6 +264,7 @@ data class CachedLine(
     val isPrompt: Boolean,
 ) {
     fun toStreamLine(
+        streamName: String,
         showTimestamp: Boolean,
         serialNumber: Long,
         highlights: List<ViewHighlight>,
@@ -270,6 +275,7 @@ data class CachedLine(
         markLinks: Boolean,
     ): StreamTextLine {
         return text.toStreamLine(
+            streamName = streamName,
             showTimestamp = showTimestamp,
             ignoreWhenBlank = ignoreWhenBlank,
             serialNumber = serialNumber,
@@ -288,6 +294,7 @@ data class CachedLine(
 
 @OptIn(ExperimentalTime::class)
 fun StyledString.toStreamLine(
+    streamName: String,
     showTimestamp: Boolean,
     ignoreWhenBlank: Boolean,
     serialNumber: Long,
@@ -311,7 +318,7 @@ fun StyledString.toStreamLine(
         styleMap = presets,
         actionHandler = actionHandler,
     )
-        .alter(alterations)
+        .alter(alterations, streamName)
         ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
     val highlightedResult = textWithComponents?.highlight(highlights)
     val lineStyle = flattenStyles(
@@ -339,19 +346,45 @@ fun StyledString.toStreamLine(
     )
 }
 
-private fun AnnotatedString.alter(alterations: List<CompiledAlteration>): AnnotatedString? {
+private fun AnnotatedString.alter(alterations: List<CompiledAlteration>, streamName: String): AnnotatedString? {
     var result = this
     alterations.forEach { alteration ->
-        val match = alteration.match(result.text)
-        if (match != null) {
-            result = buildAnnotatedString {
-                append(result.take(match.matchResult.range.first))
-                match.text?.let { append(it) }
-                append(result.substring(match.matchResult.range.last + 1))
+        if (alteration.appliesToStream(streamName)) {
+            try {
+                result = result.replaceWithRegex(
+                    pattern = alteration.regex,
+                    replacement = alteration.replacement ?: ""
+                )
+            } catch (_: Exception) {
+                // Ignore it
             }
-            if (result.isEmpty())
-                return null
         }
     }
     return result
+}
+
+fun AnnotatedString.replaceWithRegex(
+    pattern: Regex,
+    replacement: String
+): AnnotatedString {
+    return buildAnnotatedString {
+        var remaining = this@replaceWithRegex
+        while (true) {
+            val match = pattern.find(remaining.text) ?: break
+
+            // Append everything before the match, preserving spans
+            append(remaining.subSequence(0, match.range.first))
+
+            // Use replaceFirst to get the full replaced string, then extract
+            // just the replacement portion using the known before/after lengths
+            val replaced = pattern.replaceFirst(remaining.text, replacement)
+            val afterLen = remaining.text.length - (match.range.last + 1)
+            append(replaced.substring(match.range.first, replaced.length - afterLen))
+
+            // Advance past the match
+            remaining = remaining.subSequence(match.range.last + 1, remaining.length)
+        }
+        // Append the tail after the final match
+        append(remaining)
+    }
 }
