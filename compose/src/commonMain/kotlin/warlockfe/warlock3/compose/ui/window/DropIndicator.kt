@@ -12,18 +12,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun DropIndicator(isVertical: Boolean) {
+fun DropIndicator(isVertical: Boolean, modifier: Modifier = Modifier) {
     val color = MaterialTheme.colorScheme.primary
     if (isVertical) {
         Box(
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .height(2.dp)
                 .background(color)
         )
     } else {
         Box(
-            Modifier
+            modifier
                 .fillMaxHeight()
                 .width(2.dp)
                 .background(color)

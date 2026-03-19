@@ -18,6 +18,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -247,23 +248,26 @@ private fun DockableSection(
                 onDrop = onDrop,
             )
 
-            if (dropIndex == windowUiStates.size && index == windowUiStates.lastIndex && dragDropState.isDragging) {
-                DropIndicator(isVertical)
-            }
         }
     }
 
-    if (isVertical) {
-        Column(modifier = sectionModifier) {
-            windowUiStates.forEachIndexed { index, uiState ->
-                content(index, uiState)
+    Box {
+        if (isVertical) {
+            Column(modifier = sectionModifier) {
+                windowUiStates.forEachIndexed { index, uiState ->
+                    content(index, uiState)
+                }
+            }
+        } else {
+            Row(modifier = sectionModifier) {
+                windowUiStates.forEachIndexed { index, uiState ->
+                    content(index, uiState)
+                }
             }
         }
-    } else {
-        Row(modifier = sectionModifier) {
-            windowUiStates.forEachIndexed { index, uiState ->
-                content(index, uiState)
-            }
+        if (dropIndex == windowUiStates.size && dragDropState.isDragging) {
+            val alignment = if (isVertical) Alignment.BottomCenter else Alignment.CenterEnd
+            DropIndicator(isVertical = isVertical, modifier = Modifier.align(alignment))
         }
     }
 }

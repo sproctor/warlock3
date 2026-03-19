@@ -773,7 +773,8 @@ class GameViewModel(
         windowUiStates.update { states ->
             val mutableStates = states.toMutableList()
             val item = mutableStates.removeAt(fromIndex)
-            mutableStates.add(toIndex, item)
+            val adjustedToIndex = if (toIndex > fromIndex) toIndex - 1 else toIndex
+            mutableStates.add(adjustedToIndex, item)
             mutableStates
         }
         viewModelScope.launch {
