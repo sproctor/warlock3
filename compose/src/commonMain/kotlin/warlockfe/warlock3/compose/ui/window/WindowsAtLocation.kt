@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -111,13 +113,13 @@ private fun EmptyDropZone(
     dragDropState: DragDropState,
 ) {
     val isTarget = dragDropState.dropTarget?.location == location
-    val modifier = if (isVertical) {
-        Modifier.fillMaxHeight()
+    val sizeModifier = if (isVertical) {
+        Modifier.width(32.dp).fillMaxHeight()
     } else {
-        Modifier.fillMaxWidth()
+        Modifier.height(32.dp).fillMaxWidth()
     }
     Box(
-        modifier = modifier
+        modifier = sizeModifier
             .onGloballyPositioned { coordinates ->
                 dragDropState.registerSection(
                     location = location,
