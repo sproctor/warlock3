@@ -122,7 +122,7 @@ fun ResizablePanelHandle(
         MaterialTheme.colorScheme.onSurface
     else
         MaterialTheme.colorScheme.outline
-    val handleShape = if (isDragging) MaterialTheme.shapes.medium else CircleShape
+    val handleShape = /*if (isDragging) MaterialTheme.shapes.medium else*/ CircleShape
     val handleThickness = /*if (isDragging) 4.dp else*/ 3.dp
     val handleSize = if (isDragging) 52.dp else 48.dp
     val boxModifier = if (isHorizontal)
