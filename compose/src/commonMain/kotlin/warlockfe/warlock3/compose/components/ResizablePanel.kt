@@ -1,7 +1,15 @@
 package warlockfe.warlock3.compose.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -12,15 +20,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -86,38 +96,68 @@ fun ResizablePanelHandle(
     isBefore: Boolean,
     state: ResizablePanelState,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isDragging by interactionSource.collectIsDraggedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    val density = LocalDensity.current
     val modifier = Modifier
-        .pointerInput(state) {
-            detectDragGestures { change, _ ->
-                change.consume()
-                val delta = if (isHorizontal) change.position.x.toDp() else change.position.y.toDp()
-                state.dispatchRawMovement(
-                    if (isBefore) -delta else delta
-                )
-            }
-        }
         .pointerHoverIcon(
             icon = getResizeCursor(isHorizontal)
         )
-    val handleColor = MaterialTheme.colorScheme.onBackground
-    if (isHorizontal) {
-        Box(modifier.width(separatorThickness).fillMaxHeight()) {
+        .hoverable(interactionSource = interactionSource)
+        .focusable(interactionSource = interactionSource)
+        .draggable(
+            interactionSource = interactionSource,
+            orientation = if (isHorizontal) Orientation.Horizontal else Orientation.Vertical,
+            state = rememberDraggableState { delta ->
+                val deltaDp = with(density) { delta.toDp() }
+                state.dispatchRawMovement(
+                    if (isBefore) -deltaDp else deltaDp
+                )
+            }
+        )
+    val handleColor = if (isDragging)
+        MaterialTheme.colorScheme.onSurface
+    else
+        MaterialTheme.colorScheme.outline
+    val handleShape = if (isDragging) MaterialTheme.shapes.medium else CircleShape
+    val handleThickness = /*if (isDragging) 4.dp else*/ 3.dp
+    val handleSize = if (isDragging) 52.dp else 48.dp
+    val boxModifier = if (isHorizontal)
+        modifier.width(separatorThickness).fillMaxHeight()
+    else
+        modifier.height(separatorThickness).fillMaxWidth()
+    Box(boxModifier) {
+        val sizeModifier = if (isHorizontal) {
+            Modifier.size(width = handleThickness, height = handleSize).align(Alignment.Center)
+        } else {
+            Modifier.size(height = handleThickness, width = handleSize).align(Alignment.Center)
+        }
+        Spacer(
+            sizeModifier
+                .background(
+                    color = handleColor,
+                    shape = handleShape,
+                )
+        )
+        if (isHovered) {
             Spacer(
-                Modifier
-                    .size(width = handleThickness, height = handleSize)
-                    .background(handleColor)
-                    .align(Alignment.Center)
+                sizeModifier
+                    .background(
+                        color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.08f),
+                        shape = handleShape,
+                    )
             )
         }
-    } else {
-        Box(
-            modifier = modifier.height(separatorThickness).fillMaxWidth(),
-        ) {
+        if (isFocused) {
             Spacer(
-                Modifier
-                    .size(height = handleThickness, width = handleSize)
-                    .background(handleColor)
-                    .align(Alignment.Center)
+                sizeModifier
+                    .background(
+                        color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.1f),
+                        shape = handleShape,
+                    )
             )
         }
     }
@@ -135,6 +175,4 @@ class ResizablePanelState(
     }
 }
 
-private val separatorThickness = 4.dp
-private val handleThickness = 2.dp
-private val handleSize = 24.dp
+private val separatorThickness = 6.dp
