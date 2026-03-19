@@ -82,7 +82,6 @@ fun WindowsAtLocation(
                 selectedWindow = selectedWindow,
                 menuData = menuData,
                 onActionClicked = onActionClicked,
-
                 onHeightChanged = onHeightChanged,
                 onWidthChanged = onWidthChanged,
                 onCloseClicked = onCloseClicked,
@@ -157,7 +156,6 @@ private fun DockableSection(
     selectedWindow: String,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?,
-
     onHeightChanged: (String, Int) -> Unit,
     onWidthChanged: (String, Int) -> Unit,
     onCloseClicked: (String) -> Unit,
@@ -235,7 +233,6 @@ private fun DockableSection(
                 isHorizontal = !isVertical,
                 menuData = menuData,
                 onActionClicked = onActionClicked,
-
                 onHeightChanged = onHeightChanged,
                 onWidthChanged = onWidthChanged,
                 onCloseClicked = onCloseClicked,
@@ -247,7 +244,6 @@ private fun DockableSection(
                 dragDropState = dragDropState,
                 onDrop = onDrop,
             )
-
         }
     }
 
