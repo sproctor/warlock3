@@ -347,6 +347,9 @@ fun StyledString.toStreamLine(
 }
 
 private fun AnnotatedString.alter(alterations: List<CompiledAlteration>, streamName: String): AnnotatedString? {
+    // Ignore blank lines
+    if (alterations.isEmpty() || text.isEmpty())
+        return this
     var result = this
     alterations.forEach { alteration ->
         if (alteration.appliesToStream(streamName)) {
@@ -360,7 +363,8 @@ private fun AnnotatedString.alter(alterations: List<CompiledAlteration>, streamN
             }
         }
     }
-    return result
+    // Skip the line if it was blanked
+    return result.takeIf { it.text.isNotEmpty() }
 }
 
 fun AnnotatedString.replaceWithRegex(
