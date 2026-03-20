@@ -123,8 +123,9 @@ fun ResizablePanelHandle(
     else
         MaterialTheme.colorScheme.outline
     val handleShape = /*if (isDragging) MaterialTheme.shapes.medium else*/ CircleShape
-    val handleThickness = /*if (isDragging) 4.dp else*/ 3.dp
-    val handleSize = if (isDragging) 52.dp else 48.dp
+    val handleThickness = /*if (isDragging) 4.dp else*/ 2.dp
+    val handleSize = if (isDragging) 40.dp else 36.dp
+    val separatorThickness = 4.dp
     val boxModifier = if (isHorizontal)
         modifier.width(separatorThickness).fillMaxHeight()
     else
@@ -174,5 +175,3 @@ class ResizablePanelState(
         currentSize = min(max(minSize, currentSize + delta), maxSize)
     }
 }
-
-private val separatorThickness = 6.dp
