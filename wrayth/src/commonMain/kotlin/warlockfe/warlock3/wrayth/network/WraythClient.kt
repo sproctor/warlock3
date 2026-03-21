@@ -143,11 +143,11 @@ class WraythClient(
     private val _characterId = MutableStateFlow<String?>(null)
     override val characterId: StateFlow<String?> = _characterId.asStateFlow()
 
-    private val _roundTime = MutableStateFlow<Long?>(null)
-    override val roundTime = _roundTime.asStateFlow()
+    private val _roundTimeEnd = MutableStateFlow<Long?>(null)
+    override val roundTimeEnd = _roundTimeEnd.asStateFlow()
 
-    private val _castTime = MutableStateFlow<Long?>(null)
-    override val castTime = _castTime.asStateFlow()
+    private val _castTimeEnd = MutableStateFlow<Long?>(null)
+    override val castTimeEnd = _castTimeEnd.asStateFlow()
 
     private val _gameName = MutableStateFlow<String?>(null)
     override val gameName = _gameName.asStateFlow()
@@ -377,12 +377,12 @@ class WraythClient(
 
                                 is WraythRoundTimeEvent ->
                                     event.time.toLongOrNull()?.let {
-                                        _roundTime.value = it
+                                        _roundTimeEnd.value = it
                                     }
 
                                 is WraythCastTimeEvent ->
                                     event.time.toLongOrNull()?.let {
-                                        _castTime.value = it
+                                        _castTimeEnd.value = it
                                     }
 
                                 is WraythIndicatorEvent -> {

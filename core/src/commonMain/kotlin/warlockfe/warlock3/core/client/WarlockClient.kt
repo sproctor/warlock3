@@ -11,8 +11,8 @@ interface WarlockClient {
 
     val eventFlow: SharedFlow<ClientEvent>
 
-    val roundTime: StateFlow<Long?>
-    val castTime: StateFlow<Long?>
+    val roundTimeEnd: StateFlow<Long?>
+    val castTimeEnd: StateFlow<Long?>
     val gameName: StateFlow<String?>
     val characterName: StateFlow<String?>
     val leftHand: StateFlow<String?>

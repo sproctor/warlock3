@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
@@ -54,14 +56,17 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 @Composable
 fun WarlockEntry(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
 ) {
-    val roundTime by viewModel.roundTime.collectAsState()
-    val castTime by viewModel.castTime.collectAsState()
+    val roundTime = countdownSeconds(viewModel.roundTimeEnd.collectAsState().value)
+    val castTime = countdownSeconds(viewModel.castTimeEnd.collectAsState().value)
     val presets by viewModel.presets.collectAsState(emptyMap())
     val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
     val style = presets["entry"] ?: StyleDefinition()
@@ -207,6 +212,23 @@ fun BoxScope.RoundTimeBar(
             )
         }
     }
+}
+
+@Composable
+private fun countdownSeconds(endTime: Instant?): Int {
+    var seconds by remember { mutableIntStateOf(0) }
+    LaunchedEffect(endTime) {
+        while (endTime != null) {
+            val now = Clock.System.now()
+            val remaining = endTime - now
+            val remainingMs = remaining.inWholeMilliseconds
+            seconds = ((remainingMs + 999) / 1000).toInt()
+            if (remaining < Duration.ZERO) break
+            val msUntilNextTick = remainingMs % 1000
+            delay(if (msUntilNextTick == 0L) 1000L else msUntilNextTick)
+        }
+    }
+    return seconds
 }
 
 @Preview(widthDp = 800, backgroundColor = 0xFF444444)

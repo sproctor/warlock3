@@ -25,7 +25,6 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -84,7 +83,8 @@ import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
-import kotlin.math.max
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 const val clientCommandPrefix = '/'
 
@@ -257,26 +257,17 @@ class GameViewModel(
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
-    private val currentTime: Flow<Long> = flow {
-        while (true) {
-            val time = client.time
-            emit(time / 1000L)
-            val nextSecond = 1000L - (time % 1000)
-            delay(max(10L, nextSecond))
-        }
+    val roundTimeEnd = client.roundTimeEnd.map { roundTime ->
+        val now = Clock.System.now()
+        roundTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
     }
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
-    val roundTime = combine(currentTime, client.roundTime) { currentTime, roundTime ->
-        val roundEnd = roundTime ?: 0
-        max(0, roundEnd - currentTime).toInt()
+    val castTimeEnd = client.castTimeEnd.map { castTime ->
+        val now = Clock.System.now()
+        castTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
     }
-        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
-
-    val castTime = combine(currentTime, client.castTime) { currentTime, castTime ->
-        val roundEnd = castTime ?: 0
-        max(0, roundEnd - currentTime).toInt()
-    }
-        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = 0)
+        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
     private var historyPosition = 0
     private val sendHistory = mutableListOf("")

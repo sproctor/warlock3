@@ -65,8 +65,8 @@ class WslContext(
         "spell" to WslVariable { client.spellHand.value },
         "indicators" to WslVariable { client.indicators.value },
         "character" to WslVariable { client.characterName.value },
-        "roundtime" to WslVariable { client.roundTime.value },
-        "casttime" to WslVariable { client.castTime.value },
+        "roundtime" to WslVariable { client.roundTimeEnd.value },
+        "casttime" to WslVariable { client.castTimeEnd.value },
         "variables" to WslVariables(this),
     )
 
@@ -334,7 +334,7 @@ class WslContext(
     suspend fun waitForRoundTime() {
         log(ScriptLoggingLevel.DEBUG, "waiting for round time")
         while (true) {
-            val roundEnd = client.roundTime.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
+            val roundEnd = client.roundTimeEnd.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
             val currentTime = client.time
             if (roundEnd <= currentTime) {
                 break
