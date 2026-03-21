@@ -108,7 +108,7 @@ class JavascriptClient(
         while (true) {
             instance.checkStatus()
             val roundEnd = client.roundTimeEnd.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
-            val currentTime = client.time
+            val currentTime = client.getCurrentTime()
             if (roundEnd <= currentTime) {
                 break
             }

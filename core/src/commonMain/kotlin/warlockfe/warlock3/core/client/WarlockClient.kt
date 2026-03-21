@@ -26,7 +26,7 @@ interface WarlockClient {
     val characterId: StateFlow<String?>
     val windowInfo: StateFlow<List<WindowInfo>>
 
-    val time: Instant
+    fun getCurrentTime(): Instant
 
     val disconnected: StateFlow<Boolean>
 

@@ -65,8 +65,14 @@ fun WarlockEntry(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
 ) {
-    val roundTime = countdownSeconds(viewModel.roundTimeEnd.collectAsState().value)
-    val castTime = countdownSeconds(viewModel.castTimeEnd.collectAsState().value)
+    val roundTime = countdownSeconds(
+        endTime = viewModel.roundTimeEnd.collectAsState().value,
+        getCurrentTime = viewModel::getCurrentTime
+    )
+    val castTime = countdownSeconds(
+        endTime = viewModel.castTimeEnd.collectAsState().value,
+        getCurrentTime = viewModel::getCurrentTime
+    )
     val presets by viewModel.presets.collectAsState(emptyMap())
     val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
     val style = presets["entry"] ?: StyleDefinition()
@@ -112,7 +118,8 @@ fun WarlockEntryContent(
                 val fontSize = (usableStyle.fontSize ?: 16f).sp
                 defaultTextStyle.copy(
                     fontSize = fontSize,
-                    fontFamily = usableStyle.fontFamily?.let { createFontFamily(it) } ?: defaultTextStyle.fontFamily,
+                    fontFamily = usableStyle.fontFamily?.let { createFontFamily(it) }
+                        ?: defaultTextStyle.fontFamily,
                     lineHeight = fontSize,
                     color = usableStyle.textColor.toColor()
                 )
@@ -183,7 +190,10 @@ fun BoxScope.RoundTimeBar(
         for (i in 0 until min(100, roundTime)) {
             drawRect(
                 color = rtColor,
-                topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = size.height - segmentSize.height),
+                topLeft = Offset(
+                    x = i * (segmentSize.width + segmentSpacing),
+                    y = size.height - segmentSize.height
+                ),
                 size = segmentSize,
             )
         }
@@ -215,11 +225,14 @@ fun BoxScope.RoundTimeBar(
 }
 
 @Composable
-private fun countdownSeconds(endTime: Instant?): Int {
+private fun countdownSeconds(
+    endTime: Instant?,
+    getCurrentTime: () -> Instant,
+): Int {
     var seconds by remember { mutableIntStateOf(0) }
     LaunchedEffect(endTime) {
         while (endTime != null) {
-            val now = Clock.System.now()
+            val now = getCurrentTime()
             val remaining = endTime - now
             val remainingMs = remaining.inWholeMilliseconds
             seconds = ((remainingMs + 999) / 1000).toInt()

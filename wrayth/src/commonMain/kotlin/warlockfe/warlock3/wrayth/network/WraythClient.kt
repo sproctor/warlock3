@@ -218,8 +218,7 @@ class WraythClient(
     override val disconnected = _disconnected.asStateFlow()
 
     private var delta: Duration = 0.seconds
-    override val time: Instant
-        get() = Clock.System.now() + delta
+    override fun getCurrentTime() = Clock.System.now() + delta
 
     init {
         scope.launch {
@@ -365,7 +364,7 @@ class WraythClient(
 
                                 is WraythTimeEvent -> {
                                     val newTime = Instant.fromEpochSeconds(event.time)
-                                    val currentTime = time
+                                    val currentTime = getCurrentTime()
                                     if (newTime > currentTime + 1.seconds) {
                                         // We're more than 1s slow
                                         delta = newTime - currentTime - 1.seconds

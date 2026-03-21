@@ -27,10 +27,10 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
-import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -335,7 +335,7 @@ class WslContext(
         log(ScriptLoggingLevel.DEBUG, "waiting for round time")
         while (true) {
             val roundEnd = client.roundTimeEnd.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
-            val currentTime = client.time
+            val currentTime = client.getCurrentTime()
             if (roundEnd <= currentTime) {
                 break
             }

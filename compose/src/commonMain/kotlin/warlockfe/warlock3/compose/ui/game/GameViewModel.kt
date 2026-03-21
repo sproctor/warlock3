@@ -258,13 +258,13 @@ class GameViewModel(
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
     val roundTimeEnd = client.roundTimeEnd.map { roundTime ->
-        val now = Clock.System.now()
+        val now = getCurrentTime()
         roundTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
     val castTimeEnd = client.castTimeEnd.map { castTime ->
-        val now = Clock.System.now()
+        val now = getCurrentTime()
         castTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
     }
         .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
@@ -870,6 +870,8 @@ class GameViewModel(
         }
         client.close()
     }
+
+    fun getCurrentTime(): Instant = client.getCurrentTime()
 
     /*
      * returns true when the command triggers type ahead
