@@ -108,6 +108,9 @@ import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 import warlockfe.warlock3.wrayth.util.resolve
 import kotlin.math.max
 import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 private val baseUri = Uri.parse("https://www.play.net/")
 
@@ -214,9 +217,9 @@ class WraythClient(
     private val _disconnected = MutableStateFlow(false)
     override val disconnected = _disconnected.asStateFlow()
 
-    private var delta = 0L
-    override val time: Long
-        get() = Clock.System.now().toEpochMilliseconds() + delta
+    private var delta: Duration = 0.seconds
+    override val time: Instant
+        get() = Clock.System.now() + delta
 
     init {
         scope.launch {
@@ -361,14 +364,14 @@ class WraythClient(
                                 }
 
                                 is WraythTimeEvent -> {
-                                    val newTime = event.time * 1000L
+                                    val newTime = Instant.fromEpochSeconds(event.time)
                                     val currentTime = time
-                                    if (newTime > currentTime + 1000L) {
+                                    if (newTime > currentTime + 1.seconds) {
                                         // We're more than 1s slow
-                                        delta = newTime - Clock.System.now().toEpochMilliseconds() - 1000L
-                                    } else if (newTime < currentTime - 1000L) {
+                                        delta = newTime - currentTime - 1.seconds
+                                    } else if (newTime < currentTime - 1.seconds) {
                                         // We're more than 1s fast
-                                        delta = newTime - Clock.System.now().toEpochMilliseconds() + 1000L
+                                        delta = newTime - currentTime + 1.seconds
                                     }
                                 }
 

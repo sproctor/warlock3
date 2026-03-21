@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
+import kotlin.time.Instant
 
 interface WarlockClient {
 
@@ -25,7 +26,7 @@ interface WarlockClient {
     val characterId: StateFlow<String?>
     val windowInfo: StateFlow<List<WindowInfo>>
 
-    val time: Long
+    val time: Instant
 
     val disconnected: StateFlow<Boolean>
 

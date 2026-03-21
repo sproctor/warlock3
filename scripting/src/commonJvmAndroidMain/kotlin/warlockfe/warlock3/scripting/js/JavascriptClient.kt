@@ -12,6 +12,8 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class JavascriptClient(
     val client: WarlockClient,
@@ -105,9 +107,9 @@ class JavascriptClient(
         log(5, "waiting for round time")
         while (true) {
             instance.checkStatus()
-            val roundEnd = client.roundTime.value?.let { it * 1000L } ?: return
+            val roundEnd = client.roundTime.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
             val currentTime = client.time
-            if (roundEnd < currentTime) {
+            if (roundEnd <= currentTime) {
                 break
             }
             val duration = roundEnd - currentTime

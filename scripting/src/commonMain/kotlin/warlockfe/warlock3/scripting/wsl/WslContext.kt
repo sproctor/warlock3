@@ -37,6 +37,8 @@ import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.concurrent.atomics.update
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 // TODO: generate constructor with a factory
@@ -332,7 +334,7 @@ class WslContext(
     suspend fun waitForRoundTime() {
         log(ScriptLoggingLevel.DEBUG, "waiting for round time")
         while (true) {
-            val roundEnd = client.roundTime.value?.let { it * 1000L } ?: 0
+            val roundEnd = client.roundTime.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
             val currentTime = client.time
             if (roundEnd <= currentTime) {
                 break
