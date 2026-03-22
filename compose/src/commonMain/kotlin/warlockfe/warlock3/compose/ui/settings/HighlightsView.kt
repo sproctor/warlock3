@@ -106,6 +106,29 @@ fun HighlightsView(
                     headlineContent = {
                         Text(text = highlight.pattern)
                     },
+                    leadingContent = {
+                        val style = highlight.styles[0]
+                        val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
+                        Box(
+                            modifier = Modifier
+                            .size(40.dp)
+                                .background(
+                                    color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
+                                    shape = MaterialTheme.shapes.small,
+                                    )
+                                .border(1.dp, contentColor, MaterialTheme.shapes.small),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (contentColor.isSpecified) {
+                                Icon(
+                                    painterResource(Res.drawable.palette),
+                                    contentDescription = "Highlight color",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = contentColor,
+                                )
+                            }
+                        }
+                    },
                     trailingContent = {
                         Row {
                             IconButton(
