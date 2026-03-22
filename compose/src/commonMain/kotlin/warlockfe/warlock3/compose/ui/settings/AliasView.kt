@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
@@ -65,7 +66,7 @@ fun AliasView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Aliases", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        Column(Modifier.fillMaxWidth().weight(1f)) {
+        ScrollableColumn(Modifier.fillMaxWidth().weight(1f)) {
             aliases.forEach { alias ->
                 ListItem(
                     headlineContent = {
