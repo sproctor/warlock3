@@ -83,7 +83,6 @@ import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 const val clientCommandPrefix = '/'
@@ -771,7 +770,8 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.d { "Moving window at $location from $fromIndex to $toIndex" }
-                val range = if (fromIndex < toIndex) fromIndex..toIndex else toIndex..fromIndex
+                val clampedToIndex = toIndex.coerceAtMost(windowUiStates.value.size - 1)
+                val range = if (fromIndex < clampedToIndex) fromIndex..clampedToIndex else clampedToIndex..fromIndex
                 for (index in range) {
                     val name = windowUiStates.value[index].name
                     logger.d { "Setting window $name position to $index" }
