@@ -23,9 +23,10 @@ command
 
 commandContent
     : TEXT
-    | PERCENT VARIABLE_NAME
+    | PERCENT VARIABLE_NAME indexingSuffix*
     | PERCENT_LCURL expression RCURL
     | DOUBLE_PERCENT
+    | LSQUARE
     ;
 
 expression
@@ -91,9 +92,10 @@ stringLiteral
 
 stringContent
     : StringText
-    | PERCENT VARIABLE_NAME
+    | PERCENT VARIABLE_NAME indexingSuffix*
     | StringEscapedChar
     | DOUBLE_PERCENT
+    | LSQUARE
     ;
 
 equalityOperator

@@ -74,7 +74,12 @@ class WslScript(
 
     private fun parseCommandContent(commandContent: WslParser.CommandContentContext): WslCommandContent {
         commandContent.TEXT()?.let { return WslCommandContent.Text(it.text) }
-        commandContent.VARIABLE_NAME()?.let { return WslCommandContent.Variable(it.text) }
+        commandContent.VARIABLE_NAME()?.let { variableName ->
+            return WslCommandContent.Variable(
+                name = variableName.text,
+                indexingSuffixes = commandContent.indexingSuffix().map { parseIndexingSuffix(it) },
+            )
+        }
         commandContent.expression()?.let { return WslCommandContent.Expression(parseExpression(it)) }
         commandContent.DOUBLE_PERCENT()?.let { return WslCommandContent.Text("%") }
         throw WslParseException("Unhandled command content alternative")
@@ -278,7 +283,7 @@ sealed class WslStatement {
     data class WslCommand(val contents: List<WslCommandContent>) : WslStatement() {
         override suspend fun execute(context: WslContext) {
             val commandLine = contents.map { it.getValue(context) }.reduceOrNull { acc, n -> acc + n }
-            if (commandLine == null || commandLine.isBlank()) {
+            if (commandLine.isNullOrBlank()) {
                 return
             }
             context.executeCommand(commandLine)
@@ -295,9 +300,14 @@ sealed class WslCommandContent {
         }
     }
 
-    data class Variable(val name: String) : WslCommandContent() {
+    data class Variable(val name: String, val indexingSuffixes: List<WslExpression>) : WslCommandContent() {
         override fun getValue(context: WslContext): String {
-            return context.lookupVariable(name)?.toString() ?: ""
+            var acc = context.lookupVariable(name)
+            indexingSuffixes.forEach { expression ->
+                val key = expression.getValue(context).toString()
+                acc = acc?.getProperty(key)
+            }
+            return acc?.toString() ?: ""
         }
     }
 
