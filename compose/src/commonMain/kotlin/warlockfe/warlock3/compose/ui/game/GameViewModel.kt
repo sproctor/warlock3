@@ -540,7 +540,7 @@ class GameViewModel(
     }
 
     fun handleKeyPress(event: KeyEvent): Boolean {
-        if (event.type != KeyEventType.KeyDown) {
+        if (event.type != KeyEventType.KeyDown || event.key == Key.Unknown) {
             return false
         }
 
