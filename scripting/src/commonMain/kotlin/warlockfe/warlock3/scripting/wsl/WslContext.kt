@@ -320,7 +320,7 @@ class WslContext(
             .first { event ->
                 if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
                     matches.firstOrNull { match ->
-                        match.match(event.text)?.let { text ->
+                        match.match(event.text, currentFrame)?.let { text ->
                             log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
                             goto(match.label)
                             return@first true
