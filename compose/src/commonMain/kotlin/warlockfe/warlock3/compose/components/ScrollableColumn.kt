@@ -41,7 +41,6 @@ import io.github.oikvpqya.compose.fastscroller.ScrollbarStyle
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import io.github.oikvpqya.compose.fastscroller.TrackStyle
 import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
-import io.github.oikvpqya.compose.fastscroller.material3.defaultMaterialScrollbarStyle
 import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
 
 @Composable
@@ -52,7 +51,7 @@ fun ScrollableColumn(
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    scrollbarStyle: ScrollbarStyle = defaultMaterialScrollbarStyle(),
+    scrollbarStyle: ScrollbarStyle = defaultScrollbarStyle(),
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(modifier) {
@@ -75,7 +74,7 @@ fun BoxScope.ScrollableColumn(
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    scrollbarStyle: ScrollbarStyle = defaultMaterialScrollbarStyle(),
+    scrollbarStyle: ScrollbarStyle = defaultScrollbarStyle(),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -116,7 +115,7 @@ fun ScrollableLazyColumn(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
     userScrollEnabled: Boolean = true,
-    scrollbarStyle: ScrollbarStyle = defaultMaterialScrollbarStyle(),
+    scrollbarStyle: ScrollbarStyle = defaultScrollbarStyle(),
     content: LazyListScope.() -> Unit
 ) {
     Box(modifier) {
@@ -166,5 +165,24 @@ fun defaultScrollbarStyle(
         hoverDurationMillis = hoverDurationMillis,
         thumbStyle = thumbStyle,
         trackStyle = trackStyle,
+    )
+}
+
+@Composable
+private fun defaultMaterialScrollbarStyle(): ScrollbarStyle {
+    return ScrollbarStyle(
+        minimalHeight = 52.dp,
+        thickness = 8.dp,
+        hoverDurationMillis = 300,
+        thumbStyle = ThumbStyle(
+            shape = RoundedCornerShape(4.dp),
+            unhoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
+            hoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
+        ),
+        trackStyle = TrackStyle(
+            shape = RoundedCornerShape(4.dp),
+            unhoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
+            hoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
+        ),
     )
 }
