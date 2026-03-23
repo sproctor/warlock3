@@ -364,13 +364,14 @@ class WraythClient(
 
                                 is WraythTimeEvent -> {
                                     val newTime = Instant.fromEpochSeconds(event.time)
-                                    val currentTime = getCurrentTime()
-                                    if (newTime > currentTime + 1.seconds) {
-                                        // We're more than 1s slow
-                                        delta = newTime - currentTime - 1.seconds
-                                    } else if (newTime < currentTime - 1.seconds) {
-                                        // We're more than 1s fast
-                                        delta = newTime - currentTime + 1.seconds
+                                    val now = Clock.System.now()
+                                    val adjustedTime = now + delta
+                                    if (event.time > adjustedTime.epochSeconds) {
+                                        // We're in the previous second
+                                        delta = newTime - now
+                                    } else if (event.time < adjustedTime.epochSeconds) {
+                                        // We're in the next second
+                                        delta = newTime + 1.seconds - now
                                     }
                                 }
 
