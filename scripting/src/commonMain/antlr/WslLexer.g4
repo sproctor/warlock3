@@ -71,8 +71,8 @@ GTE: '>=';
 NOT: 'not' | '!';
 LPAREN: '(';
 RPAREN: ')';
-LSQUARE: '[' -> pushMode(EXPRESSION);
-RSQUARE: ']' -> popMode;
+LSQUARE: '[';
+RSQUARE: ']';
 EXISTS: 'exists';
 CONTAINS: 'contains';
 CONTAINSRE: 'containsre';
@@ -91,8 +91,7 @@ mode COMMAND;
 
 COMMAND_PERCENT_LCURL: '%{' -> type(PERCENT_LCURL), pushMode(EXPRESSION);
 COMMAND_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
-COMMAND_LSQUARE: '[' -> type(LSQUARE), pushMode(EXPRESSION);
-COMMAND_TEXT: (~('\\' | '%' | '[' | '\n' | '\r')+ | '\\' | '%') -> type(TEXT);
+COMMAND_TEXT: (~('\\' | '%' | '\n' | '\r')+ | '\\' | '%') -> type(TEXT);
 DOUBLE_PERCENT: '%%';
 COMMAND_NL: ('\n' | '\r' '\n'?) -> type(NL), popMode;
 
@@ -102,8 +101,7 @@ QUOTE_CLOSE: '"' -> popMode;
 STRING_PERCENT_LCURL: '%{' -> type(PERCENT_LCURL), pushMode(EXPRESSION);
 STRING_PERCENT: '%' -> type(PERCENT), pushMode(VARIABLE);
 STRING_DOUBLE_PERCENT: '%%' -> type(DOUBLE_PERCENT);
-STRING_LSQUARE: '[' -> type(LSQUARE), pushMode(EXPRESSION);
-StringText: ~('\\' | '"' | '%' | '[')+ | '%';
+StringText: ~('\\' | '"' | '%')+ | '%';
 StringEscapedChar: EscapedIdentifier;
 
 mode VARIABLE;
