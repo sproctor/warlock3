@@ -2,12 +2,6 @@ package warlockfe.warlock3.wrayth.network
 
 import co.touchlab.kermit.Logger
 import io.ktor.network.selector.SelectorManager
-import io.ktor.network.sockets.Socket
-import io.ktor.network.sockets.aSocket
-import io.ktor.network.sockets.isClosed
-import io.ktor.network.sockets.openReadChannel
-import io.ktor.network.sockets.openWriteChannel
-import io.ktor.network.tls.tls
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.ClosedWriteChannelException
@@ -36,7 +30,8 @@ import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.encodeWindows1252
-import warlockfe.warlock3.wrayth.util.configureTLS
+import warlockfe.warlock3.wrayth.util.openPlainSocket
+import warlockfe.warlock3.wrayth.util.openTLSSocket
 import kotlin.math.min
 
 private const val passwordHashLength = 32
@@ -47,7 +42,7 @@ class SgeClientImpl(
 
     private val logger = Logger.withTag("SgeClient")
     val selectorManager: SelectorManager = SelectorManager()
-    private var socket: Socket? = null
+    private var closeConnection: (() -> Unit)? = null
     private lateinit var receiveChannel: ByteReadChannel
     private lateinit var sendChannel: ByteWriteChannel
     private val _eventFlow = MutableSharedFlow<SgeEvent>()
@@ -74,19 +69,28 @@ class SgeClientImpl(
         return withContext(ioDispatcher) {
             try {
                 logger.d { "connecting..." }
-                val socket: Socket = if (secure) {
-                    aSocket(selectorManager)
-                        .tcp()
-                        .connect(settings.host, settings.port)
-                        .tls(coroutineContext = scope.coroutineContext) {
-                            configureTLS(settings.certificate)
-                        }
+                if (secure) {
+                    val conn = openTLSSocket(
+                        selectorManager = selectorManager,
+                        host = settings.host,
+                        port = settings.port,
+                        certificate = settings.certificate,
+                        coroutineContext = scope.coroutineContext,
+                    )
+                    receiveChannel = conn.readChannel
+                    sendChannel = conn.writeChannel
+                    closeConnection = conn.close
                 } else {
-                    aSocket(selectorManager).tcp().connect(settings.host, settings.port)
+                    val conn = openPlainSocket(
+                        selectorManager = selectorManager,
+                        host = settings.host,
+                        port = settings.port,
+                        coroutineContext = scope.coroutineContext,
+                    )
+                    receiveChannel = conn.readChannel
+                    sendChannel = conn.writeChannel
+                    closeConnection = conn.close
                 }
-                this@SgeClientImpl.socket = socket
-                receiveChannel = socket.openReadChannel()
-                sendChannel = socket.openWriteChannel(autoFlush = true)
 
                 // request password hash
                 send("K\n")
@@ -100,22 +104,20 @@ class SgeClientImpl(
 
                 scope.launch {
                     try {
-                        while (!socket.isClosed) {
+                        while (true) {
                             val line = readline()
                             if (line != null) {
                                 handleData(line)
                             } else {
-                                // connection closed by server
-                                socket.close()
+                                break
                             }
                         }
                     } catch (e: IOException) {
-                        // not sure why, but let's retry!
-                        logger.d { "SGE  exception: ${e.message}" }
+                        logger.d { "SGE exception: ${e.message}" }
                         _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
                     } finally {
-                        logger.d { "Closing socket" }
-                        socket.close()
+                        logger.d { "Closing connection" }
+                        closeConnection?.invoke()
                     }
                 }
                 true
@@ -149,7 +151,8 @@ class SgeClientImpl(
             )
 
             is SgeResponse.SgeReadyToPlayResponse -> {
-                socket?.close()
+                closeConnection?.invoke()
+                closeConnection = null
                 val properties = response.properties
                 val credentials = SimuGameCredentials(
                     host = properties["GAMEHOST"]!!,
@@ -284,7 +287,8 @@ class SgeClientImpl(
     }
 
     override fun close() {
-        socket?.close()
+        closeConnection?.invoke()
+        closeConnection = null
         scope.cancel()
     }
 

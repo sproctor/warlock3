@@ -54,7 +54,7 @@ kotlin {
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.constraintlayout)
             implementation(libs.compose.ui.tooling.preview)
-            implementation(libs.fastscroller.m3)
+            implementation(libs.fastscroller.core)
 
             // Third party UI
             implementation(libs.colorpicker)
