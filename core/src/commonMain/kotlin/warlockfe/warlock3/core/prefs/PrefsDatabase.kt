@@ -1,9 +1,11 @@
 package warlockfe.warlock3.core.prefs
 
 import androidx.room.AutoMigration
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.DeleteColumn
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import warlockfe.warlock3.core.prefs.adapters.DatabaseConverters
@@ -72,6 +74,7 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
     ]
 )
 @TypeConverters(DatabaseConverters::class)
+@ConstructedBy(PrefsDatabaseConstructor::class)
 abstract class PrefsDatabase : RoomDatabase() {
     @DeleteColumn(tableName = "character", columnName = "accountId")
     class AutoMigration12 : AutoMigrationSpec
@@ -91,4 +94,10 @@ abstract class PrefsDatabase : RoomDatabase() {
     abstract fun scriptDirDao(): ScriptDirDao
     abstract fun variableDao(): VariableDao
     abstract fun windowSettingsDao(): WindowSettingsDao
+}
+
+// The Room compiler will generate the actual implementation
+@Suppress("KotlinNoActualForExpect")
+expect object PrefsDatabaseConstructor : RoomDatabaseConstructor<PrefsDatabase> {
+    override fun initialize(): PrefsDatabase
 }

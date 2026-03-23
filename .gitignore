@@ -3,6 +3,9 @@ build
 out
 gen
 
+# Xcode user data
+*.xcuserdata
+
 hs_err_pid*.log
 *.hprof
 

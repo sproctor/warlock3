@@ -25,7 +25,7 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "core"
+            baseName = "Compose"
             isStatic = true
         }
     }
@@ -81,6 +81,9 @@ kotlin {
                 // For previews
                 implementation(libs.compose.ui.tooling)
             }
+        }
+        iosMain.dependencies {
+            implementation(project(":scripting"))
         }
     }
 
