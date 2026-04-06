@@ -2,7 +2,6 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.ui.text.AnnotatedString
 import warlockfe.warlock3.core.text.StyleDefinition
-import kotlin.time.ExperimentalTime
 
 sealed interface StreamLine {
     val serialNumber: Long
