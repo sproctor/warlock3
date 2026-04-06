@@ -184,6 +184,29 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
+            val showImages by clientSettingRepository.observeShowImages()
+                .collectAsState(initial = true)
+            Row(
+                modifier = Modifier.toggleable(
+                    value = showImages,
+                    onValueChange = {
+                        scope.launch {
+                            clientSettingRepository.putShowImages(it)
+                        }
+                    },
+                    role = Role.Switch,
+                )
+            ) {
+                Switch(
+                    checked = showImages,
+                    onCheckedChange = null
+                )
+                Spacer(Modifier.width(16.dp))
+                Text("Show images in stream")
+            }
+
+            Spacer(Modifier.height(16.dp))
+
             if (currentCharacterId != "global") {
                 val maxTypeAheadState = rememberTextFieldState(defaultMaxTypeAhead.toString())
                 var maxTypeAheadError by remember { mutableStateOf<String?>(null) }

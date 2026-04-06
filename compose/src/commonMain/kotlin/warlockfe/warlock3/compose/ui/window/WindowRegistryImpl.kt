@@ -67,6 +67,19 @@ class WindowRegistryImpl(
             initialValue = true,
         )
 
+    private val showImages = settingRepository
+        .observeShowImages()
+        .onEach {
+            streams.values.forEach { stream ->
+                stream.setShowImages(it)
+            }
+        }
+        .stateIn(
+            scope = externalScope,
+            started = SharingStarted.Eagerly,
+            initialValue = true,
+        )
+
     private val characterId = MutableStateFlow<String>("global")
 
     private val highlights: StateFlow<List<ViewHighlight>> = characterId.flatMapLatest { characterId ->
@@ -156,6 +169,7 @@ class WindowRegistryImpl(
                 ioDispatcher = ioDispatcher,
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
+                showImages = showImages.value,
                 showTimestamps = false,
             )
                 .also { streams = streams.put(name, it) }

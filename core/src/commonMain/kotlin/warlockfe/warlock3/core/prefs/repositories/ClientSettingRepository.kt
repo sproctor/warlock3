@@ -67,6 +67,10 @@ class ClientSettingRepository(
         return observe(MARK_LINKS_KEY).map { it?.toBooleanStrictOrNull() ?: true }
     }
 
+    fun observeShowImages(): Flow<Boolean> {
+        return observe(SHOW_IMAGES_KEY).map { it?.toBooleanStrictOrNull() ?: true }
+    }
+
     private suspend fun get(key: String): String? {
         return clientSettingDao.getByKey(key)
     }
@@ -135,6 +139,10 @@ class ClientSettingRepository(
         putBoolean("markLinks", value)
     }
 
+    suspend fun putShowImages(value: Boolean) {
+        putBoolean(SHOW_IMAGES_KEY, value)
+    }
+
     private suspend fun putInt(key: String, value: Int) {
         put(key, value.toString())
     }
@@ -163,5 +171,6 @@ class ClientSettingRepository(
         const val DEFAULT_MAX_SCROLL_LINES = 2_000
         const val SCROLLBACK_KEY = "scrollback"
         const val MARK_LINKS_KEY = "markLinks"
+        const val SHOW_IMAGES_KEY = "showImages"
     }
 }

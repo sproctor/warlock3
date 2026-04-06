@@ -33,6 +33,7 @@ class ComposeTextStream(
     override val id: String,
     private var maxLines: Int,
     private var markLinks: Boolean,
+    private var showImages: Boolean,
     private var showTimestamps: Boolean,
     private val highlights: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
@@ -162,6 +163,7 @@ class ComposeTextStream(
     }
 
     override suspend fun appendResource(url: String) {
+        if (!showImages) return
         mutex.withLock {
             cacheLines.add(null)
             finishedLines.add(
@@ -241,6 +243,10 @@ class ComposeTextStream(
 
     fun setMarkLinks(markLinks: Boolean) {
         this.markLinks = markLinks
+    }
+
+    fun setShowImages(showImages: Boolean) {
+        this.showImages = showImages
     }
 
     private fun linesUpdated() {
