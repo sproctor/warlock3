@@ -1,12 +1,16 @@
 package warlockfe.warlock3.compose.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -27,7 +31,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -39,6 +45,8 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
+import warlockfe.warlock3.compose.generated.resources.palette
+import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
@@ -81,6 +89,28 @@ fun NamesView(
                 ListItem(
                     headlineContent = {
                         Text(text = name.text)
+                    },
+                    leadingContent = {
+                        val contentColor = name.textColor.toColor()
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    color = name.backgroundColor.toColor(),
+                                    shape = MaterialTheme.shapes.small,
+                                )
+                                .border(1.dp, contentColor, MaterialTheme.shapes.small),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (contentColor.isSpecified) {
+                                Icon(
+                                    painterResource(Res.drawable.palette),
+                                    contentDescription = "Highlight color",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = contentColor,
+                                )
+                            }
+                        }
                     },
                     trailingContent = {
                         Row {
