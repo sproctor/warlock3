@@ -18,6 +18,7 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
                         highlight.styles[index]?.let { style ->
                             if (style.entireLine) {
                                 entireLineStyles.add(style)
+                                addStyle(style.toSpanStyle(), 0, length)
                             } else {
                                 addStyle(style.toSpanStyle(), group.range_.first, group.range_.last + 1)
                             }
