@@ -35,3 +35,5 @@ expect fun AnnotatedString.Builder.markLinks(
     highlightedResult: AnnotatedStringHighlightResult,
     presets: Map<String, StyleDefinition>
 )
+
+expect val MatchGroup.range: IntRange

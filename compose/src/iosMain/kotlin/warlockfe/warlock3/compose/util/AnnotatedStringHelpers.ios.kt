@@ -9,3 +9,6 @@ actual fun AnnotatedString.Builder.markLinks(
 ) {
     // TODO: implement on iOS
 }
+
+actual val MatchGroup.range: IntRange
+    get() = this.range
