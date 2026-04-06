@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -331,6 +332,9 @@ fun StyledString.toStreamLine(
                     styleMap = presets,
                 )
     )
+    if (highlightedResult?.entireLineStyles?.isNotEmpty() == true) {
+        Logger.d { "line styles: ${highlightedResult.entireLineStyles} flattened to $lineStyle" }
+    }
     return StreamTextLine(
         text = highlightedResult?.let {
             buildAnnotatedString {
