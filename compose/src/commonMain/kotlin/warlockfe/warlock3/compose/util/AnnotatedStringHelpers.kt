@@ -12,9 +12,10 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
                 for ((index, group) in result.groups.withIndex()) {
                     if (group != null) {
                         highlight.styles[index]?.let { style ->
-                            addStyle(style.toSpanStyle(), group.range.first, group.range.last + 1)
                             if (style.entireLine) {
                                 entireLineStyles.add(style)
+                            } else {
+                                addStyle(style.toSpanStyle(), group.range.first, group.range.last + 1)
                             }
                         }
                     }
