@@ -36,5 +36,5 @@ actual fun AnnotatedString.Builder.markLinks(
 
 private val linkExtractor = LinkExtractor.builder().linkTypes(setOf(LinkType.URL, LinkType.WWW)).build()
 
-actual val MatchGroup.range: IntRange
+actual val MatchGroup.range_: IntRange
     get() = this.range

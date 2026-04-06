@@ -15,7 +15,7 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
                             if (style.entireLine) {
                                 entireLineStyles.add(style)
                             } else {
-                                addStyle(style.toSpanStyle(), group.range.first, group.range.last + 1)
+                                addStyle(style.toSpanStyle(), group.range_.first, group.range_.last + 1)
                             }
                         }
                     }
@@ -37,4 +37,4 @@ expect fun AnnotatedString.Builder.markLinks(
     presets: Map<String, StyleDefinition>
 )
 
-expect val MatchGroup.range: IntRange
+expect val MatchGroup.range_: IntRange
