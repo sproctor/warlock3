@@ -13,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalClipboard
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -23,7 +22,6 @@ import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.sge.SgeSettings
 
@@ -40,13 +38,11 @@ fun DecoratedWindowScope.WarlockApp(
     var showSettings by remember { mutableStateOf(false) }
     var exportMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val safeClipboard = rememberSafeClipboard()
     CompositionLocalProvider(
         LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
             hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
             unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
         ),
-        LocalClipboard provides safeClipboard,
     ) {
         var showAboutDialog by remember { mutableStateOf(false) }
         var sideBarVisible by remember { mutableStateOf(false) }

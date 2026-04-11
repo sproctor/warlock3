@@ -23,9 +23,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.Clipboard
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -380,35 +377,9 @@ private class WarlockCommand : CliktCommand() {
                         }
                     }
 
-                    val originalClipboard = LocalClipboard.current
-                    val safeClipboard = remember(originalClipboard) {
-                        object : Clipboard {
-                            override val nativeClipboard: Any
-                                get() = originalClipboard.nativeClipboard
-
-                            override suspend fun getClipEntry(): ClipEntry? {
-                                return try {
-                                    originalClipboard.getClipEntry()
-                                } catch (e: IllegalStateException) {
-                                    logger.w(e) { "Failed to read clipboard" }
-                                    null
-                                }
-                            }
-
-                            override suspend fun setClipEntry(clipEntry: ClipEntry?) {
-                                try {
-                                    originalClipboard.setClipEntry(clipEntry)
-                                } catch (e: IllegalStateException) {
-                                    logger.w(e) { "Failed to set clipboard" }
-                                }
-                            }
-                        }
-                    }
-
                     CompositionLocalProvider(
                         LocalLogger provides logger,
                         LocalSkin provides skin.value,
-                        LocalClipboard provides safeClipboard,
                     ) {
                         if (showUpdateDialog) {
                             var updateSupported by remember { mutableStateOf(false) }
