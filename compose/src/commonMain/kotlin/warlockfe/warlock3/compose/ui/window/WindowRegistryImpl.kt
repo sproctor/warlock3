@@ -24,8 +24,10 @@ import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalAtomicApi::class)
 class WindowRegistryImpl(
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
@@ -37,14 +39,14 @@ class WindowRegistryImpl(
     presetRepository: PresetRepository,
 ) : WindowRegistry {
 
-    private var streams = persistentMapOf<String, ComposeTextStream>()
+    private val streams = AtomicReference(persistentMapOf<String, ComposeTextStream>())
 
-    private var dialogs = persistentMapOf<String, ComposeDialogState>()
+    private val dialogs = AtomicReference(persistentMapOf<String, ComposeDialogState>())
 
     private val maxLines = settingRepository
         .observeMaxScrollLines()
         .onEach {
-            streams.values.forEach { stream ->
+            streams.load().values.forEach { stream ->
                 stream.setMaxLines(it)
             }
         }
@@ -57,7 +59,7 @@ class WindowRegistryImpl(
     private val markLinks = settingRepository
         .observeMarkLinks()
         .onEach {
-            streams.values.forEach { stream ->
+            streams.load().values.forEach { stream ->
                 stream.setMarkLinks(it)
             }
         }
@@ -70,7 +72,7 @@ class WindowRegistryImpl(
     private val showImages = settingRepository
         .observeShowImages()
         .onEach {
-            streams.values.forEach { stream ->
+            streams.load().values.forEach { stream ->
                 stream.setShowImages(it)
             }
         }
@@ -159,33 +161,41 @@ class WindowRegistryImpl(
             .stateIn(scope = externalScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     override fun getOrCreateStream(name: String): TextStream {
-        return streams.getOrElse(name) {
-            ComposeTextStream(
-                id = name,
-                maxLines = maxLines.value,
-                highlights = highlights,
-                alterations = alterations,
-                presets = presets,
-                ioDispatcher = ioDispatcher,
-                soundPlayer = soundPlayer,
-                markLinks = markLinks.value,
-                showImages = showImages.value,
-                showTimestamps = false,
-            )
-                .also { streams = streams.put(name, it) }
+        streams.load()[name]?.let { return it }
+        val candidate = ComposeTextStream(
+            id = name,
+            maxLines = maxLines.value,
+            highlights = highlights,
+            alterations = alterations,
+            presets = presets,
+            ioDispatcher = ioDispatcher,
+            soundPlayer = soundPlayer,
+            markLinks = markLinks.value,
+            showImages = showImages.value,
+            showTimestamps = false,
+        )
+        while (true) {
+            val current = streams.load()
+            current[name]?.let { return it }
+            if (streams.compareAndSet(current, current.put(name, candidate))) {
+                return candidate
+            }
         }
     }
 
     override fun getStreams(): Collection<TextStream> {
-        return streams.values
+        return streams.load().values
     }
 
     override fun getOrCreateDialog(name: String): DialogState {
-        return dialogs.getOrElse(name) {
-            ComposeDialogState(
-                id = name,
-            )
-                .also { dialogs = dialogs.put(name, it) }
+        dialogs.load()[name]?.let { return it }
+        val candidate = ComposeDialogState(id = name)
+        while (true) {
+            val current = dialogs.load()
+            current[name]?.let { return it }
+            if (dialogs.compareAndSet(current, current.put(name, candidate))) {
+                return candidate
+            }
         }
     }
 
