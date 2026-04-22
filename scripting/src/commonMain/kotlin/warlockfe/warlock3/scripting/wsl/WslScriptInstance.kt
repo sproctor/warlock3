@@ -1,5 +1,6 @@
 package warlockfe.warlock3.scripting.wsl
 
+import io.ktor.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -77,7 +78,7 @@ class WslScriptInstance(
                         }
                     } else {
                         flow {
-                            emptyMap<String, String>()
+                            emit(CaseInsensitiveMap())
                         }
                     }
                 }
