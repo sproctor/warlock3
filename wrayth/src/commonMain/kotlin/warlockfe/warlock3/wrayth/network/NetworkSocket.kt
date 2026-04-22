@@ -74,12 +74,12 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
                                 if (nextByte[0] == LF) {
                                     discard(1)
                                 }
-                                out.append(lineBuffer.readString())
+                                out.append(lineBuffer.readWindows1252String())
                                 return true
                             }
 
                             LF -> {
-                                out.append(lineBuffer.readString())
+                                out.append(lineBuffer.readWindows1252String())
                                 return true
                             }
 
