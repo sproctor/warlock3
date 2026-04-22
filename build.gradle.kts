@@ -17,5 +17,5 @@ subprojects {
 }
 
 tasks.wrapper {
-    gradleVersion = "9.1.0"
+    gradleVersion = "8.14.4"
 }
