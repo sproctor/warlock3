@@ -258,10 +258,11 @@ class WslContext(
         val parsedArgs = parseArguments(args)
         currentFrame.setVariable(
             name = "args",
-            value = WslMap(
-                mapOf("0" to WslString(args))
-                        + parsedArgs.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()
-            ),
+            value = WslMap(parsedArgs.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()),
+        )
+        currentFrame.setVariable(
+            name = "argstr",
+            value = WslString(args),
         )
     }
 
