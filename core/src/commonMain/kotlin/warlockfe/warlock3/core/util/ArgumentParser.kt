@@ -20,7 +20,7 @@ fun parseArguments(input: String): List<String> {
             '\\' -> inEscape = true // escape the next character, \ isn't added to result
             ' ' -> if (inQuotes) {
                 current.append(c)
-            } else {
+            } else if (current.isNotEmpty()) {
                 result += current.toString()
                 current.clear()
             }

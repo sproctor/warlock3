@@ -33,4 +33,9 @@ class ArgumentParserTest {
     fun argumentBreak_escapedQuotesAndSpaces() {
         assertEquals(8, findArgumentBreak("foo\\ bar \"baz\\\" zip\" zoom"))
     }
+
+    @Test
+    fun parseArguments_multipleSpaces() {
+        assertEquals(listOf("foo", "bar"), parseArguments("foo   bar"))
+    }
 }
