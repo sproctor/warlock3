@@ -170,6 +170,7 @@ class WraythClient(
     private val componentsMutex = Mutex()
     private var components = persistentMapOf<String, StyledString>()
 
+    private val logMutex = Mutex()
     private val logBuffer = mutableListOf<suspend () -> Unit>()
     private var logName: String? = null
 
@@ -315,11 +316,11 @@ class WraythClient(
                                     if (game != null && character != null) {
                                         val characterId = "${event.game}:${event.character}".lowercase()
                                         _characterId.value = characterId
-                                        logName = "${event.game}_${event.character}"
-                                        logBuffer.forEach {
-                                            it()
+                                        logMutex.withLock {
+                                            logName = "${event.game}_${event.character}"
+                                            logBuffer.forEach { it() }
+                                            logBuffer.clear()
                                         }
-                                        logBuffer.clear()
                                         if (characterRepository.getCharacter(characterId) == null) {
                                             characterRepository.saveCharacter(
                                                 GameCharacter(
@@ -901,18 +902,24 @@ class WraythClient(
     }
 
     private suspend fun logComplete(message: () -> String) {
-        if (logName != null) {
-            fileLogging.logComplete(logName!!, message)
-        } else {
-            logBuffer.add { fileLogging.logComplete(logName!!, message) }
+        logMutex.withLock {
+            val name = logName
+            if (name != null) {
+                fileLogging.logComplete(name, message)
+            } else {
+                logBuffer.add { fileLogging.logComplete(logName!!, message) }
+            }
         }
     }
 
     private suspend fun logSimple(message: () -> String) {
-        if (logName != null) {
-            fileLogging.logSimple(logName!!, message)
-        } else {
-            logBuffer.add { fileLogging.logSimple(logName!!, message) }
+        logMutex.withLock {
+            val name = logName
+            if (name != null) {
+                fileLogging.logSimple(name, message)
+            } else {
+                logBuffer.add { fileLogging.logSimple(logName!!, message) }
+            }
         }
     }
 
