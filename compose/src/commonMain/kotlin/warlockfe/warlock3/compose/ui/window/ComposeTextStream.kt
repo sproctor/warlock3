@@ -154,11 +154,12 @@ class ComposeTextStream(
     }
 
     private fun removeLines() {
-        if (maxLines > 0 && finishedLines.size >= maxLines) {
+        while (maxLines > 0 && finishedLines.size >= maxLines) {
             finishedLines.removeFirst()
             cacheLines.removeFirst()
             removedLines++
-            // TODO: remove componentLocations if their line was removed
+            // Intentionally leak components here. They don't exist in the main window,
+            // and no other windows get long enough
         }
     }
 
@@ -232,11 +233,7 @@ class ComposeTextStream(
     suspend fun setMaxLines(maxLines: Int) {
         mutex.withLock {
             this@ComposeTextStream.maxLines = maxLines
-            while (finishedLines.size > maxLines && maxLines > 0) {
-                finishedLines.removeFirst()
-                cacheLines.removeFirst()
-                removedLines++
-            }
+            removeLines()
             linesUpdated()
         }
     }
