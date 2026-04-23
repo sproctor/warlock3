@@ -879,7 +879,7 @@ class GameViewModel(
     private suspend fun commandHandler(line: String): SendCommandType {
         val aliasedLine = applyAliases(line)
         return if (aliasedLine.startsWith(scriptCommandPrefix.value)) {
-            val scriptCommand = aliasedLine.drop(1)
+            val scriptCommand = aliasedLine.drop(scriptCommandPrefix.value.length)
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
             scriptManager.startScript(client, scriptCommand, ::commandHandler)
             SendCommandType.SCRIPT
