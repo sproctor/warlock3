@@ -43,9 +43,14 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
 
     override suspend fun connect(host: String, port: Int) {
         logger.d { "Connecting to $host:$port" }
-        socket = aSocket(selector).tcp().connect(host, port)
-        sendChannel = socket!!.openWriteChannel(autoFlush = true)
-        receiveChannel = socket!!.openReadChannel()
+        try {
+            socket = aSocket(selector).tcp().connect(host, port)
+            sendChannel = socket!!.openWriteChannel(autoFlush = true)
+            receiveChannel = socket!!.openReadChannel()
+        } catch (e: Throwable) {
+            close()
+            throw e
+        }
     }
 
     override suspend fun readLine(): String? {
@@ -122,6 +127,7 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
 
     override fun close() {
         socket?.close()
+        selector.close()
     }
 }
 
