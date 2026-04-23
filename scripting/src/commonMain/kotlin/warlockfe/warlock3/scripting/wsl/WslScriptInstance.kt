@@ -55,7 +55,7 @@ class WslScriptInstance(
     private val scope = CoroutineScope(Dispatchers.IO)
     private var job: Job? = null
 
-    private val suspendedChannel = Channel<Unit>(0)
+    private val suspendedChannel = Channel<Unit>(Channel.CONFLATED)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(
