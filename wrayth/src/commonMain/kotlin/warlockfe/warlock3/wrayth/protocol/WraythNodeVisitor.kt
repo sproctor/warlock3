@@ -48,8 +48,8 @@ object WraythNodeVisitor : WraythParserBaseVisitor<List<Content>>() {
         for (attributeContext in contextList) {
             val name = attributeContext.Name().text
             // remove ' or " from start and end of value. If value is empty, use name as value
-            val value = attributeContext.STRING()?.text?.drop(1)?.dropLast(1) ?: name
-            attributes[name] = value
+            val value = attributeContext.STRING()?.text?.drop(1)?.dropLast(1)?.let { unescapeXml(it) }
+            attributes[name] = value ?: name
         }
         return attributes
     }
