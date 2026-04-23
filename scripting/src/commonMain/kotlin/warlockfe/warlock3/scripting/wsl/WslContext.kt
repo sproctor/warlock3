@@ -256,6 +256,12 @@ class WslContext(
         }
         frameStack.add(WslFrame(lineIndex))
         val parsedArgs = parseArguments(args)
+        parsedArgs.forEachIndexed { i, s ->
+            currentFrame.setVariable(
+                name = "arg${i + 1}",
+                value = WslString(s),
+            )
+        }
         currentFrame.setVariable(
             name = "args",
             value = WslMap(parsedArgs.mapIndexed { i, s -> i.toString() to WslString(s) }.toMap()),
