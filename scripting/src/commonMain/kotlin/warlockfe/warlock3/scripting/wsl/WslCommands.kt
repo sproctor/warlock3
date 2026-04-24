@@ -199,9 +199,14 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
                 "random" to { context, args ->
                     val argList = args.split(Regex("[ \t]+"))
                     val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
-                    val max =
-                        argList.getOrNull(1)?.toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
-                    context.setScriptVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
+                    val max = argList.getOrNull(1)?.toIntOrNull()
+                        ?: throw WslRuntimeException("Invalid arguments to random")
+                    if (min >= max)
+                        throw WslRuntimeException("Invalid arguments to random: min must be less than max")
+                    context.setScriptVariable(
+                        name = "r",
+                        value = WslNumber(Random.nextInt(min, max).toBigDecimal()),
+                    )
                 },
                 "run" to { context, args ->
                     context.runCommand(args)
