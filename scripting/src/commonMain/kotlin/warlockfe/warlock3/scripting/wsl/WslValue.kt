@@ -95,11 +95,15 @@ class WslString(val value: String) : WslValue {
     override fun setProperty(key: String, value: WslValue) {}
 
     override fun equals(other: Any?): Boolean {
-        return when {
-            other !is WslValue -> false
-            other.isBoolean() -> toBoolean() == other.toBoolean()
-            other.isNumeric() -> toNumber() == other.toNumber()
-            else -> value.equals(other = other.toString(), ignoreCase = true)
+        return try {
+            when {
+                other !is WslValue -> false
+                other.isBoolean() -> toBoolean() == other.toBoolean()
+                other.isNumeric() -> toNumber() == other.toNumber()
+                else -> value.equals(other = other.toString(), ignoreCase = true)
+            }
+        } catch (_: WslRuntimeException) {
+            false
         }
     }
 
@@ -124,7 +128,6 @@ object WslNull : WslValue {
     override fun equals(other: Any?): Boolean {
         return when (other) {
             WslNull -> true
-            null -> true
             else -> false
         }
     }
