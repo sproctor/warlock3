@@ -5,9 +5,10 @@ import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import kotlin.time.Clock
 
 class WslTimer : WslNumeric() {
-    private val startTime = Clock.System.now().toEpochMilliseconds()
+    private val startTime = Clock.System.now()
 
     override fun toNumber(): BigDecimal {
-        return ((Clock.System.now().toEpochMilliseconds() - startTime) / 1000L).toBigDecimal()
+        val duration = Clock.System.now() - startTime
+        return duration.inWholeSeconds.toBigDecimal()
     }
 }
