@@ -164,6 +164,8 @@ class ComposeTextStream(
     }
 
     override suspend fun appendResource(url: String) {
+        // Images must be on their own line
+        partialLine = null
         if (!showImages) return
         mutex.withLock {
             cacheLines.add(null)
