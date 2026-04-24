@@ -25,7 +25,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
                         throw WslRuntimeException("Not enough arguments to AddTextListener")
                     }
                     context.addListener(variableName) {
-                        if (pattern == null || it.contains(pattern)) {
+                        if (pattern == null || it.contains(other = pattern, ignoreCase = true)) {
                             context.setScriptVariable(variableName, WslString(it))
                         }
                     }
