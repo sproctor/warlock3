@@ -61,7 +61,12 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
                         "add" -> current + operand
                         "subtract" -> current - operand
                         "multiply" -> current * operand
-                        "divide" -> current / operand
+                        "divide" -> {
+                            if (operand.isZero()) {
+                                throw WslRuntimeException("Cannot divide by 0")
+                            }
+                            current / operand
+                        }
                         else -> throw WslRuntimeException("Unsupported counter operator")
                     }
                     context.setScriptVariable("c", WslNumber(result))

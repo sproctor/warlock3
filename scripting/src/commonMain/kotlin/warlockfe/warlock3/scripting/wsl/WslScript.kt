@@ -469,10 +469,10 @@ enum class WslMultiplicativeOperator {
     DIV {
         override fun getValue(value1: WslValue, value2: WslValue): WslValue {
             val divisor = value2.toNumber()
-            if (divisor == BigDecimal.ZERO) {
+            if (divisor.isZero()) {
                 throw WslRuntimeException("Cannot divide by 0")
             }
-            return WslNumber(value1.toNumber() / value2.toNumber())
+            return WslNumber(value1.toNumber() / divisor)
         }
     };
 
