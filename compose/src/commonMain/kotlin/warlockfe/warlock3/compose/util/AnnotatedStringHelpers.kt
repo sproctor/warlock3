@@ -34,7 +34,7 @@ data class AnnotatedStringHighlightResult(
 )
 
 expect fun AnnotatedString.Builder.markLinks(
-    highlightedResult: AnnotatedStringHighlightResult,
+    text: AnnotatedString,
     presets: Map<String, StyleDefinition>
 )
 

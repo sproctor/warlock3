@@ -322,7 +322,17 @@ fun StyledString.toStreamLine(
     )
         .alter(alterations, streamName)
         ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
-    val highlightedResult = textWithComponents?.highlight(highlights)
+    val textWithLinks = textWithComponents?.let { content ->
+        if (markLinks) {
+            buildAnnotatedString {
+                append(content)
+                markLinks(content, presets)
+            }
+        } else {
+            content
+        }
+    }
+    val highlightedResult = textWithLinks?.highlight(highlights)
     val lineStyle = flattenStyles(
         (highlightedResult?.entireLineStyles ?: emptyList()) +
                 getEntireLineStyles(
@@ -335,9 +345,6 @@ fun StyledString.toStreamLine(
             buildAnnotatedString {
                 lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
                 append(it.text)
-                if (markLinks) {
-                    markLinks(highlightedResult, presets)
-                }
                 if (lineStyle != null) pop()
             }
         },

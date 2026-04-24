@@ -4,7 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import warlockfe.warlock3.core.text.StyleDefinition
 
 actual fun AnnotatedString.Builder.markLinks(
-    highlightedResult: AnnotatedStringHighlightResult,
+    text: AnnotatedString,
     presets: Map<String, StyleDefinition>
 ) {
     // TODO: implement on iOS
