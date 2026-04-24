@@ -315,30 +315,32 @@ class WslContext(
             throw WslRuntimeException("matchWait called with no matches")
         }
 
-        client.eventFlow
-            .let {
-                if (timeout != null) {
-                    val millis = (timeout * 1000).toLong()
-                    it.timeout(millis.milliseconds)
-                } else {
-                    it
-                }
-            }
-            .first { event ->
-                if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
-                    matches.firstOrNull { match ->
-                        match.match(event.text, currentFrame)?.let { text ->
-                            log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
-                            goto(match.label)
-                            return@first true
-                        }
-                        false
+        try {
+            client.eventFlow
+                .let {
+                    if (timeout != null) {
+                        val millis = (timeout * 1000).toLong()
+                        it.timeout(millis.milliseconds)
+                    } else {
+                        it
                     }
                 }
-                false
-            }
-
-        matches.clear()
+                .first { event ->
+                    if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
+                        matches.firstOrNull { match ->
+                            match.match(event.text, currentFrame)?.let { text ->
+                                log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")
+                                goto(match.label)
+                                return@first true
+                            }
+                            false
+                        }
+                    }
+                    false
+                }
+        } finally {
+            matches.clear()
+        }
     }
 
     suspend fun waitForRoundTime() {
