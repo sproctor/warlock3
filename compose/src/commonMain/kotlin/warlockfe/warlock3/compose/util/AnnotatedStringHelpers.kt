@@ -16,7 +16,21 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
                                 entireLineStyles.add(style)
                                 addStyle(style.toSpanStyle(), 0, length)
                             } else {
-                                addStyle(style.toSpanStyle(), group.range_.first, group.range_.last + 1)
+                                val matchStart = group.range_.first
+                                val matchEnd = group.range_.last + 1
+                                val spanStyle = style.toSpanStyle()
+                                addStyle(spanStyle, matchStart, matchEnd)
+                                // Compose's span merge picks the most recently started active
+                                // style, so a wider highlight that started before a span would
+                                // lose to the span's color. Re-apply the highlight on each
+                                // overlapping span range so it starts at (or after) the link.
+                                spanStyles.forEach { linkRange ->
+                                    val overlapStart = maxOf(linkRange.start, matchStart)
+                                    val overlapEnd = minOf(linkRange.end, matchEnd)
+                                    if (overlapStart < overlapEnd) {
+                                        addStyle(spanStyle, overlapStart, overlapEnd)
+                                    }
+                                }
                             }
                         }
                     }
