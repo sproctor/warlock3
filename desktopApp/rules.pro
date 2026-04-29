@@ -14,7 +14,7 @@
 -keep class org.jetbrains.skia.** { *; }
 -keep class org.jetbrains.skiko.** { *; }
 -keep class androidx.compose.runtime.** { *; }
--keep class dev.hydraulic.conveyor.control.* { *; }
+-keep class io.github.kdroidfilter.nucleus.** { *; }
 
 -keep class org.apache.commons.** { *; }
 -keep class org.mozilla.javascript.** { *; }

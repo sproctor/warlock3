@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,8 +46,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
-import dev.hydraulic.conveyor.control.SoftwareUpdateController
-import dev.hydraulic.conveyor.control.SoftwareUpdateController.UpdateCheckException
+import io.github.kdroidfilter.nucleus.updater.NucleusUpdater
+import io.github.kdroidfilter.nucleus.updater.UpdateInfo
+import io.github.kdroidfilter.nucleus.updater.UpdateResult
+import io.github.kdroidfilter.nucleus.updater.provider.GitHubProvider
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
@@ -104,7 +107,7 @@ import kotlin.io.path.inputStream
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
-private val version = System.getProperty("app.version")
+private val version = System.getProperty("jpackage.app-version")
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
@@ -151,7 +154,7 @@ private class WarlockCommand : CliktCommand() {
             exitProcess(-1)
         }
 
-        val version = System.getProperty("app.version")
+        val version = System.getProperty("jpackage.app-version")
         version?.let {
             initializeSentry(version)
         }
@@ -324,7 +327,10 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
-        val controller = SoftwareUpdateController.getInstance()
+        val updater = NucleusUpdater {
+            provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
+        }
+        val updateSupported = updater.isUpdateSupported()
 
         application {
             val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
@@ -343,30 +349,25 @@ private class WarlockCommand : CliktCommand() {
                     styling = ComponentStyling.default()
                         .decoratedWindow(titleBarStyle = if (darkMode) TitleBarStyle.dark() else TitleBarStyle.light())
                 ) {
-                    var updateAvailable by remember { mutableStateOf(false) }
                     var showUpdateDialog by remember { mutableStateOf(false) }
-                    var currentVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
-                    var latestVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
+                    var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
+                    var downloadProgress: Double? by remember { mutableStateOf(null) }
+                    var downloadedFile: File? by remember { mutableStateOf(null) }
                     val scope = rememberCoroutineScope()
 
                     suspend fun checkUpdate() {
-                        if (controller != null) {
-                            try {
-                                currentVersion = controller.currentVersion
-                                latestVersion = controller.currentVersionFromRepository
-
-                                if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
-                                    // A newer version is available
-                                    updateAvailable = true
-                                    if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE
-                                        && !clientSettings.getIgnoreUpdates()
-                                    ) {
-                                        showUpdateDialog = true
-                                    }
+                        when (val result = updater.checkForUpdates()) {
+                            is UpdateResult.Available -> {
+                                availableUpdate = result.info
+                                if (updateSupported && !clientSettings.getIgnoreUpdates()) {
+                                    showUpdateDialog = true
                                 }
-                            } catch (e: UpdateCheckException) {
-                                // Handle exception
-                                logger.e(e) { "Update check failed" }
+                            }
+                            is UpdateResult.NotAvailable -> {
+                                availableUpdate = null
+                            }
+                            is UpdateResult.Error -> {
+                                logger.e(result.exception) { "Update check failed" }
                             }
                         }
                     }
@@ -382,16 +383,6 @@ private class WarlockCommand : CliktCommand() {
                         LocalSkin provides skin.value,
                     ) {
                         if (showUpdateDialog) {
-                            var updateSupported by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                withContext(Dispatchers.IO) {
-                                    val availability = controller?.canTriggerUpdateCheckUI()
-                                    if (availability == SoftwareUpdateController.Availability.AVAILABLE) {
-                                        updateSupported = true
-                                    }
-                                    checkUpdate()
-                                }
-                            }
                             DialogWindow(
                                 onCloseRequest = { showUpdateDialog = false },
                                 title = "Warlock update available",
@@ -399,10 +390,18 @@ private class WarlockCommand : CliktCommand() {
                             ) {
                                 Surface {
                                     Column(Modifier.fillMaxSize().padding(8.dp)) {
-                                        Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
-                                        Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
+                                        Text("Current version: ${updater.currentVersion}")
+                                        Text("Latest version: ${availableUpdate?.version ?: "unknown"}")
                                         if (!updateSupported) {
                                             Text("Automated updates are not supported for your installation")
+                                        }
+                                        downloadProgress?.let { percent ->
+                                            Spacer(Modifier.padding(top = 8.dp))
+                                            Text("Downloading: ${percent.toInt()}%")
+                                            LinearProgressIndicator(
+                                                progress = { (percent / 100.0).toFloat() },
+                                                modifier = Modifier.fillMaxWidth(),
+                                            )
                                         }
                                         Spacer(Modifier.weight(1f))
                                         Row(Modifier.fillMaxWidth()) {
@@ -438,14 +437,30 @@ private class WarlockCommand : CliktCommand() {
                                             }
                                             TextButton(
                                                 onClick = {
+                                                    val info = availableUpdate ?: return@TextButton
+                                                    val file = downloadedFile
+                                                    if (file != null) {
+                                                        updater.installAndRestart(file)
+                                                        return@TextButton
+                                                    }
                                                     scope.launch {
                                                         clientSettings.putIgnoreUpdates(false)
+                                                        try {
+                                                            updater.downloadUpdate(info).collect { progress ->
+                                                                downloadProgress = progress.percent
+                                                                progress.file?.let { downloadedFile = it }
+                                                            }
+                                                            downloadedFile?.let { updater.installAndRestart(it) }
+                                                        } catch (e: Exception) {
+                                                            ensureActive()
+                                                            logger.e(e) { "Update download failed" }
+                                                            downloadProgress = null
+                                                        }
                                                     }
-                                                    controller.triggerUpdateCheckUI()
                                                 },
-                                                enabled = updateAvailable && updateSupported
+                                                enabled = availableUpdate != null && updateSupported && downloadProgress == null
                                             ) {
-                                                Text("Update")
+                                                Text(if (downloadedFile != null) "Install & restart" else "Update")
                                             }
                                         }
                                     }
@@ -560,12 +575,4 @@ private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<Pref
     return Room.databaseBuilder<PrefsDatabase>(
         name = filename,
     )
-}
-
-fun SoftwareUpdateController.Version.prettyString(): String {
-    var result = version
-    if (revision > 0) {
-        result += "-$revision"
-    }
-    return result
 }

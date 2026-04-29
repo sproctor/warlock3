@@ -1,10 +1,10 @@
 #!/usr/bin/bash
 
-# Exit on errors
-set -e
+# Release pipeline: tag the current commit and push the tag.
+# The GitHub Actions release workflow (.github/workflows/release.yaml) builds
+# and publishes the multi-platform desktop packages on tag push.
 
-# Print commands
-# set -x
+set -e
 
 echo "Releasing..."
 
@@ -18,9 +18,8 @@ VERSION=$warlock_version
 
 echo "Version: ${VERSION}"
 
-read -p "Press enter to continue"
+read -p "Press enter to tag v${VERSION} and push"
 
-# Stop gradle daemon to prevent IDE JDK bleed-through
 ./gradlew --stop
 
 if [[ $1 == "" ]]; then
@@ -28,26 +27,8 @@ if [[ $1 == "" ]]; then
   ./gradlew check
 fi
 
-#if [[ $1 == "" || $1 == "--android" ]]; then
-#  echo "Android release"
-#
-#  ./gradlew publishBundle
-#fi
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
 
-if [[ $1 == "" ]]; then
-  echo "Building desktop release"
-#  ./gradlew :desktopApp:proguardReleaseJars
-  ./gradlew jar
-fi
-
-if [[ $1 == "" || $1 == "--conveyor" ]]; then
-  echo "Deploy with conveyor"
-
-  conveyor --passphrase="$CONVEYOR_PASSPHRASE" make copied-site
-fi
-
-if [[ $1 == "" || $1 == "--tag" ]]; then
-  git tag "v${VERSION}"
-fi
-
-echo "Success"
+echo "Tag pushed. CI will build and publish the release at:"
+echo "  https://github.com/sproctor/warlock3/actions"

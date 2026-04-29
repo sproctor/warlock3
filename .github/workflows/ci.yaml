@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Nucleus
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+        with:
+          packaging-tools: 'true'
+          setup-gradle: 'true'
+          setup-node: 'true'
+
+      - name: Build
+        run: ./gradlew build --stacktrace --no-daemon
+
+      - name: Test
+        run: ./gradlew allTests --stacktrace --no-daemon
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+          if-no-files-found: ignore
