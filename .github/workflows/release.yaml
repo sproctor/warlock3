@@ -121,20 +121,19 @@ jobs:
           arm64-path: artifacts/release-assets-macOS-arm64
           x64-path: artifacts/release-assets-macOS-amd64
           output-path: artifacts/release-assets-macOS-universal
-          signing-identity: ${{ secrets.MAC_DEVELOPER_ID_APPLICATION }}
+          signing-identity: 'Developer ID Application: Sean Proctor (DBNJ4AR55X)'
           keychain-path: ${{ steps.signing.outputs.keychain-path }}
 
       - name: Notarize DMG
-        if: ${{ secrets.MAC_NOTARIZATION_APPLE_ID != '' }}
         shell: bash
         run: |
           set -euo pipefail
           DMG="$(find artifacts/release-assets-macOS-universal -name '*.dmg' -type f | head -1)"
           if [[ -n "$DMG" ]]; then
             xcrun notarytool submit "$DMG" \
-              --apple-id "${{ secrets.MAC_NOTARIZATION_APPLE_ID }}" \
+              --apple-id "sproctor@gmail.com" \
               --password "${{ secrets.MAC_NOTARIZATION_PASSWORD }}" \
-              --team-id "${{ secrets.MAC_NOTARIZATION_TEAM_ID }}" --wait
+              --team-id "DBNJ4AR55X" --wait
             xcrun stapler staple "$DMG"
           fi
 
