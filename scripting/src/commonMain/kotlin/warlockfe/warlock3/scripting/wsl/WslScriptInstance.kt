@@ -1,5 +1,6 @@
 package warlockfe.warlock3.scripting.wsl
 
+import io.ktor.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -54,7 +55,7 @@ class WslScriptInstance(
     private val scope = CoroutineScope(Dispatchers.IO)
     private var job: Job? = null
 
-    private val suspendedChannel = Channel<Unit>(0)
+    private val suspendedChannel = Channel<Unit>(Channel.CONFLATED)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(
@@ -77,7 +78,7 @@ class WslScriptInstance(
                         }
                     } else {
                         flow {
-                            emptyMap<String, String>()
+                            emit(CaseInsensitiveMap())
                         }
                     }
                 }

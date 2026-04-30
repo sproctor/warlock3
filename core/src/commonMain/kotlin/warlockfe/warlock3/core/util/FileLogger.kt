@@ -7,6 +7,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.datetime.LocalDateTime
@@ -20,25 +21,22 @@ import kotlin.time.Clock
 class FileLogger private constructor(
     private val writer: PlatformBufferedWriter,
     private val dispatcher: CloseableCoroutineDispatcher = newSingleThreadContext("FileLogger"),
-) : AutoCloseable {
+) {
 
-    private var job: Job? = null
     private val channel = Channel<String>(Channel.UNLIMITED)
 
-    init {
-        job = CoroutineScope(dispatcher).launch {
-            try {
-                while (true) {
-                    val message = channel.receive()
-                    writer.write(message)
-                    if (channel.isEmpty) {
-                        writer.flush()
-                    }
+    private val job: Job = CoroutineScope(dispatcher).launch {
+        try {
+            for (message in channel) {
+                writer.write(message)
+                if (channel.isEmpty) {
+                    writer.flush()
                 }
-            } catch (e: IOException) {
-                logger.e(e) { "Error monitoring log channel" }
-                close()
             }
+            writer.flush()
+        } catch (e: IOException) {
+            logger.e(e) { "Error monitoring log channel" }
+            channel.close(e)
         }
     }
 
@@ -57,14 +55,22 @@ class FileLogger private constructor(
                     "$message\n"
                 }
             )
+        } catch (_: ClosedSendChannelException) {
+            // Logger was closed; drop the message
         } catch (e: IOException) {
             logger.e(e) { "Error while logging: $message" }
         }
     }
 
-    override fun close() {
+    suspend fun close() {
+        channel.close()
+        job.join()
+        try {
+            writer.close()
+        } catch (e: IOException) {
+            logger.e(e) { "Error closing log writer" }
+        }
         dispatcher.close()
-        writer.close()
     }
 
     companion object {

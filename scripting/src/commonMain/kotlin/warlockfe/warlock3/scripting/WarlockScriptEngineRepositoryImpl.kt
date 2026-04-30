@@ -8,6 +8,8 @@ import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.scripting.util.extension
 import warlockfe.warlock3.scripting.util.nameWithoutExtension
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.fetchAndIncrement
 
 class WarlockScriptEngineRepositoryImpl(
     private val engines: List<WarlockScriptEngine>,
@@ -15,7 +17,7 @@ class WarlockScriptEngineRepositoryImpl(
     private val scriptDirRepository: ScriptDirRepository,
 ) : WarlockScriptEngineRepository {
 
-    private var nextId = 0L
+    private val nextId = AtomicLong(0L)
 
     override suspend fun getScript(
         name: String,
@@ -47,7 +49,7 @@ class WarlockScriptEngineRepositoryImpl(
 //            }
             val entry = matchedFiles.first()
             ScriptLaunchResult.Success(
-                entry.first.createInstance(nextId++, name, entry.second, scriptManager)
+                entry.first.createInstance(nextId.fetchAndIncrement(), name, entry.second, scriptManager)
             )
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
@@ -58,7 +60,7 @@ class WarlockScriptEngineRepositoryImpl(
         return if (fileSystem.exists(file)) {
             val engine = getEngineForExtension(file.extension)
                 ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
-            ScriptLaunchResult.Success(engine.createInstance(nextId++, file.name, file, scriptManager))
+            ScriptLaunchResult.Success(engine.createInstance(nextId.fetchAndIncrement(), file.name, file, scriptManager))
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
         }

@@ -8,17 +8,17 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockStyle
 
 actual fun AnnotatedString.Builder.markLinks(
-    highlightedResult: AnnotatedStringHighlightResult,
+    text: AnnotatedString,
     presets: Map<String, StyleDefinition>
 ) {
-    linkExtractor.extractLinks(highlightedResult.text.text).forEach { link ->
-        if (highlightedResult.text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
+    linkExtractor.extractLinks(text.text).forEach { link ->
+        if (text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
             addStyle(
                 style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
                 start = link.beginIndex,
                 end = link.endIndex,
             )
-            val substring = highlightedResult.text.substring(link.beginIndex, link.endIndex)
+            val substring = text.substring(link.beginIndex, link.endIndex)
             addLink(
                 url = LinkAnnotation.Url(
                     if (link.type == LinkType.URL) {

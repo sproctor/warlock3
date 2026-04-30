@@ -72,7 +72,7 @@ class ConnectToGameUseCase(
                     break
                 } catch (e: Exception) {
                     ensureActive()
-                    val message = "Error connecting to ${loginCredentials.host}:$loginCredentials.port"
+                    val message = "Error connecting to ${loginCredentials.host}:${loginCredentials.port}"
                     logger.d(e) { message }
                     if (proxy == null) {
                         gameState.setScreen(GameScreen.ErrorState(message, returnTo = GameScreen.Dashboard))

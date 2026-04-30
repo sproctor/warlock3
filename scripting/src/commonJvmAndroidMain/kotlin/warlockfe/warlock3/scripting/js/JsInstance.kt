@@ -112,7 +112,7 @@ class JsInstance(
                                     }
                                 }
                             },
-                            onDelete = {
+                            onDelete = { name ->
                                 client.characterId.value?.let { characterId ->
                                     runBlocking {
                                         variableRepository.delete(characterId, name)

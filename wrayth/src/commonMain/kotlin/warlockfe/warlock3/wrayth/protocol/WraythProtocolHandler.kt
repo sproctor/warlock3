@@ -203,7 +203,7 @@ class WraythProtocolHandler {
         // Close remaining open tags
         while (tagStack.isNotEmpty()) {
             val topOfStack = tagStack.removeFirst()
-            elementListeners[topOfStack]?.endElement()
+            elementListeners[topOfStack]?.endElement()?.let { events.add(it) }
         }
         // If a line has tags, ignore it when it has no text
         events.add(WraythEolEvent(ignoreWhenBlank = lineHasTags))

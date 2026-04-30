@@ -25,7 +25,7 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
                         throw WslRuntimeException("Not enough arguments to AddTextListener")
                     }
                     context.addListener(variableName) {
-                        if (pattern == null || it.contains(pattern)) {
+                        if (pattern == null || it.contains(other = pattern, ignoreCase = true)) {
                             context.setScriptVariable(variableName, WslString(it))
                         }
                     }
@@ -61,7 +61,12 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
                         "add" -> current + operand
                         "subtract" -> current - operand
                         "multiply" -> current * operand
-                        "divide" -> current / operand
+                        "divide" -> {
+                            if (operand.isZero()) {
+                                throw WslRuntimeException("Cannot divide by 0")
+                            }
+                            current / operand
+                        }
                         else -> throw WslRuntimeException("Unsupported counter operator")
                     }
                     context.setScriptVariable("c", WslNumber(result))
@@ -194,9 +199,14 @@ val wslCommands = CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
                 "random" to { context, args ->
                     val argList = args.split(Regex("[ \t]+"))
                     val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
-                    val max =
-                        argList.getOrNull(1)?.toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
-                    context.setScriptVariable("r", WslNumber(Random.nextInt(min, max).toBigDecimal()))
+                    val max = argList.getOrNull(1)?.toIntOrNull()
+                        ?: throw WslRuntimeException("Invalid arguments to random")
+                    if (min >= max)
+                        throw WslRuntimeException("Invalid arguments to random: min must be less than max")
+                    context.setScriptVariable(
+                        name = "r",
+                        value = WslNumber(Random.nextInt(min, max).toBigDecimal()),
+                    )
                 },
                 "run" to { context, args ->
                     context.runCommand(args)

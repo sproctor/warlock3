@@ -2,6 +2,7 @@ package warlockfe.warlock3.core.util
 
 import java.io.File
 import javax.sound.sampled.AudioSystem
+import javax.sound.sampled.LineEvent
 
 class DesktopSoundPlayer(
     warlockDirs: WarlockDirs
@@ -19,8 +20,14 @@ class DesktopSoundPlayer(
             ?: return "File not found"
         try {
             val clip = AudioSystem.getClip()
-            val inputStream = AudioSystem.getAudioInputStream(file)
-            clip.open(inputStream)
+            clip.addLineListener { event ->
+                if (event.type == LineEvent.Type.STOP) {
+                    clip.close()
+                }
+            }
+            AudioSystem.getAudioInputStream(file).use { inputStream ->
+                clip.open(inputStream)
+            }
             clip.start()
             return null
         } catch (e: Exception) {

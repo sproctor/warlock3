@@ -154,15 +154,18 @@ class ComposeTextStream(
     }
 
     private fun removeLines() {
-        if (maxLines > 0 && finishedLines.size >= maxLines) {
+        while (maxLines > 0 && finishedLines.size >= maxLines) {
             finishedLines.removeFirst()
             cacheLines.removeFirst()
             removedLines++
-            // TODO: remove componentLocations if their line was removed
+            // Intentionally leak components here. They don't exist in the main window,
+            // and no other windows get long enough
         }
     }
 
     override suspend fun appendResource(url: String) {
+        // Images must be on their own line
+        partialLine = null
         if (!showImages) return
         mutex.withLock {
             cacheLines.add(null)
@@ -232,11 +235,7 @@ class ComposeTextStream(
     suspend fun setMaxLines(maxLines: Int) {
         mutex.withLock {
             this@ComposeTextStream.maxLines = maxLines
-            while (finishedLines.size > maxLines && maxLines > 0) {
-                finishedLines.removeFirst()
-                cacheLines.removeFirst()
-                removedLines++
-            }
+            removeLines()
             linesUpdated()
         }
     }
@@ -323,7 +322,17 @@ fun StyledString.toStreamLine(
     )
         .alter(alterations, streamName)
         ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
-    val highlightedResult = textWithComponents?.highlight(highlights)
+    val textWithLinks = textWithComponents?.let { content ->
+        if (markLinks) {
+            buildAnnotatedString {
+                append(content)
+                markLinks(content, presets)
+            }
+        } else {
+            content
+        }
+    }
+    val highlightedResult = textWithLinks?.highlight(highlights)
     val lineStyle = flattenStyles(
         (highlightedResult?.entireLineStyles ?: emptyList()) +
                 getEntireLineStyles(
@@ -336,9 +345,6 @@ fun StyledString.toStreamLine(
             buildAnnotatedString {
                 lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
                 append(it.text)
-                if (markLinks) {
-                    markLinks(highlightedResult, presets)
-                }
                 if (lineStyle != null) pop()
             }
         },

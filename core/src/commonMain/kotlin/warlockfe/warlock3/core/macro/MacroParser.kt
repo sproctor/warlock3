@@ -23,7 +23,7 @@ fun parseMacro(text: String): List<MacroToken>? {
             }
 
             MacroLexer.Tokens.VariableName -> {
-                token.text?.let { if (it.endsWith("%")) it.drop(1) else it }
+                token.text?.let { if (it.endsWith("%")) it.dropLast(1) else it }
                     .let { name ->
                         MacroToken.Variable(name ?: "")
                     }
