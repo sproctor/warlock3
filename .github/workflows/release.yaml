@@ -99,7 +99,6 @@ jobs:
 
       - name: Setup macOS signing
         id: signing
-        if: ${{ secrets.MAC_CERTIFICATES_P12 != '' }}
         uses: kdroidFilter/Nucleus/.github/actions/setup-macos-signing@main
         with:
           certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
