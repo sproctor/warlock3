@@ -45,6 +45,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
+import io.github.kdroidfilter.nucleus.core.runtime.NucleusApp
 import io.github.kdroidfilter.nucleus.updater.NucleusUpdater
 import io.github.kdroidfilter.nucleus.updater.UpdateInfo
 import io.github.kdroidfilter.nucleus.updater.UpdateResult
@@ -92,7 +93,7 @@ import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
-private val version = System.getProperty("jpackage.app-version")
+private val version = NucleusApp.version
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
