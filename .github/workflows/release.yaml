@@ -63,7 +63,7 @@ jobs:
           # Azure Trusted Signing service-principal credentials.
           # Only consumed on Windows runners by electron-builder when AZURE_TENANT_ID
           # is set (gating happens in desktopApp/build.gradle.kts).
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_TENANT_ID: 'dfe2ba9a-411b-4907-b6b0-59fe59aefc2d'
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: ./gradlew :desktopApp:packageReleaseDistributionForCurrentOS --stacktrace --no-daemon
