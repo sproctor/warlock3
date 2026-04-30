@@ -20,7 +20,6 @@ jobs:
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
         with:
-          jbr-version: '21.0.10b1163.110'
           packaging-tools: 'false'
           setup-gradle: 'true'
           setup-node: 'false'
