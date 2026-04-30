@@ -53,6 +53,9 @@ val releaseVersion: String =
         ?: project.version.toString().takeIf { it != "unspecified" }
         ?: "0.0.0"
 
+// Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
+val numericPackageVersion: String = releaseVersion.substringBefore('-')
+
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
@@ -60,13 +63,15 @@ nucleus.application {
         targetFormats(
             TargetFormat.Dmg,
             TargetFormat.Zip, // required alongside Dmg for macOS auto-update
+            TargetFormat.Nsis,
             TargetFormat.Msi,
             TargetFormat.Deb,
+            TargetFormat.Rpm,
         )
 
         appName = "Warlock"
         packageName = "warlock"
-        packageVersion = releaseVersion
+        packageVersion = numericPackageVersion
         description = "Warlock Front-end"
         vendor = "Warlock Project"
         copyright = "Copyright 2026 Sean Proctor"
@@ -134,6 +139,8 @@ nucleus.application {
         }
         linux {
             iconFile.set(project.file("../icons/icon-512.png"))
+            debPackageVersion = releaseVersion
+            rpmPackageVersion = releaseVersion.replace("-", ".")
         }
     }
 
