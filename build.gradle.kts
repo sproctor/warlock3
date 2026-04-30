@@ -11,8 +11,7 @@ plugins {
     alias(libs.plugins.antlr.kotlin) apply false
 }
 
-subprojects {
-    version = project.findProperty("warlock.version")!!.toString()
+allprojects {
     group = "warlockfe.warlock3"
 }
 

@@ -3,29 +3,26 @@
 # Release pipeline: tag the current commit and push the tag.
 # The GitHub Actions release workflow (.github/workflows/release.yaml) builds
 # and publishes the multi-platform desktop packages on tag push.
+#
+# Usage: ./release.sh <version>
+# Examples:
+#   ./release.sh 3.0.165
+#   ./release.sh 3.0.165-beta.1
 
 set -e
 
-echo "Releasing..."
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <version>" >&2
+  echo "Example: $0 3.0.165" >&2
+  echo "         $0 3.0.165-beta.1" >&2
+  exit 1
+fi
 
-while IFS='=' read -r key value
-do
-  key=$(echo "$key" | tr '.' '_')
-  value=$(echo "$value" | tr -d '\n\r')
-  eval "${key}"=\${value}
-done < gradle.properties
-VERSION=$warlock_version
+VERSION="$1"
 
-echo "Version: ${VERSION}"
+echo "Releasing v${VERSION}..."
 
 read -p "Press enter to tag v${VERSION} and push"
-
-./gradlew --stop
-
-if [[ $1 == "" ]]; then
-  echo "Running tests"
-  ./gradlew check
-fi
 
 git tag "v${VERSION}"
 git push origin "v${VERSION}"
