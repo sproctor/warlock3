@@ -28,7 +28,6 @@ androidx-core-splashscreen = "1.2.0"
 androidxLifecycleViewmodel = "2.10.0"
 androidxSqlite = "2.6.2"
 antlr-kotlin = "1.0.10"
-apache-commons-text = "1.15.0"
 appdirs = "2.0.0"
 autolink = "0.12.0"
 bignum = "0.3.10"
@@ -80,7 +79,6 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
 androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycleViewmodel" }
 antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }
-apache-commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "apache-commons-text" }
 autolink = { module = "org.nibor.autolink:autolink", version.ref = "autolink" }
 bignum = { module = "com.ionspin.kotlin:bignum", version.ref = "bignum" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }

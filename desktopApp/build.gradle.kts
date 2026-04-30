@@ -73,7 +73,14 @@ nucleus.application {
         homepage = "https://warlockfe.github.io/"
         licenseFile.set(project.file("../LICENSE"))
 
-        modules("jdk.accessibility")
+        modules(
+            "jdk.accessibility",
+            "java.instrument",
+            "java.management",
+            "jdk.dynalink",
+            "jdk.security.auth",
+            "jdk.unsupported",
+        )
 
         cleanupNativeLibs = true
         artifactName = $$"${name}-${version}-${os}-${arch}.${ext}"
@@ -127,8 +134,6 @@ nucleus.application {
         }
         linux {
             iconFile.set(project.file("../icons/icon-512.png"))
-            // Add this for FileKit
-            modules("jdk.security.auth")
         }
     }
 

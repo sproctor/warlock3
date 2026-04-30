@@ -83,12 +83,6 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
-
-        val commonJvmAndroidMain by getting {
-            dependencies {
-                implementation(libs.apache.commons.text)
-            }
-        }
     }
 
     compilerOptions {
