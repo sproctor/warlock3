@@ -3,7 +3,9 @@ import org.antlr.v4.kotlinruntime.CommonTokenStream
 import kotlin.test.assertEquals
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
+import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNodeVisitor
+import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import kotlin.test.Test
 
 class WraythParserTests {
@@ -15,5 +17,12 @@ class WraythParserTests {
         val parser = WraythParser(tokens)
         WraythNodeVisitor.visitDocument(parser.document())
         assertEquals(0, parser.numberOfSyntaxErrors)
+    }
+
+    @Test
+    fun navTagIncludesRoomNumberAndImage() {
+        val events = WraythProtocolHandler().parseLine("<nav rm=\"123\" img=\"room.png\"/>")
+
+        assertEquals(WraythNavEvent(roomNumber = "123", image = "room.png"), events.first())
     }
 }

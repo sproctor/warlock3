@@ -7,6 +7,9 @@ import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 
 class NavHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent {
-        return WraythNavEvent
+        return WraythNavEvent(
+            roomNumber = element.attributes["rm"],
+            image = element.attributes["img"]?.takeIf { it.isNotBlank() && it != "0" },
+        )
     }
 }

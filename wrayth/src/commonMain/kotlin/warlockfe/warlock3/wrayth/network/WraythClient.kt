@@ -491,7 +491,12 @@ class WraythClient(
                                     }
                                 }
 
-                                WraythNavEvent -> notifyListeners(ClientNavEvent)
+                                is WraythNavEvent -> notifyListeners(
+                                    ClientNavEvent(
+                                        roomNumber = event.roomNumber,
+                                        image = event.image?.let(::resolveNavImage),
+                                    )
+                                )
 
                                 is WraythStreamWindowEvent -> {
                                     val window = event.window
@@ -938,3 +943,16 @@ class WraythClient(
 
 val TextStream?.isMainStream
     get() = this == null || this.id == "main"
+
+private val windowsAbsolutePathRegex = Regex("^[A-Za-z]:[\\\\/].*")
+
+internal fun resolveNavImage(image: String): String {
+    val path = image.trim()
+    if (path.startsWith('/')) {
+        return "file://$path"
+    }
+    if (windowsAbsolutePathRegex.matches(path)) {
+        return "file:///${path.replace('\\', '/')}"
+    }
+    return path
+}

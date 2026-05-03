@@ -9,7 +9,7 @@ import warlockfe.warlock3.core.window.WindowInfo
 sealed interface ClientEvent
 data class ClientTextEvent(val text: String) : ClientEvent
 data class ClientCompassEvent(val directions: ImmutableSet<DirectionType>) : ClientEvent
-data object ClientNavEvent : ClientEvent
+data class ClientNavEvent(val roomNumber: String?, val image: String?) : ClientEvent
 data object ClientPromptEvent : ClientEvent
 data class ClientOpenUrlEvent(val url: Uri) : ClientEvent
 data class ClientWindowInfoEvent(val info: WindowInfo) : ClientEvent

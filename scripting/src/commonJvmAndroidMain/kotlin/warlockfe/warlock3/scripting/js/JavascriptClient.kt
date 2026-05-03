@@ -35,7 +35,7 @@ class JavascriptClient(
                         promptChannel.trySend(Unit)
                     }
 
-                    ClientNavEvent -> {
+                    is ClientNavEvent -> {
                         navChannel.trySend(Unit)
                     }
 

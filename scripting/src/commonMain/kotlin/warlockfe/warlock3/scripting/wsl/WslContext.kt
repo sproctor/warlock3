@@ -102,7 +102,7 @@ class WslContext(
                         }
                     }
 
-                    ClientNavEvent -> {
+                    is ClientNavEvent -> {
                         navChannel.trySend(Unit)
                     }
 

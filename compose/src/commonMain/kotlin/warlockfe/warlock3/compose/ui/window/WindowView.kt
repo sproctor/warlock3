@@ -9,6 +9,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,11 +43,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.layout.positionInParent
@@ -97,6 +105,7 @@ fun WindowView(
     headerModifier: Modifier,
     uiState: WindowUiState,
     location: WindowLocation,
+    backgroundImage: String? = null,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -167,6 +176,7 @@ fun WindowView(
                         stream = data.stream,
                         scrollState = scrollState,
                         style = uiState.style.mergeWith(defaultStyle),
+                        backgroundImage = backgroundImage,
                         openWindows = openWindows,
                         menuData = menuData,
                         onActionClicked = onActionClicked,
@@ -267,6 +277,7 @@ private fun WindowViewContent(
     stream: ComposeTextStream,
     scrollState: LazyListState,
     style: StyleDefinition,
+    backgroundImage: String?,
     openWindows: List<String>,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?
@@ -294,11 +305,21 @@ private fun WindowViewContent(
     }
 
     SelectionContainer(modifier = modifier) {
-        Box {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+        ) {
+            backgroundImage?.takeIf { it.isNotBlank() }?.let { image ->
+                WindowBackgroundImage(
+                    image = image,
+                    height = maxHeight,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                )
+            }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(backgroundColor)
                     .padding(vertical = 4.dp)
                     .semantics {
                         isTraversalGroup = true
@@ -425,6 +446,47 @@ private fun WindowViewContent(
             sticky = true
         }
     }
+}
+
+@Composable
+private fun WindowBackgroundImage(
+    image: String,
+    height: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val painter = rememberAsyncImagePainter(
+        ImageRequest.Builder(LocalPlatformContext.current)
+            .data(image)
+            .size(Size.ORIGINAL)
+            .build()
+    )
+    val painterState by painter.state.collectAsState()
+    val state = painterState as? AsyncImagePainter.State.Success ?: return
+    val imageHeight = state.result.image.height.takeIf { it > 0 } ?: return
+    val imageWidth = state.result.image.width.takeIf { it > 0 } ?: return
+    val scaledWidth = height * (imageWidth.toFloat() / imageHeight.toFloat())
+
+    Image(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(scaledWidth)
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        0.1f to Color.Transparent,
+                        0.8f to Color.Transparent.copy(alpha = 0.85f),
+                    ),
+                    blendMode = BlendMode.DstIn,
+                )
+            },
+        painter = painter,
+        contentDescription = null,
+        contentScale = ContentScale.FillHeight,
+    )
 }
 
 @Composable

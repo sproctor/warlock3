@@ -115,6 +115,7 @@ fun GameView(
             }
 
             val mainWindow = viewModel.mainWindowUiState.collectAsState()
+            val mainWindowBackgroundImage by viewModel.mainWindowBackgroundImage.collectAsState()
             val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
             val presets by viewModel.presets.collectAsState(emptyMap())
             val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
@@ -169,6 +170,7 @@ fun GameView(
                     topWindowUiStates = topWindows,
                     bottomWindowUiStates = bottomWindows,
                     mainWindowUiState = mainWindow.value,
+                    mainWindowBackgroundImage = mainWindowBackgroundImage,
                     defaultStyle = defaultStyle,
                     selectedWindow = viewModel.selectedWindow.collectAsState().value,
                     openWindows = openWindows,
@@ -259,6 +261,7 @@ fun GameTextWindows(
     leftWindowUiStates: List<WindowUiState>,
     rightWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState?,
+    mainWindowBackgroundImage: String?,
     defaultStyle: StyleDefinition,
     selectedWindow: String,
     openWindows: List<String>,
@@ -338,6 +341,7 @@ fun GameTextWindows(
                         headerModifier = Modifier,
                         uiState = mainWindowUiState,
                         location = WindowLocation.MAIN,
+                        backgroundImage = mainWindowBackgroundImage,
                         defaultStyle = defaultStyle,
                         isSelected = selectedWindow == mainWindowUiState.name,
                         openWindows = openWindows,
