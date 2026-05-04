@@ -477,8 +477,8 @@ private fun WindowBackgroundImage(
                 drawContent()
                 drawRect(
                     brush = Brush.horizontalGradient(
-                        0.1f to Color.Transparent,
-                        0.8f to Color.Transparent.copy(alpha = 0.85f),
+                        0f to Color.Transparent,
+                        0.3f to Color.Transparent.copy(alpha = 0.75f),
                     ),
                     blendMode = BlendMode.DstIn,
                 )
