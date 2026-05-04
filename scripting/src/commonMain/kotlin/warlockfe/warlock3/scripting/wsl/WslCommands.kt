@@ -7,13 +7,14 @@ import kotlinx.coroutines.delay
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.findArgumentBreak
+import warlockfe.warlock3.core.util.firstArgument
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
-import kotlin.math.roundToLong
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 
 val wslCommands =
     CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
@@ -78,7 +79,7 @@ val wslCommands =
                         context.log(ScriptLoggingLevel.DEBUG, args)
                     },
                     "debuglevel" to { context, args ->
-                        val (level, _) = args.splitFirstWord()
+                        val level = args.firstArgument()
                         level.toIntOrNull()?.let {
                             if (it !in 0..50) {
                                 throw WslRuntimeException("debug level must be between 0 and 50")
@@ -89,15 +90,15 @@ val wslCommands =
                         } ?: throw WslRuntimeException("Invalid logging level")
                     },
                     "delay" to { context, args ->
-                        val (arg, _) = args.splitFirstWord()
+                        val arg = args.firstArgument()
                         val duration = arg.toDoubleOrNull() ?: 1.0
-                        delay((duration * 1000.0).roundToLong())
+                        delay(duration.seconds)
                         context.scriptInstance.waitWhenSuspended()
                     },
                     "deletefromhighlightnames" to ::deleteName,
                     "deletefromhighlightstrings" to ::deleteHighlight,
                     "deletevariable" to { context, args ->
-                        val (name, _) = args.splitFirstWord()
+                        val name = args.firstArgument()
                         context.deleteStoredVariable(name)
                     },
                     "echo" to { context, args ->
@@ -182,14 +183,14 @@ val wslCommands =
                         context.waitForNav()
                     },
                     "pause" to { context, args ->
-                        val (arg, _) = args.splitFirstWord()
+                        val arg = args.firstArgument()
                         val duration = arg.toDoubleOrNull() ?: 1.0
                         context.waitForRoundTime()
-                        delay((duration * 1000.0).roundToLong())
+                        delay(duration.seconds)
                         context.scriptInstance.waitWhenSuspended()
                     },
                     "play" to { context, args ->
-                        val (name, _) = args.splitFirstWord()
+                        val name = args.firstArgument()
                         context.playSound(name)
                     },
                     "print" to { context, args ->
@@ -281,7 +282,7 @@ val wslCommands =
                         )
                     },
                     "timer" to { context, args ->
-                        val (command, _) = args.splitFirstWord()
+                        val command = args.firstArgument()
                         when (command) {
                             "start" -> {
                                 context.setScriptVariable("t", WslTimer())
@@ -302,7 +303,7 @@ val wslCommands =
                         }
                     },
                     "typeahead" to { context, args ->
-                        val (typeahead, _) = args.splitFirstWord()
+                        val typeahead = args.firstArgument()
                         typeahead.toIntOrNull()?.let { context.setTypeahead(it) }
                     },
                     "unsetlocal" to { context, args ->

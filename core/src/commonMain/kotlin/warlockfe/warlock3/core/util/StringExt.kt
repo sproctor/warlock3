@@ -5,6 +5,11 @@ fun String.splitFirstWord(): Pair<String, String?> {
     return Pair(list[0], list.getOrNull(1))
 }
 
+fun String.firstArgument(): String {
+    val args = parseArguments(this)
+    return args.firstOrNull() ?: this
+}
+
 expect fun ByteArray.decodeWindows1252(
     offset: Int = 0,
     length: Int = this.size - offset,
