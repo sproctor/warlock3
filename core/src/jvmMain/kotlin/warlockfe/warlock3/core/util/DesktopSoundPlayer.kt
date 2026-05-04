@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.util
 
+import co.touchlab.kermit.Logger
 import java.io.File
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.LineEvent
@@ -7,6 +8,8 @@ import javax.sound.sampled.LineEvent
 class DesktopSoundPlayer(
     warlockDirs: WarlockDirs,
 ) : SoundPlayer {
+    private val logger = Logger.withTag("DesktopSoundPlayer")
+
     private val dirs =
         listOf(
             warlockDirs.dataDir,
@@ -20,7 +23,10 @@ class DesktopSoundPlayer(
                 ?: dirs.map { File(it, filename) }.firstOrNull { it.exists() }
                 ?: return "File not found"
         try {
+            logger.d { "default mixer = ${AudioSystem.getMixer(null).mixerInfo}" }
+            AudioSystem.getMixerInfo().forEach { logger.d { "  $it" } }
             val clip = AudioSystem.getClip()
+            logger.d { "clip line = ${clip.lineInfo}" }
             clip.addLineListener { event ->
                 if (event.type == LineEvent.Type.STOP) {
                     clip.close()
