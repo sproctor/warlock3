@@ -20,7 +20,7 @@ class StreamWindowHandler : BaseElementListener() {
                 ifClosed = (element.attributes["ifClosed"] ?: "main").takeIf { it.isNotBlank() },
                 styleIfClosed = element.attributes["styleIfClosed"],
                 timestamp = element.attributes["timestamp"] != null,
-            )
+            ),
         )
     }
 }

@@ -16,27 +16,28 @@ class WarlockScriptEngineRepositoryImpl(
     private val fileSystem: FileSystem,
     private val scriptDirRepository: ScriptDirRepository,
 ) : WarlockScriptEngineRepository {
-
     private val nextId = AtomicLong(0L)
 
     override suspend fun getScript(
         name: String,
         characterId: String,
-        scriptManager: ScriptManager
+        scriptManager: ScriptManager,
     ): ScriptLaunchResult {
         val matchedFiles = mutableListOf<Pair<WarlockScriptEngine, Path>>()
         for (engine in engines) {
             for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
                 if (fileSystem.exists(scriptDir)) {
-                    fileSystem.list(scriptDir)
+                    fileSystem
+                        .list(scriptDir)
                         .filter { file ->
                             engine.extensions.any { extension ->
                                 file.extension.equals(extension, ignoreCase = true) &&
-                                        (file.nameWithoutExtension.equals(name, ignoreCase = true)
-                                                || file.name.equals(name, ignoreCase = true))
+                                    (
+                                        file.nameWithoutExtension.equals(name, ignoreCase = true) ||
+                                            file.name.equals(name, ignoreCase = true)
+                                    )
                             }
-                        }
-                        .forEach {
+                        }.forEach {
                             matchedFiles.add(engine to it)
                         }
                 }
@@ -49,17 +50,21 @@ class WarlockScriptEngineRepositoryImpl(
 //            }
             val entry = matchedFiles.first()
             ScriptLaunchResult.Success(
-                entry.first.createInstance(nextId.fetchAndIncrement(), name, entry.second, scriptManager)
+                entry.first.createInstance(nextId.fetchAndIncrement(), name, entry.second, scriptManager),
             )
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
         }
     }
 
-    override suspend fun getScript(file: Path, scriptManager: ScriptManager): ScriptLaunchResult {
+    override suspend fun getScript(
+        file: Path,
+        scriptManager: ScriptManager,
+    ): ScriptLaunchResult {
         return if (fileSystem.exists(file)) {
-            val engine = getEngineForExtension(file.extension)
-                ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
+            val engine =
+                getEngineForExtension(file.extension)
+                    ?: return ScriptLaunchResult.Failure("Unsupported file extension - ${file.extension}")
             ScriptLaunchResult.Success(engine.createInstance(nextId.fetchAndIncrement(), file.name, file, scriptManager))
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
@@ -75,7 +80,5 @@ class WarlockScriptEngineRepositoryImpl(
         return null
     }
 
-    override fun supportsExtension(extension: String): Boolean {
-        return getEngineForExtension(extension) != null
-    }
+    override fun supportsExtension(extension: String): Boolean = getEngineForExtension(extension) != null
 }

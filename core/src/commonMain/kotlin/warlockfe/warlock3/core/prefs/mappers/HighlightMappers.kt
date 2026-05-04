@@ -7,8 +7,8 @@ import warlockfe.warlock3.core.prefs.models.PopulatedHighlight
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.uuid.Uuid
 
-fun Highlight.toEntity(characterId: String): HighlightEntity {
-    return HighlightEntity(
+fun Highlight.toEntity(characterId: String): HighlightEntity =
+    HighlightEntity(
         id = id,
         characterId = characterId,
         pattern = pattern,
@@ -17,10 +17,9 @@ fun Highlight.toEntity(characterId: String): HighlightEntity {
         ignoreCase = ignoreCase,
         sound = sound,
     )
-}
 
-fun Highlight.toStyleEntities(highlightId: Uuid): List<HighlightStyleEntity> {
-    return styles.map { entry ->
+fun Highlight.toStyleEntities(highlightId: Uuid): List<HighlightStyleEntity> =
+    styles.map { entry ->
         val style = entry.value
         HighlightStyleEntity(
             highlightId = highlightId,
@@ -35,10 +34,9 @@ fun Highlight.toStyleEntities(highlightId: Uuid): List<HighlightStyleEntity> {
             fontSize = style.fontSize,
         )
     }
-}
 
-fun PopulatedHighlight.toHighlight(): Highlight {
-    return Highlight(
+fun PopulatedHighlight.toHighlight(): Highlight =
+    Highlight(
         id = highlight.id,
         pattern = highlight.pattern,
         styles = styles.associate { it.groupNumber to it.toStyleDefinition() },
@@ -47,10 +45,9 @@ fun PopulatedHighlight.toHighlight(): Highlight {
         ignoreCase = highlight.ignoreCase,
         sound = highlight.sound,
     )
-}
 
-fun HighlightStyleEntity.toStyleDefinition(): StyleDefinition {
-    return StyleDefinition(
+fun HighlightStyleEntity.toStyleDefinition(): StyleDefinition =
+    StyleDefinition(
         textColor = textColor,
         backgroundColor = backgroundColor,
         entireLine = entireLine,
@@ -60,4 +57,3 @@ fun HighlightStyleEntity.toStyleDefinition(): StyleDefinition {
         fontFamily = fontFamily,
         fontSize = fontSize,
     )
-}

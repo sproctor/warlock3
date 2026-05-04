@@ -13,7 +13,10 @@ interface NameRepository {
 
     suspend fun save(name: NameEntity)
 
-    suspend fun deleteByText(characterId: String, text: String)
+    suspend fun deleteByText(
+        characterId: String,
+        text: String,
+    )
 
     suspend fun deleteById(id: Uuid)
 }

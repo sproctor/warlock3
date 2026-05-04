@@ -77,7 +77,6 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.theme.AppTheme
-import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
@@ -108,11 +107,11 @@ private class WarlockCommand : CliktCommand() {
     val sgeSecure: Boolean by option("--sge-secure", help = "Credentials/SGE uses encryption").boolean().default(true)
     val width: Int? by option(
         "--width",
-        help = "Window width in \"display pixels\" (1 physical pixel at 160 DPI)"
+        help = "Window width in \"display pixels\" (1 physical pixel at 160 DPI)",
     ).int()
     val height: Int? by option(
         "--height",
-        help = "Window height in \"display pixels\" (1 physical pixel at 160 DPI)"
+        help = "Window height in \"display pixels\" (1 physical pixel at 160 DPI)",
     ).int()
     val positionX: Int? by option("-x", "--position-x", help = "Position to place the window on the X-axis").int()
     val positionY: Int? by option("-y", "--position-y", help = "Position to place the window on the Y-axis").int()
@@ -153,57 +152,61 @@ private class WarlockCommand : CliktCommand() {
 
         FileKit.init("warlock")
 
-        val credentials = if (port != null && host != null && key != null) {
-            logger.d { "Connecting to $host:$port with $key" }
-            SimuGameCredentials(host = host!!, port = port!!, key = key!!)
-        } else if (port != null || host != null || key != null) {
-            println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
-            exitProcess(-1)
-        } else {
-            null
-        }
+        val credentials =
+            if (port != null && host != null && key != null) {
+                logger.d { "Connecting to $host:$port with $key" }
+                SimuGameCredentials(host = host!!, port = port!!, key = key!!)
+            } else if (port != null || host != null || key != null) {
+                println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
+                exitProcess(-1)
+            } else {
+                null
+            }
 
-        val appDirs = AppDirs {
-            appName = "warlock"
-            appAuthor = "WarlockFE"
-        }
+        val appDirs =
+            AppDirs {
+                appName = "warlock"
+                appAuthor = "WarlockFE"
+            }
         val configDir = appDirs.getUserConfigDir()
         File(configDir).mkdirs()
         val dbFile = File(configDir, "prefs.db")
-        val warlockDirs = WarlockDirs(
-            homeDir = System.getProperty("user.home"),
-            configDir = appDirs.getUserConfigDir(),
-            dataDir = appDirs.getUserDataDir(),
-            logDir = appDirs.getUserLogDir(),
-        )
+        val warlockDirs =
+            WarlockDirs(
+                homeDir = System.getProperty("user.home"),
+                configDir = appDirs.getUserConfigDir(),
+                dataDir = appDirs.getUserDataDir(),
+                logDir = appDirs.getUserLogDir(),
+            )
 
         println("Loading preferences from ${dbFile.absolutePath}")
         val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
 
         val appContainer = JvmAppContainer(databaseBuilder, warlockDirs, SystemFileSystem)
 
-        val json = Json {
-            ignoreUnknownKeys = true
-        }
+        val json =
+            Json {
+                ignoreUnknownKeys = true
+            }
 
         val skin = mutableStateOf<Map<String, SkinObject>>(emptyMap())
 
         appContainer.clientSettings
             .observeSkinFile()
             .onEach { skinFile ->
-                val bytes = skinFile
-                    ?.let { File(it) }
-                    ?.takeIf { it.exists() }
-                    ?.readBytes()
-                    ?: Res.readBytes("files/skin.json")
+                val bytes =
+                    skinFile
+                        ?.let { File(it) }
+                        ?.takeIf { it.exists() }
+                        ?.readBytes()
+                        ?: Res.readBytes("files/skin.json")
                 try {
                     skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
                 } catch (e: Exception) {
                     // TODO: notify user of error
                     logger.e(e) { "Failed to load skin file" }
                 }
-            }
-            .launchIn(appContainer.externalScope)
+            }.launchIn(appContainer.externalScope)
 
         runBlocking {
             appContainer.macroRepository.migrateMacros(KeyboardKeyMappings.reverseKeyCodeMap)
@@ -214,95 +217,101 @@ private class WarlockCommand : CliktCommand() {
         val clientSettings = appContainer.clientSettings
         val initialWidth = width ?: runBlocking { clientSettings.getWidth() }?.takeIf { it >= 240 } ?: 640
         val initialHeight = height ?: runBlocking { clientSettings.getHeight() }?.takeIf { it >= 240 } ?: 480
-        val position = if (positionX != null && positionY != null) {
-            WindowPosition(positionX?.dp ?: Dp.Unspecified, positionY?.dp ?: Dp.Unspecified)
-        } else {
-            WindowPosition.PlatformDefault
-        }
+        val position =
+            if (positionX != null && positionY != null) {
+                WindowPosition(positionX?.dp ?: Dp.Unspecified, positionY?.dp ?: Dp.Unspecified)
+            } else {
+                WindowPosition.PlatformDefault
+            }
 
-        val sgeSettings = SgeSettings(
-            host = sgeHost,
-            port = sgePort,
-            certificate = simuCert,
-            secure = sgeSecure,
-        )
+        val sgeSettings =
+            SgeSettings(
+                host = sgeHost,
+                port = sgePort,
+                certificate = simuCert,
+                secure = sgeSecure,
+            )
 
-        val games = mutableStateListOf(
-            GameState().apply {
-                if (credentials != null || stdin || inputFile != null) {
-                    val windowRegistry = appContainer.windowRegistryFactory.create()
-                    // TODO: move this somewhere we can control it
-                    runBlocking {
-                        try {
-                            val socket = if (stdin) {
-                                WarlockStreamSocket(System.`in`)
-                            } else if (inputFile != null) {
-                                val file = File(inputFile!!)
-                                if (!file.exists()) {
-                                    logger.e { "Input file does not exist: $inputFile" }
-                                    exitProcess(1)
-                                }
-                                WarlockStreamSocket(file.inputStream())
-                            } else {
-                                NetworkSocket(Dispatchers.IO)
-                                    .also { socket ->
-                                        socket.connect(credentials!!.host, credentials.port)
+        val games =
+            mutableStateListOf(
+                GameState().apply {
+                    if (credentials != null || stdin || inputFile != null) {
+                        val windowRegistry = appContainer.windowRegistryFactory.create()
+                        // TODO: move this somewhere we can control it
+                        runBlocking {
+                            try {
+                                val socket =
+                                    if (stdin) {
+                                        WarlockStreamSocket(System.`in`)
+                                    } else if (inputFile != null) {
+                                        val file = File(inputFile!!)
+                                        if (!file.exists()) {
+                                            logger.e { "Input file does not exist: $inputFile" }
+                                            exitProcess(1)
+                                        }
+                                        WarlockStreamSocket(file.inputStream())
+                                    } else {
+                                        NetworkSocket(Dispatchers.IO)
+                                            .also { socket ->
+                                                socket.connect(credentials!!.host, credentials.port)
+                                            }
                                     }
+                                val client =
+                                    appContainer.warlockClientFactory.createClient(
+                                        windowRegistry = windowRegistry,
+                                        socket = socket,
+                                    )
+                                client.connect(credentials?.key ?: "")
+                                val viewModel =
+                                    appContainer.gameViewModelFactory.create(client, windowRegistry)
+                                setScreen(
+                                    GameScreen.ConnectedGameState(viewModel),
+                                )
+                            } catch (e: IOException) {
+                                logger.e(e) { "Failed to connect to Warlock" }
                             }
-                            val client = appContainer.warlockClientFactory.createClient(
-                                windowRegistry = windowRegistry,
-                                socket = socket,
-                            )
-                            client.connect(credentials?.key ?: "")
-                            val viewModel =
-                                appContainer.gameViewModelFactory.create(client, windowRegistry)
-                            setScreen(
-                                GameScreen.ConnectedGameState(viewModel)
-                            )
-                        } catch (e: IOException) {
-                            logger.e(e) { "Failed to connect to Warlock" }
                         }
-                    }
-                } else if (autoConnectName != null) {
-                    runBlocking {
-                        val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
-                        if (connection == null) {
-                            println("Invalid connection name: $autoConnectName")
-                            exitProcess(-1)
-                        }
-                        val sgeClient = appContainer.sgeClientFactory.create()
-                        val result = sgeClient.autoConnect(sgeSettings, connection)
-                        sgeClient.close()
-                        when (result) {
-                            is AutoConnectResult.Failure -> {
-                                println(result.reason)
+                    } else if (autoConnectName != null) {
+                        runBlocking {
+                            val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
+                            if (connection == null) {
+                                println("Invalid connection name: $autoConnectName")
                                 exitProcess(-1)
                             }
-
-                            is AutoConnectResult.Success ->
-                                // TODO: merge with the above, and probably below
-                                try {
-                                    appContainer.connectToGameUseCase(
-                                        credentials = result.credentials,
-                                        proxySettings = connection.proxySettings,
-                                        gameState = this@apply,
-                                    )
-                                } catch (e: Exception) {
-                                    ensureActive()
-                                    println("Error connecting to server: ${e.message}")
+                            val sgeClient = appContainer.sgeClientFactory.create()
+                            val result = sgeClient.autoConnect(sgeSettings, connection)
+                            sgeClient.close()
+                            when (result) {
+                                is AutoConnectResult.Failure -> {
+                                    println(result.reason)
                                     exitProcess(-1)
                                 }
+
+                                is AutoConnectResult.Success ->
+                                    // TODO: merge with the above, and probably below
+                                    try {
+                                        appContainer.connectToGameUseCase(
+                                            credentials = result.credentials,
+                                            proxySettings = connection.proxySettings,
+                                            gameState = this@apply,
+                                        )
+                                    } catch (e: Exception) {
+                                        ensureActive()
+                                        println("Error connecting to server: ${e.message}")
+                                        exitProcess(-1)
+                                    }
+                            }
                         }
                     }
-                }
-            }
-        )
+                },
+            )
 
         // Workaround for https://issuetracker.google.com/issues/399134381
         val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             val cause = throwable.cause ?: throwable
-            val isKnownComposeBug = cause is NoSuchElementException &&
+            val isKnownComposeBug =
+                cause is NoSuchElementException &&
                     cause.message?.contains("Cannot find value for key") == true
 
             if (isKnownComposeBug) {
@@ -312,18 +321,20 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
-        val updater = NucleusUpdater {
-            provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
-        }
+        val updater =
+            NucleusUpdater {
+                provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
+            }
         val updateSupported = updater.isUpdateSupported()
 
         application {
             val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
-            val darkMode = when (themeSetting) {
-                ThemeSetting.AUTO -> isSystemInDarkTheme()
-                ThemeSetting.LIGHT -> false
-                ThemeSetting.DARK -> true
-            }
+            val darkMode =
+                when (themeSetting) {
+                    ThemeSetting.AUTO -> isSystemInDarkTheme()
+                    ThemeSetting.LIGHT -> false
+                    ThemeSetting.DARK -> true
+                }
             AppTheme(useDarkTheme = darkMode) {
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
@@ -357,7 +368,6 @@ private class WarlockCommand : CliktCommand() {
                 }
 
                 CompositionLocalProvider(
-                    LocalLogger provides logger,
                     LocalSkin provides skin.value,
                 ) {
                     if (showUpdateDialog) {
@@ -384,7 +394,8 @@ private class WarlockCommand : CliktCommand() {
                                     Spacer(Modifier.weight(1f))
                                     Row(Modifier.fillMaxWidth()) {
                                         Spacer(Modifier.weight(1f))
-                                        val ignoreUpdates by clientSettings.observeIgnoreUpdates()
+                                        val ignoreUpdates by clientSettings
+                                            .observeIgnoreUpdates()
                                             .collectAsState(false)
                                         if (!ignoreUpdates) {
                                             TextButton(
@@ -436,7 +447,7 @@ private class WarlockCommand : CliktCommand() {
                                                     }
                                                 }
                                             },
-                                            enabled = availableUpdate != null && updateSupported && downloadProgress == null
+                                            enabled = availableUpdate != null && updateSupported && downloadProgress == null,
                                         ) {
                                             Text(if (downloadedFile != null) "Install & restart" else "Update")
                                         }
@@ -447,13 +458,14 @@ private class WarlockCommand : CliktCommand() {
                     }
 
                     games.forEachIndexed { index, gameState ->
-                        val windowState = remember {
-                            WindowState(
-                                width = initialWidth.dp,
-                                height = initialHeight.dp,
-                                position = position
-                            )
-                        }
+                        val windowState =
+                            remember {
+                                WindowState(
+                                    width = initialWidth.dp,
+                                    height = initialHeight.dp,
+                                    position = position,
+                                )
+                            }
                         val subtitle by gameState.getTitle().collectAsState("loading")
                         val title = "Warlock - $subtitle"
                         MaterialDecoratedWindow(
@@ -499,8 +511,7 @@ private class WarlockCommand : CliktCommand() {
                                             if (height >= 240) {
                                                 clientSettings.putHeight(height)
                                             }
-                                        }
-                                        .launchIn(this)
+                                        }.launchIn(this)
                                 }
                             }
                         }
@@ -514,8 +525,8 @@ private class WarlockCommand : CliktCommand() {
 @OptIn(ExperimentalResourceApi::class)
 fun main(args: Array<String>) = WarlockCommand().versionOption(version ?: "Development").main(args)
 
-private fun GameState.getTitle(): Flow<String> {
-    return when (val screen = this.screen) {
+private fun GameState.getTitle(): Flow<String> =
+    when (val screen = this.screen) {
         GameScreen.Dashboard ->
             flow { emit("Dashboard") }
 
@@ -528,7 +539,6 @@ private fun GameState.getTitle(): Flow<String> {
         is GameScreen.ErrorState ->
             flow { emit("Error") }
     }
-}
 
 fun initializeSentry(version: String) {
     Sentry.init { options ->
@@ -539,8 +549,7 @@ fun initializeSentry(version: String) {
     }
 }
 
-private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> {
-    return Room.databaseBuilder<PrefsDatabase>(
+private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =
+    Room.databaseBuilder<PrefsDatabase>(
         name = filename,
     )
-}

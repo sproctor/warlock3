@@ -22,7 +22,7 @@ kotlin {
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Compose"
@@ -36,7 +36,7 @@ kotlin {
                 withJvm()
                 withAndroidTarget()
                 // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                //withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
             }
         }
     }
@@ -87,7 +87,11 @@ kotlin {
         }
     }
 
-    jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
+    jvmToolchain(
+        libs.versions.jvmToolchainVersion
+            .get()
+            .toInt(),
+    )
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
@@ -99,9 +103,15 @@ kotlin {
 
 android {
     namespace = "warlockfe.warlock3.compose"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.compileSdk
+            .get()
+            .toInt()
     defaultConfig {
-        minSdk = libs.versions.minSdk.get().toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
     }
     androidResources.enable = true
 }

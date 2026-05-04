@@ -3,8 +3,8 @@ package warlockfe.warlock3.core.prefs.mappers
 import warlockfe.warlock3.core.prefs.models.PresetStyleEntity
 import warlockfe.warlock3.core.text.StyleDefinition
 
-fun PresetStyleEntity.toStyleDefinition(): StyleDefinition {
-    return StyleDefinition(
+fun PresetStyleEntity.toStyleDefinition(): StyleDefinition =
+    StyleDefinition(
         textColor = textColor,
         backgroundColor = backgroundColor,
         entireLine = entireLine,
@@ -14,10 +14,12 @@ fun PresetStyleEntity.toStyleDefinition(): StyleDefinition {
         fontFamily = fontFamily,
         fontSize = fontSize,
     )
-}
 
-fun StyleDefinition.toPresetStyleEntity(key: String, characterId: String): PresetStyleEntity {
-    return PresetStyleEntity(
+fun StyleDefinition.toPresetStyleEntity(
+    key: String,
+    characterId: String,
+): PresetStyleEntity =
+    PresetStyleEntity(
         presetId = key,
         characterId = characterId,
         textColor = textColor,
@@ -29,4 +31,3 @@ fun StyleDefinition.toPresetStyleEntity(key: String, characterId: String): Prese
         fontFamily = fontFamily,
         fontSize = fontSize,
     )
-}

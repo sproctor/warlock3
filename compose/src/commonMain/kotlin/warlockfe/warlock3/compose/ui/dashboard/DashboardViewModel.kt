@@ -28,7 +28,6 @@ class DashboardViewModel(
     private val sgeClientFactory: SgeClientFactory,
     private val connectToGame: ConnectToGameUseCase,
 ) : ViewModel() {
-
     val connections = connectionRepository.observeAllConnections()
 
     private val logger = Logger.withTag("DashboardViewModel")
@@ -45,33 +44,34 @@ class DashboardViewModel(
         if (busy) return
         busy = true
         connectJob?.cancel()
-        connectJob = viewModelScope.launch {
-            try {
-                message = "Connecting..."
-                val sgeClient = sgeClientFactory.create()
-                val result = sgeClient.autoConnect(sgeSettings, connection)
-                sgeClient.close()
-                when (result) {
-                    is AutoConnectResult.Failure ->
-                        message = result.reason
+        connectJob =
+            viewModelScope.launch {
+                try {
+                    message = "Connecting..."
+                    val sgeClient = sgeClientFactory.create()
+                    val result = sgeClient.autoConnect(sgeSettings, connection)
+                    sgeClient.close()
+                    when (result) {
+                        is AutoConnectResult.Failure ->
+                            message = result.reason
 
-                    is AutoConnectResult.Success ->
-                        connectToGame(result.credentials, connection.proxySettings, gameState)
-                }
-            } catch (e: Exception) {
-                ensureActive()
-                logger.e(e) { "Error connecting to server" }
-                gameState.setScreen(
-                    GameScreen.ErrorState(
-                        message = "Error: ${e.message}",
-                        returnTo = GameScreen.Dashboard,
+                        is AutoConnectResult.Success ->
+                            connectToGame(result.credentials, connection.proxySettings, gameState)
+                    }
+                } catch (e: Exception) {
+                    ensureActive()
+                    logger.e(e) { "Error connecting to server" }
+                    gameState.setScreen(
+                        GameScreen.ErrorState(
+                            message = "Error: ${e.message}",
+                            returnTo = GameScreen.Dashboard,
+                        ),
                     )
-                )
-            } finally {
-                connectJob = null
-                busy = false
+                } finally {
+                    connectJob = null
+                    busy = false
+                }
             }
-        }
     }
 
     fun cancelConnect() {
@@ -80,7 +80,10 @@ class DashboardViewModel(
         message = null
     }
 
-    fun updateProxySettings(characterId: String, proxySettings: ConnectionProxySettings) {
+    fun updateProxySettings(
+        characterId: String,
+        proxySettings: ConnectionProxySettings,
+    ) {
         viewModelScope.launch {
             connectionSettingsRepository.saveProxySettings(characterId, proxySettings)
         }

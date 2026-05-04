@@ -9,8 +9,8 @@ import kotlin.uuid.Uuid
 @Entity(
     tableName = "Name",
     indices = [
-        Index(value = ["characterId", "text"], unique = true)
-    ]
+        Index(value = ["characterId", "text"], unique = true),
+    ],
 )
 data class NameEntity(
     @PrimaryKey

@@ -24,7 +24,10 @@ interface NameDao {
     fun observeNamesForCharacter(characterId: String): Flow<List<NameEntity>>
 
     @Query("DELETE FROM Name WHERE text = :text AND characterId = :characterId")
-    suspend fun deleteByText(text: String, characterId: String)
+    suspend fun deleteByText(
+        text: String,
+        characterId: String,
+    )
 
     @Query("DELETE FROM Name WHERE id = :id")
     suspend fun deleteById(id: Uuid)

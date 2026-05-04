@@ -20,15 +20,17 @@ import warlockfe.warlock3.core.sge.SgeGame
 @Composable
 fun SgeGameView(
     games: List<SgeGame>,
-    onBackPressed: () -> Unit,
-    onGameSelected: (SgeGame) -> Unit
+    onBackPress: () -> Unit,
+    onGameSelect: (SgeGame) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             itemsIndexed(games) { index, game ->
-                GameListItem(game = game, onClick = { onGameSelected(game) })
-                if (index < games.size - 1)
+                GameListItem(game = game, onClick = { onGameSelect(game) })
+                if (index < games.size - 1) {
                     HorizontalDivider()
+                }
             }
         }
         Row(
@@ -36,7 +38,7 @@ fun SgeGameView(
         ) {
             Button(
                 modifier = Modifier.padding(16.dp),
-                onClick = onBackPressed
+                onClick = onBackPress,
             ) {
                 Text("Back")
             }
@@ -45,9 +47,13 @@ fun SgeGameView(
 }
 
 @Composable
-fun GameListItem(game: SgeGame, onClick: () -> Unit) {
+fun GameListItem(
+    game: SgeGame,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
         headlineContent = { Text(game.title) },
     )
 }

@@ -6,9 +6,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
 
 class CastTimeHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return element.attributes["value"]?.let {
+    override fun startElement(element: StartElement): WraythEvent? =
+        element.attributes["value"]?.let {
             WraythCastTimeEvent(time = it)
         }
-    }
 }

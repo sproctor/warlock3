@@ -8,8 +8,8 @@ import kotlin.uuid.Uuid
 @Entity(
     tableName = "Highlight",
     indices = [
-        Index(value = ["characterId", "pattern"], unique = true)
-    ]
+        Index(value = ["characterId", "pattern"], unique = true),
+    ],
 )
 data class HighlightEntity(
     @PrimaryKey

@@ -15,7 +15,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -34,7 +33,7 @@ fun CharacterSettingsDialog(
     var proxyEnabled by rememberSaveable(proxySettings) { mutableStateOf(proxySettings.enabled) }
     val proxyCommand = rememberTextFieldState(proxySettings.launchCommand ?: "")
     val proxyHost = rememberTextFieldState(proxySettings.host ?: "")
-    var proxyPort = rememberTextFieldState(proxySettings.port ?: "")
+    val proxyPort = rememberTextFieldState(proxySettings.port ?: "")
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = closeDialog,
@@ -48,26 +47,28 @@ fun CharacterSettingsDialog(
                                 launchCommand = proxyCommand.text.toString().ifBlank { null },
                                 host = proxyHost.text.toString().ifBlank { null },
                                 port = proxyPort.text.toString().ifBlank { null },
-                            )
+                            ),
                         )
                         closeDialog()
                     }
-                }
+                },
             ) {
                 Text("OK")
             }
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("In the following settings, \"{host}\" and \"{port}\" are replaced by the values for the game server. \"{home}\" is replaced by the user home directory.")
+                Text(
+                    "In the following settings, \"{host}\" and \"{port}\" are replaced by the values for the game server. \"{home}\" is replaced by the user home directory.",
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(
                         checked = proxyEnabled,
                         onCheckedChange = {
                             proxyEnabled = it
-                        }
+                        },
                     )
                     Spacer(Modifier.width(16.dp))
                     Text("Enable proxy")

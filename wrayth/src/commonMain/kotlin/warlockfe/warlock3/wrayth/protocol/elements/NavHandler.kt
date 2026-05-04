@@ -6,7 +6,5 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 
 class NavHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythNavEvent
-    }
+    override fun startElement(element: StartElement): WraythEvent = WraythNavEvent
 }

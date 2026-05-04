@@ -1,6 +1,5 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
@@ -11,28 +10,34 @@ plugins {
     alias(libs.plugins.antlr.kotlin)
 }
 
-val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
-    dependsOn("cleanGenerateKotlinGrammarSource")
+val generateKotlinGrammarSource =
+    tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
+        dependsOn("cleanGenerateKotlinGrammarSource")
 
-    // ANTLR .g4 files are under {example-project}/antlr
-    // Only include *.g4 files. This allows tools (e.g., IDE plugins)
-    // to generate temporary files inside the base path
-    source = fileTree(layout.projectDirectory.dir("src/commonMain/antlr")) {
-        include("**/*.g4")
+        // ANTLR .g4 files are under {example-project}/antlr
+        // Only include *.g4 files. This allows tools (e.g., IDE plugins)
+        // to generate temporary files inside the base path
+        source =
+            fileTree(layout.projectDirectory.dir("src/commonMain/antlr")) {
+                include("**/*.g4")
+            }
+
+        // We want the generated source files to have this package name
+        val pkgName = "warlockfe.warlock3.wrayth.parsers.generated"
+        packageName = pkgName
+
+        // We want visitors alongside listeners.
+        // The Kotlin target language is implicit, as is the file encoding (UTF-8)
+        arguments = listOf("-visitor")
+
+        // Generated files are outputted inside build/generatedAntlr/{package-name}
+        val outDir = "generatedAntlr/${pkgName.replace(".", "/")}"
+        outputDirectory =
+            layout.buildDirectory
+                .dir(outDir)
+                .get()
+                .asFile
     }
-
-    // We want the generated source files to have this package name
-    val pkgName = "warlockfe.warlock3.wrayth.parsers.generated"
-    packageName = pkgName
-
-    // We want visitors alongside listeners.
-    // The Kotlin target language is implicit, as is the file encoding (UTF-8)
-    arguments = listOf("-visitor")
-
-    // Generated files are outputted inside build/generatedAntlr/{package-name}
-    val outDir = "generatedAntlr/${pkgName.replace(".", "/")}"
-    outputDirectory = layout.buildDirectory.dir(outDir).get().asFile
-}
 
 kotlin {
     jvm()
@@ -41,7 +46,7 @@ kotlin {
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "wrayth"
@@ -49,7 +54,11 @@ kotlin {
         }
     }
 
-    jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
+    jvmToolchain(
+        libs.versions.jvmToolchainVersion
+            .get()
+            .toInt(),
+    )
 
     applyDefaultHierarchyTemplate {
         common {
@@ -58,7 +67,7 @@ kotlin {
                 withAndroidTarget()
                 // The following is for when we move the android kmp
                 // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                //withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
             }
         }
     }
@@ -95,8 +104,14 @@ kotlin {
 
 android {
     namespace = "warlockfe.warlock3.wrayth"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.compileSdk
+            .get()
+            .toInt()
     defaultConfig {
-        minSdk = libs.versions.minSdk.get().toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
     }
 }

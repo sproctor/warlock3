@@ -6,7 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.FixedScale
 import androidx.compose.ui.platform.LocalDensity
@@ -14,10 +18,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import co.touchlab.kermit.Logger
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.util.LocalCompassTheme
-import warlockfe.warlock3.compose.util.LocalLogger
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.compass_main
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.loadCompassTheme
 import warlockfe.warlock3.core.compass.DirectionType
 
@@ -25,15 +31,27 @@ import warlockfe.warlock3.core.compass.DirectionType
 fun CompassView(
     size: Dp,
     state: CompassState,
-    onClick: (DirectionType) -> Unit
+    onClick: (DirectionType) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val logger = LocalLogger.current
-    val theme = LocalCompassTheme.current
-    val backgroundPainter = painterResource(theme.background)
-    val scale = with(LocalDensity.current) { size.toPx() } / theme.size
+    var compassTheme by remember {
+        mutableStateOf(
+            CompassTheme(
+                size = 63,
+                background = Res.drawable.compass_main,
+                directions = emptyMap(),
+            ),
+        )
+    }
+    val skin = LocalSkin.current
+    LaunchedEffect(skin) {
+        compassTheme = loadCompassTheme(skin)
+    }
+    val backgroundPainter = painterResource(compassTheme.background)
+    val scale = with(LocalDensity.current) { size.toPx() } / compassTheme.size
     // TODO: Scale compass to fit height instead of using density
     Box(
-        modifier = Modifier.size(size)
+        modifier = modifier.size(size),
     ) {
         Image(
             painter = backgroundPainter,
@@ -41,15 +59,16 @@ fun CompassView(
             contentScale = FixedScale(scale),
         )
         state.directions.forEach {
-            val direction = theme.directions[it]
+            val direction = compassTheme.directions[it]
             if (direction != null) {
                 Image(
-                    modifier = Modifier
-                        .offset { IntOffset(direction.position.first, direction.position.second) * scale }
-                        .clickable {
-                            logger.d { "Clicked on direction: ${direction.direction}" }
-                            onClick(direction.direction)
-                        },
+                    modifier =
+                        Modifier
+                            .offset { IntOffset(direction.position.first, direction.position.second) * scale }
+                            .clickable {
+                                Logger.d { "Clicked on direction: ${direction.direction}" }
+                                onClick(direction.direction)
+                            },
                     painter = painterResource(direction.image),
                     contentDescription = it.value,
                     contentScale = FixedScale(scale),
@@ -60,13 +79,13 @@ fun CompassView(
 }
 
 data class CompassState(
-    val directions: Set<DirectionType>
+    val directions: Set<DirectionType>,
 )
 
 data class CompassTheme(
     val size: Int,
     val background: DrawableResource,
-    val directions: Map<DirectionType, CompassDirection>
+    val directions: Map<DirectionType, CompassDirection>,
 )
 
 data class CompassDirection(
@@ -77,28 +96,20 @@ data class CompassDirection(
 
 @Preview
 @Composable
-fun EmptyCompassPreview() {
-    CompositionLocalProvider(
-        LocalCompassTheme provides loadCompassTheme(emptyMap())
-    ) {
-        CompassView(
-            size = 80.dp,
-            state = CompassState(directions = emptySet()),
-            onClick = {}
-        )
-    }
+private fun EmptyCompassPreview() {
+    CompassView(
+        size = 80.dp,
+        state = CompassState(directions = emptySet()),
+        onClick = {},
+    )
 }
 
 @Preview
 @Composable
-fun CompassPreview() {
-    CompositionLocalProvider(
-        LocalCompassTheme provides loadCompassTheme(emptyMap())
-    ) {
-        CompassView(
-            size = 80.dp,
-            state = CompassState(directions = setOf(DirectionType.North, DirectionType.West)),
-            onClick = {}
-        )
-    }
+private fun CompassPreview() {
+    CompassView(
+        size = 80.dp,
+        state = CompassState(directions = setOf(DirectionType.North, DirectionType.West)),
+        onClick = {},
+    )
 }

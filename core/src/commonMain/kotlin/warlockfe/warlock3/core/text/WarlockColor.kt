@@ -4,10 +4,12 @@ import kotlinx.serialization.Serializable
 import warlockfe.warlock3.core.util.toWarlockColor
 
 @Serializable
-data class WarlockColor(val argb: Long) {
+data class WarlockColor(
+    val argb: Long,
+) {
     constructor(value: String) : this(value.toWarlockColor()?.argb ?: -1)
-    constructor(red: Int, green: Int, blue: Int, alpha: Int = 0xFF)
-            : this(argb = alpha * 0x1000000L + red * 0x10000L + green * 0x100L + blue)
+    constructor(red: Int, green: Int, blue: Int, alpha: Int = 0xFF) :
+        this(argb = alpha * 0x1000000L + red * 0x10000L + green * 0x100L + blue)
 
     override fun toString(): String {
         if (isUnspecified()) return "WarlockColor.Unspecified"
@@ -20,10 +22,10 @@ data class WarlockColor(val argb: Long) {
 }
 
 fun WarlockColor.isUnspecified(): Boolean = argb == -1L
+
 fun WarlockColor.isSpecified(): Boolean = argb != -1L
 
-fun WarlockColor.specifiedOrNull(): WarlockColor? =
-    if (isSpecified()) this else null
+fun WarlockColor.specifiedOrNull(): WarlockColor? = if (isSpecified()) this else null
 
 fun WarlockColor.ifUnspecified(defaultColor: WarlockColor): WarlockColor {
     if (isSpecified()) return this

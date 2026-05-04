@@ -5,7 +5,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 
 actual fun AnnotatedString.Builder.markLinks(
     text: AnnotatedString,
-    presets: Map<String, StyleDefinition>
+    presets: Map<String, StyleDefinition>,
 ) {
     // TODO: implement on iOS
 }

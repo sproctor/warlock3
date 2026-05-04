@@ -5,7 +5,7 @@ import androidx.room.Entity
 
 @Entity(
     tableName = "connection_setting",
-    primaryKeys = ["connection_id", "key"]
+    primaryKeys = ["connection_id", "key"],
 )
 data class ConnectionSettingEntity(
     @ColumnInfo(name = "connection_id")

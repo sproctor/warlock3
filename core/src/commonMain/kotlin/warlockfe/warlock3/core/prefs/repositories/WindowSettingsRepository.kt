@@ -14,45 +14,67 @@ import warlockfe.warlock3.core.window.WindowLocation
 class WindowSettingsRepository(
     private val windowSettingsDao: WindowSettingsDao,
 ) {
-
     private val logger = Logger.withTag("WindowSettingsRepository")
 
-    fun observeWindowSettings(characterId: String): Flow<List<WindowSettingsEntity>> {
-        return windowSettingsDao.observeByCharacter(characterId)
-    }
+    fun observeWindowSettings(characterId: String): Flow<List<WindowSettingsEntity>> = windowSettingsDao.observeByCharacter(characterId)
 
-    suspend fun openWindow(characterId: String, name: String, location: WindowLocation, position: Int) {
+    suspend fun openWindow(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+        position: Int,
+    ) {
         logger.d { "openWindow: $characterId, $name, $location, $position" }
         withContext(NonCancellable) {
             windowSettingsDao.openWindow(characterId, name, location, position)
         }
     }
 
-    suspend fun closeWindow(characterId: String, name: String) {
+    suspend fun closeWindow(
+        characterId: String,
+        name: String,
+    ) {
         withContext(NonCancellable) {
             windowSettingsDao.closeWindow(characterId, name)
         }
     }
 
-    suspend fun moveWindowToPosition(characterId: String, name: String, location: WindowLocation, position: Int) {
+    suspend fun moveWindowToPosition(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+        position: Int,
+    ) {
         withContext(NonCancellable) {
             windowSettingsDao.moveWindowToPosition(characterId, name, location, position)
         }
     }
 
-    suspend fun setWindowWidth(characterId: String, name: String, width: Int) {
+    suspend fun setWindowWidth(
+        characterId: String,
+        name: String,
+        width: Int,
+    ) {
         withContext(NonCancellable) {
             windowSettingsDao.updateWidth(characterId = characterId, name = name, width = width)
         }
     }
 
-    suspend fun setWindowHeight(characterId: String, name: String, height: Int) {
+    suspend fun setWindowHeight(
+        characterId: String,
+        name: String,
+        height: Int,
+    ) {
         withContext(NonCancellable) {
             windowSettingsDao.updateHeight(characterId = characterId, name = name, height = height)
         }
     }
 
-    suspend fun setStyle(characterId: String, name: String, style: StyleDefinition) {
+    suspend fun setStyle(
+        characterId: String,
+        name: String,
+        style: StyleDefinition,
+    ) {
         withContext(NonCancellable) {
             windowSettingsDao.setStyle(
                 characterId = characterId,
@@ -65,7 +87,11 @@ class WindowSettingsRepository(
         }
     }
 
-    suspend fun setPosition(characterId: String, name: String, pos: Int) {
+    suspend fun setPosition(
+        characterId: String,
+        name: String,
+        pos: Int,
+    ) {
         withContext(NonCancellable) {
             logger.d { "setPosition: $characterId, $name, $pos" }
             windowSettingsDao.setPosition(characterId, name, pos)

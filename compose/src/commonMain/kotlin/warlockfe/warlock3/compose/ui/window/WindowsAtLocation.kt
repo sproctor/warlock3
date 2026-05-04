@@ -14,10 +14,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -45,14 +47,14 @@ fun WindowsAtLocation(
     horizontalPanel: Boolean,
     handleBefore: Boolean,
     selectedWindow: String,
-    onSizeChanged: (Int) -> Unit,
+    onSizeChange: (Int) -> Unit,
     menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onHeightChanged: (String, Int) -> Unit,
-    onWidthChanged: (String, Int) -> Unit,
-    onCloseClicked: (String) -> Unit,
+    onActionClick: (WarlockAction) -> Int?,
+    onHeightChange: (String, Int) -> Unit,
+    onWidthChange: (String, Int) -> Unit,
+    onCloseClick: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
-    onWindowSelected: (String) -> Unit,
+    onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: (String) -> Unit,
@@ -63,9 +65,10 @@ fun WindowsAtLocation(
     val isVertical = horizontalPanel
 
     if (windowUiStates.isNotEmpty()) {
-        val panelState = remember(size == null) {
-            ResizablePanelState(initialSize = size?.dp ?: 0.dp, minSize = 16.dp)
-        }
+        val panelState =
+            remember(size == null) {
+                ResizablePanelState(initialSize = size?.dp ?: 0.dp, minSize = 16.dp)
+            }
         ResizablePanel(
             isHorizontal = horizontalPanel,
             handleBefore = handleBefore,
@@ -81,20 +84,21 @@ fun WindowsAtLocation(
                 openWindows = openWindows,
                 selectedWindow = selectedWindow,
                 menuData = menuData,
-                onActionClicked = onActionClicked,
-                onHeightChanged = onHeightChanged,
-                onWidthChanged = onWidthChanged,
-                onCloseClicked = onCloseClicked,
+                onActionClick = onActionClick,
+                onHeightChange = onHeightChange,
+                onWidthChange = onWidthChange,
+                onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
-                onWindowSelected = onWindowSelected,
+                onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
             )
         }
+        val currentOnSizeChange by rememberUpdatedState(onSizeChange)
         LaunchedEffect(panelState.currentSize) {
             if (size != null) {
-                onSizeChanged(panelState.currentSize.value.toInt())
+                currentOnSizeChange(panelState.currentSize.value.toInt())
             }
         }
     } else if (dragDropState.isDragging) {
@@ -113,28 +117,29 @@ private fun EmptyDropZone(
     dragDropState: DragDropState,
 ) {
     val isTarget = dragDropState.dropTarget?.location == location
-    val sizeModifier = if (isVertical) {
-        Modifier.width(32.dp).fillMaxHeight()
-    } else {
-        Modifier.height(32.dp).fillMaxWidth()
-    }
+    val sizeModifier =
+        if (isVertical) {
+            Modifier.width(32.dp).fillMaxHeight()
+        } else {
+            Modifier.height(32.dp).fillMaxWidth()
+        }
     Box(
-        modifier = sizeModifier
-            .onGloballyPositioned { coordinates ->
-                dragDropState.registerSection(
-                    location = location,
-                    bounds = coordinates.boundsInRoot(),
-                    itemBounds = emptyList(),
-                    isVertical = isVertical,
-                )
-            }
-            .then(
-                if (isTarget) {
-                    Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
-                } else {
-                    Modifier
-                }
-            )
+        modifier =
+            sizeModifier
+                .onGloballyPositioned { coordinates ->
+                    dragDropState.registerSection(
+                        location = location,
+                        bounds = coordinates.boundsInRoot(),
+                        itemBounds = emptyList(),
+                        isVertical = isVertical,
+                    )
+                }.then(
+                    if (isTarget) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                    } else {
+                        Modifier
+                    },
+                ),
     )
 
     DisposableEffect(location) {
@@ -155,12 +160,12 @@ private fun DockableSection(
     openWindows: List<String>,
     selectedWindow: String,
     menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onHeightChanged: (String, Int) -> Unit,
-    onWidthChanged: (String, Int) -> Unit,
-    onCloseClicked: (String) -> Unit,
+    onActionClick: (WarlockAction) -> Int?,
+    onHeightChange: (String, Int) -> Unit,
+    onWidthChange: (String, Int) -> Unit,
+    onCloseClick: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
-    onWindowSelected: (String) -> Unit,
+    onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: (String) -> Unit,
@@ -178,22 +183,22 @@ private fun DockableSection(
         }
     }
 
-    val sectionModifier = Modifier
-        .onGloballyPositioned { coordinates ->
-            dragDropState.registerSection(
-                location = location,
-                bounds = coordinates.boundsInRoot(),
-                itemBounds = itemBounds.toList(),
-                isVertical = isVertical,
+    val sectionModifier =
+        Modifier
+            .onGloballyPositioned { coordinates ->
+                dragDropState.registerSection(
+                    location = location,
+                    bounds = coordinates.boundsInRoot(),
+                    itemBounds = itemBounds.toList(),
+                    isVertical = isVertical,
+                )
+            }.then(
+                if (isDropTarget) {
+                    Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                } else {
+                    Modifier
+                },
             )
-        }
-        .then(
-            if (isDropTarget) {
-                Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
-            } else {
-                Modifier
-            }
-        )
 
     DisposableEffect(location) {
         onDispose {
@@ -203,7 +208,8 @@ private fun DockableSection(
 
     val content: @Composable (Int, WindowUiState) -> Unit = { index, uiState ->
         key(uiState.name) {
-            val isDraggedItem = dragDropState.isDragging &&
+            val isDraggedItem =
+                dragDropState.isDragging &&
                     dragDropState.sourceLocation == location &&
                     dragDropState.draggedItem?.name == uiState.name
 
@@ -211,15 +217,15 @@ private fun DockableSection(
                 DropIndicator(isVertical)
             }
 
-            val itemModifier = Modifier
-                .onGloballyPositioned { coordinates: LayoutCoordinates ->
-                    if (index < itemBounds.size) {
-                        itemBounds[index] = coordinates.boundsInRoot()
+            val itemModifier =
+                Modifier
+                    .onGloballyPositioned { coordinates: LayoutCoordinates ->
+                        if (index < itemBounds.size) {
+                            itemBounds[index] = coordinates.boundsInRoot()
+                        }
+                    }.graphicsLayer {
+                        alpha = if (isDraggedItem) 0.3f else 1f
                     }
-                }
-                .graphicsLayer {
-                    alpha = if (isDraggedItem) 0.3f else 1f
-                }
 
             WindowViewSlot(
                 modifier = itemModifier,
@@ -232,12 +238,12 @@ private fun DockableSection(
                 selectedWindow = selectedWindow,
                 isHorizontal = !isVertical,
                 menuData = menuData,
-                onActionClicked = onActionClicked,
-                onHeightChanged = onHeightChanged,
-                onWidthChanged = onWidthChanged,
-                onCloseClicked = onCloseClicked,
+                onActionClick = onActionClick,
+                onHeightChange = onHeightChange,
+                onWidthChange = onWidthChange,
+                onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
-                onWindowSelected = onWindowSelected,
+                onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
@@ -270,7 +276,6 @@ private fun DockableSection(
 
 @Composable
 private fun WindowViewSlot(
-    modifier: Modifier,
     uiState: WindowUiState,
     location: WindowLocation,
     index: Int,
@@ -280,46 +285,48 @@ private fun WindowViewSlot(
     selectedWindow: String,
     isHorizontal: Boolean,
     menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onWidthChanged: (String, Int) -> Unit,
-    onHeightChanged: (String, Int) -> Unit,
-    onCloseClicked: (String) -> Unit,
+    onActionClick: (WarlockAction) -> Int?,
+    onWidthChange: (String, Int) -> Unit,
+    onHeightChange: (String, Int) -> Unit,
+    onCloseClick: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
-    onWindowSelected: (String) -> Unit,
+    onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
     clearStream: (String) -> Unit,
     dragDropState: DragDropState,
     onDrop: (DropResult) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val headerCoordinates = remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-    val headerModifier = Modifier
-        .onGloballyPositioned { headerCoordinates.value = it }
-        .pointerInput(uiState.name, location, index) {
-            detectDragGestures(
-                onDragStart = { offset ->
-                    val coords = headerCoordinates.value ?: return@detectDragGestures
-                    val rootOffset = coords.localToRoot(offset)
-                    dragDropState.startDrag(uiState, location, index, rootOffset)
-                },
-                onDrag = { change, _ ->
-                    change.consume()
-                    val coords = headerCoordinates.value ?: return@detectDragGestures
-                    val rootOffset = coords.localToRoot(change.position)
-                    dragDropState.updateDrag(rootOffset)
-                },
-                onDragEnd = {
-                    val result = dragDropState.endDrag()
-                    if (result != null) {
-                        onDrop(result)
-                    }
-                },
-                onDragCancel = {
-                    dragDropState.cancelDrag()
-                },
-            )
-        }
+    val headerModifier =
+        Modifier
+            .onGloballyPositioned { headerCoordinates.value = it }
+            .pointerInput(uiState.name, location, index) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        val coords = headerCoordinates.value ?: return@detectDragGestures
+                        val rootOffset = coords.localToRoot(offset)
+                        dragDropState.startDrag(uiState, location, index, rootOffset)
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val coords = headerCoordinates.value ?: return@detectDragGestures
+                        val rootOffset = coords.localToRoot(change.position)
+                        dragDropState.updateDrag(rootOffset)
+                    },
+                    onDragEnd = {
+                        val result = dragDropState.endDrag()
+                        if (result != null) {
+                            onDrop(result)
+                        }
+                    },
+                    onDragCancel = {
+                        dragDropState.cancelDrag()
+                    },
+                )
+            }
 
     val content: @Composable (Modifier) -> Unit = { contentModifier ->
         WindowView(
@@ -331,10 +338,10 @@ private fun WindowViewSlot(
             isSelected = selectedWindow == uiState.name,
             openWindows = openWindows,
             menuData = menuData,
-            onActionClicked = onActionClicked,
-            onCloseClicked = { onCloseClicked(uiState.name) },
+            onActionClick = onActionClick,
+            onCloseClick = { onCloseClick(uiState.name) },
             saveStyle = { saveStyle(uiState.name, it) },
-            onSelected = { onWindowSelected(uiState.name) },
+            onSelect = { onWindowSelect(uiState.name) },
             scrollEvents = scrollEvents,
             handledScrollEvent = handledScrollEvent,
             clearStream = { clearStream(uiState.name) },
@@ -342,27 +349,31 @@ private fun WindowViewSlot(
     }
 
     if (!isLast) {
-        val panelState = remember(uiState.name) {
-            val panelSize = if (isHorizontal) uiState.width else uiState.height
-            ResizablePanelState(initialSize = panelSize?.dp ?: 160.dp, minSize = 16.dp)
-        }
+        val panelState =
+            remember(uiState.name) {
+                val panelSize = if (isHorizontal) uiState.width else uiState.height
+                ResizablePanelState(initialSize = panelSize?.dp ?: 160.dp, minSize = 16.dp)
+            }
         ResizablePanel(
-            modifier = if (isHorizontal) {
-                Modifier.fillMaxHeight()
-            } else {
-                Modifier.fillMaxWidth()
-            },
+            modifier =
+                if (isHorizontal) {
+                    Modifier.fillMaxHeight()
+                } else {
+                    Modifier.fillMaxWidth()
+                },
             isHorizontal = isHorizontal,
             state = panelState,
         ) {
             content(Modifier.matchParentSize())
         }
+        val currentOnWidthChange by rememberUpdatedState(onWidthChange)
+        val currentOnHeightChange by rememberUpdatedState(onHeightChange)
         LaunchedEffect(panelState.currentSize) {
             val panelSize = panelState.currentSize.value.toInt()
             if (isHorizontal) {
-                onWidthChanged(uiState.name, panelSize)
+                currentOnWidthChange(uiState.name, panelSize)
             } else {
-                onHeightChanged(uiState.name, panelSize)
+                currentOnHeightChange(uiState.name, panelSize)
             }
         }
     } else {

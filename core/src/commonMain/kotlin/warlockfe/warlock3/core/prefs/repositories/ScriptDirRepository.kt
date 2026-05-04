@@ -12,28 +12,30 @@ class ScriptDirRepository(
     private val scriptDirDao: ScriptDirDao,
     private val warlockDirs: WarlockDirs,
 ) {
-    fun observeScriptDirs(characterId: String): Flow<List<String>> {
-        return scriptDirDao.observeByCharacter(characterId)
-    }
+    fun observeScriptDirs(characterId: String): Flow<List<String>> = scriptDirDao.observeByCharacter(characterId)
 
-    suspend fun getMappedScriptDirs(characterId: String): List<Path> {
-        return (scriptDirDao.getByCharacterWithGlobal(characterId) + getDefaultDir())
-            .toSet().map { Path(it) }
-    }
+    suspend fun getMappedScriptDirs(characterId: String): List<Path> =
+        (scriptDirDao.getByCharacterWithGlobal(characterId) + getDefaultDir())
+            .toSet()
+            .map { Path(it) }
 
-    fun getDefaultDir(): String {
-        return Path(warlockDirs.dataDir, "scripts").toString()
-    }
+    fun getDefaultDir(): String = Path(warlockDirs.dataDir, "scripts").toString()
 
-    suspend fun save(characterId: String, path: String) {
+    suspend fun save(
+        characterId: String,
+        path: String,
+    ) {
         withContext(NonCancellable) {
             scriptDirDao.save(
-                ScriptDirEntity(characterId = characterId, path = path)
+                ScriptDirEntity(characterId = characterId, path = path),
             )
         }
     }
 
-    suspend fun delete(characterId: String, path: String) {
+    suspend fun delete(
+        characterId: String,
+        path: String,
+    ) {
         withContext(NonCancellable) {
             scriptDirDao.delete(
                 characterId = characterId,

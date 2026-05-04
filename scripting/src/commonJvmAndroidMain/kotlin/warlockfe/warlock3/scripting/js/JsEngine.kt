@@ -11,7 +11,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 class JsEngine(
     private val variableRepository: VariableRepository,
 ) : WarlockScriptEngine {
-
     override val extensions: List<String> = listOf("js")
 
     private val runningScripts = CopyOnWriteArrayList<JsInstance>()
@@ -21,8 +20,12 @@ class JsEngine(
     }
 
     // FIXME: We leak instances here. Maybe we should clean them up?
-    override fun createInstance(id: Long, name: String, file: Path, scriptManager: ScriptManager): ScriptInstance {
-        return JsInstance(id, name, file, variableRepository, scriptManager)
+    override fun createInstance(
+        id: Long,
+        name: String,
+        file: Path,
+        scriptManager: ScriptManager,
+    ): ScriptInstance =
+        JsInstance(id, name, file, variableRepository, scriptManager)
             .also { runningScripts.add(it) }
-    }
 }

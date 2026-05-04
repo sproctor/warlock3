@@ -11,11 +11,17 @@ interface HighlightRepository {
 
     fun observeForCharacter(characterId: String): Flow<List<Highlight>>
 
-    suspend fun save(characterId: String, highlight: Highlight)
+    suspend fun save(
+        characterId: String,
+        highlight: Highlight,
+    )
 
     suspend fun saveGlobal(highlight: Highlight)
 
-    suspend fun deleteByPattern(characterId: String, pattern: String)
+    suspend fun deleteByPattern(
+        characterId: String,
+        pattern: String,
+    )
 
     suspend fun deleteById(id: Uuid)
 }

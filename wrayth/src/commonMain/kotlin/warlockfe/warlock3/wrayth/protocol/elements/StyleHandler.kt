@@ -7,9 +7,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStyleEvent
 
 class StyleHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return element.attributes["id"]
+    override fun startElement(element: StartElement): WraythEvent =
+        element.attributes["id"]
             ?.let { WarlockStyle(it) }
             .let { WraythStyleEvent(it) }
-    }
 }

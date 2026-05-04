@@ -13,7 +13,5 @@ class PresetHandler : BaseElementListener() {
         return WraythPushStyleEvent(style ?: WarlockStyle.Default)
     }
 
-    override fun endElement(): WraythEvent {
-        return WraythPopStyleEvent
-    }
+    override fun endElement(): WraythEvent = WraythPopStyleEvent
 }

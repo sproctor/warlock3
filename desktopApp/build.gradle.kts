@@ -41,13 +41,19 @@ dependencies {
 
 kotlin {
     jvmToolchain {
-        languageVersion = JavaLanguageVersion.of(libs.versions.jvmToolchainVersion.get().toInt())
+        languageVersion =
+            JavaLanguageVersion.of(
+                libs.versions.jvmToolchainVersion
+                    .get()
+                    .toInt(),
+            )
         vendor = JvmVendorSpec.JETBRAINS
     }
 }
 
 val releaseVersion: String =
-    System.getenv("RELEASE_VERSION")
+    System
+        .getenv("RELEASE_VERSION")
         ?.removePrefix("v")
         ?.takeIf { it.isNotBlank() }
         ?: project.version.toString().takeIf { it != "unspecified" }

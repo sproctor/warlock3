@@ -8,7 +8,9 @@ data class WindowInfo(
     val showTimestamps: Boolean,
 )
 
-enum class WindowLocation(val value: String) {
+enum class WindowLocation(
+    val value: String,
+) {
     TOP("top"),
     LEFT("left"),
     RIGHT("right"),
@@ -18,5 +20,5 @@ enum class WindowLocation(val value: String) {
 
 enum class WindowType {
     STREAM,
-    DIALOG
+    DIALOG,
 }

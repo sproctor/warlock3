@@ -76,6 +76,7 @@ fun HighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     highlightRepository: HighlightRepositoryImpl,
+    modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
@@ -83,12 +84,11 @@ fun HighlightsView(
         highlightRepository.observeGlobal()
     } else {
         highlightRepository.observeByCharacter(currentCharacterId)
-    }
-        .collectAsState(emptyList())
+    }.collectAsState(emptyList())
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
             characters = allCharacters,
@@ -99,7 +99,7 @@ fun HighlightsView(
         Text(text = "Highlights", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         ScrollableColumn(
-            Modifier.fillMaxWidth().weight(1f)
+            Modifier.fillMaxWidth().weight(1f),
         ) {
             highlights.forEach { highlight ->
                 ListItem(
@@ -110,13 +110,13 @@ fun HighlightsView(
                         val style = highlight.styles[0]
                         val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
                         Box(
-                            modifier = Modifier
-                            .size(40.dp)
-                                .background(
-                                    color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
-                                    shape = MaterialTheme.shapes.small,
-                                    )
-                                .border(1.dp, contentColor, MaterialTheme.shapes.small),
+                            modifier =
+                                Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
+                                        shape = MaterialTheme.shapes.small,
+                                    ).border(1.dp, contentColor, MaterialTheme.shapes.small),
                             contentAlignment = Alignment.Center,
                         ) {
                             if (contentColor.isSpecified) {
@@ -132,7 +132,7 @@ fun HighlightsView(
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingHighlight = highlight }
+                                onClick = { editingHighlight = highlight },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.edit),
@@ -143,7 +143,7 @@ fun HighlightsView(
                             IconButton(
                                 onClick = {
                                     coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
-                                }
+                                },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
@@ -151,30 +151,31 @@ fun HighlightsView(
                                 )
                             }
                         }
-                    }
+                    },
                 )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             ExtendedFloatingActionButton(
                 onClick = {
-                    editingHighlight = Highlight(
-                        id = Uuid.random(),
-                        pattern = "",
-                        styles = emptyMap(),
-                        isRegex = false,
-                        ignoreCase = true,
-                        matchPartialWord = true,
-                        sound = null,
-                    )
+                    editingHighlight =
+                        Highlight(
+                            id = Uuid.random(),
+                            pattern = "",
+                            styles = emptyMap(),
+                            isRegex = false,
+                            ignoreCase = true,
+                            matchPartialWord = true,
+                            sound = null,
+                        )
                 },
                 text = { Text("Add highlight") },
                 icon = {
                     Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-                }
+                },
             )
         }
     }
@@ -191,7 +192,7 @@ fun HighlightsView(
                     editingHighlight = null
                 }
             },
-            onClose = { editingHighlight = null }
+            onClose = { editingHighlight = null },
         )
     }
 }
@@ -220,15 +221,17 @@ fun EditHighlightDialog(
                         Highlight(
                             id = highlight.id,
                             pattern = pattern.text.toString(),
-                            styles = styles.mapIndexed { index, style -> Pair(index, style) }
-                                .toMap(),
+                            styles =
+                                styles
+                                    .mapIndexed { index, style -> Pair(index, style) }
+                                    .toMap(),
                             isRegex = isRegex,
                             matchPartialWord = matchPartialWord,
                             ignoreCase = ignoreCase,
                             sound = sound.text.toString().ifBlank { null },
-                        )
+                        ),
                     )
-                }
+                },
             ) {
                 Text("Save")
             }
@@ -240,7 +243,7 @@ fun EditHighlightDialog(
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(Modifier.selectableGroup()) {
                     Row(
@@ -248,7 +251,7 @@ fun EditHighlightDialog(
                             selected = !isRegex,
                             onClick = { isRegex = false },
                             role = Role.RadioButton,
-                        )
+                        ),
                     ) {
                         RadioButton(
                             selected = !isRegex,
@@ -257,7 +260,7 @@ fun EditHighlightDialog(
                         Spacer(Modifier.width(16.dp))
                         Text(
                             text = "Text highlight",
-                            modifier = Modifier.align(Alignment.CenterVertically)
+                            modifier = Modifier.align(Alignment.CenterVertically),
                         )
                     }
                     Spacer(Modifier.width(16.dp))
@@ -266,7 +269,7 @@ fun EditHighlightDialog(
                             selected = isRegex,
                             onClick = { isRegex = true },
                             role = Role.RadioButton,
-                        )
+                        ),
                     ) {
                         RadioButton(
                             selected = isRegex,
@@ -275,23 +278,24 @@ fun EditHighlightDialog(
                         Spacer(Modifier.width(16.dp))
                         Text(
                             text = "Regex highlight",
-                            modifier = Modifier.align(Alignment.CenterVertically)
+                            modifier = Modifier.align(Alignment.CenterVertically),
                         )
                     }
                 }
 
                 var error: String? = null
                 // Add | to match empty string, then match and see how many groups there are
-                val groupCount = if (isRegex) {
-                    try {
-                        Regex("$pattern|").find("")?.groups?.size ?: 1
-                    } catch (e: Exception) {
-                        error = e.message ?: "Invalid regex"
+                val groupCount =
+                    if (isRegex) {
+                        try {
+                            Regex("$pattern|").find("")?.groups?.size ?: 1
+                        } catch (e: Exception) {
+                            error = e.message ?: "Invalid regex"
+                            1
+                        }
+                    } else {
                         1
                     }
-                } else {
-                    1
-                }
 
                 TextField(
                     state = pattern,
@@ -303,7 +307,7 @@ fun EditHighlightDialog(
                         if (error != null) {
                             Text("Error: $error")
                         }
-                    }
+                    },
                 )
 
                 if (styles.size < groupCount + 1) {
@@ -323,10 +327,12 @@ fun EditHighlightDialog(
                             LaunchedEffect(textColorState) {
                                 snapshotFlow { textColorState.text.toString() }
                                     .collectLatest {
-                                        styles[i] = styles[i].copy(
-                                            textColor = it.toWarlockColor()
-                                                ?: WarlockColor.Unspecified
-                                        )
+                                        styles[i] =
+                                            styles[i].copy(
+                                                textColor =
+                                                    it.toWarlockColor()
+                                                        ?: WarlockColor.Unspecified,
+                                            )
                                     }
                             }
                             ColorTextField(
@@ -340,10 +346,12 @@ fun EditHighlightDialog(
                             LaunchedEffect(backgroundColorState) {
                                 snapshotFlow { backgroundColorState.text.toString() }
                                     .collectLatest {
-                                        styles[i] = styles[i].copy(
-                                            backgroundColor = it.toWarlockColor()
-                                                ?: WarlockColor.Unspecified
-                                        )
+                                        styles[i] =
+                                            styles[i].copy(
+                                                backgroundColor =
+                                                    it.toWarlockColor()
+                                                        ?: WarlockColor.Unspecified,
+                                            )
                                     }
                             }
                             ColorTextField(
@@ -399,11 +407,12 @@ fun EditHighlightDialog(
                     Spacer(Modifier.width(16.dp))
                     Text(text = "Ignore case")
                 }
-                val soundLauncher = rememberFilePickerLauncher { file ->
-                    if (file != null) {
-                        sound.setTextAndPlaceCursorAtEnd(file.absolutePath())
+                val soundLauncher =
+                    rememberFilePickerLauncher { file ->
+                        if (file != null) {
+                            sound.setTextAndPlaceCursorAtEnd(file.absolutePath())
+                        }
                     }
-                }
                 TextField(
                     state = sound,
                     label = { Text("Sound file") },
@@ -411,21 +420,21 @@ fun EditHighlightDialog(
                         IconButton(onClick = { soundLauncher.launch() }) {
                             Icon(
                                 painter = painterResource(Res.drawable.audio_file),
-                                contentDescription = "Select sound file"
+                                contentDescription = "Select sound file",
                             )
                         }
-                    }
+                    },
                 )
             }
-        }
+        },
     )
 }
 
 @Composable
 fun ColorTextField(
-    modifier: Modifier,
     label: String,
     state: TextFieldState,
+    modifier: Modifier = Modifier,
 ) {
     var editColor by remember { mutableStateOf<Pair<String, (WarlockColor) -> Unit>?>(null) }
     var invalidColor by remember { mutableStateOf(false) }
@@ -438,11 +447,12 @@ fun ColorTextField(
     OutlinedTextField(
         label = {
             Text(
-                text = if (invalidColor) {
-                    "Invalid color string"
-                } else {
-                    label
-                },
+                text =
+                    if (invalidColor) {
+                        "Invalid color string"
+                    } else {
+                        label
+                    },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -450,13 +460,17 @@ fun ColorTextField(
         modifier = modifier,
         state = state,
         leadingIcon = {
-            val currentColor = state.text.toString().toWarlockColor()?.toColor()
+            val currentColor =
+                state.text
+                    .toString()
+                    .toWarlockColor()
+                    ?.toColor()
             if (currentColor != null && currentColor.isSpecified) {
                 Box(
                     Modifier
                         .size(20.dp)
                         .border(width = 1.dp, color = MaterialTheme.colorScheme.outline)
-                        .background(currentColor)
+                        .background(currentColor),
                 )
             }
         },
@@ -466,25 +480,25 @@ fun ColorTextField(
                     editColor = state.text.toString() to {
                         state.setTextAndPlaceCursorAtEnd(it.toHexString() ?: "")
                     }
-                }
+                },
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.palette),
-                    contentDescription = "Color picker"
+                    contentDescription = "Color picker",
                 )
             }
         },
-        isError = invalidColor
+        isError = invalidColor,
     )
     editColor?.let { (colorText, setColor) ->
         val initialColor = colorText.toWarlockColor()?.specifiedOrNull()?.toColor() ?: Color.Black
         ColorPickerDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },
-            onColorSelected = { color ->
+            onColorSelect = { color ->
                 setColor(color)
                 editColor = null
-            }
+            },
         )
     }
 }

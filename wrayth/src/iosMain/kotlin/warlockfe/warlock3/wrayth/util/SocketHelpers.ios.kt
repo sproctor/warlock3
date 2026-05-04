@@ -38,20 +38,10 @@ import platform.CoreFoundation.CFDataCreate
 import platform.CoreFoundation.CFErrorRefVar
 import platform.CoreFoundation.CFRelease
 import platform.Security.SSLClose
-import platform.Security.SSLCopyPeerTrust
-import platform.Security.SSLSetSessionOption
-import platform.Security.SecCertificateCreateWithData
-import platform.Security.SecPolicyCreateBasicX509
-import platform.Security.SecTrustSetPolicies
-import platform.Security.SecTrustEvaluateWithError
-import platform.Security.SecTrustRefVar
-import platform.Security.SecTrustSetAnchorCertificates
-import platform.Security.SecTrustSetAnchorCertificatesOnly
-import platform.Security.errSSLPeerAuthCompleted
-import platform.Security.kSSLSessionOptionBreakOnServerAuth
 import platform.Security.SSLConnectionRef
 import platform.Security.SSLConnectionType
 import platform.Security.SSLContextRef
+import platform.Security.SSLCopyPeerTrust
 import platform.Security.SSLCreateContext
 import platform.Security.SSLHandshake
 import platform.Security.SSLProtocolSide
@@ -59,11 +49,21 @@ import platform.Security.SSLRead
 import platform.Security.SSLSetConnection
 import platform.Security.SSLSetIOFuncs
 import platform.Security.SSLSetPeerDomainName
+import platform.Security.SSLSetSessionOption
 import platform.Security.SSLWrite
+import platform.Security.SecCertificateCreateWithData
+import platform.Security.SecPolicyCreateBasicX509
+import platform.Security.SecTrustEvaluateWithError
+import platform.Security.SecTrustRefVar
+import platform.Security.SecTrustSetAnchorCertificates
+import platform.Security.SecTrustSetAnchorCertificatesOnly
+import platform.Security.SecTrustSetPolicies
 import platform.Security.errSSLClosedAbort
 import platform.Security.errSSLClosedGraceful
+import platform.Security.errSSLPeerAuthCompleted
 import platform.Security.errSSLWouldBlock
 import platform.Security.errSecSuccess
+import platform.Security.kSSLSessionOptionBreakOnServerAuth
 import platform.posix.AF_INET
 import platform.posix.EAGAIN
 import platform.posix.EWOULDBLOCK
@@ -82,76 +82,90 @@ import kotlin.coroutines.CoroutineContext
 
 // SSL I/O callbacks are static (no captures); socket fd is stored via SSLSetConnection as a stable ref.
 
-private val sslReadCallback = staticCFunction {
-    connection: SSLConnectionRef?,
-    data: COpaquePointer?,
-    dataLength: CPointer<ULongVar>? ->
+private val sslReadCallback =
+    staticCFunction {
+        connection: SSLConnectionRef?,
+        data: COpaquePointer?,
+        dataLength: CPointer<ULongVar>?,
+        ->
 
-    if (connection == null || data == null || dataLength == null) return@staticCFunction errSSLClosedAbort
-    val fdArr = connection.asStableRef<IntArray>().get()
-    val fd = fdArr[0]
-    val n = read(fd, data, dataLength.pointed.value)
-    when {
-        n > 0L -> {
-            dataLength.pointed.value = n.convert()
-            errSecSuccess
-        }
-        n == 0L -> {
-            dataLength.pointed.value = 0u
-            errSSLClosedGraceful
-        }
-        else -> {
-            dataLength.pointed.value = 0u
-            if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
-        }
-    }
-}
-
-private val sslWriteCallback = staticCFunction {
-    connection: SSLConnectionRef?,
-    data: COpaquePointer?,
-    dataLength: CPointer<ULongVar>? ->
-
-    if (connection == null || data == null || dataLength == null) return@staticCFunction errSSLClosedAbort
-    val fdArr = connection.asStableRef<IntArray>().get()
-    val fd = fdArr[0]
-    val n = write(fd, data, dataLength.pointed.value)
-    when {
-        n >= 0L -> {
-            dataLength.pointed.value = n.convert()
-            errSecSuccess
-        }
-        else -> {
-            dataLength.pointed.value = 0u
-            if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
+        if (connection == null || data == null || dataLength == null) return@staticCFunction errSSLClosedAbort
+        val fdArr = connection.asStableRef<IntArray>().get()
+        val fd = fdArr[0]
+        val n = read(fd, data, dataLength.pointed.value)
+        when {
+            n > 0L -> {
+                dataLength.pointed.value = n.convert()
+                errSecSuccess
+            }
+            n == 0L -> {
+                dataLength.pointed.value = 0u
+                errSSLClosedGraceful
+            }
+            else -> {
+                dataLength.pointed.value = 0u
+                if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
+            }
         }
     }
-}
 
-private fun createAndConnectSocket(host: String, port: Int): Int = memScoped {
-    val hints = alloc<addrinfo>().apply {
-        ai_family = AF_INET
-        ai_socktype = SOCK_STREAM
-        ai_protocol = IPPROTO_TCP
-    }
-    val resultPtr = alloc<CPointerVar<addrinfo>>()
-    val rc = getaddrinfo(host, port.toString(), hints.ptr, resultPtr.ptr)
-    check(rc == 0) { "getaddrinfo failed for $host:$port (rc=$rc)" }
-    val result = checkNotNull(resultPtr.value) { "getaddrinfo returned null for $host:$port" }
-    val fd = socket(result.pointed.ai_family, result.pointed.ai_socktype, result.pointed.ai_protocol)
-    check(fd >= 0) { "socket() failed" }
-    val connected = connect(fd, result.pointed.ai_addr, result.pointed.ai_addrlen)
-    freeaddrinfo(result)
-    check(connected == 0) { "connect() failed to $host:$port" }
-    fd
-}
+private val sslWriteCallback =
+    staticCFunction {
+        connection: SSLConnectionRef?,
+        data: COpaquePointer?,
+        dataLength: CPointer<ULongVar>?,
+        ->
 
-private fun setupTLS(fd: Int, host: String, certificate: ByteArray): Pair<SSLContextRef, StableRef<IntArray>> {
-    val sslCtx = checkNotNull(
-        SSLCreateContext(null, SSLProtocolSide.kSSLClientSide, SSLConnectionType.kSSLStreamType)
-    ) {
-        "SSLCreateContext failed"
+        if (connection == null || data == null || dataLength == null) return@staticCFunction errSSLClosedAbort
+        val fdArr = connection.asStableRef<IntArray>().get()
+        val fd = fdArr[0]
+        val n = write(fd, data, dataLength.pointed.value)
+        when {
+            n >= 0L -> {
+                dataLength.pointed.value = n.convert()
+                errSecSuccess
+            }
+            else -> {
+                dataLength.pointed.value = 0u
+                if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
+            }
+        }
     }
+
+private fun createAndConnectSocket(
+    host: String,
+    port: Int,
+): Int =
+    memScoped {
+        val hints =
+            alloc<addrinfo>().apply {
+                ai_family = AF_INET
+                ai_socktype = SOCK_STREAM
+                ai_protocol = IPPROTO_TCP
+            }
+        val resultPtr = alloc<CPointerVar<addrinfo>>()
+        val rc = getaddrinfo(host, port.toString(), hints.ptr, resultPtr.ptr)
+        check(rc == 0) { "getaddrinfo failed for $host:$port (rc=$rc)" }
+        val result = checkNotNull(resultPtr.value) { "getaddrinfo returned null for $host:$port" }
+        val fd = socket(result.pointed.ai_family, result.pointed.ai_socktype, result.pointed.ai_protocol)
+        check(fd >= 0) { "socket() failed" }
+        val connected = connect(fd, result.pointed.ai_addr, result.pointed.ai_addrlen)
+        freeaddrinfo(result)
+        check(connected == 0) { "connect() failed to $host:$port" }
+        fd
+    }
+
+private fun setupTLS(
+    fd: Int,
+    host: String,
+    certificate: ByteArray,
+): Pair<SSLContextRef, StableRef<IntArray>> {
+    val sslCtx =
+        checkNotNull(
+            SSLCreateContext(null, SSLProtocolSide.kSSLClientSide, SSLConnectionType.kSSLStreamType),
+        ) {
+            "SSLCreateContext failed"
+        }
     val fdHolder = intArrayOf(fd)
     val stableRef = StableRef.create(fdHolder)
     SSLSetConnection(sslCtx, stableRef.asCPointer())
@@ -175,28 +189,35 @@ private fun setupTLS(fd: Int, host: String, certificate: ByteArray): Pair<SSLCon
 
 private fun pemToDer(pem: ByteArray): ByteArray {
     val pemString = pem.decodeToString()
-    val base64 = pemString
-        .lineSequence()
-        .filter { !it.startsWith("-----") }
-        .joinToString("")
+    val base64 =
+        pemString
+            .lineSequence()
+            .filter { !it.startsWith("-----") }
+            .joinToString("")
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
-    return kotlin.io.encoding.Base64.decode(base64)
+    return kotlin.io.encoding.Base64
+        .decode(base64)
 }
 
-private fun evaluateServerTrust(sslCtx: SSLContextRef, certificate: ByteArray) = memScoped {
+private fun evaluateServerTrust(
+    sslCtx: SSLContextRef,
+    certificate: ByteArray,
+) = memScoped {
     val trustPtr = alloc<SecTrustRefVar>()
     SSLCopyPeerTrust(sslCtx, trustPtr.ptr)
     val trust = checkNotNull(trustPtr.value) { "SSLCopyPeerTrust returned null" }
 
     // Convert PEM to DER if needed, then create SecCertificate
-    val derData = if (certificate.decodeToString().contains("-----BEGIN")) {
-        pemToDer(certificate)
-    } else {
-        certificate
-    }
-    val cfData = derData.usePinned { pinned ->
-        CFDataCreate(null, pinned.addressOf(0).reinterpret(), derData.size.convert())
-    }
+    val derData =
+        if (certificate.decodeToString().contains("-----BEGIN")) {
+            pemToDer(certificate)
+        } else {
+            certificate
+        }
+    val cfData =
+        derData.usePinned { pinned ->
+            CFDataCreate(null, pinned.addressOf(0).reinterpret(), derData.size.convert())
+        }
     checkNotNull(cfData) { "CFDataCreate failed" }
     val cert = SecCertificateCreateWithData(null, cfData)
     CFRelease(cfData)
@@ -238,9 +259,10 @@ actual suspend fun openPlainSocket(
     port: Int,
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection {
-    val fd = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        createAndConnectSocket(host, port)
-    }
+    val fd =
+        kotlinx.coroutines.withContext(Dispatchers.IO) {
+            createAndConnectSocket(host, port)
+        }
 
     val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
@@ -249,9 +271,10 @@ actual suspend fun openPlainSocket(
         val buf = ByteArray(8192)
         try {
             while (isActive) {
-                val n = buf.usePinned { pinned ->
-                    read(fd, pinned.addressOf(0), buf.size.convert())
-                }
+                val n =
+                    buf.usePinned { pinned ->
+                        read(fd, pinned.addressOf(0), buf.size.convert())
+                    }
                 if (n <= 0) break
                 readChannel.writeFully(buf, 0, n.toInt())
             }
@@ -297,11 +320,12 @@ actual suspend fun openTLSSocket(
     certificate: ByteArray,
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection {
-    val (fd, sslCtx, stableRef) = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        val fd = createAndConnectSocket(host, port)
-        val (ctx, ref) = setupTLS(fd, host, certificate)
-        Triple(fd, ctx, ref)
-    }
+    val (fd, sslCtx, stableRef) =
+        kotlinx.coroutines.withContext(Dispatchers.IO) {
+            val fd = createAndConnectSocket(host, port)
+            val (ctx, ref) = setupTLS(fd, host, certificate)
+            Triple(fd, ctx, ref)
+        }
 
     val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
@@ -316,11 +340,12 @@ actual suspend fun openTLSSocket(
                 ubuf.usePinned { pinned ->
                     processedRef.value = 0u
                     val status = SSLRead(sslCtx, pinned.addressOf(0), 8192u, processedRef.ptr)
-                    n = if (status == errSecSuccess || status == errSSLWouldBlock) {
-                        processedRef.value.toInt()
-                    } else {
-                        -1
-                    }
+                    n =
+                        if (status == errSecSuccess || status == errSSLWouldBlock) {
+                            processedRef.value.toInt()
+                        } else {
+                            -1
+                        }
                 }
                 if (n <= 0) break
                 readChannel.writeFully(ByteArray(n) { ubuf[it].toByte() })

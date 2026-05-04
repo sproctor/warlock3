@@ -55,11 +55,12 @@ fun AppearanceView(
     presetRepository: PresetRepository,
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
+    modifier: Modifier = Modifier,
 ) {
     val currentCharacterState =
         remember(initialCharacter, characters) {
             mutableStateOf(
-                initialCharacter ?: characters.firstOrNull()
+                initialCharacter ?: characters.firstOrNull(),
             )
         }
     val currentCharacter = currentCharacterState.value
@@ -70,107 +71,121 @@ fun AppearanceView(
     val presetFlow =
         remember(currentCharacter.id) { presetRepository.observePresetsForCharacter(currentCharacter.id) }
     val presets by presetFlow.collectAsState(emptyMap())
-    val previewLines = remember(presets) {
-        listOf(
-            StreamTextLine(
-                text = StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName)
-                    .toAnnotatedString(emptyMap(), presets, {}),
-                entireLineStyle = WarlockStyle.RoomName.toStyleDefinition(presets),
-                serialNumber = 0L,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = StyledString(
-                    "This is the room description for some room in Riverhaven. It didn't exist in our old preview, so we're putting arbitrary text here.",
-                    style = WarlockStyle("roomdescription")
-                ).toAnnotatedString(emptyMap(), presets, {}),
-                entireLineStyle = null,
-                serialNumber = 1L,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = (StyledString("You also see a ") + StyledString(
-                    "Sir Robyn",
-                    style = WarlockStyle.Bold
-                ) + StyledString(".")).toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 2L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = StyledString("say Hello", style = WarlockStyle.Command)
-                    .toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 3L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = (StyledString(
-                    "You say",
-                    style = WarlockStyle.Speech
-                ) + StyledString(", \"Hello.\""))
-                    .toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 4L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = StyledString(
-                    "Your mind hears Someone thinking, \"hello everyone\"",
-                    style = WarlockStyle.Thought
-                ).toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 5L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = StyledString(
-                    "Some text you are watching",
-                    style = WarlockStyle.Watching
-                ).toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 6L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = (
+    val previewLines =
+        remember(presets) {
+            listOf(
+                StreamTextLine(
+                    text =
+                        StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName)
+                            .toAnnotatedString(emptyMap(), presets, {}),
+                    entireLineStyle = WarlockStyle.RoomName.toStyleDefinition(presets),
+                    serialNumber = 0L,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
                         StyledString(
-                            "Someone whispers",
-                            style = WarlockStyle.Whisper
-                        ) + StyledString(", \"Hi\"")
+                            "This is the room description for some room in Riverhaven. It didn't exist in our old preview, so we're putting arbitrary text here.",
+                            style = WarlockStyle("roomdescription"),
                         ).toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 7L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
-            ),
-            StreamTextLine(
-                text = StyledString(
-                    " __      __              .__                 __    \n" +
-                            "/  \\    /  \\_____ _______|  |   ____   ____ |  | __\n" +
-                            "\\   \\/\\/   /\\__  \\\\_  __ \\  |  /  _ \\_/ ___\\|  |/ /\n" +
-                            " \\        /  / __ \\|  | \\/  |_(  <_> )  \\___|    < \n" +
-                            "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
-                            "       \\/        \\/                       \\/     \\/",
-                    style = WarlockStyle.Mono
-                ).toAnnotatedString(emptyMap(), presets, {}),
-                serialNumber = 8L,
-                entireLineStyle = null,
-                showWhenClosed = null,
-                isPrompt = false,
+                    entireLineStyle = null,
+                    serialNumber = 1L,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        (
+                            StyledString("You also see a ") +
+                                StyledString(
+                                    "Sir Robyn",
+                                    style = WarlockStyle.Bold,
+                                ) + StyledString(".")
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 2L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        StyledString("say Hello", style = WarlockStyle.Command)
+                            .toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 3L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        (
+                            StyledString(
+                                "You say",
+                                style = WarlockStyle.Speech,
+                            ) + StyledString(", \"Hello.\"")
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 4L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        StyledString(
+                            "Your mind hears Someone thinking, \"hello everyone\"",
+                            style = WarlockStyle.Thought,
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 5L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        StyledString(
+                            "Some text you are watching",
+                            style = WarlockStyle.Watching,
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 6L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        (
+                            StyledString(
+                                "Someone whispers",
+                                style = WarlockStyle.Whisper,
+                            ) + StyledString(", \"Hi\"")
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 7L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
+                StreamTextLine(
+                    text =
+                        StyledString(
+                            " __      __              .__                 __    \n" +
+                                "/  \\    /  \\_____ _______|  |   ____   ____ |  | __\n" +
+                                "\\   \\/\\/   /\\__  \\\\_  __ \\  |  /  _ \\_/ ___\\|  |/ /\n" +
+                                " \\        /  / __ \\|  | \\/  |_(  <_> )  \\___|    < \n" +
+                                "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
+                                "       \\/        \\/                       \\/     \\/",
+                            style = WarlockStyle.Mono,
+                        ).toAnnotatedString(emptyMap(), presets, {}),
+                    serialNumber = 8L,
+                    entireLineStyle = null,
+                    showWhenClosed = null,
+                    isPrompt = false,
+                ),
             )
-        )
-    }
+        }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
@@ -182,26 +197,29 @@ fun AppearanceView(
             LocalContentColor provides (presets["default"]?.textColor?.toColor() ?: LocalContentColor.current),
         ) {
             ScrollableColumn(
-                Modifier.weight(1f)
+                Modifier
+                    .weight(1f)
                     .background(
-                        presets["default"]?.backgroundColor?.toColor() ?: Color.Unspecified
-                    )
-                    .fillMaxWidth(),
-                scrollbarStyle = defaultScrollbarStyle(
-                    thumbStyle = ThumbStyle(
-                        shape = RoundedCornerShape(4.dp),
-                        unhoverColor = barColor.copy(alpha = 0.2f),
-                        hoverColor = barColor,
-                    )
-                )
+                        presets["default"]?.backgroundColor?.toColor() ?: Color.Unspecified,
+                    ).fillMaxWidth(),
+                scrollbarStyle =
+                    defaultScrollbarStyle(
+                        thumbStyle =
+                            ThumbStyle(
+                                shape = RoundedCornerShape(4.dp),
+                                unhoverColor = barColor.copy(alpha = 0.2f),
+                                hoverColor = barColor,
+                            ),
+                    ),
             ) {
                 previewLines.forEach { line ->
                     Box(
-                        modifier = Modifier.fillMaxWidth()
-                            .background(
-                                line.entireLineStyle?.backgroundColor?.toColor() ?: Color.Unspecified
-                            )
-                            .padding(horizontal = 4.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    line.entireLineStyle?.backgroundColor?.toColor() ?: Color.Unspecified,
+                                ).padding(horizontal = 4.dp),
                     ) {
                         line.text?.let {
                             Text(text = it)
@@ -226,6 +244,7 @@ fun AppearanceView(
 fun ColumnScope.PresetSettings(
     styleMap: Map<String, StyleDefinition>,
     saveStyle: (name: String, StyleDefinition) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
     var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
@@ -234,24 +253,24 @@ fun ColumnScope.PresetSettings(
         ColorPickerDialog(
             initialColor = editColor!!.first.toColor(),
             onCloseRequest = { editColor = null },
-            onColorSelected = { color ->
+            onColorSelect = { color ->
                 editColor?.second?.invoke(color)
                 editColor = null
-            }
+            },
         )
     }
     if (editFont != null) {
         FontPickerDialog(
             currentStyle = editFont!!.first,
             onCloseRequest = { editFont = null },
-            onSaveClicked = { fontUpdate ->
+            onSaveClick = { fontUpdate ->
                 editFont?.second?.invoke(fontUpdate)
                 editFont = null
-            }
+            },
         )
     }
     ScrollableColumn(
-        modifier = Modifier.weight(1f).fillMaxWidth(),
+        modifier = modifier.weight(1f).fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 8.dp),
     ) {
         defaultStyles.keys.forEach { preset ->
@@ -268,40 +287,43 @@ fun ColumnScope.PresetSettings(
                         text = "Content",
                         color = style.textColor.toColor(),
                         onClick = {
-                            editColor = Pair(style.textColor) { color ->
-                                saveStyle(
-                                    preset,
-                                    style.copy(textColor = color)
-                                )
-                            }
-                        }
+                            editColor =
+                                Pair(style.textColor) { color ->
+                                    saveStyle(
+                                        preset,
+                                        style.copy(textColor = color),
+                                    )
+                                }
+                        },
                     )
 
                     ColorPickerButton(
                         text = "Background",
                         color = style.backgroundColor.toColor(),
                         onClick = {
-                            editColor = Pair(style.backgroundColor) { color ->
-                                saveStyle(
-                                    preset,
-                                    style.copy(backgroundColor = color)
-                                )
-                            }
-                        }
+                            editColor =
+                                Pair(style.backgroundColor) { color ->
+                                    saveStyle(
+                                        preset,
+                                        style.copy(backgroundColor = color),
+                                    )
+                                }
+                        },
                     )
 
                     OutlinedButton(
                         onClick = {
-                            editFont = Pair(style) { fontUpdate ->
-                                saveStyle(
-                                    preset,
-                                    style.copy(
-                                        fontFamily = fontUpdate.fontFamily,
-                                        fontSize = fontUpdate.size
+                            editFont =
+                                Pair(style) { fontUpdate ->
+                                    saveStyle(
+                                        preset,
+                                        style.copy(
+                                            fontFamily = fontUpdate.fontFamily,
+                                            fontSize = fontUpdate.size,
+                                        ),
                                     )
-                                )
-                            }
-                        }
+                                }
+                        },
                     ) {
                         Text("Font", maxLines = 1)
                     }

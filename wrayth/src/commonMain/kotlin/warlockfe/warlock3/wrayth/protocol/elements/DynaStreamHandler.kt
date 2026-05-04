@@ -6,11 +6,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStreamEvent
 
 class DynaStreamHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythStreamEvent(element.attributes["id"])
-    }
+    override fun startElement(element: StartElement): WraythEvent = WraythStreamEvent(element.attributes["id"])
 
-    override fun endElement(): WraythEvent {
-        return WraythStreamEvent(null)
-    }
+    override fun endElement(): WraythEvent = WraythStreamEvent(null)
 }

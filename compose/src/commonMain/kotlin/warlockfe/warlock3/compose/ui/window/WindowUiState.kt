@@ -5,7 +5,6 @@ import androidx.compose.runtime.Stable
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowInfo
-import warlockfe.warlock3.core.window.WindowLocation
 
 @Stable
 data class WindowUiState(
@@ -27,11 +26,10 @@ data class DialogWindowData(
     val dialogData: ComposeDialogState,
 ) : WindowData
 
-fun WindowSettingsEntity.getStyle(): StyleDefinition {
-    return StyleDefinition(
+fun WindowSettingsEntity.getStyle(): StyleDefinition =
+    StyleDefinition(
         textColor = textColor,
         backgroundColor = backgroundColor,
         fontFamily = fontFamily,
         fontSize = fontSize,
     )
-}

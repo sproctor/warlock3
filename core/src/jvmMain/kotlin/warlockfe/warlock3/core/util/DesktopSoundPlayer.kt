@@ -5,19 +5,20 @@ import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.LineEvent
 
 class DesktopSoundPlayer(
-    warlockDirs: WarlockDirs
+    warlockDirs: WarlockDirs,
 ) : SoundPlayer {
-
-    private val dirs = listOf(
-        warlockDirs.dataDir,
-        warlockDirs.configDir,
-        warlockDirs.homeDir,
-    )
+    private val dirs =
+        listOf(
+            warlockDirs.dataDir,
+            warlockDirs.configDir,
+            warlockDirs.homeDir,
+        )
 
     override fun playSound(filename: String): String? {
-        val file = File(filename).takeIf { it.exists() }
-            ?: dirs.map { File(it, filename) }.firstOrNull { it.exists() }
-            ?: return "File not found"
+        val file =
+            File(filename).takeIf { it.exists() }
+                ?: dirs.map { File(it, filename) }.firstOrNull { it.exists() }
+                ?: return "File not found"
         try {
             val clip = AudioSystem.getClip()
             clip.addLineListener { event ->

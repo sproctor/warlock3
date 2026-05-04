@@ -1,6 +1,6 @@
 package warlockfe.warlock3.core.client
 
-sealed class DialogObject() {
+sealed class DialogObject {
     abstract val id: String
     abstract val left: DataDistance?
     abstract val top: DataDistance?
@@ -104,6 +104,11 @@ sealed class DialogObject() {
 }
 
 sealed class DataDistance {
-    data class Percent(val value: Percentage) : DataDistance()
-    data class Pixels(val value: Int) : DataDistance()
+    data class Percent(
+        val value: Percentage,
+    ) : DataDistance()
+
+    data class Pixels(
+        val value: Int,
+    ) : DataDistance()
 }

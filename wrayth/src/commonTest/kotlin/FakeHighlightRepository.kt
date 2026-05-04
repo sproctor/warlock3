@@ -16,7 +16,10 @@ class FakeHighlightRepository : HighlightRepository {
         TODO("Not yet implemented")
     }
 
-    override suspend fun save(characterId: String, highlight: Highlight) {
+    override suspend fun save(
+        characterId: String,
+        highlight: Highlight,
+    ) {
         TODO("Not yet implemented")
     }
 
@@ -24,7 +27,10 @@ class FakeHighlightRepository : HighlightRepository {
         TODO("Not yet implemented")
     }
 
-    override suspend fun deleteByPattern(characterId: String, pattern: String) {
+    override suspend fun deleteByPattern(
+        characterId: String,
+        pattern: String,
+    ) {
         TODO("Not yet implemented")
     }
 

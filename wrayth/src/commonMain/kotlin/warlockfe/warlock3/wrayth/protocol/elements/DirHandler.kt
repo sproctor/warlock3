@@ -7,11 +7,10 @@ import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
 
 class DirHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return element.attributes["value"]?.let { abbr ->
+    override fun startElement(element: StartElement): WraythEvent? =
+        element.attributes["value"]?.let { abbr ->
             DirectionType.fromAbbreviation(abbr)?.let {
                 WraythDirectionEvent(it)
             }
         }
-    }
 }

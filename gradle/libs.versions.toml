@@ -12,6 +12,7 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
 nucleus = { id = "io.github.kdroidfilter.nucleus", version.ref = "nucleus" }
 room-schema = { id = "androidx.room", version.ref = "room"  }
 
@@ -42,12 +43,14 @@ compose-material3 = "1.10.0-alpha05"
 ##             ⬆ = "1.11.0-alpha05"
 ##             ⬆ = "1.11.0-alpha06"
 ##             ⬆ = "1.11.0-alpha07"
-colorpicker = "1.1.3"
+colorpicker = "1.1.4"
 constraintlayout = "0.7.0"
 ##            ⬆ = "0.7.0-shaded"
 ##            ⬆ = "0.7.0-shaded-core"
 fastscroller = "0.3.2"
+# Waiting for AGP 9 and SDK 37 to update
 filekit = "0.13.0"
+##   ⬆ = "0.14.0"
 kermit = "2.1.0"
 kotlin = "2.3.21"
 kotlinx-collections-immutable = "0.4.0"
@@ -57,6 +60,9 @@ kotlinx-datetime = "0.7.1"
 kotlinx-io = "0.9.0"
 kotlinx-serialization = "1.11.0"
 ksp = "2.3.7"
+ktlint = "1.5.0"
+ktlint-gradle = "14.2.0"
+ktlint-compose-rules = "0.5.8"
 ktor = "3.4.3"
 nucleus = "1.14.4"
 rhino = "1.9.1"
@@ -93,6 +99,7 @@ constraintlayout = { module = "tech.annexflow.compose:constraintlayout-compose-m
 fastscroller-core = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-core", version.ref = "fastscroller" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
+ktlint-compose-rules = { module = "io.nlopez.compose.rules:ktlint", version.ref = "ktlint-compose-rules" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }

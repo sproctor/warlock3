@@ -17,7 +17,7 @@ class OpenDialogHandler : BaseElementListener() {
                 type = element.attributes["type"],
                 location = element.attributes["location"],
                 resident = element.attributes["resident"]?.startsWith(prefix = "t", ignoreCase = true) == true,
-            )
+            ),
         )
     }
 }

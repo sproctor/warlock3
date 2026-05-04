@@ -21,7 +21,5 @@ object JavascriptFunctions {
 
     @JvmStatic
     @JSFunction
-    fun exit() {
-        throw StopException()
-    }
+    fun exit(): Unit = throw StopException()
 }

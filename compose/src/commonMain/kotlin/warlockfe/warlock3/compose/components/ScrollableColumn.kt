@@ -52,7 +52,7 @@ fun ScrollableColumn(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     scrollbarStyle: ScrollbarStyle = defaultScrollbarStyle(),
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(modifier) {
         ScrollableColumn(
@@ -75,7 +75,7 @@ fun BoxScope.ScrollableColumn(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     scrollbarStyle: ScrollbarStyle = defaultScrollbarStyle(),
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     var height by remember { mutableIntStateOf(0) }
@@ -83,12 +83,10 @@ fun BoxScope.ScrollableColumn(
         modifier
             .padding(
                 start = contentPadding.calculateStartPadding(layoutDirection),
-                end = contentPadding.calculateEndPadding(layoutDirection)
-            )
-            .onGloballyPositioned { coordinates ->
+                end = contentPadding.calculateEndPadding(layoutDirection),
+            ).onGloballyPositioned { coordinates ->
                 height = coordinates.size.height
-            }
-            .verticalScroll(state),
+            }.verticalScroll(state),
         verticalArrangement,
         horizontalAlignment,
     ) {
@@ -99,8 +97,10 @@ fun BoxScope.ScrollableColumn(
     VerticalScrollbar(
         adapter = rememberScrollbarAdapter(state),
         style = scrollbarStyle,
-        modifier = Modifier.align(Alignment.CenterEnd)
-            .height(with(LocalDensity.current) { height.toDp() }),
+        modifier =
+            Modifier
+                .align(Alignment.CenterEnd)
+                .height(with(LocalDensity.current) { height.toDp() }),
     )
 }
 
@@ -116,14 +116,15 @@ fun ScrollableLazyColumn(
     flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
     userScrollEnabled: Boolean = true,
     scrollbarStyle: ScrollbarStyle = defaultScrollbarStyle(),
-    content: LazyListScope.() -> Unit
+    content: LazyListScope.() -> Unit,
 ) {
     Box(modifier) {
         var height by remember { mutableIntStateOf(0) }
         LazyColumn(
-            modifier = Modifier.onGloballyPositioned { coordinates ->
-                height = coordinates.size.height
-            },
+            modifier =
+                Modifier.onGloballyPositioned { coordinates ->
+                    height = coordinates.size.height
+                },
             state = state,
             contentPadding = contentPadding,
             reverseLayout = reverseLayout,
@@ -136,8 +137,10 @@ fun ScrollableLazyColumn(
         VerticalScrollbar(
             adapter = rememberScrollbarAdapter(state),
             style = scrollbarStyle,
-            modifier = Modifier.align(Alignment.CenterEnd)
-                .height(with(LocalDensity.current) { height.toDp() }),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .height(with(LocalDensity.current) { height.toDp() }),
         )
     }
 }
@@ -148,41 +151,43 @@ fun defaultScrollbarStyle(
     minimalHeight: Dp = 52.dp,
     thickness: Dp = 8.dp,
     hoverDurationMillis: Int = 300,
-    thumbStyle: ThumbStyle = ThumbStyle(
-        shape = RoundedCornerShape(4.dp),
-        unhoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
-        hoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
-    ),
-    trackStyle: TrackStyle = TrackStyle(
-        shape = RoundedCornerShape(4.dp),
-        unhoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
-        hoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
-    ),
-): ScrollbarStyle {
-    return ScrollbarStyle(
+    thumbStyle: ThumbStyle =
+        ThumbStyle(
+            shape = RoundedCornerShape(4.dp),
+            unhoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
+            hoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
+        ),
+    trackStyle: TrackStyle =
+        TrackStyle(
+            shape = RoundedCornerShape(4.dp),
+            unhoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
+            hoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
+        ),
+): ScrollbarStyle =
+    ScrollbarStyle(
         minimalHeight = minimalHeight,
         thickness = thickness,
         hoverDurationMillis = hoverDurationMillis,
         thumbStyle = thumbStyle,
         trackStyle = trackStyle,
     )
-}
 
 @Composable
-private fun defaultMaterialScrollbarStyle(): ScrollbarStyle {
-    return ScrollbarStyle(
+private fun defaultMaterialScrollbarStyle(): ScrollbarStyle =
+    ScrollbarStyle(
         minimalHeight = 52.dp,
         thickness = 8.dp,
         hoverDurationMillis = 300,
-        thumbStyle = ThumbStyle(
-            shape = RoundedCornerShape(4.dp),
-            unhoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
-            hoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
-        ),
-        trackStyle = TrackStyle(
-            shape = RoundedCornerShape(4.dp),
-            unhoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
-            hoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
-        ),
+        thumbStyle =
+            ThumbStyle(
+                shape = RoundedCornerShape(4.dp),
+                unhoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
+                hoverColor = Color(MaterialTheme.colorScheme.primary.toArgb()),
+            ),
+        trackStyle =
+            TrackStyle(
+                shape = RoundedCornerShape(4.dp),
+                unhoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
+                hoverColor = Color(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).toArgb()),
+            ),
     )
-}
