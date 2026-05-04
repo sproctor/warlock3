@@ -29,6 +29,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import warlockfe.warlock3.core.client.ClientBackgroundImageEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -60,6 +61,7 @@ import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythAppEvent
+import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythClearStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCliEvent
@@ -494,7 +496,13 @@ class WraythClient(
                                 is WraythNavEvent -> notifyListeners(
                                     ClientNavEvent(
                                         roomNumber = event.roomNumber,
-                                        image = event.image?.let(::resolveNavImage),
+                                    )
+                                )
+
+                                is WraythBackgroundEvent -> notifyListeners(
+                                    ClientBackgroundImageEvent(
+                                        windowName = event.windowName,
+                                        image = event.image?.let(::resolveBackgroundImage),
                                     )
                                 )
 
@@ -946,7 +954,7 @@ val TextStream?.isMainStream
 
 private val windowsAbsolutePathRegex = Regex("^[A-Za-z]:[\\\\/].*")
 
-internal fun resolveNavImage(image: String): String {
+internal fun resolveBackgroundImage(image: String): String {
     val path = image.trim()
     if (path.startsWith('/')) {
         return "file://$path"

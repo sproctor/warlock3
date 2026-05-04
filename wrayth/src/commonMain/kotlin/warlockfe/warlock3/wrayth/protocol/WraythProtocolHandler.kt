@@ -8,6 +8,7 @@ import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 import warlockfe.warlock3.wrayth.protocol.elements.AHandler
 import warlockfe.warlock3.wrayth.protocol.elements.AppHandler
 import warlockfe.warlock3.wrayth.protocol.elements.BHandler
+import warlockfe.warlock3.wrayth.protocol.elements.BackgroundHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CastTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearContainerHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearStreamHandler
@@ -62,6 +63,7 @@ class WraythProtocolHandler {
         "a" to AHandler(),
         "app" to AppHandler(),
         "b" to BHandler(),
+        "background" to BackgroundHandler(),
         "casttime" to CastTimeHandler(),
         "clearcontainer" to ClearContainerHandler(),
         "clearstream" to ClearStreamHandler(),

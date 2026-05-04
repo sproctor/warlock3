@@ -50,8 +50,8 @@ import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.openUrl
+import warlockfe.warlock3.core.client.ClientBackgroundImageEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
-import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
@@ -301,8 +301,8 @@ class GameViewModel(
     )
     val mainWindowUiState: StateFlow<WindowUiState> = _mainWindowUiState.asStateFlow()
 
-    private val _mainWindowBackgroundImage = MutableStateFlow<String?>(null)
-    val mainWindowBackgroundImage: StateFlow<String?> = _mainWindowBackgroundImage.asStateFlow()
+    private val _windowBackgroundImages = MutableStateFlow<Map<String, String>>(emptyMap())
+    val windowBackgroundImages: StateFlow<Map<String, String>> = _windowBackgroundImages.asStateFlow()
 
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
     val selectedWindow: StateFlow<String> = _selectedWindow
@@ -387,8 +387,12 @@ class GameViewModel(
                         openUrl(event.url)
                     }
 
-                    is ClientNavEvent -> {
-                        _mainWindowBackgroundImage.value = event.image
+                    is ClientBackgroundImageEvent -> {
+                        updateWindowBackground(
+                            windowName = event.windowName,
+                            image = event.image,
+                            clearAllWhenWindowMissing = true,
+                        )
                     }
 
                     is ClientWindowInfoEvent -> {
@@ -468,6 +472,25 @@ class GameViewModel(
                 }
             }
             .launchIn(viewModelScope)
+    }
+
+    private fun updateWindowBackground(
+        windowName: String?,
+        image: String?,
+        clearAllWhenWindowMissing: Boolean,
+    ) {
+        val normalizedWindowName = windowName?.takeIf { it.isNotBlank() }
+        _windowBackgroundImages.update { backgrounds ->
+            if (image == null) {
+                if (normalizedWindowName == null && clearAllWhenWindowMissing) {
+                    emptyMap()
+                } else {
+                    backgrounds - (normalizedWindowName ?: "main")
+                }
+            } else {
+                backgrounds + ((normalizedWindowName ?: "main") to image)
+            }
+        }
     }
 
     override fun submit() {

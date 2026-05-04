@@ -39,7 +39,8 @@ data class WraythComponentDefinitionEvent(val id: String) : WraythEvent
 data object WraythHandledEvent : WraythEvent
 data class WraythStreamWindowEvent(val window: WraythStreamWindow) : WraythEvent
 data class WraythDialogWindowEvent(val window: WraythDialogWindow) : WraythEvent
-data class WraythNavEvent(val roomNumber: String?, val image: String?) : WraythEvent
+data class WraythBackgroundEvent(val windowName: String?, val image: String?) : WraythEvent
+data class WraythNavEvent(val roomNumber: String?) : WraythEvent
 data class WraythActionEvent(val text: String, val command: String) : WraythEvent
 data class WraythOpenUrlEvent(val url: String) : WraythEvent
 data class WraythParseErrorEvent(val text: String) : WraythEvent

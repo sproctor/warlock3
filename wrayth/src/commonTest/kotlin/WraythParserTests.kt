@@ -3,6 +3,7 @@ import org.antlr.v4.kotlinruntime.CommonTokenStream
 import kotlin.test.assertEquals
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
+import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNodeVisitor
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
@@ -20,9 +21,23 @@ class WraythParserTests {
     }
 
     @Test
-    fun navTagIncludesRoomNumberAndImage() {
-        val events = WraythProtocolHandler().parseLine("<nav rm=\"123\" img=\"room.png\"/>")
+    fun navTagIncludesRoomNumber() {
+        val events = WraythProtocolHandler().parseLine("<nav rm=\"123\"/>")
 
-        assertEquals(WraythNavEvent(roomNumber = "123", image = "room.png"), events.first())
+        assertEquals(WraythNavEvent(roomNumber = "123"), events.first())
+    }
+
+    @Test
+    fun backgroundTagIncludesWindowAndImage() {
+        val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\"/>")
+
+        assertEquals(WraythBackgroundEvent(windowName = "main", image = "room.png"), events.first())
+    }
+
+    @Test
+    fun emptyBackgroundTagClearsBackground() {
+        val events = WraythProtocolHandler().parseLine("<background/>")
+
+        assertEquals(WraythBackgroundEvent(windowName = null, image = null), events.first())
     }
 }
