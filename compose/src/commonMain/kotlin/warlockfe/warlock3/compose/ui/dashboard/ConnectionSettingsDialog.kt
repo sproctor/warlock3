@@ -1,4 +1,4 @@
-package warlockfe.warlock3.compose.ui.settings.character
+package warlockfe.warlock3.compose.ui.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,12 +25,15 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 
 @Composable
-fun CharacterSettingsDialog(
+fun ConnectionSettingsDialog(
+    name: String,
     proxySettings: ConnectionProxySettings,
+    updateName: (String) -> Unit,
     updateProxySettings: (ConnectionProxySettings) -> Unit,
     closeDialog: () -> Unit,
 ) {
     var proxyEnabled by rememberSaveable(proxySettings) { mutableStateOf(proxySettings.enabled) }
+    val nameState = rememberTextFieldState(name)
     val proxyCommand = rememberTextFieldState(proxySettings.launchCommand ?: "")
     val proxyHost = rememberTextFieldState(proxySettings.host ?: "")
     val proxyPort = rememberTextFieldState(proxySettings.port ?: "")
@@ -41,6 +44,10 @@ fun CharacterSettingsDialog(
             TextButton(
                 onClick = {
                     scope.launch {
+                        val newName = nameState.text.toString().trim()
+                        if (newName.isNotEmpty() && newName != name) {
+                            updateName(newName)
+                        }
                         updateProxySettings(
                             ConnectionProxySettings(
                                 enabled = proxyEnabled,
@@ -60,6 +67,13 @@ fun CharacterSettingsDialog(
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                TextField(
+                    state = nameState,
+                    label = {
+                        Text("Name")
+                    },
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                )
                 Text(
                     "In the following settings, \"{host}\" and \"{port}\" are replaced by the values for the game server. \"{home}\" is replaced by the user home directory.",
                 )

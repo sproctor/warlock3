@@ -26,6 +26,13 @@ class ConnectionRepository(
         connectionDao.rename(oldName, newName)
     }
 
+    suspend fun renameById(
+        id: String,
+        newName: String,
+    ) {
+        connectionDao.renameById(id, newName)
+    }
+
     suspend fun save(
         username: String,
         character: String,

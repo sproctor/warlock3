@@ -30,4 +30,10 @@ interface ConnectionDao {
         oldName: String,
         newName: String,
     )
+
+    @Query("UPDATE connection SET name = :newName WHERE id = :id")
+    suspend fun renameById(
+        id: String,
+        newName: String,
+    )
 }

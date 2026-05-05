@@ -36,7 +36,6 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.login
-import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.sge.StoredConnection
 
 @Suppress("ktlint:compose:vm-forwarding-check")
@@ -146,12 +145,16 @@ fun ConnectionList(
             )
         }
     }
-    val proxySettings = showConnectionSettings?.proxySettings
-    if (proxySettings != null) {
-        CharacterSettingsDialog(
-            proxySettings = proxySettings,
+    val editingConnection = showConnectionSettings
+    if (editingConnection != null) {
+        ConnectionSettingsDialog(
+            name = editingConnection.name,
+            proxySettings = editingConnection.proxySettings,
+            updateName = {
+                viewModel.renameConnection(editingConnection.id, it)
+            },
             updateProxySettings = {
-                viewModel.updateProxySettings(showConnectionSettings!!.id, it)
+                viewModel.updateProxySettings(editingConnection.id, it)
             },
             closeDialog = { showConnectionSettings = null },
         )

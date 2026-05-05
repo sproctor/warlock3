@@ -89,6 +89,15 @@ class DashboardViewModel(
         }
     }
 
+    fun renameConnection(
+        id: String,
+        newName: String,
+    ) {
+        viewModelScope.launch {
+            connectionRepository.renameById(id, newName)
+        }
+    }
+
     fun deleteConnection(id: String) {
         viewModelScope.launch {
             connectionRepository.deleteConnection(id)
