@@ -404,22 +404,78 @@ fun AnnotatedString.replaceWithRegex(
     replacement: String,
 ): AnnotatedString =
     buildAnnotatedString {
-        var remaining = this@replaceWithRegex
-        while (true) {
-            val match = pattern.find(remaining.text) ?: break
-
-            // Append everything before the match, preserving spans
-            append(remaining.subSequence(0, match.range.first))
-
-            // Use replaceFirst to get the full replaced string, then extract
-            // just the replacement portion using the known before/after lengths
-            val replaced = pattern.replaceFirst(remaining.text, replacement)
-            val afterLen = remaining.text.length - (match.range.last + 1)
-            append(replaced.substring(match.range.first, replaced.length - afterLen))
-
-            // Advance past the match
-            remaining = remaining.subSequence(match.range.last + 1, remaining.length)
+        val source = this@replaceWithRegex
+        val length = source.length
+        var pos = 0
+        var match = pattern.find(source.text)
+        while (match != null) {
+            val start = match.range.first
+            val end = match.range.last + 1
+            if (start > pos) {
+                append(source.subSequence(pos, start))
+            }
+            append(buildReplacement(replacement, match))
+            pos =
+                if (end > pos) {
+                    end
+                } else {
+                    // Zero-width or non-advancing match: skip one char to guarantee progress
+                    if (pos < length) append(source.subSequence(pos, pos + 1))
+                    pos + 1
+                }
+            if (pos > length) break
+            match = pattern.find(source.text, pos)
         }
-        // Append the tail after the final match
-        append(remaining)
+        if (pos < length) {
+            append(source.subSequence(pos, length))
+        }
     }
+
+private fun buildReplacement(
+    replacement: String,
+    match: MatchResult,
+): String {
+    val sb = StringBuilder(replacement.length)
+    var i = 0
+    while (i < replacement.length) {
+        val c = replacement[i]
+        when {
+            c == '\\' && i + 1 < replacement.length -> {
+                sb.append(replacement[i + 1])
+                i += 2
+            }
+            c == '$' && i + 1 < replacement.length -> {
+                val next = replacement[i + 1]
+                if (next.isDigit()) {
+                    val n = next.digitToInt()
+                    if (n < match.groups.size) {
+                        match.groups[n]?.value?.let(sb::append)
+                    }
+                    i += 2
+                } else if (next == '{') {
+                    val close = replacement.indexOf('}', i + 2)
+                    if (close >= 0) {
+                        val name = replacement.substring(i + 2, close)
+                        try {
+                            (match.groups as? MatchNamedGroupCollection)?.get(name)?.value?.let(sb::append)
+                        } catch (_: Exception) {
+                            // Unknown group name — drop it, matching Java's behavior of throwing but be lenient here
+                        }
+                        i = close + 1
+                    } else {
+                        sb.append(c)
+                        i++
+                    }
+                } else {
+                    sb.append(c)
+                    i++
+                }
+            }
+            else -> {
+                sb.append(c)
+                i++
+            }
+        }
+    }
+    return sb.toString()
+}
