@@ -33,6 +33,8 @@ interface TextStream {
     suspend fun appendResource(url: String)
 
     fun showTimestamps(value: Boolean)
+
+    fun setApplyStyling(value: Boolean)
 }
 
 fun StyledString.getComponents(): PersistentSet<String> = substrings.mapNotNull { it.getComponent() }.toPersistentSet()

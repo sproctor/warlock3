@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.util.AnnotatedStringHighlightResult
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.markLinks
@@ -24,8 +26,10 @@ import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import kotlin.time.TimeSource
 
 @OptIn(ExperimentalTime::class)
 class ComposeTextStream(
@@ -48,6 +52,8 @@ class ComposeTextStream(
 
     private var nextSerialNumber = 0L
     private var removedLines = 0L
+
+    private var applyStyling: Boolean = true
 
     private var partialLine: StyledString? = null
 
@@ -244,6 +250,7 @@ class ComposeTextStream(
                 actionHandler?.invoke(action)
             },
             markLinks = markLinks,
+            applyStyling = applyStyling,
         )
 
     private fun playSound(line: String) {
@@ -279,6 +286,10 @@ class ComposeTextStream(
     override fun showTimestamps(value: Boolean) {
         showTimestamps = value
     }
+
+    override fun setApplyStyling(value: Boolean) {
+        applyStyling = value
+    }
 }
 
 @OptIn(ExperimentalTime::class)
@@ -299,6 +310,7 @@ data class CachedLine(
         components: Map<String, StyledString>,
         actionHandler: (WarlockAction) -> Unit,
         markLinks: Boolean,
+        applyStyling: Boolean,
     ): StreamTextLine =
         text.toStreamLine(
             streamName = streamName,
@@ -314,8 +326,15 @@ data class CachedLine(
             actionHandler = actionHandler,
             markLinks = markLinks,
             showWhenClosed = showWhenClosed,
+            applyStyling = applyStyling,
         )
 }
+
+private val streamLineLogger = Logger.withTag("toStreamLine")
+
+// Lines whose total render time exceeds this threshold get logged with a
+// per-stage breakdown. Set to Duration.ZERO to log every line.
+private val SLOW_LINE_THRESHOLD = 5.milliseconds
 
 @OptIn(ExperimentalTime::class)
 fun StyledString.toStreamLine(
@@ -332,24 +351,34 @@ fun StyledString.toStreamLine(
     components: Map<String, StyledString>,
     actionHandler: (WarlockAction) -> Unit,
     markLinks: Boolean,
+    applyStyling: Boolean,
 ): StreamTextLine {
+    val t0 = TimeSource.Monotonic.markNow()
     val text =
         if (showTimestamp) {
             this + StyledString(" [${timestamp.toTimeString()}]")
         } else {
             this
         }
+    val annotated =
+        text.toAnnotatedString(
+            variables = components,
+            styleMap = presets,
+            actionHandler = actionHandler,
+        )
+    val tAnnotated = TimeSource.Monotonic.markNow()
     val textWithComponents =
-        text
-            .toAnnotatedString(
-                variables = components,
-                styleMap = presets,
-                actionHandler = actionHandler,
-            ).alter(alterations, streamName)
-            ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
+        if (applyStyling) {
+            annotated
+                .alter(alterations, streamName)
+                ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
+        } else {
+            annotated.takeIf { !ignoreWhenBlank || it.text.isNotBlank() }
+        }
+    val tAltered = TimeSource.Monotonic.markNow()
     val textWithLinks =
         textWithComponents?.let { content ->
-            if (markLinks) {
+            if (applyStyling && markLinks) {
                 buildAnnotatedString {
                     append(content)
                     markLinks(content, presets)
@@ -358,7 +387,16 @@ fun StyledString.toStreamLine(
                 content
             }
         }
-    val highlightedResult = textWithLinks?.highlight(highlights)
+    val tLinked = TimeSource.Monotonic.markNow()
+    val highlightedResult =
+        textWithLinks?.let { content ->
+            if (applyStyling && content.text.isNotEmpty()) {
+                content.highlight(highlights)
+            } else {
+                AnnotatedStringHighlightResult(content, emptyList())
+            }
+        }
+    val tHighlighted = TimeSource.Monotonic.markNow()
     val lineStyle =
         flattenStyles(
             (highlightedResult?.entireLineStyles ?: emptyList()) +
@@ -367,20 +405,41 @@ fun StyledString.toStreamLine(
                     styleMap = presets,
                 ),
         )
-    return StreamTextLine(
-        text =
-            highlightedResult?.let {
-                buildAnnotatedString {
-                    lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
-                    append(it.text)
-                    if (lineStyle != null) pop()
-                }
-            },
-        entireLineStyle = lineStyle,
-        serialNumber = serialNumber,
-        showWhenClosed = showWhenClosed,
-        isPrompt = isPrompt,
-    )
+    val result =
+        StreamTextLine(
+            text =
+                highlightedResult?.let {
+                    buildAnnotatedString {
+                        lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
+                        append(it.text)
+                        if (lineStyle != null) pop()
+                    }
+                },
+            entireLineStyle = lineStyle,
+            serialNumber = serialNumber,
+            showWhenClosed = showWhenClosed,
+            isPrompt = isPrompt,
+        )
+    val tEnd = TimeSource.Monotonic.markNow()
+    val total = tEnd - t0
+    if (total >= SLOW_LINE_THRESHOLD) {
+        val annotate = tAnnotated - t0
+        val alter = tAltered - tAnnotated
+        val link = tLinked - tAltered
+        val highlight = tHighlighted - tLinked
+        val build = tEnd - tHighlighted
+        streamLineLogger.w {
+            "Slow line in '$streamName' total=${total.inWholeMicroseconds}µs " +
+                "annotate=${annotate.inWholeMicroseconds}µs " +
+                "alter=${alter.inWholeMicroseconds}µs " +
+                "link=${link.inWholeMicroseconds}µs " +
+                "highlight=${highlight.inWholeMicroseconds}µs " +
+                "build=${build.inWholeMicroseconds}µs " +
+                "alterations=${alterations.size} highlights=${highlights.size} " +
+                "text=\"${this.toString().take(200).replace("\n", "\\n")}\""
+        }
+    }
+    return result
 }
 
 private fun AnnotatedString.alter(

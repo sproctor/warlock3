@@ -231,6 +231,7 @@ class WraythClient(
                     ifClosed = null,
                     styleIfClosed = null,
                     timestamp = false,
+                    applyStyling = false,
                 ),
                 WraythStreamWindow(
                     name = "scriptoutput",
@@ -239,6 +240,7 @@ class WraythClient(
                     ifClosed = "main",
                     styleIfClosed = "echo",
                     timestamp = false,
+                    applyStyling = false,
                 ),
                 WraythStreamWindow(
                     name = "debug",
@@ -247,6 +249,7 @@ class WraythClient(
                     ifClosed = null,
                     styleIfClosed = null,
                     timestamp = false,
+                    applyStyling = false,
                 ),
             ).forEach { addWindow(it) }
             commandQueue.consumeEach { command ->
@@ -877,6 +880,7 @@ class WraythClient(
     private suspend fun addWindow(window: WraythStreamWindow) {
         val stream = getStream(window.name)
         stream.showTimestamps(window.timestamp)
+        stream.setApplyStyling(window.applyStyling)
         windows[window.name] = window
         val info =
             WindowInfo(
