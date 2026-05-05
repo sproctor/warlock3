@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.ui.window
 
 import kotlinx.collections.immutable.persistentMapOf
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -14,7 +13,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.job
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -32,9 +30,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalAtomicApi::class)
 class WindowRegistryImpl(
-    private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
-    externalScope: CoroutineScope,
     settingRepository: ClientSettingRepository,
     highlightRepository: HighlightRepository,
     nameRepository: NameRepository,
@@ -45,7 +41,7 @@ class WindowRegistryImpl(
 
     private val dialogs = AtomicReference(persistentMapOf<String, ComposeDialogState>())
 
-    private val scope = CoroutineScope(SupervisorJob(externalScope.coroutineContext.job))
+    private val scope = CoroutineScope(SupervisorJob())
 
     private val workQueue = StreamWorkQueue(scope = scope)
 
@@ -57,7 +53,7 @@ class WindowRegistryImpl(
                     stream.setMaxLines(it)
                 }
             }.stateIn(
-                scope = externalScope,
+                scope = scope,
                 started = SharingStarted.Eagerly,
                 initialValue = ClientSettingRepository.DEFAULT_MAX_SCROLL_LINES,
             )
@@ -70,7 +66,7 @@ class WindowRegistryImpl(
                     stream.setMarkLinks(it)
                 }
             }.stateIn(
-                scope = externalScope,
+                scope = scope,
                 started = SharingStarted.Eagerly,
                 initialValue = true,
             )
@@ -83,12 +79,12 @@ class WindowRegistryImpl(
                     stream.setShowImages(it)
                 }
             }.stateIn(
-                scope = externalScope,
+                scope = scope,
                 started = SharingStarted.Eagerly,
                 initialValue = true,
             )
 
-    private val characterId = MutableStateFlow<String>("global")
+    private val characterId = MutableStateFlow("global")
 
     private val highlights: StateFlow<List<ViewHighlight>> =
         characterId
@@ -134,10 +130,10 @@ class WindowRegistryImpl(
                                     styles =
                                         mapOf(
                                             0 to
-                                                StyleDefinition(
-                                                    textColor = name.textColor,
-                                                    backgroundColor = name.backgroundColor,
-                                                ),
+                                                    StyleDefinition(
+                                                        textColor = name.textColor,
+                                                        backgroundColor = name.backgroundColor,
+                                                    ),
                                         ),
                                     sound = name.sound,
                                 )
@@ -149,7 +145,7 @@ class WindowRegistryImpl(
                     generalHighlights + nameHighlights
                 }
             }.stateIn(
-                scope = externalScope,
+                scope = scope,
                 started = SharingStarted.Eagerly,
                 initialValue = emptyList(),
             )
@@ -166,13 +162,17 @@ class WindowRegistryImpl(
                         }
                     }
                 }
-            }.stateIn(scope = externalScope, started = SharingStarted.Eagerly, initialValue = emptyList())
+            }.stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
 
     override val presets: StateFlow<Map<String, StyleDefinition>> =
         characterId
             .flatMapLatest { characterId ->
                 presetRepository.observePresetsForCharacter(characterId)
-            }.stateIn(scope = externalScope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+            }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     override fun getOrCreateStream(name: String): TextStream {
         streams.load()[name]?.let { return it }
@@ -183,12 +183,12 @@ class WindowRegistryImpl(
                 highlights = highlights,
                 alterations = alterations,
                 presets = presets,
-                ioDispatcher = ioDispatcher,
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
                 showImages = showImages.value,
                 showTimestamps = false,
                 workQueue = workQueue,
+                scope = scope,
             )
         while (true) {
             val current = streams.load()
@@ -223,9 +223,7 @@ class WindowRegistryImpl(
 }
 
 class WindowRegistryFactory(
-    private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
-    private val externalScope: CoroutineScope,
     private val settingRepository: ClientSettingRepository,
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
@@ -234,9 +232,7 @@ class WindowRegistryFactory(
 ) {
     fun create(): WindowRegistry =
         WindowRegistryImpl(
-            ioDispatcher = ioDispatcher,
             soundPlayer = soundPlayer,
-            externalScope = externalScope,
             settingRepository = settingRepository,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,

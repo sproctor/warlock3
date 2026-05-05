@@ -78,7 +78,7 @@ object IosAppContainerProvider {
 }
 
 private class IosSoundPlayer : SoundPlayer {
-    override fun playSound(filename: String): String? {
+    override suspend fun playSound(filename: String): String? {
         // TODO: implement iOS sound playback
         return null
     }

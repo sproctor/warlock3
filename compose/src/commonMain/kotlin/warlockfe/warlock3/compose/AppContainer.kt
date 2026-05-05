@@ -157,9 +157,7 @@ abstract class AppContainer(
 
     val windowRegistryFactory by lazy {
         WindowRegistryFactory(
-            externalScope = externalScope,
             settingRepository = clientSettings,
-            ioDispatcher = ioDispatcher,
             soundPlayer = soundPlayer,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,

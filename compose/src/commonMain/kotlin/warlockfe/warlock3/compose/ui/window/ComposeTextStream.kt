@@ -2,13 +2,12 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.highlight
@@ -38,9 +37,9 @@ class ComposeTextStream(
     private val highlights: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
-    private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
     private val workQueue: StreamWorkQueue,
+    private val scope: CoroutineScope,
 ) : TextStream {
     private val cacheLines = ArrayList<CachedLine?>(maxLines)
     private val finishedLines = ArrayList<StreamLine>(maxLines)
@@ -78,7 +77,7 @@ class ComposeTextStream(
         }
     }
 
-    private suspend fun doAppendPartial(
+    private fun doAppendPartial(
         text: StyledString,
         isPrompt: Boolean,
     ) {
@@ -133,7 +132,7 @@ class ComposeTextStream(
     }
 
     // Must be called from main thread
-    private suspend fun doAppendLine(
+    private fun doAppendLine(
         text: StyledString,
         ignoreWhenBlank: Boolean,
         showWhenClosed: String?,
@@ -247,13 +246,11 @@ class ComposeTextStream(
             markLinks = markLinks,
         )
 
-    private suspend fun playSound(line: String) {
+    private fun playSound(line: String) {
         highlights.value.forEach { highlight ->
             if (highlight.sound != null && highlight.regex.containsMatchIn(line)) {
-                withContext(ioDispatcher) {
-                    launch {
-                        soundPlayer.playSound(highlight.sound)
-                    }
+                scope.launch {
+                    soundPlayer.playSound(highlight.sound)
                 }
             }
         }
