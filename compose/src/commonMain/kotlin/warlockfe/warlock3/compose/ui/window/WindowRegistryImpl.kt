@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import warlockfe.warlock3.compose.model.LiteralHighlight
+import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -95,52 +97,47 @@ class WindowRegistryImpl(
                 ) { highlights, names ->
                     val generalHighlights =
                         highlights.mapNotNull { highlight ->
-                            val pattern =
-                                if (highlight.isRegex) {
-                                    highlight.pattern
-                                } else {
-                                    val subpattern = Regex.escape(highlight.pattern)
-                                    if (highlight.matchPartialWord) {
-                                        subpattern
-                                    } else {
-                                        "\\b$subpattern\\b"
-                                    }
+                            if (highlight.isRegex) {
+                                try {
+                                    RegexHighlight(
+                                        regex =
+                                            Regex(
+                                                pattern = highlight.pattern,
+                                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                                            ),
+                                        styles = highlight.styles,
+                                        sound = highlight.sound,
+                                    )
+                                } catch (_: Exception) {
+                                    // client.debug("Error while parsing highlight (${e.message}): $highlight")
+                                    null
                                 }
-                            try {
-                                ViewHighlight(
-                                    regex =
-                                        Regex(
-                                            pattern = pattern,
-                                            options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-                                        ),
+                            } else {
+                                LiteralHighlight(
+                                    literal = highlight.pattern,
+                                    matchPartialWord = highlight.matchPartialWord,
+                                    ignoreCase = highlight.ignoreCase,
                                     styles = highlight.styles,
                                     sound = highlight.sound,
                                 )
-                            } catch (_: Exception) {
-                                // client.debug("Error while parsing highlight (${e.message}): $highlight")
-                                null
                             }
                         }
                     val nameHighlights =
-                        names.mapNotNull { name ->
-                            val pattern = Regex.escape(name.text).let { "\\b$it\\b" }
-                            try {
-                                ViewHighlight(
-                                    regex = Regex(pattern = pattern),
-                                    styles =
-                                        mapOf(
-                                            0 to
-                                                    StyleDefinition(
-                                                        textColor = name.textColor,
-                                                        backgroundColor = name.backgroundColor,
-                                                    ),
-                                        ),
-                                    sound = name.sound,
-                                )
-                            } catch (_: Exception) {
-                                // client.debug("Error while parsing highlight (${e.message}): $name")
-                                null
-                            }
+                        names.map { name ->
+                            LiteralHighlight(
+                                literal = name.text,
+                                matchPartialWord = false,
+                                ignoreCase = false,
+                                styles =
+                                    mapOf(
+                                        0 to
+                                                StyleDefinition(
+                                                    textColor = name.textColor,
+                                                    backgroundColor = name.backgroundColor,
+                                                ),
+                                    ),
+                                sound = name.sound,
+                            )
                         }
                     generalHighlights + nameHighlights
                 }

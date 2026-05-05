@@ -20,6 +20,8 @@ import warlockfe.warlock3.compose.util.toTimeString
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.StyledStringSubstring
+import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.TextStream
@@ -255,9 +257,10 @@ class ComposeTextStream(
 
     private fun playSound(line: String) {
         highlights.value.forEach { highlight ->
-            if (highlight.sound != null && highlight.regex.containsMatchIn(line)) {
+            val sound = highlight.sound
+            if (sound != null && highlight.containsMatchIn(line)) {
                 scope.launch {
-                    soundPlayer.playSound(highlight.sound)
+                    soundPlayer.playSound(sound)
                 }
             }
         }
@@ -428,7 +431,10 @@ fun StyledString.toStreamLine(
         val link = tLinked - tAltered
         val highlight = tHighlighted - tLinked
         val build = tEnd - tHighlighted
+        // Diagnostic: re-run annotate to distinguish structural vs. cold-path cost
         streamLineLogger.w {
+            val before = this.toString().take(200).replace("\n", "\\n")
+            val after = result.text?.text?.take(200)?.replace("\n", "\\n") ?: "<filtered>"
             "Slow line in '$streamName' total=${total.inWholeMicroseconds}µs " +
                 "annotate=${annotate.inWholeMicroseconds}µs " +
                 "alter=${alter.inWholeMicroseconds}µs " +
@@ -436,7 +442,7 @@ fun StyledString.toStreamLine(
                 "highlight=${highlight.inWholeMicroseconds}µs " +
                 "build=${build.inWholeMicroseconds}µs " +
                 "alterations=${alterations.size} highlights=${highlights.size} " +
-                "text=\"${this.toString().take(200).replace("\n", "\\n")}\""
+                "before=\"$before\" after=\"$after\""
         }
     }
     return result

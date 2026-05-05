@@ -24,9 +24,7 @@ fun StyledString.toAnnotatedString(
     actionHandler: (WarlockAction) -> Unit,
 ): AnnotatedString =
     buildAnnotatedString {
-        substrings.forEach {
-            append(it.toAnnotatedString(variables, styleMap, actionHandler))
-        }
+        appendStyledString(this@toAnnotatedString, variables, styleMap, actionHandler)
     }
 
 fun StyleDefinition.toSpanStyle(): SpanStyle =
@@ -42,51 +40,57 @@ fun StyleDefinition.toSpanStyle(): SpanStyle =
 
 fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition = (styleMap[name] ?: StyleDefinition())
 
-fun StyledStringLeaf.toAnnotatedString(
+private fun AnnotatedString.Builder.appendStyledString(
+    styledString: StyledString,
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
     actionHandler: (WarlockAction) -> Unit,
-): AnnotatedString =
-    buildAnnotatedString {
-        val style =
-            flattenStyles(styles.map { it.toStyleDefinition(styleMap) })
-                ?.also { pushStyle(it.toSpanStyle()) }
+) {
+    styledString.substrings.forEach {
+        appendStyledStringLeaf(it, variables, styleMap, actionHandler)
+    }
+}
 
-        styles.forEach { style ->
-            style.action?.let { action ->
-                val link =
-                    when (action) {
-                        is WarlockAction.OpenLink ->
-                            LinkAnnotation.Url(action.url)
+private fun AnnotatedString.Builder.appendStyledStringLeaf(
+    leaf: StyledStringLeaf,
+    variables: Map<String, StyledString>,
+    styleMap: Map<String, StyleDefinition>,
+    actionHandler: (WarlockAction) -> Unit,
+) {
+    val style =
+        flattenStyles(leaf.styles.map { it.toStyleDefinition(styleMap) })
+            ?.also { pushStyle(it.toSpanStyle()) }
 
-                        else ->
-                            LinkAnnotation.Clickable("action") {
-                                actionHandler(action)
-                            }
-                    }
-                pushLink(link)
-            }
-        }
-        when (this@toAnnotatedString) {
-            is StyledStringSubstring -> append(text)
-            is StyledStringVariable ->
-                // TODO: break circular references
-                variables[name]
-                    ?.toAnnotatedString(
-                        variables = variables,
-                        styleMap = styleMap,
-                        actionHandler = actionHandler,
-                    )?.let {
-                        append(it)
-                    }
-        }
-        if (style != null) {
-            pop()
-        }
-        styles.forEach { style ->
-            style.action?.let { _ -> pop() }
+    var linksPushed = 0
+    leaf.styles.forEach { st ->
+        st.action?.let { action ->
+            val link =
+                when (action) {
+                    is WarlockAction.OpenLink ->
+                        LinkAnnotation.Url(action.url)
+
+                    else ->
+                        LinkAnnotation.Clickable("action") {
+                            actionHandler(action)
+                        }
+                }
+            pushLink(link)
+            linksPushed++
         }
     }
+    when (leaf) {
+        is StyledStringSubstring -> append(leaf.text)
+        is StyledStringVariable ->
+            // TODO: break circular references
+            variables[leaf.name]?.let {
+                appendStyledString(it, variables, styleMap, actionHandler)
+            }
+    }
+    if (style != null) {
+        pop()
+    }
+    repeat(linksPushed) { pop() }
+}
 
 fun StyledString.getEntireLineStyles(
     variables: Map<String, StyledString>,
