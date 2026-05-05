@@ -7,8 +7,6 @@ import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 
 class NavHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent {
-        return WraythNavEvent(
-            roomNumber = element.attributes["rm"],
-        )
+        return WraythNavEvent
     }
 }

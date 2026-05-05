@@ -24,13 +24,6 @@ class WraythParserTests {
     }
 
     @Test
-    fun navTagIncludesRoomNumber() {
-        val events = WraythProtocolHandler().parseLine("<nav rm=\"123\"/>")
-
-        assertEquals(WraythNavEvent(roomNumber = "123"), events.first())
-    }
-
-    @Test
     fun backgroundTagIncludesWindowAndImage() {
         val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\"/>")
 

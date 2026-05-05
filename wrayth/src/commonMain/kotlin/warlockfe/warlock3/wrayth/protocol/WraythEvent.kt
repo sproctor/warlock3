@@ -42,6 +42,7 @@ data class WraythComponentDefinitionEvent(val id: String) : WraythEvent
 data object WraythHandledEvent : WraythEvent
 data class WraythStreamWindowEvent(val window: WraythStreamWindow) : WraythEvent
 data class WraythDialogWindowEvent(val window: WraythDialogWindow) : WraythEvent
+data object WraythNavEvent : WraythEvent
 data class WraythBackgroundEvent(
     val windowName: String?,
     val image: String?,
@@ -52,7 +53,6 @@ data class WraythBackgroundEvent(
     val horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
     val verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
 ) : WraythEvent
-data class WraythNavEvent(val roomNumber: String?) : WraythEvent
 data class WraythActionEvent(val text: String, val command: String) : WraythEvent
 data class WraythOpenUrlEvent(val url: String) : WraythEvent
 data class WraythParseErrorEvent(val text: String) : WraythEvent

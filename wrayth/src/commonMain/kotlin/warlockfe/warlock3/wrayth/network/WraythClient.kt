@@ -493,11 +493,7 @@ class WraythClient(
                                     }
                                 }
 
-                                is WraythNavEvent -> notifyListeners(
-                                    ClientNavEvent(
-                                        roomNumber = event.roomNumber,
-                                    )
-                                )
+                                WraythNavEvent -> notifyListeners(ClientNavEvent)
 
                                 is WraythBackgroundEvent -> notifyListeners(
                                     ClientBackgroundImageEvent(
