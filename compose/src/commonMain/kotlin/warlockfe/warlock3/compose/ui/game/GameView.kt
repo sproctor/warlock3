@@ -57,6 +57,7 @@ import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -261,7 +262,7 @@ fun GameTextWindows(
     leftWindowUiStates: List<WindowUiState>,
     rightWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState?,
-    windowBackgroundImages: Map<String, String>,
+    windowBackgroundImages: Map<String, ClientBackgroundImage>,
     defaultStyle: StyleDefinition,
     selectedWindow: String,
     openWindows: List<String>,

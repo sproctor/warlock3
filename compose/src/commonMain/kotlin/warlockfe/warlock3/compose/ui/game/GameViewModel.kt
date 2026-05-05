@@ -50,6 +50,10 @@ import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.openUrl
+import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
+import warlockfe.warlock3.core.client.BackgroundImageMode
+import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
+import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.ClientBackgroundImageEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
@@ -301,8 +305,8 @@ class GameViewModel(
     )
     val mainWindowUiState: StateFlow<WindowUiState> = _mainWindowUiState.asStateFlow()
 
-    private val _windowBackgroundImages = MutableStateFlow<Map<String, String>>(emptyMap())
-    val windowBackgroundImages: StateFlow<Map<String, String>> = _windowBackgroundImages.asStateFlow()
+    private val _windowBackgroundImages = MutableStateFlow<Map<String, ClientBackgroundImage>>(emptyMap())
+    val windowBackgroundImages: StateFlow<Map<String, ClientBackgroundImage>> = _windowBackgroundImages.asStateFlow()
 
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
     val selectedWindow: StateFlow<String> = _selectedWindow
@@ -391,6 +395,12 @@ class GameViewModel(
                         updateWindowBackground(
                             windowName = event.windowName,
                             image = event.image,
+                            mode = event.mode,
+                            gradientStart = event.gradientStart,
+                            gradientEnd = event.gradientEnd,
+                            opacity = event.opacity,
+                            horizontalAlignment = event.horizontalAlignment,
+                            verticalAlignment = event.verticalAlignment,
                             clearAllWhenWindowMissing = true,
                         )
                     }
@@ -477,6 +487,12 @@ class GameViewModel(
     private fun updateWindowBackground(
         windowName: String?,
         image: String?,
+        mode: BackgroundImageMode,
+        gradientStart: Int,
+        gradientEnd: Int,
+        opacity: Int,
+        horizontalAlignment: BackgroundImageHorizontalAlignment,
+        verticalAlignment: BackgroundImageVerticalAlignment,
         clearAllWhenWindowMissing: Boolean,
     ) {
         val normalizedWindowName = windowName?.takeIf { it.isNotBlank() }
@@ -488,7 +504,17 @@ class GameViewModel(
                     backgrounds - (normalizedWindowName ?: "main")
                 }
             } else {
-                backgrounds + ((normalizedWindowName ?: "main") to image)
+                backgrounds + (
+                    (normalizedWindowName ?: "main") to ClientBackgroundImage(
+                        image = image,
+                        mode = mode,
+                        gradientStart = gradientStart,
+                        gradientEnd = gradientEnd,
+                        opacity = opacity,
+                        horizontalAlignment = horizontalAlignment,
+                        verticalAlignment = verticalAlignment,
+                    )
+                )
             }
         }
     }

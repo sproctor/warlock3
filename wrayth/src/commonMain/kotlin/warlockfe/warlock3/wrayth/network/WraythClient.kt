@@ -503,6 +503,12 @@ class WraythClient(
                                     ClientBackgroundImageEvent(
                                         windowName = event.windowName,
                                         image = event.image?.let(::resolveBackgroundImage),
+                                        mode = event.mode,
+                                        gradientStart = event.gradientStart,
+                                        gradientEnd = event.gradientEnd,
+                                        opacity = event.opacity,
+                                        horizontalAlignment = event.horizontalAlignment,
+                                        verticalAlignment = event.verticalAlignment,
                                     )
                                 )
 

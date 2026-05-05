@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
+import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -42,7 +43,7 @@ fun WindowsAtLocation(
     openWindows: List<String>,
     size: Int?,
     windowUiStates: List<WindowUiState>,
-    backgroundImages: Map<String, String>,
+    backgroundImages: Map<String, ClientBackgroundImage>,
     horizontalPanel: Boolean,
     handleBefore: Boolean,
     selectedWindow: String,
@@ -155,7 +156,7 @@ private fun DockableSection(
     onDrop: (DropResult) -> Unit,
     defaultStyle: StyleDefinition,
     openWindows: List<String>,
-    backgroundImages: Map<String, String>,
+    backgroundImages: Map<String, ClientBackgroundImage>,
     selectedWindow: String,
     menuData: WarlockMenuData?,
     onActionClicked: (WarlockAction) -> Int?,
@@ -280,7 +281,7 @@ private fun WindowViewSlot(
     index: Int,
     defaultStyle: StyleDefinition,
     openWindows: List<String>,
-    backgroundImage: String?,
+    backgroundImage: ClientBackgroundImage?,
     isLast: Boolean,
     selectedWindow: String,
     isHorizontal: Boolean,

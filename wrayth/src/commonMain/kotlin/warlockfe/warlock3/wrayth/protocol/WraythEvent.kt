@@ -1,5 +1,8 @@
 package warlockfe.warlock3.wrayth.protocol
 
+import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
+import warlockfe.warlock3.core.client.BackgroundImageMode
+import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.text.WarlockStyle
@@ -39,7 +42,16 @@ data class WraythComponentDefinitionEvent(val id: String) : WraythEvent
 data object WraythHandledEvent : WraythEvent
 data class WraythStreamWindowEvent(val window: WraythStreamWindow) : WraythEvent
 data class WraythDialogWindowEvent(val window: WraythDialogWindow) : WraythEvent
-data class WraythBackgroundEvent(val windowName: String?, val image: String?) : WraythEvent
+data class WraythBackgroundEvent(
+    val windowName: String?,
+    val image: String?,
+    val mode: BackgroundImageMode = BackgroundImageMode.HEIGHT_FILL,
+    val gradientStart: Int = 0,
+    val gradientEnd: Int = 100,
+    val opacity: Int = 100,
+    val horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
+    val verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
+) : WraythEvent
 data class WraythNavEvent(val roomNumber: String?) : WraythEvent
 data class WraythActionEvent(val text: String, val command: String) : WraythEvent
 data class WraythOpenUrlEvent(val url: String) : WraythEvent
