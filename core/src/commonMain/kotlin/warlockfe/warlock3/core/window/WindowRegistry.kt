@@ -13,4 +13,6 @@ interface WindowRegistry {
     fun getOrCreateDialog(name: String): DialogState
 
     fun setCharacterId(characterId: String)
+
+    fun close()
 }

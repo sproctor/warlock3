@@ -932,6 +932,7 @@ class GameViewModel(
             client.sendCommandDirect("quit")
         }
         client.close()
+        windowRegistry.close()
     }
 
     fun getCurrentTime(): Instant = client.getCurrentTime()

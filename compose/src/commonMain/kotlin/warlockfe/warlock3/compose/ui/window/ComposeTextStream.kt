@@ -40,6 +40,7 @@ class ComposeTextStream(
     private val presets: StateFlow<Map<String, StyleDefinition>>,
     private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
+    private val workQueue: StreamWorkQueue,
 ) : TextStream {
     private val cacheLines = ArrayList<CachedLine?>(maxLines)
     private val finishedLines = ArrayList<StreamLine>(maxLines)
@@ -61,15 +62,19 @@ class ComposeTextStream(
         text: StyledString,
         isPrompt: Boolean,
     ) {
-        mutex.withLock {
-            doAppendPartial(text, isPrompt)
+        workQueue.submit {
+            mutex.withLock {
+                doAppendPartial(text, isPrompt)
+            }
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
-        mutex.withLock {
-            doAppendPartial(text, isPrompt = false)
-            partialLine = null
+        workQueue.submit {
+            mutex.withLock {
+                doAppendPartial(text, isPrompt = false)
+                partialLine = null
+            }
         }
     }
 
@@ -98,15 +103,17 @@ class ComposeTextStream(
     }
 
     override suspend fun clear() {
-        mutex.withLock {
-            finishedLines.clear()
-            partialLine = null
-            componentLocations.clear()
-            components.clear()
-            nextSerialNumber = 0L
-            removedLines = 0L
-            cacheLines.clear()
-            linesUpdated()
+        workQueue.submit {
+            mutex.withLock {
+                finishedLines.clear()
+                partialLine = null
+                componentLocations.clear()
+                components.clear()
+                nextSerialNumber = 0L
+                removedLines = 0L
+                cacheLines.clear()
+                linesUpdated()
+            }
         }
     }
 
@@ -115,11 +122,13 @@ class ComposeTextStream(
         ignoreWhenBlank: Boolean,
         showWhenClosed: String?,
     ) {
-        mutex.withLock {
-            // It's possible a component is added that is set prior
-            // I don't think this happens in DR, so it's probably OK that we don't handle that case.
-            partialLine = null
-            doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
+        workQueue.submit {
+            mutex.withLock {
+                // It's possible a component is added that is set prior
+                // I don't think this happens in DR, so it's probably OK that we don't handle that case.
+                partialLine = null
+                doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
+            }
         }
     }
 
@@ -176,18 +185,20 @@ class ComposeTextStream(
     }
 
     override suspend fun appendResource(url: String) {
-        // Images must be on their own line
-        partialLine = null
-        if (!showImages) return
-        mutex.withLock {
-            cacheLines.add(null)
-            finishedLines.add(
-                StreamImageLine(
-                    url = url,
-                    serialNumber = nextSerialNumber++,
-                ),
-            )
-            linesUpdated()
+        workQueue.submit {
+            mutex.withLock {
+                // Images must be on their own line
+                partialLine = null
+                if (!showImages) return@withLock
+                cacheLines.add(null)
+                finishedLines.add(
+                    StreamImageLine(
+                        url = url,
+                        serialNumber = nextSerialNumber++,
+                    ),
+                )
+                linesUpdated()
+            }
         }
     }
 
@@ -195,13 +206,15 @@ class ComposeTextStream(
         name: String,
         value: StyledString,
     ) {
-        mutex.withLock {
-            components[name] = value
-            componentLocations[name]?.forEach { serialNumber ->
-                val lineNumber = (serialNumber - removedLines).toInt()
-                // If the component has scrolled back past the buffer, ignore it
-                if (lineNumber >= 0) {
-                    updateLine(lineNumber)
+        workQueue.submit {
+            mutex.withLock {
+                components[name] = value
+                componentLocations[name]?.forEach { serialNumber ->
+                    val lineNumber = (serialNumber - removedLines).toInt()
+                    // If the component has scrolled back past the buffer, ignore it
+                    if (lineNumber >= 0) {
+                        updateLine(lineNumber)
+                    }
                 }
             }
         }

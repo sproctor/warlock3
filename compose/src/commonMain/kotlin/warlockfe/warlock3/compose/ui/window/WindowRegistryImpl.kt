@@ -4,6 +4,8 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.job
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -41,6 +44,10 @@ class WindowRegistryImpl(
     private val streams = AtomicReference(persistentMapOf<String, ComposeTextStream>())
 
     private val dialogs = AtomicReference(persistentMapOf<String, ComposeDialogState>())
+
+    private val scope = CoroutineScope(SupervisorJob(externalScope.coroutineContext.job))
+
+    private val workQueue = StreamWorkQueue(scope = scope)
 
     private val maxLines =
         settingRepository
@@ -181,6 +188,7 @@ class WindowRegistryImpl(
                 markLinks = markLinks.value,
                 showImages = showImages.value,
                 showTimestamps = false,
+                workQueue = workQueue,
             )
         while (true) {
             val current = streams.load()
@@ -207,6 +215,10 @@ class WindowRegistryImpl(
 
     override fun setCharacterId(characterId: String) {
         this.characterId.value = characterId
+    }
+
+    override fun close() {
+        scope.cancel()
     }
 }
 
