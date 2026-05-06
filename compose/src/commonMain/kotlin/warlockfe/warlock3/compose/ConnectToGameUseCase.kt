@@ -17,8 +17,9 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import warlockfe.warlock3.wrayth.network.WraythClient
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
-// TODO: put this someplace more sensible
 class ConnectToGameUseCase(
     private val warlockProxyFactory: WarlockProxy.Factory,
     private val windowRegistryFactory: WindowRegistryFactory,
@@ -58,6 +59,7 @@ class ConnectToGameUseCase(
                 }
             }
             val streamRegistry = windowRegistryFactory.create()
+            val deadline = TimeSource.Monotonic.markNow() + 30.seconds
             while (true) {
                 try {
                     val socket = NetworkSocket(ioDispatcher)
@@ -93,10 +95,19 @@ class ConnectToGameUseCase(
                         )
                         break
                     }
+                    if (deadline.hasPassedNow()) {
+                        proxy.close()
+                        gameState.setScreen(
+                            GameScreen.ErrorState(
+                                "Timed out waiting for proxy to accept connection",
+                                returnTo = GameScreen.Dashboard,
+                            ),
+                        )
+                        break
+                    }
                     delay(500.milliseconds)
                 }
             }
-            // TODO: test if proxy is dead, and throw an error if we never connected
         }
     }
 }
