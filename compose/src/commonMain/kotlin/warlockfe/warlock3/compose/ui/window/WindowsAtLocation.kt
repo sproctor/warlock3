@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.ResizablePanel
 import warlockfe.warlock3.compose.components.ResizablePanelState
+import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -44,6 +45,7 @@ fun WindowsAtLocation(
     openWindows: List<String>,
     size: Int?,
     windowUiStates: List<WindowUiState>,
+    backgroundImages: Map<String, ClientBackgroundImage>,
     horizontalPanel: Boolean,
     handleBefore: Boolean,
     selectedWindow: String,
@@ -82,6 +84,7 @@ fun WindowsAtLocation(
                 onDrop = onDrop,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
+                backgroundImages = backgroundImages,
                 selectedWindow = selectedWindow,
                 menuData = menuData,
                 onActionClick = onActionClick,
@@ -158,6 +161,7 @@ private fun DockableSection(
     onDrop: (DropResult) -> Unit,
     defaultStyle: StyleDefinition,
     openWindows: List<String>,
+    backgroundImages: Map<String, ClientBackgroundImage>,
     selectedWindow: String,
     menuData: WarlockMenuData?,
     onActionClick: (WarlockAction) -> Int?,
@@ -234,6 +238,7 @@ private fun DockableSection(
                 index = index,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
+                backgroundImage = backgroundImages[uiState.name],
                 isLast = index == windowUiStates.lastIndex,
                 selectedWindow = selectedWindow,
                 isHorizontal = !isVertical,
@@ -281,6 +286,7 @@ private fun WindowViewSlot(
     index: Int,
     defaultStyle: StyleDefinition,
     openWindows: List<String>,
+    backgroundImage: ClientBackgroundImage?,
     isLast: Boolean,
     selectedWindow: String,
     isHorizontal: Boolean,
@@ -334,6 +340,7 @@ private fun WindowViewSlot(
             headerModifier = headerModifier,
             uiState = uiState,
             location = location,
+            backgroundImage = backgroundImage,
             defaultStyle = defaultStyle,
             isSelected = selectedWindow == uiState.name,
             openWindows = openWindows,

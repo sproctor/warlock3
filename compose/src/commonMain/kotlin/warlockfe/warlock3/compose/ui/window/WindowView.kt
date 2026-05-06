@@ -9,13 +9,17 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -42,11 +46,18 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.layout.positionInParent
@@ -85,6 +96,10 @@ import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
+import warlockfe.warlock3.core.client.BackgroundImageMode
+import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
+import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -96,6 +111,7 @@ import warlockfe.warlock3.core.window.WindowLocation
 fun WindowView(
     uiState: WindowUiState,
     location: WindowLocation,
+    backgroundImage: ClientBackgroundImage? = null,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -171,6 +187,7 @@ fun WindowView(
                         stream = data.stream,
                         scrollState = scrollState,
                         style = uiState.style.mergeWith(defaultStyle),
+                        backgroundImage = backgroundImage,
                         openWindows = openWindows,
                         menuData = menuData,
                         onActionClick = onActionClick,
@@ -276,6 +293,7 @@ private fun WindowViewContent(
     stream: ComposeTextStream,
     scrollState: LazyListState,
     style: StyleDefinition,
+    backgroundImage: ClientBackgroundImage?,
     openWindows: List<String>,
     menuData: WarlockMenuData?,
     onActionClick: (WarlockAction) -> Int?,
@@ -303,17 +321,28 @@ private fun WindowViewContent(
     }
 
     SelectionContainer(modifier = modifier) {
-        Box {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .clipToBounds()
+                .background(backgroundColor)
+        ) {
+            backgroundImage?.takeIf { it.image.isNotBlank() }?.let { image ->
+                WindowBackgroundImage(
+                    backgroundImage = image,
+                    width = maxWidth,
+                    height = maxHeight,
+                    modifier = Modifier.align(image.backgroundAlignment()),
+                )
+            }
             LazyColumn(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(backgroundColor)
-                        .padding(vertical = 4.dp)
-                        .semantics {
-                            isTraversalGroup = true
-                            liveRegion = LiveRegionMode.Polite
-                        },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 4.dp)
+                    .semantics {
+                        isTraversalGroup = true
+                        liveRegion = LiveRegionMode.Polite
+                    },
                 state = scrollState,
             ) {
                 items(
@@ -455,6 +484,139 @@ private fun WindowViewContent(
         }
     }
 }
+
+@Composable
+private fun WindowBackgroundImage(
+    backgroundImage: ClientBackgroundImage,
+    width: Dp,
+    height: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val painter = rememberAsyncImagePainter(
+        ImageRequest.Builder(LocalPlatformContext.current)
+            .data(backgroundImage.image)
+            .size(Size.ORIGINAL)
+            .build()
+    )
+    val painterState by painter.state.collectAsState()
+    val state = painterState as? AsyncImagePainter.State.Success ?: return
+    val imageHeight = state.result.image.height.takeIf { it > 0 } ?: return
+    val imageWidth = state.result.image.width.takeIf { it > 0 } ?: return
+    val aspectRatio = imageWidth.toFloat() / imageHeight.toFloat()
+    val imageWidthDp = with(LocalDensity.current) { imageWidth.toDp() }
+    val imageHeightDp = with(LocalDensity.current) { imageHeight.toDp() }
+    val scaledWidth = height * aspectRatio
+    val scaledHeight = width / aspectRatio
+    val imageModifier = when (backgroundImage.mode) {
+        BackgroundImageMode.FILL -> modifier.fillMaxSize()
+        BackgroundImageMode.HEIGHT_FILL,
+        BackgroundImageMode.GRADIENT -> modifier
+            .fillMaxHeight()
+            .width(scaledWidth)
+
+        BackgroundImageMode.WIDTH_FILL -> modifier
+            .fillMaxWidth()
+            .height(scaledHeight)
+
+        BackgroundImageMode.FULL -> modifier
+            .requiredWidth(imageWidthDp)
+            .requiredHeight(imageHeightDp)
+    }
+        .then(backgroundImage.opacityModifier())
+        .then(backgroundImage.gradientModifier())
+
+    Image(
+        modifier = imageModifier,
+        painter = painter,
+        contentDescription = null,
+        contentScale = backgroundImage.mode.contentScale(),
+    )
+}
+
+private fun ClientBackgroundImage.backgroundAlignment(): Alignment {
+    return when (verticalAlignment) {
+        BackgroundImageVerticalAlignment.TOP -> when (horizontalAlignment) {
+            BackgroundImageHorizontalAlignment.LEFT -> Alignment.TopStart
+            BackgroundImageHorizontalAlignment.CENTER -> Alignment.TopCenter
+            BackgroundImageHorizontalAlignment.RIGHT -> Alignment.TopEnd
+        }
+
+        BackgroundImageVerticalAlignment.MIDDLE -> when (horizontalAlignment) {
+            BackgroundImageHorizontalAlignment.LEFT -> Alignment.CenterStart
+            BackgroundImageHorizontalAlignment.CENTER -> Alignment.Center
+            BackgroundImageHorizontalAlignment.RIGHT -> Alignment.CenterEnd
+        }
+
+        BackgroundImageVerticalAlignment.BOTTOM -> when (horizontalAlignment) {
+            BackgroundImageHorizontalAlignment.LEFT -> Alignment.BottomStart
+            BackgroundImageHorizontalAlignment.CENTER -> Alignment.BottomCenter
+            BackgroundImageHorizontalAlignment.RIGHT -> Alignment.BottomEnd
+        }
+    }
+}
+
+private fun BackgroundImageMode.contentScale(): ContentScale {
+    return when (this) {
+        BackgroundImageMode.FILL -> ContentScale.FillBounds
+        BackgroundImageMode.WIDTH_FILL -> ContentScale.FillWidth
+        BackgroundImageMode.FULL -> ContentScale.None
+        BackgroundImageMode.HEIGHT_FILL,
+        BackgroundImageMode.GRADIENT -> ContentScale.FillHeight
+    }
+}
+
+private fun ClientBackgroundImage.gradientModifier(): Modifier {
+    return when (mode) {
+        BackgroundImageMode.GRADIENT -> Modifier
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.horizontalGradient(*gradientColorStops()),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+
+        else -> Modifier
+    }
+}
+
+private fun ClientBackgroundImage.gradientColorStops(): Array<Pair<Float, Color>> {
+    val start = gradientStart.toPercentFraction()
+    val end = gradientEnd.toPercentFraction()
+    val transparent = Color.Black.copy(alpha = 0f)
+    val opaque = Color.Black.copy(alpha = opacity.toPercentFraction())
+
+    return if (start <= end) {
+        arrayOf(
+            0f to transparent,
+            start to transparent,
+            end to opaque,
+            1f to opaque,
+        )
+    } else {
+        arrayOf(
+            0f to opaque,
+            end to opaque,
+            start to transparent,
+            1f to transparent,
+        )
+    }
+}
+
+private fun ClientBackgroundImage.opacityModifier(): Modifier {
+    return if (mode == BackgroundImageMode.GRADIENT || opacity == 100) {
+        Modifier
+    } else {
+        Modifier.graphicsLayer {
+            alpha = opacity.toPercentFraction()
+        }
+    }
+}
+
+private fun Int.toPercentFraction(): Float = coerceIn(0, 100) / 100f
 
 @Composable
 private fun ActionContextMenu(

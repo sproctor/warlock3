@@ -29,6 +29,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import warlockfe.warlock3.core.client.ClientBackgroundImageEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -60,6 +61,7 @@ import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythAppEvent
+import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythClearStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCliEvent
@@ -498,6 +500,20 @@ class WraythClient(
                                 }
 
                                 WraythNavEvent -> notifyListeners(ClientNavEvent)
+
+                                is WraythBackgroundEvent -> notifyListeners(
+                                    ClientBackgroundImageEvent(
+                                        windowName = event.windowName,
+                                        image = event.image?.let(::resolveBackgroundImage),
+                                        mode = event.mode,
+                                        gradientStart = event.gradientStart,
+                                        gradientEnd = event.gradientEnd,
+                                        opacity = event.opacity,
+                                        horizontalAlignment = event.horizontalAlignment,
+                                        verticalAlignment = event.verticalAlignment,
+                                        clearAll = event.clearAll,
+                                    )
+                                )
 
                                 is WraythStreamWindowEvent -> {
                                     val window = event.window
@@ -954,3 +970,16 @@ class WraythClient(
 
 val TextStream?.isMainStream
     get() = this == null || this.id == "main"
+
+private val windowsAbsolutePathRegex = Regex("^[A-Za-z]:[\\\\/].*")
+
+internal fun resolveBackgroundImage(image: String): String {
+    val path = image.trim()
+    if (path.startsWith('/')) {
+        return "file://$path"
+    }
+    if (windowsAbsolutePathRegex.matches(path)) {
+        return "file:///${path.replace('\\', '/')}"
+    }
+    return path
+}

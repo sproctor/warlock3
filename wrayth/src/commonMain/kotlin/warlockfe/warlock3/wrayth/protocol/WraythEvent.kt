@@ -1,5 +1,8 @@
 package warlockfe.warlock3.wrayth.protocol
 
+import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
+import warlockfe.warlock3.core.client.BackgroundImageMode
+import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.text.WarlockStyle
@@ -123,24 +126,21 @@ data class WraythDialogWindowEvent(
 ) : WraythEvent
 
 data object WraythNavEvent : WraythEvent
-
-data class WraythActionEvent(
-    val text: String,
-    val command: String,
+data class WraythBackgroundEvent(
+    val windowName: String?,
+    val image: String?,
+    val mode: BackgroundImageMode = BackgroundImageMode.HEIGHT_FILL,
+    val gradientStart: Int = 0,
+    val gradientEnd: Int = 100,
+    val opacity: Int = 100,
+    val horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
+    val verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
+    val clearAll: Boolean = false,
 ) : WraythEvent
-
-data class WraythOpenUrlEvent(
-    val url: String,
-) : WraythEvent
-
-data class WraythParseErrorEvent(
-    val text: String,
-) : WraythEvent
-
-data class WraythUnhandledTagEvent(
-    val tag: String,
-) : WraythEvent
-
+data class WraythActionEvent(val text: String, val command: String) : WraythEvent
+data class WraythOpenUrlEvent(val url: String) : WraythEvent
+data class WraythParseErrorEvent(val text: String) : WraythEvent
+data class WraythUnhandledTagEvent(val tag: String) : WraythEvent
 data object WraythUpdateVerbsEvent : WraythEvent
 
 data object WraythStartCmdList : WraythEvent
@@ -160,13 +160,5 @@ data class WraythMenuStartEvent(
 ) : WraythEvent
 
 data object WraythMenuEndEvent : WraythEvent
-
-data class WraythMenuItemEvent(
-    val coord: String,
-    val noun: String?,
-    val category: String?,
-) : WraythEvent
-
-data class WraythResourceEvent(
-    val picture: String,
-) : WraythEvent
+data class WraythMenuItemEvent(val coord: String, val noun: String?, val category: String?) : WraythEvent
+data class WraythResourceEvent(val picture: String) : WraythEvent

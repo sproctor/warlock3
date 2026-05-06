@@ -57,6 +57,7 @@ import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -122,6 +123,7 @@ fun GameView(
             }
 
             val mainWindow = viewModel.mainWindowUiState.collectAsState()
+            val windowBackgroundImages by viewModel.windowBackgroundImages.collectAsState()
             val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
             val presets by viewModel.presets.collectAsState(emptyMap())
             val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
@@ -179,6 +181,7 @@ fun GameView(
                     topWindowUiStates = topWindows,
                     bottomWindowUiStates = bottomWindows,
                     mainWindowUiState = mainWindow.value,
+                    windowBackgroundImages = windowBackgroundImages,
                     defaultStyle = defaultStyle,
                     selectedWindow = viewModel.selectedWindow.collectAsState().value,
                     openWindows = openWindows,
@@ -268,6 +271,7 @@ fun GameTextWindows(
     leftWindowUiStates: List<WindowUiState>,
     rightWindowUiStates: List<WindowUiState>,
     mainWindowUiState: WindowUiState?,
+    windowBackgroundImages: Map<String, ClientBackgroundImage>,
     defaultStyle: StyleDefinition,
     selectedWindow: String,
     openWindows: List<String>,
@@ -298,6 +302,7 @@ fun GameTextWindows(
                 location = WindowLocation.LEFT,
                 size = leftWidth,
                 windowUiStates = leftWindowUiStates,
+                backgroundImages = windowBackgroundImages,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
                 horizontalPanel = true,
@@ -323,6 +328,7 @@ fun GameTextWindows(
                     location = WindowLocation.TOP,
                     size = topHeight,
                     windowUiStates = topWindowUiStates,
+                    backgroundImages = windowBackgroundImages,
                     defaultStyle = defaultStyle,
                     openWindows = openWindows,
                     horizontalPanel = false,
@@ -348,6 +354,7 @@ fun GameTextWindows(
                         headerModifier = Modifier,
                         uiState = mainWindowUiState,
                         location = WindowLocation.MAIN,
+                        backgroundImage = windowBackgroundImages[mainWindowUiState.name],
                         defaultStyle = defaultStyle,
                         isSelected = selectedWindow == mainWindowUiState.name,
                         openWindows = openWindows,
@@ -367,6 +374,7 @@ fun GameTextWindows(
                     location = WindowLocation.BOTTOM,
                     size = bottomHeight,
                     windowUiStates = bottomWindowUiStates,
+                    backgroundImages = windowBackgroundImages,
                     defaultStyle = defaultStyle,
                     openWindows = openWindows,
                     horizontalPanel = false,
@@ -392,6 +400,7 @@ fun GameTextWindows(
                 location = WindowLocation.RIGHT,
                 size = rightWidth,
                 windowUiStates = rightWindowUiStates,
+                backgroundImages = windowBackgroundImages,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
                 horizontalPanel = true,
