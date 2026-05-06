@@ -150,7 +150,6 @@ nucleus.application {
         }
         linux {
             iconFile.set(project.file("../icons/icon-512.png"))
-            debMaintainer = "Sean Proctor <sproctor@gmail.com>"
             debPackageVersion = releaseVersion
             rpmPackageVersion = releaseVersion.replace("-", ".")
         }
