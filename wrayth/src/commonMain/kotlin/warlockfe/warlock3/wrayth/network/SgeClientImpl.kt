@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeCharacter
@@ -33,6 +34,7 @@ import warlockfe.warlock3.core.util.encodeWindows1252
 import warlockfe.warlock3.wrayth.util.openPlainSocket
 import warlockfe.warlock3.wrayth.util.openTLSSocket
 import kotlin.math.min
+import kotlin.time.Duration.Companion.seconds
 
 private const val PASSWORD_HASH_LENGTH = 32
 
@@ -311,31 +313,36 @@ class SgeClientImpl(
         }
         login(username = connection.username, password = connection.password ?: "")
 
-        while (true) {
-            when (val event = eventFlow.first()) {
-                is SgeEvent.SgeLoginSucceededEvent -> selectGame(connection.code)
-                is SgeEvent.SgeGameSelectedEvent -> requestCharacterList()
-                is SgeEvent.SgeCharactersReadyEvent -> {
-                    val characters = event.characters
-                    val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
-                    if (sgeCharacter == null) {
-                        return AutoConnectResult.Failure("Could not find character: ${connection.character}")
-                    } else {
-                        selectCharacter(sgeCharacter.code)
+        return withTimeoutOrNull(30.seconds) {
+            while (true) {
+                when (val event = eventFlow.first()) {
+                    is SgeEvent.SgeLoginSucceededEvent -> selectGame(connection.code)
+                    is SgeEvent.SgeGameSelectedEvent -> requestCharacterList()
+                    is SgeEvent.SgeCharactersReadyEvent -> {
+                        val characters = event.characters
+                        val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
+                        if (sgeCharacter == null) {
+                            return@withTimeoutOrNull AutoConnectResult.Failure(
+                                "Could not find character: ${connection.character}",
+                            )
+                        } else {
+                            selectCharacter(sgeCharacter.code)
+                        }
                     }
+
+                    is SgeEvent.SgeReadyToPlayEvent ->
+                        return@withTimeoutOrNull AutoConnectResult.Success(event.credentials)
+
+                    is SgeEvent.SgeErrorEvent -> {
+                        return@withTimeoutOrNull AutoConnectResult.Failure("Error code (${event.errorCode})")
+                    }
+
+                    else ->
+                        logger.i { "Unrecognized event: $event" }
                 }
-
-                is SgeEvent.SgeReadyToPlayEvent ->
-                    return AutoConnectResult.Success(event.credentials)
-
-                is SgeEvent.SgeErrorEvent -> {
-                    return AutoConnectResult.Failure("Error code (${event.errorCode})")
-                }
-
-                else ->
-                    logger.i { "Unrecognized event: $event" }
             }
-        }
+            @Suppress("UNREACHABLE_CODE") null
+        } ?: AutoConnectResult.Failure("Timed out waiting for SGE response")
     }
 }
 
