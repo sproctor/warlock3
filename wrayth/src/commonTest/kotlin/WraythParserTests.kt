@@ -1,6 +1,8 @@
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
+import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
 import warlockfe.warlock3.core.window.BackgroundImageMode
+import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
@@ -25,11 +27,7 @@ class WraythParserTests {
         val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\"/>")
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = "main",
-                image = "room.png",
-                mode = BackgroundImageMode.HEIGHT_FILL,
-            ),
+            backgroundEvent(image = "room.png"),
             events.first(),
         )
     }
@@ -49,7 +47,7 @@ class WraythParserTests {
             val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\" mode=\"$mode\"/>")
 
             assertEquals(
-                WraythBackgroundEvent(windowName = "main", image = "room.png", mode = expectedMode),
+                backgroundEvent(image = "room.png", mode = expectedMode),
                 events.first(),
             )
         }
@@ -63,8 +61,7 @@ class WraythParserTests {
             )
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = "main",
+            backgroundEvent(
                 image = "room.png",
                 mode = BackgroundImageMode.GRADIENT,
                 gradientStart = 25,
@@ -82,8 +79,7 @@ class WraythParserTests {
             )
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
+            backgroundEvent(
                 image = "room.png",
                 mode = BackgroundImageMode.GRADIENT,
                 gradientStart = 0,
@@ -98,11 +94,7 @@ class WraythParserTests {
         val events = WraythProtocolHandler().parseLine("<background img=\"room.png\" opacity=\"45\"/>")
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
-                image = "room.png",
-                opacity = 45,
-            ),
+            backgroundEvent(image = "room.png", opacity = 45),
             events.first(),
         )
     }
@@ -115,8 +107,7 @@ class WraythParserTests {
             )
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
+            backgroundEvent(
                 image = "room.png",
                 mode = BackgroundImageMode.GRADIENT,
                 gradientStart = 90,
@@ -132,11 +123,7 @@ class WraythParserTests {
         val events = WraythProtocolHandler().parseLine("<background img=\"room.png\" opacity=\"120\"/>")
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
-                image = "room.png",
-                opacity = 100,
-            ),
+            backgroundEvent(image = "room.png", opacity = 100),
             events.first(),
         )
     }
@@ -164,8 +151,7 @@ class WraythParserTests {
                     )
 
                 assertEquals(
-                    WraythBackgroundEvent(
-                        windowName = null,
+                    backgroundEvent(
                         image = "room.png",
                         horizontalAlignment = expectedHorizontalAlignment,
                         verticalAlignment = expectedVerticalAlignment,
@@ -184,12 +170,7 @@ class WraythParserTests {
             )
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
-                image = "room.png",
-                horizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
-                verticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
-            ),
+            backgroundEvent(image = "room.png"),
             events.first(),
         )
     }
@@ -199,41 +180,38 @@ class WraythParserTests {
         val events = WraythProtocolHandler().parseLine("<background img=\"room.png\" mode=\"unknown\"/>")
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
-                image = "room.png",
-                mode = BackgroundImageMode.HEIGHT_FILL,
-            ),
+            backgroundEvent(image = "room.png"),
             events.first(),
         )
     }
 
     @Test
-    fun emptyBackgroundTagClearsBackground() {
+    fun emptyBackgroundTagDefaultsToMainWindow() {
         val events = WraythProtocolHandler().parseLine("<background/>")
 
         assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
-                image = null,
-                mode = BackgroundImageMode.HEIGHT_FILL,
-            ),
+            backgroundEvent(),
             events.first(),
         )
     }
 
-    @Test
-    fun backgroundClearAllAttributeClearsAllBackgrounds() {
-        val events = WraythProtocolHandler().parseLine("<background clearall/>")
-
-        assertEquals(
-            WraythBackgroundEvent(
-                windowName = null,
-                image = null,
-                mode = BackgroundImageMode.HEIGHT_FILL,
-                clearAll = true,
-            ),
-            events.first(),
-        )
-    }
+    private fun backgroundEvent(
+        windowName: String = "main",
+        image: String? = null,
+        mode: BackgroundImageMode = BackgroundImageMode.HEIGHT_FILL,
+        gradientStart: Int = 0,
+        gradientEnd: Int = 100,
+        opacity: Int = 100,
+        horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
+        verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
+    ) = WraythBackgroundEvent(
+        windowName = windowName,
+        image = image,
+        mode = mode,
+        gradientStart = gradientStart,
+        gradientEnd = gradientEnd,
+        opacity = opacity,
+        horizontalAlignment = horizontalAlignment,
+        verticalAlignment = verticalAlignment,
+    )
 }
