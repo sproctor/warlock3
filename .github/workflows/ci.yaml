@@ -20,9 +20,9 @@ jobs:
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
         with:
-          packaging-tools: 'false'
+          packaging-tools: 'true'
           setup-gradle: 'true'
-          setup-node: 'false'
+          setup-node: 'true'
 
       - name: Build
         run: ./gradlew build --stacktrace --no-daemon

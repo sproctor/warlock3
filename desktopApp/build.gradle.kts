@@ -119,7 +119,7 @@ nucleus.application {
             // still produce unsigned binaries.
             signing {
                 enabled = true
-                azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
+                azureTenantId = "6e19dfe4-9f0c-4bbc-87a3-93c9b47b75f4"
                 azureEndpoint = "https://eus.codesigning.azure.net"
                 azureCodeSigningAccountName = "scrapgolem"
                 azureCertificateProfileName = "group1"
