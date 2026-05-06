@@ -16,8 +16,8 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
 
-    implementation(libs.nucleus.decorated.window.material3)
-    implementation(libs.nucleus.decorated.window.jbr)
+    implementation(libs.jewel.standalone)
+    implementation(libs.jewel.decorated.window)
 
     implementation(libs.compose.material3)
     implementation(libs.compose.components.resources)

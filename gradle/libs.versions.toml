@@ -22,8 +22,6 @@ agp = "8.13.2"
 ##⬆= "9.0.0"
 ##⬆= "9.0.1"
 ##⬆= "9.1.0"
-##⬆= "9.1.1"
-##⬆= "9.2.0"
 androidx-activity = "1.13.0"
 androidx-core-splashscreen = "1.2.0"
 androidxLifecycleViewmodel = "2.10.0"
@@ -51,6 +49,7 @@ fastscroller = "0.3.2"
 # Waiting for AGP 9 and SDK 37 to update
 filekit = "0.13.0"
 ##   ⬆ = "0.14.0"
+jewel = "0.34.0-261.22158.277"
 kermit = "2.1.0"
 kotlin = "2.3.21"
 kotlinx-collections-immutable = "0.4.0"
@@ -98,6 +97,8 @@ compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-pre
 constraintlayout = { module = "tech.annexflow.compose:constraintlayout-compose-multiplatform", version.ref = "constraintlayout" }
 fastscroller-core = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-core", version.ref = "fastscroller" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
+jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
 ktlint-compose-rules = { module = "io.nlopez.compose.rules:ktlint", version.ref = "ktlint-compose-rules" }
 kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
@@ -112,8 +113,6 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
-nucleus-decorated-window-jbr = { module = "io.github.kdroidfilter:nucleus.decorated-window-jbr", version.ref = "nucleus" }
-nucleus-decorated-window-material3 = { module = "io.github.kdroidfilter:nucleus.decorated-window-material3", version.ref = "nucleus" }
 nucleus-updater-runtime = { module = "io.github.kdroidfilter:nucleus.updater-runtime", version.ref = "nucleus" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

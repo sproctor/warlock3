@@ -2,13 +2,8 @@ package warlockfe.warlock3.app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,13 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
-import io.github.kdroidfilter.nucleus.core.runtime.Platform
-import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
-import io.github.kdroidfilter.nucleus.window.material.MaterialTitleBar
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -30,13 +19,22 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.jewel.foundation.modifier.onHover
+import org.jetbrains.jewel.ui.component.PopupMenu
+import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.separator
+import org.jetbrains.jewel.window.DecoratedWindowScope
+import org.jetbrains.jewel.window.TitleBar
+import org.jetbrains.jewel.window.newFullscreenControls
+import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
+import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_outlined
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import java.io.File
 
-@OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION")
 @Composable
 internal fun DecoratedWindowScope.TitleBarView(
     title: String,
@@ -52,40 +50,39 @@ internal fun DecoratedWindowScope.TitleBarView(
     showAboutDialog: () -> Unit,
     exportSettings: (File) -> Unit,
 ) {
-    val scriptFilePickerLauncher =
-        rememberFilePickerLauncher(
-            dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Run script"),
-            directory = scriptDirectory?.let { PlatformFile(it) },
-        ) { file ->
-            if (file != null) {
-                runScript(file.file.toKotlinxIoPath())
-            }
+    val scriptFilePickerLauncher = rememberFilePickerLauncher(
+        dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Run script"),
+        directory = scriptDirectory?.let { PlatformFile(it) },
+    ) { file ->
+        if (file != null) {
+            runScript(file.file.toKotlinxIoPath())
         }
-    val exportFileSaveLauncher =
-        rememberFileSaverLauncher { file ->
-            if (file != null) {
-                exportSettings(file.file)
-            }
+    }
+    val exportFileSaveLauncher = rememberFileSaverLauncher { file ->
+        if (file != null) {
+            exportSettings(file.file)
         }
-    MaterialTitleBar {
+    }
+    TitleBar(
+        modifier = Modifier.newFullscreenControls(),
+    ) {
         Row(Modifier.align(Alignment.Start)) {
             if (isConnected) {
                 IconButton(onClick = { showSideBar(!sideBarVisible) }) {
                     Icon(
-                        painter =
-                            painterResource(
-                                if (sideBarVisible) {
-                                    Res.drawable.space_dashboard_filled
-                                } else {
-                                    Res.drawable.space_dashboard_outlined
-                                },
-                            ),
-                        tint = LocalContentColor.current,
+                        painter = painterResource(
+                            if (sideBarVisible) {
+                                Res.drawable.space_dashboard_filled
+                            } else {
+                                Res.drawable.space_dashboard_outlined
+                            }
+                        ),
+                        tint = LocalTitleBarStyle.current.colors.content,
                         contentDescription = null,
                     )
                 }
             }
-            if (Platform.Current == Platform.MacOS) {
+            if (DesktopPlatform.Current == DesktopPlatform.MacOS) {
                 AppMenuBar(
                     isConnected = isConnected,
                     openNewWindow = openNewWindow,
@@ -103,10 +100,9 @@ internal fun DecoratedWindowScope.TitleBarView(
                 var currentMenu by remember { mutableStateOf<Menus?>(null) }
                 Box {
                     TextButton(
-                        modifier =
-                            Modifier.onPointerEvent(PointerEventType.Enter) {
-                                currentMenu = Menus.FILE
-                            },
+                        modifier = Modifier.onHover {
+                            currentMenu = Menus.FILE
+                        },
                         onClick = {
                             active = !active
                             currentMenu = Menus.FILE
@@ -114,44 +110,58 @@ internal fun DecoratedWindowScope.TitleBarView(
                     ) {
                         Text("File")
                     }
-                    DropdownMenu(
-                        expanded = active && currentMenu == Menus.FILE,
-                        onDismissRequest = { active = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("New window") },
-                            onClick = openNewWindow,
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Run script...") },
-                            enabled = isConnected,
-                            onClick = scriptFilePickerLauncher::launch,
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Export settings...") },
-                            onClick = {
-                                exportFileSaveLauncher.launch("settings", "json")
+                    if (active && currentMenu == Menus.FILE) {
+                        PopupMenu(
+                            onDismissRequest = {
+                                active = false
+                                true
                             },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Settings...") },
-                            onClick = showSettingsDialog,
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Disconnect") },
-                            enabled = isConnected,
-                            onClick = disconnect,
-                        )
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            selectableItem(
+                                selected = false,
+                                onClick = openNewWindow,
+                            ) {
+                                Text("New window")
+                            }
+                            selectableItem(
+                                selected = false,
+                                enabled = isConnected,
+                                onClick = scriptFilePickerLauncher::launch,
+                            ) {
+                                Text("Run script...")
+                            }
+                            separator()
+                            selectableItem(
+                                selected = false,
+                                onClick = {
+                                    exportFileSaveLauncher.launch("settings", "json")
+                                },
+                            ) {
+                                Text("Export settings...")
+                            }
+                            selectableItem(
+                                selected = false,
+                                onClick = showSettingsDialog,
+                            ) {
+                                Text("Settings...")
+                            }
+                            separator()
+                            selectableItem(
+                                selected = false,
+                                enabled = isConnected,
+                                onClick = disconnect,
+                            ) {
+                                Text("Disconnect")
+                            }
+                        }
                     }
                 }
                 Box {
                     TextButton(
-                        modifier =
-                            Modifier.onPointerEvent(PointerEventType.Enter) {
-                                currentMenu = Menus.HELP
-                            },
+                        modifier = Modifier.onHover {
+                            currentMenu = Menus.HELP
+                        },
                         onClick = {
                             active = !active
                             currentMenu = Menus.HELP
@@ -159,18 +169,27 @@ internal fun DecoratedWindowScope.TitleBarView(
                     ) {
                         Text("Help")
                     }
-                    DropdownMenu(
-                        expanded = active && currentMenu == Menus.HELP,
-                        onDismissRequest = { active = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Updates") },
-                            onClick = showUpdateDialog,
-                        )
-                        DropdownMenuItem(
-                            text = { Text("About") },
-                            onClick = showAboutDialog,
-                        )
+                    if (active && currentMenu == Menus.HELP) {
+                        PopupMenu(
+                            onDismissRequest = {
+                                active = false
+                                true
+                            },
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            selectableItem(
+                                selected = false,
+                                onClick = showUpdateDialog,
+                            ) {
+                                Text("Updates")
+                            }
+                            selectableItem(
+                                selected = false,
+                                onClick = showAboutDialog,
+                            ) {
+                                Text("About")
+                            }
+                        }
                     }
                 }
             }

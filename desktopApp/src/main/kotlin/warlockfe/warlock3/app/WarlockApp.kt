@@ -13,11 +13,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToStream
+import org.jetbrains.jewel.window.DecoratedWindowScope
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.model.GameScreen
