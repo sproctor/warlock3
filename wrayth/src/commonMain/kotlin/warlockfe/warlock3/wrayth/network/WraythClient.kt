@@ -916,6 +916,8 @@ class WraythClient(
         stream.showTimestamps(window.timestamp)
         stream.setApplyStyling(window.applyStyling)
         windows[window.name] = window
+        val existingBackgroundImage =
+            _windowInfo.value.firstOrNull { it.name == window.name }?.backgroundImage
         val info =
             WindowInfo(
                 name = window.name,
@@ -923,7 +925,7 @@ class WraythClient(
                 subtitle = window.subtitle,
                 windowType = WindowType.STREAM,
                 showTimestamps = window.timestamp,
-                backgroundImage = null,
+                backgroundImage = existingBackgroundImage,
             )
         _windowInfo.update { windowInfo ->
             windowInfo.replaceOrAdd(info) { it.name == window.name }
