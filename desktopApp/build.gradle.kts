@@ -56,8 +56,7 @@ val releaseVersion: String =
         .getenv("RELEASE_VERSION")
         ?.removePrefix("v")
         ?.takeIf { it.isNotBlank() }
-        ?: project.version.toString().takeIf { it != "unspecified" }
-        ?: "0.0.0"
+        ?: project.version.toString()
 
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
@@ -94,7 +93,7 @@ nucleus.application {
         )
 
         cleanupNativeLibs = true
-        artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
+        artifactName = $$"${name}-${version}-${os}-${arch}.${ext}"
 
         publish {
             github {

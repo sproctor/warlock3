@@ -14,7 +14,8 @@ plugins {
     alias(libs.plugins.ktlint) apply false
 }
 
-allprojects {
+subprojects {
+    version = project.findProperty("warlock.version")!!.toString()
     group = "warlockfe.warlock3"
 }
 
