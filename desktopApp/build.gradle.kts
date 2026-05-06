@@ -1,3 +1,4 @@
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.SigningAlgorithm
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 
 plugins {
