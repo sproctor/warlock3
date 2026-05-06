@@ -24,11 +24,11 @@ class MainActivity : ComponentActivity() {
     private val logger = Logger.withTag("MainActivity")
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
         Logger.setLogWriters(platformLogWriter())
-
-        installSplashScreen()
 
         FileKit.init(this)
 
