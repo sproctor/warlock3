@@ -59,4 +59,4 @@ The project is organized into 6 Gradle modules:
 
 ## Distribution
 
-Desktop packages are built with the [Nucleus](https://nucleusframework.dev/) Gradle plugin (configured in `desktopApp/build.gradle.kts` under `nucleus.application { nativeDistributions { ... } }`). It produces macOS DMG/ZIP, Windows MSI, and Linux DEB installers, with code signing and electron-builder–compatible auto-update YML metadata. Multi-platform release packaging runs on tag push via the GitHub Actions workflow at `.github/workflows/release.yaml`, which uses the `kdroidFilter/Nucleus` composite actions for setup, macOS universal binary signing/notarization, update YML generation, and GitHub Release publishing.
+Desktop packages are built with [Conveyor](https://www.hydraulic.software/). The `conveyor.conf` file configures macOS DMG, Windows MSI, and Linux Deb packaging with code signing and auto-update via GitHub Pages.
