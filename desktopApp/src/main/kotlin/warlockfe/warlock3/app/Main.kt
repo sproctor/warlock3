@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
@@ -68,6 +69,7 @@ import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -88,6 +90,9 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.awt.Dimension
 import java.io.File
+import java.nio.file.Paths
+import kotlin.io.path.exists
+import kotlin.io.path.inputStream
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
@@ -138,6 +143,7 @@ private class WarlockCommand : CliktCommand() {
             exitProcess(-1)
         }
 
+        val version = System.getProperty("jpackage.app-version")
         version?.let {
             initializeSentry(version)
         }
@@ -467,9 +473,18 @@ private class WarlockCommand : CliktCommand() {
                             }
                         val subtitle by gameState.getTitle().collectAsState("loading")
                         val title = "Warlock - $subtitle"
+                        // app.dir is set when packaged to point at our collected inputs.
+                        val appIcon = remember {
+                            System.getProperty("app.dir")
+                                ?.let { Paths.get(it, "icon-512.png") }
+                                ?.takeIf { it.exists() }
+                                ?.inputStream()
+                                ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
+                        }
                         MaterialDecoratedWindow(
                             title = title,
                             state = windowState,
+                            icon = appIcon,
                             onCloseRequest = {
                                 scope.launch {
                                     val game = games[index]
