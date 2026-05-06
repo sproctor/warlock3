@@ -19,6 +19,7 @@ data class ClientBackgroundImageEvent(
     val opacity: Int = 100,
     val horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
     val verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
+    val clearAll: Boolean = false,
 ) : ClientEvent
 data object ClientPromptEvent : ClientEvent
 data class ClientOpenUrlEvent(val url: Uri) : ClientEvent

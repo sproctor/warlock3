@@ -21,6 +21,7 @@ class BackgroundHandler : BaseElementListener() {
             opacity = opacity,
             horizontalAlignment = element.attributes["align"].toHorizontalAlignment(),
             verticalAlignment = element.attributes["valign"].toVerticalAlignment(),
+            clearAll = element.attributes.containsKey("clearall"),
         )
     }
 

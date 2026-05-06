@@ -216,4 +216,19 @@ class WraythParserTests {
             events.first(),
         )
     }
+
+    @Test
+    fun backgroundClearAllAttributeClearsAllBackgrounds() {
+        val events = WraythProtocolHandler().parseLine("<background clearall/>")
+
+        assertEquals(
+            WraythBackgroundEvent(
+                windowName = null,
+                image = null,
+                mode = BackgroundImageMode.HEIGHT_FILL,
+                clearAll = true,
+            ),
+            events.first(),
+        )
+    }
 }

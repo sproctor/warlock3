@@ -52,6 +52,7 @@ data class WraythBackgroundEvent(
     val opacity: Int = 100,
     val horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
     val verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
+    val clearAll: Boolean = false,
 ) : WraythEvent
 data class WraythActionEvent(val text: String, val command: String) : WraythEvent
 data class WraythOpenUrlEvent(val url: String) : WraythEvent

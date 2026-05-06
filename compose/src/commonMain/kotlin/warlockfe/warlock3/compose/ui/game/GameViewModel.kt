@@ -91,6 +91,7 @@ import warlockfe.warlock3.core.window.WindowType
 import kotlin.time.Instant
 
 const val clientCommandPrefix = '/'
+private const val DEFAULT_BACKGROUND_WINDOW = "main"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -401,7 +402,7 @@ class GameViewModel(
                             opacity = event.opacity,
                             horizontalAlignment = event.horizontalAlignment,
                             verticalAlignment = event.verticalAlignment,
-                            clearAllWhenWindowMissing = true,
+                            clearAll = event.clearAll,
                         )
                     }
 
@@ -493,29 +494,20 @@ class GameViewModel(
         opacity: Int,
         horizontalAlignment: BackgroundImageHorizontalAlignment,
         verticalAlignment: BackgroundImageVerticalAlignment,
-        clearAllWhenWindowMissing: Boolean,
+        clearAll: Boolean,
     ) {
-        val normalizedWindowName = windowName?.takeIf { it.isNotBlank() }
         _windowBackgroundImages.update { backgrounds ->
-            if (image == null) {
-                if (normalizedWindowName == null && clearAllWhenWindowMissing) {
-                    emptyMap()
-                } else {
-                    backgrounds - (normalizedWindowName ?: "main")
-                }
-            } else {
-                backgrounds + (
-                    (normalizedWindowName ?: "main") to ClientBackgroundImage(
-                        image = image,
-                        mode = mode,
-                        gradientStart = gradientStart,
-                        gradientEnd = gradientEnd,
-                        opacity = opacity,
-                        horizontalAlignment = horizontalAlignment,
-                        verticalAlignment = verticalAlignment,
-                    )
-                )
-            }
+            backgrounds.updatedWindowBackgroundImages(
+                windowName = windowName,
+                image = image,
+                mode = mode,
+                gradientStart = gradientStart,
+                gradientEnd = gradientEnd,
+                opacity = opacity,
+                horizontalAlignment = horizontalAlignment,
+                verticalAlignment = verticalAlignment,
+                clearAll = clearAll,
+            )
         }
     }
 
@@ -1054,5 +1046,36 @@ class GameViewModel(
 
     override fun entrySetCursorPosition(pos: Int) {
         entrySetSelection(TextRange(pos))
+    }
+}
+
+internal fun Map<String, ClientBackgroundImage>.updatedWindowBackgroundImages(
+    windowName: String?,
+    image: String?,
+    mode: BackgroundImageMode,
+    gradientStart: Int,
+    gradientEnd: Int,
+    opacity: Int,
+    horizontalAlignment: BackgroundImageHorizontalAlignment,
+    verticalAlignment: BackgroundImageVerticalAlignment,
+    clearAll: Boolean,
+): Map<String, ClientBackgroundImage> {
+    if (clearAll) return emptyMap()
+
+    val normalizedWindowName = windowName?.takeIf { it.isNotBlank() } ?: DEFAULT_BACKGROUND_WINDOW
+    return if (image == null) {
+        this - normalizedWindowName
+    } else {
+        this + (
+            normalizedWindowName to ClientBackgroundImage(
+                image = image,
+                mode = mode,
+                gradientStart = gradientStart,
+                gradientEnd = gradientEnd,
+                opacity = opacity,
+                horizontalAlignment = horizontalAlignment,
+                verticalAlignment = verticalAlignment,
+            )
+        )
     }
 }

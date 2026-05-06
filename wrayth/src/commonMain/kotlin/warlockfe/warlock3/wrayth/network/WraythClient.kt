@@ -505,6 +505,7 @@ class WraythClient(
                                         opacity = event.opacity,
                                         horizontalAlignment = event.horizontalAlignment,
                                         verticalAlignment = event.verticalAlignment,
+                                        clearAll = event.clearAll,
                                     )
                                 )
 
