@@ -307,7 +307,7 @@ class GameViewModel(
         get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
 
     private val _mainWindowUiState =
-        MutableStateFlow<WindowUiState>(
+        MutableStateFlow(
             WindowUiState(
                 name = "main",
                 windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),

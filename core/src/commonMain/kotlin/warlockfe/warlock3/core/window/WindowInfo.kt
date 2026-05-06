@@ -6,6 +6,7 @@ data class WindowInfo(
     val subtitle: String?,
     val windowType: WindowType,
     val showTimestamps: Boolean,
+    val backgroundImage: ClientBackgroundImage?,
 )
 
 enum class WindowLocation(
