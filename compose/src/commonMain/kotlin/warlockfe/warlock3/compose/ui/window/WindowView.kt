@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -96,14 +96,14 @@ import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
-import warlockfe.warlock3.core.client.BackgroundImageMode
-import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
-import warlockfe.warlock3.core.client.ClientBackgroundImage
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
+import warlockfe.warlock3.core.window.BackgroundImageMode
+import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
+import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.WindowLocation
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -111,7 +111,6 @@ import warlockfe.warlock3.core.window.WindowLocation
 fun WindowView(
     uiState: WindowUiState,
     location: WindowLocation,
-    backgroundImage: ClientBackgroundImage? = null,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -187,7 +186,7 @@ fun WindowView(
                         stream = data.stream,
                         scrollState = scrollState,
                         style = uiState.style.mergeWith(defaultStyle),
-                        backgroundImage = backgroundImage,
+                        backgroundImage = window?.backgroundImage,
                         openWindows = openWindows,
                         menuData = menuData,
                         onActionClick = onActionClick,

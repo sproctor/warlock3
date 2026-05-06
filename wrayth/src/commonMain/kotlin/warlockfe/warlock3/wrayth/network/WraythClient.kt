@@ -29,7 +29,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
-import warlockfe.warlock3.core.client.ClientBackgroundImageEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -55,6 +54,7 @@ import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isBlank
 import warlockfe.warlock3.core.util.getIgnoringCase
 import warlockfe.warlock3.core.util.replaceOrAdd
+import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowRegistry
@@ -501,19 +501,36 @@ class WraythClient(
 
                                 WraythNavEvent -> notifyListeners(ClientNavEvent)
 
-                                is WraythBackgroundEvent -> notifyListeners(
-                                    ClientBackgroundImageEvent(
-                                        windowName = event.windowName,
-                                        image = event.image?.let(::resolveBackgroundImage),
-                                        mode = event.mode,
-                                        gradientStart = event.gradientStart,
-                                        gradientEnd = event.gradientEnd,
-                                        opacity = event.opacity,
-                                        horizontalAlignment = event.horizontalAlignment,
-                                        verticalAlignment = event.verticalAlignment,
-                                        clearAll = event.clearAll,
-                                    )
-                                )
+                                is WraythBackgroundEvent ->
+                                    _windowInfo.update { currentWindowInfo ->
+                                        val index = currentWindowInfo.indexOfFirst { it.name == event.windowName }
+                                        if (index != -1) {
+                                            val window = currentWindowInfo[index]
+                                            val backgroundImage =
+                                                if (event.image != null) {
+                                                    ClientBackgroundImage(
+                                                        image = resolveBackgroundImage(event.image),
+                                                        mode = event.mode,
+                                                        gradientStart = event.gradientStart,
+                                                        gradientEnd = event.gradientEnd,
+                                                        opacity = event.opacity,
+                                                        horizontalAlignment = event.horizontalAlignment,
+                                                        verticalAlignment = event.verticalAlignment,
+                                                    )
+                                                } else {
+                                                    null
+                                                }
+                                            val updatedWindow = window.copy(
+                                                backgroundImage = backgroundImage
+
+                                            )
+                                            val updatedInfo = currentWindowInfo.toMutableList()
+                                            updatedInfo[index] = updatedWindow
+                                            updatedInfo
+                                        } else {
+                                            currentWindowInfo
+                                        }
+                                    }
 
                                 is WraythStreamWindowEvent -> {
                                     val window = event.window
@@ -533,6 +550,7 @@ class WraythClient(
                                                 subtitle = null,
                                                 windowType = WindowType.DIALOG,
                                                 showTimestamps = false,
+                                                backgroundImage = null,
                                             )
                                         _windowInfo.update { windowInfo ->
                                             windowInfo.replaceOrAdd(window) { it.name == window.name }
@@ -905,6 +923,7 @@ class WraythClient(
                 subtitle = window.subtitle,
                 windowType = WindowType.STREAM,
                 showTimestamps = window.timestamp,
+                backgroundImage = null,
             )
         _windowInfo.update { windowInfo ->
             windowInfo.replaceOrAdd(info) { it.name == window.name }
@@ -973,7 +992,7 @@ val TextStream?.isMainStream
 
 private val windowsAbsolutePathRegex = Regex("^[A-Za-z]:[\\\\/].*")
 
-internal fun resolveBackgroundImage(image: String): String {
+private fun resolveBackgroundImage(image: String): String {
     val path = image.trim()
     if (path.startsWith('/')) {
         return "file://$path"

@@ -1,8 +1,8 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
-import warlockfe.warlock3.core.client.BackgroundImageMode
-import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
+import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
+import warlockfe.warlock3.core.window.BackgroundImageMode
+import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
@@ -13,7 +13,7 @@ class BackgroundHandler : BaseElementListener() {
         val mode = element.attributes["mode"].toBackgroundImageMode()
         val opacity = element.attributes["opacity"].toPercent(default = 100)
         return WraythBackgroundEvent(
-            windowName = element.attributes["window"]?.takeIf { it.isNotBlank() },
+            windowName = element.attributes["window"] ?: "main",
             image = element.attributes["img"]?.takeIf { it.isNotBlank() && it != "0" },
             mode = mode,
             gradientStart = element.attributes["start"].toPercent(default = 0),
@@ -21,7 +21,6 @@ class BackgroundHandler : BaseElementListener() {
             opacity = opacity,
             horizontalAlignment = element.attributes["align"].toHorizontalAlignment(),
             verticalAlignment = element.attributes["valign"].toVerticalAlignment(),
-            clearAll = element.attributes.containsKey("clearall"),
         )
     }
 
