@@ -21,6 +21,7 @@ class DesktopSoundPlayer(
 
     override suspend fun playSound(filename: String): String? =
         withContext(Dispatchers.IO) {
+            logger.d { "Attempting to play sound: $filename" }
             val file =
                 File(filename).takeIf { it.exists() }
                     ?: dirs.map { File(it, filename) }.firstOrNull { it.exists() }
@@ -39,8 +40,10 @@ class DesktopSoundPlayer(
                     clip.open(inputStream)
                 }
                 clip.start()
+                logger.d { "Sound started: $filename" }
                 null
             } catch (e: Exception) {
+                logger.w(e) { "Error playing file: $filename" }
                 e.message
             }
         }
