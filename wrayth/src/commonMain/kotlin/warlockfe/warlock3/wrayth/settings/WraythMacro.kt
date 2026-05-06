@@ -5,4 +5,7 @@ import nl.adaptivity.xmlutil.serialization.XmlSerialName
 
 @Serializable
 @XmlSerialName("k")
-data class WraythMacro(val key: String, val action: String)
+data class WraythMacro(
+    val key: String,
+    val action: String,
+)

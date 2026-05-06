@@ -10,8 +10,8 @@ data class StyleDefinition(
     val fontFamily: String? = null,
     val fontSize: Float? = null,
 ) {
-    fun mergeWith(other: StyleDefinition): StyleDefinition {
-        return StyleDefinition(
+    fun mergeWith(other: StyleDefinition): StyleDefinition =
+        StyleDefinition(
             textColor = if (textColor.isSpecified()) textColor else other.textColor,
             backgroundColor = if (backgroundColor.isSpecified()) backgroundColor else other.backgroundColor,
             entireLine = entireLine || other.entireLine,
@@ -21,15 +21,13 @@ data class StyleDefinition(
             fontFamily = fontFamily ?: other.fontFamily,
             fontSize = fontSize ?: other.fontSize,
         )
-    }
 }
 
 /*
  * Priority goes to earlier styles in the list
  */
-fun flattenStyles(styles: List<StyleDefinition>): StyleDefinition? {
-    return styles
+fun flattenStyles(styles: List<StyleDefinition>): StyleDefinition? =
+    styles
         .reduceOrNull { acc, warlockStyle ->
             acc.mergeWith(warlockStyle)
         }
-}

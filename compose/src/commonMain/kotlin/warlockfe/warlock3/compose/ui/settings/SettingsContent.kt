@@ -56,23 +56,26 @@ fun SettingsContent(
             )
         }
 
-        SettingsPage.Macros -> MacrosView(
-            initialCharacter = currentCharacter,
-            characters = characters,
-            macroRepository = macroRepository,
-        )
+        SettingsPage.Macros ->
+            MacrosView(
+                initialCharacter = currentCharacter,
+                characters = characters,
+                macroRepository = macroRepository,
+            )
 
-        SettingsPage.Highlights -> HighlightsView(
-            currentCharacter = currentCharacter,
-            allCharacters = characters,
-            highlightRepository = highlightRepository,
-        )
+        SettingsPage.Highlights ->
+            HighlightsView(
+                currentCharacter = currentCharacter,
+                allCharacters = characters,
+                highlightRepository = highlightRepository,
+            )
 
-        SettingsPage.Names -> NamesView(
-            currentCharacter = currentCharacter,
-            allCharacters = characters,
-            nameRepository = nameRepository,
-        )
+        SettingsPage.Names ->
+            NamesView(
+                currentCharacter = currentCharacter,
+                allCharacters = characters,
+                nameRepository = nameRepository,
+            )
 
         SettingsPage.Appearance -> {
             AppearanceView(

@@ -24,7 +24,7 @@ class CmdButtonHandler : BaseElementListener() {
                 align = element.attributes["align"],
                 topAnchor = element.attributes["anchor_top"],
                 leftAnchor = element.attributes["anchor_left"],
-            )
+            ),
         )
     }
 }

@@ -42,7 +42,6 @@ class WslScriptInstance(
     private val soundPlayer: SoundPlayer,
     private val fileSystem: FileSystem,
 ) : ScriptInstance {
-
     private val script: WslScript = WslScript(name, file, fileSystem)
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
@@ -67,63 +66,67 @@ class WslScriptInstance(
         val arguments = parseArguments(argumentString)
         status = ScriptStatus.Running
 
-        job = scope.launch {
-            try {
-                lines = script.parse()
-                val globalVariables = client.characterId.flatMapLatest { id ->
-                    if (id != null) {
-                        variableRepository.observeCharacterVariables(id).map { variables ->
-                            variables.associate { it.name to it.value }
-                                .toCaseInsensitiveMap()
-                        }
-                    } else {
-                        flow {
-                            emit(CaseInsensitiveMap())
-                        }
+        job =
+            scope.launch {
+                try {
+                    lines = script.parse()
+                    val globalVariables =
+                        client.characterId
+                            .flatMapLatest { id ->
+                                if (id != null) {
+                                    variableRepository.observeCharacterVariables(id).map { variables ->
+                                        variables
+                                            .associate { it.name to it.value }
+                                            .toCaseInsensitiveMap()
+                                    }
+                                } else {
+                                    flow {
+                                        emit(CaseInsensitiveMap())
+                                    }
+                                }
+                            }.stateIn(scope = scope)
+                    val context =
+                        WslContext(
+                            client = client,
+                            scriptManager = scriptManager,
+                            lines = lines,
+                            scriptInstance = this@WslScriptInstance,
+                            scope = scope,
+                            globalVariables = globalVariables,
+                            variableRepository = variableRepository,
+                            highlightRepository = highlightRepository,
+                            nameRepository = nameRepository,
+                            commandHandler = commandHandler,
+                            soundPlayer = soundPlayer,
+                            fileSystem = fileSystem,
+                        )
+                    context.setScriptVariable("0", WslString(argumentString))
+                    arguments.forEachIndexed { index, arg ->
+                        context.setScriptVariable((index + 1).toString(), WslString(arg))
                     }
-                }
-                    .stateIn(scope = scope)
-                val context = WslContext(
-                    client = client,
-                    scriptManager = scriptManager,
-                    lines = lines,
-                    scriptInstance = this@WslScriptInstance,
-                    scope = scope,
-                    globalVariables = globalVariables,
-                    variableRepository = variableRepository,
-                    highlightRepository = highlightRepository,
-                    nameRepository = nameRepository,
-                    commandHandler = commandHandler,
-                    soundPlayer = soundPlayer,
-                    fileSystem = fileSystem,
-                )
-                context.setScriptVariable("0", WslString(argumentString))
-                arguments.forEachIndexed { index, arg ->
-                    context.setScriptVariable((index + 1).toString(), WslString(arg))
-                }
-                while (status == ScriptStatus.Running || status == ScriptStatus.Suspended) {
-                    val line = context.getNextLine()
-                    if (line == null) {
-                        status = ScriptStatus.Stopped
-                        client.print(StyledString("Script \"$name\" ended"))
-                        break
+                    while (status == ScriptStatus.Running || status == ScriptStatus.Suspended) {
+                        val line = context.getNextLine()
+                        if (line == null) {
+                            status = ScriptStatus.Stopped
+                            client.print(StyledString("Script \"$name\" ended"))
+                            break
+                        }
+                        waitWhenSuspended()
+                        line.statement.execute(context)
                     }
-                    waitWhenSuspended()
-                    line.statement.execute(context)
-                }
-            } catch (e: WslParseException) {
-                status = ScriptStatus.Stopped
-                client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
-            } catch (e: WslRuntimeException) {
-                status = ScriptStatus.Stopped
-                client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
-            } finally {
-                withContext(NonCancellable) {
-                    onStop()
-                    scope.cancel()
+                } catch (e: WslParseException) {
+                    status = ScriptStatus.Stopped
+                    client.print(StyledString(text = e.reason, styles = listOf(WarlockStyle.Error)))
+                } catch (e: WslRuntimeException) {
+                    status = ScriptStatus.Stopped
+                    client.print(StyledString(text = "Script error: ${e.reason}", styles = listOf(WarlockStyle.Error)))
+                } finally {
+                    withContext(NonCancellable) {
+                        onStop()
+                        scope.cancel()
+                    }
                 }
             }
-        }
     }
 
     override fun stop() {

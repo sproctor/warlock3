@@ -47,7 +47,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 fun ColorPickerDialog(
     initialColor: Color?,
     onCloseRequest: () -> Unit,
-    onColorSelected: (color: WarlockColor) -> Unit,
+    onColorSelect: (color: WarlockColor) -> Unit,
 ) {
     val controller = rememberColorPickerController()
     val hexInput = rememberTextFieldState()
@@ -68,8 +68,8 @@ fun ColorPickerDialog(
                 onClick = {
                     val parsed = Color.parseHexOrNull(hexInput.text.toString())
                     val chosen = parsed ?: controller.selectedColor.value
-                    onColorSelected(chosen.toWarlockColor())
-                }
+                    onColorSelect(chosen.toWarlockColor())
+                },
             ) {
                 Text("OK")
             }
@@ -82,7 +82,7 @@ fun ColorPickerDialog(
         text = {
             Column(
                 horizontalAlignment = CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Box(modifier = Modifier.weight(8f)) {
                     HsvColorPicker(
@@ -94,7 +94,7 @@ fun ColorPickerDialog(
                                 hexInput.setTextAndPlaceCursorAtEnd(colorEnvelope.hexCode)
                                 hexError = null
                             }
-                        }
+                        },
                     )
                 }
                 AlphaSlider(
@@ -131,13 +131,14 @@ fun ColorPickerDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 AlphaTile(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(MaterialTheme.shapes.medium),
+                    modifier =
+                        Modifier
+                            .size(60.dp)
+                            .clip(MaterialTheme.shapes.medium),
                     controller = controller,
                 )
             }
-        }
+        },
     )
 }
 
@@ -146,8 +147,10 @@ fun ColorPickerButton(
     text: String,
     color: Color,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     OutlinedButton(
+        modifier = modifier,
         onClick = onClick,
     ) {
         Row(
@@ -156,8 +159,10 @@ fun ColorPickerButton(
             Text(text, maxLines = 1)
             Spacer(Modifier.width(8.dp))
             Box(
-                Modifier.size(16.dp).background(color)
-                    .border(1.dp, MaterialTheme.colorScheme.outline)
+                Modifier
+                    .size(16.dp)
+                    .background(color)
+                    .border(1.dp, MaterialTheme.colorScheme.outline),
             )
         }
     }

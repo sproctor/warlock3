@@ -21,7 +21,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.io.Buffer
 import kotlinx.io.UnsafeIoApi
 import kotlinx.io.readByteArray
-import kotlinx.io.readString
 import kotlinx.io.unsafe.UnsafeBufferOperations
 import kotlinx.io.unsafe.withData
 import warlockfe.warlock3.core.client.WarlockSocket
@@ -29,8 +28,9 @@ import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.encodeWindows1252
 import kotlin.math.min
 
-class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
-
+class NetworkSocket(
+    dispatcher: CoroutineDispatcher,
+) : WarlockSocket {
     private val logger = Logger.withTag("NetworkSocket")
     private val selector = SelectorManager(dispatcher)
     private var socket: Socket? = null
@@ -41,7 +41,10 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
     override val isClosed: Boolean
         get() = socket?.isClosed == true
 
-    override suspend fun connect(host: String, port: Int) {
+    override suspend fun connect(
+        host: String,
+        port: Int,
+    ) {
         logger.d { "Connecting to $host:$port" }
         try {
             socket = aSocket(selector).tcp().connect(host, port)
@@ -134,9 +137,7 @@ class NetworkSocket(dispatcher: CoroutineDispatcher) : WarlockSocket {
 private const val CR: Byte = '\r'.code.toByte()
 private const val LF: Byte = '\n'.code.toByte()
 
-private fun Buffer.readWindows1252String(): String {
-    return readWindows1252(size)
-}
+private fun Buffer.readWindows1252String(): String = readWindows1252(size)
 
 @OptIn(UnsafeIoApi::class)
 private fun Buffer.readWindows1252(byteCount: Long): String {

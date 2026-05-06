@@ -14,15 +14,14 @@ fun ConnectionWithSettings.toDomain(): StoredConnection {
         password = account.password,
         character = connection.character,
         code = connection.gameCode,
-        proxySettings = ConnectionProxySettings(
-            enabled = settingsMap["proxyEnabled"]?.toBooleanStrictOrNull() == true,
-            launchCommand = settingsMap["proxyLaunchCommand"],
-            host = settingsMap["proxyHost"],
-            port = settingsMap["proxyPort"],
-        )
+        proxySettings =
+            ConnectionProxySettings(
+                enabled = settingsMap["proxyEnabled"]?.toBooleanStrictOrNull() == true,
+                launchCommand = settingsMap["proxyLaunchCommand"],
+                host = settingsMap["proxyHost"],
+                port = settingsMap["proxyPort"],
+            ),
     )
 }
 
-private fun List<ConnectionSettingEntity>.toMap(): Map<String, String> {
-    return associate { it.key to it.value }
-}
+private fun List<ConnectionSettingEntity>.toMap(): Map<String, String> = associate { it.key to it.value }

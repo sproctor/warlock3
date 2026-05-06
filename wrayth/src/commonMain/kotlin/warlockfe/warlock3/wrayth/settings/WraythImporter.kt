@@ -25,7 +25,10 @@ class WraythImporter(
     private val macroDao: MacroDao,
     private val fileSystem: FileSystem,
 ) {
-    suspend fun importFile(characterId: String, file: Path): List<String> {
+    suspend fun importFile(
+        characterId: String,
+        file: Path,
+    ): List<String> {
         val messages = mutableListOf<String>()
         try {
             val source = fileSystem.source(file).buffered()
@@ -36,7 +39,7 @@ class WraythImporter(
             settings.highlights.forEach { highlight ->
                 highlightRepository.save(
                     characterId = characterId,
-                    highlight = highlight
+                    highlight = highlight,
                 )
             }
             messages.add("Imported ${settings.highlights.size} highlights")
@@ -61,7 +64,10 @@ class WraythImporter(
         }
     }
 
-    internal fun translateSettings(settings: WraythSettings, characterId: String): WarlockSettings {
+    internal fun translateSettings(
+        settings: WraythSettings,
+        characterId: String,
+    ): WarlockSettings {
         val colors = mutableMapOf<String, String>()
         settings.palette.forEach { color ->
             if (color.id != null && color.color != null) {
@@ -70,109 +76,125 @@ class WraythImporter(
         }
         val ignoredMacros = mutableListOf<WraythMacro>()
         return WarlockSettings(
-            highlights = settings.strings.mapNotNull { highlight ->
-                highlight.text?.let { text ->
-                    Highlight(
-                        id = Uuid.random(),
-                        pattern = text,
-                        styles = mapOf(
-                            0 to StyleDefinition(
-                                textColor = highlight.color.toWarlockColor(colors),
-                                backgroundColor = highlight.bgcolor.toWarlockColor(colors),
-                                entireLine = highlight.line == "y",
+            highlights =
+                settings.strings.mapNotNull { highlight ->
+                    highlight.text?.let { text ->
+                        Highlight(
+                            id = Uuid.random(),
+                            pattern = text,
+                            styles =
+                                mapOf(
+                                    0 to
+                                        StyleDefinition(
+                                            textColor = highlight.color.toWarlockColor(colors),
+                                            backgroundColor = highlight.bgcolor.toWarlockColor(colors),
+                                            entireLine = highlight.line == "y",
+                                        ),
+                                ),
+                            isRegex = false,
+                            matchPartialWord = true,
+                            ignoreCase = false,
+                            sound = highlight.sound,
+                        )
+                    }
+                },
+            names =
+                settings.names.mapNotNull { name ->
+                    name.text?.let { text ->
+                        NameEntity(
+                            id = Uuid.random(),
+                            characterId = characterId,
+                            text = text,
+                            textColor = name.color.toWarlockColor(colors),
+                            backgroundColor = name.bgcolor.toWarlockColor(colors),
+                            bold = false,
+                            italic = false,
+                            underline = false,
+                            fontFamily = null,
+                            fontSize = null,
+                            sound = name.sound,
+                        )
+                    }
+                },
+            macros =
+                settings.macros
+                    .firstOrNull { it.id == "0" }
+                    ?.macros
+                    ?.mapNotNull { wraythMacro ->
+                        var wraythKey = wraythMacro.key
+                        wraythKey = wraythKey.replace("Alt-", "")
+                        wraythKey = wraythKey.replace("Ctrl-", "")
+                        wraythKey = wraythKey.replace("Shift-", "")
+                        val keyCode = WraythKeyMapping.keyMap[wraythKey] ?: wraythKey.uppercase()
+
+                        // Map shouldn't have side-effects, I'm lazy
+                        if (keyCode.isBlank() || keyCode.contains(' ')) {
+                            ignoredMacros.add(wraythMacro)
+                            return@mapNotNull null
+                        }
+
+                        val validMacroCommands = MacroCommands.commands.map { it.name } + MacroCommands.commands.flatMap { it.aliases }
+                        // This is a quick and sloppy way to make sure we can handle the macro command
+                        if (wraythMacro.action.startsWith('{') &&
+                            !validMacroCommands.contains(
+                                wraythMacro.action
+                                    .removePrefix("{")
+                                    .removeSuffix("}")
+                                    .lowercase(),
                             )
-                        ),
-                        isRegex = false,
-                        matchPartialWord = true,
-                        ignoreCase = false,
-                        sound = highlight.sound,
-                    )
-                }
-            },
-            names = settings.names.mapNotNull { name ->
-                name.text?.let { text ->
-                    NameEntity(
-                        id = Uuid.random(),
-                        characterId = characterId,
-                        text = text,
-                        textColor = name.color.toWarlockColor(colors),
-                        backgroundColor = name.bgcolor.toWarlockColor(colors),
-                        bold = false,
-                        italic = false,
-                        underline = false,
-                        fontFamily = null,
-                        fontSize = null,
-                        sound = name.sound,
-                    )
-                }
-            },
-            macros = settings.macros.firstOrNull { it.id == "0" }
-                ?.macros?.mapNotNull { wraythMacro ->
-                    var wraythKey = wraythMacro.key
-                    wraythKey = wraythKey.replace("Alt-", "")
-                    wraythKey = wraythKey.replace("Ctrl-", "")
-                    wraythKey = wraythKey.replace("Shift-", "")
-                    val keyCode = WraythKeyMapping.keyMap[wraythKey] ?: wraythKey.uppercase()
-
-                    // Map shouldn't have side-effects, I'm lazy
-                    if (keyCode.isBlank() || keyCode.contains(' ')) {
-                        ignoredMacros.add(wraythMacro)
-                        return@mapNotNull null
-                    }
-
-                    val validMacroCommands = MacroCommands.commands.map { it.name } + MacroCommands.commands.flatMap { it.aliases }
-                    // This is a quick and sloppy way to make sure we can handle the macro command
-                    if (wraythMacro.action.startsWith('{')
-                        && !validMacroCommands.contains(wraythMacro.action.removePrefix("{").removeSuffix("}").lowercase())) {
-                        ignoredMacros.add(wraythMacro)
-                        return@mapNotNull null
-                    }
-                    val keyString = buildString {
-                        if (wraythMacro.key.contains("Ctrl-")) {
-                            append("ctrl ")
+                        ) {
+                            ignoredMacros.add(wraythMacro)
+                            return@mapNotNull null
                         }
-                        if (wraythMacro.key.contains("Alt-")) {
-                            append("alt ")
-                        }
-                        if (wraythMacro.key.contains("Shift-")) {
-                            append("shift ")
-                        }
-                        append(keyCode)
-                    }
-                    MacroEntity(
-                        characterId = characterId,
-                        key = keyString,
-                        value = wraythMacro.action,
-                        keyCode = 0,
-                        ctrl = false,
-                        alt = false,
-                        shift = false,
-                        meta = false,
-                    )
-                } ?: emptyList(),
+                        val keyString =
+                            buildString {
+                                if (wraythMacro.key.contains("Ctrl-")) {
+                                    append("ctrl ")
+                                }
+                                if (wraythMacro.key.contains("Alt-")) {
+                                    append("alt ")
+                                }
+                                if (wraythMacro.key.contains("Shift-")) {
+                                    append("shift ")
+                                }
+                                append(keyCode)
+                            }
+                        MacroEntity(
+                            characterId = characterId,
+                            key = keyString,
+                            value = wraythMacro.action,
+                            keyCode = 0,
+                            ctrl = false,
+                            alt = false,
+                            shift = false,
+                            meta = false,
+                        )
+                    } ?: emptyList(),
             ignoredMacros = ignoredMacros,
         )
     }
 
     internal fun importString(text: String): WraythSettings {
-        val parser = XML {
-            defaultPolicy {
-                pedantic = false
-                ignoreUnknownChildren()
+        val parser =
+            XML {
+                defaultPolicy {
+                    pedantic = false
+                    ignoreUnknownChildren()
+                }
             }
-        }
         return parser.decodeFromString<WraythSettings>(text)
     }
 }
 
 private fun String?.toWarlockColor(colors: Map<String, String>): WarlockColor {
     if (this == null) return WarlockColor.Unspecified
-    val hex = if (startsWith("@")) {
-        val key = removePrefix("@")
-        colors[key]
-    } else {
-        this
-    }
+    val hex =
+        if (startsWith("@")) {
+            val key = removePrefix("@")
+            colors[key]
+        } else {
+            this
+        }
     return hex?.toWarlockColor() ?: WarlockColor.Unspecified
 }
 

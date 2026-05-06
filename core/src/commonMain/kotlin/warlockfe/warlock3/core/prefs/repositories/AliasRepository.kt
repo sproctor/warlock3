@@ -12,8 +12,9 @@ import kotlin.uuid.Uuid
 class AliasRepository(
     private val aliasDao: AliasDao,
 ) {
-    fun observeForCharacter(characterId: String): Flow<List<Alias>> {
-        return aliasDao.observeByCharacterWithGlobals(characterId)
+    fun observeForCharacter(characterId: String): Flow<List<Alias>> =
+        aliasDao
+            .observeByCharacterWithGlobals(characterId)
             .map { list ->
                 list.mapNotNull {
                     try {
@@ -23,11 +24,8 @@ class AliasRepository(
                     }
                 }
             }
-    }
 
-    fun observeByCharacter(characterId: String): Flow<List<AliasEntity>> {
-        return aliasDao.observeByCharacter(characterId)
-    }
+    fun observeByCharacter(characterId: String): Flow<List<AliasEntity>> = aliasDao.observeByCharacter(characterId)
 
     suspend fun save(alias: AliasEntity) {
         withContext(NonCancellable) {

@@ -19,10 +19,10 @@ import androidx.compose.ui.Modifier
 fun <T> DropdownSelect(
     items: List<T>,
     selected: T,
+    onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     itemLabelBuilder: (T) -> String = { it.toString() },
     label: @Composable (() -> Unit)? = null,
-    onSelect: (T) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -30,7 +30,7 @@ fun <T> DropdownSelect(
         expanded = expanded,
         onExpandedChange = {
             expanded = it
-        }
+        },
     ) {
         OutlinedTextField(
             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
@@ -47,7 +47,7 @@ fun <T> DropdownSelect(
             expanded = expanded,
             onDismissRequest = {
                 expanded = false
-            }
+            },
         ) {
             items.forEach { item ->
                 DropdownMenuItem(
@@ -57,7 +57,7 @@ fun <T> DropdownSelect(
                     onClick = {
                         onSelect(item)
                         expanded = false
-                    }
+                    },
                 )
             }
         }

@@ -2,8 +2,8 @@ package warlockfe.warlock3.core.util
 
 import warlockfe.warlock3.core.text.WarlockColor
 
-fun String.toWarlockColor(): WarlockColor? {
-    return when {
+fun String.toWarlockColor(): WarlockColor? =
+    when {
         isEmpty() -> null
         startsWith('#') -> {
             drop(1).toLongOrNull(16)?.let { argb ->
@@ -13,4 +13,3 @@ fun String.toWarlockColor(): WarlockColor? {
         this == "default" -> WarlockColor.Unspecified
         else -> null
     }
-}

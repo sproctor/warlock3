@@ -20,18 +20,19 @@ class JvmAppContainer(
     warlockDirs: WarlockDirs,
     fileSystem: FileSystem,
 ) : AppContainer(
-    databaseBuilder = databaseBuilder,
-    warlockDirs = warlockDirs,
-    fileSystem = fileSystem,
-) {
+        databaseBuilder = databaseBuilder,
+        warlockDirs = warlockDirs,
+        fileSystem = fileSystem,
+    ) {
     override val soundPlayer: SoundPlayer = DesktopSoundPlayer(warlockDirs)
 
     override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
-            engines = listOf(
-                WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
-                JsEngine(variableRepository),
-            ),
+            engines =
+                listOf(
+                    WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
+                    JsEngine(variableRepository),
+                ),
             scriptDirRepository = scriptDirRepository,
             fileSystem = fileSystem,
         )
@@ -44,8 +45,6 @@ class JvmAppContainer(
 
     override val warlockProxyFactory: WarlockProxy.Factory =
         object : WarlockProxy.Factory {
-            override fun create(command: String): WarlockProxy {
-                return JavaProxy(command)
-            }
+            override fun create(command: String): WarlockProxy = JavaProxy(command)
         }
 }

@@ -4,14 +4,14 @@ enum class ScriptStatus {
     NotStarted,
     Running,
     Suspended,
-    Stopped;
+    Stopped,
+    ;
 
-    override fun toString(): String {
-        return when (this) {
+    override fun toString(): String =
+        when (this) {
             NotStarted -> "not started"
             Running -> "running"
             Suspended -> "paused"
             Stopped -> "stopped"
         }
-    }
 }

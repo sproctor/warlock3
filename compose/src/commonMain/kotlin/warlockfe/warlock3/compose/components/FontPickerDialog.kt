@@ -33,14 +33,14 @@ import warlockfe.warlock3.core.text.StyleDefinition
 fun FontPickerDialog(
     currentStyle: StyleDefinition,
     onCloseRequest: () -> Unit,
-    onSaveClicked: (FontUpdate) -> Unit,
+    onSaveClick: (FontUpdate) -> Unit,
 ) {
     val initialFontSize = currentStyle.fontSize ?: MaterialTheme.typography.bodyMedium.fontSize.value
     val size = rememberTextFieldState(initialFontSize.toString())
     var newFontFamily by remember(currentStyle.fontFamily) {
         mutableStateOf(currentStyle.fontFamily ?: "Default")
     }
-    var systemFontFamilies by remember { mutableStateOf(emptyList<FontFamilyInfo>())}
+    var systemFontFamilies by remember { mutableStateOf(emptyList<FontFamilyInfo>()) }
 
     LaunchedEffect(Unit) {
         systemFontFamilies = loadSystemFonts()
@@ -50,11 +50,11 @@ fun FontPickerDialog(
         title = { Text("Choose a font") },
         confirmButton = {
             Button(onClick = {
-                onSaveClicked(
+                onSaveClick(
                     FontUpdate(
                         size = size.text.toString().toFloatOrNull(),
-                        newFontFamily
-                    )
+                        newFontFamily,
+                    ),
                 )
             }) {
                 Text("Save")
@@ -68,31 +68,31 @@ fun FontPickerDialog(
         text = {
             Column(
                 modifier = Modifier.padding(16.dp).fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedTextField(state = size)
 
                 ScrollableColumn(
-                    modifier = Modifier
-                        .border(
-                            width = Dp.Hairline,
-                            color = MaterialTheme.colorScheme.outline,
-                            shape = MaterialTheme.shapes.medium,
-                        )
-                        .clip(MaterialTheme.shapes.medium)
-                        .fillMaxWidth()
+                    modifier =
+                        Modifier
+                            .border(
+                                width = Dp.Hairline,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = MaterialTheme.shapes.medium,
+                            ).clip(MaterialTheme.shapes.medium)
+                            .fillMaxWidth(),
                 ) {
-
                     (genericFontFamilies + systemFontFamilies).forEach { fontFamily ->
                         ListItem(
-                            modifier = Modifier
-                                .clickable {
-                                    newFontFamily = fontFamily.familyName
-                                },
+                            modifier =
+                                Modifier
+                                    .clickable {
+                                        newFontFamily = fontFamily.familyName
+                                    },
                             colors =
                                 if (fontFamily.familyName == newFontFamily) {
                                     ListItemDefaults.colors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
                                     )
                                 } else {
                                     ListItemDefaults.colors()
@@ -104,15 +104,15 @@ fun FontPickerDialog(
                                     maxLines = 1,
                                 )
                             },
-                            supportingContent = { Text(text = fontFamily.familyName) }
+                            supportingContent = { Text(text = fontFamily.familyName) },
                         )
                     }
                 }
-                Button(onClick = { onSaveClicked(FontUpdate(null, null)) }) {
+                Button(onClick = { onSaveClick(FontUpdate(null, null)) }) {
                     Text("Reset to defaults")
                 }
             }
-        }
+        },
     )
 }
 
@@ -121,14 +121,18 @@ internal data class FontFamilyInfo(
     val fontFamily: FontFamily,
 )
 
-data class FontUpdate(val size: Float?, val fontFamily: String?)
-
-private val genericFontFamilies = listOf(
-    FontFamilyInfo("Default", FontFamily.Default),
-    FontFamilyInfo("Serif", FontFamily.Serif),
-    FontFamilyInfo("SansSerif", FontFamily.SansSerif),
-    FontFamilyInfo("Monospace", FontFamily.Monospace),
-    FontFamilyInfo("Cursive", FontFamily.Cursive),
+data class FontUpdate(
+    val size: Float?,
+    val fontFamily: String?,
 )
+
+private val genericFontFamilies =
+    listOf(
+        FontFamilyInfo("Default", FontFamily.Default),
+        FontFamilyInfo("Serif", FontFamily.Serif),
+        FontFamilyInfo("SansSerif", FontFamily.SansSerif),
+        FontFamilyInfo("Monospace", FontFamily.Monospace),
+        FontFamilyInfo("Cursive", FontFamily.Cursive),
+    )
 
 internal expect suspend fun loadSystemFonts(): List<FontFamilyInfo>

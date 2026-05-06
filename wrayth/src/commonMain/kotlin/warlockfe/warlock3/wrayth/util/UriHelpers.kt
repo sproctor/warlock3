@@ -27,7 +27,10 @@ package warlockfe.warlock3.wrayth.util
 
 import com.eygraber.uri.Uri
 
-internal fun resolve(base: Uri, child: Uri): Uri {
+internal fun resolve(
+    base: Uri,
+    child: Uri,
+): Uri {
     if (child.isAbsolute) return child
     if (child.path?.startsWith('/') == true) return Uri.parse("$base$child")
     return Uri.parse("$base/$child")

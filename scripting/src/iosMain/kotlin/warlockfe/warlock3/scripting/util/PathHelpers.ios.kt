@@ -8,6 +8,11 @@ import org.antlr.v4.kotlinruntime.CharStream
 import org.antlr.v4.kotlinruntime.CharStreams
 
 internal actual fun Path.toCharStream(fileSystem: FileSystem): CharStream {
-    val text = fileSystem.source(this).buffered().readByteArray().decodeToString()
+    val text =
+        fileSystem
+            .source(this)
+            .buffered()
+            .readByteArray()
+            .decodeToString()
     return CharStreams.fromString(text)
 }

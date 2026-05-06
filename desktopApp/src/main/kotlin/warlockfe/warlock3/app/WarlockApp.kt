@@ -39,10 +39,11 @@ fun DecoratedWindowScope.WarlockApp(
     var exportMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     CompositionLocalProvider(
-        LocalScrollbarStyle provides LocalScrollbarStyle.current.copy(
-            hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-            unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-        ),
+        LocalScrollbarStyle provides
+            LocalScrollbarStyle.current.copy(
+                hoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                unhoverColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+            ),
     ) {
         var showAboutDialog by remember { mutableStateOf(false) }
         var sideBarVisible by remember { mutableStateOf(false) }
@@ -89,7 +90,7 @@ fun DecoratedWindowScope.WarlockApp(
                         exportMessage = "Failed to export settings: ${e.message}"
                     }
                 }
-            }
+            },
         )
 
         if (exportMessage != null) {
@@ -98,11 +99,11 @@ fun DecoratedWindowScope.WarlockApp(
                 text = { Text(exportMessage!!) },
                 confirmButton = {
                     TextButton(
-                        onClick = { exportMessage = null }
+                        onClick = { exportMessage = null },
                     ) {
                         Text("OK")
                     }
-                }
+                },
             )
         }
         if (showAboutDialog) {

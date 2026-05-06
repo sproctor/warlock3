@@ -6,9 +6,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythRoundTimeEvent
 
 class RoundTimeHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return element.attributes["value"]?.let {
+    override fun startElement(element: StartElement): WraythEvent? =
+        element.attributes["value"]?.let {
             WraythRoundTimeEvent(time = it)
         }
-    }
 }

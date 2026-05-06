@@ -17,9 +17,10 @@ actual suspend fun openPlainSocket(
     port: Int,
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection {
-    val socket = aSocket(selectorManager)
-        .tcp()
-        .connect(host, port)
+    val socket =
+        aSocket(selectorManager)
+            .tcp()
+            .connect(host, port)
     return TLSSocketConnection(
         readChannel = socket.openReadChannel(),
         writeChannel = socket.openWriteChannel(autoFlush = true),
@@ -34,19 +35,20 @@ actual suspend fun openTLSSocket(
     certificate: ByteArray,
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection {
-    val socket = aSocket(selectorManager)
-        .tcp()
-        .connect(host, port)
-        .tls(coroutineContext = coroutineContext) {
-            val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
-            keyStore.load(null)
-            val certFactory = CertificateFactory.getInstance("X.509")
-            val cert = certFactory.generateCertificate(certificate.inputStream())
-            keyStore.setCertificateEntry("ca", cert)
-            val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-            tmf.init(keyStore)
-            trustManager = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
-        }
+    val socket =
+        aSocket(selectorManager)
+            .tcp()
+            .connect(host, port)
+            .tls(coroutineContext = coroutineContext) {
+                val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                keyStore.load(null)
+                val certFactory = CertificateFactory.getInstance("X.509")
+                val cert = certFactory.generateCertificate(certificate.inputStream())
+                keyStore.setCertificateEntry("ca", cert)
+                val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+                tmf.init(keyStore)
+                trustManager = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
+            }
     return TLSSocketConnection(
         readChannel = socket.openReadChannel(),
         writeChannel = socket.openWriteChannel(autoFlush = true),

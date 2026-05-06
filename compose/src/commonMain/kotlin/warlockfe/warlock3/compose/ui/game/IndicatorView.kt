@@ -39,128 +39,131 @@ fun IndicatorView(
     indicators: Set<String>,
     backgroundColor: Color,
     defaultColor: Color,
+    modifier: Modifier = Modifier,
 ) {
-    val statusKeysList: Array<Map<String, @Composable (Modifier) -> Unit>> = arrayOf(
-        mapOf(
-            "kneeling" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.kneeling),
-                    contentDescription = "kneeling",
-                    tint = defaultColor,
-                )
-            },
-            "prone" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.prone),
-                    contentDescription = "prone",
-                    tint = defaultColor,
-                )
-            },
-            "sitting" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.sitting),
-                    contentDescription = "sitting",
-                    tint = defaultColor,
-                )
-            },
-            "standing" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.standing),
-                    contentDescription = "standing",
-                    tint = defaultColor,
-                )
-            },
-            "poisoned" to {
-                Image(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.poisoned),
-                    contentDescription = "poisoned",
-                )
-            },
-            "diseased" to {
-                Image(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.diseased),
-                    contentDescription = "diseased",
-                )
-            },
-        ),
-        mapOf(
-            "joined" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.joined),
-                    contentDescription = "joined",
-                    tint = defaultColor,
-                )
-            }
-        ),
-        mapOf(
-            "bleeding" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.local_hospital),
-                    contentDescription = "bleeding",
-                    tint = Color.Red,
-                )
-            },
-            "dead" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.death),
-                    contentDescription = "dead",
-                    tint = defaultColor,
-                )
-            },
-        ),
-        mapOf(
-            "invisible" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.invisible),
-                    contentDescription = "invisible",
-                    tint = defaultColor,
-                )
-            },
-            "hidden" to {
-                Image(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.hidden),
-                    contentDescription = "hidden",
-                )
-            },
-            "webbed" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.webbed),
-                    contentDescription = "standing",
-                    tint = defaultColor,
-                )
-            },
-        ),
-        mapOf(
-            "stunned" to {
-                Icon(
-                    modifier = it,
-                    painter = painterResource(Res.drawable.stunned),
-                    contentDescription = "stunned",
-                    tint = defaultColor,
-                )
-            },
-        ),
-    )
+    val statusKeysList: Array<Map<String, @Composable (Modifier) -> Unit>> =
+        arrayOf(
+            mapOf(
+                "kneeling" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.kneeling),
+                        contentDescription = "kneeling",
+                        tint = defaultColor,
+                    )
+                },
+                "prone" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.prone),
+                        contentDescription = "prone",
+                        tint = defaultColor,
+                    )
+                },
+                "sitting" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.sitting),
+                        contentDescription = "sitting",
+                        tint = defaultColor,
+                    )
+                },
+                "standing" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.standing),
+                        contentDescription = "standing",
+                        tint = defaultColor,
+                    )
+                },
+                "poisoned" to {
+                    Image(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.poisoned),
+                        contentDescription = "poisoned",
+                    )
+                },
+                "diseased" to {
+                    Image(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.diseased),
+                        contentDescription = "diseased",
+                    )
+                },
+            ),
+            mapOf(
+                "joined" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.joined),
+                        contentDescription = "joined",
+                        tint = defaultColor,
+                    )
+                },
+            ),
+            mapOf(
+                "bleeding" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.local_hospital),
+                        contentDescription = "bleeding",
+                        tint = Color.Red,
+                    )
+                },
+                "dead" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.death),
+                        contentDescription = "dead",
+                        tint = defaultColor,
+                    )
+                },
+            ),
+            mapOf(
+                "invisible" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.invisible),
+                        contentDescription = "invisible",
+                        tint = defaultColor,
+                    )
+                },
+                "hidden" to {
+                    Image(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.hidden),
+                        contentDescription = "hidden",
+                    )
+                },
+                "webbed" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.webbed),
+                        contentDescription = "standing",
+                        tint = defaultColor,
+                    )
+                },
+            ),
+            mapOf(
+                "stunned" to {
+                    Icon(
+                        modifier = it,
+                        painter = painterResource(Res.drawable.stunned),
+                        contentDescription = "stunned",
+                        tint = defaultColor,
+                    )
+                },
+            ),
+        )
 
-    Row(modifier = Modifier.background(backgroundColor)) {
+    Row(modifier = modifier.background(backgroundColor)) {
         statusKeysList.forEach { statusKeys ->
             Box(
-                modifier = Modifier
-                    .size(indicatorSize)
-                    .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-                    .padding(indicatorSize / 7.5f),
+                modifier =
+                    Modifier
+                        .size(indicatorSize)
+                        .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
+                        .padding(indicatorSize / 7.5f),
                 contentAlignment = Alignment.Center,
             ) {
                 statusKeys.filter { indicators.contains(it.key) }.forEach { it.value(Modifier.fillMaxSize()) }
@@ -174,11 +177,12 @@ fun IndicatorView(
 private fun IndicatorPreview() {
     IndicatorView(
         indicatorSize = 60.dp,
-        indicators = setOf(
-            "standing",
-            "stunned",
-            "webbed",
-        ),
+        indicators =
+            setOf(
+                "standing",
+                "stunned",
+                "webbed",
+            ),
         backgroundColor = Color.DarkGray,
         defaultColor = Color.LightGray,
     )

@@ -10,17 +10,13 @@ import kotlin.uuid.Uuid
 class AlterationRepository(
     private val alterationDao: AlterationDao,
 ) {
+    fun observeByCharacter(characterId: String): Flow<List<AlterationEntity>> =
+        alterationDao.observeAlterationsByCharacter(characterId = characterId)
 
-    fun observeByCharacter(characterId: String): Flow<List<AlterationEntity>> {
-        return alterationDao.observeAlterationsByCharacter(characterId = characterId)
-
-    }
-
-    fun observeForCharacter(characterId: String): Flow<List<AlterationEntity>> {
-        return alterationDao.observeAlterationsByCharacterWithGlobals(
-            characterId = characterId
+    fun observeForCharacter(characterId: String): Flow<List<AlterationEntity>> =
+        alterationDao.observeAlterationsByCharacterWithGlobals(
+            characterId = characterId,
         )
-    }
 
     suspend fun save(alteration: AlterationEntity) {
         withContext(NonCancellable) {

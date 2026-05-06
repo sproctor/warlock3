@@ -16,36 +16,22 @@ class ClientSettingRepository(
     private val clientSettingDao: ClientSettingDao,
     private val warlockDirs: WarlockDirs,
 ) {
-    suspend fun getWidth(): Int? {
-        return getInt("width")
-    }
+    suspend fun getWidth(): Int? = getInt("width")
 
-    suspend fun getHeight(): Int? {
-        return getInt("height")
-    }
+    suspend fun getHeight(): Int? = getInt("height")
 
-    suspend fun getIgnoreUpdates(): Boolean {
-        return getBoolean("ignoreUpdates") ?: false
-    }
+    suspend fun getIgnoreUpdates(): Boolean = getBoolean("ignoreUpdates") ?: false
 
-    fun observeIgnoreUpdates(): Flow<Boolean> {
-        return observe("ignoreUpdates").map { it?.toBoolean() ?: false }
-    }
+    fun observeIgnoreUpdates(): Flow<Boolean> = observe("ignoreUpdates").map { it?.toBoolean() ?: false }
 
-    suspend fun getLastUsername(): String? {
-        return get("lastUsername")
-    }
+    suspend fun getLastUsername(): String? = get("lastUsername")
 
-    fun observeTheme(): Flow<ThemeSetting> {
-        return observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
-    }
+    fun observeTheme(): Flow<ThemeSetting> = observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
 
-    fun observeSkinFile(): Flow<String?> {
-        return observe("skinFile")
-    }
+    fun observeSkinFile(): Flow<String?> = observe("skinFile")
 
-    fun observeLogSettings(): Flow<LogSettings> {
-        return combine(
+    fun observeLogSettings(): Flow<LogSettings> =
+        combine(
             observe("logPath"),
             observe("logType"),
             observe("logTimestamps"),
@@ -56,40 +42,24 @@ class ClientSettingRepository(
                 logTimestamps = logTimestamps?.toBooleanStrictOrNull() ?: true,
             )
         }
-    }
 
-    fun observeMaxScrollLines(): Flow<Int> {
-        return observe(SCROLLBACK_KEY)
+    fun observeMaxScrollLines(): Flow<Int> =
+        observe(SCROLLBACK_KEY)
             .map { it?.toIntOrNull() ?: DEFAULT_MAX_SCROLL_LINES }
-    }
 
-    fun observeMarkLinks(): Flow<Boolean> {
-        return observe(MARK_LINKS_KEY).map { it?.toBooleanStrictOrNull() ?: true }
-    }
+    fun observeMarkLinks(): Flow<Boolean> = observe(MARK_LINKS_KEY).map { it?.toBooleanStrictOrNull() ?: true }
 
-    fun observeShowImages(): Flow<Boolean> {
-        return observe(SHOW_IMAGES_KEY).map { it?.toBooleanStrictOrNull() ?: true }
-    }
+    fun observeShowImages(): Flow<Boolean> = observe(SHOW_IMAGES_KEY).map { it?.toBooleanStrictOrNull() ?: true }
 
-    private suspend fun get(key: String): String? {
-        return clientSettingDao.getByKey(key)
-    }
+    private suspend fun get(key: String): String? = clientSettingDao.getByKey(key)
 
-    private fun observe(key: String): Flow<String?> {
-        return clientSettingDao.observeByKey(key)
-    }
+    private fun observe(key: String): Flow<String?> = clientSettingDao.observeByKey(key)
 
-    private suspend fun getInt(key: String): Int? {
-        return get(key)?.toIntOrNull()
-    }
+    private suspend fun getInt(key: String): Int? = get(key)?.toIntOrNull()
 
-    private suspend fun getFloat(key: String): Float? {
-        return get(key)?.toFloatOrNull()
-    }
+    private suspend fun getFloat(key: String): Float? = get(key)?.toFloatOrNull()
 
-    private suspend fun getBoolean(key: String): Boolean? {
-        return get(key)?.toBoolean()
-    }
+    private suspend fun getBoolean(key: String): Boolean? = get(key)?.toBoolean()
 
     suspend fun putWidth(value: Int) {
         putInt("width", value)
@@ -143,19 +113,31 @@ class ClientSettingRepository(
         putBoolean(SHOW_IMAGES_KEY, value)
     }
 
-    private suspend fun putInt(key: String, value: Int) {
+    private suspend fun putInt(
+        key: String,
+        value: Int,
+    ) {
         put(key, value.toString())
     }
 
-    private suspend fun putFloat(key: String, value: Float) {
+    private suspend fun putFloat(
+        key: String,
+        value: Float,
+    ) {
         put(key, value.toString())
     }
 
-    private suspend fun putBoolean(key: String, value: Boolean) {
+    private suspend fun putBoolean(
+        key: String,
+        value: Boolean,
+    ) {
         put(key, value.toString())
     }
 
-    private suspend fun put(key: String, value: String?) {
+    private suspend fun put(
+        key: String,
+        value: String?,
+    ) {
         withContext(NonCancellable) {
             clientSettingDao.save(ClientSettingEntity(key, value))
         }

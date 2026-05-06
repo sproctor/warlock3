@@ -18,12 +18,13 @@ fun parseArguments(input: String): List<String> {
         }
         when (val c = input[i]) {
             '\\' -> inEscape = true // escape the next character, \ isn't added to result
-            ' ' -> if (inQuotes) {
-                current.append(c)
-            } else if (current.isNotEmpty()) {
-                result += current.toString()
-                current.clear()
-            }
+            ' ' ->
+                if (inQuotes) {
+                    current.append(c)
+                } else if (current.isNotEmpty()) {
+                    result += current.toString()
+                    current.clear()
+                }
             '"' -> inQuotes = !inQuotes
             else -> current.append(c)
         }
@@ -48,9 +49,10 @@ fun findArgumentBreak(input: String): Int {
         }
         when (input[i]) {
             '\\' -> inEscape = true // escape the next character
-            ' ' -> if (!inQuotes) {
-            return i
-            }
+            ' ' ->
+                if (!inQuotes) {
+                    return i
+                }
             '"' -> inQuotes = !inQuotes
         }
     }

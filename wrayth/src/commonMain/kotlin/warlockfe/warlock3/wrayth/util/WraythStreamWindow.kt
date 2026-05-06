@@ -7,4 +7,5 @@ data class WraythStreamWindow(
     val ifClosed: String?,
     val styleIfClosed: String?,
     val timestamp: Boolean,
+    val applyStyling: Boolean = true,
 )

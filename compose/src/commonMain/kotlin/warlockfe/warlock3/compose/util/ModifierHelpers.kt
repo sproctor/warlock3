@@ -2,7 +2,6 @@ package warlockfe.warlock3.compose.util
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 
 @Stable
@@ -17,10 +16,9 @@ inline fun Modifier.conditional(
     condition: Boolean,
     ifTrue: Modifier.() -> Modifier,
     ifFalse: Modifier.() -> Modifier,
-): Modifier {
-    return if (condition) {
+): Modifier =
+    if (condition) {
         ifTrue()
     } else {
         ifFalse()
     }
-}

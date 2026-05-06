@@ -6,17 +6,16 @@ expect fun Key.getLabel(): String
 
 expect val Key.Companion.NumPadDotFix: Key
 
-private val allModifierKeys = arrayOf(
-    Key.CtrlLeft,
-    Key.CtrlRight,
-    Key.AltLeft,
-    Key.AltRight,
-    Key.ShiftLeft,
-    Key.ShiftRight,
-    Key.MetaLeft,
-    Key.MetaRight,
-)
+private val allModifierKeys =
+    arrayOf(
+        Key.CtrlLeft,
+        Key.CtrlRight,
+        Key.AltLeft,
+        Key.AltRight,
+        Key.ShiftLeft,
+        Key.ShiftRight,
+        Key.MetaLeft,
+        Key.MetaRight,
+    )
 
-fun Key.isModifier(): Boolean {
-    return allModifierKeys.contains(this)
-}
+fun Key.isModifier(): Boolean = allModifierKeys.contains(this)

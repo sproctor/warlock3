@@ -7,32 +7,20 @@ import kotlin.uuid.Uuid
 
 class DatabaseConverters {
     @TypeConverter
-    fun toWindowLocation(databaseValue: String): WindowLocation {
-        return WindowLocation.entries.first { it.value == databaseValue }
-    }
+    fun toWindowLocation(databaseValue: String): WindowLocation = WindowLocation.entries.first { it.value == databaseValue }
 
     @TypeConverter
-    fun fromWindowLocation(value: WindowLocation): String {
-        return value.value
-    }
+    fun fromWindowLocation(value: WindowLocation): String = value.value
 
     @TypeConverter
-    fun toUuid(databaseValue: ByteArray): Uuid {
-        return Uuid.fromByteArray(databaseValue)
-    }
+    fun toUuid(databaseValue: ByteArray): Uuid = Uuid.fromByteArray(databaseValue)
 
     @TypeConverter
-    fun fromUUID(value: Uuid): ByteArray {
-        return value.toByteArray()
-    }
+    fun fromUUID(value: Uuid): ByteArray = value.toByteArray()
 
     @TypeConverter
-    fun toWarlockColor(databaseValue: Long): WarlockColor {
-        return WarlockColor(databaseValue)
-    }
+    fun toWarlockColor(databaseValue: Long): WarlockColor = WarlockColor(databaseValue)
 
     @TypeConverter
-    fun fromWarlockColor(value: WarlockColor): Long {
-        return value.argb
-    }
+    fun fromWarlockColor(value: WarlockColor): Long = value.argb
 }

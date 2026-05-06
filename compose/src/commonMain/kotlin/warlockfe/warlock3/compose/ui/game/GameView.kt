@@ -67,11 +67,13 @@ import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 
+@Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 fun GameView(
     viewModel: GameViewModel,
     navigateToDashboard: () -> Unit,
     sideBarVisible: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val disconnected by viewModel.disconnected.collectAsState()
 
@@ -79,24 +81,29 @@ fun GameView(
     // On JVM, KeyDown is followed by an Unknown/KEY_TYPED event
     var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
     Surface(
-        modifier = Modifier.onPreviewKeyEvent { event ->
-            if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
-                ignoreNextUnknownKeyEvent = false
-                return@onPreviewKeyEvent true
-            }
-            ignoreNextUnknownKeyEvent = false
-            viewModel.handleKeyPress(event).also {
-                // on JVM, the next event will update the TextEntry, ignore it if we handled this one
-                // on Android, the next event will be a KeyUp and we don't care
-                ignoreNextUnknownKeyEvent = it
-                // Focus the entry on normal key presses
-                if (!it && event.type == KeyEventType.KeyDown && !event.isAltPressed && !event.isCtrlPressed
-                    && !event.isMetaPressed && !event.isShiftPressed
-                ) {
-                    entryFocusRequester.requestFocus()
+        modifier =
+            modifier.onPreviewKeyEvent { event ->
+                if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
+                    ignoreNextUnknownKeyEvent = false
+                    return@onPreviewKeyEvent true
                 }
-            }
-        },
+                ignoreNextUnknownKeyEvent = false
+                viewModel.handleKeyPress(event).also {
+                    // on JVM, the next event will update the TextEntry, ignore it if we handled this one
+                    // on Android, the next event will be a KeyUp and we don't care
+                    ignoreNextUnknownKeyEvent = it
+                    // Focus the entry on normal key presses
+                    if (!it &&
+                        event.type == KeyEventType.KeyDown &&
+                        !event.isAltPressed &&
+                        !event.isCtrlPressed &&
+                        !event.isMetaPressed &&
+                        !event.isShiftPressed
+                    ) {
+                        entryFocusRequester.requestFocus()
+                    }
+                }
+            },
     ) {
         Column {
             if (disconnected) {
@@ -106,7 +113,7 @@ fun GameView(
                         .border(width = 8.dp, color = Color(red = 0xff, green = 0xcc, blue = 0))
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text("You have been disconnected from the server")
                     FilledTonalButton(onClick = navigateToDashboard) {
@@ -132,28 +139,31 @@ fun GameView(
                             .fillMaxHeight()
                             .width(240.dp)
                             .background(
-                                color = defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
-                                    ?: MaterialTheme.colorScheme.surface,
+                                color =
+                                    defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
+                                        ?: MaterialTheme.colorScheme.surface,
                                 shape = MaterialTheme.shapes.extraSmall,
-                            )
-                            .border(
+                            ).border(
                                 width = Dp.Hairline,
                                 color = MaterialTheme.colorScheme.outline,
                                 shape = MaterialTheme.shapes.extraSmall,
-                            )
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ).padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         windows.sortedBy { it.title }.forEach { window ->
                             WindowListItem(
-                                color = defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
-                                    ?: MaterialTheme.colorScheme.onSurface,
+                                color =
+                                    defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
+                                        ?: MaterialTheme.colorScheme.onSurface,
                                 windowInfo = window,
                                 isOpen = openWindows.contains(window.name),
                                 onClick = { open ->
                                     scope.launch {
-                                        if (open) viewModel.openWindow(window.name)
-                                        else viewModel.closeWindow(window.name)
+                                        if (open) {
+                                            viewModel.openWindow(window.name)
+                                        } else {
+                                            viewModel.closeWindow(window.name)
+                                        }
                                     }
                                 },
                             )
@@ -180,7 +190,7 @@ fun GameView(
                     leftWidth = viewModel.leftWidth.collectAsState(null).value,
                     rightWidth = viewModel.rightWidth.collectAsState(null).value,
                     menuData = menuData,
-                    onActionClicked = { action ->
+                    onActionClick = { action ->
                         when (action) {
                             is WarlockAction.SendCommand -> {
                                 viewModel.sendCommand(action.command)
@@ -199,13 +209,13 @@ fun GameView(
                             else -> null
                         }
                     },
-                    onWidthChanged = { name, width ->
+                    onWidthChange = { name, width ->
                         viewModel.setWindowWidth(name, width)
                     },
-                    onHeightChanged = { name, height ->
+                    onHeightChange = { name, height ->
                         viewModel.setWindowHeight(name, height)
                     },
-                    onSizeChanged = viewModel::setLocationSize,
+                    onSizeChange = viewModel::setLocationSize,
                     onDrop = { result ->
                         if (result.sourceLocation == result.target.location) {
                             viewModel.changeWindowPositions(
@@ -221,9 +231,9 @@ fun GameView(
                             )
                         }
                     },
-                    onCloseClicked = viewModel::closeWindow,
+                    onCloseClick = viewModel::closeWindow,
                     saveStyle = viewModel::saveWindowStyle,
-                    onWindowSelected = viewModel::selectWindow,
+                    onWindowSelect = viewModel::selectWindow,
                     scrollEvents = viewModel.scrollEvents.collectAsState().value,
                     handledScrollEvent = viewModel::handledScrollEvent,
                     clearStream = viewModel::clearStream,
@@ -241,14 +251,14 @@ fun GameView(
                     TextButton(
                         onClick = {
                             viewModel.handledMacroError()
-                        }
+                        },
                     ) {
                         Text("Ok")
                     }
                 },
                 text = {
                     Text(macroError!!)
-                }
+                },
             )
         }
     }
@@ -256,7 +266,6 @@ fun GameView(
 
 @Composable
 fun GameTextWindows(
-    modifier: Modifier,
     topWindowUiStates: List<WindowUiState>,
     bottomWindowUiStates: List<WindowUiState>,
     leftWindowUiStates: List<WindowUiState>,
@@ -271,16 +280,17 @@ fun GameTextWindows(
     leftWidth: Int?,
     rightWidth: Int?,
     menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onHeightChanged: (String, Int) -> Unit,
-    onWidthChanged: (String, Int) -> Unit,
-    onSizeChanged: (WindowLocation, Int) -> Unit,
+    onActionClick: (WarlockAction) -> Int?,
+    onHeightChange: (String, Int) -> Unit,
+    onWidthChange: (String, Int) -> Unit,
+    onSizeChange: (WindowLocation, Int) -> Unit,
     onDrop: (DropResult) -> Unit,
-    onCloseClicked: (String) -> Unit,
+    onCloseClick: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
-    onWindowSelected: (String) -> Unit,
+    onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
+    modifier: Modifier = Modifier,
     clearStream: (String) -> Unit,
 ) {
     val dragDropState = remember { DragDropState() }
@@ -298,14 +308,14 @@ fun GameTextWindows(
                 horizontalPanel = true,
                 handleBefore = false,
                 selectedWindow = selectedWindow,
-                onSizeChanged = { onSizeChanged(WindowLocation.LEFT, it) },
+                onSizeChange = { onSizeChange(WindowLocation.LEFT, it) },
                 menuData = menuData,
-                onActionClicked = onActionClicked,
-                onHeightChanged = onHeightChanged,
-                onWidthChanged = onWidthChanged,
-                onCloseClicked = onCloseClicked,
+                onActionClick = onActionClick,
+                onHeightChange = onHeightChange,
+                onWidthChange = onWidthChange,
+                onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
-                onWindowSelected = onWindowSelected,
+                onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
@@ -324,14 +334,14 @@ fun GameTextWindows(
                     horizontalPanel = false,
                     handleBefore = false,
                     selectedWindow = selectedWindow,
-                    onSizeChanged = { onSizeChanged(WindowLocation.TOP, it) },
+                    onSizeChange = { onSizeChange(WindowLocation.TOP, it) },
                     menuData = menuData,
-                    onActionClicked = onActionClicked,
-                    onHeightChanged = onHeightChanged,
-                    onWidthChanged = onWidthChanged,
-                    onCloseClicked = onCloseClicked,
+                    onActionClick = onActionClick,
+                    onHeightChange = onHeightChange,
+                    onWidthChange = onWidthChange,
+                    onCloseClick = onCloseClick,
                     saveStyle = saveStyle,
-                    onWindowSelected = onWindowSelected,
+                    onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
                     clearStream = clearStream,
@@ -349,12 +359,12 @@ fun GameTextWindows(
                         isSelected = selectedWindow == mainWindowUiState.name,
                         openWindows = openWindows,
                         menuData = menuData,
-                        onActionClicked = onActionClicked,
-                        onCloseClicked = {},
+                        onActionClick = onActionClick,
+                        onCloseClick = {},
                         saveStyle = {
                             saveStyle(mainWindowUiState.name, it)
                         },
-                        onSelected = { onWindowSelected(mainWindowUiState.name) },
+                        onSelect = { onWindowSelect(mainWindowUiState.name) },
                         scrollEvents = scrollEvents,
                         handledScrollEvent = handledScrollEvent,
                         clearStream = { clearStream(mainWindowUiState.name) },
@@ -370,14 +380,14 @@ fun GameTextWindows(
                     horizontalPanel = false,
                     handleBefore = true,
                     selectedWindow = selectedWindow,
-                    onSizeChanged = { onSizeChanged(WindowLocation.BOTTOM, it) },
+                    onSizeChange = { onSizeChange(WindowLocation.BOTTOM, it) },
                     menuData = menuData,
-                    onActionClicked = onActionClicked,
-                    onHeightChanged = onHeightChanged,
-                    onWidthChanged = onWidthChanged,
-                    onCloseClicked = onCloseClicked,
+                    onActionClick = onActionClick,
+                    onHeightChange = onHeightChange,
+                    onWidthChange = onWidthChange,
+                    onCloseClick = onCloseClick,
                     saveStyle = saveStyle,
-                    onWindowSelected = onWindowSelected,
+                    onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
                     clearStream = clearStream,
@@ -396,14 +406,14 @@ fun GameTextWindows(
                 horizontalPanel = true,
                 handleBefore = true,
                 selectedWindow = selectedWindow,
-                onSizeChanged = { onSizeChanged(WindowLocation.RIGHT, it) },
+                onSizeChange = { onSizeChange(WindowLocation.RIGHT, it) },
                 menuData = menuData,
-                onActionClicked = onActionClicked,
-                onHeightChanged = onHeightChanged,
-                onWidthChanged = onWidthChanged,
-                onCloseClicked = onCloseClicked,
+                onActionClick = onActionClick,
+                onHeightChange = onHeightChange,
+                onWidthChange = onWidthChange,
+                onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
-                onWindowSelected = onWindowSelected,
+                onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
                 clearStream = clearStream,
@@ -416,20 +426,23 @@ fun GameTextWindows(
     }
 }
 
+@Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 fun GameBottomBar(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
     val style = presets["default"] ?: defaultStyles["default"]!!
     val backgroundColor = style.backgroundColor.toColor()
     val textColor = style.textColor.toColor()
-    BoxWithConstraints {
+    BoxWithConstraints(modifier) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -468,14 +481,19 @@ fun GameBottomBar(
                 state = viewModel.compassState.collectAsState().value,
                 onClick = {
                     viewModel.sendCommand(it.abbreviation)
-                }
+                },
             )
         }
     }
 }
 
 @Composable
-private fun WindowListItem(color: Color, windowInfo: WindowInfo, isOpen: Boolean, onClick: (Boolean) -> Unit) {
+private fun WindowListItem(
+    color: Color,
+    windowInfo: WindowInfo,
+    isOpen: Boolean,
+    onClick: (Boolean) -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = { onClick(!isOpen) }),
     ) {
@@ -485,7 +503,7 @@ private fun WindowListItem(color: Color, windowInfo: WindowInfo, isOpen: Boolean
                     Res.drawable.visibility_filled
                 } else {
                     Res.drawable.visibility_off_filled
-                }
+                },
             ),
             tint = color,
             contentDescription = null,

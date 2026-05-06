@@ -1,15 +1,7 @@
 package warlockfe.warlock3.wrayth.util
 
 import io.ktor.network.selector.SelectorManager
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.ByteWriteChannel
 import kotlin.coroutines.CoroutineContext
-
-data class TLSSocketConnection(
-    val readChannel: ByteReadChannel,
-    val writeChannel: ByteWriteChannel,
-    val close: () -> Unit,
-)
 
 expect suspend fun openTLSSocket(
     selectorManager: SelectorManager,

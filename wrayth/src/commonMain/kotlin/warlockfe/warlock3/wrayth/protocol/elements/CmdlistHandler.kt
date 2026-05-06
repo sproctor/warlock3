@@ -7,11 +7,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStartCmdList
 
 class CmdlistHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return WraythStartCmdList
-    }
+    override fun startElement(element: StartElement): WraythEvent? = WraythStartCmdList
 
-    override fun endElement(): WraythEvent? {
-        return WraythEndCmdList
-    }
+    override fun endElement(): WraythEvent? = WraythEndCmdList
 }

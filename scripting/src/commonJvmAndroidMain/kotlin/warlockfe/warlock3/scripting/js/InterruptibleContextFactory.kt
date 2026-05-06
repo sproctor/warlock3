@@ -7,7 +7,6 @@ import org.mozilla.javascript.ContextFactory
 class InterruptibleContextFactory(
     private val runningScripts: List<JsInstance>,
 ) : ContextFactory() {
-
     private val logger = Logger.withTag("InterruptibleContextFactory")
 
     override fun makeContext(): Context {
@@ -18,9 +17,13 @@ class InterruptibleContextFactory(
         return cx
     }
 
-    override fun observeInstructionCount(cx: Context?, instructionCount: Int) {
-        if (cx == null)
+    override fun observeInstructionCount(
+        cx: Context?,
+        instructionCount: Int,
+    ) {
+        if (cx == null) {
             return
+        }
         logger.d { "$instructionCount instructions executed." }
         if (Thread.interrupted()) {
             val instance = getInstance(cx)

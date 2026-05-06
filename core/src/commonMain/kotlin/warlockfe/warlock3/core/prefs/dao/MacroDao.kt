@@ -9,7 +9,6 @@ import warlockfe.warlock3.core.prefs.models.MacroEntity
 
 @Dao
 interface MacroDao {
-
     @Query("SELECT COUNT(*) FROM Macro WHERE characterId = 'global'")
     suspend fun getGlobalCount(): Int
 
@@ -36,12 +35,18 @@ interface MacroDao {
         DELETE FROM Macro
         WHERE characterId = :characterId
             AND "key" = :keyString
-    """
+    """,
     )
-    suspend fun delete(characterId: String, keyString: String)
+    suspend fun delete(
+        characterId: String,
+        keyString: String,
+    )
 
     @Query("DELETE FROM Macro WHERE characterId = :characterId AND `key` = :key")
-    suspend fun deleteByKey(characterId: String, key: String)
+    suspend fun deleteByKey(
+        characterId: String,
+        key: String,
+    )
 
     @Query("DELETE FROM Macro WHERE characterId = 'global'")
     suspend fun deleteAllGlobals()

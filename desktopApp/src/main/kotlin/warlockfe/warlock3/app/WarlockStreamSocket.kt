@@ -3,13 +3,17 @@ package warlockfe.warlock3.app
 import warlockfe.warlock3.core.client.WarlockSocket
 import java.io.InputStream
 
-class WarlockStreamSocket(private val inputStream: InputStream) : WarlockSocket {
-
+class WarlockStreamSocket(
+    private val inputStream: InputStream,
+) : WarlockSocket {
     private val reader = inputStream.bufferedReader()
 
     override var isClosed: Boolean = false
 
-    override suspend fun connect(host: String, port: Int) {
+    override suspend fun connect(
+        host: String,
+        port: Int,
+    ) {
         // No-op
     }
 

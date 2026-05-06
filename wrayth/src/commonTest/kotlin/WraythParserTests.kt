@@ -1,16 +1,12 @@
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import warlockfe.warlock3.core.client.BackgroundImageHorizontalAlignment
-import warlockfe.warlock3.core.client.BackgroundImageMode
-import warlockfe.warlock3.core.client.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNodeVisitor
-import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class WraythParserTests {
     @Test

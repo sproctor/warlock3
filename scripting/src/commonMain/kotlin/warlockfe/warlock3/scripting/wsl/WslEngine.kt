@@ -19,8 +19,13 @@ class WslEngine(
 ) : WarlockScriptEngine {
     override val extensions: List<String> = listOf("wsl", "cmd", "wiz")
 
-    override fun createInstance(id: Long, name: String, file: Path, scriptManager: ScriptManager): ScriptInstance {
-        return WslScriptInstance(
+    override fun createInstance(
+        id: Long,
+        name: String,
+        file: Path,
+        scriptManager: ScriptManager,
+    ): ScriptInstance =
+        WslScriptInstance(
             id = id,
             name = name,
             file = file,
@@ -31,5 +36,4 @@ class WslEngine(
             soundPlayer = soundPlayer,
             fileSystem = fileSystem,
         )
-    }
 }

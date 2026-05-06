@@ -12,18 +12,16 @@ import warlockfe.warlock3.core.prefs.mappers.toGameCharacter
 class CharacterRepository(
     private val characterDao: CharacterDao,
 ) {
-    fun observeAllCharacters(): Flow<List<GameCharacter>> {
-        return characterDao.observeAll()
+    fun observeAllCharacters(): Flow<List<GameCharacter>> =
+        characterDao
+            .observeAll()
             .map { dbCharacters ->
                 dbCharacters.map {
                     it.toGameCharacter()
                 }
             }
-    }
 
-    suspend fun getCharacter(id: String): GameCharacter? {
-        return characterDao.getById(id)?.toGameCharacter()
-    }
+    suspend fun getCharacter(id: String): GameCharacter? = characterDao.getById(id)?.toGameCharacter()
 
     suspend fun saveCharacter(character: GameCharacter) {
         withContext(NonCancellable) {

@@ -38,7 +38,6 @@ class JsInstance(
     private val variableRepository: VariableRepository,
     private val scriptManager: ScriptManager,
 ) : ScriptInstance {
-
     private val logger = Logger.withTag("JsInstance")
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
@@ -66,113 +65,116 @@ class JsInstance(
     ) {
         status = ScriptStatus.Running
         this.client = client
-        thread = thread {
-            context = Context.enter()
-            context.languageVersion = Context.VERSION_ES6
-            try {
-                val jsScope = context.initStandardObjects()
-                val reader = InputStreamReader(File(file.toString()).inputStream())
-                jsScope.put(
-                    "client",
-                    jsScope,
-                    JavascriptClient(
-                        client = client,
-                        scope = scope,
-                        variableRepository = variableRepository,
-                        instance = this,
-                    )
-                )
-                runBlocking {
-                    val globalVariables = client.characterId.flatMapLatest { id ->
-                        if (id != null) {
-                            variableRepository.observeCharacterVariables(id).map {
-                                logger.d { "reloading variables $it" }
-                                it.associate { variable -> Pair(variable.name, variable.value) }
-                                    .let { entries ->
-                                        CaseInsensitiveMap<String>()
-                                            .apply { putAll(entries) }
-                                    }
-                            }
-                        } else {
-                            flow<MutableMap<String, String>> {
-                                emit(mutableMapOf())
-                            }
-                        }
-                    }
-                        .stateIn(scope = scope)
+        thread =
+            thread {
+                context = Context.enter()
+                context.languageVersion = Context.VERSION_ES6
+                try {
+                    val jsScope = context.initStandardObjects()
+                    val reader = InputStreamReader(File(file.toString()).inputStream())
                     jsScope.put(
-                        "variables",
+                        "client",
                         jsScope,
-                        JsStateMap(
-                            map = globalVariables,
-                            onPut = { name: String, value: String ->
-                                client.characterId.value?.let { characterId ->
-                                    runBlocking {
-                                        variableRepository.put(characterId, name, value)
-                                    }
-                                }
-                            },
-                            onDelete = { name ->
-                                client.characterId.value?.let { characterId ->
-                                    runBlocking {
-                                        variableRepository.delete(characterId, name)
-                                    }
-                                }
-                            },
-                        )
-                    )
-                    jsScope.put(
-                        "pause",
-                        jsScope,
-                        FunctionObject(
-                            "pause",
-                            JavascriptFunctions::pause.javaMethod,
-                            jsScope,
+                        JavascriptClient(
+                            client = client,
+                            scope = scope,
+                            variableRepository = variableRepository,
+                            instance = this,
                         ),
                     )
-                    jsScope.put(
-                        "exit",
-                        jsScope,
-                        FunctionObject(
-                            "exit",
-                            JavascriptFunctions::exit.javaMethod,
-                            jsScope,
-                        )
-                    )
-                }
-                ScriptableObject.defineClass(jsScope, MatchList::class.java)
-                context.evaluateReader(jsScope, reader, file.name, 1, null)
-            } catch (_: StopException) {
-                // nothing to do
-            } catch (e: WrappedException) {
-                val wrappedException = e.wrappedException
-                if (wrappedException is StopException) {
-                    // nothing to do
-                } else {
-                    e.printStackTrace()
-                    // FIXME: What should we do here? Is this correct?
                     runBlocking {
+                        val globalVariables =
+                            client.characterId
+                                .flatMapLatest { id ->
+                                    if (id != null) {
+                                        variableRepository.observeCharacterVariables(id).map {
+                                            logger.d { "reloading variables $it" }
+                                            it
+                                                .associate { variable -> Pair(variable.name, variable.value) }
+                                                .let { entries ->
+                                                    CaseInsensitiveMap<String>()
+                                                        .apply { putAll(entries) }
+                                                }
+                                        }
+                                    } else {
+                                        flow<MutableMap<String, String>> {
+                                            emit(mutableMapOf())
+                                        }
+                                    }
+                                }.stateIn(scope = scope)
+                        jsScope.put(
+                            "variables",
+                            jsScope,
+                            JsStateMap(
+                                map = globalVariables,
+                                onPut = { name: String, value: String ->
+                                    client.characterId.value?.let { characterId ->
+                                        runBlocking {
+                                            variableRepository.put(characterId, name, value)
+                                        }
+                                    }
+                                },
+                                onDelete = { name ->
+                                    client.characterId.value?.let { characterId ->
+                                        runBlocking {
+                                            variableRepository.delete(characterId, name)
+                                        }
+                                    }
+                                },
+                            ),
+                        )
+                        jsScope.put(
+                            "pause",
+                            jsScope,
+                            FunctionObject(
+                                "pause",
+                                JavascriptFunctions::pause.javaMethod,
+                                jsScope,
+                            ),
+                        )
+                        jsScope.put(
+                            "exit",
+                            jsScope,
+                            FunctionObject(
+                                "exit",
+                                JavascriptFunctions::exit.javaMethod,
+                                jsScope,
+                            ),
+                        )
+                    }
+                    ScriptableObject.defineClass(jsScope, MatchList::class.java)
+                    context.evaluateReader(jsScope, reader, file.name, 1, null)
+                } catch (_: StopException) {
+                    // nothing to do
+                } catch (e: WrappedException) {
+                    val wrappedException = e.wrappedException
+                    if (wrappedException is StopException) {
+                        // nothing to do
+                    } else {
+                        e.printStackTrace()
+                        // FIXME: What should we do here? Is this correct?
+                        runBlocking {
+                            client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
+                        }
+                    }
+                } catch (e: EvaluatorException) {
+                    runBlocking {
+                        e.printStackTrace()
                         client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
                     }
-                }
-            } catch (e: EvaluatorException) {
-                runBlocking {
-                    e.printStackTrace()
-                    client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
-                }
-            } catch (e: EcmaError) {
-                runBlocking {
-                    e.printStackTrace()
-                    client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
-                }
-            } finally {
-                status = ScriptStatus.Stopped
-                Context.exit()
-                runBlocking {
-                    onStop()
+                } catch (e: EcmaError) {
+                    runBlocking {
+                        e.printStackTrace()
+                        client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))
+                    }
+                } finally {
+                    status = ScriptStatus.Stopped
+                    Context.exit()
+                    runBlocking {
+                        onStop()
+                    }
                 }
             }
-        }
     }
 
     override fun stop() {

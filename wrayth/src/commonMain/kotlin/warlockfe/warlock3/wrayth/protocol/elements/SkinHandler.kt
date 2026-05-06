@@ -23,7 +23,7 @@ class SkinHandler : BaseElementListener() {
                 topAnchor = element.attributes["anchor_top"],
                 leftAnchor = element.attributes["anchor_left"],
                 tooltip = element.attributes["tooltip"],
-            )
+            ),
         )
     }
 }

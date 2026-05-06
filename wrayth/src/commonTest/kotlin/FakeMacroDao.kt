@@ -31,11 +31,17 @@ class FakeMacroDao : MacroDao {
         println("Saving macro: $macro")
     }
 
-    override suspend fun delete(characterId: String, keyString: String) {
+    override suspend fun delete(
+        characterId: String,
+        keyString: String,
+    ) {
         TODO("Not yet implemented")
     }
 
-    override suspend fun deleteByKey(characterId: String, key: String) {
+    override suspend fun deleteByKey(
+        characterId: String,
+        key: String,
+    ) {
         TODO("Not yet implemented")
     }
 

@@ -17,7 +17,7 @@ interface ScriptDirDao {
             SELECT path FROM ScriptDir
             WHERE characterId = :characterId OR characterId = 'global'
             ORDER BY path
-        """
+        """,
     )
     suspend fun getByCharacterWithGlobal(characterId: String): List<String>
 
@@ -28,5 +28,8 @@ interface ScriptDirDao {
     suspend fun save(scriptDir: ScriptDirEntity)
 
     @Query("DELETE FROM ScriptDir WHERE characterId = :characterId AND path = :path")
-    suspend fun delete(characterId: String, path: String)
+    suspend fun delete(
+        characterId: String,
+        path: String,
+    )
 }

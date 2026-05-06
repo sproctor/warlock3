@@ -9,5 +9,5 @@ data class WraythMacroSet(
     val id: String,
     val name: String,
     @XmlSerialName("k")
-    val macros: List<WraythMacro>
+    val macros: List<WraythMacro>,
 )

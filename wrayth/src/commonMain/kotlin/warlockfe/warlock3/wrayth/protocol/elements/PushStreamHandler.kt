@@ -6,9 +6,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStreamEvent
 
 class PushStreamHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return element.attributes["id"]?.let { id ->
+    override fun startElement(element: StartElement): WraythEvent? =
+        element.attributes["id"]?.let { id ->
             WraythStreamEvent(id = id)
         }
-    }
 }

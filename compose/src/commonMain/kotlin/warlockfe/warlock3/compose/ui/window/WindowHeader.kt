@@ -6,11 +6,11 @@ import warlockfe.warlock3.core.window.WindowLocation
 
 @Composable
 expect fun WindowHeader(
-    modifier: Modifier,
     title: @Composable () -> Unit,
     location: WindowLocation,
     isSelected: Boolean,
-    onSettingsClicked: () -> Unit,
-    onClearClicked: () -> Unit,
-    onCloseClicked: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onClearClick: () -> Unit,
+    onCloseClick: () -> Unit,
+    modifier: Modifier = Modifier,
 )

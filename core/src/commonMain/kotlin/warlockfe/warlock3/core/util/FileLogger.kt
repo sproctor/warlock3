@@ -22,25 +22,29 @@ class FileLogger private constructor(
     private val writer: PlatformBufferedWriter,
     private val dispatcher: CloseableCoroutineDispatcher = newSingleThreadContext("FileLogger"),
 ) {
-
     private val channel = Channel<String>(Channel.UNLIMITED)
 
-    private val job: Job = CoroutineScope(dispatcher).launch {
-        try {
-            for (message in channel) {
-                writer.write(message)
-                if (channel.isEmpty) {
-                    writer.flush()
+    private val job: Job =
+        CoroutineScope(dispatcher).launch {
+            try {
+                for (message in channel) {
+                    writer.write(message)
+                    if (channel.isEmpty) {
+                        writer.flush()
+                    }
                 }
+                writer.flush()
+            } catch (e: IOException) {
+                logger.e(e) { "Error monitoring log channel" }
+                channel.close(e)
             }
-            writer.flush()
-        } catch (e: IOException) {
-            logger.e(e) { "Error monitoring log channel" }
-            channel.close(e)
         }
-    }
 
-    suspend fun write(message: String, addTimestamps: Boolean, logType: LogType) {
+    suspend fun write(
+        message: String,
+        addTimestamps: Boolean,
+        logType: LogType,
+    ) {
         try {
             channel.send(
                 if (addTimestamps) {
@@ -53,7 +57,7 @@ class FileLogger private constructor(
                     }
                 } else {
                     "$message\n"
-                }
+                },
             )
         } catch (_: ClosedSendChannelException) {
             // Logger was closed; drop the message
@@ -92,11 +96,12 @@ class FileLogger private constructor(
     }
 }
 
-private val fileDateFormat = LocalDateTime.Format {
-    year()
-    monthNumber()
-    day()
-    hour()
-    minute()
-    second()
-}
+private val fileDateFormat =
+    LocalDateTime.Format {
+        year()
+        monthNumber()
+        day()
+        hour()
+        minute()
+        second()
+    }

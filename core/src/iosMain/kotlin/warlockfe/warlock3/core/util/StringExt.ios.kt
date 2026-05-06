@@ -1,6 +1,5 @@
 package warlockfe.warlock3.core.util
 
-import io.ktor.utils.io.charsets.Charset
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -26,11 +25,10 @@ actual fun ByteArray.decodeWindows1252(
 fun ByteArray.toNSData(
     offset: Int,
     length: Int,
-): NSData {
-    return this.usePinned { pinned ->
+): NSData =
+    this.usePinned { pinned ->
         NSData.dataWithBytes(bytes = pinned.addressOf(offset), length = length.toULong())
     }
-}
 
 @OptIn(BetaInteropApi::class)
 actual fun String.encodeWindows1252(): ByteArray {

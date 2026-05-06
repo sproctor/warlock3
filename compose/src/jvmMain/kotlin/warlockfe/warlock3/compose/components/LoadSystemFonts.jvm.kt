@@ -7,8 +7,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.skia.FontMgr
 
 @OptIn(ExperimentalTextApi::class)
-internal actual suspend fun loadSystemFonts(): List<FontFamilyInfo> {
-    return withContext(Dispatchers.IO) {
+internal actual suspend fun loadSystemFonts(): List<FontFamilyInfo> =
+    withContext(Dispatchers.IO) {
         val fontManager = FontMgr.default
         (0 until fontManager.familiesCount)
             .map { index -> fontManager.getFamilyName(index) }
@@ -20,4 +20,3 @@ internal actual suspend fun loadSystemFonts(): List<FontFamilyInfo> {
                 )
             }
     }
-}

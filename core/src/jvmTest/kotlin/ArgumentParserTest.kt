@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 class ArgumentParserTest {
     @Test
     fun parseArguments_plain() {
-        assertEquals(listOf("foo", "bar", "baz"), parseArguments("foo bar baz"), )
+        assertEquals(listOf("foo", "bar", "baz"), parseArguments("foo bar baz"))
     }
 
     @Test

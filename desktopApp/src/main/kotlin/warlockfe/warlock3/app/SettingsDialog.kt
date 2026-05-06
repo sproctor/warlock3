@@ -33,6 +33,7 @@ import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 
+@Suppress("ktlint:compose:modifier-missing-check")
 @Composable
 fun SettingsDialog(
     currentCharacter: GameCharacter?,
@@ -53,24 +54,24 @@ fun SettingsDialog(
     DialogWindow(
         title = "Settings",
         onCloseRequest = closeDialog,
-        state = rememberDialogState(width = 900.dp, height = 650.dp)
+        state = rememberDialogState(width = 900.dp, height = 650.dp),
     ) {
         var state: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
 
         PermanentNavigationDrawer(
             drawerContent = {
                 PermanentDrawerSheet(
-                    modifier = Modifier.width(240.dp)
+                    modifier = Modifier.width(240.dp),
                 ) {
                     SettingsPage.entries.forEach { settingsPage ->
                         NavigationDrawerItem(
                             label = { Text(settingsPage.title) },
                             selected = state == settingsPage,
-                            onClick = { state = settingsPage }
+                            onClick = { state = settingsPage },
                         )
                     }
                 }
-            }
+            },
         ) {
             Surface {
                 Box(Modifier.padding(16.dp)) {

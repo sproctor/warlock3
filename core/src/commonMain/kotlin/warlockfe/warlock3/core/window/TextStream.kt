@@ -8,31 +8,39 @@ import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
 
 interface TextStream {
-
     val id: String
 
-    suspend fun appendPartial(text: StyledString, isPrompt: Boolean)
+    suspend fun appendPartial(
+        text: StyledString,
+        isPrompt: Boolean,
+    )
 
     suspend fun appendPartialAndEol(text: StyledString)
 
     suspend fun clear()
 
-    suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean = false, showWhenClosed: String? = null)
+    suspend fun appendLine(
+        text: StyledString,
+        ignoreWhenBlank: Boolean = false,
+        showWhenClosed: String? = null,
+    )
 
-    suspend fun updateComponent(name: String, value: StyledString)
+    suspend fun updateComponent(
+        name: String,
+        value: StyledString,
+    )
 
     suspend fun appendResource(url: String)
 
     fun showTimestamps(value: Boolean)
+
+    fun setApplyStyling(value: Boolean)
 }
 
-fun StyledString.getComponents(): PersistentSet<String> {
-    return substrings.mapNotNull { it.getComponent() }.toPersistentSet()
-}
+fun StyledString.getComponents(): PersistentSet<String> = substrings.mapNotNull { it.getComponent() }.toPersistentSet()
 
-fun StyledStringLeaf.getComponent(): String? {
-    return when (this) {
+fun StyledStringLeaf.getComponent(): String? =
+    when (this) {
         is StyledStringVariable -> name
         is StyledStringSubstring -> null
     }
-}

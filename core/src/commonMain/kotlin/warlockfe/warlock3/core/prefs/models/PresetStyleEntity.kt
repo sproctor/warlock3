@@ -6,7 +6,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 @Entity(
     tableName = "presetstyle",
     primaryKeys = ["presetId", "characterId"],
-    )
+)
 data class PresetStyleEntity(
     val presetId: String,
     val characterId: String,

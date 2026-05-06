@@ -9,7 +9,7 @@ import warlockfe.warlock3.core.text.WarlockStyle
 
 actual fun AnnotatedString.Builder.markLinks(
     text: AnnotatedString,
-    presets: Map<String, StyleDefinition>
+    presets: Map<String, StyleDefinition>,
 ) {
     linkExtractor.extractLinks(text.text).forEach { link ->
         if (text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
@@ -20,13 +20,14 @@ actual fun AnnotatedString.Builder.markLinks(
             )
             val substring = text.substring(link.beginIndex, link.endIndex)
             addLink(
-                url = LinkAnnotation.Url(
-                    if (link.type == LinkType.URL) {
-                        substring
-                    } else {
-                        "http://$substring"
-                    }
-                ),
+                url =
+                    LinkAnnotation.Url(
+                        if (link.type == LinkType.URL) {
+                            substring
+                        } else {
+                            "http://$substring"
+                        },
+                    ),
                 start = link.beginIndex,
                 end = link.endIndex,
             )

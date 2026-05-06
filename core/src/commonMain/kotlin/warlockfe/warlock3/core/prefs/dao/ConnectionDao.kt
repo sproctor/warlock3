@@ -26,5 +26,14 @@ interface ConnectionDao {
     suspend fun delete(id: String)
 
     @Query("UPDATE connection SET name = :newName WHERE name = :oldName")
-    suspend fun rename(oldName: String, newName: String)
+    suspend fun rename(
+        oldName: String,
+        newName: String,
+    )
+
+    @Query("UPDATE connection SET name = :newName WHERE id = :id")
+    suspend fun renameById(
+        id: String,
+        newName: String,
+    )
 }

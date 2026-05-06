@@ -24,8 +24,8 @@ class SgeViewModelFactory(
     fun create(
         gameState: GameState,
         settings: SgeSettings,
-    ): SgeViewModel {
-        return SgeViewModel(
+    ): SgeViewModel =
+        SgeViewModel(
             gameState = gameState,
             settings = settings,
             clientSettingRepository = clientSettingRepository,
@@ -37,5 +37,4 @@ class SgeViewModelFactory(
             windowRegistryFactory = windowRegistryFactory,
             ioDispatcher = ioDispatcher,
         )
-    }
 }

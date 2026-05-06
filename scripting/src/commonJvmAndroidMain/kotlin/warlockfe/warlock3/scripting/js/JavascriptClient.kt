@@ -21,7 +21,6 @@ class JavascriptClient(
     val variableRepository: VariableRepository,
     private val instance: JsInstance,
 ) {
-
     private val promptChannel = Channel<Unit>(0)
     private val navChannel = Channel<Unit>(0)
 
@@ -41,8 +40,7 @@ class JavascriptClient(
 
                     else -> Unit
                 }
-            }
-            .launchIn(scope)
+            }.launchIn(scope)
     }
 
     fun echo(text: String) {
@@ -74,7 +72,10 @@ class JavascriptClient(
         }
     }
 
-    fun log(level: Int, message: String) {
+    fun log(
+        level: Int,
+        message: String,
+    ) {
         instance.checkStatus()
         if (level >= loggingLevel) {
             runBlocking(scope.coroutineContext) {
@@ -97,7 +98,10 @@ class JavascriptClient(
         }
     }
 
-    suspend fun setVariable(name: String, value: String) {
+    suspend fun setVariable(
+        name: String,
+        value: String,
+    ) {
         instance.checkStatus()
         val characterId = client.characterId.value?.lowercase() ?: return
         variableRepository.put(characterId, name, value)

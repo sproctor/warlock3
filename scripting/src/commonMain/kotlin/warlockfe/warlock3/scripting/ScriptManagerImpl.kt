@@ -33,7 +33,7 @@ class ScriptManagerImpl(
     override suspend fun startScript(
         client: WarlockClient,
         command: String,
-        commandHandler: suspend (String) -> SendCommandType
+        commandHandler: suspend (String) -> SendCommandType,
     ) {
         val (name, argString) = command.splitFirstWord()
 
@@ -48,7 +48,11 @@ class ScriptManagerImpl(
         }
     }
 
-    override suspend fun startScript(client: WarlockClient, file: Path, commandHandler: suspend (String) -> SendCommandType) {
+    override suspend fun startScript(
+        client: WarlockClient,
+        file: Path,
+        commandHandler: suspend (String) -> SendCommandType,
+    ) {
         if (fileSystem.exists(file)) {
             when (val result = scriptEngineRepository.getScript(file, this)) {
                 is ScriptLaunchResult.Success -> {
@@ -102,14 +106,15 @@ class ScriptManagerImpl(
 
     override fun scriptStateChanged(instance: ScriptInstance) {
         _runningScripts.update { originalMap ->
-            originalMap.toMutableMap().apply {
-                if (instance.status == ScriptStatus.Stopped) {
-                    remove(instance.id)
-                } else {
-                    this[instance.id] = ScriptData(instance.status, instance)
-                }
-            }
-                .toPersistentMap()
+            originalMap
+                .toMutableMap()
+                .apply {
+                    if (instance.status == ScriptStatus.Stopped) {
+                        remove(instance.id)
+                    } else {
+                        this[instance.id] = ScriptData(instance.status, instance)
+                    }
+                }.toPersistentMap()
         }
     }
 }

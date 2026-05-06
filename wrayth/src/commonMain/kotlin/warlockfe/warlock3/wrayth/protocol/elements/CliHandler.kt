@@ -7,14 +7,13 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.util.CmdDefinition
 
 class CliHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return WraythCliEvent(
+    override fun startElement(element: StartElement): WraythEvent? =
+        WraythCliEvent(
             CmdDefinition(
                 coord = element.attributes["coord"]!!,
                 menu = element.attributes["menu"]!!,
                 command = element.attributes["command"]!!,
                 category = element.attributes["menu_cat"]!!,
-            )
+            ),
         )
-    }
 }

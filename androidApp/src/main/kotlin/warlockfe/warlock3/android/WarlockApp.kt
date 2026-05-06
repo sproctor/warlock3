@@ -43,14 +43,16 @@ import warlockfe.warlock3.core.sge.SgeSettings
 fun WarlockApp(
     appContainer: AppContainer,
     sgeSettings: SgeSettings,
+    modifier: Modifier = Modifier,
 ) {
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
     AppTheme(
-        useDarkTheme = when (themeSetting) {
-            ThemeSetting.AUTO -> isSystemInDarkTheme()
-            ThemeSetting.LIGHT -> false
-            ThemeSetting.DARK -> true
-        }
+        useDarkTheme =
+            when (themeSetting) {
+                ThemeSetting.AUTO -> isSystemInDarkTheme()
+                ThemeSetting.LIGHT -> false
+                ThemeSetting.DARK -> true
+            },
     ) {
         val gameState = GameState()
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
@@ -61,6 +63,7 @@ fun WarlockApp(
 
         ModalNavigationDrawer(
             drawerState = drawerState,
+            modifier = modifier,
             drawerContent = {
                 ModalDrawerSheet {
                     DrawerContent(
@@ -89,7 +92,7 @@ fun WarlockApp(
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.menu),
-                                    contentDescription = null
+                                    contentDescription = null,
                                 )
                             }
                         },
@@ -136,8 +139,9 @@ fun WarlockApp(
 fun DrawerContent(
     navigate: (SettingsPage?) -> Unit,
     currentPage: SettingsPage?,
+    modifier: Modifier = Modifier,
 ) {
-    ScrollableColumn {
+    ScrollableColumn(modifier) {
         NavigationDrawerItem(
             modifier = Modifier.padding(horizontal = 12.dp),
             label = { Text("Main") },

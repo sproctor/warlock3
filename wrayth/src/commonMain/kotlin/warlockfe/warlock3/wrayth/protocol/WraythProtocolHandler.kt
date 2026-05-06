@@ -55,7 +55,6 @@ import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
 
 class WraythProtocolHandler {
-
     private val logger = Logger.withTag("WraythProtocolHandler")
 
     private val elementListeners: Map<String, ElementListener> = mapOf(
@@ -113,8 +112,9 @@ class WraythProtocolHandler {
     fun parseLine(line: String): List<WraythEvent> {
         return try {
             // Ignore lines with Wizard commands
-            if (line.startsWith('\u001C'))
+            if (line.startsWith('\u001C')) {
                 return emptyList()
+            }
             val inputStream = CharStreams.fromString(line)
             val lexer = WraythLexer(inputStream)
             val tokens = CommonTokenStream(lexer)
@@ -156,8 +156,9 @@ class WraythProtocolHandler {
                     // 4: <foo><bar></foo></bar> - first rule 3 is applied, then rule 1
                     // 5: <foo> - handled after the event loop: <foo></foo>
                     lineHasTags = true
-                    val topOfStack = tagStack.firstOrNull()
-                        ?: continue // rule #1
+                    val topOfStack =
+                        tagStack.firstOrNull()
+                            ?: continue // rule #1
                     val tagName = content.name.lowercase()
                     if (topOfStack != tagName) {
                         logger.e { "Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!" }
@@ -215,12 +216,16 @@ class WraythProtocolHandler {
 
 interface ElementListener {
     fun startElement(element: StartElement): WraythEvent?
+
     fun characters(data: String): WraythEvent?
+
     fun endElement(): WraythEvent?
 }
 
 abstract class BaseElementListener : ElementListener {
     override fun startElement(element: StartElement): WraythEvent? = null
+
     override fun characters(data: String): WraythEvent? = null
+
     override fun endElement(): WraythEvent? = null
 }

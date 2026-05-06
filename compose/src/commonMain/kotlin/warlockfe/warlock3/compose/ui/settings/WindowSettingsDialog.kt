@@ -36,20 +36,20 @@ fun WindowSettingsDialog(
         ColorPickerDialog(
             initialColor = editColor!!.first.toColor(),
             onCloseRequest = { editColor = null },
-            onColorSelected = { color ->
+            onColorSelect = { color ->
                 editColor?.second?.invoke(color)
                 editColor = null
-            }
+            },
         )
     }
     if (editFont != null) {
         FontPickerDialog(
             currentStyle = editFont!!.first,
             onCloseRequest = { editFont = null },
-            onSaveClicked = { fontUpdate ->
+            onSaveClick = { fontUpdate ->
                 editFont?.second?.invoke(fontUpdate)
                 editFont = null
-            }
+            },
         )
     }
 
@@ -67,29 +67,32 @@ fun WindowSettingsDialog(
                     text = "Content",
                     color = textColor.toColor(),
                     onClick = {
-                        editColor = Pair(textColor) { color ->
-                            saveStyle(style.copy(textColor = color))
-                        }
-                    }
+                        editColor =
+                            Pair(textColor) { color ->
+                                saveStyle(style.copy(textColor = color))
+                            }
+                    },
                 )
                 val backgroundColor = style.backgroundColor.ifUnspecified(defaultStyle.backgroundColor)
                 ColorPickerButton(
                     text = "Background",
                     color = backgroundColor.toColor(),
                     onClick = {
-                        editColor = Pair(backgroundColor) { color ->
-                            saveStyle(
-                                style.copy(backgroundColor = color)
-                            )
-                        }
-                    }
+                        editColor =
+                            Pair(backgroundColor) { color ->
+                                saveStyle(
+                                    style.copy(backgroundColor = color),
+                                )
+                            }
+                    },
                 )
                 OutlinedButton(
                     onClick = {
-                        editFont = Pair(style) { fontUpdate ->
-                            saveStyle(style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size))
-                        }
-                    }
+                        editFont =
+                            Pair(style) { fontUpdate ->
+                                saveStyle(style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size))
+                            }
+                    },
                 ) {
                     Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
                 }
@@ -99,7 +102,6 @@ fun WindowSettingsDialog(
                     Text("Revert to defaults")
                 }
             }
-        }
+        },
     )
 }
-

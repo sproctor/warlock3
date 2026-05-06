@@ -21,13 +21,10 @@ class AHandler : BaseElementListener() {
                     coord = element.attributes["coord"],
                     noun = element.attributes["noun"],
                     exist = element.attributes["exist"],
-                )
+                ),
             )
         }
-
     }
 
-    override fun endElement(): WraythEvent {
-        return WraythPopStyleEvent
-    }
+    override fun endElement(): WraythEvent = WraythPopStyleEvent
 }

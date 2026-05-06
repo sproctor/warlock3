@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
@@ -21,15 +20,17 @@ import warlockfe.warlock3.core.sge.SgeCharacter
 @Composable
 fun SgeCharacterView(
     characters: List<SgeCharacter>,
-    onBackPressed: () -> Unit,
-    onCharacterSelected: (SgeCharacter) -> Unit
+    onBackPress: () -> Unit,
+    onCharacterSelect: (SgeCharacter) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             itemsIndexed(characters) { index, character ->
-                CharacterListItem(character = character, onClick = { onCharacterSelected(character) })
-                if (index < characters.size - 1)
+                CharacterListItem(character = character, onClick = { onCharacterSelect(character) })
+                if (index < characters.size - 1) {
                     HorizontalDivider()
+                }
             }
         }
         Row(
@@ -37,7 +38,7 @@ fun SgeCharacterView(
         ) {
             Button(
                 modifier = Modifier.padding(16.dp),
-                onClick = onBackPressed
+                onClick = onBackPress,
             ) {
                 Text("BACK")
             }
@@ -46,9 +47,13 @@ fun SgeCharacterView(
 }
 
 @Composable
-fun CharacterListItem(character: SgeCharacter, onClick: () -> Unit) {
+fun CharacterListItem(
+    character: SgeCharacter,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
         headlineContent = { Text(character.name) },
     )
 }

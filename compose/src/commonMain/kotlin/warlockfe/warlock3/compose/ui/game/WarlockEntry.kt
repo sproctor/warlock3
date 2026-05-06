@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +57,6 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
-import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
@@ -64,15 +64,18 @@ import kotlin.time.Instant
 fun WarlockEntry(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
-    val roundTime = countdownSeconds(
-        endTime = viewModel.roundTimeEnd.collectAsState().value,
-        getCurrentTime = viewModel::getCurrentTime
-    )
-    val castTime = countdownSeconds(
-        endTime = viewModel.castTimeEnd.collectAsState().value,
-        getCurrentTime = viewModel::getCurrentTime
-    )
+    val roundTime =
+        countdownSeconds(
+            endTime = viewModel.roundTimeEnd.collectAsState().value,
+            getCurrentTime = viewModel::getCurrentTime,
+        )
+    val castTime =
+        countdownSeconds(
+            endTime = viewModel.castTimeEnd.collectAsState().value,
+            getCurrentTime = viewModel::getCurrentTime,
+        )
     val presets by viewModel.presets.collectAsState(emptyMap())
     val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
     val style = presets["entry"] ?: StyleDefinition()
@@ -85,6 +88,7 @@ fun WarlockEntry(
         castTime = castTime,
         sendCommand = viewModel::submit,
         saveStyle = viewModel::saveEntryStyle,
+        modifier = modifier,
     )
 }
 
@@ -99,56 +103,62 @@ fun WarlockEntryContent(
     roundTime: Int,
     castTime: Int,
     saveStyle: (StyleDefinition) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var showSettingsDialog by remember { mutableStateOf(false) }
     val usableStyle = style.mergeWith(defaultStyle)
     val backgroundColor = usableStyle.backgroundColor.toColor()
     Surface(
+        modifier = modifier,
         shape = MaterialTheme.shapes.extraSmall,
         border = BorderStroke(Dp.Hairline, MaterialTheme.colorScheme.outline),
         color = backgroundColor,
     ) {
         Box(
-            modifier = Modifier.padding(3.dp)
+            modifier = Modifier.padding(3.dp),
         ) {
             RoundTimeBar(backgroundColor, roundTime, castTime)
 
             val defaultTextStyle = LocalTextStyle.current
-            val textStyle = remember(usableStyle) {
-                val fontSize = (usableStyle.fontSize ?: 16f).sp
-                defaultTextStyle.copy(
-                    fontSize = fontSize,
-                    fontFamily = usableStyle.fontFamily?.let { createFontFamily(it) }
-                        ?: defaultTextStyle.fontFamily,
-                    lineHeight = fontSize,
-                    color = usableStyle.textColor.toColor()
-                )
-            }
+            val textStyle =
+                remember(usableStyle) {
+                    val fontSize = (usableStyle.fontSize ?: 16f).sp
+                    defaultTextStyle.copy(
+                        fontSize = fontSize,
+                        fontFamily =
+                            usableStyle.fontFamily?.let { createFontFamily(it) }
+                                ?: defaultTextStyle.fontFamily,
+                        lineHeight = fontSize,
+                        color = usableStyle.textColor.toColor(),
+                    )
+                }
             BasicTextField(
                 state = state,
-                modifier = Modifier
-                    .padding(5.dp)
-                    .align(Alignment.CenterStart)
-                    .focusRequester(entryFocusRequester)
-                    .fillMaxWidth()
-                    .appendTextContextMenuComponents {
-                        separator()
-                        addItem(key = SettingsContextMenuItemKey, label = "Settings") {
-                            showSettingsDialog = true
-                            close()
-                        }
-                    },
+                modifier =
+                    Modifier
+                        .padding(5.dp)
+                        .align(Alignment.CenterStart)
+                        .focusRequester(entryFocusRequester)
+                        .fillMaxWidth()
+                        .appendTextContextMenuComponents {
+                            separator()
+                            addItem(key = SettingsContextMenuItemKey, label = "Settings") {
+                                showSettingsDialog = true
+                                close()
+                            }
+                        },
                 textStyle = textStyle,
                 cursorBrush = SolidColor(usableStyle.textColor.toColor()),
                 lineLimits = TextFieldLineLimits.SingleLine,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    autoCorrectEnabled = false,
-                    imeAction = ImeAction.Send,
-                ),
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Send,
+                    ),
                 onKeyboardAction = {
                     sendCommand()
-                }
+                },
             )
 
             LaunchedEffect(Unit) {
@@ -171,29 +181,33 @@ fun BoxScope.RoundTimeBar(
     backgroundColor: Color,
     roundTime: Int,
     castTime: Int,
+    modifier: Modifier = Modifier,
 ) {
     val darkMode = backgroundColor.luminance() < 0.5f
     // TODO: get these colors from the skin
-    val rtColor = if (darkMode) {
-        Color(0xff, 0x50, 0x50)
-    } else {
-        Color(0xe0, 0x3c, 0x31)
-    }
-    val ctColor = if (darkMode) {
-        Color(0x60, 0x80, 0xff)
-    } else {
-        Color(0x30, 0x30, 0xff)
-    }
-    Canvas(Modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
+    val rtColor =
+        if (darkMode) {
+            Color(0xff, 0x50, 0x50)
+        } else {
+            Color(0xe0, 0x3c, 0x31)
+        }
+    val ctColor =
+        if (darkMode) {
+            Color(0x60, 0x80, 0xff)
+        } else {
+            Color(0x30, 0x30, 0xff)
+        }
+    Canvas(modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
         val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
         val segmentSpacing = 5.dp.toPx()
         for (i in 0 until min(100, roundTime)) {
             drawRect(
                 color = rtColor,
-                topLeft = Offset(
-                    x = i * (segmentSize.width + segmentSpacing),
-                    y = size.height - segmentSize.height
-                ),
+                topLeft =
+                    Offset(
+                        x = i * (segmentSize.width + segmentSpacing),
+                        y = size.height - segmentSize.height,
+                    ),
                 size = segmentSize,
             )
         }
@@ -230,9 +244,10 @@ private fun countdownSeconds(
     getCurrentTime: () -> Instant,
 ): Int {
     var seconds by remember { mutableIntStateOf(0) }
+    val currentGetCurrentTime by rememberUpdatedState(getCurrentTime)
     LaunchedEffect(endTime) {
         while (endTime != null) {
-            val now = getCurrentTime()
+            val now = currentGetCurrentTime()
             val remaining = endTime - now
             val remainingMs = remaining.inWholeMilliseconds
             seconds = ((remainingMs + 999) / 1000).toInt()
@@ -246,7 +261,7 @@ private fun countdownSeconds(
 
 @Preview(widthDp = 800, backgroundColor = 0xFF444444)
 @Composable
-fun WarlockEntryDarkPreview() {
+private fun WarlockEntryDarkPreview() {
     WarlockEntryContent(
         state = rememberTextFieldState("test"),
         roundTime = 8,
@@ -261,7 +276,7 @@ fun WarlockEntryDarkPreview() {
 
 @Preview(widthDp = 800, backgroundColor = 0xFFFFFFFF)
 @Composable
-fun WarlockEntryLightPreview() {
+private fun WarlockEntryLightPreview() {
     WarlockEntryContent(
         state = rememberTextFieldState("test"),
         roundTime = 8,
@@ -276,7 +291,7 @@ fun WarlockEntryLightPreview() {
 
 @Preview(widthDp = 800, heightDp = 50, backgroundColor = 0xFF444444)
 @Composable
-fun RoundTimeBarPreview() {
+private fun RoundTimeBarPreview() {
     val backgroundColor = Color(0xFF444444)
     Box(Modifier.fillMaxSize().background(backgroundColor).padding(2.dp)) {
         RoundTimeBar(Color(0xFF444444), 8, 6)
@@ -285,7 +300,7 @@ fun RoundTimeBarPreview() {
 
 @Preview(widthDp = 800, heightDp = 50, backgroundColor = 0xFFFFFFFF)
 @Composable
-fun RoundTimeBarLightPreview() {
+private fun RoundTimeBarLightPreview() {
     Box(Modifier.fillMaxSize().background(Color.White).padding(2.dp)) {
         RoundTimeBar(Color.White, 8, 6)
     }

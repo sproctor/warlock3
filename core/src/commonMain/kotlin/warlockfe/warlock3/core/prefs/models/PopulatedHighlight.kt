@@ -6,5 +6,5 @@ import androidx.room.Relation
 data class PopulatedHighlight(
     @Embedded val highlight: HighlightEntity,
     @Relation(parentColumn = "id", entityColumn = "highlightId")
-    val styles: List<HighlightStyleEntity>
+    val styles: List<HighlightStyleEntity>,
 )

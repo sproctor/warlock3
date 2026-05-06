@@ -24,9 +24,14 @@ import warlockfe.warlock3.compose.generated.resources.wand_stars
 import warlockfe.warlock3.compose.util.mirror
 
 @Composable
-fun HandsView(left: String?, right: String?, spell: String?) {
+fun HandsView(
+    left: String?,
+    right: String?,
+    spell: String?,
+    modifier: Modifier = Modifier,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         HandBox(
@@ -37,7 +42,7 @@ fun HandsView(left: String?, right: String?, spell: String?) {
                     contentDescription = "Left hand",
                 )
             },
-            value = left ?: ""
+            value = left ?: "",
         )
         HandBox(
             icon = {
@@ -47,7 +52,7 @@ fun HandsView(left: String?, right: String?, spell: String?) {
                     contentDescription = "Right hand",
                 )
             },
-            value = right ?: ""
+            value = right ?: "",
         )
         HandBox(
             icon = {
@@ -62,15 +67,19 @@ fun HandsView(left: String?, right: String?, spell: String?) {
 }
 
 @Composable
-fun RowScope.HandBox(icon: @Composable () -> Unit, value: String) {
+fun RowScope.HandBox(
+    icon: @Composable () -> Unit,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        modifier = Modifier.weight(1f),
+        modifier = modifier.weight(1f),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Row(
-            modifier = Modifier.padding(4.dp)
+            modifier = Modifier.padding(4.dp),
         ) {
             icon()
             Spacer(Modifier.width(8.dp))
@@ -84,6 +93,6 @@ fun RowScope.HandBox(icon: @Composable () -> Unit, value: String) {
 
 @Preview
 @Composable
-fun HandsViewPreview() {
+private fun HandsViewPreview() {
     HandsView(left = "some item", right = "", spell = "a spell")
 }

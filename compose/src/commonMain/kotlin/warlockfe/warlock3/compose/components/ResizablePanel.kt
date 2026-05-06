@@ -53,7 +53,7 @@ fun ResizablePanel(
                 isHorizontal = true,
                 handleBefore = handleBefore,
                 showHandle = showHandle,
-                content = content
+                content = content,
             )
         }
     } else {
@@ -64,7 +64,7 @@ fun ResizablePanel(
                 isHorizontal = false,
                 handleBefore = handleBefore,
                 showHandle = showHandle,
-                content = content
+                content = content,
             )
         }
     }
@@ -72,12 +72,12 @@ fun ResizablePanel(
 
 @Composable
 private fun PanelContent(
-    modifier: Modifier,
     state: ResizablePanelState,
     isHorizontal: Boolean,
     handleBefore: Boolean,
     showHandle: Boolean,
-    content: @Composable BoxScope.() -> Unit
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     if (handleBefore && showHandle) {
         ResizablePanelHandle(isHorizontal, true, state)
@@ -95,6 +95,7 @@ fun ResizablePanelHandle(
     isHorizontal: Boolean,
     isBefore: Boolean,
     state: ResizablePanelState,
+    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isDragging by interactionSource.collectIsDraggedAsState()
@@ -102,46 +103,52 @@ fun ResizablePanelHandle(
     val isFocused by interactionSource.collectIsFocusedAsState()
 
     val density = LocalDensity.current
-    val modifier = Modifier
-        .pointerHoverIcon(
-            icon = getResizeCursor(isHorizontal)
-        )
-        .hoverable(interactionSource = interactionSource)
-        .focusable(interactionSource = interactionSource)
-        .draggable(
-            interactionSource = interactionSource,
-            orientation = if (isHorizontal) Orientation.Horizontal else Orientation.Vertical,
-            state = rememberDraggableState { delta ->
-                val deltaDp = with(density) { delta.toDp() }
-                state.dispatchRawMovement(
-                    if (isBefore) -deltaDp else deltaDp
-                )
-            }
-        )
-    val handleColor = if (isDragging)
-        MaterialTheme.colorScheme.onSurface
-    else
-        MaterialTheme.colorScheme.outline
-    val handleShape = /*if (isDragging) MaterialTheme.shapes.medium else*/ CircleShape
-    val handleThickness = /*if (isDragging) 4.dp else*/ 2.dp
+    val handleModifier =
+        modifier
+            .pointerHoverIcon(
+                icon = getResizeCursor(isHorizontal),
+            ).hoverable(interactionSource = interactionSource)
+            .focusable(interactionSource = interactionSource)
+            .draggable(
+                interactionSource = interactionSource,
+                orientation = if (isHorizontal) Orientation.Horizontal else Orientation.Vertical,
+                state =
+                    rememberDraggableState { delta ->
+                        val deltaDp = with(density) { delta.toDp() }
+                        state.dispatchRawMovement(
+                            if (isBefore) -deltaDp else deltaDp,
+                        )
+                    },
+            )
+    val handleColor =
+        if (isDragging) {
+            MaterialTheme.colorScheme.onSurface
+        } else {
+            MaterialTheme.colorScheme.outline
+        }
+    val handleShape = CircleShape
+    val handleThickness = 2.dp
     val handleSize = if (isDragging) 40.dp else 36.dp
     val separatorThickness = 4.dp
-    val boxModifier = if (isHorizontal)
-        modifier.width(separatorThickness).fillMaxHeight()
-    else
-        modifier.height(separatorThickness).fillMaxWidth()
-    Box(boxModifier) {
-        val sizeModifier = if (isHorizontal) {
-            Modifier.size(width = handleThickness, height = handleSize).align(Alignment.Center)
+    val boxModifier =
+        if (isHorizontal) {
+            handleModifier.width(separatorThickness).fillMaxHeight()
         } else {
-            Modifier.size(height = handleThickness, width = handleSize).align(Alignment.Center)
+            handleModifier.height(separatorThickness).fillMaxWidth()
         }
+    Box(boxModifier) {
+        val sizeModifier =
+            if (isHorizontal) {
+                Modifier.size(width = handleThickness, height = handleSize).align(Alignment.Center)
+            } else {
+                Modifier.size(height = handleThickness, width = handleSize).align(Alignment.Center)
+            }
         Spacer(
             sizeModifier
                 .background(
                     color = handleColor,
                     shape = handleShape,
-                )
+                ),
         )
         if (isHovered) {
             Spacer(
@@ -149,7 +156,7 @@ fun ResizablePanelHandle(
                     .background(
                         color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.08f),
                         shape = handleShape,
-                    )
+                    ),
             )
         }
         if (isFocused) {
@@ -158,7 +165,7 @@ fun ResizablePanelHandle(
                     .background(
                         color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.1f),
                         shape = handleShape,
-                    )
+                    ),
             )
         }
     }
