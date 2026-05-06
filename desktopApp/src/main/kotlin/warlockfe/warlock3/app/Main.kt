@@ -567,7 +567,6 @@ private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<Pref
     Room.databaseBuilder<PrefsDatabase>(
         name = filename,
     )
-}
 
 fun SoftwareUpdateController.Version.prettyString(): String {
     var result = version
