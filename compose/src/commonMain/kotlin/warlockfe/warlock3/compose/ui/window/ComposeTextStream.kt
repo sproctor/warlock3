@@ -424,13 +424,13 @@ fun StyledString.toStreamLine(
     val tEnd = TimeSource.Monotonic.markNow()
     val total = tEnd - t0
     if (total >= SLOW_LINE_THRESHOLD) {
-        val annotate = tAnnotated - t0
-        val alter = tAltered - tAnnotated
-        val link = tLinked - tAltered
-        val highlight = tHighlighted - tLinked
-        val build = tEnd - tHighlighted
         // Diagnostic: re-run annotate to distinguish structural vs. cold-path cost
-        streamLineLogger.w {
+        streamLineLogger.d {
+            val annotate = tAnnotated - t0
+            val alter = tAltered - tAnnotated
+            val link = tLinked - tAltered
+            val highlight = tHighlighted - tLinked
+            val build = tEnd - tHighlighted
             val before = this.toString().take(200).replace("\n", "\\n")
             val after =
                 result.text
