@@ -36,15 +36,20 @@ data class RegexHighlight(
     override fun containsMatchIn(text: String): Boolean = regex.containsMatchIn(text)
 }
 
-internal fun isWordBoundary(text: CharSequence, start: Int, end: Int): Boolean =
-    isAtBoundary(text, start) && isAtBoundary(text, end)
+internal fun isWordBoundary(
+    text: CharSequence,
+    start: Int,
+    end: Int,
+): Boolean = isAtBoundary(text, start) && isAtBoundary(text, end)
 
-private fun isAtBoundary(text: CharSequence, position: Int): Boolean =
+private fun isAtBoundary(
+    text: CharSequence,
+    position: Int,
+): Boolean =
     when (position) {
         0 -> text.isNotEmpty() && isWordChar(text[0])
         text.length -> text.isNotEmpty() && isWordChar(text[text.length - 1])
         else -> isWordChar(text[position - 1]) != isWordChar(text[position])
     }
 
-internal fun isWordChar(c: Char): Boolean =
-    (c in 'a'..'z') || (c in 'A'..'Z') || (c in '0'..'9') || c == '_'
+internal fun isWordChar(c: Char): Boolean = (c in 'a'..'z') || (c in 'A'..'Z') || (c in '0'..'9') || c == '_'

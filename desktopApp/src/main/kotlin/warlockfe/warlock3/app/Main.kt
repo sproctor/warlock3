@@ -344,13 +344,16 @@ private class WarlockCommand : CliktCommand() {
                 }
             AppTheme(useDarkTheme = darkMode) {
                 IntUiTheme(
-                    theme = if (darkMode) {
-                        JewelTheme.darkThemeDefinition()
-                    } else {
-                        JewelTheme.lightThemeDefinition()
-                    },
-                    styling = ComponentStyling.default()
-                        .decoratedWindow(titleBarStyle = if (darkMode) TitleBarStyle.dark() else TitleBarStyle.light())
+                    theme =
+                        if (darkMode) {
+                            JewelTheme.darkThemeDefinition()
+                        } else {
+                            JewelTheme.lightThemeDefinition()
+                        },
+                    styling =
+                        ComponentStyling
+                            .default()
+                            .decoratedWindow(titleBarStyle = if (darkMode) TitleBarStyle.dark() else TitleBarStyle.light()),
                 ) {
                     var updateAvailable by remember { mutableStateOf(false) }
                     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -367,8 +370,8 @@ private class WarlockCommand : CliktCommand() {
                                 if (currentVersion != null && latestVersion != null && latestVersion!! > currentVersion!!) {
                                     // A newer version is available
                                     updateAvailable = true
-                                    if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE
-                                        && !clientSettings.getIgnoreUpdates()
+                                    if (controller.canTriggerUpdateCheckUI() == SoftwareUpdateController.Availability.AVAILABLE &&
+                                        !clientSettings.getIgnoreUpdates()
                                     ) {
                                         showUpdateDialog = true
                                     }
@@ -415,7 +418,8 @@ private class WarlockCommand : CliktCommand() {
                                         Spacer(Modifier.weight(1f))
                                         Row(Modifier.fillMaxWidth()) {
                                             Spacer(Modifier.weight(1f))
-                                            val ignoreUpdates by clientSettings.observeIgnoreUpdates()
+                                            val ignoreUpdates by clientSettings
+                                                .observeIgnoreUpdates()
                                                 .collectAsState(false)
                                             if (!ignoreUpdates) {
                                                 TextButton(
@@ -451,7 +455,7 @@ private class WarlockCommand : CliktCommand() {
                                                     }
                                                     controller.triggerUpdateCheckUI()
                                                 },
-                                                enabled = updateAvailable && updateSupported
+                                                enabled = updateAvailable && updateSupported,
                                             ) {
                                                 Text("Update")
                                             }
@@ -462,23 +466,26 @@ private class WarlockCommand : CliktCommand() {
                         }
 
                         games.forEachIndexed { index, gameState ->
-                            val windowState = remember {
-                                WindowState(
-                                    width = initialWidth.dp,
-                                    height = initialHeight.dp,
-                                    position = position
-                                )
-                            }
+                            val windowState =
+                                remember {
+                                    WindowState(
+                                        width = initialWidth.dp,
+                                        height = initialHeight.dp,
+                                        position = position,
+                                    )
+                                }
                             val subtitle by gameState.getTitle().collectAsState("loading")
                             val title = "Warlock - $subtitle"
                             // app.dir is set when packaged to point at our collected inputs.
-                            val appIcon = remember {
-                                System.getProperty("app.dir")
-                                    ?.let { Paths.get(it, "icon-512.png") }
-                                    ?.takeIf { it.exists() }
-                                    ?.inputStream()
-                                    ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
-                            }
+                            val appIcon =
+                                remember {
+                                    System
+                                        .getProperty("app.dir")
+                                        ?.let { Paths.get(it, "icon-512.png") }
+                                        ?.takeIf { it.exists() }
+                                        ?.inputStream()
+                                        ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
+                                }
                             DecoratedWindow(
                                 title = title,
                                 state = windowState,
@@ -523,8 +530,7 @@ private class WarlockCommand : CliktCommand() {
                                                 if (height >= 240) {
                                                     clientSettings.putHeight(height)
                                                 }
-                                            }
-                                            .launchIn(this)
+                                            }.launchIn(this)
                                     }
                                 }
                             }

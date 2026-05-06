@@ -50,19 +50,21 @@ internal fun DecoratedWindowScope.TitleBarView(
     showAboutDialog: () -> Unit,
     exportSettings: (File) -> Unit,
 ) {
-    val scriptFilePickerLauncher = rememberFilePickerLauncher(
-        dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Run script"),
-        directory = scriptDirectory?.let { PlatformFile(it) },
-    ) { file ->
-        if (file != null) {
-            runScript(file.file.toKotlinxIoPath())
+    val scriptFilePickerLauncher =
+        rememberFilePickerLauncher(
+            dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Run script"),
+            directory = scriptDirectory?.let { PlatformFile(it) },
+        ) { file ->
+            if (file != null) {
+                runScript(file.file.toKotlinxIoPath())
+            }
         }
-    }
-    val exportFileSaveLauncher = rememberFileSaverLauncher { file ->
-        if (file != null) {
-            exportSettings(file.file)
+    val exportFileSaveLauncher =
+        rememberFileSaverLauncher { file ->
+            if (file != null) {
+                exportSettings(file.file)
+            }
         }
-    }
     TitleBar(
         modifier = Modifier.newFullscreenControls(),
     ) {
@@ -70,13 +72,14 @@ internal fun DecoratedWindowScope.TitleBarView(
             if (isConnected) {
                 IconButton(onClick = { showSideBar(!sideBarVisible) }) {
                     Icon(
-                        painter = painterResource(
-                            if (sideBarVisible) {
-                                Res.drawable.space_dashboard_filled
-                            } else {
-                                Res.drawable.space_dashboard_outlined
-                            }
-                        ),
+                        painter =
+                            painterResource(
+                                if (sideBarVisible) {
+                                    Res.drawable.space_dashboard_filled
+                                } else {
+                                    Res.drawable.space_dashboard_outlined
+                                },
+                            ),
                         tint = LocalTitleBarStyle.current.colors.content,
                         contentDescription = null,
                     )
@@ -100,9 +103,10 @@ internal fun DecoratedWindowScope.TitleBarView(
                 var currentMenu by remember { mutableStateOf<Menus?>(null) }
                 Box {
                     TextButton(
-                        modifier = Modifier.onHover {
-                            currentMenu = Menus.FILE
-                        },
+                        modifier =
+                            Modifier.onHover {
+                                currentMenu = Menus.FILE
+                            },
                         onClick = {
                             active = !active
                             currentMenu = Menus.FILE
@@ -116,7 +120,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                                 active = false
                                 true
                             },
-                            horizontalAlignment = Alignment.Start
+                            horizontalAlignment = Alignment.Start,
                         ) {
                             selectableItem(
                                 selected = false,
@@ -159,9 +163,10 @@ internal fun DecoratedWindowScope.TitleBarView(
                 }
                 Box {
                     TextButton(
-                        modifier = Modifier.onHover {
-                            currentMenu = Menus.HELP
-                        },
+                        modifier =
+                            Modifier.onHover {
+                                currentMenu = Menus.HELP
+                            },
                         onClick = {
                             active = !active
                             currentMenu = Menus.HELP
@@ -175,7 +180,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                                 active = false
                                 true
                             },
-                            horizontalAlignment = Alignment.Start
+                            horizontalAlignment = Alignment.Start,
                         ) {
                             selectableItem(
                                 selected = false,

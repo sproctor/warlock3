@@ -341,7 +341,8 @@ class SgeClientImpl(
                         logger.i { "Unrecognized event: $event" }
                 }
             }
-            @Suppress("UNREACHABLE_CODE") null
+            @Suppress("UNREACHABLE_CODE")
+            null
         } ?: AutoConnectResult.Failure("Timed out waiting for SGE response")
     }
 }

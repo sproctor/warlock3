@@ -20,8 +20,6 @@ import warlockfe.warlock3.compose.util.toTimeString
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
-import warlockfe.warlock3.core.text.StyledStringSubstring
-import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.TextStream
@@ -434,7 +432,11 @@ fun StyledString.toStreamLine(
         // Diagnostic: re-run annotate to distinguish structural vs. cold-path cost
         streamLineLogger.w {
             val before = this.toString().take(200).replace("\n", "\\n")
-            val after = result.text?.text?.take(200)?.replace("\n", "\\n") ?: "<filtered>"
+            val after =
+                result.text
+                    ?.text
+                    ?.take(200)
+                    ?.replace("\n", "\\n") ?: "<filtered>"
             "Slow line in '$streamName' total=${total.inWholeMicroseconds}µs " +
                 "annotate=${annotate.inWholeMicroseconds}µs " +
                 "alter=${alter.inWholeMicroseconds}µs " +

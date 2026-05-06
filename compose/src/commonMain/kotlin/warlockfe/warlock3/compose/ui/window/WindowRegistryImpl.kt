@@ -131,10 +131,10 @@ class WindowRegistryImpl(
                                 styles =
                                     mapOf(
                                         0 to
-                                                StyleDefinition(
-                                                    textColor = name.textColor,
-                                                    backgroundColor = name.backgroundColor,
-                                                ),
+                                            StyleDefinition(
+                                                textColor = name.textColor,
+                                                backgroundColor = name.backgroundColor,
+                                            ),
                                     ),
                                 sound = name.sound,
                             )
