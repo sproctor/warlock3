@@ -489,7 +489,7 @@ class GameViewModel(
                         }
                     }
                     text += StyledString(" ") +
-                            StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${entry.key}")))
+                        StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${entry.key}")))
                     scriptStream.appendLine(text, false)
                 }
             }.launchIn(viewModelScope)

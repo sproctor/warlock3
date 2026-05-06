@@ -63,7 +63,6 @@ import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.isSpecified
-import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 

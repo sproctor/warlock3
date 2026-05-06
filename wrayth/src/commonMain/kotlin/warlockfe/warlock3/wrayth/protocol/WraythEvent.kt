@@ -126,6 +126,7 @@ data class WraythDialogWindowEvent(
 ) : WraythEvent
 
 data object WraythNavEvent : WraythEvent
+
 data class WraythBackgroundEvent(
     val windowName: String,
     val image: String?,
@@ -136,10 +137,24 @@ data class WraythBackgroundEvent(
     val horizontalAlignment: BackgroundImageHorizontalAlignment,
     val verticalAlignment: BackgroundImageVerticalAlignment,
 ) : WraythEvent
-data class WraythActionEvent(val text: String, val command: String) : WraythEvent
-data class WraythOpenUrlEvent(val url: String) : WraythEvent
-data class WraythParseErrorEvent(val text: String) : WraythEvent
-data class WraythUnhandledTagEvent(val tag: String) : WraythEvent
+
+data class WraythActionEvent(
+    val text: String,
+    val command: String,
+) : WraythEvent
+
+data class WraythOpenUrlEvent(
+    val url: String,
+) : WraythEvent
+
+data class WraythParseErrorEvent(
+    val text: String,
+) : WraythEvent
+
+data class WraythUnhandledTagEvent(
+    val tag: String,
+) : WraythEvent
+
 data object WraythUpdateVerbsEvent : WraythEvent
 
 data object WraythStartCmdList : WraythEvent
@@ -159,5 +174,13 @@ data class WraythMenuStartEvent(
 ) : WraythEvent
 
 data object WraythMenuEndEvent : WraythEvent
-data class WraythMenuItemEvent(val coord: String, val noun: String?, val category: String?) : WraythEvent
-data class WraythResourceEvent(val picture: String) : WraythEvent
+
+data class WraythMenuItemEvent(
+    val coord: String,
+    val noun: String?,
+    val category: String?,
+) : WraythEvent
+
+data class WraythResourceEvent(
+    val picture: String,
+) : WraythEvent

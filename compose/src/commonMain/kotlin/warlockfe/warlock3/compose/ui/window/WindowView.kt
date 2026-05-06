@@ -324,7 +324,7 @@ private fun WindowViewContent(
             Modifier
                 .fillMaxSize()
                 .clipToBounds()
-                .background(backgroundColor)
+                .background(backgroundColor),
         ) {
             backgroundImage?.takeIf { it.image.isNotBlank() }?.let { image ->
                 WindowBackgroundImage(
@@ -335,13 +335,14 @@ private fun WindowViewContent(
                 )
             }
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 4.dp)
-                    .semantics {
-                        isTraversalGroup = true
-                        liveRegion = LiveRegionMode.Polite
-                    },
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 4.dp)
+                        .semantics {
+                            isTraversalGroup = true
+                            liveRegion = LiveRegionMode.Polite
+                        },
                 state = scrollState,
             ) {
                 items(
@@ -491,38 +492,48 @@ private fun WindowBackgroundImage(
     height: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val painter = rememberAsyncImagePainter(
-        ImageRequest.Builder(LocalPlatformContext.current)
-            .data(backgroundImage.image)
-            .size(Size.ORIGINAL)
-            .build()
-    )
+    val painter =
+        rememberAsyncImagePainter(
+            ImageRequest
+                .Builder(LocalPlatformContext.current)
+                .data(backgroundImage.image)
+                .size(Size.ORIGINAL)
+                .build(),
+        )
     val painterState by painter.state.collectAsState()
     val state = painterState as? AsyncImagePainter.State.Success ?: return
-    val imageHeight = state.result.image.height.takeIf { it > 0 } ?: return
-    val imageWidth = state.result.image.width.takeIf { it > 0 } ?: return
+    val imageHeight =
+        state.result.image.height
+            .takeIf { it > 0 } ?: return
+    val imageWidth =
+        state.result.image.width
+            .takeIf { it > 0 } ?: return
     val aspectRatio = imageWidth.toFloat() / imageHeight.toFloat()
     val imageWidthDp = with(LocalDensity.current) { imageWidth.toDp() }
     val imageHeightDp = with(LocalDensity.current) { imageHeight.toDp() }
     val scaledWidth = height * aspectRatio
     val scaledHeight = width / aspectRatio
-    val imageModifier = when (backgroundImage.mode) {
-        BackgroundImageMode.FILL -> modifier.fillMaxSize()
-        BackgroundImageMode.HEIGHT_FILL,
-        BackgroundImageMode.GRADIENT -> modifier
-            .fillMaxHeight()
-            .width(scaledWidth)
+    val imageModifier =
+        when (backgroundImage.mode) {
+            BackgroundImageMode.FILL -> modifier.fillMaxSize()
+            BackgroundImageMode.HEIGHT_FILL,
+            BackgroundImageMode.GRADIENT,
+            ->
+                modifier
+                    .fillMaxHeight()
+                    .width(scaledWidth)
 
-        BackgroundImageMode.WIDTH_FILL -> modifier
-            .fillMaxWidth()
-            .height(scaledHeight)
+            BackgroundImageMode.WIDTH_FILL ->
+                modifier
+                    .fillMaxWidth()
+                    .height(scaledHeight)
 
-        BackgroundImageMode.FULL -> modifier
-            .requiredWidth(imageWidthDp)
-            .requiredHeight(imageHeightDp)
-    }
-        .then(backgroundImage.opacityModifier())
-        .then(backgroundImage.gradientModifier())
+            BackgroundImageMode.FULL ->
+                modifier
+                    .requiredWidth(imageWidthDp)
+                    .requiredHeight(imageHeightDp)
+        }.then(backgroundImage.opacityModifier())
+            .then(backgroundImage.gradientModifier())
 
     Image(
         modifier = imageModifier,
@@ -532,55 +543,56 @@ private fun WindowBackgroundImage(
     )
 }
 
-private fun ClientBackgroundImage.backgroundAlignment(): Alignment {
-    return when (verticalAlignment) {
-        BackgroundImageVerticalAlignment.TOP -> when (horizontalAlignment) {
-            BackgroundImageHorizontalAlignment.LEFT -> Alignment.TopStart
-            BackgroundImageHorizontalAlignment.CENTER -> Alignment.TopCenter
-            BackgroundImageHorizontalAlignment.RIGHT -> Alignment.TopEnd
-        }
+private fun ClientBackgroundImage.backgroundAlignment(): Alignment =
+    when (verticalAlignment) {
+        BackgroundImageVerticalAlignment.TOP ->
+            when (horizontalAlignment) {
+                BackgroundImageHorizontalAlignment.LEFT -> Alignment.TopStart
+                BackgroundImageHorizontalAlignment.CENTER -> Alignment.TopCenter
+                BackgroundImageHorizontalAlignment.RIGHT -> Alignment.TopEnd
+            }
 
-        BackgroundImageVerticalAlignment.MIDDLE -> when (horizontalAlignment) {
-            BackgroundImageHorizontalAlignment.LEFT -> Alignment.CenterStart
-            BackgroundImageHorizontalAlignment.CENTER -> Alignment.Center
-            BackgroundImageHorizontalAlignment.RIGHT -> Alignment.CenterEnd
-        }
+        BackgroundImageVerticalAlignment.MIDDLE ->
+            when (horizontalAlignment) {
+                BackgroundImageHorizontalAlignment.LEFT -> Alignment.CenterStart
+                BackgroundImageHorizontalAlignment.CENTER -> Alignment.Center
+                BackgroundImageHorizontalAlignment.RIGHT -> Alignment.CenterEnd
+            }
 
-        BackgroundImageVerticalAlignment.BOTTOM -> when (horizontalAlignment) {
-            BackgroundImageHorizontalAlignment.LEFT -> Alignment.BottomStart
-            BackgroundImageHorizontalAlignment.CENTER -> Alignment.BottomCenter
-            BackgroundImageHorizontalAlignment.RIGHT -> Alignment.BottomEnd
-        }
+        BackgroundImageVerticalAlignment.BOTTOM ->
+            when (horizontalAlignment) {
+                BackgroundImageHorizontalAlignment.LEFT -> Alignment.BottomStart
+                BackgroundImageHorizontalAlignment.CENTER -> Alignment.BottomCenter
+                BackgroundImageHorizontalAlignment.RIGHT -> Alignment.BottomEnd
+            }
     }
-}
 
-private fun BackgroundImageMode.contentScale(): ContentScale {
-    return when (this) {
+private fun BackgroundImageMode.contentScale(): ContentScale =
+    when (this) {
         BackgroundImageMode.FILL -> ContentScale.FillBounds
         BackgroundImageMode.WIDTH_FILL -> ContentScale.FillWidth
         BackgroundImageMode.FULL -> ContentScale.None
         BackgroundImageMode.HEIGHT_FILL,
-        BackgroundImageMode.GRADIENT -> ContentScale.FillHeight
+        BackgroundImageMode.GRADIENT,
+        -> ContentScale.FillHeight
     }
-}
 
-private fun ClientBackgroundImage.gradientModifier(): Modifier {
-    return when (mode) {
-        BackgroundImageMode.GRADIENT -> Modifier
-            .graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
-            }
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    brush = Brush.horizontalGradient(*gradientColorStops()),
-                    blendMode = BlendMode.DstIn,
-                )
-            }
+private fun ClientBackgroundImage.gradientModifier(): Modifier =
+    when (mode) {
+        BackgroundImageMode.GRADIENT ->
+            Modifier
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }.drawWithContent {
+                    drawContent()
+                    drawRect(
+                        brush = Brush.horizontalGradient(*gradientColorStops()),
+                        blendMode = BlendMode.DstIn,
+                    )
+                }
 
         else -> Modifier
     }
-}
 
 private fun ClientBackgroundImage.gradientColorStops(): Array<Pair<Float, Color>> {
     val start = gradientStart.toPercentFraction()
@@ -605,15 +617,14 @@ private fun ClientBackgroundImage.gradientColorStops(): Array<Pair<Float, Color>
     }
 }
 
-private fun ClientBackgroundImage.opacityModifier(): Modifier {
-    return if (mode == BackgroundImageMode.GRADIENT || opacity == 100) {
+private fun ClientBackgroundImage.opacityModifier(): Modifier =
+    if (mode == BackgroundImageMode.GRADIENT || opacity == 100) {
         Modifier
     } else {
         Modifier.graphicsLayer {
             alpha = opacity.toPercentFraction()
         }
     }
-}
 
 private fun Int.toPercentFraction(): Float = coerceIn(0, 100) / 100f
 

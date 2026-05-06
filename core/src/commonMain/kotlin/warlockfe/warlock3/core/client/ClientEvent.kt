@@ -16,6 +16,13 @@ data class ClientCompassEvent(
 ) : ClientEvent
 
 data object ClientNavEvent : ClientEvent
+
 data object ClientPromptEvent : ClientEvent
-data class ClientOpenUrlEvent(val url: Uri) : ClientEvent
-data class ClientWindowInfoEvent(val info: WindowInfo) : ClientEvent
+
+data class ClientOpenUrlEvent(
+    val url: Uri,
+) : ClientEvent
+
+data class ClientWindowInfoEvent(
+    val info: WindowInfo,
+) : ClientEvent

@@ -520,10 +520,10 @@ class WraythClient(
                                                 } else {
                                                     null
                                                 }
-                                            val updatedWindow = window.copy(
-                                                backgroundImage = backgroundImage
-
-                                            )
+                                            val updatedWindow =
+                                                window.copy(
+                                                    backgroundImage = backgroundImage,
+                                                )
                                             val updatedInfo = currentWindowInfo.toMutableList()
                                             updatedInfo[index] = updatedWindow
                                             updatedInfo

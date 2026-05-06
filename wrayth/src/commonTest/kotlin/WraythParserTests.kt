@@ -1,10 +1,11 @@
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
+import warlockfe.warlock3.core.window.BackgroundImageMode
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
-import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNodeVisitor
+import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -35,13 +36,14 @@ class WraythParserTests {
 
     @Test
     fun backgroundTagIncludesMode() {
-        val modes = mapOf(
-            "fill" to BackgroundImageMode.FILL,
-            "hfill" to BackgroundImageMode.HEIGHT_FILL,
-            "wfill" to BackgroundImageMode.WIDTH_FILL,
-            "full" to BackgroundImageMode.FULL,
-            "gradient" to BackgroundImageMode.GRADIENT,
-        )
+        val modes =
+            mapOf(
+                "fill" to BackgroundImageMode.FILL,
+                "hfill" to BackgroundImageMode.HEIGHT_FILL,
+                "wfill" to BackgroundImageMode.WIDTH_FILL,
+                "full" to BackgroundImageMode.FULL,
+                "gradient" to BackgroundImageMode.GRADIENT,
+            )
 
         modes.forEach { (mode, expectedMode) ->
             val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\" mode=\"$mode\"/>")
@@ -55,9 +57,10 @@ class WraythParserTests {
 
     @Test
     fun backgroundGradientTagIncludesStartAndEnd() {
-        val events = WraythProtocolHandler().parseLine(
-            "<background window=\"main\" img=\"room.png\" mode=\"gradient\" start=\"25\" end=\"75\"/>"
-        )
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<background window=\"main\" img=\"room.png\" mode=\"gradient\" start=\"25\" end=\"75\"/>",
+            )
 
         assertEquals(
             WraythBackgroundEvent(
@@ -73,9 +76,10 @@ class WraythParserTests {
 
     @Test
     fun backgroundGradientStartAndEndAreClamped() {
-        val events = WraythProtocolHandler().parseLine(
-            "<background img=\"room.png\" mode=\"gradient\" start=\"-10\" end=\"120\"/>"
-        )
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<background img=\"room.png\" mode=\"gradient\" start=\"-10\" end=\"120\"/>",
+            )
 
         assertEquals(
             WraythBackgroundEvent(
@@ -105,9 +109,10 @@ class WraythParserTests {
 
     @Test
     fun backgroundGradientOpacityDoesNotClampStartAndEnd() {
-        val events = WraythProtocolHandler().parseLine(
-            "<background img=\"room.png\" mode=\"gradient\" opacity=\"60\" start=\"90\" end=\"30\"/>"
-        )
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<background img=\"room.png\" mode=\"gradient\" opacity=\"60\" start=\"90\" end=\"30\"/>",
+            )
 
         assertEquals(
             WraythBackgroundEvent(
@@ -138,22 +143,25 @@ class WraythParserTests {
 
     @Test
     fun backgroundTagIncludesAlignment() {
-        val horizontalAlignments = mapOf(
-            "left" to BackgroundImageHorizontalAlignment.LEFT,
-            "center" to BackgroundImageHorizontalAlignment.CENTER,
-            "right" to BackgroundImageHorizontalAlignment.RIGHT,
-        )
-        val verticalAlignments = mapOf(
-            "top" to BackgroundImageVerticalAlignment.TOP,
-            "middle" to BackgroundImageVerticalAlignment.MIDDLE,
-            "bottom" to BackgroundImageVerticalAlignment.BOTTOM,
-        )
+        val horizontalAlignments =
+            mapOf(
+                "left" to BackgroundImageHorizontalAlignment.LEFT,
+                "center" to BackgroundImageHorizontalAlignment.CENTER,
+                "right" to BackgroundImageHorizontalAlignment.RIGHT,
+            )
+        val verticalAlignments =
+            mapOf(
+                "top" to BackgroundImageVerticalAlignment.TOP,
+                "middle" to BackgroundImageVerticalAlignment.MIDDLE,
+                "bottom" to BackgroundImageVerticalAlignment.BOTTOM,
+            )
 
         horizontalAlignments.forEach { (align, expectedHorizontalAlignment) ->
             verticalAlignments.forEach { (valign, expectedVerticalAlignment) ->
-                val events = WraythProtocolHandler().parseLine(
-                    "<background img=\"room.png\" align=\"$align\" valign=\"$valign\"/>"
-                )
+                val events =
+                    WraythProtocolHandler().parseLine(
+                        "<background img=\"room.png\" align=\"$align\" valign=\"$valign\"/>",
+                    )
 
                 assertEquals(
                     WraythBackgroundEvent(
@@ -170,9 +178,10 @@ class WraythParserTests {
 
     @Test
     fun unknownBackgroundAlignmentUsesDefault() {
-        val events = WraythProtocolHandler().parseLine(
-            "<background img=\"room.png\" align=\"unknown\" valign=\"unknown\"/>"
-        )
+        val events =
+            WraythProtocolHandler().parseLine(
+                "<background img=\"room.png\" align=\"unknown\" valign=\"unknown\"/>",
+            )
 
         assertEquals(
             WraythBackgroundEvent(
