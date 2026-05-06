@@ -68,7 +68,7 @@ object KeyboardKeyMappings {
             "RIGHT" to Key.DirectionRight,
             "PAGE_UP" to Key.PageUp,
             "PAGE_DOWN" to Key.PageDown,
-            "HOME" to Key.Home,
+            "HOME" to Key.MoveHome,
             "END" to Key.MoveEnd,
             // Editing Keys
             "ENTER" to Key.Enter,
