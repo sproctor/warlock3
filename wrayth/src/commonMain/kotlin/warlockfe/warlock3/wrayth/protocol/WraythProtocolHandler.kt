@@ -54,65 +54,66 @@ import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
 
 class WraythProtocolHandler {
-
     private val logger = Logger.withTag("WraythProtocolHandler")
 
-    private val elementListeners: Map<String, ElementListener> = mapOf(
-        // all keys must be lowercase
-        "a" to AHandler(),
-        "app" to AppHandler(),
-        "b" to BHandler(),
-        "casttime" to CastTimeHandler(),
-        "clearcontainer" to ClearContainerHandler(),
-        "clearstream" to ClearStreamHandler(),
-        "cli" to CliHandler(),
-        "cmdbutton" to CmdButtonHandler(),
-        "cmdlist" to CmdlistHandler(),
-        "compass" to CompassHandler(),
-        "compdef" to CompDefHandler(),
-        "component" to ComponentHandler(),
-        "container" to ContainerHandler(),
-        "d" to DHandler(),
-        "dialogdata" to DialogDataHandler(),
-        "dir" to DirHandler(),
-        "dynastream" to DynaStreamHandler(),
-        "image" to ImageHandler(),
-        "indicator" to IndicatorHandler(),
-        "inv" to InvHandler(),
-        "label" to LabelHandler(),
-        "launchurl" to LaunchURLHandler(),
-        "left" to LeftHandler(),
-        "link" to LinkHandler(),
-        "menu" to MenuHandler(),
-        "mi" to MiHandler(),
-        "mode" to ModeHandler(),
-        "nav" to NavHandler(),
-        "opendialog" to OpenDialogHandler(),
-        "output" to OutputHandler(),
-        "preset" to PresetHandler(),
-        "popbold" to PopBoldHandler(),
-        "popstream" to PopStreamHandler(),
-        "progressbar" to ProgressBarHandler(),
-        "prompt" to PromptHandler(),
-        "pushbold" to PushBoldHandler(),
-        "pushstream" to PushStreamHandler(),
-        "resource" to ResourceHandler(),
-        "right" to RightHandler(),
-        "roundtime" to RoundTimeHandler(),
-        "settingsinfo" to SettingsInfoHandler(),
-        "skin" to SkinHandler(),
-        "spell" to SpellHandler(),
-        "stream" to StreamHandler(),
-        "streamwindow" to StreamWindowHandler(),
-        "style" to StyleHandler(),
-        "updateverbs" to UpdateVerbsHandler(),
-    )
+    private val elementListeners: Map<String, ElementListener> =
+        mapOf(
+            // all keys must be lowercase
+            "a" to AHandler(),
+            "app" to AppHandler(),
+            "b" to BHandler(),
+            "casttime" to CastTimeHandler(),
+            "clearcontainer" to ClearContainerHandler(),
+            "clearstream" to ClearStreamHandler(),
+            "cli" to CliHandler(),
+            "cmdbutton" to CmdButtonHandler(),
+            "cmdlist" to CmdlistHandler(),
+            "compass" to CompassHandler(),
+            "compdef" to CompDefHandler(),
+            "component" to ComponentHandler(),
+            "container" to ContainerHandler(),
+            "d" to DHandler(),
+            "dialogdata" to DialogDataHandler(),
+            "dir" to DirHandler(),
+            "dynastream" to DynaStreamHandler(),
+            "image" to ImageHandler(),
+            "indicator" to IndicatorHandler(),
+            "inv" to InvHandler(),
+            "label" to LabelHandler(),
+            "launchurl" to LaunchURLHandler(),
+            "left" to LeftHandler(),
+            "link" to LinkHandler(),
+            "menu" to MenuHandler(),
+            "mi" to MiHandler(),
+            "mode" to ModeHandler(),
+            "nav" to NavHandler(),
+            "opendialog" to OpenDialogHandler(),
+            "output" to OutputHandler(),
+            "preset" to PresetHandler(),
+            "popbold" to PopBoldHandler(),
+            "popstream" to PopStreamHandler(),
+            "progressbar" to ProgressBarHandler(),
+            "prompt" to PromptHandler(),
+            "pushbold" to PushBoldHandler(),
+            "pushstream" to PushStreamHandler(),
+            "resource" to ResourceHandler(),
+            "right" to RightHandler(),
+            "roundtime" to RoundTimeHandler(),
+            "settingsinfo" to SettingsInfoHandler(),
+            "skin" to SkinHandler(),
+            "spell" to SpellHandler(),
+            "stream" to StreamHandler(),
+            "streamwindow" to StreamWindowHandler(),
+            "style" to StyleHandler(),
+            "updateverbs" to UpdateVerbsHandler(),
+        )
 
     fun parseLine(line: String): List<WraythEvent> {
         return try {
             // Ignore lines with Wizard commands
-            if (line.startsWith('\u001C'))
+            if (line.startsWith('\u001C')) {
                 return emptyList()
+            }
             val inputStream = CharStreams.fromString(line)
             val lexer = WraythLexer(inputStream)
             val tokens = CommonTokenStream(lexer)
@@ -154,8 +155,9 @@ class WraythProtocolHandler {
                     // 4: <foo><bar></foo></bar> - first rule 3 is applied, then rule 1
                     // 5: <foo> - handled after the event loop: <foo></foo>
                     lineHasTags = true
-                    val topOfStack = tagStack.firstOrNull()
-                        ?: continue // rule #1
+                    val topOfStack =
+                        tagStack.firstOrNull()
+                            ?: continue // rule #1
                     val tagName = content.name.lowercase()
                     if (topOfStack != tagName) {
                         logger.e { "Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!" }
@@ -213,12 +215,16 @@ class WraythProtocolHandler {
 
 interface ElementListener {
     fun startElement(element: StartElement): WraythEvent?
+
     fun characters(data: String): WraythEvent?
+
     fun endElement(): WraythEvent?
 }
 
 abstract class BaseElementListener : ElementListener {
     override fun startElement(element: StartElement): WraythEvent? = null
+
     override fun characters(data: String): WraythEvent? = null
+
     override fun endElement(): WraythEvent? = null
 }

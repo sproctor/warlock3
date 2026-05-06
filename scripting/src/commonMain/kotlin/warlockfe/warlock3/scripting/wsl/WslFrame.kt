@@ -1,6 +1,8 @@
 package warlockfe.warlock3.scripting.wsl
 
-class WslFrame(startLine: Int) {
+class WslFrame(
+    startLine: Int,
+) {
     private var currentLine = -1
     val lineNumber: Int
         get() = currentLine + 1
@@ -17,7 +19,10 @@ class WslFrame(startLine: Int) {
         nextLine = index
     }
 
-    fun setVariable(name: String, value: WslValue) {
+    fun setVariable(
+        name: String,
+        value: WslValue,
+    ) {
         localVariables[name] = value
     }
 
@@ -25,7 +30,5 @@ class WslFrame(startLine: Int) {
         localVariables -= name
     }
 
-    fun lookupVariable(name: String): WslValue? {
-        return localVariables[name]
-    }
+    fun lookupVariable(name: String): WslValue? = localVariables[name]
 }

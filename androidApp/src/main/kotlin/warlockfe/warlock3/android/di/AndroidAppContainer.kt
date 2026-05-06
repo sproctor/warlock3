@@ -20,19 +20,19 @@ class AndroidAppContainer(
     warlockDirs: WarlockDirs,
     fileSystem: FileSystem,
 ) : AppContainer(
-    databaseBuilder = databaseBuilder,
-    warlockDirs = warlockDirs,
-    fileSystem = fileSystem,
-) {
-
+        databaseBuilder = databaseBuilder,
+        warlockDirs = warlockDirs,
+        fileSystem = fileSystem,
+    ) {
     override val soundPlayer: SoundPlayer = AndroidSoundPlayer()
 
     override val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(
-            engines = listOf(
-                WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
-                JsEngine(variableRepository),
-            ),
+            engines =
+                listOf(
+                    WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
+                    JsEngine(variableRepository),
+                ),
             scriptDirRepository = scriptDirRepository,
             fileSystem = fileSystem,
         )
@@ -45,8 +45,6 @@ class AndroidAppContainer(
 
     override val warlockProxyFactory: WarlockProxy.Factory =
         object : WarlockProxy.Factory {
-            override fun create(command: String): WarlockProxy {
-                return AndroidProxy(command)
-            }
+            override fun create(command: String): WarlockProxy = AndroidProxy(command)
         }
 }

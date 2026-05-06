@@ -42,11 +42,12 @@ fun VariablesView(
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
     variableRepository: VariableRepository,
+    modifier: Modifier = Modifier,
 ) {
     val currentCharacterState =
         remember(initialCharacter, characters) {
             mutableStateOf(
-                initialCharacter ?: characters.firstOrNull()
+                initialCharacter ?: characters.firstOrNull(),
             )
         }
     val currentCharacter = currentCharacterState.value
@@ -57,14 +58,15 @@ fun VariablesView(
     val characterId = currentCharacter.id
     var editingVariable by remember { mutableStateOf<VariableEntity?>(null) }
     val scope = rememberCoroutineScope()
-    val variables by variableRepository.observeCharacterVariables(characterId)
+    val variables by variableRepository
+        .observeCharacterVariables(characterId)
         .collectAsState(emptyList())
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
-            onSelect = { currentCharacterState.value = it }
+            onSelect = { currentCharacterState.value = it },
         )
         Spacer(Modifier.height(16.dp))
         Text(text = "Variables", style = MaterialTheme.typography.headlineSmall)
@@ -77,7 +79,7 @@ fun VariablesView(
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingVariable = variable }
+                                onClick = { editingVariable = variable },
                             ) {
                                 Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Edit")
                             }
@@ -86,18 +88,18 @@ fun VariablesView(
                                     scope.launch {
                                         variableRepository.delete(characterId, variable.name)
                                     }
-                                }
+                                },
                             ) {
                                 Icon(painter = painterResource(Res.drawable.delete), contentDescription = "Delete")
                             }
                         }
-                    }
+                    },
                 )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             ExtendedFloatingActionButton(
                 onClick = { editingVariable = VariableEntity(characterId, "", "") },
@@ -119,7 +121,7 @@ fun VariablesView(
                     editingVariable = null
                 }
             },
-            onClose = { editingVariable = null }
+            onClose = { editingVariable = null },
         )
     }
 }
@@ -157,6 +159,6 @@ fun EditVariableDialog(
                     label = { Text("Value") },
                 )
             }
-        }
+        },
     )
 }

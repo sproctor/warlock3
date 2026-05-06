@@ -20,7 +20,10 @@ class FakeNameRepository : NameRepository {
         TODO("Not yet implemented")
     }
 
-    override suspend fun deleteByText(characterId: String, text: String) {
+    override suspend fun deleteByText(
+        characterId: String,
+        text: String,
+    ) {
         TODO("Not yet implemented")
     }
 

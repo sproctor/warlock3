@@ -3,15 +3,25 @@ package warlockfe.warlock3.core.client
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 
-class JavaProxy(command: String) : WarlockProxy {
+class JavaProxy(
+    command: String,
+) : WarlockProxy {
     private val process = ProcessBuilder(splitCommand(command)).start()
 
     override val isAlive: Boolean
         get() = process.isAlive
     override val stdOut: Flow<String>
-        get() = process.inputStream.bufferedReader().lineSequence().asFlow()
+        get() =
+            process.inputStream
+                .bufferedReader()
+                .lineSequence()
+                .asFlow()
     override val stdErr: Flow<String>
-        get() = process.errorStream.bufferedReader().lineSequence().asFlow()
+        get() =
+            process.errorStream
+                .bufferedReader()
+                .lineSequence()
+                .asFlow()
 
     override fun close() {
         process.destroy()

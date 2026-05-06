@@ -22,42 +22,50 @@ fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
     actionHandler: (WarlockAction) -> Unit,
-): AnnotatedString {
-    return buildAnnotatedString {
-        substrings.forEach {
-            append(it.toAnnotatedString(variables, styleMap, actionHandler))
-        }
+): AnnotatedString =
+    buildAnnotatedString {
+        appendStyledString(this@toAnnotatedString, variables, styleMap, actionHandler)
     }
-}
 
-fun StyleDefinition.toSpanStyle(): SpanStyle {
-    return SpanStyle(
+fun StyleDefinition.toSpanStyle(): SpanStyle =
+    SpanStyle(
         color = textColor.toColor(),
         background = backgroundColor.toColor(),
         fontFamily = fontFamily?.let { createFontFamily(it) },
         textDecoration = if (underline) TextDecoration.Underline else null,
         fontWeight = if (bold) FontWeight.Bold else null,
         fontStyle = if (italic) FontStyle.Italic else null,
-        fontSize = fontSize?.sp ?: TextUnit.Unspecified
+        fontSize = fontSize?.sp ?: TextUnit.Unspecified,
     )
-}
 
-fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition {
-    return (styleMap[name] ?: StyleDefinition())
-}
+fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition = (styleMap[name] ?: StyleDefinition())
 
-fun StyledStringLeaf.toAnnotatedString(
+private fun AnnotatedString.Builder.appendStyledString(
+    styledString: StyledString,
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
     actionHandler: (WarlockAction) -> Unit,
-): AnnotatedString {
-    return buildAnnotatedString {
-        val style = flattenStyles(styles.map { it.toStyleDefinition(styleMap) })
+) {
+    styledString.substrings.forEach {
+        appendStyledStringLeaf(it, variables, styleMap, actionHandler)
+    }
+}
+
+private fun AnnotatedString.Builder.appendStyledStringLeaf(
+    leaf: StyledStringLeaf,
+    variables: Map<String, StyledString>,
+    styleMap: Map<String, StyleDefinition>,
+    actionHandler: (WarlockAction) -> Unit,
+) {
+    val style =
+        flattenStyles(leaf.styles.map { it.toStyleDefinition(styleMap) })
             ?.also { pushStyle(it.toSpanStyle()) }
 
-        styles.forEach { style ->
-            style.action?.let { action ->
-                val link = when (action) {
+    var linksPushed = 0
+    leaf.styles.forEach { st ->
+        st.action?.let { action ->
+            val link =
+                when (action) {
                     is WarlockAction.OpenLink ->
                         LinkAnnotation.Url(action.url)
 
@@ -66,36 +74,28 @@ fun StyledStringLeaf.toAnnotatedString(
                             actionHandler(action)
                         }
                 }
-                pushLink(link)
-            }
-        }
-        when (this@toAnnotatedString) {
-            is StyledStringSubstring -> append(text)
-            is StyledStringVariable ->
-                // TODO: break circular references
-                variables[name]?.toAnnotatedString(
-                    variables = variables,
-                    styleMap = styleMap,
-                    actionHandler = actionHandler,
-                )?.let {
-                    append(it)
-                }
-        }
-        if (style != null) {
-            pop()
-        }
-        styles.forEach { style ->
-            style.action?.let { _ -> pop() }
+            pushLink(link)
+            linksPushed++
         }
     }
+    when (leaf) {
+        is StyledStringSubstring -> append(leaf.text)
+        is StyledStringVariable ->
+            // TODO: break circular references
+            variables[leaf.name]?.let {
+                appendStyledString(it, variables, styleMap, actionHandler)
+            }
+    }
+    if (style != null) {
+        pop()
+    }
+    repeat(linksPushed) { pop() }
 }
 
 fun StyledString.getEntireLineStyles(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
-): List<StyleDefinition> {
-    return substrings.flatMap { substring -> substring.getEntireLineStyles(variables, styleMap) }
-}
+): List<StyleDefinition> = substrings.flatMap { substring -> substring.getEntireLineStyles(variables, styleMap) }
 
 fun StyledStringLeaf.getEntireLineStyles(
     variables: Map<String, StyledString>,
@@ -104,7 +104,10 @@ fun StyledStringLeaf.getEntireLineStyles(
     val entireLineStyles = styles.mapNotNull { styleMap[it.name] }.filter { it.entireLine }
     return when (this) {
         is StyledStringSubstring -> entireLineStyles
-        is StyledStringVariable -> entireLineStyles + (variables[name]?.getEntireLineStyles(variables, styleMap)
-            ?: emptyList())
+        is StyledStringVariable ->
+            entireLineStyles + (
+                variables[name]?.getEntireLineStyles(variables, styleMap)
+                    ?: emptyList()
+            )
     }
 }

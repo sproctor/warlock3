@@ -15,7 +15,9 @@ import platform.Foundation.synchronizeFile
 import platform.Foundation.writeData
 
 @OptIn(ExperimentalForeignApi::class)
-actual class PlatformBufferedWriter(path: Path) {
+actual class PlatformBufferedWriter(
+    path: Path,
+) {
     private var fileHandle: NSFileHandle? = null
 
     init {
@@ -49,6 +51,4 @@ actual class PlatformBufferedWriter(path: Path) {
     }
 }
 
-actual fun createPlatformBufferedWriter(path: Path): PlatformBufferedWriter {
-    return PlatformBufferedWriter(path)
-}
+actual fun createPlatformBufferedWriter(path: Path): PlatformBufferedWriter = PlatformBufferedWriter(path)

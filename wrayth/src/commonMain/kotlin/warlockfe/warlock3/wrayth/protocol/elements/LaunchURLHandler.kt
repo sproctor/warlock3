@@ -6,9 +6,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOpenUrlEvent
 
 class LaunchURLHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? {
-        return element.attributes["src"]?.let {
+    override fun startElement(element: StartElement): WraythEvent? =
+        element.attributes["src"]?.let {
             WraythOpenUrlEvent(it)
         }
-    }
 }

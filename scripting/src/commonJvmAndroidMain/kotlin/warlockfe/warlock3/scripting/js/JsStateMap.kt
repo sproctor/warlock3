@@ -11,41 +11,50 @@ class JsStateMap(
     private val onPut: (name: String, value: String) -> Unit,
     private val onDelete: (name: String) -> Unit,
 ) : ScriptableObject() {
-
     private val logger = Logger.withTag("JsStateMap")
 
     override fun getClassName(): String = "VariablesMap"
 
-    override fun get(name: String?, start: Scriptable?): String? {
+    override fun get(
+        name: String?,
+        start: Scriptable?,
+    ): String? {
         logger.d { "getting $name" }
         return name?.let { map.value[it] }
     }
 
-    override fun get(index: Int, start: Scriptable?): String? {
-        return get(index.toString(), start)
-    }
+    override fun get(
+        index: Int,
+        start: Scriptable?,
+    ): String? = get(index.toString(), start)
 
-    override fun get(key: Symbol?, start: Scriptable?): String? {
-        return get(key?.toString(), start)
-    }
+    override fun get(
+        key: Symbol?,
+        start: Scriptable?,
+    ): String? = get(key?.toString(), start)
 
-    override fun get(key: Any?): String? {
-        return get(key?.toString(), null)
-    }
+    override fun get(key: Any?): String? = get(key?.toString(), null)
 
-    override fun has(name: String?, start: Scriptable?): Boolean {
-        return name?.let { map.value.containsKey(it) } ?: false
-    }
+    override fun has(
+        name: String?,
+        start: Scriptable?,
+    ): Boolean = name?.let { map.value.containsKey(it) } ?: false
 
-    override fun has(index: Int, start: Scriptable?): Boolean {
-        return has(index.toString(), start)
-    }
+    override fun has(
+        index: Int,
+        start: Scriptable?,
+    ): Boolean = has(index.toString(), start)
 
-    override fun has(key: Symbol?, start: Scriptable?): Boolean {
-        return has(key?.toString(), start)
-    }
+    override fun has(
+        key: Symbol?,
+        start: Scriptable?,
+    ): Boolean = has(key?.toString(), start)
 
-    override fun put(name: String?, start: Scriptable?, value: Any?) {
+    override fun put(
+        name: String?,
+        start: Scriptable?,
+        value: Any?,
+    ) {
         if (name != null) {
             logger.d { "saving $name = $value" }
             if (value is String) {
@@ -55,11 +64,19 @@ class JsStateMap(
         }
     }
 
-    override fun put(index: Int, start: Scriptable?, value: Any?) {
+    override fun put(
+        index: Int,
+        start: Scriptable?,
+        value: Any?,
+    ) {
         put(index.toString(), start, value)
     }
 
-    override fun put(key: Symbol?, start: Scriptable?, value: Any?) {
+    override fun put(
+        key: Symbol?,
+        start: Scriptable?,
+        value: Any?,
+    ) {
         put(key?.toString(), start, value)
     }
 
@@ -78,12 +95,7 @@ class JsStateMap(
         delete(key?.toString())
     }
 
-    override fun size(): Int {
-        return map.value.size
-    }
+    override fun size(): Int = map.value.size
 
-    override fun isEmpty(): Boolean {
-        return map.value.isEmpty()
-    }
-
+    override fun isEmpty(): Boolean = map.value.isEmpty()
 }

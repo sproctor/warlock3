@@ -6,7 +6,5 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythStreamEvent
 
 class PopStreamHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythStreamEvent(id = null)
-    }
+    override fun startElement(element: StartElement): WraythEvent = WraythStreamEvent(id = null)
 }

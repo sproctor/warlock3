@@ -60,6 +60,7 @@ fun NamesView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     nameRepository: NameRepositoryImpl,
+    modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
@@ -67,12 +68,11 @@ fun NamesView(
         nameRepository.observeGlobal()
     } else {
         nameRepository.observeByCharacter(currentCharacterId)
-    }
-        .collectAsState(emptyList())
+    }.collectAsState(emptyList())
     var editingName by remember { mutableStateOf<NameEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
             characters = allCharacters,
@@ -83,7 +83,7 @@ fun NamesView(
         Text(text = "Names", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         ScrollableColumn(
-            Modifier.fillMaxWidth().weight(1f)
+            Modifier.fillMaxWidth().weight(1f),
         ) {
             names.forEach { name ->
                 ListItem(
@@ -93,13 +93,13 @@ fun NamesView(
                     leadingContent = {
                         val contentColor = name.textColor.toColor()
                         Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    color = name.backgroundColor.toColor(),
-                                    shape = MaterialTheme.shapes.small,
-                                )
-                                .border(1.dp, contentColor, MaterialTheme.shapes.small),
+                            modifier =
+                                Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        color = name.backgroundColor.toColor(),
+                                        shape = MaterialTheme.shapes.small,
+                                    ).border(1.dp, contentColor, MaterialTheme.shapes.small),
                             contentAlignment = Alignment.Center,
                         ) {
                             if (contentColor.isSpecified) {
@@ -115,7 +115,7 @@ fun NamesView(
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingName = name }
+                                onClick = { editingName = name },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.edit),
@@ -126,7 +126,7 @@ fun NamesView(
                             IconButton(
                                 onClick = {
                                     coroutineScope.launch { nameRepository.deleteById(name.id) }
-                                }
+                                },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
@@ -134,29 +134,30 @@ fun NamesView(
                                 )
                             }
                         }
-                    }
+                    },
                 )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             ExtendedFloatingActionButton(
                 onClick = {
-                    editingName = NameEntity(
-                        id = Uuid.random(),
-                        text = "",
-                        characterId = currentCharacterId ?: "global",
-                        textColor = WarlockColor.Unspecified,
-                        backgroundColor = WarlockColor.Unspecified,
-                        bold = false,
-                        italic = false,
-                        underline = false,
-                        fontFamily = null,
-                        fontSize = null,
-                        sound = null,
-                    )
+                    editingName =
+                        NameEntity(
+                            id = Uuid.random(),
+                            text = "",
+                            characterId = currentCharacterId ?: "global",
+                            textColor = WarlockColor.Unspecified,
+                            backgroundColor = WarlockColor.Unspecified,
+                            bold = false,
+                            italic = false,
+                            underline = false,
+                            fontFamily = null,
+                            fontSize = null,
+                            sound = null,
+                        )
                 },
                 icon = { Icon(painter = painterResource(Res.drawable.add), contentDescription = null) },
                 text = { Text("New name") },
@@ -172,7 +173,7 @@ fun NamesView(
                     editingName = null
                 }
             },
-            onClose = { editingName = null }
+            onClose = { editingName = null },
         )
     }
 }
@@ -200,9 +201,9 @@ fun EditNameDialog(
                             textColor = textColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
                             backgroundColor = backgroundColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
                             sound = sound.text.toString().ifBlank { null },
-                        )
+                        ),
                     )
-                }
+                },
             ) {
                 Text("OK")
             }
@@ -245,11 +246,12 @@ fun EditNameDialog(
                         state = backgroundColor,
                     )
                 }
-                val soundLauncher = rememberFilePickerLauncher { file ->
-                    if (file != null) {
-                        sound.setTextAndPlaceCursorAtEnd(file.absolutePath())
+                val soundLauncher =
+                    rememberFilePickerLauncher { file ->
+                        if (file != null) {
+                            sound.setTextAndPlaceCursorAtEnd(file.absolutePath())
+                        }
                     }
-                }
                 TextField(
                     state = sound,
                     label = { Text("Sound file") },
@@ -257,12 +259,12 @@ fun EditNameDialog(
                         IconButton(onClick = { soundLauncher.launch() }) {
                             Icon(
                                 painter = painterResource(Res.drawable.audio_file),
-                                contentDescription = "Select sound file"
+                                contentDescription = "Select sound file",
                             )
                         }
-                    }
+                    },
                 )
             }
-        }
+        },
     )
 }

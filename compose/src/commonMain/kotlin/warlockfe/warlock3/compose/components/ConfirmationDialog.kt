@@ -25,6 +25,6 @@ fun ConfirmationDialog(
             TextButton(onClick = onDismiss) {
                 Text(text = "Cancel")
             }
-        }
+        },
     )
 }

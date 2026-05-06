@@ -26,7 +26,10 @@ interface HighlightDao {
     fun observeHighlightsForCharacter(characterId: String): Flow<List<PopulatedHighlight>>
 
     @Query("DELETE FROM Highlight WHERE pattern = :pattern AND characterId = :characterId")
-    suspend fun deleteByPattern(pattern: String, characterId: String)
+    suspend fun deleteByPattern(
+        pattern: String,
+        characterId: String,
+    )
 
     @Query("DELETE FROM Highlight WHERE id = :id")
     suspend fun deleteById(id: Uuid)
@@ -39,7 +42,10 @@ interface HighlightDao {
     suspend fun save(highlightStyleEntities: List<HighlightStyleEntity>)
 
     @Transaction
-    suspend fun save(highlight: HighlightEntity, styles: List<HighlightStyleEntity>) {
+    suspend fun save(
+        highlight: HighlightEntity,
+        styles: List<HighlightStyleEntity>,
+    ) {
         save(highlight)
         save(styles)
     }

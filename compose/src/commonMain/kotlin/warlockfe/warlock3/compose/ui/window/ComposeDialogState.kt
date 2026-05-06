@@ -9,7 +9,6 @@ import warlockfe.warlock3.core.window.DialogState
 class ComposeDialogState(
     override val id: String,
 ) : DialogState {
-
     private val cachedList = mutableListOf<DialogObject>()
     private val _objects = MutableStateFlow(emptyList<DialogObject>())
     val objects = _objects.asStateFlow()

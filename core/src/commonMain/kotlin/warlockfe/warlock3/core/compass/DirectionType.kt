@@ -1,6 +1,9 @@
 package warlockfe.warlock3.core.compass
 
-enum class DirectionType(val value: String, val abbreviation: String) {
+enum class DirectionType(
+    val value: String,
+    val abbreviation: String,
+) {
     North("north", "n"),
     Northeast("northeast", "ne"),
     East("east", "e"),
@@ -11,7 +14,8 @@ enum class DirectionType(val value: String, val abbreviation: String) {
     Northwest("northwest", "nw"),
     Up("up", "up"),
     Down("down", "down"),
-    Out("out", "out");
+    Out("out", "out"),
+    ;
 
     companion object {
         fun fromAbbreviation(abbreviation: String): DirectionType? {

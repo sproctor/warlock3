@@ -5,8 +5,9 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileOutputStream
 
-actual class PlatformBufferedWriter(path: Path) {
-
+actual class PlatformBufferedWriter(
+    path: Path,
+) {
     var writer: BufferedWriter? = null
 
     init {
@@ -28,6 +29,4 @@ actual class PlatformBufferedWriter(path: Path) {
     }
 }
 
-actual fun createPlatformBufferedWriter(path: Path): PlatformBufferedWriter {
-    return PlatformBufferedWriter(path)
-}
+actual fun createPlatformBufferedWriter(path: Path): PlatformBufferedWriter = PlatformBufferedWriter(path)

@@ -10,21 +10,35 @@ import warlockfe.warlock3.core.sge.StoredConnection
 class ConnectionRepository(
     private val connectionDao: ConnectionDao,
 ) {
-    fun observeAllConnections(): Flow<List<StoredConnection>> {
-        return connectionDao.observeAllWithDetails().map { connections ->
+    fun observeAllConnections(): Flow<List<StoredConnection>> =
+        connectionDao.observeAllWithDetails().map { connections ->
             connections.map { it.toDomain() }
         }
-    }
 
     suspend fun deleteConnection(name: String) {
         connectionDao.delete(name)
     }
 
-    suspend fun rename(oldName: String, newName: String) {
+    suspend fun rename(
+        oldName: String,
+        newName: String,
+    ) {
         connectionDao.rename(oldName, newName)
     }
 
-    suspend fun save(username: String, character: String, gameCode: String, name: String) {
+    suspend fun renameById(
+        id: String,
+        newName: String,
+    ) {
+        connectionDao.renameById(id, newName)
+    }
+
+    suspend fun save(
+        username: String,
+        character: String,
+        gameCode: String,
+        name: String,
+    ) {
         connectionDao.save(
             ConnectionEntity(
                 id = "$gameCode:$character".lowercase(),
@@ -32,11 +46,9 @@ class ConnectionRepository(
                 character = character,
                 gameCode = gameCode,
                 name = name,
-            )
+            ),
         )
     }
 
-    suspend fun getByName(name: String): StoredConnection? {
-        return connectionDao.getByName(name)?.toDomain()
-    }
+    suspend fun getByName(name: String): StoredConnection? = connectionDao.getByName(name)?.toDomain()
 }

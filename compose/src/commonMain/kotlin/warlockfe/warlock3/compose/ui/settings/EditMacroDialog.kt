@@ -61,10 +61,10 @@ fun EditMacroDialog(
                     saveMacro(
                         Macro(
                             keyCombo = buildKeyCombo(selectedKey!!, modifierKeys),
-                            action = newValue.text.toString()
-                        )
+                            action = newValue.text.toString(),
+                        ),
                     )
-                }
+                },
             ) {
                 Text("Save")
             }
@@ -72,24 +72,26 @@ fun EditMacroDialog(
         text = {
             Column {
                 TextField(
-                    modifier = Modifier
-                        .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && !event.key.isModifier()) {
-                                modifierKeys = event.getKeyModifiers()
-                                selectedKey = event.key
-                            } else if (selectedKey == null) {
-                                modifierKeys = event.getKeyModifiers()
-                            }
-                            true
-                        },
+                    modifier =
+                        Modifier
+                            .onPreviewKeyEvent { event ->
+                                if (event.type == KeyEventType.KeyDown && !event.key.isModifier()) {
+                                    modifierKeys = event.getKeyModifiers()
+                                    selectedKey = event.key
+                                } else if (selectedKey == null) {
+                                    modifierKeys = event.getKeyModifiers()
+                                }
+                                true
+                            },
                     value = TextFieldValue(text = buildKeyString(selectedKey, modifierKeys)),
                     label = { Text("Key") },
                     onValueChange = {},
                     maxLines = 1,
-                    colors = TextFieldDefaults.colors(
-                        cursorColor = Color.Transparent,
-                        errorCursorColor = Color.Transparent
-                    ),
+                    colors =
+                        TextFieldDefaults.colors(
+                            cursorColor = Color.Transparent,
+                            errorCursorColor = Color.Transparent,
+                        ),
                 )
                 Spacer(Modifier.height(16.dp))
                 TextField(
@@ -98,11 +100,14 @@ fun EditMacroDialog(
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
             }
-        }
+        },
     )
 }
 
-private fun buildKeyString(key: Key?, modifierKeys: Set<String>): String {
+private fun buildKeyString(
+    key: Key?,
+    modifierKeys: Set<String>,
+): String {
     val newKey = StringBuilder()
     if (modifierKeys.contains("ctrl")) newKey.append("ctrl+")
     if (modifierKeys.contains("alt")) newKey.append("alt+")
@@ -123,12 +128,14 @@ private fun KeyEvent.getKeyModifiers(): Set<String> {
     return modifiers.toPersistentSet()
 }
 
-private fun buildKeyCombo(key: Key, modifierKeys: Set<String>): MacroKeyCombo {
-    return MacroKeyCombo(
+private fun buildKeyCombo(
+    key: Key,
+    modifierKeys: Set<String>,
+): MacroKeyCombo =
+    MacroKeyCombo(
         keyCode = key.keyCode,
         ctrl = modifierKeys.contains("ctrl"),
         alt = modifierKeys.contains("alt"),
         shift = modifierKeys.contains("shift"),
         meta = modifierKeys.contains("meta"),
     )
-}

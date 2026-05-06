@@ -5,9 +5,7 @@ import androidx.compose.ui.graphics.toArgb
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
 
-fun WarlockColor.toColor(): Color {
-    return if (isUnspecified()) Color.Unspecified else Color(argb)
-}
+fun WarlockColor.toColor(): Color = if (isUnspecified()) Color.Unspecified else Color(argb)
 
 fun Color.toWarlockColor(): WarlockColor {
     val argb: UInt = toArgb().toUInt()
@@ -20,11 +18,16 @@ fun Color.toWarlockColor(): WarlockColor {
 }
 
 fun Color.Companion.parseHexOrNull(text: String): Color? {
-    val trimmed = text.trim().removePrefix("#")
-        .takeIf { it.length == 6 || it.length == 8 }
+    val trimmed =
+        text
+            .trim()
+            .removePrefix("#")
+            .takeIf { it.length == 6 || it.length == 8 }
 
-    val argb = trimmed?.toULongOrNull(16)
-        ?.let { if (trimmed.length == 6) 0xFF000000UL or it else it }
-        ?: return null
+    val argb =
+        trimmed
+            ?.toULongOrNull(16)
+            ?.let { if (trimmed.length == 6) 0xFF000000UL or it else it }
+            ?: return null
     return Color(argb.toLong())
 }

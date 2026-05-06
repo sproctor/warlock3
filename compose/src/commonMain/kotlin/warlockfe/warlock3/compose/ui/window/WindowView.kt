@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import co.touchlab.kermit.Logger
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
@@ -79,7 +81,6 @@ import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
-import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
@@ -93,20 +94,20 @@ import warlockfe.warlock3.core.window.WindowLocation
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WindowView(
-    modifier: Modifier,
-    headerModifier: Modifier,
     uiState: WindowUiState,
     location: WindowLocation,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
     menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?,
-    onCloseClicked: () -> Unit,
+    onActionClick: (WarlockAction) -> Int?,
+    onCloseClick: () -> Unit,
     saveStyle: (StyleDefinition) -> Unit,
-    onSelected: () -> Unit,
+    onSelect: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    headerModifier: Modifier = Modifier,
     clearStream: () -> Unit,
 ) {
     val window by uiState.windowInfo
@@ -116,16 +117,15 @@ fun WindowView(
     val title = (window?.title ?: uiState.name) + (window?.subtitle ?: "")
     var viewportHeight by remember { mutableIntStateOf(0) }
     Surface(
-        modifier.padding(2.dp)
+        modifier
+            .padding(2.dp)
             .onLayoutRectChanged { bounds ->
                 viewportHeight = bounds.height
-            }
-            .onFocusChanged { focusState ->
+            }.onFocusChanged { focusState ->
                 if (focusState.hasFocus) {
-                    onSelected()
+                    onSelect()
                 }
-            }
-            .semantics {
+            }.semantics {
                 paneTitle = title
             },
         shape = MaterialTheme.shapes.extraSmall,
@@ -133,12 +133,15 @@ fun WindowView(
     ) {
         Column {
             WindowHeader(
-                modifier = headerModifier
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest
-                        else MaterialTheme.colorScheme.surfaceContainer
-                    )
-                    .fillMaxWidth(),
+                modifier =
+                    headerModifier
+                        .background(
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainer
+                            },
+                        ).fillMaxWidth(),
                 title = {
                     Text(
                         text = title,
@@ -150,39 +153,46 @@ fun WindowView(
                 },
                 location = location,
                 isSelected = isSelected,
-                onSettingsClicked = { showWindowSettingsDialog = true },
-                onClearClicked = clearStream,
-                onCloseClicked = onCloseClicked,
+                onSettingsClick = { showWindowSettingsDialog = true },
+                onClearClick = clearStream,
+                onCloseClick = onCloseClick,
             )
 
             when (val data = uiState.data) {
                 is StreamWindowData ->
                     WindowViewContent(
-                        modifier = Modifier.addTextContextMenuOptions(
-                            windowLocation = location,
-                            showSettingsDialog = { showWindowSettingsDialog = true },
-                            onClearClicked = clearStream,
-                            onCloseClicked = onCloseClicked,
-                        ),
+                        modifier =
+                            Modifier.addTextContextMenuOptions(
+                                windowLocation = location,
+                                showSettingsDialog = { showWindowSettingsDialog = true },
+                                onClearClick = clearStream,
+                                onCloseClick = onCloseClick,
+                            ),
                         stream = data.stream,
                         scrollState = scrollState,
                         style = uiState.style.mergeWith(defaultStyle),
                         openWindows = openWindows,
                         menuData = menuData,
-                        onActionClicked = onActionClicked,
+                        onActionClick = onActionClick,
                     )
 
                 is DialogWindowData -> {
                     ScrollableColumn(
-                        Modifier.fillMaxSize()
-                            .background(uiState.style.mergeWith(defaultStyle).backgroundColor.toColor())
+                        Modifier
+                            .fillMaxSize()
+                            .background(
+                                uiState.style
+                                    .mergeWith(defaultStyle)
+                                    .backgroundColor
+                                    .toColor(),
+                            ),
                     ) {
                         val dataObjects by data.dialogData.objects.collectAsState()
                         DialogContent(
                             dataObjects = dataObjects,
                             modifier = Modifier.padding(8.dp),
                             executeCommand = { command ->
-                                onActionClicked(WarlockAction.SendCommand(command))
+                                onActionClick(WarlockAction.SendCommand(command))
                             },
                             style = uiState.style.mergeWith(defaultStyle),
                         )
@@ -205,6 +215,7 @@ fun WindowView(
         )
     }
 
+    val currentHandledScrollEvent by rememberUpdatedState(handledScrollEvent)
     LaunchedEffect(scrollEvents) {
         if (isSelected) {
             val event = scrollEvents.firstOrNull()
@@ -229,7 +240,7 @@ fun WindowView(
                         scrollState.scrollToItem(0)
                     }
                 }
-                handledScrollEvent(event)
+                currentHandledScrollEvent(event)
             }
         }
     }
@@ -239,40 +250,37 @@ fun WindowView(
 private fun Modifier.addTextContextMenuOptions(
     windowLocation: WindowLocation,
     showSettingsDialog: () -> Unit,
-    onClearClicked: () -> Unit,
-    onCloseClicked: () -> Unit,
-): Modifier {
-    return this.appendTextContextMenuComponents {
+    onClearClick: () -> Unit,
+    onCloseClick: () -> Unit,
+): Modifier =
+    this.appendTextContextMenuComponents {
         separator()
         addItem(key = SettingsContextMenuItemKey, label = "Window settings ...") {
             showSettingsDialog()
             close()
         }
         addItem(key = ClearContextMenuItemKey, label = "Clear window") {
-            onClearClicked()
+            onClearClick()
             close()
         }
         if (windowLocation != WindowLocation.MAIN) {
             addItem(key = CloseContextMenuItemKey, label = "Hide window") {
-                onCloseClicked()
+                onCloseClick()
                 close()
             }
         }
     }
-}
 
 @Composable
 private fun WindowViewContent(
-    modifier: Modifier,
     stream: ComposeTextStream,
     scrollState: LazyListState,
     style: StyleDefinition,
     openWindows: List<String>,
     menuData: WarlockMenuData?,
-    onActionClicked: (WarlockAction) -> Int?
+    onActionClick: (WarlockAction) -> Int?,
+    modifier: Modifier = Modifier,
 ) {
-    val logger = LocalLogger.current
-
     val backgroundColor = style.backgroundColor.toColor()
     val textColor = style.textColor.toColor()
     val fontFamily = style.fontFamily?.let { createFontFamily(it) }
@@ -283,10 +291,11 @@ private fun WindowViewContent(
     var clickOffset by remember { mutableStateOf<Offset?>(null) }
     var openMenuId by remember { mutableStateOf<Int?>(null) }
 
+    val currentOnActionClick by rememberUpdatedState(onActionClick)
     DisposableEffect(stream) {
         stream.actionHandler = { action ->
-            logger.d { "action clicked: $action" }
-            openMenuId = onActionClicked(action)
+            Logger.d { "action clicked: $action" }
+            openMenuId = currentOnActionClick(action)
         }
         onDispose {
             stream.actionHandler = null
@@ -296,55 +305,65 @@ private fun WindowViewContent(
     SelectionContainer(modifier = modifier) {
         Box {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-                    .padding(vertical = 4.dp)
-                    .semantics {
-                        isTraversalGroup = true
-                        liveRegion = LiveRegionMode.Polite
-                    },
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(backgroundColor)
+                        .padding(vertical = 4.dp)
+                        .semantics {
+                            isTraversalGroup = true
+                            liveRegion = LiveRegionMode.Polite
+                        },
                 state = scrollState,
             ) {
                 items(
                     count = lines.size,
-                    key = { index -> lines[index].serialNumber }
+                    key = { index -> lines[index].serialNumber },
                 ) { index ->
                     when (val line = lines[index]) {
                         is StreamTextLine -> {
-                            if (line.text != null && line.isShowing(openWindows) && (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))) {
+                            if (line.text != null &&
+                                line.isShowing(openWindows) &&
+                                (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))
+                            ) {
                                 var positionInParent by remember { mutableStateOf(Offset.Zero) }
                                 Box(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .onGloballyPositioned {
-                                            positionInParent = it.positionInParent()
-                                        }
-                                        .background(
-                                            line.entireLineStyle?.backgroundColor?.toColor()
-                                                ?: Color.Unspecified
-                                        )
-                                        .padding(start = 4.dp, end = 8.dp /* width of scrollbar */)
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .onGloballyPositioned {
+                                                positionInParent = it.positionInParent()
+                                            }.background(
+                                                line.entireLineStyle?.backgroundColor?.toColor()
+                                                    ?: Color.Unspecified,
+                                                // end = scrollbar width
+                                            ).padding(start = 4.dp, end = 8.dp),
                                 ) {
                                     BasicText(
-                                        modifier = Modifier
-                                            .pointerInput(Unit) {
-                                                awaitPointerEventScope {
-                                                    while (true) {
-                                                        val event = awaitPointerEvent()
-                                                        if (event.type == PointerEventType.Press) {
-                                                            logger.d { "Click: $event" }
-                                                            clickOffset = event.changes.firstOrNull()
-                                                                ?.position?.let { it + positionInParent }
+                                        modifier =
+                                            Modifier
+                                                .pointerInput(Unit) {
+                                                    awaitPointerEventScope {
+                                                        while (true) {
+                                                            val event = awaitPointerEvent()
+                                                            if (event.type == PointerEventType.Press) {
+                                                                Logger.d { "Click: $event" }
+                                                                clickOffset =
+                                                                    event.changes
+                                                                        .firstOrNull()
+                                                                        ?.position
+                                                                        ?.let { it + positionInParent }
+                                                            }
                                                         }
                                                     }
-                                                }
-                                            },
+                                                },
                                         text = line.text,
-                                        style = TextStyle(
-                                            color = textColor,
-                                            fontFamily = fontFamily,
-                                            fontSize = fontSize
-                                        ),
+                                        style =
+                                            TextStyle(
+                                                color = textColor,
+                                                fontFamily = fontFamily,
+                                                fontSize = fontSize,
+                                            ),
                                     )
                                 }
                             }
@@ -353,31 +372,39 @@ private fun WindowViewContent(
                         is StreamImageLine -> {
                             val defaultHeight = 80.dp
                             Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
-                                val painter = rememberAsyncImagePainter(
-                                    ImageRequest.Builder(LocalPlatformContext.current)
-                                        .data(line.url)
-                                        .size(Size.ORIGINAL)
-                                        .build()
-                                )
+                                val painter =
+                                    rememberAsyncImagePainter(
+                                        ImageRequest
+                                            .Builder(LocalPlatformContext.current)
+                                            .data(line.url)
+                                            .size(Size.ORIGINAL)
+                                            .build(),
+                                    )
                                 val painterState by painter.state.collectAsState()
                                 when (val state = painterState) {
                                     is AsyncImagePainter.State.Success -> {
                                         val interactionSource = remember { MutableInteractionSource() }
                                         val hovered by interactionSource.collectIsHoveredAsState()
-                                        LocalLogger.current.d { "Hovered: $hovered" }
-                                        val height = if (hovered) {
-                                            with(LocalDensity.current) {
-                                                max(state.result.image.height.toDp(), defaultHeight)
+                                        Logger.d { "Hovered: $hovered" }
+                                        val height =
+                                            if (hovered) {
+                                                with(LocalDensity.current) {
+                                                    max(
+                                                        state.result.image.height
+                                                            .toDp(),
+                                                        defaultHeight,
+                                                    )
+                                                }
+                                            } else {
+                                                defaultHeight
                                             }
-                                        } else {
-                                            defaultHeight
-                                        }
                                         Image(
-                                            modifier = Modifier
-                                                .hoverable(interactionSource)
-                                                .wrapContentSize(unbounded = true, align = Alignment.TopStart)
-                                                .animateContentSize()
-                                                .height(height),
+                                            modifier =
+                                                Modifier
+                                                    .hoverable(interactionSource)
+                                                    .wrapContentSize(unbounded = true, align = Alignment.TopStart)
+                                                    .animateContentSize()
+                                                    .height(height),
                                             painter = painter,
                                             contentDescription = null,
                                         )
@@ -393,8 +420,10 @@ private fun WindowViewContent(
             VerticalScrollbar(
                 adapter = rememberScrollbarAdapter(scrollState),
                 style = defaultScrollbarStyle(),
-                modifier = Modifier.align(Alignment.CenterEnd)
-                    .fillMaxHeight(),
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight(),
             )
         }
     }
@@ -433,7 +462,6 @@ private fun ActionContextMenu(
     menuData: WarlockMenuData,
     onDismiss: () -> Unit,
 ) {
-    val logger = LocalLogger.current
     val scope = rememberCoroutineScope()
     DropdownMenu(
         offset = offset?.let { with(LocalDensity.current) { DpOffset(it.x.toDp(), it.y.toDp()) } } ?: DpOffset.Zero,
@@ -446,7 +474,7 @@ private fun ActionContextMenu(
             val items = groups[category]!!
             if (!category.contains('_')) {
                 items.forEach { item ->
-                    logger.d { "Menu item: $item" }
+                    Logger.d { "Menu item: $item" }
                     DropdownMenuItem(
                         text = {
                             Text(item.label)
@@ -456,7 +484,7 @@ private fun ActionContextMenu(
                                 item.action()
                                 onDismiss()
                             }
-                        }
+                        },
                     )
                 }
             } else {
@@ -468,7 +496,7 @@ private fun ActionContextMenu(
                     onClick = { expanded = true },
                     trailingIcon = {
                         Icon(painter = painterResource(Res.drawable.arrow_right), contentDescription = "expandable")
-                    }
+                    },
                 )
                 DropdownMenu(
                     expanded = expanded,
@@ -485,7 +513,7 @@ private fun ActionContextMenu(
                                     item.action()
                                     onDismiss()
                                 }
-                            }
+                            },
                         )
                     }
                     val subcatories = subgroups.keys.filterNotNull().sorted()
@@ -499,9 +527,9 @@ private fun ActionContextMenu(
                             trailingIcon = {
                                 Icon(
                                     painter = painterResource(Res.drawable.arrow_right),
-                                    contentDescription = "expandable"
+                                    contentDescription = "expandable",
                                 )
-                            }
+                            },
                         )
                         DropdownMenu(
                             expanded = expanded,
@@ -517,7 +545,7 @@ private fun ActionContextMenu(
                                             item.action()
                                             onDismiss()
                                         }
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -528,11 +556,16 @@ private fun ActionContextMenu(
     }
 }
 
-private fun StreamTextLine.isShowing(openWindows: List<String>): Boolean {
-    return this.showWhenClosed == null || openWindows.none { it == this.showWhenClosed }
-}
+private fun StreamTextLine.isShowing(openWindows: List<String>): Boolean =
+    this.showWhenClosed == null ||
+        openWindows.none {
+            it == this.showWhenClosed
+        }
 
-private fun List<StreamLine>.isPreviousPrompt(index: Int, openWindows: List<String>): Boolean {
+private fun List<StreamLine>.isPreviousPrompt(
+    index: Int,
+    openWindows: List<String>,
+): Boolean {
     var currentIndex = index - 1
     while (currentIndex >= 0) {
         val line = this[currentIndex] as? StreamTextLine ?: return false

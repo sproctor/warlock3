@@ -8,7 +8,6 @@ import warlockfe.warlock3.core.window.WindowInfo
 import kotlin.time.Instant
 
 interface WarlockClient {
-
     val eventFlow: SharedFlow<ClientEvent>
 
     val roundTimeEnd: StateFlow<Long?>

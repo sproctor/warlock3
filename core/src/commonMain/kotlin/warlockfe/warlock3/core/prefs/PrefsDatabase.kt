@@ -71,7 +71,7 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         AutoMigration(from = 13, to = 14),
         AutoMigration(from = 15, to = 16),
         AutoMigration(from = 16, to = 17),
-    ]
+    ],
 )
 @TypeConverters(DatabaseConverters::class)
 @ConstructedBy(PrefsDatabaseConstructor::class)
@@ -80,19 +80,33 @@ abstract class PrefsDatabase : RoomDatabase() {
     class AutoMigration12 : AutoMigrationSpec
 
     abstract fun accountDao(): AccountDao
+
     abstract fun aliasDao(): AliasDao
+
     abstract fun alterationDao(): AlterationDao
+
     abstract fun characterDao(): CharacterDao
+
     abstract fun characterSettingDao(): CharacterSettingDao
+
     abstract fun connectionDao(): ConnectionDao
+
     abstract fun connectionSettingDao(): ConnectionSettingDao
+
     abstract fun clientSettingDao(): ClientSettingDao
+
     abstract fun highlightDao(): HighlightDao
+
     abstract fun macroDao(): MacroDao
+
     abstract fun nameDao(): NameDao
+
     abstract fun presetStyleDao(): PresetStyleDao
+
     abstract fun scriptDirDao(): ScriptDirDao
+
     abstract fun variableDao(): VariableDao
+
     abstract fun windowSettingsDao(): WindowSettingsDao
 }
 

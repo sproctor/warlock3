@@ -11,10 +11,19 @@ plugins {
 
 android {
     namespace = "warlockfe.warlock3.android"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.compileSdk
+            .get()
+            .toInt()
     defaultConfig {
-        minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
+        targetSdk =
+            libs.versions.targetSdk
+                .get()
+                .toInt()
         applicationId = "warlockfe.warlock3"
         versionCode = 1
         versionName = version.toString()
@@ -37,7 +46,7 @@ android {
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
 //            if (project.hasProperty("RELEASE_STORE_FILE")) {
 //                signingConfig = signingConfigs.getByName("release")
@@ -49,20 +58,24 @@ android {
         }
     }
     kotlin {
-        jvmToolchain(libs.versions.jvmToolchainVersion.get().toInt())
+        jvmToolchain(
+            libs.versions.jvmToolchainVersion
+                .get()
+                .toInt(),
+        )
     }
     buildFeatures {
         buildConfig = true
     }
 }
 
-//project.findProperty("ANDROID_PUBLISHER_CREDENTIALS")?.let { filename ->
+// project.findProperty("ANDROID_PUBLISHER_CREDENTIALS")?.let { filename ->
 //    play {
 //        track.set("internal") //'alpha','beta' or 'production'
 //        serviceAccountCredentials.set(file(filename.toString()))
 //        defaultToAppBundles.set(true)
 //    }
-//}
+// }
 
 dependencies {
     implementation(project(":core"))

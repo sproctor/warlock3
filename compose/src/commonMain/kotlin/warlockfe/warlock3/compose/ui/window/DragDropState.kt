@@ -29,7 +29,12 @@ class DragDropState {
 
     val isDragging: Boolean get() = draggedItem != null
 
-    fun startDrag(item: WindowUiState, location: WindowLocation, index: Int, offset: Offset) {
+    fun startDrag(
+        item: WindowUiState,
+        location: WindowLocation,
+        index: Int,
+        offset: Offset,
+    ) {
         draggedItem = item
         sourceLocation = location
         sourceIndex = index
@@ -47,16 +52,17 @@ class DragDropState {
         val source = sourceLocation ?: return null
         val target = dropTarget
 
-        val result = if (target != null && target.location != WindowLocation.MAIN) {
-            DropResult(
-                name = item.name,
-                sourceLocation = source,
-                sourceIndex = sourceIndex,
-                target = target,
-            )
-        } else {
-            null
-        }
+        val result =
+            if (target != null && target.location != WindowLocation.MAIN) {
+                DropResult(
+                    name = item.name,
+                    sourceLocation = source,
+                    sourceIndex = sourceIndex,
+                    target = target,
+                )
+            } else {
+                null
+            }
 
         clearState()
         return result
@@ -66,7 +72,12 @@ class DragDropState {
         clearState()
     }
 
-    fun registerSection(location: WindowLocation, bounds: Rect, itemBounds: List<Rect>, isVertical: Boolean) {
+    fun registerSection(
+        location: WindowLocation,
+        bounds: Rect,
+        itemBounds: List<Rect>,
+        isVertical: Boolean,
+    ) {
         sectionBounds[location] = SectionInfo(bounds, itemBounds, isVertical)
     }
 
@@ -85,11 +96,12 @@ class DragDropState {
                 return DropTarget(location, 0)
             }
 
-            val insertionIndex = if (info.isVertical) {
-                computeInsertionIndex(info.itemBounds) { it.center.y < pointer.y }
-            } else {
-                computeInsertionIndex(info.itemBounds) { it.center.x < pointer.x }
-            }
+            val insertionIndex =
+                if (info.isVertical) {
+                    computeInsertionIndex(info.itemBounds) { it.center.y < pointer.y }
+                } else {
+                    computeInsertionIndex(info.itemBounds) { it.center.x < pointer.x }
+                }
 
             return DropTarget(location, insertionIndex)
         }
@@ -118,9 +130,16 @@ class DragDropState {
     }
 }
 
-data class DropTarget(val location: WindowLocation, val insertionIndex: Int)
+data class DropTarget(
+    val location: WindowLocation,
+    val insertionIndex: Int,
+)
 
-data class SectionInfo(val bounds: Rect, val itemBounds: List<Rect>, val isVertical: Boolean)
+data class SectionInfo(
+    val bounds: Rect,
+    val itemBounds: List<Rect>,
+    val isVertical: Boolean,
+)
 
 data class DropResult(
     val name: String,

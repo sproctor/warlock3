@@ -43,7 +43,6 @@ class SgeViewModel(
     private val windowRegistryFactory: WindowRegistryFactory,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
-
     private val logger = Logger.withTag("SgeViewModel")
 
     private val _state = mutableStateOf<SgeViewState>(SgeViewState.SgeConnecting)
@@ -57,97 +56,102 @@ class SgeViewModel(
     private var characterName: String? = null
     private var gameCode: String? = null
 
-    val lastAccount: Flow<AccountEntity?> = flow {
-        emit(
-            clientSettingRepository.getLastUsername()?.let { username ->
-                accountRepository.getByUsername(username)
-            }
-        )
-    }
+    val lastAccount: Flow<AccountEntity?> =
+        flow {
+            emit(
+                clientSettingRepository.getLastUsername()?.let { username ->
+                    accountRepository.getByUsername(username)
+                },
+            )
+        }
 
     init {
-        job = viewModelScope.launch {
-            if (!client.connect(settings)) {
-                logger.d { "Failed to connect to server" }
-                _state.value = SgeViewState.SgeError("Failed to connect to server")
-                return@launch
-            }
-            navigate(SgeViewState.SgeAccountSelector)
-            client.eventFlow.collect { event ->
-                logger.d { "Got event: $event" }
-                when (event) {
-                    SgeEvent.SgeLoginSucceededEvent -> client.requestGameList()
-                    is SgeEvent.SgeGamesReadyEvent -> navigate(SgeViewState.SgeGameSelector(event.games))
-                    is SgeEvent.SgeGameSelectedEvent -> client.requestCharacterList()
-                    is SgeEvent.SgeCharactersReadyEvent -> {
-                        val currentState = _state.value
-                        if (currentState is SgeViewState.SgeLoadingCharacterList) {
-                            navigate(
-                                SgeViewState.SgeCharacterSelector(
-                                    currentState.game,
-                                    event.characters
+        job =
+            viewModelScope.launch {
+                if (!client.connect(settings)) {
+                    logger.d { "Failed to connect to server" }
+                    _state.value = SgeViewState.SgeError("Failed to connect to server")
+                    return@launch
+                }
+                navigate(SgeViewState.SgeAccountSelector)
+                client.eventFlow.collect { event ->
+                    logger.d { "Got event: $event" }
+                    when (event) {
+                        SgeEvent.SgeLoginSucceededEvent -> client.requestGameList()
+                        is SgeEvent.SgeGamesReadyEvent -> navigate(SgeViewState.SgeGameSelector(event.games))
+                        is SgeEvent.SgeGameSelectedEvent -> client.requestCharacterList()
+                        is SgeEvent.SgeCharactersReadyEvent -> {
+                            val currentState = _state.value
+                            if (currentState is SgeViewState.SgeLoadingCharacterList) {
+                                navigate(
+                                    SgeViewState.SgeCharacterSelector(
+                                        currentState.game,
+                                        event.characters,
+                                    ),
                                 )
-                            )
-                        } else {
-                            logger.d { "Got character list in unexpected state" }
-                        }
-                    }
-
-                    is SgeEvent.SgeErrorEvent -> {
-                        val errorMessage = when (event.errorCode) {
-                            SgeError.INVALID_PASSWORD -> "Invalid password"
-                            SgeError.INVALID_ACCOUNT -> "Invalid username"
-                            SgeError.ACCOUNT_REJECTED -> "Account is not active"
-                            SgeError.ACCOUNT_EXPIRED -> "Account payment has expired"
-                            SgeError.UNKNOWN_ERROR -> "An unknown error has occurred"
-                        }
-                        navigate(SgeViewState.SgeError(errorMessage))
-                    }
-
-                    is SgeEvent.SgeReadyToPlayEvent -> {
-                        val credentials = event.credentials
-
-                        viewModelScope.launch {
-                            username?.let {
-                                connectionRepository.save(
-                                    username = it,
-                                    character = characterName!!,
-                                    gameCode = gameCode!!,
-                                    name = "${characterName}_$gameCode",
-                                )
-                                clientSettingRepository.putLastUsername(it)
+                            } else {
+                                logger.d { "Got character list in unexpected state" }
                             }
                         }
 
-                        withContext(ioDispatcher) {
-                            try {
-                                val streamRegistry = windowRegistryFactory.create()
-                                val socket = NetworkSocket(ioDispatcher)
-                                socket.connect(credentials.host, credentials.port)
-                                val sfClient = warlockClientFactory.createClient(
-                                    windowRegistry = streamRegistry,
-                                    socket = socket,
-                                )
-                                sfClient.connect(credentials.key)
-                                val gameViewModel = gameViewModelFactory.create(
-                                    client = sfClient,
-                                    windowRegistry = streamRegistry
-                                )
-                                gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                            } catch (e: Exception) {
-                                ensureActive()
-                                gameState.setScreen(
-                                    GameScreen.ErrorState(
-                                        message = "Unknown host: ${e.message}",
-                                        returnTo = GameScreen.NewGameState,
+                        is SgeEvent.SgeErrorEvent -> {
+                            val errorMessage =
+                                when (event.errorCode) {
+                                    SgeError.INVALID_PASSWORD -> "Invalid password"
+                                    SgeError.INVALID_ACCOUNT -> "Invalid username"
+                                    SgeError.ACCOUNT_REJECTED -> "Account is not active"
+                                    SgeError.ACCOUNT_EXPIRED -> "Account payment has expired"
+                                    SgeError.UNKNOWN_ERROR -> "An unknown error has occurred"
+                                }
+                            navigate(SgeViewState.SgeError(errorMessage))
+                        }
+
+                        is SgeEvent.SgeReadyToPlayEvent -> {
+                            val credentials = event.credentials
+
+                            viewModelScope.launch {
+                                username?.let {
+                                    connectionRepository.save(
+                                        username = it,
+                                        character = characterName!!,
+                                        gameCode = gameCode!!,
+                                        name = "${characterName}_$gameCode",
                                     )
-                                )
+                                    clientSettingRepository.putLastUsername(it)
+                                }
+                            }
+
+                            withContext(ioDispatcher) {
+                                try {
+                                    val streamRegistry = windowRegistryFactory.create()
+                                    val socket = NetworkSocket(ioDispatcher)
+                                    socket.connect(credentials.host, credentials.port)
+                                    val sfClient =
+                                        warlockClientFactory.createClient(
+                                            windowRegistry = streamRegistry,
+                                            socket = socket,
+                                        )
+                                    sfClient.connect(credentials.key)
+                                    val gameViewModel =
+                                        gameViewModelFactory.create(
+                                            client = sfClient,
+                                            windowRegistry = streamRegistry,
+                                        )
+                                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                                } catch (e: Exception) {
+                                    ensureActive()
+                                    gameState.setScreen(
+                                        GameScreen.ErrorState(
+                                            message = "Unknown host: ${e.message}",
+                                            returnTo = GameScreen.NewGameState,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
     }
 
     fun accountSelected(account: AccountEntity) {
@@ -166,7 +170,10 @@ class SgeViewModel(
         }
     }
 
-    fun characterSelected(game: SgeGame, character: SgeCharacter) {
+    fun characterSelected(
+        game: SgeGame,
+        character: SgeCharacter,
+    ) {
         _state.value = SgeViewState.SgeConnectingToGame(game, character)
         characterName = character.name
         viewModelScope.launch {
@@ -204,11 +211,30 @@ class SgeViewModel(
 
 sealed interface SgeViewState {
     data object SgeConnecting : SgeViewState
+
     data object SgeAccountSelector : SgeViewState
-    data class SgeGameSelector(val games: List<SgeGame>) : SgeViewState
-    data class SgeCharacterSelector(val game: SgeGame, val characters: List<SgeCharacter>) : SgeViewState
+
+    data class SgeGameSelector(
+        val games: List<SgeGame>,
+    ) : SgeViewState
+
+    data class SgeCharacterSelector(
+        val game: SgeGame,
+        val characters: List<SgeCharacter>,
+    ) : SgeViewState
+
     data object SgeLoadingGameList : SgeViewState
-    data class SgeLoadingCharacterList(val game: SgeGame) : SgeViewState
-    data class SgeConnectingToGame(val game: SgeGame, val character: SgeCharacter) : SgeViewState
-    data class SgeError(val error: String) : SgeViewState
+
+    data class SgeLoadingCharacterList(
+        val game: SgeGame,
+    ) : SgeViewState
+
+    data class SgeConnectingToGame(
+        val game: SgeGame,
+        val character: SgeCharacter,
+    ) : SgeViewState
+
+    data class SgeError(
+        val error: String,
+    ) : SgeViewState
 }

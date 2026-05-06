@@ -4,8 +4,8 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.FontFamily
 
 @OptIn(ExperimentalTextApi::class)
-actual fun createFontFamily(familyName: String): FontFamily {
-    return when (familyName) {
+actual fun createFontFamily(familyName: String): FontFamily =
+    when (familyName) {
         "Default" -> FontFamily.Default
         "Serif" -> FontFamily.Serif
         "SansSerif" -> FontFamily.SansSerif
@@ -13,4 +13,3 @@ actual fun createFontFamily(familyName: String): FontFamily {
         "Cursive" -> FontFamily.Cursive
         else -> FontFamily(familyName)
     }
-}

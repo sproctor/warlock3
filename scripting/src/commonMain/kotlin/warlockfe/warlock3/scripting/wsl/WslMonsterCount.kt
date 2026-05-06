@@ -6,7 +6,7 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.text.StyledStringSubstring
 
 class WslMonsterCount(
-    private val client: WarlockClient
+    private val client: WarlockClient,
 ) : WslNumeric() {
     override fun toNumber(): BigDecimal {
         val roomObjs = client.getComponent("room objs") ?: return BigDecimal.ZERO

@@ -14,8 +14,8 @@ import kotlin.uuid.Uuid
             parentColumns = ["id"],
             childColumns = ["highlightId"],
             onDelete = ForeignKey.CASCADE,
-        )
-    ]
+        ),
+    ],
 )
 data class HighlightStyleEntity(
     val highlightId: Uuid,

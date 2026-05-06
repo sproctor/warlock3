@@ -63,10 +63,10 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
+import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
+import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
-import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
-import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
-import warlockfe.warlock3.core.prefs.repositories.scriptCommandPrefixKey
 import warlockfe.warlock3.core.util.LogType
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 
@@ -78,40 +78,43 @@ fun GeneralSettingsView(
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
     wraythImporter: WraythImporter,
+    modifier: Modifier = Modifier,
 ) {
-    val currentCharacterState = remember(initialCharacter, characters) {
-        mutableStateOf(initialCharacter)
-    }
+    val currentCharacterState =
+        remember(initialCharacter, characters) {
+            mutableStateOf(initialCharacter)
+        }
     val currentCharacter = currentCharacterState.value
     val currentCharacterId = currentCharacter?.id ?: "global"
     val scope = rememberCoroutineScope()
     var importResultMessages by remember { mutableStateOf(emptyList<String>()) }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
             onSelect = { currentCharacterState.value = it },
-            allowGlobal = true
+            allowGlobal = true,
         )
         Spacer(Modifier.height(16.dp))
-        val wraythSettingsFileLauncher = rememberFilePickerLauncher(
-            dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose Wrayth settings file to import"),
-        ) { platformFile ->
-            if (platformFile != null) {
-                scope.launch {
-                    importResultMessages =
-                        wraythImporter.importFile(
-                            currentCharacterId,
-                            Path(platformFile.absolutePath())
-                        )
+        val wraythSettingsFileLauncher =
+            rememberFilePickerLauncher(
+                dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose Wrayth settings file to import"),
+            ) { platformFile ->
+                if (platformFile != null) {
+                    scope.launch {
+                        importResultMessages =
+                            wraythImporter.importFile(
+                                currentCharacterId,
+                                Path(platformFile.absolutePath()),
+                            )
+                    }
                 }
             }
-        }
         Button(
             onClick = {
                 wraythSettingsFileLauncher.launch()
-            }
+            },
         ) {
             Text("Import settings from Wrayth settings file")
         }
@@ -131,7 +134,7 @@ fun GeneralSettingsView(
                             }
                         }
                     }
-                }
+                },
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -145,7 +148,7 @@ fun GeneralSettingsView(
                     .collectLatest {
                         if (maxLinesValue.text.toString() != initialMaxLines && maxLinesValue.text.isNotBlank()) {
                             clientSettingRepository.putMaxScrollLines(
-                                maxLinesValue.text.toString().toIntOrNull()
+                                maxLinesValue.text.toString().toIntOrNull(),
                             )
                         }
                     }
@@ -161,22 +164,24 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
-            val markLinks by clientSettingRepository.observeMarkLinks()
+            val markLinks by clientSettingRepository
+                .observeMarkLinks()
                 .collectAsState(initial = true)
             Row(
-                modifier = Modifier.toggleable(
-                    value = markLinks,
-                    onValueChange = {
-                        scope.launch {
-                            clientSettingRepository.putMarkLinks(it)
-                        }
-                    },
-                    role = Role.Switch,
-                )
+                modifier =
+                    Modifier.toggleable(
+                        value = markLinks,
+                        onValueChange = {
+                            scope.launch {
+                                clientSettingRepository.putMarkLinks(it)
+                            }
+                        },
+                        role = Role.Switch,
+                    ),
             ) {
                 Switch(
                     checked = markLinks,
-                    onCheckedChange = null
+                    onCheckedChange = null,
                 )
                 Spacer(Modifier.width(16.dp))
                 Text("Mark links in text")
@@ -184,22 +189,24 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
-            val showImages by clientSettingRepository.observeShowImages()
+            val showImages by clientSettingRepository
+                .observeShowImages()
                 .collectAsState(initial = true)
             Row(
-                modifier = Modifier.toggleable(
-                    value = showImages,
-                    onValueChange = {
-                        scope.launch {
-                            clientSettingRepository.putShowImages(it)
-                        }
-                    },
-                    role = Role.Switch,
-                )
+                modifier =
+                    Modifier.toggleable(
+                        value = showImages,
+                        onValueChange = {
+                            scope.launch {
+                                clientSettingRepository.putShowImages(it)
+                            }
+                        },
+                        role = Role.Switch,
+                    ),
             ) {
                 Switch(
                     checked = showImages,
-                    onCheckedChange = null
+                    onCheckedChange = null,
                 )
                 Spacer(Modifier.width(16.dp))
                 Text("Show images in stream")
@@ -208,15 +215,15 @@ fun GeneralSettingsView(
             Spacer(Modifier.height(16.dp))
 
             if (currentCharacterId != "global") {
-                val maxTypeAheadState = rememberTextFieldState(defaultMaxTypeAhead.toString())
+                val maxTypeAheadState = rememberTextFieldState(DEFAULT_MAX_TYPE_AHEAD.toString())
                 var maxTypeAheadError by remember { mutableStateOf<String?>(null) }
                 LaunchedEffect(maxTypeAheadState) {
                     val initialMaxTypeAhead =
-                        characterSettingsRepository.observe(
-                            characterId = currentCharacterId,
-                            key = maxTypeAheadKey
-                        )
-                            .first()
+                        characterSettingsRepository
+                            .observe(
+                                characterId = currentCharacterId,
+                                key = MAX_TYPE_AHEAD_KEY,
+                            ).first()
                     if (initialMaxTypeAhead != null) {
                         maxTypeAheadState.setTextAndPlaceCursorAtEnd(initialMaxTypeAhead)
                     }
@@ -232,8 +239,8 @@ fun GeneralSettingsView(
                                 scope.launch {
                                     characterSettingsRepository.save(
                                         characterId = currentCharacterId,
-                                        key = maxTypeAheadKey,
-                                        value = it
+                                        key = MAX_TYPE_AHEAD_KEY,
+                                        value = it,
                                     )
                                 }
                             }
@@ -254,7 +261,7 @@ fun GeneralSettingsView(
                         if (maxTypeAheadError != null) {
                             Icon(
                                 painterResource(Res.drawable.error_filled),
-                                contentDescription = null
+                                contentDescription = null,
                             )
                         }
                     },
@@ -266,7 +273,8 @@ fun GeneralSettingsView(
 
                 val scriptCommandPrefixState = rememberTextFieldState(".")
                 LaunchedEffect(currentCharacterId) {
-                    characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)
+                    characterSettingsRepository
+                        .get(currentCharacterId, SCRIPT_COMMAND_PREFIX_KEY)
                         ?.let { prefix ->
                             scriptCommandPrefixState.setTextAndPlaceCursorAtEnd(prefix)
                         }
@@ -281,12 +289,12 @@ fun GeneralSettingsView(
                 )
                 LaunchedEffect(scriptCommandPrefixState.text) {
                     val initialScriptCommandPrefix =
-                        characterSettingsRepository.get(currentCharacterId, scriptCommandPrefixKey)
+                        characterSettingsRepository.get(currentCharacterId, SCRIPT_COMMAND_PREFIX_KEY)
                     if (scriptCommandPrefixState.text.toString() != initialScriptCommandPrefix) {
                         characterSettingsRepository.save(
                             characterId = currentCharacterId,
-                            scriptCommandPrefixKey,
-                            scriptCommandPrefixState.text.toString()
+                            SCRIPT_COMMAND_PREFIX_KEY,
+                            scriptCommandPrefixState.text.toString(),
                         )
                     }
                 }
@@ -295,19 +303,20 @@ fun GeneralSettingsView(
 
             Text("Script directories", style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
-            val scriptDirs by scriptDirRepository.observeScriptDirs(characterId = currentCharacterId)
+            val scriptDirs by scriptDirRepository
+                .observeScriptDirs(characterId = currentCharacterId)
                 .collectAsState(emptyList())
             Column(
-                Modifier.border(
-                    Dp.Hairline,
-                    MaterialTheme.colorScheme.outline,
-                    MaterialTheme.shapes.medium
-                )
-                    .padding(8.dp)
-                    .fillMaxWidth()
+                Modifier
+                    .border(
+                        Dp.Hairline,
+                        MaterialTheme.colorScheme.outline,
+                        MaterialTheme.shapes.medium,
+                    ).padding(8.dp)
+                    .fillMaxWidth(),
             ) {
                 ListItem(
-                    headlineContent = { Text(scriptDirRepository.getDefaultDir()) }
+                    headlineContent = { Text(scriptDirRepository.getDefaultDir()) },
                 )
                 scriptDirs.forEach { scriptDir ->
                     ListItem(
@@ -320,14 +329,14 @@ fun GeneralSettingsView(
                                     scope.launch {
                                         scriptDirRepository.delete(
                                             characterId = currentCharacterId,
-                                            path = scriptDir
+                                            path = scriptDir,
                                         )
                                     }
-                                }
+                                },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
-                                    contentDescription = "Delete"
+                                    contentDescription = "Delete",
                                 )
                             }
                         },
@@ -335,19 +344,20 @@ fun GeneralSettingsView(
                 }
             }
 
-            val scriptDirLauncher = rememberDirectoryPickerLauncher(
-                dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a script directory"),
-            ) { directory ->
-                if (directory != null) {
-                    scope.launch {
-                        scriptDirRepository.save(currentCharacterId, directory.absolutePath())
+            val scriptDirLauncher =
+                rememberDirectoryPickerLauncher(
+                    dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a script directory"),
+                ) { directory ->
+                    if (directory != null) {
+                        scope.launch {
+                            scriptDirRepository.save(currentCharacterId, directory.absolutePath())
+                        }
                     }
                 }
-            }
             Button(
                 onClick = {
                     scriptDirLauncher.launch()
-                }
+                },
             ) {
                 Text("Add a directory")
             }
@@ -374,7 +384,7 @@ fun GeneralSettingsView(
                     ) {
                         RadioButton(
                             selected = currentTheme == entry,
-                            onClick = null
+                            onClick = null,
                         )
                         Text(
                             text = entry.name,
@@ -405,22 +415,24 @@ fun GeneralSettingsView(
             ) {
                 Text("Use default skin")
             }
-            val skinFileLauncher = rememberFilePickerLauncher(
-                dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a skin file"),
-                directory = currentSkin
-                    //?.takeIf { File(it).exists() }
-                    ?.let { PlatformFile(it) }
-            ) { file ->
-                if (file != null) {
-                    scope.launch {
-                        clientSettingRepository.putSkinFile(file.absolutePath())
+            val skinFileLauncher =
+                rememberFilePickerLauncher(
+                    dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a skin file"),
+                    directory =
+                        currentSkin
+                            // ?.takeIf { File(it).exists() }
+                            ?.let { PlatformFile(it) },
+                ) { file ->
+                    if (file != null) {
+                        scope.launch {
+                            clientSettingRepository.putSkinFile(file.absolutePath())
+                        }
                     }
                 }
-            }
             Button(
                 onClick = {
                     skinFileLauncher.launch()
-                }
+                },
             ) {
                 Text("Change skin")
             }
@@ -436,20 +448,21 @@ fun GeneralSettingsView(
                     onValueChange = {},
                     singleLine = true,
                 )
-                val loggingDirectoryLauncher = rememberDirectoryPickerLauncher(
-                    dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a base logging directory"),
-                    directory = PlatformFile(loggingSettings!!.basePath)
-                ) { directory ->
-                    if (directory != null) {
-                        scope.launch {
-                            clientSettingRepository.putLoggingPath(directory.absolutePath())
+                val loggingDirectoryLauncher =
+                    rememberDirectoryPickerLauncher(
+                        dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose a base logging directory"),
+                        directory = PlatformFile(loggingSettings!!.basePath),
+                    ) { directory ->
+                        if (directory != null) {
+                            scope.launch {
+                                clientSettingRepository.putLoggingPath(directory.absolutePath())
+                            }
                         }
                     }
-                }
                 Button(
                     onClick = {
                         loggingDirectoryLauncher.launch()
-                    }
+                    },
                 ) {
                     Text("Change directory")
                 }
@@ -458,22 +471,23 @@ fun GeneralSettingsView(
                 Column(Modifier.selectableGroup()) {
                     LogType.entries.forEach { entry ->
                         Row(
-                            modifier = Modifier
-                                .height(48.dp)
-                                .selectable(
-                                    selected = loggingSettings!!.type == entry,
-                                    onClick = {
-                                        scope.launch {
-                                            clientSettingRepository.putLoggingType(entry)
-                                        }
-                                    },
-                                    role = Role.RadioButton,
-                                ),
+                            modifier =
+                                Modifier
+                                    .height(48.dp)
+                                    .selectable(
+                                        selected = loggingSettings!!.type == entry,
+                                        onClick = {
+                                            scope.launch {
+                                                clientSettingRepository.putLoggingType(entry)
+                                            }
+                                        },
+                                        role = Role.RadioButton,
+                                    ),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(
                                 selected = loggingSettings!!.type == entry,
-                                onClick = null
+                                onClick = null,
                             )
                             Text(
                                 text = entry.name,
@@ -485,16 +499,17 @@ fun GeneralSettingsView(
                 }
 
                 Row(
-                    modifier = Modifier
-                        .toggleable(
-                            value = loggingSettings!!.logTimestamps,
-                            onValueChange = {
-                                scope.launch {
-                                    clientSettingRepository.putLoggingTimestamps(it)
-                                }
-                            },
-                            role = Role.Switch,
-                        ),
+                    modifier =
+                        Modifier
+                            .toggleable(
+                                value = loggingSettings!!.logTimestamps,
+                                onValueChange = {
+                                    scope.launch {
+                                        clientSettingRepository.putLoggingTimestamps(it)
+                                    }
+                                },
+                                role = Role.Switch,
+                            ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Switch(

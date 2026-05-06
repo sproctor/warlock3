@@ -65,14 +65,14 @@ import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
+import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.defaultMaxTypeAhead
 import warlockfe.warlock3.core.prefs.repositories.defaultStyles
-import warlockfe.warlock3.core.prefs.repositories.maxTypeAheadKey
-import warlockfe.warlock3.core.prefs.repositories.scriptCommandPrefixKey
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
@@ -85,7 +85,7 @@ import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import kotlin.time.Instant
 
-const val clientCommandPrefix = '/'
+const val CLIENT_COMMAND_PREFIX = '/'
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -99,8 +99,8 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val windowRegistry: WindowRegistry,
     private val ioDispatcher: CoroutineDispatcher,
-) : ViewModel(), MacroHandler {
-
+) : ViewModel(),
+    MacroHandler {
     private val logger = Logger.withTag("GameViewModel")
 
     val entryTextState = TextFieldState()
@@ -127,146 +127,166 @@ class GameViewModel(
     // Saved by macros
     private var storedText: String = ""
 
-    val character = combine(
-        client.characterId,
-        client.gameName,
-        client.characterName,
-    ) { characterId, game, character ->
-        if (characterId != null && game != null && character != null) {
-            GameCharacter(id = characterId, gameCode = game, name = character)
-        } else {
-            null
+    val character =
+        combine(
+            client.characterId,
+            client.gameName,
+            client.characterName,
+        ) { characterId, game, character ->
+            if (characterId != null && game != null && character != null) {
+                GameCharacter(id = characterId, gameCode = game, name = character)
+            } else {
+                null
+            }
         }
-    }
 
-    val windowSettings = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            windowSettingsRepository.observeWindowSettings(characterId)
-        } else {
-            flow {}
-        }
-    }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val windowSettings =
+        client.characterId
+            .flatMapLatest { characterId ->
+                if (characterId != null) {
+                    windowSettingsRepository.observeWindowSettings(characterId)
+                } else {
+                    flow {}
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Lazily,
+                initialValue = emptyList(),
+            )
 
-    val openWindows = windowSettings.map { currentWindowSettings ->
-        currentWindowSettings.mapNotNull { entity ->
-            entity.takeIf { it.position != null }?.name
+    val openWindows =
+        windowSettings.map { currentWindowSettings ->
+            currentWindowSettings.mapNotNull { entity ->
+                entity.takeIf { it.position != null }?.name
+            }
         }
-    }
 
     val windows = client.windowInfo
 
-    val scriptCommandPrefix = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            characterSettingsRepository.observe(characterId = characterId, key = scriptCommandPrefixKey)
-                .map { it ?: "." }
-        } else {
-            flow {}
-        }
-    }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = "."
-        )
-
-    val topHeight = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            characterSettingsRepository.observe(characterId = characterId, "topHeight")
-                .map { it?.toIntOrNull() ?: 200 }
-        } else {
-            flow { }
-        }
-    }
-
-    val bottomHeight = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            characterSettingsRepository.observe(characterId = characterId, "bottomHeight")
-                .map { it?.toIntOrNull() ?: 200 }
-        } else {
-            flow { }
-        }
-    }
-
-    val leftWidth = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            characterSettingsRepository.observe(characterId = characterId, "leftWidth")
-                .map { it?.toIntOrNull() ?: 200 }
-        } else {
-            flow { }
-        }
-    }
-
-    val rightWidth = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            characterSettingsRepository.observe(characterId = characterId, "rightWidth")
-                .map { it?.toIntOrNull() ?: 200 }
-        } else {
-            flow { }
-        }
-    }
-
-    private val macros = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            macroRepository.observeCharacterMacros(characterId)
-        } else {
-            macroRepository.observeGlobalMacros()
-        }
-            .map { macroCommands ->
-                macroCommands.associate { it.keyCombo to it.action }
-            }
-    }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyMap()
-        )
-
-    private val variables: StateFlow<Map<String, String>> =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                variableRepository.observeCharacterVariables(characterId).map { list ->
-                    list.associate { it.name to it.value }
+    val scriptCommandPrefix =
+        client.characterId
+            .flatMapLatest { characterId ->
+                if (characterId != null) {
+                    characterSettingsRepository
+                        .observe(characterId = characterId, key = SCRIPT_COMMAND_PREFIX_KEY)
+                        .map { it ?: "." }
+                } else {
+                    flow {}
                 }
-            } else {
-                flow<Map<String, String>> { }
-            }
-        }
-            .stateIn(
+            }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.Eagerly,
-                initialValue = emptyMap()
+                initialValue = ".",
             )
 
-    private val aliases: StateFlow<List<Alias>> = client.characterId.flatMapLatest { characterId ->
-        if (characterId != null) {
-            aliasRepository.observeForCharacter(characterId)
-        } else {
-            flow { }
+    val topHeight =
+        client.characterId.flatMapLatest { characterId ->
+            if (characterId != null) {
+                characterSettingsRepository
+                    .observe(characterId = characterId, "topHeight")
+                    .map { it?.toIntOrNull() ?: 200 }
+            } else {
+                flow { }
+            }
         }
-    }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyList()
-        )
+
+    val bottomHeight =
+        client.characterId.flatMapLatest { characterId ->
+            if (characterId != null) {
+                characterSettingsRepository
+                    .observe(characterId = characterId, "bottomHeight")
+                    .map { it?.toIntOrNull() ?: 200 }
+            } else {
+                flow { }
+            }
+        }
+
+    val leftWidth =
+        client.characterId.flatMapLatest { characterId ->
+            if (characterId != null) {
+                characterSettingsRepository
+                    .observe(characterId = characterId, "leftWidth")
+                    .map { it?.toIntOrNull() ?: 200 }
+            } else {
+                flow { }
+            }
+        }
+
+    val rightWidth =
+        client.characterId.flatMapLatest { characterId ->
+            if (characterId != null) {
+                characterSettingsRepository
+                    .observe(characterId = characterId, "rightWidth")
+                    .map { it?.toIntOrNull() ?: 200 }
+            } else {
+                flow { }
+            }
+        }
+
+    private val macros =
+        client.characterId
+            .flatMapLatest { characterId ->
+                if (characterId != null) {
+                    macroRepository.observeCharacterMacros(characterId)
+                } else {
+                    macroRepository.observeGlobalMacros()
+                }.map { macroCommands ->
+                    macroCommands.associate { it.keyCombo to it.action }
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyMap(),
+            )
+
+    private val variables: StateFlow<Map<String, String>> =
+        client.characterId
+            .flatMapLatest { characterId ->
+                if (characterId != null) {
+                    variableRepository.observeCharacterVariables(characterId).map { list ->
+                        list.associate { it.name to it.value }
+                    }
+                } else {
+                    flow<Map<String, String>> { }
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyMap(),
+            )
+
+    private val aliases: StateFlow<List<Alias>> =
+        client.characterId
+            .flatMapLatest { characterId ->
+                if (characterId != null) {
+                    aliasRepository.observeForCharacter(characterId)
+                } else {
+                    flow { }
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
 
     val presets = windowRegistry.presets
 
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
-    val roundTimeEnd = client.roundTimeEnd.map { roundTime ->
-        val now = getCurrentTime()
-        roundTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
-    }
-        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
+    val roundTimeEnd =
+        client.roundTimeEnd
+            .map { roundTime ->
+                val now = getCurrentTime()
+                roundTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
+            }.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
-    val castTimeEnd = client.castTimeEnd.map { castTime ->
-        val now = getCurrentTime()
-        castTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
-    }
-        .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
+    val castTimeEnd =
+        client.castTimeEnd
+            .map { castTime ->
+                val now = getCurrentTime()
+                castTime?.let { Instant.fromEpochSeconds(it, now.nanosecondsOfSecond) }
+            }.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
     private var historyPosition = 0
     private val sendHistory = mutableListOf("")
@@ -286,18 +306,20 @@ class GameViewModel(
     private val windowUiStateLists
         get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
 
-    private val _mainWindowUiState = MutableStateFlow<WindowUiState>(
-        WindowUiState(
-            name = "main",
-            windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),
-            style = defaultStyles["default"]!!,
-            data = StreamWindowData(
-                stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
+    private val _mainWindowUiState =
+        MutableStateFlow<WindowUiState>(
+            WindowUiState(
+                name = "main",
+                windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),
+                style = defaultStyles["default"]!!,
+                data =
+                    StreamWindowData(
+                        stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
+                    ),
+                width = null,
+                height = null,
             ),
-            width = null,
-            height = null,
         )
-    )
     val mainWindowUiState: StateFlow<WindowUiState> = _mainWindowUiState.asStateFlow()
 
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
@@ -318,23 +340,26 @@ class GameViewModel(
                     settings.filter { it.location != null }.forEach { entity ->
                         logger.d { "Loading entity: $entity" }
                         val window = windows.value.firstOrNull { it.name == entity.name }
-                        val uiState = WindowUiState(
-                            name = entity.name,
-                            windowInfo = mutableStateOf(window),
-                            style = entity.getStyle(),
-                            width = entity.width,
-                            height = entity.height,
-                            data = when (window?.windowType) {
-                                WindowType.STREAM -> StreamWindowData(
-                                    windowRegistry.getOrCreateStream(window.name) as ComposeTextStream,
-                                )
+                        val uiState =
+                            WindowUiState(
+                                name = entity.name,
+                                windowInfo = mutableStateOf(window),
+                                style = entity.getStyle(),
+                                width = entity.width,
+                                height = entity.height,
+                                data =
+                                    when (window?.windowType) {
+                                        WindowType.STREAM ->
+                                            StreamWindowData(
+                                                windowRegistry.getOrCreateStream(window.name) as ComposeTextStream,
+                                            )
 
-                                WindowType.DIALOG ->
-                                    DialogWindowData(windowRegistry.getOrCreateDialog(window.name) as ComposeDialogState)
+                                        WindowType.DIALOG ->
+                                            DialogWindowData(windowRegistry.getOrCreateDialog(window.name) as ComposeDialogState)
 
-                                else -> null
-                            },
-                        )
+                                        else -> null
+                                    },
+                            )
                         when (entity.location) {
                             WindowLocation.MAIN -> _mainWindowUiState.value = uiState
                             WindowLocation.TOP -> _topWindowUiStates.update { it + uiState }
@@ -345,8 +370,7 @@ class GameViewModel(
                         }
                     }
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
         windowSettings
             .onEach { currentWindowSettings ->
                 currentWindowSettings.forEach { singleWindowSettings ->
@@ -369,8 +393,7 @@ class GameViewModel(
                         }
                     }
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
         client.eventFlow
             .onEach { event ->
                 when (event) {
@@ -397,16 +420,25 @@ class GameViewModel(
                                         if (uiState.data == null) {
                                             windowUiStates.update { states ->
                                                 val mutableStates = states.toMutableList()
-                                                mutableStates[index] = uiState.copy(
-                                                    data = when (event.info.windowType) {
-                                                        WindowType.STREAM -> StreamWindowData(
-                                                            windowRegistry.getOrCreateStream(event.info.name) as ComposeTextStream,
-                                                        )
+                                                mutableStates[index] =
+                                                    uiState.copy(
+                                                        data =
+                                                            when (event.info.windowType) {
+                                                                WindowType.STREAM ->
+                                                                    StreamWindowData(
+                                                                        windowRegistry.getOrCreateStream(
+                                                                            event.info.name,
+                                                                        ) as ComposeTextStream,
+                                                                    )
 
-                                                        WindowType.DIALOG ->
-                                                            DialogWindowData(windowRegistry.getOrCreateDialog(event.info.name) as ComposeDialogState)
-                                                    }
-                                                )
+                                                                WindowType.DIALOG ->
+                                                                    DialogWindowData(
+                                                                        windowRegistry.getOrCreateDialog(
+                                                                            event.info.name,
+                                                                        ) as ComposeDialogState,
+                                                                    )
+                                                            },
+                                                    )
                                                 mutableStates
                                             }
                                         }
@@ -419,18 +451,16 @@ class GameViewModel(
                         // don't care
                     }
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
 
-        client.characterId.transformLatest {
-            if (it != null) {
-                emitAll(characterSettingsRepository.observe(it, maxTypeAheadKey))
-            }
-        }
-            .onEach { maxTypeAhead ->
-                client.setMaxTypeAhead(maxTypeAhead?.toIntOrNull() ?: defaultMaxTypeAhead)
-            }
-            .launchIn(viewModelScope)
+        client.characterId
+            .transformLatest {
+                if (it != null) {
+                    emitAll(characterSettingsRepository.observe(it, MAX_TYPE_AHEAD_KEY))
+                }
+            }.onEach { maxTypeAhead ->
+                client.setMaxTypeAhead(maxTypeAhead?.toIntOrNull() ?: DEFAULT_MAX_TYPE_AHEAD)
+            }.launchIn(viewModelScope)
 
         runningScripts
             .onEach { scripts ->
@@ -440,26 +470,29 @@ class GameViewModel(
                     val instance = entry.value.instance
                     var text = StyledString("${instance.name}: ${instance.status} ")
                     when (instance.status) {
-                        ScriptStatus.Running -> text += StyledString(
-                            "pause",
-                            WarlockStyle.Link(WarlockAction.SendCommand("/pause ${entry.key}"))
-                        )
+                        ScriptStatus.Running ->
+                            text +=
+                                StyledString(
+                                    "pause",
+                                    WarlockStyle.Link(WarlockAction.SendCommand("/pause ${entry.key}")),
+                                )
 
-                        ScriptStatus.Suspended -> text += StyledString(
-                            "resume",
-                            WarlockStyle.Link(WarlockAction.SendCommand("/resume ${entry.key}"))
-                        )
+                        ScriptStatus.Suspended ->
+                            text +=
+                                StyledString(
+                                    "resume",
+                                    WarlockStyle.Link(WarlockAction.SendCommand("/resume ${entry.key}")),
+                                )
 
                         else -> {
                             // do nothing
                         }
                     }
                     text += StyledString(" ") +
-                            StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${entry.key}")))
+                        StyledString("stop", WarlockStyle.Link(WarlockAction.SendCommand("/kill ${entry.key}")))
                     scriptStream.appendLine(text, false)
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
     }
 
     override fun submit() {
@@ -470,9 +503,7 @@ class GameViewModel(
         sendCommand(line)
     }
 
-    private fun applyAliases(line: String): String {
-        return aliases.value.fold(line) { acc, alias -> alias.replace(acc) }
-    }
+    private fun applyAliases(line: String): String = aliases.value.fold(line) { acc, alias -> alias.replace(acc) }
 
     private fun updateHistory(line: String) {
         if (line.length >= minHistoryLen && sendHistory.getOrNull(1) != line) {
@@ -505,7 +536,9 @@ class GameViewModel(
     }
 
     override suspend fun pauseScripts() {
-        val scriptInstances = scriptManager.runningScripts.value.values.map { it.instance }
+        val scriptInstances =
+            scriptManager.runningScripts.value.values
+                .map { it.instance }
         if (scriptInstances.isNotEmpty()) {
             val paused = !scriptInstances.any { it.status == ScriptStatus.Running }
             if (paused) {
@@ -613,7 +646,10 @@ class GameViewModel(
         }
     }
 
-    private suspend fun handleEntity(entity: Char, onEntryCleared: () -> Unit) {
+    private suspend fun handleEntity(
+        entity: Char,
+        onEntryCleared: () -> Unit,
+    ) {
         when (entity) {
             'x' -> {
                 storedText = entryTextState.text.toString()
@@ -644,7 +680,10 @@ class GameViewModel(
     }
 
     // Must be called from main thread
-    private fun entryDelete(min: Int, max: Int) {
+    private fun entryDelete(
+        min: Int,
+        max: Int,
+    ) {
         entryTextState.edit {
             delete(min, max)
         }
@@ -684,17 +723,20 @@ class GameViewModel(
     }
 
     // TODO: convert this into a simpler representation
-    private fun translateKeyPress(event: KeyEvent): MacroKeyCombo {
-        return MacroKeyCombo(
+    private fun translateKeyPress(event: KeyEvent): MacroKeyCombo =
+        MacroKeyCombo(
             keyCode = event.key.keyCode,
             ctrl = event.isCtrlPressed,
             alt = event.isAltPressed,
             shift = event.isShiftPressed,
             meta = event.isMetaPressed,
         )
-    }
 
-    fun moveWindowToPosition(name: String, targetLocation: WindowLocation, targetIndex: Int) {
+    fun moveWindowToPosition(
+        name: String,
+        targetLocation: WindowLocation,
+        targetIndex: Int,
+    ) {
         val uiState = windowUiStateLists.flatMap { it.value }.firstOrNull { it.name == name } ?: return
         windowUiStateLists.forEach { states ->
             states.update { state ->
@@ -719,46 +761,60 @@ class GameViewModel(
         }
     }
 
-    fun setWindowWidth(name: String, width: Int) {
+    fun setWindowWidth(
+        name: String,
+        width: Int,
+    ) {
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setWindowWidth(
                     characterId = characterId,
                     name = name,
-                    width = width
+                    width = width,
                 )
             }
         }
     }
 
-    fun setWindowHeight(name: String, height: Int) {
+    fun setWindowHeight(
+        name: String,
+        height: Int,
+    ) {
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setWindowHeight(
                     characterId = characterId,
                     name = name,
-                    height = height
+                    height = height,
                 )
             }
         }
     }
 
-    fun setLocationSize(location: WindowLocation, size: Int) {
+    fun setLocationSize(
+        location: WindowLocation,
+        size: Int,
+    ) {
         client.characterId.value?.let { characterId ->
             viewModelScope.launch {
-                val key = when (location) {
-                    WindowLocation.LEFT -> "leftWidth"
-                    WindowLocation.RIGHT -> "rightWidth"
-                    WindowLocation.TOP -> "topHeight"
-                    WindowLocation.BOTTOM -> "bottomHeight"
-                    WindowLocation.MAIN -> error("Cannot set size on main location")
-                }
+                val key =
+                    when (location) {
+                        WindowLocation.LEFT -> "leftWidth"
+                        WindowLocation.RIGHT -> "rightWidth"
+                        WindowLocation.TOP -> "topHeight"
+                        WindowLocation.BOTTOM -> "bottomHeight"
+                        WindowLocation.MAIN -> error("Cannot set size on main location")
+                    }
                 characterSettingsRepository.save(characterId, key, size.toString())
             }
         }
     }
 
-    fun changeWindowPositions(location: WindowLocation, fromIndex: Int, toIndex: Int) {
+    fun changeWindowPositions(
+        location: WindowLocation,
+        fromIndex: Int,
+        toIndex: Int,
+    ) {
         val windowUiStates = getWindowUiStatesForLocation(location)
         windowUiStates.update { states ->
             val mutableStates = states.toMutableList()
@@ -789,24 +845,28 @@ class GameViewModel(
             } else {
                 val entity = windowSettings.value.firstOrNull { it.name == name }
                 val windowInfo = windows.value.firstOrNull { it.name == name }
-                newState = WindowUiState(
-                    name = name,
-                    windowInfo = mutableStateOf(windowInfo),
-                    style = entity?.getStyle() ?: defaultStyles["default"]!!,
-                    width = null,
-                    height = null,
-                    data = when (windowInfo?.windowType) {
-                        WindowType.STREAM -> StreamWindowData(
-                            stream = windowRegistry.getOrCreateStream(name) as ComposeTextStream,
-                        )
+                newState =
+                    WindowUiState(
+                        name = name,
+                        windowInfo = mutableStateOf(windowInfo),
+                        style = entity?.getStyle() ?: defaultStyles["default"]!!,
+                        width = null,
+                        height = null,
+                        data =
+                            when (windowInfo?.windowType) {
+                                WindowType.STREAM ->
+                                    StreamWindowData(
+                                        stream = windowRegistry.getOrCreateStream(name) as ComposeTextStream,
+                                    )
 
-                        WindowType.DIALOG -> DialogWindowData(
-                            dialogData = windowRegistry.getOrCreateDialog(name) as ComposeDialogState
-                        )
+                                WindowType.DIALOG ->
+                                    DialogWindowData(
+                                        dialogData = windowRegistry.getOrCreateDialog(name) as ComposeDialogState,
+                                    )
 
-                        else -> null
-                    },
-                )
+                                else -> null
+                            },
+                    )
                 states + newState
             }
         }
@@ -842,7 +902,10 @@ class GameViewModel(
         }
     }
 
-    fun saveWindowStyle(name: String, style: StyleDefinition) {
+    fun saveWindowStyle(
+        name: String,
+        style: StyleDefinition,
+    ) {
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setStyle(characterId = characterId, name = name, style = style)
@@ -869,6 +932,7 @@ class GameViewModel(
             client.sendCommandDirect("quit")
         }
         client.close()
+        windowRegistry.close()
     }
 
     fun getCurrentTime(): Instant = client.getCurrentTime()
@@ -883,7 +947,7 @@ class GameViewModel(
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
             scriptManager.startScript(client, scriptCommand, ::commandHandler)
             SendCommandType.SCRIPT
-        } else if (aliasedLine.startsWith(clientCommandPrefix)) {
+        } else if (aliasedLine.startsWith(CLIENT_COMMAND_PREFIX)) {
             client.print(StyledString(aliasedLine, WarlockStyle.Command))
             val clientCommand = aliasedLine.drop(1)
             val (command, args) = clientCommand.splitFirstWord()
@@ -970,15 +1034,14 @@ class GameViewModel(
         _macroError.value = null
     }
 
-    private fun getWindowUiStatesForLocation(location: WindowLocation): MutableStateFlow<List<WindowUiState>> {
-        return when (location) {
+    private fun getWindowUiStatesForLocation(location: WindowLocation): MutableStateFlow<List<WindowUiState>> =
+        when (location) {
             WindowLocation.LEFT -> _leftWindowUiStates
             WindowLocation.RIGHT -> _rightWindowUiStates
             WindowLocation.TOP -> _topWindowUiStates
             WindowLocation.BOTTOM -> _bottomWindowUiStates
             else -> error("Change position error: Invalid window location")
         }
-    }
 
     override fun entryClearToEnd() {
         entryDelete(entryTextState.selection.end, entryTextState.text.length)

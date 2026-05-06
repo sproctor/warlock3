@@ -36,18 +36,20 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.login
-import warlockfe.warlock3.compose.ui.settings.character.CharacterSettingsDialog
 import warlockfe.warlock3.core.sge.StoredConnection
 
+@Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 fun DashboardView(
     viewModel: DashboardViewModel,
     connectToSGE: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface {
+    Surface(modifier) {
         Column(
-            Modifier.fillMaxSize()
-                .padding(16.dp)
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
         ) {
             Button(
                 onClick = connectToSGE,
@@ -72,7 +74,7 @@ fun DashboardView(
                 Button(
                     onClick = {
                         viewModel.cancelConnect()
-                    }
+                    },
                 ) {
                     Text("Cancel")
                 }
@@ -83,8 +85,8 @@ fun DashboardView(
 
 @Composable
 fun ConnectionList(
-    modifier: Modifier,
     viewModel: DashboardViewModel,
+    modifier: Modifier = Modifier,
 ) {
     var showConnectionSettings: StoredConnection? by remember { mutableStateOf(null) }
     var showConnectionDelete: StoredConnection? by remember { mutableStateOf(null) }
@@ -92,7 +94,7 @@ fun ConnectionList(
     ScrollableLazyColumn(
         modifier.semantics {
             this.contentDescription = "List of stored connections"
-        }
+        },
     ) {
         item {
             Text(
@@ -107,9 +109,10 @@ fun ConnectionList(
         }
         items(connections) { connection ->
             ListItem(
-                modifier = Modifier.semantics {
-                    contentDescription = "Saved connection"
-                },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = "Saved connection"
+                    },
                 headlineContent = { Text(connection.name) },
                 // supportingContent = { Text(character.gameCode) },
                 leadingContent = {
@@ -133,21 +136,25 @@ fun ConnectionList(
                         IconButton(
                             onClick = {
                                 showConnectionDelete = connection
-                            }
+                            },
                         ) {
                             Icon(painter = painterResource(Res.drawable.delete), contentDescription = "Delete connection")
                         }
                     }
-                }
+                },
             )
         }
     }
-    val proxySettings = showConnectionSettings?.proxySettings
-    if (proxySettings != null) {
-        CharacterSettingsDialog(
-            proxySettings = proxySettings,
+    val editingConnection = showConnectionSettings
+    if (editingConnection != null) {
+        ConnectionSettingsDialog(
+            name = editingConnection.name,
+            proxySettings = editingConnection.proxySettings,
+            updateName = {
+                viewModel.renameConnection(editingConnection.id, it)
+            },
             updateProxySettings = {
-                viewModel.updateProxySettings(showConnectionSettings!!.id, it)
+                viewModel.updateProxySettings(editingConnection.id, it)
             },
             closeDialog = { showConnectionSettings = null },
         )
@@ -160,7 +167,7 @@ fun ConnectionList(
             onConfirm = {
                 viewModel.deleteConnection(showConnectionDelete!!.id)
                 showConnectionDelete = null
-            }
+            },
         )
     }
 }

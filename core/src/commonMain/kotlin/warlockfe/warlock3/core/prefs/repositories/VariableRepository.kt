@@ -6,13 +6,10 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.dao.VariableDao
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 
-
 class VariableRepository(
     private val variableDao: VariableDao,
 ) {
-    fun observeCharacterVariables(characterId: String): Flow<List<VariableEntity>> {
-        return variableDao.observeByCharacter(characterId)
-    }
+    fun observeCharacterVariables(characterId: String): Flow<List<VariableEntity>> = variableDao.observeByCharacter(characterId)
 
     suspend fun put(variable: VariableEntity) {
         withContext(NonCancellable) {
@@ -20,11 +17,18 @@ class VariableRepository(
         }
     }
 
-    suspend fun put(characterId: String, name: String, value: String) {
+    suspend fun put(
+        characterId: String,
+        name: String,
+        value: String,
+    ) {
         put(VariableEntity(characterId, name, value))
     }
 
-    suspend fun delete(characterId: String, name: String) {
+    suspend fun delete(
+        characterId: String,
+        name: String,
+    ) {
         withContext(NonCancellable) {
             variableDao.delete(characterId, name)
         }

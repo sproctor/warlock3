@@ -14,23 +14,24 @@ import kotlin.uuid.Uuid
 class HighlightRepositoryImpl(
     private val highlightDao: HighlightDao,
 ) : HighlightRepository {
-    override fun observeGlobal(): Flow<List<Highlight>> {
-        return observeByCharacter("global")
-    }
+    override fun observeGlobal(): Flow<List<Highlight>> = observeByCharacter("global")
 
-    override fun observeByCharacter(characterId: String): Flow<List<Highlight>> {
-        return highlightDao.observeHighlightsByCharacter(characterId)
+    override fun observeByCharacter(characterId: String): Flow<List<Highlight>> =
+        highlightDao
+            .observeHighlightsByCharacter(characterId)
             .map { highlights ->
                 highlights.map { it.toHighlight() }
             }
-    }
 
-    override fun observeForCharacter(characterId: String): Flow<List<Highlight>> {
-        return highlightDao.observeHighlightsForCharacter(characterId)
+    override fun observeForCharacter(characterId: String): Flow<List<Highlight>> =
+        highlightDao
+            .observeHighlightsForCharacter(characterId)
             .map { highlights -> highlights.map { it.toHighlight() } }
-    }
 
-    override suspend fun save(characterId: String, highlight: Highlight) {
+    override suspend fun save(
+        characterId: String,
+        highlight: Highlight,
+    ) {
         withContext(NonCancellable) {
             highlightDao.save(highlight.toEntity(characterId), highlight.toStyleEntities(highlight.id))
         }
@@ -40,7 +41,10 @@ class HighlightRepositoryImpl(
         save("global", highlight)
     }
 
-    override suspend fun deleteByPattern(characterId: String, pattern: String) {
+    override suspend fun deleteByPattern(
+        characterId: String,
+        pattern: String,
+    ) {
         withContext(NonCancellable) {
             highlightDao.deleteByPattern(pattern = pattern, characterId = characterId)
         }

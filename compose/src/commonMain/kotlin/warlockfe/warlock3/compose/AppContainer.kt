@@ -56,23 +56,25 @@ abstract class AppContainer(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
-    val database = databaseBuilder
-        .setDriver(MySQLiteDriver(BundledSQLiteDriver()))
-        .addMigrations(
-            MIGRATION_10_11, MIGRATION_14_16
-        )
-        .build()
+    val database =
+        databaseBuilder
+            .setDriver(MySQLiteDriver(BundledSQLiteDriver()))
+            .addMigrations(
+                MIGRATION_10_11,
+                MIGRATION_14_16,
+            ).build()
     val variableRepository = VariableRepository(database.variableDao())
     val characterRepository =
         CharacterRepository(
             characterDao = database.characterDao(),
         )
     val windowSettingRepository = WindowSettingsRepository(database.windowSettingsDao())
-    val macroRepository = MacroRepository(
-        database.macroDao(),
-        KeyboardKeyMappings.keyCodeMap,
-        KeyboardKeyMappings.reverseKeyCodeMap,
-    )
+    val macroRepository =
+        MacroRepository(
+            database.macroDao(),
+            KeyboardKeyMappings.keyCodeMap,
+            KeyboardKeyMappings.reverseKeyCodeMap,
+        )
     val accountRepository = AccountRepository(database.accountDao())
     val highlightRepository = HighlightRepositoryImpl(database.highlightDao())
     val nameRepository = NameRepositoryImpl(database.nameDao())
@@ -88,12 +90,14 @@ abstract class AppContainer(
         CharacterSettingsRepository(
             characterSettingsQueries = database.characterSettingDao(),
         )
-    val connectionRepository = ConnectionRepository(
-        connectionDao = database.connectionDao(),
-    )
-    val connectionSettingsRepository = ConnectionSettingsRepository(
-        connectionSettingDao = database.connectionSettingDao(),
-    )
+    val connectionRepository =
+        ConnectionRepository(
+            connectionDao = database.connectionDao(),
+        )
+    val connectionSettingsRepository =
+        ConnectionSettingsRepository(
+            connectionSettingDao = database.connectionSettingDao(),
+        )
     val aliasRepository =
         AliasRepository(
             database.aliasDao(),
@@ -108,12 +112,13 @@ abstract class AppContainer(
 
     abstract val soundPlayer: SoundPlayer
 
-    val wraythImporter = WraythImporter(
-        highlightRepository = highlightRepository,
-        nameRepository = nameRepository,
-        macroDao = database.macroDao(),
-        fileSystem = fileSystem,
-    )
+    val wraythImporter =
+        WraythImporter(
+            highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
+            macroDao = database.macroDao(),
+            fileSystem = fileSystem,
+        )
 
     val gameViewModelFactory by lazy {
         GameViewModelFactory(
@@ -130,9 +135,7 @@ abstract class AppContainer(
 
     val sgeClientFactory: SgeClientFactory =
         object : SgeClientFactory {
-            override fun create(): SgeClient {
-                return SgeClientImpl(ioDispatcher)
-            }
+            override fun create(): SgeClient = SgeClientImpl(ioDispatcher)
         }
 
     val warlockClientFactory: WarlockClientFactory =
@@ -140,24 +143,21 @@ abstract class AppContainer(
             override fun createClient(
                 windowRegistry: WindowRegistry,
                 socket: WarlockSocket,
-            ): WarlockClient {
-                return WraythClient(
+            ): WarlockClient =
+                WraythClient(
                     characterRepository = characterRepository,
                     windowRegistry = windowRegistry,
                     fileLogging = loggingRepository,
                     ioDispatcher = ioDispatcher,
                     socket = socket,
                 )
-            }
         }
 
     abstract val warlockProxyFactory: WarlockProxy.Factory
 
     val windowRegistryFactory by lazy {
         WindowRegistryFactory(
-            externalScope = externalScope,
             settingRepository = clientSettings,
-            ioDispatcher = ioDispatcher,
             soundPlayer = soundPlayer,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,

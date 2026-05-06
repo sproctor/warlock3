@@ -4,7 +4,7 @@ import androidx.room.Entity
 
 @Entity(
     tableName = "charactersetting",
-    primaryKeys = ["characterId", "key"]
+    primaryKeys = ["characterId", "key"],
 )
 data class CharacterSettingEntity(
     val characterId: String,

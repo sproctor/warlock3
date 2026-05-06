@@ -56,26 +56,27 @@ class WslContext(
     private val soundPlayer: SoundPlayer,
     private val fileSystem: FileSystem,
 ) {
-
-    private val scriptVariables = CaseInsensitiveMap(
-        "components" to WslComponents(client),
-        "monstercount" to WslMonsterCount(client),
-        "right" to WslVariable { client.rightHand.value },
-        "left" to WslVariable { client.leftHand.value },
-        "spell" to WslVariable { client.spellHand.value },
-        "indicators" to WslVariable { client.indicators.value },
-        "character" to WslVariable { client.characterName.value },
-        "roundtime" to WslVariable { client.roundTimeEnd.value },
-        "casttime" to WslVariable { client.castTimeEnd.value },
-        "variables" to WslVariables(this),
-    )
+    private val scriptVariables =
+        CaseInsensitiveMap(
+            "components" to WslComponents(client),
+            "monstercount" to WslMonsterCount(client),
+            "right" to WslVariable { client.rightHand.value },
+            "left" to WslVariable { client.leftHand.value },
+            "spell" to WslVariable { client.spellHand.value },
+            "indicators" to WslVariable { client.indicators.value },
+            "character" to WslVariable { client.characterName.value },
+            "roundtime" to WslVariable { client.roundTimeEnd.value },
+            "casttime" to WslVariable { client.castTimeEnd.value },
+            "variables" to WslVariables(this),
+        )
 
     private val matches = mutableListOf<WslMatch>()
     private val listeners = mutableListOf<Pair<String, suspend (String) -> Unit>>()
 
-    private val frameStack = mutableListOf(
-        WslFrame(0)
-    )
+    private val frameStack =
+        mutableListOf(
+            WslFrame(0),
+        )
     private val currentFrame: WslFrame
         get() = frameStack.last()
 
@@ -108,8 +109,7 @@ class WslContext(
 
                     else -> Unit
                 }
-            }
-            .launchIn(scope)
+            }.launchIn(scope)
     }
 
     suspend fun executeCommand(commandLine: String) {
@@ -117,14 +117,13 @@ class WslContext(
         log(ScriptLoggingLevel.VERBOSE, "Line $lineNumber: $commandLine")
 
         val (commandName, args) = commandLine.splitFirstWord()
-        val command = wslCommands[commandName.lowercase()]
-            ?: throw WslRuntimeException("Invalid command \"$commandName\" on line $lineNumber")
+        val command =
+            wslCommands[commandName.lowercase()]
+                ?: throw WslRuntimeException("Invalid command \"$commandName\" on line $lineNumber")
         command(this, args ?: "")
     }
 
-    private fun getGlobalVariable(name: String): String? {
-        return globalVariables.value[name]
-    }
+    private fun getGlobalVariable(name: String): String? = globalVariables.value[name]
 
     fun lookupVariable(name: String): WslValue? {
         currentFrame.lookupVariable(name)?.let { return it }
@@ -132,11 +131,12 @@ class WslContext(
         return getGlobalVariable(name)?.let { WslString(it) }
     }
 
-    fun hasVariable(name: String): Boolean {
-        return scriptVariables.containsKey(name) || (getGlobalVariable(name) != null)
-    }
+    fun hasVariable(name: String): Boolean = scriptVariables.containsKey(name) || (getGlobalVariable(name) != null)
 
-    suspend fun setStoredVariable(name: String, value: String) {
+    suspend fun setStoredVariable(
+        name: String,
+        value: String,
+    ) {
         client.characterId.value?.let { variableRepository.put(it.lowercase(), name, value) }
         log(ScriptLoggingLevel.INFO, "SetVariable: $name=$value")
     }
@@ -146,12 +146,18 @@ class WslContext(
         log(ScriptLoggingLevel.INFO, "DeleteVariable: $name")
     }
 
-    suspend fun setScriptVariable(name: String, value: WslValue) {
+    suspend fun setScriptVariable(
+        name: String,
+        value: WslValue,
+    ) {
         scriptVariables += name to value
         log(ScriptLoggingLevel.DEBUG, "Set script variable \"$name\" to $value")
     }
 
-    fun setScriptVariableRaw(name: String, value: WslValue) {
+    fun setScriptVariableRaw(
+        name: String,
+        value: WslValue,
+    ) {
         scriptVariables += name to value
     }
 
@@ -160,7 +166,10 @@ class WslContext(
         log(ScriptLoggingLevel.DEBUG, "Deleted script variable: $name")
     }
 
-    suspend fun setLocalVariable(name: String, value: WslValue) {
+    suspend fun setLocalVariable(
+        name: String,
+        value: WslValue,
+    ) {
         currentFrame.setVariable(name, value)
         log(ScriptLoggingLevel.DEBUG, "Set local variable \"$name\" to $value")
     }
@@ -186,15 +195,24 @@ class WslContext(
         client.print(StyledString(message, WarlockStyle.Echo))
     }
 
-    suspend fun printToStream(stream: String, message: String) {
+    suspend fun printToStream(
+        stream: String,
+        message: String,
+    ) {
         client.getStream(stream).appendLine(StyledString(message))
     }
 
-    suspend fun log(level: ScriptLoggingLevel, message: String) {
+    suspend fun log(
+        level: ScriptLoggingLevel,
+        message: String,
+    ) {
         log(level.level, message)
     }
 
-    suspend fun log(level: Int, message: String) {
+    suspend fun log(
+        level: Int,
+        message: String,
+    ) {
         if (level >= loggingLevel) {
             client.scriptDebug(message)
         }
@@ -228,13 +246,15 @@ class WslContext(
     }
 
     suspend fun goto(label: String) {
-        var index = lines.indexOfFirst { line ->
-            line.labels.any { it.equals(other = label, ignoreCase = true) }
-        }
-        if (index == -1) {
-            index = lines.indexOfFirst { line ->
-                line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
+        var index =
+            lines.indexOfFirst { line ->
+                line.labels.any { it.equals(other = label, ignoreCase = true) }
             }
+        if (index == -1) {
+            index =
+                lines.indexOfFirst { line ->
+                    line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
+                }
             if (index != -1) {
                 log(ScriptLoggingLevel.DEBUG, "goto \"labelError\" line $index")
             }
@@ -247,10 +267,14 @@ class WslContext(
         currentFrame.goto(index)
     }
 
-    fun gosub(label: String, args: String) {
-        val lineIndex = lines.indexOfFirst { line ->
-            line.labels.any { it.equals(other = label, ignoreCase = true) }
-        }
+    fun gosub(
+        label: String,
+        args: String,
+    ) {
+        val lineIndex =
+            lines.indexOfFirst { line ->
+                line.labels.any { it.equals(other = label, ignoreCase = true) }
+            }
         if (lineIndex == -1) {
             throw WslRuntimeException("Could not find label \"$label\".")
         }
@@ -291,7 +315,10 @@ class WslContext(
         scriptInstance.waitWhenSuspended()
     }
 
-    suspend fun waitForText(text: String, ignoreCase: Boolean) {
+    suspend fun waitForText(
+        text: String,
+        ignoreCase: Boolean,
+    ) {
         log(ScriptLoggingLevel.DEBUG, "waiting for text: $text")
         client.eventFlow.first {
             it is ClientTextEvent && it.text.contains(other = text, ignoreCase = ignoreCase)
@@ -324,8 +351,7 @@ class WslContext(
                     } else {
                         it
                     }
-                }
-                .first { event ->
+                }.first { event ->
                     if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
                         matches.firstOrNull { match ->
                             match.match(event.text, currentFrame)?.let { text ->
@@ -380,7 +406,7 @@ class WslContext(
                     ignoreCase = ignoreCase,
                     isRegex = isRegex,
                     sound = sound,
-                )
+                ),
             )
         }
     }
@@ -407,7 +433,7 @@ class WslContext(
                     fontFamily = null,
                     fontSize = null,
                     sound = sound,
-                )
+                ),
             )
         }
     }
@@ -424,7 +450,10 @@ class WslContext(
         }
     }
 
-    fun addListener(name: String, action: suspend (String) -> Unit) {
+    fun addListener(
+        name: String,
+        action: suspend (String) -> Unit,
+    ) {
         listeners.add(name to action)
     }
 

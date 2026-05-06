@@ -48,15 +48,17 @@ fun AliasView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     aliasRepository: AliasRepository,
+    modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id ?: "global"
-    val aliases by aliasRepository.observeByCharacter(currentCharacterId)
+    val aliases by aliasRepository
+        .observeByCharacter(currentCharacterId)
         .collectAsState(emptyList())
     var editingAlias by remember { mutableStateOf<AliasEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
             characters = allCharacters,
@@ -75,49 +77,50 @@ fun AliasView(
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingAlias = alias }
+                                onClick = { editingAlias = alias },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.edit),
-                                    contentDescription = "Edit"
+                                    contentDescription = "Edit",
                                 )
                             }
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
                                     coroutineScope.launch { aliasRepository.deleteById(alias.id) }
-                                }
+                                },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
-                                    contentDescription = "Delete"
+                                    contentDescription = "Delete",
                                 )
                             }
                         }
-                    }
+                    },
                 )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             ExtendedFloatingActionButton(
                 onClick = {
-                    editingAlias = AliasEntity(
-                        id = Uuid.random(),
-                        characterId = currentCharacterId,
-                        pattern = "",
-                        replacement = "",
-                    )
+                    editingAlias =
+                        AliasEntity(
+                            id = Uuid.random(),
+                            characterId = currentCharacterId,
+                            pattern = "",
+                            replacement = "",
+                        )
                 },
                 icon = {
                     Icon(
                         painter = painterResource(Res.drawable.add),
-                        contentDescription = null
+                        contentDescription = null,
                     )
                 },
-                text = { Text("New alias") }
+                text = { Text("New alias") },
             )
         }
     }
@@ -130,7 +133,7 @@ fun AliasView(
                     editingAlias = null
                 }
             },
-            onClose = { editingAlias = null }
+            onClose = { editingAlias = null },
         )
     }
 }
@@ -156,7 +159,7 @@ fun EditAliasDialog(
                             characterId = alias.characterId,
                             pattern = pattern.text.toString(),
                             replacement = replacement.text.toString(),
-                        )
+                        ),
                     )
                 },
                 enabled = patternError == null && pattern.text.isNotBlank(),
@@ -172,7 +175,7 @@ fun EditAliasDialog(
         title = { Text("Edit Alias") },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 LaunchedEffect(Unit) {
                     snapshotFlow { pattern.text.toString() }
@@ -202,6 +205,6 @@ fun EditAliasDialog(
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
             }
-        }
+        },
     )
 }

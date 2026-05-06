@@ -25,19 +25,20 @@ fun AccountsView(
     initialPassword: String?,
     onAccountSelect: (AccountEntity) -> Unit,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val username = rememberTextFieldState(initialUsername ?: "")
     val password = rememberTextFieldState(initialPassword ?: "")
 
     Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceBetween
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
-            modifier = Modifier.weight(1f).fillMaxWidth()
+            modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
             Column(
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center),
             ) {
                 TextField(
                     modifier = Modifier.padding(8.dp),
@@ -54,21 +55,22 @@ fun AccountsView(
             }
         }
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            modifier =
+                Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
         ) {
             Button(
                 modifier = Modifier.padding(end = 16.dp),
-                onClick = onCancel
+                onClick = onCancel,
             ) {
                 Text("Cancel")
             }
             Button(
                 onClick = {
                     onAccountSelect(AccountEntity(username.text.toString().trim(), password.text.toString().trim()))
-                }
+                },
             ) {
                 Text("Next")
             }

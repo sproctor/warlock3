@@ -50,15 +50,17 @@ fun AlterationsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     alterationRepository: AlterationRepository,
+    modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id ?: "global"
-    val alterations by alterationRepository.observeByCharacter(currentCharacterId)
+    val alterations by alterationRepository
+        .observeByCharacter(currentCharacterId)
         .collectAsState(emptyList())
     var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(
             selectedCharacter = selectedCharacter,
             characters = allCharacters,
@@ -69,7 +71,7 @@ fun AlterationsView(
         Text(text = "Alterations", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         ScrollableColumn(
-            Modifier.fillMaxWidth().weight(1f)
+            Modifier.fillMaxWidth().weight(1f),
         ) {
             alterations.forEach { alteration ->
                 ListItem(
@@ -79,7 +81,7 @@ fun AlterationsView(
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingAlteration = alteration }
+                                onClick = { editingAlteration = alteration },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.edit),
@@ -91,10 +93,10 @@ fun AlterationsView(
                                 onClick = {
                                     coroutineScope.launch {
                                         alterationRepository.deleteById(
-                                            alteration.id
+                                            alteration.id,
                                         )
                                     }
-                                }
+                                },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
@@ -102,31 +104,32 @@ fun AlterationsView(
                                 )
                             }
                         }
-                    }
+                    },
                 )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             ExtendedFloatingActionButton(
                 onClick = {
-                    editingAlteration = AlterationEntity(
-                        id = Uuid.random(),
-                        characterId = currentCharacterId,
-                        pattern = "",
-                        sourceStream = null,
-                        destinationStream = null,
-                        result = null,
-                        ignoreCase = true,
-                        keepOriginal = false,
-                    )
+                    editingAlteration =
+                        AlterationEntity(
+                            id = Uuid.random(),
+                            characterId = currentCharacterId,
+                            pattern = "",
+                            sourceStream = null,
+                            destinationStream = null,
+                            result = null,
+                            ignoreCase = true,
+                            keepOriginal = false,
+                        )
                 },
                 icon = {
                     Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
                 },
-                text = { Text("New alteration") }
+                text = { Text("New alteration") },
             )
         }
     }
@@ -139,7 +142,7 @@ fun AlterationsView(
                     editingAlteration = null
                 }
             },
-            onClose = { editingAlteration = null }
+            onClose = { editingAlteration = null },
         )
     }
 }
@@ -172,8 +175,8 @@ fun EditAlterationDialog(
                             destinationStream = null,
                             result = replacement.text.toString().ifBlank { null },
                             ignoreCase = ignoreCase,
-                            keepOriginal = keepOriginal
-                        )
+                            keepOriginal = keepOriginal,
+                        ),
                     )
                 },
                 enabled = patternError == null && pattern.text.isNotBlank(),
@@ -236,7 +239,7 @@ fun EditAlterationDialog(
                     Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
                     Text(
                         text = "Ignore case",
-                        modifier = Modifier.align(Alignment.CenterVertically)
+                        modifier = Modifier.align(Alignment.CenterVertically),
                     )
                 }
 //                if (destinationStream.isNotBlank()) {
@@ -249,6 +252,6 @@ fun EditAlterationDialog(
 //                    }
 //                }
             }
-        }
+        },
     )
 }

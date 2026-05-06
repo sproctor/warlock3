@@ -14,8 +14,9 @@ import androidx.compose.ui.Modifier
 fun SgeWizard(
     viewModel: SgeViewModel,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(Modifier.fillMaxSize()) {
+    Surface(modifier.fillMaxSize()) {
         val state = viewModel.state
         when (val currentState = state.value) {
             SgeViewState.SgeAccountSelector -> {
@@ -27,25 +28,27 @@ fun SgeWizard(
                         viewModel.saveAccount(newAccount)
                         viewModel.accountSelected(newAccount)
                     },
-                    onCancel = onCancel
+                    onCancel = onCancel,
                 )
             }
 
             SgeViewState.SgeLoadingGameList -> SgeLoadingView("Loading game list")
-            is SgeViewState.SgeGameSelector -> SgeGameView(
-                games = currentState.games,
-                onBackPressed = { viewModel.goBack() },
-                onGameSelected = { viewModel.gameSelected(it) },
-            )
+            is SgeViewState.SgeGameSelector ->
+                SgeGameView(
+                    games = currentState.games,
+                    onBackPress = { viewModel.goBack() },
+                    onGameSelect = { viewModel.gameSelected(it) },
+                )
 
             is SgeViewState.SgeLoadingCharacterList -> SgeLoadingView("Loading character list for game: ${currentState.game.code}")
-            is SgeViewState.SgeCharacterSelector -> SgeCharacterView(
-                characters = currentState.characters,
-                onBackPressed = { viewModel.goBack() },
-                onCharacterSelected = { character ->
-                    viewModel.characterSelected(currentState.game, character)
-                }
-            )
+            is SgeViewState.SgeCharacterSelector ->
+                SgeCharacterView(
+                    characters = currentState.characters,
+                    onBackPress = { viewModel.goBack() },
+                    onCharacterSelect = { character ->
+                        viewModel.characterSelected(currentState.game, character)
+                    },
+                )
 
             is SgeViewState.SgeConnecting -> SgeLoadingView("Connecting to SGE server")
             is SgeViewState.SgeError -> SgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
@@ -55,11 +58,14 @@ fun SgeWizard(
 }
 
 @Composable
-fun SgeLoadingView(message: String) {
-    Box(Modifier.fillMaxSize()) {
+fun SgeLoadingView(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxSize()) {
         Text(
             modifier = Modifier.align(Alignment.Center),
-            text = message
+            text = message,
         )
     }
 }

@@ -11,11 +11,10 @@ class ScriptManagerFactoryImpl(
     private val scriptEngineRepository: WarlockScriptEngineRepository,
     private val externalScope: CoroutineScope,
 ) : ScriptManagerFactory {
-    override fun create(): ScriptManager {
-        return ScriptManagerImpl(
+    override fun create(): ScriptManager =
+        ScriptManagerImpl(
             fileSystem = fileSystem,
             scriptEngineRepository = scriptEngineRepository,
             externalScope = externalScope,
         )
-    }
 }

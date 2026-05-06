@@ -20,9 +20,11 @@ suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
         put("global", MacroKeyCombo(Key.NumPad8.keyCode), "\\xn\\r\\?")
         put("global", MacroKeyCombo(Key.NumPad9.keyCode), "\\xne\\r\\?")
         put("global", MacroKeyCombo(Key.NumPad0.keyCode), "\\xdown\\r\\?")
-        put("global",
-            // this is currently broken on desktop, waiting for fix of https://youtrack.jetbrains.com/issue/CMP-4211
-            MacroKeyCombo(Key.NumPadDot.keyCode), "\\xup\\r\\?"
+        put(
+            "global",
+            // remove work-around when this fix lands: https://youtrack.jetbrains.com/issue/CMP-4211
+            MacroKeyCombo(Key.NumPadDotFix.keyCode),
+            "\\xup\\r\\?",
         )
         put("global", MacroKeyCombo(Key.Escape.keyCode), "{StopScript}")
         put("global", MacroKeyCombo(Key.Escape.keyCode, shift = true), "{PauseScript}")

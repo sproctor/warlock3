@@ -4,8 +4,8 @@ import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.Token
 import warlockfe.warlock3.core.parsers.generated.MacroLexer
 
-fun parseMacro(text: String): List<MacroToken>? {
-    return tokenizeMacro(text)?.map { token ->
+fun parseMacro(text: String): List<MacroToken>? =
+    tokenizeMacro(text)?.map { token ->
         when (token.type) {
             MacroLexer.Tokens.Entity -> {
                 val entity = token.text!!
@@ -23,7 +23,8 @@ fun parseMacro(text: String): List<MacroToken>? {
             }
 
             MacroLexer.Tokens.VariableName -> {
-                token.text?.let { if (it.endsWith("%")) it.dropLast(1) else it }
+                token.text
+                    ?.let { if (it.endsWith("%")) it.dropLast(1) else it }
                     .let { name ->
                         MacroToken.Variable(name ?: "")
                     }
@@ -36,7 +37,6 @@ fun parseMacro(text: String): List<MacroToken>? {
             else -> error("Unexpected token: ${token.type}")
         }
     }
-}
 
 private fun tokenizeMacro(input: String): List<Token>? {
     try {

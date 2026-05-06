@@ -6,8 +6,6 @@ import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPushStyleEvent
 
-class PushBoldHandler() : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythPushStyleEvent(WarlockStyle.Bold)
-    }
+class PushBoldHandler : BaseElementListener() {
+    override fun startElement(element: StartElement): WraythEvent = WraythPushStyleEvent(WarlockStyle.Bold)
 }

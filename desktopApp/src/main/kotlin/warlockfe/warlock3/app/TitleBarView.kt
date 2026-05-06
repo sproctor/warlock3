@@ -203,5 +203,5 @@ internal fun DecoratedWindowScope.TitleBarView(
 
 private enum class Menus {
     FILE,
-    HELP
+    HELP,
 }

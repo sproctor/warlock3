@@ -16,8 +16,8 @@ class DashboardViewModelFactory(
     fun create(
         gameState: GameState,
         sgeSettings: SgeSettings,
-    ): DashboardViewModel {
-        return DashboardViewModel(
+    ): DashboardViewModel =
+        DashboardViewModel(
             gameState = gameState,
             sgeSettings = sgeSettings,
             connectionRepository = connectionRepository,
@@ -25,5 +25,4 @@ class DashboardViewModelFactory(
             sgeClientFactory = sgeClientFactory,
             connectToGame = connectToGameUseCase,
         )
-    }
 }

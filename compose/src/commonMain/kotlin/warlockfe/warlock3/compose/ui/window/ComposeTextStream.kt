@@ -2,14 +2,15 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
-import kotlinx.coroutines.CoroutineDispatcher
+import co.touchlab.kermit.Logger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.util.AnnotatedStringHighlightResult
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.markLinks
@@ -19,14 +20,18 @@ import warlockfe.warlock3.compose.util.toTimeString
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.StyledStringSubstring
+import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import kotlin.time.TimeSource
 
 @OptIn(ExperimentalTime::class)
 class ComposeTextStream(
@@ -38,10 +43,10 @@ class ComposeTextStream(
     private val highlights: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
-    private val ioDispatcher: CoroutineDispatcher,
     private val soundPlayer: SoundPlayer,
+    private val workQueue: StreamWorkQueue,
+    private val scope: CoroutineScope,
 ) : TextStream {
-
     private val cacheLines = ArrayList<CachedLine?>(maxLines)
     private val finishedLines = ArrayList<StreamLine>(maxLines)
     val lines = MutableStateFlow<List<StreamLine>>(emptyList())
@@ -49,6 +54,8 @@ class ComposeTextStream(
 
     private var nextSerialNumber = 0L
     private var removedLines = 0L
+
+    private var applyStyling: Boolean = true
 
     private var partialLine: StyledString? = null
 
@@ -58,20 +65,30 @@ class ComposeTextStream(
 
     val mutex = Mutex()
 
-    override suspend fun appendPartial(text: StyledString, isPrompt: Boolean) {
-        mutex.withLock {
-            doAppendPartial(text, isPrompt)
+    override suspend fun appendPartial(
+        text: StyledString,
+        isPrompt: Boolean,
+    ) {
+        workQueue.submit {
+            mutex.withLock {
+                doAppendPartial(text, isPrompt)
+            }
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
-        mutex.withLock {
-            doAppendPartial(text, isPrompt = false)
-            partialLine = null
+        workQueue.submit {
+            mutex.withLock {
+                doAppendPartial(text, isPrompt = false)
+                partialLine = null
+            }
         }
     }
 
-    private suspend fun doAppendPartial(text: StyledString, isPrompt: Boolean) {
+    private fun doAppendPartial(
+        text: StyledString,
+        isPrompt: Boolean,
+    ) {
         if (partialLine == null) {
             partialLine = text
             doAppendLine(text = text, ignoreWhenBlank = false, showWhenClosed = null, isPrompt = isPrompt)
@@ -79,12 +96,13 @@ class ComposeTextStream(
             val serialNumber = finishedLines.last().serialNumber
             partialLine = partialLine!! + text
             addComponentLocations(text, serialNumber)
-            val cachedLine = styledStringToCachedLine(
-                text = partialLine!!,
-                ignoreWhenBlank = false,
-                showWhenClosed = null,
-                isPrompt = isPrompt,
-            )
+            val cachedLine =
+                styledStringToCachedLine(
+                    text = partialLine!!,
+                    ignoreWhenBlank = false,
+                    showWhenClosed = null,
+                    isPrompt = isPrompt,
+                )
             cacheLines[cacheLines.lastIndex] = cachedLine
             finishedLines[finishedLines.lastIndex] = cachedLineToStreamLine(cachedLine, serialNumber)
             linesUpdated()
@@ -92,29 +110,37 @@ class ComposeTextStream(
     }
 
     override suspend fun clear() {
-        mutex.withLock {
-            finishedLines.clear()
-            partialLine = null
-            componentLocations.clear()
-            components.clear()
-            nextSerialNumber = 0L
-            removedLines = 0L
-            cacheLines.clear()
-            linesUpdated()
+        workQueue.submit {
+            mutex.withLock {
+                finishedLines.clear()
+                partialLine = null
+                componentLocations.clear()
+                components.clear()
+                nextSerialNumber = 0L
+                removedLines = 0L
+                cacheLines.clear()
+                linesUpdated()
+            }
         }
     }
 
-    override suspend fun appendLine(text: StyledString, ignoreWhenBlank: Boolean, showWhenClosed: String?) {
-        mutex.withLock {
-            // It's possible a component is added that is set prior
-            // I don't think this happens in DR, so it's probably OK that we don't handle that case.
-            partialLine = null
-            doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
+    override suspend fun appendLine(
+        text: StyledString,
+        ignoreWhenBlank: Boolean,
+        showWhenClosed: String?,
+    ) {
+        workQueue.submit {
+            mutex.withLock {
+                // It's possible a component is added that is set prior
+                // I don't think this happens in DR, so it's probably OK that we don't handle that case.
+                partialLine = null
+                doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
+            }
         }
     }
 
     // Must be called from main thread
-    private suspend fun doAppendLine(
+    private fun doAppendLine(
         text: StyledString,
         ignoreWhenBlank: Boolean,
         showWhenClosed: String?,
@@ -131,7 +157,10 @@ class ComposeTextStream(
         linesUpdated()
     }
 
-    private fun addComponentLocations(text: StyledString, serialNumber: Long) {
+    private fun addComponentLocations(
+        text: StyledString,
+        serialNumber: Long,
+    ) {
         text.getComponents().forEach { name ->
             val existingLocations = componentLocations[name] ?: emptySet()
             componentLocations[name] = existingLocations + serialNumber
@@ -143,15 +172,14 @@ class ComposeTextStream(
         ignoreWhenBlank: Boolean,
         showWhenClosed: String?,
         isPrompt: Boolean,
-    ): CachedLine {
-        return CachedLine(
+    ): CachedLine =
+        CachedLine(
             text = text,
             timestamp = Clock.System.now(),
             ignoreWhenBlank = ignoreWhenBlank,
             showWhenClosed = showWhenClosed,
             isPrompt = isPrompt,
         )
-    }
 
     private fun removeLines() {
         while (maxLines > 0 && finishedLines.size >= maxLines) {
@@ -164,29 +192,36 @@ class ComposeTextStream(
     }
 
     override suspend fun appendResource(url: String) {
-        // Images must be on their own line
-        partialLine = null
-        if (!showImages) return
-        mutex.withLock {
-            cacheLines.add(null)
-            finishedLines.add(
-                StreamImageLine(
-                    url = url,
-                    serialNumber = nextSerialNumber++,
+        workQueue.submit {
+            mutex.withLock {
+                // Images must be on their own line
+                partialLine = null
+                if (!showImages) return@withLock
+                cacheLines.add(null)
+                finishedLines.add(
+                    StreamImageLine(
+                        url = url,
+                        serialNumber = nextSerialNumber++,
+                    ),
                 )
-            )
-            linesUpdated()
+                linesUpdated()
+            }
         }
     }
 
-    override suspend fun updateComponent(name: String, value: StyledString) {
-        mutex.withLock {
-            components[name] = value
-            componentLocations[name]?.forEach { serialNumber ->
-                val lineNumber = (serialNumber - removedLines).toInt()
-                // If the component has scrolled back past the buffer, ignore it
-                if (lineNumber >= 0) {
-                    updateLine(lineNumber)
+    override suspend fun updateComponent(
+        name: String,
+        value: StyledString,
+    ) {
+        workQueue.submit {
+            mutex.withLock {
+                components[name] = value
+                componentLocations[name]?.forEach { serialNumber ->
+                    val lineNumber = (serialNumber - removedLines).toInt()
+                    // If the component has scrolled back past the buffer, ignore it
+                    if (lineNumber >= 0) {
+                        updateLine(lineNumber)
+                    }
                 }
             }
         }
@@ -204,8 +239,8 @@ class ComposeTextStream(
     private fun cachedLineToStreamLine(
         cachedLine: CachedLine,
         serialNumber: Long,
-    ): StreamTextLine {
-        return cachedLine.toStreamLine(
+    ): StreamTextLine =
+        cachedLine.toStreamLine(
             streamName = id,
             showTimestamp = showTimestamps,
             serialNumber = serialNumber,
@@ -217,16 +252,15 @@ class ComposeTextStream(
                 actionHandler?.invoke(action)
             },
             markLinks = markLinks,
+            applyStyling = applyStyling,
         )
-    }
 
-    private suspend fun playSound(line: String) {
+    private fun playSound(line: String) {
         highlights.value.forEach { highlight ->
-            if (highlight.sound != null && highlight.regex.containsMatchIn(line)) {
-                withContext(ioDispatcher) {
-                    launch {
-                        soundPlayer.playSound(highlight.sound)
-                    }
+            val sound = highlight.sound
+            if (sound != null && highlight.containsMatchIn(line)) {
+                scope.launch {
+                    soundPlayer.playSound(sound)
                 }
             }
         }
@@ -255,6 +289,10 @@ class ComposeTextStream(
     override fun showTimestamps(value: Boolean) {
         showTimestamps = value
     }
+
+    override fun setApplyStyling(value: Boolean) {
+        applyStyling = value
+    }
 }
 
 @OptIn(ExperimentalTime::class)
@@ -275,8 +313,9 @@ data class CachedLine(
         components: Map<String, StyledString>,
         actionHandler: (WarlockAction) -> Unit,
         markLinks: Boolean,
-    ): StreamTextLine {
-        return text.toStreamLine(
+        applyStyling: Boolean,
+    ): StreamTextLine =
+        text.toStreamLine(
             streamName = streamName,
             showTimestamp = showTimestamp,
             ignoreWhenBlank = ignoreWhenBlank,
@@ -290,9 +329,15 @@ data class CachedLine(
             actionHandler = actionHandler,
             markLinks = markLinks,
             showWhenClosed = showWhenClosed,
+            applyStyling = applyStyling,
         )
-    }
 }
+
+private val streamLineLogger = Logger.withTag("toStreamLine")
+
+// Lines whose total render time exceeds this threshold get logged with a
+// per-stage breakdown. Set to Duration.ZERO to log every line.
+private val SLOW_LINE_THRESHOLD = 5.milliseconds
 
 @OptIn(ExperimentalTime::class)
 fun StyledString.toStreamLine(
@@ -309,64 +354,117 @@ fun StyledString.toStreamLine(
     components: Map<String, StyledString>,
     actionHandler: (WarlockAction) -> Unit,
     markLinks: Boolean,
+    applyStyling: Boolean,
 ): StreamTextLine {
-    val text = if (showTimestamp) {
-        this + StyledString(" [${timestamp.toTimeString()}]")
-    } else {
-        this
-    }
-    val textWithComponents = text.toAnnotatedString(
-        variables = components,
-        styleMap = presets,
-        actionHandler = actionHandler,
-    )
-        .alter(alterations, streamName)
-        ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
-    val textWithLinks = textWithComponents?.let { content ->
-        if (markLinks) {
-            buildAnnotatedString {
-                append(content)
-                markLinks(content, presets)
-            }
+    val t0 = TimeSource.Monotonic.markNow()
+    val text =
+        if (showTimestamp) {
+            this + StyledString(" [${timestamp.toTimeString()}]")
         } else {
-            content
+            this
         }
-    }
-    val highlightedResult = textWithLinks?.highlight(highlights)
-    val lineStyle = flattenStyles(
-        (highlightedResult?.entireLineStyles ?: emptyList()) +
+    val annotated =
+        text.toAnnotatedString(
+            variables = components,
+            styleMap = presets,
+            actionHandler = actionHandler,
+        )
+    val tAnnotated = TimeSource.Monotonic.markNow()
+    val textWithComponents =
+        if (applyStyling) {
+            annotated
+                .alter(alterations, streamName)
+                ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
+        } else {
+            annotated.takeIf { !ignoreWhenBlank || it.text.isNotBlank() }
+        }
+    val tAltered = TimeSource.Monotonic.markNow()
+    val textWithLinks =
+        textWithComponents?.let { content ->
+            if (applyStyling && markLinks) {
+                buildAnnotatedString {
+                    append(content)
+                    markLinks(content, presets)
+                }
+            } else {
+                content
+            }
+        }
+    val tLinked = TimeSource.Monotonic.markNow()
+    val highlightedResult =
+        textWithLinks?.let { content ->
+            if (applyStyling && content.text.isNotEmpty()) {
+                content.highlight(highlights)
+            } else {
+                AnnotatedStringHighlightResult(content, emptyList())
+            }
+        }
+    val tHighlighted = TimeSource.Monotonic.markNow()
+    val lineStyle =
+        flattenStyles(
+            (highlightedResult?.entireLineStyles ?: emptyList()) +
                 getEntireLineStyles(
                     variables = components,
                     styleMap = presets,
-                )
-    )
-    return StreamTextLine(
-        text = highlightedResult?.let {
-            buildAnnotatedString {
-                lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
-                append(it.text)
-                if (lineStyle != null) pop()
-            }
-        },
-        entireLineStyle = lineStyle,
-        serialNumber = serialNumber,
-        showWhenClosed = showWhenClosed,
-        isPrompt = isPrompt,
-    )
+                ),
+        )
+    val result =
+        StreamTextLine(
+            text =
+                highlightedResult?.let {
+                    buildAnnotatedString {
+                        lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
+                        append(it.text)
+                        if (lineStyle != null) pop()
+                    }
+                },
+            entireLineStyle = lineStyle,
+            serialNumber = serialNumber,
+            showWhenClosed = showWhenClosed,
+            isPrompt = isPrompt,
+        )
+    val tEnd = TimeSource.Monotonic.markNow()
+    val total = tEnd - t0
+    if (total >= SLOW_LINE_THRESHOLD) {
+        val annotate = tAnnotated - t0
+        val alter = tAltered - tAnnotated
+        val link = tLinked - tAltered
+        val highlight = tHighlighted - tLinked
+        val build = tEnd - tHighlighted
+        // Diagnostic: re-run annotate to distinguish structural vs. cold-path cost
+        streamLineLogger.w {
+            val before = this.toString().take(200).replace("\n", "\\n")
+            val after = result.text?.text?.take(200)?.replace("\n", "\\n") ?: "<filtered>"
+            "Slow line in '$streamName' total=${total.inWholeMicroseconds}µs " +
+                "annotate=${annotate.inWholeMicroseconds}µs " +
+                "alter=${alter.inWholeMicroseconds}µs " +
+                "link=${link.inWholeMicroseconds}µs " +
+                "highlight=${highlight.inWholeMicroseconds}µs " +
+                "build=${build.inWholeMicroseconds}µs " +
+                "alterations=${alterations.size} highlights=${highlights.size} " +
+                "before=\"$before\" after=\"$after\""
+        }
+    }
+    return result
 }
 
-private fun AnnotatedString.alter(alterations: List<CompiledAlteration>, streamName: String): AnnotatedString? {
+private fun AnnotatedString.alter(
+    alterations: List<CompiledAlteration>,
+    streamName: String,
+): AnnotatedString? {
     // Ignore blank lines
-    if (alterations.isEmpty() || text.isEmpty())
+    if (alterations.isEmpty() || text.isEmpty()) {
         return this
+    }
     var result = this
     alterations.forEach { alteration ->
         if (alteration.appliesToStream(streamName)) {
             try {
-                result = result.replaceWithRegex(
-                    pattern = alteration.regex,
-                    replacement = alteration.replacement ?: ""
-                )
+                result =
+                    result.replaceWithRegex(
+                        pattern = alteration.regex,
+                        replacement = alteration.replacement ?: "",
+                    )
             } catch (_: Exception) {
                 // Ignore it
             }
@@ -378,26 +476,81 @@ private fun AnnotatedString.alter(alterations: List<CompiledAlteration>, streamN
 
 fun AnnotatedString.replaceWithRegex(
     pattern: Regex,
-    replacement: String
-): AnnotatedString {
-    return buildAnnotatedString {
-        var remaining = this@replaceWithRegex
-        while (true) {
-            val match = pattern.find(remaining.text) ?: break
-
-            // Append everything before the match, preserving spans
-            append(remaining.subSequence(0, match.range.first))
-
-            // Use replaceFirst to get the full replaced string, then extract
-            // just the replacement portion using the known before/after lengths
-            val replaced = pattern.replaceFirst(remaining.text, replacement)
-            val afterLen = remaining.text.length - (match.range.last + 1)
-            append(replaced.substring(match.range.first, replaced.length - afterLen))
-
-            // Advance past the match
-            remaining = remaining.subSequence(match.range.last + 1, remaining.length)
+    replacement: String,
+): AnnotatedString =
+    buildAnnotatedString {
+        val source = this@replaceWithRegex
+        val length = source.length
+        var pos = 0
+        var match = pattern.find(source.text)
+        while (match != null) {
+            val start = match.range.first
+            val end = match.range.last + 1
+            if (start > pos) {
+                append(source.subSequence(pos, start))
+            }
+            append(buildReplacement(replacement, match))
+            pos =
+                if (end > pos) {
+                    end
+                } else {
+                    // Zero-width or non-advancing match: skip one char to guarantee progress
+                    if (pos < length) append(source.subSequence(pos, pos + 1))
+                    pos + 1
+                }
+            if (pos > length) break
+            match = pattern.find(source.text, pos)
         }
-        // Append the tail after the final match
-        append(remaining)
+        if (pos < length) {
+            append(source.subSequence(pos, length))
+        }
     }
+
+private fun buildReplacement(
+    replacement: String,
+    match: MatchResult,
+): String {
+    val sb = StringBuilder(replacement.length)
+    var i = 0
+    while (i < replacement.length) {
+        val c = replacement[i]
+        when {
+            c == '\\' && i + 1 < replacement.length -> {
+                sb.append(replacement[i + 1])
+                i += 2
+            }
+            c == '$' && i + 1 < replacement.length -> {
+                val next = replacement[i + 1]
+                if (next.isDigit()) {
+                    val n = next.digitToInt()
+                    if (n < match.groups.size) {
+                        match.groups[n]?.value?.let(sb::append)
+                    }
+                    i += 2
+                } else if (next == '{') {
+                    val close = replacement.indexOf('}', i + 2)
+                    if (close >= 0) {
+                        val name = replacement.substring(i + 2, close)
+                        try {
+                            (match.groups as? MatchNamedGroupCollection)?.get(name)?.value?.let(sb::append)
+                        } catch (_: Exception) {
+                            // Unknown group name — drop it, matching Java's behavior of throwing but be lenient here
+                        }
+                        i = close + 1
+                    } else {
+                        sb.append(c)
+                        i++
+                    }
+                } else {
+                    sb.append(c)
+                    i++
+                }
+            }
+            else -> {
+                sb.append(c)
+                i++
+            }
+        }
+    }
+    return sb.toString()
 }

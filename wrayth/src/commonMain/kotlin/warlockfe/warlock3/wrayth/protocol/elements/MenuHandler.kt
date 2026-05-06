@@ -7,11 +7,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythMenuEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythMenuStartEvent
 
 class MenuHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythMenuStartEvent(element.attributes["id"]?.toIntOrNull())
-    }
+    override fun startElement(element: StartElement): WraythEvent = WraythMenuStartEvent(element.attributes["id"]?.toIntOrNull())
 
-    override fun endElement(): WraythEvent {
-        return WraythMenuEndEvent
-    }
+    override fun endElement(): WraythEvent = WraythMenuEndEvent
 }

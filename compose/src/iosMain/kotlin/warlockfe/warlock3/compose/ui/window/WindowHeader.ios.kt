@@ -21,13 +21,13 @@ import warlockfe.warlock3.core.window.WindowLocation
 // TODO: make a nonJvm source set and merge this with Android
 @Composable
 actual fun WindowHeader(
-    modifier: Modifier,
     title: @Composable (() -> Unit),
     location: WindowLocation,
     isSelected: Boolean,
-    onSettingsClicked: () -> Unit,
-    onClearClicked: () -> Unit,
-    onCloseClicked: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onClearClick: () -> Unit,
+    onCloseClick: () -> Unit,
+    modifier: Modifier,
 ) {
     Row(modifier = modifier) {
         Box(modifier = Modifier.weight(1f)) {
@@ -43,18 +43,18 @@ actual fun WindowHeader(
             }
             DropdownMenu(
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false }
+                onDismissRequest = { showMenu = false },
             ) {
                 DropdownMenuItem(
                     onClick = {
-                        onSettingsClicked()
+                        onSettingsClick()
                         showMenu = false
                     },
-                    text = { Text("Window Settings ...") }
+                    text = { Text("Window Settings ...") },
                 )
                 DropdownMenuItem(
                     onClick = {
-                        onClearClicked()
+                        onClearClick()
                         showMenu = false
                     },
                     text = { Text("Clear window") },
@@ -62,7 +62,7 @@ actual fun WindowHeader(
                 if (location != WindowLocation.MAIN) {
                     DropdownMenuItem(
                         onClick = {
-                            onCloseClicked()
+                            onCloseClick()
                             showMenu = false
                         },
                         text = { Text("Hide window") },

@@ -42,7 +42,7 @@ interface WindowSettingsDao {
             backgroundColor = :backgroundColor,
             fontFamily = :fontFamily,
             fontSize = :fontSize;
-    """
+    """,
     )
     suspend fun setStyle(
         characterId: String,
@@ -61,7 +61,7 @@ interface WindowSettingsDao {
         UPDATE SET
             location = :location,
             position = :position;
-    """
+    """,
     )
     suspend fun openWindow(
         characterId: String,
@@ -75,12 +75,18 @@ interface WindowSettingsDao {
         UPDATE WindowSettings
         SET location = NULL, position = NULL
         WHERE characterId = :characterId AND name = :name;
-    """
+    """,
     )
-    suspend fun doCloseWindow(characterId: String, name: String)
+    suspend fun doCloseWindow(
+        characterId: String,
+        name: String,
+    )
 
     @Transaction
-    suspend fun closeWindow(characterId: String, name: String) {
+    suspend fun closeWindow(
+        characterId: String,
+        name: String,
+    ) {
         getByName(characterId = characterId, name = name)
             ?.let { window ->
                 doCloseWindow(
@@ -90,13 +96,17 @@ interface WindowSettingsDao {
                 closeGap(
                     characterId = characterId,
                     location = window.location,
-                    position = window.position
+                    position = window.position,
                 )
             }
     }
 
     @Transaction
-    suspend fun moveWindow(characterId: String, name: String, location: WindowLocation) {
+    suspend fun moveWindow(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+    ) {
         val oldWindow = getByName(characterId = characterId, name = name) ?: return
         val newPosition = getByLocation(characterId = characterId, location = location).size
         openWindow(characterId, name, location = location, position = newPosition)
@@ -110,19 +120,31 @@ interface WindowSettingsDao {
     ): List<WindowSettingsEntity>
 
     @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId AND name = :name")
-    suspend fun getByName(characterId: String, name: String): WindowSettingsEntity?
+    suspend fun getByName(
+        characterId: String,
+        name: String,
+    ): WindowSettingsEntity?
 
     @Query(
         """
         UPDATE WindowSettings
         SET position = position + 1
         WHERE characterId = :characterId AND location = :location AND position >= :position
-    """
+    """,
     )
-    suspend fun openGap(characterId: String, location: WindowLocation, position: Int)
+    suspend fun openGap(
+        characterId: String,
+        location: WindowLocation,
+        position: Int,
+    )
 
     @Transaction
-    suspend fun moveWindowToPosition(characterId: String, name: String, location: WindowLocation, position: Int) {
+    suspend fun moveWindowToPosition(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+        position: Int,
+    ) {
         val oldWindow = getByName(characterId, name)
         if (oldWindow != null) {
             closeGap(characterId, oldWindow.location, oldWindow.position)
@@ -136,34 +158,50 @@ interface WindowSettingsDao {
         UPDATE WindowSettings
         SET position = position - 1
         WHERE characterId = :characterId AND location = :location AND position > :position;
-    """
+    """,
     )
-    suspend fun closeGap(characterId: String, location: WindowLocation?, position: Int?)
+    suspend fun closeGap(
+        characterId: String,
+        location: WindowLocation?,
+        position: Int?,
+    )
 
     @Query(
         """
         UPDATE WindowSettings
         SET width = :width
         WHERE characterId = :characterId AND name = :name;
-    """
+    """,
     )
-    suspend fun updateWidth(characterId: String, name: String, width: Int)
+    suspend fun updateWidth(
+        characterId: String,
+        name: String,
+        width: Int,
+    )
 
     @Query(
         """
         UPDATE WindowSettings
         SET height = :height
         WHERE characterId = :characterId AND name = :name
-    """
+    """,
     )
-    suspend fun updateHeight(characterId: String, name: String, height: Int)
+    suspend fun updateHeight(
+        characterId: String,
+        name: String,
+        height: Int,
+    )
 
     @Query(
         """
         UPDATE WindowSettings
         SET position = :pos
         WHERE characterId = :characterId AND name = :name;
-    """
+    """,
     )
-    suspend fun setPosition(characterId: String, name: String, pos: Int)
+    suspend fun setPosition(
+        characterId: String,
+        name: String,
+        pos: Int,
+    )
 }

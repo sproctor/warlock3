@@ -6,10 +6,9 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythSettingsInfoEvent
 
 class SettingsInfoHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythSettingsInfoEvent(
+    override fun startElement(element: StartElement): WraythEvent =
+        WraythSettingsInfoEvent(
             crc = element.attributes["crc"],
             instance = element.attributes["instance"],
         )
-    }
 }

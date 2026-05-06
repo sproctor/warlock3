@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 
@@ -23,20 +22,19 @@ fun DragOverlay(
     val item = dragDropState.draggedItem ?: return
 
     Box(
-        modifier = modifier
-            .zIndex(Float.MAX_VALUE)
-            .graphicsLayer {
-                translationX = dragDropState.dragOffset.x - 100.dp.toPx()
-                translationY = dragDropState.dragOffset.y - 12.dp.toPx()
-                alpha = 0.85f
-            }
-            .shadow(4.dp, shape = MaterialTheme.shapes.extraSmall)
-            .background(
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = MaterialTheme.shapes.extraSmall,
-            )
-            .width(200.dp)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+        modifier =
+            modifier
+                .zIndex(Float.MAX_VALUE)
+                .graphicsLayer {
+                    translationX = dragDropState.dragOffset.x - 100.dp.toPx()
+                    translationY = dragDropState.dragOffset.y - 12.dp.toPx()
+                    alpha = 0.85f
+                }.shadow(4.dp, shape = MaterialTheme.shapes.extraSmall)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    shape = MaterialTheme.shapes.extraSmall,
+                ).width(200.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Text(
             text = item.name,

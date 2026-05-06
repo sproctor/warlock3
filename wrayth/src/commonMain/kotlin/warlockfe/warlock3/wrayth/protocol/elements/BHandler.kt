@@ -8,11 +8,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythPopStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPushStyleEvent
 
 class BHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent {
-        return WraythPushStyleEvent(WarlockStyle.Bold)
-    }
+    override fun startElement(element: StartElement): WraythEvent = WraythPushStyleEvent(WarlockStyle.Bold)
 
-    override fun endElement(): WraythEvent {
-        return WraythPopStyleEvent
-    }
+    override fun endElement(): WraythEvent = WraythPopStyleEvent
 }

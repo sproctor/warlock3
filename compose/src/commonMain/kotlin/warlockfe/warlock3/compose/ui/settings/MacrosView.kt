@@ -44,6 +44,7 @@ fun MacrosView(
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
     macroRepository: MacroRepository,
+    modifier: Modifier = Modifier,
 ) {
     var currentCharacter by remember(initialCharacter) { mutableStateOf(initialCharacter) }
     val macros by if (currentCharacter == null) {
@@ -55,7 +56,7 @@ fun MacrosView(
     var confirmReset by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column {
+    Column(modifier) {
         SettingsCharacterSelector(
             selectedCharacter = currentCharacter,
             characters = characters,
@@ -66,8 +67,9 @@ fun MacrosView(
         Text(text = "Macros", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
         ScrollableColumn(
-            Modifier.fillMaxWidth()
-                .weight(1f)
+            Modifier
+                .fillMaxWidth()
+                .weight(1f),
         ) {
             macros.forEach { macro ->
                 ListItem(
@@ -76,7 +78,7 @@ fun MacrosView(
                     trailingContent = {
                         Row {
                             IconButton(
-                                onClick = { editingMacro = EditMacroState.Edit(macro) }
+                                onClick = { editingMacro = EditMacroState.Edit(macro) },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.edit),
@@ -89,24 +91,24 @@ fun MacrosView(
                                     coroutineScope.launch {
                                         macroRepository.delete(
                                             currentCharacter?.id ?: "global",
-                                            macro.keyCombo
+                                            macro.keyCombo,
                                         )
                                     }
-                                }
+                                },
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.delete),
-                                    contentDescription = "Delete"
+                                    contentDescription = "Delete",
                                 )
                             }
                         }
-                    }
+                    },
                 )
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             FilledTonalButton(
                 onClick = { confirmReset = true },
@@ -133,7 +135,7 @@ fun MacrosView(
             },
             onDismiss = {
                 confirmReset = false
-            }
+            },
         )
     }
     when (val state = editingMacro) {
@@ -162,7 +164,7 @@ fun MacrosView(
                         editingMacro = EditMacroState.Closed
                     }
                 },
-                onClose = { editingMacro = EditMacroState.Closed }
+                onClose = { editingMacro = EditMacroState.Closed },
             )
         }
 
@@ -207,5 +209,8 @@ private fun MacroKeyCombo.toDisplayString(): String {
 
 sealed class EditMacroState {
     data object Closed : EditMacroState()
-    data class Edit(val macro: Macro?) : EditMacroState()
+
+    data class Edit(
+        val macro: Macro?,
+    ) : EditMacroState()
 }

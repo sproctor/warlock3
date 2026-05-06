@@ -23,10 +23,9 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.app.resources.Res
 import warlockfe.warlock3.app.resources.icon
 
+@Suppress("ktlint:compose:modifier-missing-check")
 @Composable
-fun AboutDialog(
-    onCloseRequest: () -> Unit,
-) {
+fun AboutDialog(onCloseRequest: () -> Unit) {
     val warlockVersion = System.getProperty("app.version", "development")
     DialogWindow(
         state = rememberDialogState(width = 400.dp, height = 300.dp),
@@ -50,7 +49,7 @@ fun AboutDialog(
                 Box(Modifier.fillMaxSize()) {
                     TextButton(
                         modifier = Modifier.align(Alignment.BottomEnd),
-                        onClick = onCloseRequest
+                        onClick = onCloseRequest,
                     ) {
                         Text("OK")
                     }

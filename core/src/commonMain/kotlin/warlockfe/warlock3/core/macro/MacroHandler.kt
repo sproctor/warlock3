@@ -1,7 +1,6 @@
 package warlockfe.warlock3.core.macro
 
 interface MacroHandler {
-
     val entryText: CharSequence
 
     fun scroll(event: ScrollEvent)

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.IOException
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeCharacter
@@ -33,13 +34,13 @@ import warlockfe.warlock3.core.util.encodeWindows1252
 import warlockfe.warlock3.wrayth.util.openPlainSocket
 import warlockfe.warlock3.wrayth.util.openTLSSocket
 import kotlin.math.min
+import kotlin.time.Duration.Companion.seconds
 
-private const val passwordHashLength = 32
+private const val PASSWORD_HASH_LENGTH = 32
 
 class SgeClientImpl(
     private val ioDispatcher: CoroutineDispatcher,
 ) : SgeClient {
-
     private val logger = Logger.withTag("SgeClient")
     val selectorManager: SelectorManager = SelectorManager()
     private var closeConnection: (() -> Unit)? = null
@@ -52,16 +53,17 @@ class SgeClientImpl(
     private var username: String? = null
     private var secure: Boolean = true
 
-    private val tlsExceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        if (throwable is ClosedWriteChannelException) {
-            logger.d { "TLS channel closed during handshake: ${throwable.message}" }
-        } else {
-            logger.e(throwable) { "Unexpected TLS error" }
+    private val tlsExceptionHandler =
+        CoroutineExceptionHandler { _, throwable ->
+            if (throwable is ClosedWriteChannelException) {
+                logger.d { "TLS channel closed during handshake: ${throwable.message}" }
+            } else {
+                logger.e(throwable) { "Unexpected TLS error" }
+            }
+            if (!_eventFlow.tryEmit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))) {
+                logger.e { "Failed to emit SgeErrorEvent" }
+            }
         }
-        if (!_eventFlow.tryEmit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))) {
-            logger.e { "Failed to emit SgeErrorEvent" }
-        }
-    }
     private val scope = CoroutineScope(ioDispatcher + SupervisorJob() + tlsExceptionHandler)
 
     override suspend fun connect(settings: SgeSettings): Boolean {
@@ -70,23 +72,25 @@ class SgeClientImpl(
             try {
                 logger.d { "connecting..." }
                 if (secure) {
-                    val conn = openTLSSocket(
-                        selectorManager = selectorManager,
-                        host = settings.host,
-                        port = settings.port,
-                        certificate = settings.certificate,
-                        coroutineContext = scope.coroutineContext,
-                    )
+                    val conn =
+                        openTLSSocket(
+                            selectorManager = selectorManager,
+                            host = settings.host,
+                            port = settings.port,
+                            certificate = settings.certificate,
+                            coroutineContext = scope.coroutineContext,
+                        )
                     receiveChannel = conn.readChannel
                     sendChannel = conn.writeChannel
                     closeConnection = conn.close
                 } else {
-                    val conn = openPlainSocket(
-                        selectorManager = selectorManager,
-                        host = settings.host,
-                        port = settings.port,
-                        coroutineContext = scope.coroutineContext,
-                    )
+                    val conn =
+                        openPlainSocket(
+                            selectorManager = selectorManager,
+                            host = settings.host,
+                            port = settings.port,
+                            coroutineContext = scope.coroutineContext,
+                        )
                     receiveChannel = conn.readChannel
                     sendChannel = conn.writeChannel
                     closeConnection = conn.close
@@ -100,7 +104,7 @@ class SgeClientImpl(
                     logger.e { "Error reading password hash" }
                     return@withContext false
                 }
-                buffer.copyInto(passwordHash, endIndex = min(hashLength, passwordHashLength))
+                buffer.copyInto(passwordHash, endIndex = min(hashLength, PASSWORD_HASH_LENGTH))
 
                 scope.launch {
                     try {
@@ -137,28 +141,31 @@ class SgeClientImpl(
             }
 
             SgeResponse.SgeLoginSucceededResponse -> _eventFlow.emit(SgeEvent.SgeLoginSucceededEvent)
-            is SgeResponse.SgeGameListResponse -> _eventFlow.emit(
-                SgeEvent.SgeGamesReadyEvent(
-                    response.games
+            is SgeResponse.SgeGameListResponse ->
+                _eventFlow.emit(
+                    SgeEvent.SgeGamesReadyEvent(
+                        response.games,
+                    ),
                 )
-            )
 
             SgeResponse.SgeGameDetailsResponse -> _eventFlow.emit(SgeEvent.SgeGameSelectedEvent)
-            is SgeResponse.SgeCharacterListResponse -> _eventFlow.emit(
-                SgeEvent.SgeCharactersReadyEvent(
-                    response.characters
+            is SgeResponse.SgeCharacterListResponse ->
+                _eventFlow.emit(
+                    SgeEvent.SgeCharactersReadyEvent(
+                        response.characters,
+                    ),
                 )
-            )
 
             is SgeResponse.SgeReadyToPlayResponse -> {
                 closeConnection?.invoke()
                 closeConnection = null
                 val properties = response.properties
-                val credentials = SimuGameCredentials(
-                    host = properties["GAMEHOST"]!!,
-                    port = properties["GAMEPORT"]!!.toInt(),
-                    key = properties["KEY"]!!
-                )
+                val credentials =
+                    SimuGameCredentials(
+                        host = properties["GAMEHOST"]!!,
+                        port = properties["GAMEPORT"]!!.toInt(),
+                        key = properties["KEY"]!!,
+                    )
                 _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(credentials))
             }
 
@@ -166,14 +173,16 @@ class SgeClientImpl(
         }
     }
 
-    private fun parseServerResponse(line: String): SgeResponse {
-        return when (line[0]) {
+    private fun parseServerResponse(line: String): SgeResponse =
+        when (line[0]) {
             'A' -> {
                 // response from login attempt
                 logger.d { "A line ($line)" }
                 logger.d {
-                    val bytes = line.toByteArray()
-                        .map { it.toInt().toString(radix = 16).padStart(2, '0') }
+                    val bytes =
+                        line
+                            .toByteArray()
+                            .map { it.toInt().toString(radix = 16).padStart(2, '0') }
                     "as bytes: $bytes"
                 }
                 val tokens = line.split('\t')
@@ -229,7 +238,6 @@ class SgeClientImpl(
 
             else -> SgeResponse.SgeUnrecognizedResponse
         }
-    }
 
     private suspend fun readline(): String? {
         // TODO: should we implement readline for this?
@@ -255,7 +263,10 @@ class SgeClientImpl(
         }
     }
 
-    override suspend fun login(username: String, password: String) {
+    override suspend fun login(
+        username: String,
+        password: String,
+    ) {
         this@SgeClientImpl.username = username
         val encryptedPassword = encryptPassword(password.encodeWindows1252())
         val output = "A\t$username\t".encodeWindows1252() + encryptedPassword + '\n'.code.toByte()
@@ -294,7 +305,7 @@ class SgeClientImpl(
 
     override suspend fun autoConnect(
         settings: SgeSettings,
-        connection: StoredConnection
+        connection: StoredConnection,
     ): AutoConnectResult {
         if (!connect(settings)) {
             logger.e { "Unable to connect to server" }
@@ -302,40 +313,59 @@ class SgeClientImpl(
         }
         login(username = connection.username, password = connection.password ?: "")
 
-        while (true) {
-            when (val event = eventFlow.first()) {
-                is SgeEvent.SgeLoginSucceededEvent -> selectGame(connection.code)
-                is SgeEvent.SgeGameSelectedEvent -> requestCharacterList()
-                is SgeEvent.SgeCharactersReadyEvent -> {
-                    val characters = event.characters
-                    val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
-                    if (sgeCharacter == null) {
-                        return AutoConnectResult.Failure("Could not find character: ${connection.character}")
-                    } else {
-                        selectCharacter(sgeCharacter.code)
+        return withTimeoutOrNull(30.seconds) {
+            while (true) {
+                when (val event = eventFlow.first()) {
+                    is SgeEvent.SgeLoginSucceededEvent -> selectGame(connection.code)
+                    is SgeEvent.SgeGameSelectedEvent -> requestCharacterList()
+                    is SgeEvent.SgeCharactersReadyEvent -> {
+                        val characters = event.characters
+                        val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
+                        if (sgeCharacter == null) {
+                            return@withTimeoutOrNull AutoConnectResult.Failure(
+                                "Could not find character: ${connection.character}",
+                            )
+                        } else {
+                            selectCharacter(sgeCharacter.code)
+                        }
                     }
+
+                    is SgeEvent.SgeReadyToPlayEvent ->
+                        return@withTimeoutOrNull AutoConnectResult.Success(event.credentials)
+
+                    is SgeEvent.SgeErrorEvent -> {
+                        return@withTimeoutOrNull AutoConnectResult.Failure("Error code (${event.errorCode})")
+                    }
+
+                    else ->
+                        logger.i { "Unrecognized event: $event" }
                 }
-
-                is SgeEvent.SgeReadyToPlayEvent ->
-                    return AutoConnectResult.Success(event.credentials)
-
-                is SgeEvent.SgeErrorEvent -> {
-                    return AutoConnectResult.Failure("Error code (${event.errorCode})")
-                }
-
-                else ->
-                    logger.i { "Unrecognized event: $event" }
             }
-        }
+            @Suppress("UNREACHABLE_CODE") null
+        } ?: AutoConnectResult.Failure("Timed out waiting for SGE response")
     }
 }
 
 sealed class SgeResponse {
     data object SgeLoginSucceededResponse : SgeResponse()
-    data class SgeGameListResponse(val games: List<SgeGame>) : SgeResponse()
+
+    data class SgeGameListResponse(
+        val games: List<SgeGame>,
+    ) : SgeResponse()
+
     data object SgeGameDetailsResponse : SgeResponse()
-    data class SgeCharacterListResponse(val characters: List<SgeCharacter>) : SgeResponse()
-    data class SgeReadyToPlayResponse(val properties: Map<String, String>) : SgeResponse()
+
+    data class SgeCharacterListResponse(
+        val characters: List<SgeCharacter>,
+    ) : SgeResponse()
+
+    data class SgeReadyToPlayResponse(
+        val properties: Map<String, String>,
+    ) : SgeResponse()
+
     data object SgeUnrecognizedResponse : SgeResponse()
-    data class SgeErrorResponse(val error: SgeError) : SgeResponse()
+
+    data class SgeErrorResponse(
+        val error: SgeError,
+    ) : SgeResponse()
 }

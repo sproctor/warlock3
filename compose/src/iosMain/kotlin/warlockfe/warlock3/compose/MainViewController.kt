@@ -27,7 +27,6 @@ import androidx.compose.ui.window.ComposeUIViewController
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.painterResource
@@ -39,45 +38,44 @@ import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.theme.AppTheme
-import warlockfe.warlock3.compose.util.LocalLogger
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.sge.SgeSettings
 
-fun MainViewController() = ComposeUIViewController {
-    val appContainer = remember { IosAppContainerProvider.appContainer }
-    val sgeSettings = remember { IosAppContainerProvider.sgeSettings }
+@Suppress("ktlint:standard:function-naming")
+fun MainViewController() =
+    ComposeUIViewController {
+        val appContainer = remember { IosAppContainerProvider.appContainer }
+        val sgeSettings = remember { IosAppContainerProvider.sgeSettings }
 
-    val logger = remember { Logger.withTag("WarlockiOS") }
-    val skin = remember { mutableStateOf<Map<String, SkinObject>>(emptyMap()) }
+        val logger = remember { Logger.withTag("WarlockiOS") }
+        val skin = remember { mutableStateOf<Map<String, SkinObject>>(emptyMap()) }
 
-    remember {
-        val json = Json { ignoreUnknownKeys = true }
-        appContainer.clientSettings
-            .observeSkinFile()
-            .onEach { skinFile ->
-                val bytes = Res.readBytes("files/skin.json")
-                try {
-                    skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
-                } catch (e: Exception) {
-                    logger.e(e) { "Failed to load skin file" }
-                }
-            }
-            .launchIn(appContainer.externalScope)
-        true
+        remember {
+            val json = Json { ignoreUnknownKeys = true }
+            appContainer.clientSettings
+                .observeSkinFile()
+                .onEach { skinFile ->
+                    val bytes = Res.readBytes("files/skin.json")
+                    try {
+                        skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+                    } catch (e: Exception) {
+                        logger.e(e) { "Failed to load skin file" }
+                    }
+                }.launchIn(appContainer.externalScope)
+            true
+        }
+
+        CompositionLocalProvider(
+            LocalSkin provides skin.value,
+        ) {
+            IosWarlockApp(
+                appContainer = appContainer,
+                sgeSettings = sgeSettings,
+            )
+        }
     }
-
-    CompositionLocalProvider(
-        LocalLogger provides logger,
-        LocalSkin provides skin.value,
-    ) {
-        IosWarlockApp(
-            appContainer = appContainer,
-            sgeSettings = sgeSettings,
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Suppress("FunctionName")
@@ -88,11 +86,12 @@ private fun IosWarlockApp(
 ) {
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
     AppTheme(
-        useDarkTheme = when (themeSetting) {
-            ThemeSetting.AUTO -> isSystemInDarkTheme()
-            ThemeSetting.LIGHT -> false
-            ThemeSetting.DARK -> true
-        }
+        useDarkTheme =
+            when (themeSetting) {
+                ThemeSetting.AUTO -> isSystemInDarkTheme()
+                ThemeSetting.LIGHT -> false
+                ThemeSetting.DARK -> true
+            },
     ) {
         val gameState = GameState()
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
@@ -142,7 +141,7 @@ private fun IosWarlockApp(
                             ) {
                                 Icon(
                                     painter = painterResource(Res.drawable.menu),
-                                    contentDescription = null
+                                    contentDescription = null,
                                 )
                             }
                         },

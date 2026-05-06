@@ -11,13 +11,13 @@ import warlockfe.warlock3.core.window.WindowLocation
 
 @Composable
 actual fun WindowHeader(
-    modifier: Modifier,
     title: @Composable () -> Unit,
     location: WindowLocation,
     isSelected: Boolean,
-    onSettingsClicked: () -> Unit,
-    onClearClicked: () -> Unit,
-    onCloseClicked: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onClearClick: () -> Unit,
+    onCloseClick: () -> Unit,
+    modifier: Modifier,
 ) {
     ContextMenuArea(
         items = {
@@ -25,25 +25,25 @@ actual fun WindowHeader(
                 add(
                     ContextMenuItem(
                         label = "Window Settings ...",
-                        onClick = onSettingsClicked,
-                    )
+                        onClick = onSettingsClick,
+                    ),
                 )
                 add(
                     ContextMenuItem(
                         label = "Clear window",
-                        onClick = onClearClicked,
-                    )
+                        onClick = onClearClick,
+                    ),
                 )
                 if (location != WindowLocation.MAIN) {
                     add(
                         ContextMenuItem(
                             label = "Hide window",
-                            onClick = onCloseClicked,
-                        )
+                            onClick = onCloseClick,
+                        ),
                     )
                 }
             }
-        }
+        },
     ) {
         Box(modifier = modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             title()

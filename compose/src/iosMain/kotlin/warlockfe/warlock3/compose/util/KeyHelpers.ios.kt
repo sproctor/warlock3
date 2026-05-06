@@ -4,9 +4,7 @@ import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.input.key.Key
 
 @OptIn(InternalComposeUiApi::class)
-actual fun Key.getLabel(): String {
-    return "??"
-}
+actual fun Key.getLabel(): String = "??"
 
 actual val Key.Companion.NumPadDotFix: Key
     get() = Key.NumPadDot

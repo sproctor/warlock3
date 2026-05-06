@@ -9,28 +9,35 @@ import warlockfe.warlock3.core.sge.ConnectionProxySettings
 class ConnectionSettingsRepository(
     private val connectionSettingDao: ConnectionSettingDao,
 ) {
-    suspend fun save(connectionId: String, key: String, value: String) {
+    suspend fun save(
+        connectionId: String,
+        key: String,
+        value: String,
+    ) {
         withContext(NonCancellable) {
             connectionSettingDao.save(
-                ConnectionSettingEntity(connectionId = connectionId, key = key, value = value)
+                ConnectionSettingEntity(connectionId = connectionId, key = key, value = value),
             )
         }
     }
 
-    suspend fun get(connectionId: String, key: String): String? {
-        return connectionSettingDao.getByKey(connectionId = connectionId, key = key)
-    }
+    suspend fun get(
+        connectionId: String,
+        key: String,
+    ): String? = connectionSettingDao.getByKey(connectionId = connectionId, key = key)
 
-    suspend fun getProxySettings(characterId: String): ConnectionProxySettings {
-        return ConnectionProxySettings(
+    suspend fun getProxySettings(characterId: String): ConnectionProxySettings =
+        ConnectionProxySettings(
             enabled = get(characterId, "proxyEnabled")?.toBooleanStrictOrNull() == true,
             launchCommand = get(characterId, "proxyLaunchCommand"),
             host = get(characterId, "proxyHost"),
             port = get(characterId, "proxyPort"),
         )
-    }
 
-    suspend fun saveProxySettings(connectionId: String, proxySettings: ConnectionProxySettings) {
+    suspend fun saveProxySettings(
+        connectionId: String,
+        proxySettings: ConnectionProxySettings,
+    ) {
         withContext(NonCancellable) {
             save(
                 connectionId = connectionId,

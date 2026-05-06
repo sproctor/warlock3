@@ -4,13 +4,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SkinJsonTest {
-    val json = Json {
-        ignoreUnknownKeys = true
-    }
+    val json =
+        Json {
+            ignoreUnknownKeys = true
+        }
 
     @Test
     fun skin_object_parses() {
-        val skinJson = """
+        val skinJson =
+            """
             {
                 "top": 10,
                 "left": 100,
@@ -20,25 +22,28 @@ class SkinJsonTest {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val skin = json.decodeFromString<SkinObject>(skinJson)
 
         assertEquals(
-            expected = SkinObject(
-                top = 10,
-                left = 100,
-                children = mapOf(
-                    "child" to SkinObject(top = 10)
-                )
-            ),
+            expected =
+                SkinObject(
+                    top = 10,
+                    left = 100,
+                    children =
+                        mapOf(
+                            "child" to SkinObject(top = 10),
+                        ),
+                ),
             actual = skin,
         )
     }
 
     @Test
     fun skin_map_parses() {
-        val skinJson = """
+        val skinJson =
+            """
             {
                 "skin": {
                     "top": 10,
@@ -59,27 +64,32 @@ class SkinJsonTest {
                     }
                 }
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val skin = json.decodeFromString<Map<String, SkinObject>>(skinJson)
 
         assertEquals(
-            expected = mapOf(
-                "skin" to SkinObject(
-                    top = 10,
-                    left = 100,
-                    children = mapOf(
-                        "child" to SkinObject(top = 10)
-                    ),
+            expected =
+                mapOf(
+                    "skin" to
+                        SkinObject(
+                            top = 10,
+                            left = 100,
+                            children =
+                                mapOf(
+                                    "child" to SkinObject(top = 10),
+                                ),
+                        ),
+                    "skin2" to
+                        SkinObject(
+                            top = 100,
+                            left = 200,
+                            children =
+                                mapOf(
+                                    "child" to SkinObject(top = 20),
+                                ),
+                        ),
                 ),
-                "skin2" to SkinObject(
-                    top = 100,
-                    left = 200,
-                    children = mapOf(
-                        "child" to SkinObject(top = 20)
-                    )
-                )
-            ),
             actual = skin,
         )
     }

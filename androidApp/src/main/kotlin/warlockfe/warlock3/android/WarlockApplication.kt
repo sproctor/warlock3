@@ -12,7 +12,6 @@ import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.util.WarlockDirs
 
 class WarlockApplication : Application() {
-
     lateinit var appContainer: AppContainer
         private set
 
@@ -20,12 +19,13 @@ class WarlockApplication : Application() {
         super.onCreate()
 
         val configDir = filesDir
-        val warlockDirs = WarlockDirs(
-            homeDir = filesDir.path,
-            configDir = filesDir.path,
-            dataDir = dataDir.path,
-            logDir = filesDir.path + "/logs"
-        )
+        val warlockDirs =
+            WarlockDirs(
+                homeDir = filesDir.path,
+                configDir = filesDir.path,
+                dataDir = dataDir.path,
+                logDir = filesDir.path + "/logs",
+            )
         configDir.mkdirs()
         val database = getPrefsDatabaseBuilder(getDatabasePath("prefs.db").absolutePath)
         appContainer = AndroidAppContainer(database, warlockDirs, SystemFileSystem)
@@ -34,10 +34,9 @@ class WarlockApplication : Application() {
         }
     }
 
-    private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> {
-        return Room.databaseBuilder<PrefsDatabase>(
+    private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =
+        Room.databaseBuilder<PrefsDatabase>(
             context = this,
             name = filename,
         )
-    }
 }
