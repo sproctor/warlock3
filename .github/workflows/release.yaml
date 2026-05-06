@@ -57,15 +57,20 @@ jobs:
           setup-gradle: 'true'
           setup-node: 'true'
 
+      - name: Decode Windows signing certificate
+        if: runner.os == 'Windows' && secrets.WIN_CSC_LINK != ''
+        shell: bash
+        env:
+          WIN_CSC_LINK_B64: ${{ secrets.WIN_CSC_LINK }}
+        run: |
+          set -euo pipefail
+          echo "$WIN_CSC_LINK_B64" | base64 -d > "$RUNNER_TEMP/certificate.pfx"
+          echo "WIN_CSC_LINK=$RUNNER_TEMP/certificate.pfx" >> "$GITHUB_ENV"
+
       - name: Build packages
         shell: bash
         env:
-          # Azure Trusted Signing service-principal credentials.
-          # Only consumed on Windows runners by electron-builder when AZURE_TENANT_ID
-          # is set (gating happens in desktopApp/build.gradle.kts).
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: ./gradlew :desktopApp:packageReleaseDistributionForCurrentOS --stacktrace --no-daemon
 
       - uses: actions/upload-artifact@v4

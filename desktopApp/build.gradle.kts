@@ -94,7 +94,7 @@ nucleus.application {
         )
 
         cleanupNativeLibs = true
-        artifactName = $$"${name}-${version}-${os}-${arch}.${ext}"
+        artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
 
         publish {
             github {
@@ -105,29 +105,30 @@ nucleus.application {
         }
 
         windows {
-            iconFile.set(project.file("../icons/icon.ico"))
+            // TODO: add a .ico to icons/ and set iconFile here; defaults are used otherwise.
             menu = true
             // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
             upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
 
-            // Azure Trusted Signing — Auth comes from the standard Azure
-            // service-principal env vars (AZURE_TENANT_ID / AZURE_CLIENT_ID /
-            // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
-            // or from an interactive `az login` session.
-            // Signing is gated on the az CLI being able to obtain a token for
-            // the code-signing resource, so local builds without Azure access
-            // still produce unsigned binaries.
-            signing {
-                enabled = true
-                azureTenantId = "6e19dfe4-9f0c-4bbc-87a3-93c9b47b75f4"
-                azureEndpoint = "https://eus.codesigning.azure.net"
-                azureCodeSigningAccountName = "scrapgolem"
-                azureCertificateProfileName = "group1"
-                timestampServer = "http://timestamp.digicert.com"
+            // PFX signing — CI decodes WIN_CSC_LINK (base64 secret) to a file
+            // and points WIN_CSC_LINK at that path before invoking gradle.
+            // To use Azure Trusted Signing instead, replace the block below
+            // with `azureTenantId`, `azureEndpoint`, `azureCertificateProfileName`,
+            // `azureCodeSigningAccountName` (see Nucleus code-signing docs).
+            val pfxPath = System.getenv("WIN_CSC_LINK")
+            val pfxPassword = System.getenv("WIN_CSC_KEY_PASSWORD")
+            if (!pfxPath.isNullOrBlank() && !pfxPassword.isNullOrBlank() && file(pfxPath).exists()) {
+                signing {
+                    enabled = true
+                    certificateFile.set(file(pfxPath))
+                    certificatePassword = pfxPassword
+                    algorithm = SigningAlgorithm.Sha256
+                    timestampServer = "http://timestamp.digicert.com"
+                }
             }
         }
         macOS {
-            iconFile.set(project.file("../icons/icon.icns"))
+            // TODO: add a .icns to icons/ and set iconFile here; defaults are used otherwise.
             bundleID = "warlockfe.warlock3"
             // CI signs macOS post-lipo via the build-macos-universal action; only
             // configure jpackage-time signing for local dev builds.
