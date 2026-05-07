@@ -37,6 +37,12 @@ kotlin {
                 // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
                 // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
             }
+            group("mobile") {
+                withAndroidTarget()
+                group("ios") {
+                    withIos()
+                }
+            }
         }
     }
 

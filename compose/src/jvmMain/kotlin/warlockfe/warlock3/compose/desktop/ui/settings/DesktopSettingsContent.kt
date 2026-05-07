@@ -1,15 +1,17 @@
 package warlockfe.warlock3.compose.desktop.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import warlockfe.warlock3.compose.ui.settings.AliasView
-import warlockfe.warlock3.compose.ui.settings.AlterationsView
-import warlockfe.warlock3.compose.ui.settings.AppearanceView
-import warlockfe.warlock3.compose.ui.settings.GeneralSettingsView
-import warlockfe.warlock3.compose.ui.settings.HighlightsView
-import warlockfe.warlock3.compose.ui.settings.MacrosView
-import warlockfe.warlock3.compose.ui.settings.NamesView
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
@@ -26,10 +28,9 @@ import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 /**
- * Desktop (Jewel) settings dispatcher. Pages with a Jewel rewrite are routed to the new
- * jvmMain implementations; pages that haven't been rewritten yet fall through to the
- * Material3 implementations in commonMain. Material3 stays loaded on desktop so the
- * fall-through pages render correctly during this incremental migration.
+ * Desktop (Jewel) settings dispatcher. All pages except Appearance are rewritten in Jewel.
+ * Appearance is intentionally not migrated yet — it depends on the preset chain (preview rendering
+ * with `StreamTextLine`, color/font preset editing) which crosses into other unmigrated UI.
  */
 @Composable
 fun DesktopSettingsContent(
@@ -42,7 +43,7 @@ fun DesktopSettingsContent(
     macroRepository: MacroRepository,
     highlightRepository: HighlightRepositoryImpl,
     nameRepository: NameRepositoryImpl,
-    presetRepository: PresetRepository,
+    @Suppress("UNUSED_PARAMETER") presetRepository: PresetRepository,
     aliasRepository: AliasRepository,
     alterationRepository: AlterationRepository,
     clientSettingRepository: ClientSettingRepository,
@@ -52,8 +53,7 @@ fun DesktopSettingsContent(
 
     when (page) {
         SettingsPage.General -> {
-            // Complex (file pickers, theme selection, logging) — keep on M3 until later step.
-            GeneralSettingsView(
+            DesktopGeneralSettingsView(
                 characterSettingsRepository = characterSettingsRepository,
                 initialCharacter = currentCharacter,
                 characters = characters,
@@ -70,44 +70,63 @@ fun DesktopSettingsContent(
             )
         }
         SettingsPage.Macros ->
-            MacrosView(
+            DesktopMacrosView(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 macroRepository = macroRepository,
             )
         SettingsPage.Highlights ->
-            HighlightsView(
+            DesktopHighlightsView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 highlightRepository = highlightRepository,
             )
         SettingsPage.Names ->
-            NamesView(
+            DesktopNamesView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 nameRepository = nameRepository,
             )
-        SettingsPage.Appearance -> {
-            // Depends on ColorPickerDialog/FontPickerDialog (M3) — keep on M3 for now.
-            AppearanceView(
-                presetRepository = presetRepository,
-                initialCharacter = currentCharacter,
-                characters = characters,
+        SettingsPage.Appearance ->
+            NotYetImplementedPlaceholder(
+                title = "Appearance",
+                detail =
+                    "Appearance preset editor (per-stream colors and fonts) is not yet ported to the Jewel " +
+                        "desktop UI. Use the per-window settings dialog from a stream's title bar to edit individual " +
+                        "stream styles.",
             )
-        }
         SettingsPage.Aliases -> {
-            AliasView(
+            DesktopAliasView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 aliasRepository = aliasRepository,
             )
         }
         SettingsPage.Alterations -> {
-            AlterationsView(
+            DesktopAlterationsView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 alterationRepository = alterationRepository,
             )
+        }
+    }
+}
+
+@Composable
+private fun NotYetImplementedPlaceholder(
+    title: String,
+    detail: String,
+) {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(title)
+            Text(detail)
         }
     }
 }
