@@ -34,7 +34,6 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockResizablePanel
 import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.WindowUiState
-import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -338,7 +337,7 @@ private fun WindowViewSlot(
             }
 
     val content: @Composable (Modifier) -> Unit = { contentModifier ->
-        WindowView(
+        DesktopWindowView(
             modifier = contentModifier.then(modifier),
             headerModifier = headerModifier,
             uiState = uiState,

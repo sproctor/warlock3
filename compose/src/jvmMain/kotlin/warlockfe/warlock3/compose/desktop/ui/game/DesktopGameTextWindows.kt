@@ -9,11 +9,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopDragOverlay
+import warlockfe.warlock3.compose.desktop.ui.window.DesktopWindowView
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopWindowsAtLocation
 import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.WindowUiState
-import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -100,9 +100,7 @@ fun DesktopGameTextWindows(
                     onDrop = onDrop,
                 )
                 if (mainWindowUiState != null) {
-                    // Main text pane (WindowView) is still M3 in commonMain — fall through.
-                    // Migrated in step 8.
-                    WindowView(
+                    DesktopWindowView(
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         headerModifier = Modifier,
                         uiState = mainWindowUiState,
