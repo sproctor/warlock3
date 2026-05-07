@@ -72,7 +72,8 @@ nucleus.application {
             TargetFormat.Nsis,
             TargetFormat.Msi,
             TargetFormat.Deb,
-            TargetFormat.Flatpak,
+            TargetFormat.AppImage,
+            TargetFormat.Tar,
         )
 
         appName = "Warlock"
@@ -122,7 +123,7 @@ nucleus.application {
                 azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
                 azureEndpoint = "https://eus.codesigning.azure.net"
                 azureCodeSigningAccountName = "scrapgolem"
-                azureCertificateProfileName = "group1"
+                azureCertificateProfileName = "signing"
                 timestampServer = "http://timestamp.digicert.com"
             }
         }
