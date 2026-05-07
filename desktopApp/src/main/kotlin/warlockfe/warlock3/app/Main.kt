@@ -2,6 +2,7 @@ package warlockfe.warlock3.app
 
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,9 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,9 +64,13 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.desktop.shim.WarlockButton
+import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
@@ -388,58 +390,59 @@ private class WarlockCommand : CliktCommand() {
                                 title = "Warlock update available",
                                 state = rememberDialogState(width = 400.dp, height = 300.dp),
                             ) {
-                                Surface {
-                                    Column(Modifier.fillMaxSize().padding(8.dp)) {
-                                        Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
-                                        Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
-                                        if (!updateSupported) {
-                                            Text("Automated updates are not supported for your installation")
-                                        }
+                                Column(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(JewelTheme.globalColors.panelBackground)
+                                        .padding(8.dp),
+                                ) {
+                                    Text("Current version: ${currentVersion?.prettyString() ?: "unknown"}")
+                                    Text("Latest version: ${latestVersion?.prettyString() ?: "unknown"}")
+                                    if (!updateSupported) {
+                                        Text("Automated updates are not supported for your installation")
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Row(Modifier.fillMaxWidth()) {
                                         Spacer(Modifier.weight(1f))
-                                        Row(Modifier.fillMaxWidth()) {
-                                            Spacer(Modifier.weight(1f))
-                                            val ignoreUpdates by clientSettings
-                                                .observeIgnoreUpdates()
-                                                .collectAsState(false)
-                                            if (!ignoreUpdates) {
-                                                TextButton(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            clientSettings.putIgnoreUpdates(true)
-                                                            showUpdateDialog = false
-                                                        }
-                                                    },
-                                                ) {
-                                                    Text("Ignore updates")
-                                                }
-                                            } else {
-                                                TextButton(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            clientSettings.putIgnoreUpdates(false)
-                                                        }
-                                                    },
-                                                ) {
-                                                    Text("Stop ignoring updates")
-                                                }
-                                            }
-                                            TextButton(
-                                                onClick = { showUpdateDialog = false },
-                                            ) {
-                                                Text("Close")
-                                            }
-                                            TextButton(
+                                        val ignoreUpdates by clientSettings
+                                            .observeIgnoreUpdates()
+                                            .collectAsState(false)
+                                        if (!ignoreUpdates) {
+                                            WarlockOutlinedButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        clientSettings.putIgnoreUpdates(true)
+                                                        showUpdateDialog = false
+                                                    }
+                                                },
+                                                text = "Ignore updates",
+                                            )
+                                        } else {
+                                            WarlockOutlinedButton(
                                                 onClick = {
                                                     scope.launch {
                                                         clientSettings.putIgnoreUpdates(false)
                                                     }
-                                                    controller.triggerUpdateCheckUI()
                                                 },
-                                                enabled = updateAvailable && updateSupported,
-                                            ) {
-                                                Text("Update")
-                                            }
+                                                text = "Stop ignoring updates",
+                                            )
                                         }
+                                        Spacer(Modifier.padding(horizontal = 4.dp))
+                                        WarlockOutlinedButton(
+                                            onClick = { showUpdateDialog = false },
+                                            text = "Close",
+                                        )
+                                        Spacer(Modifier.padding(horizontal = 4.dp))
+                                        WarlockButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    clientSettings.putIgnoreUpdates(false)
+                                                }
+                                                controller.triggerUpdateCheckUI()
+                                            },
+                                            text = "Update",
+                                            enabled = updateAvailable && updateSupported,
+                                        )
                                     }
                                 }
                             }

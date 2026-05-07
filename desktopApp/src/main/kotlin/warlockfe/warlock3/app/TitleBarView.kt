@@ -1,10 +1,10 @@
 package warlockfe.warlock3.app
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -20,13 +21,13 @@ import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.modifier.onHover
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.window.DecoratedWindowScope
 import org.jetbrains.jewel.window.TitleBar
 import org.jetbrains.jewel.window.newFullscreenControls
-import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
 import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
@@ -71,7 +72,8 @@ internal fun DecoratedWindowScope.TitleBarView(
         Row(Modifier.align(Alignment.Start)) {
             if (isConnected) {
                 IconButton(onClick = { showSideBar(!sideBarVisible) }) {
-                    Icon(
+                    Image(
+                        modifier = Modifier.padding(4.dp),
                         painter =
                             painterResource(
                                 if (sideBarVisible) {
@@ -80,7 +82,6 @@ internal fun DecoratedWindowScope.TitleBarView(
                                     Res.drawable.space_dashboard_outlined
                                 },
                             ),
-                        tint = LocalTitleBarStyle.current.colors.content,
                         contentDescription = null,
                     )
                 }
@@ -102,18 +103,14 @@ internal fun DecoratedWindowScope.TitleBarView(
                 var active by remember { mutableStateOf(false) }
                 var currentMenu by remember { mutableStateOf<Menus?>(null) }
                 Box {
-                    TextButton(
-                        modifier =
-                            Modifier.onHover {
-                                currentMenu = Menus.FILE
-                            },
+                    MenuTriggerButton(
+                        text = "File",
+                        onHover = { currentMenu = Menus.FILE },
                         onClick = {
                             active = !active
                             currentMenu = Menus.FILE
                         },
-                    ) {
-                        Text("File")
-                    }
+                    )
                     if (active && currentMenu == Menus.FILE) {
                         PopupMenu(
                             onDismissRequest = {
@@ -162,18 +159,14 @@ internal fun DecoratedWindowScope.TitleBarView(
                     }
                 }
                 Box {
-                    TextButton(
-                        modifier =
-                            Modifier.onHover {
-                                currentMenu = Menus.HELP
-                            },
+                    MenuTriggerButton(
+                        text = "Help",
+                        onHover = { currentMenu = Menus.HELP },
                         onClick = {
                             active = !active
                             currentMenu = Menus.HELP
                         },
-                    ) {
-                        Text("Help")
-                    }
+                    )
                     if (active && currentMenu == Menus.HELP) {
                         PopupMenu(
                             onDismissRequest = {
@@ -209,4 +202,21 @@ internal fun DecoratedWindowScope.TitleBarView(
 private enum class Menus {
     FILE,
     HELP,
+}
+
+@Composable
+private fun MenuTriggerButton(
+    text: String,
+    onHover: () -> Unit,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .onHover { onHover() }
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Text(text)
+    }
 }
