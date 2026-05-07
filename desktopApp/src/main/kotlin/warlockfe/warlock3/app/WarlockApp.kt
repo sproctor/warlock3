@@ -19,7 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToStream
 import org.jetbrains.jewel.window.DecoratedWindowScope
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.compose.MainScreen
+import warlockfe.warlock3.compose.desktop.ui.DesktopMainScreen
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.client.GameCharacter
@@ -112,7 +112,7 @@ fun DecoratedWindowScope.WarlockApp(
 
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 
-        MainScreen(
+        DesktopMainScreen(
             sgeViewModelFactory = appContainer.sgeViewModelFactory,
             dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
             gameState = gameState,
