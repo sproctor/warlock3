@@ -501,7 +501,8 @@ class WraythClient(
 
                                 WraythNavEvent -> notifyListeners(ClientNavEvent)
 
-                                is WraythBackgroundEvent ->
+                                is WraythBackgroundEvent -> {
+                                    var updatedWindow: WindowInfo? = null
                                     _windowInfo.update { currentWindowInfo ->
                                         val index = currentWindowInfo.indexOfFirst { it.name == event.windowName }
                                         if (index != -1) {
@@ -520,7 +521,7 @@ class WraythClient(
                                                 } else {
                                                     null
                                                 }
-                                            val updatedWindow =
+                                            updatedWindow =
                                                 window.copy(
                                                     backgroundImage = backgroundImage,
                                                 )
@@ -531,6 +532,8 @@ class WraythClient(
                                             currentWindowInfo
                                         }
                                     }
+                                    updatedWindow?.let { notifyListeners(ClientWindowInfoEvent(it)) }
+                                }
 
                                 is WraythStreamWindowEvent -> {
                                     val window = event.window
@@ -543,19 +546,21 @@ class WraythClient(
                                 is WraythDialogWindowEvent -> {
                                     val window = event.window
                                     if (window.resident) {
-                                        val window =
-                                            WindowInfo(
-                                                name = window.id,
-                                                title = window.title,
-                                                subtitle = null,
-                                                windowType = WindowType.DIALOG,
-                                                showTimestamps = false,
-                                                backgroundImage = null,
-                                            )
+                                        lateinit var info: WindowInfo
                                         _windowInfo.update { windowInfo ->
-                                            windowInfo.replaceOrAdd(window) { it.name == window.name }
+                                            val existing = windowInfo.firstOrNull { it.name == window.id }
+                                            info =
+                                                WindowInfo(
+                                                    name = window.id,
+                                                    title = window.title,
+                                                    subtitle = null,
+                                                    windowType = WindowType.DIALOG,
+                                                    showTimestamps = false,
+                                                    backgroundImage = existing?.backgroundImage,
+                                                )
+                                            windowInfo.replaceOrAdd(info) { it.name == info.name }
                                         }
-                                        notifyListeners(ClientWindowInfoEvent(window))
+                                        notifyListeners(ClientWindowInfoEvent(info))
                                     }
                                 }
 
@@ -916,16 +921,18 @@ class WraythClient(
         stream.showTimestamps(window.timestamp)
         stream.setApplyStyling(window.applyStyling)
         windows[window.name] = window
-        val info =
-            WindowInfo(
-                name = window.name,
-                title = window.title,
-                subtitle = window.subtitle,
-                windowType = WindowType.STREAM,
-                showTimestamps = window.timestamp,
-                backgroundImage = null,
-            )
+        lateinit var info: WindowInfo
         _windowInfo.update { windowInfo ->
+            val existing = windowInfo.firstOrNull { it.name == window.name }
+            info =
+                WindowInfo(
+                    name = window.name,
+                    title = window.title,
+                    subtitle = window.subtitle,
+                    windowType = WindowType.STREAM,
+                    showTimestamps = window.timestamp,
+                    backgroundImage = existing?.backgroundImage,
+                )
             windowInfo.replaceOrAdd(info) { it.name == window.name }
         }
         notifyListeners(
