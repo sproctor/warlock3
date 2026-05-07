@@ -1,0 +1,126 @@
+name: Build macOS Universal Binary
+description: Merge arm64 + x64 macOS .app bundles into a universal (fat) binary, then repackage as ZIP, DMG, and PKG
+
+inputs:
+  arm64-path:
+    description: 'Directory containing the arm64 macOS artifacts (must include a *-arm64.zip)'
+    required: true
+  x64-path:
+    description: 'Directory containing the x64 macOS artifacts (must include a *-x64.zip)'
+    required: true
+  output-path:
+    description: 'Directory where universal artifacts will be written'
+    required: false
+    default: 'universal-output'
+  signing-identity:
+    description: 'Developer ID Application identity for non-sandboxed .app signing (DMG/ZIP)'
+    required: false
+    default: ''
+  app-store-identity:
+    description: '3rd Party Mac Developer Application identity for sandboxed .app signing (App Store PKG)'
+    required: false
+    default: ''
+  installer-identity:
+    description: '3rd Party Mac Developer Installer identity for PKG signing'
+    required: false
+    default: ''
+  keychain-path:
+    description: 'Path to the keychain containing signing certificates'
+    required: false
+    default: ''
+  entitlements-file:
+    description: 'Path to entitlements.plist for the main app (non-sandboxed / Developer ID)'
+    required: false
+    default: ''
+  runtime-entitlements-file:
+    description: 'Path to runtime-entitlements.plist for the JVM runtime (non-sandboxed / Developer ID)'
+    required: false
+    default: ''
+  sandboxed-entitlements-file:
+    description: 'Path to entitlements.plist for the sandboxed app (App Store PKG). Must include com.apple.security.app-sandbox.'
+    required: false
+    default: ''
+  sandboxed-runtime-entitlements-file:
+    description: 'Path to runtime-entitlements.plist for the sandboxed JVM runtime (App Store PKG). Must include com.apple.security.app-sandbox.'
+    required: false
+    default: ''
+  provisioning-profile:
+    description: 'Path to embedded.provisionprofile for sandboxed app'
+    required: false
+    default: ''
+  runtime-provisioning-profile:
+    description: 'Path to runtime embedded.provisionprofile for sandboxed app runtime'
+    required: false
+    default: ''
+
+outputs:
+  zip:
+    description: 'Path to the universal ZIP'
+    value: ${{ steps.build.outputs.zip }}
+  dmg:
+    description: 'Path to the universal DMG'
+    value: ${{ steps.build.outputs.dmg }}
+  pkg:
+    description: 'Path to the universal PKG'
+    value: ${{ steps.build.outputs.pkg }}
+
+runs:
+  using: composite
+  steps:
+    - name: Locate ZIP files
+      id: locate
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ARM64_ZIP="$(find "${{ inputs.arm64-path }}" -name '*-arm64.zip' -not -name 'sandboxed-*' -type f | head -1)"
+        X64_ZIP="$(find "${{ inputs.x64-path }}" -name '*-x64.zip' -not -name 'sandboxed-*' -type f | head -1)"
+
+        if [[ -z "$ARM64_ZIP" ]]; then
+          echo "::error::Could not find *-arm64.zip in ${{ inputs.arm64-path }}"
+          find "${{ inputs.arm64-path }}" -type f >&2
+          exit 1
+        fi
+        if [[ -z "$X64_ZIP" ]]; then
+          echo "::error::Could not find *-x64.zip in ${{ inputs.x64-path }}"
+          find "${{ inputs.x64-path }}" -type f >&2
+          exit 1
+        fi
+
+        echo "arm64_zip=$ARM64_ZIP" >> "$GITHUB_OUTPUT"
+        echo "x64_zip=$X64_ZIP" >> "$GITHUB_OUTPUT"
+
+        # Locate sandboxed ZIPs (optional)
+        SANDBOXED_ARM64_ZIP="$(find "${{ inputs.arm64-path }}" -name 'sandboxed-*-arm64.zip' -type f | head -1)"
+        SANDBOXED_X64_ZIP="$(find "${{ inputs.x64-path }}" -name 'sandboxed-*-x64.zip' -type f | head -1)"
+        echo "sandboxed_arm64_zip=${SANDBOXED_ARM64_ZIP:-}" >> "$GITHUB_OUTPUT"
+        echo "sandboxed_x64_zip=${SANDBOXED_X64_ZIP:-}" >> "$GITHUB_OUTPUT"
+
+        if [[ -n "$SANDBOXED_ARM64_ZIP" && -n "$SANDBOXED_X64_ZIP" ]]; then
+          echo "==> Found sandboxed ZIPs for universal merge"
+        else
+          echo "==> No sandboxed ZIPs found (App Store PKG will use electron-builder fallback)"
+        fi
+
+    - name: Build universal binary
+      id: build
+      shell: bash
+      env:
+        ARM64_ZIP: ${{ steps.locate.outputs.arm64_zip }}
+        X64_ZIP: ${{ steps.locate.outputs.x64_zip }}
+        OUTPUT_DIR: ${{ inputs.output-path }}
+        ARM64_PATH: ${{ inputs.arm64-path }}
+        X64_PATH: ${{ inputs.x64-path }}
+        SIGNING_IDENTITY: ${{ inputs.signing-identity }}
+        APP_STORE_IDENTITY: ${{ inputs.app-store-identity }}
+        INSTALLER_IDENTITY: ${{ inputs.installer-identity }}
+        KEYCHAIN_PATH: ${{ inputs.keychain-path }}
+        ENTITLEMENTS_FILE: ${{ inputs.entitlements-file }}
+        RUNTIME_ENTITLEMENTS_FILE: ${{ inputs.runtime-entitlements-file }}
+        SANDBOXED_ENTITLEMENTS_FILE: ${{ inputs.sandboxed-entitlements-file }}
+        SANDBOXED_RUNTIME_ENTITLEMENTS_FILE: ${{ inputs.sandboxed-runtime-entitlements-file }}
+        PROVISIONING_PROFILE: ${{ inputs.provisioning-profile }}
+        RUNTIME_PROVISIONING_PROFILE: ${{ inputs.runtime-provisioning-profile }}
+        SANDBOXED_ARM64_ZIP: ${{ steps.locate.outputs.sandboxed_arm64_zip }}
+        SANDBOXED_X64_ZIP: ${{ steps.locate.outputs.sandboxed_x64_zip }}
+      run: bash "${{ github.action_path }}/build-universal.sh"

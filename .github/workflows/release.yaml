@@ -115,7 +115,7 @@ jobs:
           path: artifacts/release-assets-macOS-amd64
 
       - name: Build universal binary
-        uses: kdroidFilter/Nucleus/.github/actions/build-macos-universal@main
+        uses: ./.github/actions/build-macos-universal
         with:
           arm64-path: artifacts/release-assets-macOS-arm64
           x64-path: artifacts/release-assets-macOS-amd64
