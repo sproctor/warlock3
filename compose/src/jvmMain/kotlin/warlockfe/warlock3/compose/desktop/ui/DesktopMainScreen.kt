@@ -18,11 +18,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.dashboard.DesktopDashboardView
+import warlockfe.warlock3.compose.desktop.ui.game.DesktopGameView
 import warlockfe.warlock3.compose.desktop.ui.sge.DesktopSgeWizard
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
-import warlockfe.warlock3.compose.ui.game.GameView
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.util.SafeUriHandler
 import warlockfe.warlock3.core.client.GameCharacter
@@ -77,14 +77,12 @@ fun DesktopMainScreen(
                 )
             }
             is GameScreen.ConnectedGameState -> {
-                // GameView still uses M3 in commonMain — fall through. Will be migrated
-                // in step 5 (main game window chrome) and step 8 (main text pane).
                 val character =
                     screen.viewModel.character
                         .collectAsState(null)
                         .value
                 updateCurrentCharacter(character)
-                GameView(
+                DesktopGameView(
                     viewModel = screen.viewModel,
                     navigateToDashboard = {
                         scope.launch {
