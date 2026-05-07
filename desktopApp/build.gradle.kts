@@ -16,7 +16,6 @@ dependencies {
     implementation(libs.jewel.standalone)
     implementation(libs.jewel.decorated.window)
 
-    implementation(libs.compose.material3)
     implementation(libs.compose.components.resources)
 
     // Command line options
