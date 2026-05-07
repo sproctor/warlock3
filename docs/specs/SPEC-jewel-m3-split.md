@@ -2,22 +2,22 @@
 
 ## Goal
 
-Replace Material3 on the desktop target with Jewel (Int UI standalone). Keep Material3 on Android. Mobile and desktop screens are written independently — no unified component abstraction across platforms.
+Replace Material3 on the desktop target with Jewel (Int UI standalone). Keep Material3 on mobile, **shared between Android and iOS**. Mobile and desktop screens are written independently — no unified component abstraction across the desktop/mobile boundary.
 
 ## Non-Goals
 
-- No shared UI abstraction layer (no `expect` Button/TextField/Theme).
-- No iOS target work (mobile = Android only for now).
+- No shared UI abstraction layer between desktop and mobile (no `expect` Button/TextField/Theme spanning the two).
+- No Cupertino-styled iOS UI (see "Mobile: Shared Material3" below for rationale).
 - No visual redesign of mobile screens.
 - No change to non-UI logic: parsing, scripting, networking, persistence, Sentry wiring, the exception handler chain, `SafeClipboard`, `SafeUriHandler`, `JavaProxy.kt`, Ktor TLS handler — all stay as-is.
 
 ## Approach
 
-Hard split at the screen level. `commonMain` keeps state holders, ViewModels/state flows, parsing, scripting engines, models, and any pure-Compose utilities that don't reference Material3 or Jewel (Foundation primitives like `LazyColumn`, `SelectionContainer`, `Canvas`, `AnnotatedString` are fine in `commonMain`).
+Hard split at the desktop/mobile boundary. `commonMain` keeps state holders, ViewModels/state flows, parsing, scripting engines, models, and any pure-Compose utilities that don't reference Material3 or Jewel (Foundation primitives like `LazyColumn`, `SelectionContainer`, `Canvas`, `AnnotatedString` are fine in `commonMain`).
 
-`desktopMain` (jvm) gets Jewel and rewrites screens against it. `androidMain` keeps Material3 and existing screens.
+A new intermediate source set, `mobileMain`, holds the Material3-based screens and theme — shared by `androidMain` and `iosMain`. `desktopMain` (jvm) gets Jewel and has its own independently-written screens.
 
-Screens are duplicated. Acceptable because desktop and mobile UX for a MUD client diverge anyway (multi-pane vs single-pane, command-line-focused vs touch-focused).
+Screens are duplicated **once** (desktop vs mobile), not twice. Acceptable because desktop and mobile UX for a MUD client diverge anyway (multi-pane vs single-pane, command-line-focused vs touch-focused), but Android and iOS UX are close enough that splitting them buys nothing.
 
 ## Source Set Structure
 
@@ -27,16 +27,22 @@ Screens are duplicated. Acceptable because desktop and mobile UX for a MUD clien
     state/         # ViewModels, state flows, models — no UI
     util/          # AnnotatedString helpers, regex utils
     foundation/    # screens/widgets that ONLY use compose.foundation
-  androidMain/
-    ui/            # existing M3 screens stay here
+  mobileMain/      # NEW intermediate source set (parent: commonMain)
+    ui/            # M3-based screens shared by Android + iOS
     theme/         # M3 ColorScheme, Typography
-  desktopMain/     # jvmMain
+  androidMain/     # parent: mobileMain
+    # platform glue only: activity, manifest-driven entry, Android-specific resources
+  iosMain/         # parent: mobileMain
+    # platform glue only: ComposeUIViewController entry, iOS-specific resources
+  desktopMain/     # jvmMain — independent of mobileMain
     ui/            # NEW: Jewel-based screens
     theme/         # Jewel theme config + warlock palette overlay
     shim/          # thin Jewel wrapper composables (see below)
 ```
 
-Audit current `commonMain` for Material3 imports. Anything importing `androidx.compose.material3.*` must move to `androidMain` or be rewritten against Foundation.
+The `mobileMain` intermediate source set requires hierarchical source set configuration in the KMP block. Both `androidMain` and `iosMain` (and any iOS arch-specific sets like `iosX64Main`, `iosArm64Main`, `iosSimulatorArm64Main`) must declare `mobileMain` as their parent.
+
+Audit current `commonMain` for Material3 imports. Anything importing `androidx.compose.material3.*` must move to `mobileMain` or be rewritten against Foundation.
 
 ## Dependencies
 
@@ -68,6 +74,17 @@ repositories {
 **Compose alignment:** Jewel pins a specific Compose Multiplatform version. Verify your CMP version matches Jewel's expected version before merging — mismatches manifest as runtime crashes in the compiler-generated code, not build errors. Document the chosen pair in the root README.
 
 **Icons:** standalone Jewel does not ship IJP icons. Either depend on `com.jetbrains.intellij.platform:icons` or vendor only the icons we use into resources.
+
+## Mobile: Shared Material3 (Android + iOS)
+
+Both Android and iOS targets share a single Material3 implementation in `mobileMain`. Rationale:
+
+- Warlock3 on iOS is currently a "it builds and runs" target, not a polished native app. Investing in Cupertino styling has no payoff until iOS has real users asking for native feel.
+- The `compose-cupertino` ecosystem is fragmented — the original repo (alexzhirkevich) is unmaintained and the active work is split across community forks (slanos, schott12521, robinpcrd) with no clear canonical choice. Picking one is a maintenance liability for a side project.
+- M3 on iOS via Compose Multiplatform works fine; it just doesn't look native. For a MUD client UX, that's acceptable.
+- Sharing the mobile UI code between Android and iOS means one place to fix bugs and add features, instead of duplicating screens across two mobile targets.
+
+If iOS later grows real users and there's demand for native feel, the shape of the future migration is well-defined: introduce `cupertino-adaptive` in `mobileMain`, replace M3 component call sites with adaptive equivalents incrementally. The current spec deliberately does not block that future move — it just doesn't do it now.
 
 ## Theme Layer
 
@@ -137,15 +154,16 @@ Rule: if a Jewel component is used in exactly one place and is unlikely to drift
 Do this incrementally on a branch, not big-bang. Both toolkits coexist at runtime fine — Jewel is desktop-only and doesn't conflict with M3 on Android.
 
 1. **Plumbing.** Add deps, repo, theme root, empty shim files. Wrap the desktop entry point's content in `IntUiTheme` + `DecoratedWindow`. M3 still in use everywhere — ship-able state.
-2. **Settings/preferences screens.** Self-contained, low risk, exercises Button, TextField, Checkbox, ComboBox. Catches API surprises early.
-3. **Connection/profile selection screens.** Similar shape, low traffic.
-4. **Main game window chrome.** Title bar (decorated window), menu bar, status bar. Not the text panes yet.
-5. **Side panels** (variables, scripts, presence, character info). Trees and lists.
-6. **Splitters / pane layout.** Replace hand-rolled splitter with `SplitLayout`.
-7. **Main text pane.** Mostly Foundation already (`LazyColumn` + `SelectionContainer` + `AnnotatedString`); only the surrounding chrome changes. Verify the existing `SelectionContainer`/`LazyColumn` crash workaround still applies and the chained exception handler is still wired.
-8. **Command line input.** TextField rewrite — biggest single API porting task. Validate history, completion, multi-line behavior.
-9. **Dialogs / popups.** Replace M3 `AlertDialog` with Jewel's dialog patterns.
-10. **Cleanup.** Remove Material3 from desktop source set's deps. Verify no `androidx.compose.material3` imports remain in `desktopMain`.
+2. **Mobile source set restructure.** Introduce `mobileMain` as parent of `androidMain` and `iosMain`. Move existing M3 screens and theme out of `androidMain` (or wherever they live) into `mobileMain`. iOS picks them up automatically. No visual change on either mobile target. Independent of any desktop work; can land before, during, or after Jewel migration steps.
+3. **Settings/preferences screens.** Self-contained, low risk, exercises Button, TextField, Checkbox, ComboBox. Catches API surprises early.
+4. **Connection/profile selection screens.** Similar shape, low traffic.
+5. **Main game window chrome.** Title bar (decorated window), menu bar, status bar. Not the text panes yet.
+6. **Side panels** (variables, scripts, presence, character info). Trees and lists.
+7. **Splitters / pane layout.** Replace hand-rolled splitter with `SplitLayout`.
+8. **Main text pane.** Mostly Foundation already (`LazyColumn` + `SelectionContainer` + `AnnotatedString`); only the surrounding chrome changes. Verify the existing `SelectionContainer`/`LazyColumn` crash workaround still applies and the chained exception handler is still wired.
+9. **Command line input.** TextField rewrite — biggest single API porting task. Validate history, completion, multi-line behavior.
+10. **Dialogs / popups.** Replace M3 `AlertDialog` with Jewel's dialog patterns.
+11. **Cleanup.** Remove Material3 from desktop source set's deps. Verify no `androidx.compose.material3` imports remain in `desktopMain`.
 
 Each step is a separate PR. Step 1 is the only one that requires special care to keep both running side-by-side; after that, screens are converted one at a time.
 
@@ -172,6 +190,8 @@ Replace the standard CfD `Window { }` with `DecoratedWindow { }` from `jewel-int
 ## Acceptance
 
 - All desktop screens render under Jewel; no `androidx.compose.material3` imports in `desktopMain`.
+- M3 screens and theme live in `mobileMain`; `androidMain` and `iosMain` contain only platform glue.
 - Android build unchanged in appearance and dependency footprint.
+- iOS build unchanged in appearance and dependency footprint; same screens render on both mobile targets without per-platform branching in `mobileMain`.
 - All existing crash workarounds (`SafeClipboard`, `SafeUriHandler`, chained Sentry exception handler, Ktor TLS handler, `JavaProxy.kt` arg parsing) verified still wired and functional.
-- Manual smoke test: connect to DR and GS, send commands, scroll history, select+copy text, open settings, switch theme, resize panes, close window cleanly.
+- Manual smoke test: connect to DR and GS, send commands, scroll history, select+copy text, open settings, switch theme, resize panes, close window cleanly. Mobile smoke test on at least one Android device and one iOS simulator.
