@@ -54,7 +54,6 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
 
             // Compose
-            implementation(libs.compose.material3)
             api(libs.compose.components.resources)
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.constraintlayout)
@@ -70,6 +69,11 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
+        }
+        getByName("mobileMain") {
+            dependencies {
+                implementation(libs.compose.material3)
+            }
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

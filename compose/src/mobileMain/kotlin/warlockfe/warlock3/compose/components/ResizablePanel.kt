@@ -24,17 +24,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
-import androidx.compose.ui.unit.min
 
 @Composable
 fun ResizablePanel(
@@ -168,17 +163,5 @@ fun ResizablePanelHandle(
                     ),
             )
         }
-    }
-}
-
-class ResizablePanelState(
-    initialSize: Dp = 0.dp,
-    val minSize: Dp = 0.dp,
-    val maxSize: Dp = Dp.Infinity,
-) {
-    var currentSize by mutableStateOf(initialSize)
-
-    fun dispatchRawMovement(delta: Dp) {
-        currentSize = min(max(minSize, currentSize + delta), maxSize)
     }
 }
