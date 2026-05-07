@@ -46,7 +46,6 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.game.GameBottomBar
-import warlockfe.warlock3.compose.ui.game.GameTextWindows
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -166,9 +165,8 @@ fun DesktopGameView(
             val rightWindows by viewModel.rightWindowUiStates.collectAsState()
             val topWindows by viewModel.topWindowUiStates.collectAsState()
             val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
-            // Text panes (WindowsAtLocation, WindowView) still M3 — fall through.
-            // Migrated in step 7 (splitters) and step 8 (main text pane).
-            GameTextWindows(
+            // WindowView (main text pane) still M3 — fall through. Migrated in step 8.
+            DesktopGameTextWindows(
                 modifier = Modifier.weight(1f),
                 leftWindowUiStates = leftWindows,
                 rightWindowUiStates = rightWindows,
