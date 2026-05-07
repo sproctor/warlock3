@@ -45,7 +45,6 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
-import warlockfe.warlock3.compose.ui.game.GameBottomBar
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -221,9 +220,7 @@ fun DesktopGameView(
                 clearStream = viewModel::clearStream,
             )
         }
-        // Status bar (vitals, hands, indicators, compass) still M3 — fall through.
-        // Will be replaced when WarlockEntry / DialogContent migrate (step 9 + later).
-        GameBottomBar(viewModel, entryFocusRequester)
+        DesktopGameBottomBar(viewModel, entryFocusRequester)
     }
     val macroError by viewModel.macroError.collectAsState()
     if (macroError != null) {
