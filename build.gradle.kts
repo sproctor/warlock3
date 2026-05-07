@@ -40,5 +40,5 @@ val Project.libs: org.gradle.accessors.dm.LibrariesForLibs
     get() = extensions.getByType()
 
 tasks.wrapper {
-    gradleVersion = "8.14.4"
+    gradleVersion = "9.5.0"
 }

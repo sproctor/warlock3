@@ -1,10 +1,10 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.hydraulic.conveyor)
+    alias(libs.plugins.nucleus)
 }
 
 dependencies {
@@ -13,8 +13,10 @@ dependencies {
     implementation(project(":scripting"))
     implementation(project(":compose"))
 
-    implementation(libs.jewel.standalone)
-    implementation(libs.jewel.decorated.window)
+    implementation(compose.desktop.currentOs)
+
+    implementation(libs.nucleus.decorated.window.material3)
+    implementation(libs.nucleus.decorated.window.jbr)
 
     implementation(libs.compose.material3)
     implementation(libs.compose.components.resources)
@@ -33,25 +35,8 @@ dependencies {
     implementation(libs.slf4j.simple)
     implementation(libs.sentry.kotlin)
 
-    // Control updates
-    implementation(libs.conveyor.control)
-
-    // Required by conveyor
-    linuxAmd64(libs.compose.desktop.linux.x64) {
-        exclude(group = "org.jetbrains.compose.material")
-    }
-    linuxAarch64(libs.compose.desktop.linux.arm64) {
-        exclude(group = "org.jetbrains.compose.material")
-    }
-    macAmd64(libs.compose.desktop.macos.x64) {
-        exclude(group = "org.jetbrains.compose.material")
-    }
-    macAarch64(libs.compose.desktop.macos.arm64) {
-        exclude(group = "org.jetbrains.compose.material")
-    }
-    windowsAmd64(libs.compose.desktop.windows.x64) {
-        exclude(group = "org.jetbrains.compose.material")
-    }
+    // In-app updates
+    implementation(libs.nucleus.updater.runtime)
 }
 
 kotlin {
@@ -66,55 +51,112 @@ kotlin {
     }
 }
 
-compose {
-    desktop {
-        application {
-            mainClass = "warlockfe.warlock3.app.MainKt"
+val releaseVersion: String =
+    System
+        .getenv("RELEASE_VERSION")
+        ?.removePrefix("v")
+        ?.takeIf { it.isNotBlank() }
+        ?: project.version.toString().takeIf { it != "unspecified" }
+        ?: "0.0.0"
 
-            nativeDistributions {
-                packageName = "warlock"
-                packageVersion = project.version.toString()
-                copyright = "Copyright 2026 Sean Proctor"
-                licenseFile.set(project.file("../LICENSE"))
-                description = "Warlock Front-end"
-                vendor = "Warlock Project"
+// Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
+val numericPackageVersion: String = releaseVersion.substringBefore('-')
 
-                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+nucleus.application {
+    mainClass = "warlockfe.warlock3.app.MainKt"
 
-                // args("--input=/home/sproctor/Downloads/20251116072204.log") // Long log for testing perf
-                // args("--input=/home/sproctor/.local/state/warlock/logs/DR_Tefrin/20251122120309.log") // quick log
-                // args("--sge-port=7900", "--sge-secure=off")
-                // args("--connection=Tefrin")
+    nativeDistributions {
+        targetFormats(
+            TargetFormat.Dmg,
+            TargetFormat.Zip, // required alongside Dmg for macOS auto-update
+            TargetFormat.Nsis,
+            TargetFormat.Msi,
+            TargetFormat.Deb,
+            TargetFormat.Flatpak,
+        )
 
-                windows {
-                    menu = true
-                    // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
-                    upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
+        appName = "Warlock"
+        packageName = "warlock"
+        packageVersion = numericPackageVersion
+        description = "Warlock Front-end"
+        vendor = "Warlock Project"
+        copyright = "Copyright 2026 Sean Proctor"
+        homepage = "https://warlockfe.github.io/"
+        licenseFile.set(project.file("../LICENSE"))
+
+        modules(
+            "jdk.accessibility",
+            "java.instrument",
+            "java.management",
+            "jdk.dynalink",
+            "jdk.security.auth",
+            "jdk.unsupported",
+        )
+
+        cleanupNativeLibs = true
+        artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
+
+        publish {
+            github {
+                enabled = true
+                owner = "sproctor"
+                repo = "warlock3"
+            }
+        }
+
+        windows {
+            iconFile.set(project.file("../icons/icon.ico"))
+            menu = true
+            // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
+            upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
+
+            // Azure Trusted Signing — Auth comes from the standard Azure
+            // service-principal env vars (AZURE_TENANT_ID / AZURE_CLIENT_ID /
+            // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
+            // or from an interactive `az login` session.
+            // Signing is gated on the az CLI being able to obtain a token for
+            // the code-signing resource, so local builds without Azure access
+            // still produce unsigned binaries.
+            signing {
+                enabled = true
+                azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
+                azureEndpoint = "https://eus.codesigning.azure.net"
+                azureCodeSigningAccountName = "scrapgolem"
+                azureCertificateProfileName = "group1"
+                timestampServer = "http://timestamp.digicert.com"
+            }
+        }
+        macOS {
+            iconFile.set(project.file("../icons/icon.icns"))
+            bundleID = "warlockfe.warlock3"
+            // CI signs macOS post-lipo via the build-macos-universal action; only
+            // configure jpackage-time signing for local dev builds.
+            if (System.getenv("CI") != "true") {
+                signing {
+                    sign.set(true)
+                    identity.set("Sean Proctor")
                 }
-                macOS {
-                    bundleID = "warlockfe.warlock3"
-                    signing {
-                        sign.set(true)
-                        identity.set("Sean Proctor")
-                    }
-                    notarization {
-                        appleID.set("sproctor@gmail.com")
-                        password.set(providers.environmentVariable("NOTARY_PWD"))
-                        teamID.set("DBNJ4AR55X")
-                    }
-                }
-                linux {
-                    // Add this for FileKit
-                    modules("jdk.security.auth")
+                notarization {
+                    appleID.set("sproctor@gmail.com")
+                    password.set(providers.environmentVariable("NOTARY_PWD"))
+                    teamID.set("DBNJ4AR55X")
                 }
             }
-
-            buildTypes.release.proguard {
-                configurationFiles.from("rules.pro")
-            }
+        }
+        linux {
+            iconFile.set(project.file("../icons/icon-512.png"))
+            debMaintainer = "Sean Proctor <sproctor@gmail.com>"
+            debPackageVersion = releaseVersion
+            rpmPackageVersion = releaseVersion.replace("-", ".")
         }
     }
 
+    buildTypes.release.proguard {
+        configurationFiles.from("rules.pro")
+    }
+}
+
+compose {
     resources {
         packageOfResClass = "warlockfe.warlock3.app.resources"
     }

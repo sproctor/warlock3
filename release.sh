@@ -1,53 +1,31 @@
 #!/usr/bin/bash
 
-# Exit on errors
+# Release pipeline: tag the current commit and push the tag.
+# The GitHub Actions release workflow (.github/workflows/release.yaml) builds
+# and publishes the multi-platform desktop packages on tag push.
+#
+# Usage: ./release.sh <version>
+# Examples:
+#   ./release.sh 3.0.165
+#   ./release.sh 3.0.165-beta.1
+
 set -e
 
-# Print commands
-# set -x
-
-echo "Releasing..."
-
-while IFS='=' read -r key value
-do
-  key=$(echo "$key" | tr '.' '_')
-  value=$(echo "$value" | tr -d '\n\r')
-  eval "${key}"=\${value}
-done < gradle.properties
-VERSION=$warlock_version
-
-echo "Version: ${VERSION}"
-
-read -p "Press enter to continue"
-
-# Stop gradle daemon to prevent IDE JDK bleed-through
-./gradlew --stop
-
-if [[ $1 == "" ]]; then
-  echo "Running tests"
-  ./gradlew check
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <version>" >&2
+  echo "Example: $0 3.0.165" >&2
+  echo "         $0 3.0.165-beta.1" >&2
+  exit 1
 fi
 
-#if [[ $1 == "" || $1 == "--android" ]]; then
-#  echo "Android release"
-#
-#  ./gradlew publishBundle
-#fi
+VERSION="$1"
 
-if [[ $1 == "" ]]; then
-  echo "Building desktop release"
-#  ./gradlew :desktopApp:proguardReleaseJars
-  ./gradlew jar
-fi
+echo "Releasing v${VERSION}..."
 
-if [[ $1 == "" || $1 == "--conveyor" ]]; then
-  echo "Deploy with conveyor"
+read -p "Press enter to tag v${VERSION} and push"
 
-  conveyor --passphrase="$CONVEYOR_PASSPHRASE" make copied-site
-fi
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
 
-if [[ $1 == "" || $1 == "--tag" ]]; then
-  git tag "v${VERSION}"
-fi
-
-echo "Success"
+echo "Tag pushed. CI will build and publish the release at:"
+echo "  https://github.com/sproctor/warlock3/actions"
