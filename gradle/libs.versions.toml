@@ -54,7 +54,9 @@ conveyor-control = "1.1"
 fastscroller = "0.3.2"
 # Waiting for AGP 9 and SDK 37 to update
 filekit = "0.14.1"
+# Need to update to Java 25 before we can update jewel
 jewel = "0.35.0-261.23567.138"
+## ⬆ = "0.37.0-262.4852.51"
 kermit = "2.1.0"
 kotlin = "2.3.21"
 kotlinx-collections-immutable = "0.4.0"

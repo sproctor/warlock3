@@ -66,19 +66,10 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
-import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
-import org.jetbrains.jewel.intui.standalone.theme.default
-import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
-import org.jetbrains.jewel.intui.window.decoratedWindow
-import org.jetbrains.jewel.intui.window.styling.dark
-import org.jetbrains.jewel.intui.window.styling.light
-import org.jetbrains.jewel.ui.ComponentStyling
 import org.jetbrains.jewel.window.DecoratedWindow
-import org.jetbrains.jewel.window.styling.TitleBarStyle
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
@@ -343,18 +334,7 @@ private class WarlockCommand : CliktCommand() {
                     ThemeSetting.DARK -> true
                 }
             AppTheme(useDarkTheme = darkMode) {
-                IntUiTheme(
-                    theme =
-                        if (darkMode) {
-                            JewelTheme.darkThemeDefinition()
-                        } else {
-                            JewelTheme.lightThemeDefinition()
-                        },
-                    styling =
-                        ComponentStyling
-                            .default()
-                            .decoratedWindow(titleBarStyle = if (darkMode) TitleBarStyle.dark() else TitleBarStyle.light()),
-                ) {
+                WarlockDesktopTheme(isDark = darkMode) {
                     var updateAvailable by remember { mutableStateOf(false) }
                     var showUpdateDialog by remember { mutableStateOf(false) }
                     var currentVersion: SoftwareUpdateController.Version? by remember { mutableStateOf(null) }
