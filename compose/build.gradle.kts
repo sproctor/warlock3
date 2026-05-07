@@ -58,7 +58,6 @@ kotlin {
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.constraintlayout)
             implementation(libs.compose.ui.tooling.preview)
-            implementation(libs.fastscroller.core)
 
             // Third party UI
             implementation(libs.colorpicker)
@@ -73,6 +72,7 @@ kotlin {
         getByName("mobileMain") {
             dependencies {
                 implementation(libs.compose.material3)
+                implementation(libs.fastscroller.core)
             }
         }
         commonTest.dependencies {

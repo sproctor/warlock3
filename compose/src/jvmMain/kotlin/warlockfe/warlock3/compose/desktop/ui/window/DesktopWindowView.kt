@@ -81,15 +81,13 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
-import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
-import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.component.separator
-import warlockfe.warlock3.compose.desktop.components.desktopScrollbarStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -354,125 +352,122 @@ private fun DesktopWindowViewContent(
                     modifier = Modifier.align(image.backgroundAlignment()),
                 )
             }
-            LazyColumn(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 4.dp)
-                        .semantics {
-                            isTraversalGroup = true
-                            liveRegion = LiveRegionMode.Polite
-                        },
-                state = scrollState,
+            VerticallyScrollableContainer(
+                scrollState = scrollState,
+                modifier = Modifier.fillMaxSize(),
             ) {
-                items(
-                    count = lines.size,
-                    key = { index -> lines[index].serialNumber },
-                ) { index ->
-                    when (val line = lines[index]) {
-                        is StreamTextLine -> {
-                            if (line.text != null &&
-                                line.isShowing(openWindows) &&
-                                (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))
-                            ) {
-                                var positionInParent by remember { mutableStateOf(Offset.Zero) }
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .onGloballyPositioned {
-                                                positionInParent = it.positionInParent()
-                                            }.background(
-                                                line.entireLineStyle?.backgroundColor?.toColor()
-                                                    ?: Color.Unspecified,
-                                            ).padding(start = 4.dp, end = 8.dp),
+                LazyColumn(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(vertical = 4.dp)
+                            .semantics {
+                                isTraversalGroup = true
+                                liveRegion = LiveRegionMode.Polite
+                            },
+                    state = scrollState,
+                ) {
+                    items(
+                        count = lines.size,
+                        key = { index -> lines[index].serialNumber },
+                    ) { index ->
+                        when (val line = lines[index]) {
+                            is StreamTextLine -> {
+                                if (line.text != null &&
+                                    line.isShowing(openWindows) &&
+                                    (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))
                                 ) {
-                                    BasicText(
+                                    var positionInParent by remember { mutableStateOf(Offset.Zero) }
+                                    Box(
                                         modifier =
                                             Modifier
-                                                .pointerInput(Unit) {
-                                                    awaitPointerEventScope {
-                                                        while (true) {
-                                                            val event = awaitPointerEvent()
-                                                            if (event.type == PointerEventType.Press) {
-                                                                Logger.d { "Click: $event" }
-                                                                clickOffset =
-                                                                    event.changes
-                                                                        .firstOrNull()
-                                                                        ?.position
-                                                                        ?.let { it + positionInParent }
-                                                            }
-                                                        }
-                                                    }
-                                                },
-                                        text = line.text,
-                                        style =
-                                            TextStyle(
-                                                color = textColor,
-                                                fontFamily = fontFamily,
-                                                fontSize = fontSize,
-                                            ),
-                                    )
-                                }
-                            }
-                        }
-
-                        is StreamImageLine -> {
-                            val defaultHeight = 80.dp
-                            Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
-                                val painter =
-                                    rememberAsyncImagePainter(
-                                        ImageRequest
-                                            .Builder(LocalPlatformContext.current)
-                                            .data(line.url)
-                                            .size(Size.ORIGINAL)
-                                            .build(),
-                                    )
-                                val painterState by painter.state.collectAsState()
-                                when (val state = painterState) {
-                                    is AsyncImagePainter.State.Success -> {
-                                        val interactionSource = remember { MutableInteractionSource() }
-                                        val hovered by interactionSource.collectIsHoveredAsState()
-                                        Logger.d { "Hovered: $hovered" }
-                                        val height =
-                                            if (hovered) {
-                                                with(LocalDensity.current) {
-                                                    max(
-                                                        state.result.image.height
-                                                            .toDp(),
-                                                        defaultHeight,
-                                                    )
-                                                }
-                                            } else {
-                                                defaultHeight
-                                            }
-                                        Image(
+                                                .fillMaxWidth()
+                                                .onGloballyPositioned {
+                                                    positionInParent = it.positionInParent()
+                                                }.background(
+                                                    line.entireLineStyle?.backgroundColor?.toColor()
+                                                        ?: Color.Unspecified,
+                                                ).padding(start = 4.dp, end = 8.dp),
+                                    ) {
+                                        BasicText(
                                             modifier =
                                                 Modifier
-                                                    .hoverable(interactionSource)
-                                                    .wrapContentSize(unbounded = true, align = Alignment.TopStart)
-                                                    .animateContentSize()
-                                                    .height(height),
-                                            painter = painter,
-                                            contentDescription = null,
+                                                    .pointerInput(Unit) {
+                                                        awaitPointerEventScope {
+                                                            while (true) {
+                                                                val event = awaitPointerEvent()
+                                                                if (event.type == PointerEventType.Press) {
+                                                                    Logger.d { "Click: $event" }
+                                                                    clickOffset =
+                                                                        event.changes
+                                                                            .firstOrNull()
+                                                                            ?.position
+                                                                            ?.let { it + positionInParent }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                            text = line.text,
+                                            style =
+                                                TextStyle(
+                                                    color = textColor,
+                                                    fontFamily = fontFamily,
+                                                    fontSize = fontSize,
+                                                ),
                                         )
                                     }
+                                }
+                            }
 
-                                    else -> {}
+                            is StreamImageLine -> {
+                                val defaultHeight = 80.dp
+                                Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
+                                    val painter =
+                                        rememberAsyncImagePainter(
+                                            ImageRequest
+                                                .Builder(LocalPlatformContext.current)
+                                                .data(line.url)
+                                                .size(Size.ORIGINAL)
+                                                .build(),
+                                        )
+                                    val painterState by painter.state.collectAsState()
+                                    when (val state = painterState) {
+                                        is AsyncImagePainter.State.Success -> {
+                                            val interactionSource = remember { MutableInteractionSource() }
+                                            val hovered by interactionSource.collectIsHoveredAsState()
+                                            Logger.d { "Hovered: $hovered" }
+                                            val height =
+                                                if (hovered) {
+                                                    with(LocalDensity.current) {
+                                                        max(
+                                                            state.result.image.height
+                                                                .toDp(),
+                                                            defaultHeight,
+                                                        )
+                                                    }
+                                                } else {
+                                                    defaultHeight
+                                                }
+                                            Image(
+                                                modifier =
+                                                    Modifier
+                                                        .hoverable(interactionSource)
+                                                        .wrapContentSize(unbounded = true, align = Alignment.TopStart)
+                                                        .animateContentSize()
+                                                        .height(height),
+                                                painter = painter,
+                                                contentDescription = null,
+                                            )
+                                        }
+
+                                        else -> {}
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-            VerticalScrollbar(
-                adapter = rememberScrollbarAdapter(scrollState),
-                style = desktopScrollbarStyle(),
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight(),
-            )
         }
     }
 
