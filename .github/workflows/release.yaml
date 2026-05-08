@@ -125,16 +125,45 @@ jobs:
 
       - name: Notarize DMG
         shell: bash
+        env:
+          APPLE_ID: sproctor@gmail.com
+          APPLE_PASSWORD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
+          TEAM_ID: DBNJ4AR55X
         run: |
           set -euo pipefail
           DMG="$(find artifacts/release-assets-macOS-universal -name '*.dmg' -type f | head -1)"
-          if [[ -n "$DMG" ]]; then
-            xcrun notarytool submit "$DMG" \
-              --apple-id "sproctor@gmail.com" \
-              --password "${{ secrets.MAC_NOTARIZATION_PASSWORD }}" \
-              --team-id "DBNJ4AR55X" --wait
-            xcrun stapler staple "$DMG"
+          if [[ -z "$DMG" ]]; then
+            echo "::warning::No DMG found to notarize"
+            exit 0
           fi
+          echo "Submitting $DMG for notarization..."
+          # Capture submission ID and submission output without --wait so we can
+          # always fetch the log even on Invalid status.
+          SUBMIT_OUT="$(xcrun notarytool submit "$DMG" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID" \
+              --output-format json)"
+          echo "$SUBMIT_OUT"
+          SUBMISSION_ID="$(echo "$SUBMIT_OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')"
+          echo "Submission ID: $SUBMISSION_ID"
+          xcrun notarytool wait "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID" \
+              --output-format json | tee wait.json
+          STATUS="$(python3 -c 'import json;print(json.load(open("wait.json"))["status"])')"
+          echo "Notarization status: $STATUS"
+          echo "=== Notarization log ==="
+          xcrun notarytool log "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID" || true
+          if [[ "$STATUS" != "Accepted" ]]; then
+            echo "::error::Notarization failed with status: $STATUS"
+            exit 1
+          fi
+          xcrun stapler staple "$DMG"
 
       - name: Cleanup keychain
         if: always() && steps.signing.outputs.keychain-path != ''
