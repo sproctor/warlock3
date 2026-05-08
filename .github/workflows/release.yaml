@@ -53,6 +53,7 @@ jobs:
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
         with:
+          jbr-version: '25.0.2b432.48'
           packaging-tools: 'true'
           setup-gradle: 'true'
           setup-node: 'true'
@@ -72,113 +73,29 @@ jobs:
         with:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
           path: |
-            desktopApp/build/compose/binaries/**/*.dmg
-            desktopApp/build/compose/binaries/**/*.zip
-            desktopApp/build/compose/binaries/**/*.msi
-            desktopApp/build/compose/binaries/**/*.deb
-            desktopApp/build/compose/binaries/**/*.blockmap
-            desktopApp/build/compose/binaries/**/signing-metadata.json
-            desktopApp/build/compose/binaries/**/packaging-metadata.json
-            !desktopApp/build/compose/binaries/**/app/**
-            !desktopApp/build/compose/binaries/**/runtime/**
-          if-no-files-found: error
-
-  universal-macos:
-    name: Universal macOS Binary
-    needs: [build]
-    if: needs.build.result == 'success'
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup macOS signing
-        id: signing
-        uses: kdroidFilter/Nucleus/.github/actions/setup-macos-signing@main
-        with:
-          certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
-          certificate-password: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-assets-macOS-arm64
-          path: artifacts/release-assets-macOS-arm64
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-assets-macOS-amd64
-          path: artifacts/release-assets-macOS-amd64
-
-      - name: Build universal binary
-        uses: ./.github/actions/build-macos-universal
-        with:
-          arm64-path: artifacts/release-assets-macOS-arm64
-          x64-path: artifacts/release-assets-macOS-amd64
-          output-path: artifacts/release-assets-macOS-universal
-          signing-identity: 'Developer ID Application: Sean Proctor (DBNJ4AR55X)'
-          keychain-path: ${{ steps.signing.outputs.keychain-path }}
-
-      - name: Notarize DMG
-        shell: bash
-        env:
-          APPLE_ID: sproctor@gmail.com
-          APPLE_PASSWORD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
-          TEAM_ID: DBNJ4AR55X
-        run: |
-          set -euo pipefail
-          DMG="$(find artifacts/release-assets-macOS-universal -name '*.dmg' -type f | head -1)"
-          if [[ -z "$DMG" ]]; then
-            echo "::warning::No DMG found to notarize"
-            exit 0
-          fi
-          echo "Submitting $DMG for notarization..."
-          # Capture submission ID and submission output without --wait so we can
-          # always fetch the log even on Invalid status.
-          SUBMIT_OUT="$(xcrun notarytool submit "$DMG" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$TEAM_ID" \
-              --output-format json)"
-          echo "$SUBMIT_OUT"
-          SUBMISSION_ID="$(echo "$SUBMIT_OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])')"
-          echo "Submission ID: $SUBMISSION_ID"
-          xcrun notarytool wait "$SUBMISSION_ID" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$TEAM_ID" \
-              --output-format json | tee wait.json
-          STATUS="$(python3 -c 'import json;print(json.load(open("wait.json"))["status"])')"
-          echo "Notarization status: $STATUS"
-          echo "=== Notarization log ==="
-          xcrun notarytool log "$SUBMISSION_ID" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$TEAM_ID" || true
-          if [[ "$STATUS" != "Accepted" ]]; then
-            echo "::error::Notarization failed with status: $STATUS"
-            exit 1
-          fi
-          xcrun stapler staple "$DMG"
-
-      - name: Cleanup keychain
-        if: always() && steps.signing.outputs.keychain-path != ''
-        shell: bash
-        run: security delete-keychain "${{ steps.signing.outputs.keychain-path }}" || true
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-assets-macOS-universal
-          path: artifacts/release-assets-macOS-universal
+            build/compose/binaries/**/*.dmg
+            build/compose/binaries/**/*.pkg
+            build/compose/binaries/**/*.exe
+            build/compose/binaries/**/*.msi
+            build/compose/binaries/**/*.appx
+            build/compose/binaries/**/*.deb
+            build/compose/binaries/**/*.rpm
+            build/compose/binaries/**/*.AppImage
+            build/compose/binaries/**/*.snap
+            build/compose/binaries/**/*.flatpak
+            build/compose/binaries/**/*.zip
+            build/compose/binaries/**/*.tar
+            build/compose/binaries/**/*.7z
+            build/compose/binaries/**/*.blockmap
+            build/compose/binaries/**/signing-metadata.json
+            build/compose/binaries/**/packaging-metadata.json
+            !build/compose/binaries/**/app/**
+            !build/compose/binaries/**/runtime/**
           if-no-files-found: error
 
   publish:
     name: Publish Release
-    needs: [build, universal-macos]
+    needs: [build]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30

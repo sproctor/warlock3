@@ -112,7 +112,7 @@ nucleus.application {
             upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
 
             // Azure Trusted Signing — Auth comes from the standard Azure
-            // service-principal env vars (AZURE_TENANT_ID / AZURE_CLIENT_ID /
+            // service-principal env vars (AZURE_CLIENT_ID /
             // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
             // or from an interactive `az login` session.
             // Signing is gated on the az CLI being able to obtain a token for
