@@ -210,6 +210,27 @@ sign_app_bundle() {
       ${runtime_ent_args[@]+"${runtime_ent_args[@]}"} ${kc_args[@]+"${kc_args[@]}"} "$lib"
   done
 
+  echo "  [2b/7] Signing native libraries inside JAR files..."
+  local jar_tmpdir
+  jar_tmpdir="$(mktemp -d)"
+  find "$app_path" -name '*.jar' -type f | while IFS= read -r jar; do
+    if ! unzip -l "$jar" 2>/dev/null | awk '{print $NF}' | grep -qE '\.(dylib|jnilib|so)$'; then
+      continue
+    fi
+    local extract_dir
+    extract_dir="$jar_tmpdir/$(basename "$jar").d"
+    mkdir -p "$extract_dir"
+    (cd "$extract_dir" && unzip -qq "$jar")
+    find "$extract_dir" \( -name '*.dylib' -o -name '*.jnilib' -o -name '*.so' \) -type f | while IFS= read -r inner; do
+      codesign --force --sign "$identity" --options runtime --timestamp \
+        ${runtime_ent_args[@]+"${runtime_ent_args[@]}"} ${kc_args[@]+"${kc_args[@]}"} "$inner"
+    done
+    # Repack the jar (zip preserves entry order; jar layout doesn't require any specific order)
+    (cd "$extract_dir" && zip -qrX "$jar.new" .) && mv "$jar.new" "$jar"
+    rm -rf "$extract_dir"
+  done
+  rm -rf "$jar_tmpdir"
+
   echo "  [3/7] Signing main executables..."
   if [[ -d "$app_path/Contents/MacOS" ]]; then
     find "$app_path/Contents/MacOS" -type f -perm +111 | while IFS= read -r exe; do
@@ -218,9 +239,11 @@ sign_app_bundle() {
     done
   fi
 
-  echo "  [4/7] Signing runtime executables..."
-  if [[ -d "$app_path/Contents/runtime/Contents/Home/bin" ]]; then
-    find "$app_path/Contents/runtime/Contents/Home/bin" -type f -perm +111 | while IFS= read -r exe; do
+  echo "  [4/7] Signing runtime executables (bin + jspawnhelper)..."
+  if [[ -d "$app_path/Contents/runtime/Contents/Home" ]]; then
+    # Walk all of Home so we pick up bin/* and lib/jspawnhelper (and re-sign any
+    # .dylibs in lib/ — harmless since they were also caught by [1/7]).
+    find "$app_path/Contents/runtime/Contents/Home" -type f -perm +111 | while IFS= read -r exe; do
       codesign --force --sign "$identity" --options runtime --timestamp \
         ${runtime_ent_args[@]+"${runtime_ent_args[@]}"} ${kc_args[@]+"${kc_args[@]}"} "$exe"
     done
