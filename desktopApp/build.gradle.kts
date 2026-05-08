@@ -135,7 +135,7 @@ nucleus.application {
             if (System.getenv("CI") != "true") {
                 signing {
                     sign.set(true)
-                    identity.set("Sean Proctor")
+                    identity.set("Developer Application ID: Sean Proctor (DBNJ4AR55X")
                 }
                 notarization {
                     appleID.set("sproctor@gmail.com")
