@@ -73,24 +73,24 @@ jobs:
         with:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
           path: |
-            build/compose/binaries/**/*.dmg
-            build/compose/binaries/**/*.pkg
-            build/compose/binaries/**/*.exe
-            build/compose/binaries/**/*.msi
-            build/compose/binaries/**/*.appx
-            build/compose/binaries/**/*.deb
-            build/compose/binaries/**/*.rpm
-            build/compose/binaries/**/*.AppImage
-            build/compose/binaries/**/*.snap
-            build/compose/binaries/**/*.flatpak
-            build/compose/binaries/**/*.zip
-            build/compose/binaries/**/*.tar
-            build/compose/binaries/**/*.7z
-            build/compose/binaries/**/*.blockmap
-            build/compose/binaries/**/signing-metadata.json
-            build/compose/binaries/**/packaging-metadata.json
-            !build/compose/binaries/**/app/**
-            !build/compose/binaries/**/runtime/**
+            desktopApp/build/compose/binaries/**/*.dmg
+            desktopApp/build/compose/binaries/**/*.pkg
+            desktopApp/build/compose/binaries/**/*.exe
+            desktopApp/build/compose/binaries/**/*.msi
+            desktopApp/build/compose/binaries/**/*.appx
+            desktopApp/build/compose/binaries/**/*.deb
+            desktopApp/build/compose/binaries/**/*.rpm
+            desktopApp/build/compose/binaries/**/*.AppImage
+            desktopApp/build/compose/binaries/**/*.snap
+            desktopApp/build/compose/binaries/**/*.flatpak
+            desktopApp/build/compose/binaries/**/*.zip
+            desktopApp/build/compose/binaries/**/*.tar
+            desktopApp/build/compose/binaries/**/*.7z
+            desktopApp/build/compose/binaries/**/*.blockmap
+            desktopApp/build/compose/binaries/**/signing-metadata.json
+            desktopApp/build/compose/binaries/**/packaging-metadata.json
+            !desktopApp/build/compose/binaries/**/app/**
+            !desktopApp/build/compose/binaries/**/runtime/**
           if-no-files-found: error
 
   publish:
