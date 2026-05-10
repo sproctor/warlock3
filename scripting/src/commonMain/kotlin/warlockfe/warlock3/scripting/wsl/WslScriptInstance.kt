@@ -1,6 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import io.ktor.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -9,10 +8,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.FileSystem
@@ -29,7 +24,6 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
-import warlockfe.warlock3.core.util.toCaseInsensitiveMap
 
 class WslScriptInstance(
     override val id: Long,
@@ -70,21 +64,6 @@ class WslScriptInstance(
             scope.launch {
                 try {
                     lines = script.parse()
-                    val globalVariables =
-                        client.characterId
-                            .flatMapLatest { id ->
-                                if (id != null) {
-                                    variableRepository.observeCharacterVariables(id).map { variables ->
-                                        variables
-                                            .associate { it.name to it.value }
-                                            .toCaseInsensitiveMap()
-                                    }
-                                } else {
-                                    flow {
-                                        emit(CaseInsensitiveMap())
-                                    }
-                                }
-                            }.stateIn(scope = scope)
                     val context =
                         WslContext(
                             client = client,
@@ -92,7 +71,6 @@ class WslScriptInstance(
                             lines = lines,
                             scriptInstance = this@WslScriptInstance,
                             scope = scope,
-                            globalVariables = globalVariables,
                             variableRepository = variableRepository,
                             highlightRepository = highlightRepository,
                             nameRepository = nameRepository,

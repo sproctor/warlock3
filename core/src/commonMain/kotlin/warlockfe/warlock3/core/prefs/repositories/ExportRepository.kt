@@ -65,7 +65,7 @@ class ExportRepository(
                                 it.key to it.value
                             },
                         variables =
-                            variableDao.getByCharacter(character.id).associate {
+                            variableDao.getAllByCharacter(character.id).associate {
                                 it.name to it.value
                             },
                         aliases =

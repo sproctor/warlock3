@@ -1,13 +1,18 @@
 package warlockfe.warlock3.scripting.wsl
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
@@ -31,6 +36,7 @@ import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
+import warlockfe.warlock3.core.util.toCaseInsensitiveMap
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -48,7 +54,6 @@ class WslContext(
     val lines: List<WslLine>,
     val scriptInstance: WslScriptInstance,
     scope: CoroutineScope,
-    private val globalVariables: StateFlow<Map<String, String>>,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepositoryImpl,
     private val nameRepository: NameRepositoryImpl,
@@ -88,6 +93,26 @@ class WslContext(
     private val navChannel = Channel<Unit>(0)
     private val promptChannel = Channel<Unit>(0)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val globalVariables = client.characterId
+        .flatMapLatest { id ->
+            if (id != null) {
+                variableRepository.observeCharacterVariables(id).map { variables ->
+                    variables
+                        .associate { it.name to it.value }
+                        .toCaseInsensitiveMap()
+                }
+            } else {
+                flow {
+                    emit(CaseInsensitiveMap())
+                }
+            }
+        }.stateIn(
+            started = SharingStarted.Eagerly,
+            scope = scope,
+            initialValue = CaseInsensitiveMap()
+        )
+
     init {
         client.eventFlow
             .onEach { event ->
@@ -123,21 +148,21 @@ class WslContext(
         command(this, args ?: "")
     }
 
-    private fun getGlobalVariable(name: String): String? = globalVariables.value[name]
-
     fun lookupVariable(name: String): WslValue? {
         currentFrame.lookupVariable(name)?.let { return it }
         scriptVariables[name]?.let { return it }
-        return getGlobalVariable(name)?.let { WslString(it) }
+        globalVariables.value[name]?.let { return WslString(it) }
+        return null
     }
 
-    fun hasVariable(name: String): Boolean = scriptVariables.containsKey(name) || (getGlobalVariable(name) != null)
+    fun hasScriptVariable(name: String): Boolean = scriptVariables.containsKey(name)
 
     suspend fun setStoredVariable(
         name: String,
         value: String,
     ) {
         client.characterId.value?.let { variableRepository.put(it.lowercase(), name, value) }
+        scriptVariables += name to WslString(value)
         log(ScriptLoggingLevel.INFO, "SetVariable: $name=$value")
     }
 

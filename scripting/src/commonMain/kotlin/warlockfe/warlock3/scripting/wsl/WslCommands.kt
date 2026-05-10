@@ -357,7 +357,7 @@ private fun parseRegex(text: String): Regex? {
 
 private fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit =
     { context, args ->
-        if (context.hasVariable(n.toString())) {
+        if (context.hasScriptVariable(n.toString())) {
             context.executeCommand(args)
         }
     }
