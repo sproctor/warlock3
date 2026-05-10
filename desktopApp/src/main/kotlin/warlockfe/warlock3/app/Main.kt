@@ -331,6 +331,11 @@ private class WarlockCommand : CliktCommand() {
         val updater =
             NucleusUpdater {
                 provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
+                channel = when {
+                    currentVersion.contains("beta") -> "beta"
+                    currentVersion.contains("alpha") -> "alpha"
+                    else -> "latest"
+                }
             }
         val updateSupported = updater.isUpdateSupported()
 
