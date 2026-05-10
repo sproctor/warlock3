@@ -63,7 +63,7 @@ val releaseVersion: String =
         ?: "0.0.0"
 
 // Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
-// val numericPackageVersion: String = releaseVersion.substringBefore('-')
+val numericPackageVersion: String = releaseVersion.substringBefore('-')
 
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
@@ -117,6 +117,9 @@ nucleus.application {
         }
 
         windows {
+            msiPackageVersion = numericPackageVersion
+            exePackageVersion = numericPackageVersion
+
             iconFile.set(project.file("../icons/icon.ico"))
             menu = true
             // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
@@ -139,6 +142,8 @@ nucleus.application {
             }
         }
         macOS {
+            dmgPackageVersion = numericPackageVersion
+
             iconFile.set(project.file("../icons/icon.icns"))
             bundleID = "warlockfe.warlock3"
             // CI signs macOS post-lipo via the build-macos-universal action; only
