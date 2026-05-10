@@ -51,6 +51,7 @@ kotlin {
     }
 }
 
+// TODO: verify version fix nucleus tag pattern
 val releaseVersion: String =
     System
         .getenv("RELEASE_VERSION")
@@ -60,12 +61,20 @@ val releaseVersion: String =
         ?: "0.0.0"
 
 // Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
-val numericPackageVersion: String = releaseVersion.substringBefore('-')
+// val numericPackageVersion: String = releaseVersion.substringBefore('-')
 
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
+    jvmArgs += "--enable-native-access=ALL-UNNAMED"
+
     nativeDistributions {
+
+        // args("--input=/home/sproctor/Downloads/20251116072204.log") // Long log for testing perf
+        // args("--input=/home/sproctor/.local/state/warlock/logs/DR_Tefrin/20251122120309.log") // quick log
+        // args("--sge-port=7900", "--sge-secure=off")
+        // args("--connection=Tefrin")
+
         targetFormats(
             TargetFormat.Dmg,
             TargetFormat.Zip, // required alongside Dmg for macOS auto-update
@@ -78,7 +87,7 @@ nucleus.application {
 
         appName = "Warlock"
         packageName = "warlock"
-        packageVersion = numericPackageVersion
+        packageVersion = releaseVersion
         description = "Warlock Front-end"
         vendor = "Warlock Project"
         copyright = "Copyright 2026 Sean Proctor"
@@ -147,8 +156,6 @@ nucleus.application {
         linux {
             iconFile.set(project.file("../icons/icon-512.png"))
             debMaintainer = "Sean Proctor <sproctor@gmail.com>"
-            debPackageVersion = releaseVersion
-            rpmPackageVersion = releaseVersion.replace("-", ".")
         }
     }
 
