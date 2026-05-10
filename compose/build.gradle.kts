@@ -37,6 +37,12 @@ kotlin {
                 // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
                 // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
             }
+            group("mobile") {
+                withAndroidTarget()
+                group("ios") {
+                    withIos()
+                }
+            }
         }
     }
 
@@ -48,12 +54,10 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
 
             // Compose
-            implementation(libs.compose.material3)
             api(libs.compose.components.resources)
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.constraintlayout)
             implementation(libs.compose.ui.tooling.preview)
-            implementation(libs.fastscroller.core)
 
             // Third party UI
             implementation(libs.colorpicker)
@@ -65,6 +69,12 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
         }
+        getByName("mobileMain") {
+            dependencies {
+                implementation(libs.compose.material3)
+                implementation(libs.fastscroller.core)
+            }
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -74,6 +84,10 @@ kotlin {
                 implementation(libs.coil.network.okhttp)
                 implementation(libs.autolink)
             }
+        }
+        jvmMain.dependencies {
+            implementation(libs.jewel.standalone)
+            implementation(libs.jewel.decorated.window)
         }
         invokeWhenCreated("androidDebug") {
             dependencies {

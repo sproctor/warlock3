@@ -2,6 +2,7 @@ package warlockfe.warlock3.app
 
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,10 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
@@ -50,7 +48,7 @@ import io.github.kdroidfilter.nucleus.updater.NucleusUpdater
 import io.github.kdroidfilter.nucleus.updater.UpdateInfo
 import io.github.kdroidfilter.nucleus.updater.UpdateResult
 import io.github.kdroidfilter.nucleus.updater.provider.GitHubProvider
-import io.github.kdroidfilter.nucleus.window.material.MaterialDecoratedWindow
+import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
@@ -69,14 +67,20 @@ import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.HorizontalProgressBar
+import org.jetbrains.jewel.ui.component.Text
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.compose.desktop.shim.WarlockButton
+import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
-import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
@@ -89,6 +93,9 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.awt.Dimension
 import java.io.File
+import java.nio.file.Paths
+import kotlin.io.path.exists
+import kotlin.io.path.inputStream
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
@@ -335,7 +342,7 @@ private class WarlockCommand : CliktCommand() {
                     ThemeSetting.LIGHT -> false
                     ThemeSetting.DARK -> true
                 }
-            AppTheme(useDarkTheme = darkMode) {
+            WarlockDesktopTheme(isDark = darkMode) {
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
                 var downloadProgress: Double? by remember { mutableStateOf(null) }
@@ -376,82 +383,83 @@ private class WarlockCommand : CliktCommand() {
                             title = "Warlock update available",
                             state = rememberDialogState(width = 400.dp, height = 300.dp),
                         ) {
-                            Surface {
-                                Column(Modifier.fillMaxSize().padding(8.dp)) {
-                                    Text("Current version: ${updater.currentVersion}")
-                                    Text("Latest version: ${availableUpdate?.version ?: "unknown"}")
-                                    if (!updateSupported) {
-                                        Text("Automated updates are not supported for your installation")
-                                    }
-                                    downloadProgress?.let { percent ->
-                                        Spacer(Modifier.padding(top = 8.dp))
-                                        Text("Downloading: ${percent.toInt()}%")
-                                        LinearProgressIndicator(
-                                            progress = { (percent / 100.0).toFloat() },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        )
-                                    }
+                            Column(
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(JewelTheme.globalColors.panelBackground)
+                                    .padding(8.dp),
+                            ) {
+                                Text("Current version: ${updater.currentVersion}")
+                                Text("Latest version: ${availableUpdate?.version ?: "unknown"}")
+                                if (!updateSupported) {
+                                    Text("Automated updates are not supported for your installation")
+                                }
+                                downloadProgress?.let { percent ->
+                                    Spacer(Modifier.padding(top = 8.dp))
+                                    Text("Downloading: ${percent.toInt()}%")
+                                    HorizontalProgressBar(
+                                        progress = (percent / 100.0).toFloat(),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                                Spacer(Modifier.weight(1f))
+                                Row(Modifier.fillMaxWidth()) {
                                     Spacer(Modifier.weight(1f))
-                                    Row(Modifier.fillMaxWidth()) {
-                                        Spacer(Modifier.weight(1f))
-                                        val ignoreUpdates by clientSettings
-                                            .observeIgnoreUpdates()
-                                            .collectAsState(false)
-                                        if (!ignoreUpdates) {
-                                            TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        clientSettings.putIgnoreUpdates(true)
-                                                        showUpdateDialog = false
-                                                    }
-                                                },
-                                            ) {
-                                                Text("Ignore updates")
-                                            }
-                                        } else {
-                                            TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        clientSettings.putIgnoreUpdates(false)
-                                                    }
-                                                },
-                                            ) {
-                                                Text("Stop ignoring updates")
-                                            }
-                                        }
-                                        TextButton(
-                                            onClick = { showUpdateDialog = false },
-                                        ) {
-                                            Text("Close")
-                                        }
-                                        TextButton(
+                                    val ignoreUpdates by clientSettings
+                                        .observeIgnoreUpdates()
+                                        .collectAsState(false)
+                                    if (!ignoreUpdates) {
+                                        WarlockOutlinedButton(
                                             onClick = {
-                                                val info = availableUpdate ?: return@TextButton
-                                                val file = downloadedFile
-                                                if (file != null) {
-                                                    updater.installAndRestart(file)
-                                                    return@TextButton
-                                                }
                                                 scope.launch {
-                                                    clientSettings.putIgnoreUpdates(false)
-                                                    try {
-                                                        updater.downloadUpdate(info).collect { progress ->
-                                                            downloadProgress = progress.percent
-                                                            progress.file?.let { downloadedFile = it }
-                                                        }
-                                                        downloadedFile?.let { updater.installAndRestart(it) }
-                                                    } catch (e: Exception) {
-                                                        ensureActive()
-                                                        logger.e(e) { "Update download failed" }
-                                                        downloadProgress = null
-                                                    }
+                                                    clientSettings.putIgnoreUpdates(true)
+                                                    showUpdateDialog = false
                                                 }
                                             },
-                                            enabled = availableUpdate != null && updateSupported && downloadProgress == null,
-                                        ) {
-                                            Text(if (downloadedFile != null) "Install & restart" else "Update")
-                                        }
+                                            text = "Ignore updates",
+                                        )
+                                    } else {
+                                        WarlockOutlinedButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    clientSettings.putIgnoreUpdates(false)
+                                                }
+                                            },
+                                            text = "Stop ignoring updates",
+                                        )
                                     }
+                                    Spacer(Modifier.padding(horizontal = 4.dp))
+                                    WarlockOutlinedButton(
+                                        onClick = { showUpdateDialog = false },
+                                        text = "Close",
+                                    )
+                                    Spacer(Modifier.padding(horizontal = 4.dp))
+                                    WarlockButton(
+                                        onClick = {
+                                            val info = availableUpdate ?: return@WarlockButton
+                                            val file = downloadedFile
+                                            if (file != null) {
+                                                updater.installAndRestart(file)
+                                                return@WarlockButton
+                                            }
+                                            scope.launch {
+                                                clientSettings.putIgnoreUpdates(false)
+                                                try {
+                                                    updater.downloadUpdate(info).collect { progress ->
+                                                        downloadProgress = progress.percent
+                                                        progress.file?.let { downloadedFile = it }
+                                                    }
+                                                    downloadedFile?.let { updater.installAndRestart(it) }
+                                                } catch (e: Exception) {
+                                                    ensureActive()
+                                                    logger.e(e) { "Update download failed" }
+                                                    downloadProgress = null
+                                                }
+                                            }
+                                        },
+                                        enabled = availableUpdate != null && updateSupported && downloadProgress == null,
+                                        text = if (downloadedFile != null) "Install & restart" else "Update",
+                                    )
                                 }
                             }
                         }
@@ -468,9 +476,20 @@ private class WarlockCommand : CliktCommand() {
                             }
                         val subtitle by gameState.getTitle().collectAsState("loading")
                         val title = "Warlock - $subtitle"
-                        MaterialDecoratedWindow(
+                        // app.dir is set when packaged to point at our collected inputs.
+                        val appIcon =
+                            remember {
+                                System
+                                    .getProperty("app.dir")
+                                    ?.let { Paths.get(it, "icon-512.png") }
+                                    ?.takeIf { it.exists() }
+                                    ?.inputStream()
+                                    ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
+                            }
+                        JewelDecoratedWindow(
                             title = title,
                             state = windowState,
+                            icon = appIcon,
                             onCloseRequest = {
                                 scope.launch {
                                     val game = games[index]

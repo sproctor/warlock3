@@ -52,6 +52,9 @@ constraintlayout = "0.7.0"
 fastscroller = "0.3.2"
 # Waiting for AGP 9 and SDK 37 to update
 filekit = "0.14.1"
+# Need to update to Java 25 before we can update jewel
+jewel = "0.35.0-261.23567.138"
+## ⬆ = "0.37.0-262.4852.51"
 kermit = "2.1.0"
 kotlin = "2.3.21"
 kotlinx-collections-immutable = "0.4.0"
@@ -113,8 +116,10 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
+jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
+jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 nucleus-decorated-window-jbr = { module = "io.github.kdroidfilter:nucleus.decorated-window-jbr", version.ref = "nucleus" }
-nucleus-decorated-window-material3 = { module = "io.github.kdroidfilter:nucleus.decorated-window-material3", version.ref = "nucleus" }
+nucleus-decorated-window-jewel = { module = "io.github.kdroidfilter:nucleus.decorated-window-jewel", version.ref = "nucleus" }
 nucleus-updater-runtime = { module = "io.github.kdroidfilter:nucleus.updater-runtime", version.ref = "nucleus" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

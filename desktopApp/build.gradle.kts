@@ -15,10 +15,12 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
 
-    implementation(libs.nucleus.decorated.window.material3)
+    implementation(libs.nucleus.decorated.window.jewel)
     implementation(libs.nucleus.decorated.window.jbr)
 
-    implementation(libs.compose.material3)
+    implementation(libs.jewel.standalone)
+    implementation(libs.jewel.decorated.window)
+
     implementation(libs.compose.components.resources)
 
     // Command line options

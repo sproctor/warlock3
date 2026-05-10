@@ -116,16 +116,6 @@ fun FontPickerDialog(
     )
 }
 
-internal data class FontFamilyInfo(
-    val familyName: String,
-    val fontFamily: FontFamily,
-)
-
-data class FontUpdate(
-    val size: Float?,
-    val fontFamily: String?,
-)
-
 private val genericFontFamilies =
     listOf(
         FontFamilyInfo("Default", FontFamily.Default),
@@ -134,5 +124,3 @@ private val genericFontFamilies =
         FontFamilyInfo("Monospace", FontFamily.Monospace),
         FontFamilyInfo("Cursive", FontFamily.Cursive),
     )
-
-internal expect suspend fun loadSystemFonts(): List<FontFamilyInfo>
