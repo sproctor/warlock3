@@ -44,11 +44,10 @@ import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
 import io.github.kdroidfilter.nucleus.core.runtime.NucleusApp
-import io.github.kdroidfilter.nucleus.core.runtime.Platform
 import io.github.kdroidfilter.nucleus.updater.NucleusUpdater
 import io.github.kdroidfilter.nucleus.updater.UpdateInfo
 import io.github.kdroidfilter.nucleus.updater.UpdateResult
-import io.github.kdroidfilter.nucleus.updater.provider.UpdateProvider
+import io.github.kdroidfilter.nucleus.updater.provider.GitHubProvider
 import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
@@ -66,8 +65,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
@@ -96,10 +93,6 @@ import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.awt.Dimension
 import java.io.File
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
@@ -338,14 +331,9 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
-        val httpClient =
-            HttpClient
-                .newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build()
         val updater =
             NucleusUpdater {
-                provider = CustomGitHubProvider(owner = "sproctor", repo = "warlock3", httpClient = httpClient)
+                provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
                 channel =
                     when {
                         currentVersion.contains("beta") -> "beta"
@@ -619,118 +607,5 @@ private fun migrateLegacyWindowsPrefsDb(
         }
     } catch (e: Exception) {
         logger.e(e) { "Failed to migrate legacy prefs database" }
-    }
-}
-
-class CustomGitHubProvider(
-    val owner: String,
-    val repo: String,
-    val httpClient: HttpClient,
-    val token: String? = null,
-) : UpdateProvider {
-    /**
-     * Base URL for the GitHub REST API. Exposed as `internal` so tests in this module
-     * can redirect API traffic to a local server; not part of the public API.
-     */
-    internal var apiBaseUrl: String = "https://api.github.com"
-
-    override fun getUpdateMetadataUrl(
-        channel: String,
-        platform: Platform,
-    ): String {
-        val fileName = metadataFileName(channel, platform)
-        if (channel.equals(LATEST_CHANNEL, ignoreCase = true)) {
-            return "https://github.com/$owner/$repo/releases/latest/download/$fileName"
-        }
-        val tag = findLatestPrereleaseTag(channel, httpClient)
-        return "https://github.com/$owner/$repo/releases/download/$tag/$fileName"
-    }
-
-    override fun getDownloadUrl(
-        fileName: String,
-        version: String,
-    ): String = "https://github.com/$owner/$repo/releases/download/v$version/$fileName"
-
-    override fun authHeaders(): Map<String, String> =
-        if (token != null) {
-            mapOf("Authorization" to "token $token")
-        } else {
-            emptyMap()
-        }
-
-    private fun metadataFileName(
-        channel: String,
-        platform: Platform,
-    ): String {
-        val suffix = platformSuffix(platform)
-        return if (suffix.isEmpty()) "$channel.yml" else "$channel-$suffix.yml"
-    }
-
-    private fun findLatestPrereleaseTag(
-        channel: String,
-        httpClient: HttpClient,
-    ): String {
-        val builder =
-            HttpRequest
-                .newBuilder()
-                .uri(URI.create("$apiBaseUrl/repos/$owner/$repo/releases?per_page=$PER_PAGE"))
-                .header("Accept", "application/vnd.github+json")
-                .header("X-GitHub-Api-Version", "2026-03-10")
-        if (token != null) builder.header("Authorization", "Bearer $token")
-        val request = builder.GET().build()
-
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        val status = response.statusCode()
-        if (status != HTTP_OK) {
-            val rateLimitRemaining =
-                response.headers().firstValue("X-RateLimit-Remaining").orElse(null)
-            if (status == HTTP_FORBIDDEN && rateLimitRemaining == "0") {
-                throw RuntimeException(
-                    "GitHub API rate limit exceeded while listing releases for $owner/$repo. " +
-                        "Configure a token to raise the limit.",
-                )
-            }
-            throw RuntimeException("GitHub API returned HTTP $status while listing releases for $owner/$repo.")
-        }
-
-        val releases = json.decodeFromString<List<GitHubRelease>>(response.body())
-        val match =
-            releases.firstOrNull { release ->
-                release.prerelease && tagMatchesChannel(release.tagName, channel)
-            } ?: throw NoSuchElementException(
-                "No release found for channel '$channel' within the most recent $PER_PAGE releases. " +
-                    "Publish a fresh release on this channel.",
-            )
-        return match.tagName
-    }
-
-    private fun tagMatchesChannel(
-        tag: String,
-        channel: String,
-    ): Boolean {
-        val suffix = tag.substringAfter('-', missingDelimiterValue = "")
-        return suffix.startsWith(channel, ignoreCase = true)
-    }
-
-    private fun platformSuffix(platform: Platform): String =
-        when (platform) {
-            Platform.Windows -> ""
-            Platform.MacOS -> "mac"
-            Platform.Linux -> "linux"
-            Platform.Unknown -> ""
-        }
-
-    @Serializable
-    internal data class GitHubRelease(
-        @SerialName("tag_name") val tagName: String,
-        val prerelease: Boolean,
-    )
-
-    private companion object {
-        const val LATEST_CHANNEL = "latest"
-        const val PER_PAGE = 100
-        const val HTTP_OK = 200
-        const val HTTP_FORBIDDEN = 403
-        val json = Json { ignoreUnknownKeys = true }
     }
 }

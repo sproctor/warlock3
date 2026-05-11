@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.nucleus)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 dependencies {
@@ -21,7 +20,6 @@ dependencies {
     implementation(libs.nucleus.decorated.window.jbr)
 
     implementation(libs.jewel.standalone)
-    implementation(libs.jewel.decorated.window)
 
     implementation(libs.compose.components.resources)
 
