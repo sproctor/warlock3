@@ -69,6 +69,9 @@ val numericPackageVersion: String = releaseVersion.substringBefore('-')
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
+    // SQLite calls a restricted method
+    jvmArgs += "--enable-native-access=ALL-UNNAMED"
+
     nativeDistributions {
 
         // args("--input=/home/sproctor/Downloads/20251116072204.log") // Long log for testing perf
