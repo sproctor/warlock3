@@ -32,7 +32,7 @@ fun ByteArray.toNSData(
 
 @OptIn(BetaInteropApi::class)
 actual fun String.encodeWindows1252(): ByteArray {
-    val nsString = NSString.create(this)
+    val nsString: NSString = NSString.create(this)!!
     val nsData = nsString.dataUsingEncoding(NSWindowsCP1252StringEncoding)
     return nsData?.toByteArray() ?: ByteArray(0)
 }
