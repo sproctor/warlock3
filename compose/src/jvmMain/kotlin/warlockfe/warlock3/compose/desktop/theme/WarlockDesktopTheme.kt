@@ -21,7 +21,7 @@ fun WarlockDesktopTheme(
             } else {
                 JewelTheme.lightThemeDefinition()
             },
-        styling = ComponentStyling.default()
+        styling = ComponentStyling.default(),
     ) {
         CompositionLocalProvider(
             LocalWarlockColors provides WarlockColors.from(isDark),

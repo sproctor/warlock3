@@ -135,7 +135,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                                 onClick = {
                                     exportFileSaveLauncher.launch(
                                         suggestedName = "settings",
-                                        defaultExtension = "json"
+                                        defaultExtension = "json",
                                     )
                                 },
                             ) {
