@@ -68,8 +68,6 @@ val numericPackageVersion: String = releaseVersion.substringBefore('-')
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
-    jvmArgs += "--enable-native-access=ALL-UNNAMED"
-
     nativeDistributions {
 
         // args("--input=/home/sproctor/Downloads/20251116072204.log") // Long log for testing perf
@@ -117,6 +115,9 @@ nucleus.application {
         }
 
         windows {
+            // Windows .exe VERSIONINFO requires numeric-only version, so use the
+            // stripped version for both the app-image executable and installers.
+            packageVersion = numericPackageVersion
             msiPackageVersion = numericPackageVersion
             exePackageVersion = numericPackageVersion
 
@@ -142,6 +143,9 @@ nucleus.application {
             }
         }
         macOS {
+            // CFBundleVersion (used by the .app bundle, not just the DMG) must be
+            // dotted integers, so apply the numeric version at the OS level too.
+            packageVersion = numericPackageVersion
             dmgPackageVersion = numericPackageVersion
 
             iconFile.set(project.file("../icons/icon.icns"))
