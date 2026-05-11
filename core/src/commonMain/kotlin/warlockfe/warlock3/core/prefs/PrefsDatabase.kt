@@ -41,6 +41,8 @@ import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 
+const val PREFS_DATABASE_VERSION = 17
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -60,7 +62,7 @@ import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
         VariableEntity::class,
         WindowSettingsEntity::class,
     ],
-    version = 17,
+    version = PREFS_DATABASE_VERSION,
     autoMigrations = [
         AutoMigration(
             from = 11,

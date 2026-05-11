@@ -1,12 +1,12 @@
 package warlockfe.warlock3.compose
 
 import androidx.room.Room
-import androidx.room.RoomDatabase
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -44,16 +44,17 @@ object IosAppContainerProvider {
                 logDir = "$documentsPath/logs",
             )
 
-        val dbPath = "$libraryPath/Application Support/warlock/prefs.db"
         val dbDir = "$libraryPath/Application Support/warlock"
         NSFileManager.defaultManager.createDirectoryAtPath(dbDir, true, null, null)
 
-        val databaseBuilder =
-            Room.databaseBuilder<PrefsDatabase>(
-                name = dbPath,
+        val database =
+            openPrefsDatabase(
+                directory = Path(dbDir),
+                fileSystem = SystemFileSystem,
+                builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
             )
 
-        val container = IosAppContainer(databaseBuilder, warlockDirs, SystemFileSystem)
+        val container = IosAppContainer(database, warlockDirs, SystemFileSystem)
 
         runBlocking {
             container.macroRepository.insertDefaultMacrosIfNeeded()
@@ -95,11 +96,11 @@ private class IosProxy(
 }
 
 class IosAppContainer(
-    databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
+    database: PrefsDatabase,
     warlockDirs: WarlockDirs,
     fileSystem: FileSystem,
 ) : AppContainer(
-        databaseBuilder = databaseBuilder,
+        database = database,
         warlockDirs = warlockDirs,
         fileSystem = fileSystem,
     ) {
