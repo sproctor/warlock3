@@ -185,6 +185,9 @@ private class WarlockCommand : CliktCommand() {
         val configDir = appDirs.getUserConfigDir()
         File(configDir).mkdirs()
         val dbFile = File(configDir, "prefs.db")
+        if (!dbFile.exists()) {
+            migrateLegacyWindowsPrefsDb(dbFile, logger)
+        }
         val warlockDirs =
             WarlockDirs(
                 homeDir = System.getProperty("user.home"),
@@ -588,6 +591,36 @@ private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<Pref
     Room.databaseBuilder<PrefsDatabase>(
         name = filename,
     )
+
+private fun migrateLegacyWindowsPrefsDb(
+    dbFile: File,
+    logger: Logger,
+) {
+    if (!System.getProperty("os.name").orEmpty().startsWith("Windows", ignoreCase = true)) {
+        return
+    }
+    val localAppData =
+        System.getenv("LOCALAPPDATA")
+            ?: File(System.getProperty("user.home"), "AppData/Local").absolutePath
+    val legacyDir =
+        File(localAppData, "Packages/Warlock_ysy1438y9wgam/LocalCache/Local/WarlockFE")
+    val legacyDb = File(legacyDir, "prefs.db")
+    if (!legacyDb.exists()) {
+        return
+    }
+    logger.i { "Migrating legacy prefs database from ${legacyDb.absolutePath} to ${dbFile.absolutePath}" }
+    try {
+        legacyDb.copyTo(dbFile, overwrite = false)
+        listOf("prefs.db-wal", "prefs.db-shm").forEach { name ->
+            val source = File(legacyDir, name)
+            if (source.exists()) {
+                source.copyTo(File(dbFile.parentFile, name), overwrite = false)
+            }
+        }
+    } catch (e: Exception) {
+        logger.e(e) { "Failed to migrate legacy prefs database" }
+    }
+}
 
 class CustomGitHubProvider(
     val owner: String,
