@@ -87,7 +87,6 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.jewel.standalone)
-            implementation(libs.jewel.decorated.window)
         }
         invokeWhenCreated("androidDebug") {
             dependencies {
