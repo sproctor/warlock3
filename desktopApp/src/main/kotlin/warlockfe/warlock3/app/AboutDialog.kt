@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.kdroidfilter.nucleus.core.runtime.NucleusApp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.app.resources.Res
@@ -24,7 +25,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
 fun AboutDialog(onCloseRequest: () -> Unit) {
-    val warlockVersion = System.getProperty("app.version", "development")
+    val warlockVersion = NucleusApp.version ?: "development"
     WarlockDialog(
         title = "About Warlock",
         onCloseRequest = onCloseRequest,
