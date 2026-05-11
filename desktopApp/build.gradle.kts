@@ -1,4 +1,5 @@
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
+import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -119,6 +120,11 @@ nucleus.application {
                         releaseVersion.contains("beta") -> ReleaseChannel.Beta
                         releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
                         else -> ReleaseChannel.Latest
+                    }
+                releaseType =
+                    when (channel) {
+                        ReleaseChannel.Latest -> ReleaseType.Release
+                        else -> ReleaseType.Prerelease
                     }
             }
         }
