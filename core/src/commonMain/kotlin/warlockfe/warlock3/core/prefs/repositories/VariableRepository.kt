@@ -9,8 +9,7 @@ import warlockfe.warlock3.core.prefs.models.VariableEntity
 class VariableRepository(
     private val variableDao: VariableDao,
 ) {
-    fun observeCharacterVariables(characterId: String): Flow<List<VariableEntity>> =
-        variableDao.observeByCharacter(characterId)
+    fun observeCharacterVariables(characterId: String): Flow<List<VariableEntity>> = variableDao.observeByCharacter(characterId)
 
     suspend fun put(variable: VariableEntity) {
         withContext(NonCancellable) {

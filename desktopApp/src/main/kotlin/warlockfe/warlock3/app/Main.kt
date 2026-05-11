@@ -326,7 +326,7 @@ private class WarlockCommand : CliktCommand() {
             val cause = throwable.cause ?: throwable
             val isKnownComposeBug =
                 cause is NoSuchElementException &&
-                        cause.message?.contains("Cannot find value for key") == true
+                    cause.message?.contains("Cannot find value for key") == true
 
             if (isKnownComposeBug) {
                 // Swallow silently — known upstream bug, see https://issuetracker.google.com/issues/399134381
@@ -335,18 +335,20 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
-        val httpClient = HttpClient
-            .newBuilder()
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build()
+        val httpClient =
+            HttpClient
+                .newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .build()
         val updater =
             NucleusUpdater {
                 provider = CustomGitHubProvider(owner = "sproctor", repo = "warlock3", httpClient = httpClient)
-                channel = when {
-                    currentVersion.contains("beta") -> "beta"
-                    currentVersion.contains("alpha") -> "alpha"
-                    else -> "latest"
-                }
+                channel =
+                    when {
+                        currentVersion.contains("beta") -> "beta"
+                        currentVersion.contains("alpha") -> "alpha"
+                        else -> "latest"
+                    }
             }
         val updateSupported = updater.isUpdateSupported()
 
@@ -652,7 +654,7 @@ class CustomGitHubProvider(
             if (status == HTTP_FORBIDDEN && rateLimitRemaining == "0") {
                 throw RuntimeException(
                     "GitHub API rate limit exceeded while listing releases for $owner/$repo. " +
-                            "Configure a token to raise the limit.",
+                        "Configure a token to raise the limit.",
                 )
             }
             throw RuntimeException("GitHub API returned HTTP $status while listing releases for $owner/$repo.")
@@ -664,7 +666,7 @@ class CustomGitHubProvider(
                 release.prerelease && tagMatchesChannel(release.tagName, channel)
             } ?: throw NoSuchElementException(
                 "No release found for channel '$channel' within the most recent $PER_PAGE releases. " +
-                        "Publish a fresh release on this channel.",
+                    "Publish a fresh release on this channel.",
             )
         return match.tagName
     }

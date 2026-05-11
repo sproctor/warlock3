@@ -95,24 +95,25 @@ class WslContext(
     private val promptChannel = Channel<Unit>(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val globalVariables = client.characterId
-        .flatMapLatest { id ->
-            if (id != null) {
-                variableRepository.observeCharacterVariables(id).map { variables ->
-                    variables
-                        .associate { it.name to it.value }
-                        .toCaseInsensitiveMap()
+    private val globalVariables =
+        client.characterId
+            .flatMapLatest { id ->
+                if (id != null) {
+                    variableRepository.observeCharacterVariables(id).map { variables ->
+                        variables
+                            .associate { it.name to it.value }
+                            .toCaseInsensitiveMap()
+                    }
+                } else {
+                    flow {
+                        emit(CaseInsensitiveMap())
+                    }
                 }
-            } else {
-                flow {
-                    emit(CaseInsensitiveMap())
-                }
-            }
-        }.stateIn(
-            started = SharingStarted.Eagerly,
-            scope = scope,
-            initialValue = CaseInsensitiveMap()
-        )
+            }.stateIn(
+                started = SharingStarted.Eagerly,
+                scope = scope,
+                initialValue = CaseInsensitiveMap(),
+            )
 
     init {
         client.eventFlow
