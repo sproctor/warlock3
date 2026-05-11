@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -162,8 +163,10 @@ class WslContext(
         value: String,
     ) {
         client.characterId.value?.let { variableRepository.put(it.lowercase(), name, value) }
-        scriptVariables += name to WslString(value)
         log(ScriptLoggingLevel.INFO, "SetVariable: $name=$value")
+        withTimeout(1.seconds) {
+            globalVariables.first { it[name] == value }
+        }
     }
 
     suspend fun deleteStoredVariable(name: String) {
