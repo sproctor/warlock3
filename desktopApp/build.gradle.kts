@@ -116,11 +116,12 @@ nucleus.application {
                 enabled = true
                 owner = "sproctor"
                 repo = "warlock3"
-                channel = when {
-                    releaseVersion.contains("beta") -> ReleaseChannel.Beta
-                    releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
-                    else -> ReleaseChannel.Latest
-                }
+                channel =
+                    when {
+                        releaseVersion.contains("beta") -> ReleaseChannel.Beta
+                        releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
+                        else -> ReleaseChannel.Latest
+                    }
             }
         }
 
