@@ -93,7 +93,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                     showUpdateDialog = showUpdateDialog,
                     showAboutDialog = showAboutDialog,
                     exportSettings = {
-                        exportFileSaveLauncher.launch("settings", "json")
+                        exportFileSaveLauncher.launch(suggestedName = "settings", defaultExtension = "json")
                     },
                 )
             } else {
@@ -132,7 +132,12 @@ internal fun DecoratedWindowScope.TitleBarView(
                             separator()
                             selectableItem(
                                 selected = false,
-                                onClick = { exportFileSaveLauncher.launch("settings", "json") },
+                                onClick = {
+                                    exportFileSaveLauncher.launch(
+                                        suggestedName = "settings",
+                                        defaultExtension = "json"
+                                    )
+                                },
                             ) {
                                 Text("Export settings...")
                             }
