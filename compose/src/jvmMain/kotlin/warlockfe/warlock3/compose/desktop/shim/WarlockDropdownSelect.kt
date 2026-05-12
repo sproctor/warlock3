@@ -19,7 +19,7 @@ fun <T> WarlockDropdownSelect(
         items = labels,
         selectedIndex = selectedIndex,
         onSelectedItemChange = { idx ->
-            items.getOrNull(idx)?.let(onSelect)
+            onSelect(items[idx])
         },
         modifier = modifier,
     )
