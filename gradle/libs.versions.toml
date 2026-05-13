@@ -52,8 +52,10 @@ constraintlayout = "0.7.0"
 fastscroller = "0.3.2"
 # Waiting for AGP 9 and SDK 37 to update
 filekit = "0.14.1"
-# Need to update to Java 25 before we can update jewel
-jewel = "0.37.0-262.4852.51"
+intellij = "261.23567.174"
+# Jewel 0.37 is still a pre-release as of may 13, 2026
+jewel = "0.36.0-261.24374.85"
+## ⬆ = "0.37.0-262.4852.51"
 kermit = "2.1.0"
 kotlin = "2.3.21"
 kotlinx-collections-immutable = "0.4.0"
@@ -67,11 +69,11 @@ ktlint = "1.5.0"
 ktlint-gradle = "14.2.0"
 ktlint-compose-rules = "0.5.8"
 ktor = "3.4.3"
-nucleus = "1.15.3"
+nucleus = "1.15.4"
 rhino = "1.9.1"
 room = "2.8.4"
 sentryKotlin = "0.26.0"
-slf4j = "2.0.17"
+slf4j = "2.0.18"
 slf4jAndroid = "2.0.17-0"
 uri = "0.0.21"
 xmlutil = "0.91.3"
@@ -115,6 +117,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
+intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 nucleus-decorated-window-jbr = { module = "io.github.kdroidfilter:nucleus.decorated-window-jbr", version.ref = "nucleus" }
 nucleus-decorated-window-jewel = { module = "io.github.kdroidfilter:nucleus.decorated-window-jewel", version.ref = "nucleus" }

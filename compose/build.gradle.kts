@@ -87,6 +87,10 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.jewel.standalone)
+            // Jewel references AllIconsKeys (e.g. ComboBox chevron) but its standalone POM
+            // does not pull the platform icons jar, so the SVG resources have to be added
+            // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.
+            implementation(libs.intellij.platform.icons)
         }
         invokeWhenCreated("androidDebug") {
             dependencies {
