@@ -47,16 +47,20 @@ project.tasks.withType<KotlinCompilationTask<*>>().configureEach {
     dependsOn.add(generateKotlinGrammarSource)
 }
 
+val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
+
 kotlin {
     jvm()
     androidTarget()
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "core"
-            isStatic = true
+    if (!skipIos) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64(),
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "core"
+                isStatic = true
+            }
         }
     }
 //    androidLibrary {
@@ -121,8 +125,10 @@ dependencies {
     // Room
     add("kspAndroid", libs.room.compiler)
     add("kspJvm", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
+    if (!skipIos) {
+        add("kspIosSimulatorArm64", libs.room.compiler)
+        add("kspIosArm64", libs.room.compiler)
+    }
 }
 
 android {

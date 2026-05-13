@@ -11,9 +11,9 @@ concurrency:
 
 jobs:
   build:
-    name: Build & test
+    name: Run checks and upload report
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -24,11 +24,8 @@ jobs:
           setup-gradle: 'true'
           setup-node: 'false'
 
-      - name: Build
-        run: ./gradlew build --stacktrace --no-daemon
-
-      - name: Test
-        run: ./gradlew allTests --stacktrace --no-daemon
+      - name: Checks
+        run: ./gradlew check -PiosSkip=true --stacktrace --no-daemon
 
       - name: Upload test reports
         if: always()
