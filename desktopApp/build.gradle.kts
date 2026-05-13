@@ -54,7 +54,7 @@ kotlin {
     }
 }
 
-// TODO: verify version fix nucleus tag pattern
+// TODO: verify version fits nucleus tag pattern
 val releaseVersion: String =
     System
         .getenv("RELEASE_VERSION")

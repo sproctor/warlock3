@@ -39,17 +39,21 @@ val generateKotlinGrammarSource =
                 .asFile
     }
 
+val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
+
 kotlin {
     jvm()
     androidTarget()
 
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "wrayth"
-            isStatic = true
+    if (!skipIos) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64(),
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "wrayth"
+                isStatic = true
+            }
         }
     }
 
