@@ -1,6 +1,7 @@
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
 import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
+import org.gradle.internal.os.OperatingSystem
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -54,7 +55,7 @@ kotlin {
     }
 }
 
-// TODO: verify version fix nucleus tag pattern
+// TODO: verify version fits nucleus tag pattern
 val releaseVersion: String =
     System
         .getenv("RELEASE_VERSION")
@@ -79,14 +80,18 @@ nucleus.application {
         // args("--sge-port=7900", "--sge-secure=off")
         // args("--connection=Tefrin")
 
+        val currentOs = OperatingSystem.current()
         targetFormats(
-            TargetFormat.Dmg,
-            TargetFormat.Zip, // required alongside Dmg for macOS auto-update
-            TargetFormat.Nsis,
-            TargetFormat.Msi,
-            TargetFormat.Deb,
-            TargetFormat.AppImage,
-            TargetFormat.Tar,
+            *listOfNotNull(
+                TargetFormat.Dmg.takeIf { currentOs.isMacOsX },
+                // Zip is required alongside Dmg for macOS auto-update, and is the only
+                // non-installer artifact on Windows. Linux uses Tar instead.
+                TargetFormat.Zip.takeIf { !currentOs.isLinux },
+                TargetFormat.Nsis.takeIf { currentOs.isWindows },
+                TargetFormat.Deb.takeIf { currentOs.isLinux },
+                TargetFormat.AppImage.takeIf { currentOs.isLinux },
+                TargetFormat.Tar.takeIf { currentOs.isLinux },
+            ).toTypedArray(),
         )
 
         appName = "Warlock"

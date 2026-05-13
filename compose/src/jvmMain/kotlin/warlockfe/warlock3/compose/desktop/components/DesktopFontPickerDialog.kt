@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
@@ -27,13 +31,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import warlockfe.warlock3.compose.components.FontFamilyInfo
 import warlockfe.warlock3.compose.components.FontUpdate
 import warlockfe.warlock3.compose.components.loadSystemFonts
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.core.text.StyleDefinition
 
@@ -55,6 +59,9 @@ fun DesktopFontPickerDialog(
         systemFontFamilies = loadSystemFonts()
     }
 
+    val families = remember(systemFontFamilies) { genericFontFamilies + systemFontFamilies }
+    val listState = rememberLazyListState()
+
     WarlockDialog(
         title = "Choose a font",
         onCloseRequest = onCloseRequest,
@@ -68,7 +75,12 @@ fun DesktopFontPickerDialog(
             Text("Size")
             WarlockTextField(state = size, modifier = Modifier.fillMaxWidth())
 
-            WarlockScrollableColumn(
+            if (systemFontFamilies.isEmpty()) {
+                Text("Loading system fonts…")
+            }
+
+            VerticallyScrollableContainer(
+                scrollState = listState,
                 modifier =
                     Modifier
                         .border(
@@ -79,31 +91,33 @@ fun DesktopFontPickerDialog(
                         .fillMaxWidth()
                         .weight(1f),
             ) {
-                (genericFontFamilies + systemFontFamilies).forEach { family ->
-                    val isSelected = family.familyName == newFontFamily
-                    val rowBackground =
-                        if (isSelected) {
-                            JewelTheme.globalColors.borders.normal
-                                .copy(alpha = 0.25f)
-                        } else {
-                            Color.Transparent
-                        }
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { newFontFamily = family.familyName }
-                                .background(rowBackground)
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "The quick brown fox jumps over the lazy dog",
-                                fontFamily = family.fontFamily,
-                                maxLines = 1,
-                            )
-                            Text(text = family.familyName)
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                    items(families, key = { it.familyName }) { family ->
+                        val isSelected = family.familyName == newFontFamily
+                        val rowBackground =
+                            if (isSelected) {
+                                JewelTheme.globalColors.borders.normal
+                                    .copy(alpha = 0.25f)
+                            } else {
+                                Color.Transparent
+                            }
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { newFontFamily = family.familyName }
+                                    .background(rowBackground)
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "The quick brown fox jumps over the lazy dog",
+                                    fontFamily = family.fontFamily,
+                                    maxLines = 1,
+                                )
+                                Text(text = family.familyName)
+                            }
                         }
                     }
                 }

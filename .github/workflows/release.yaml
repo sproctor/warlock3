@@ -16,7 +16,7 @@ jobs:
   build:
     name: Build (${{ matrix.os }} / ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +53,6 @@ jobs:
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
         with:
-          jbr-version: '25.0.2b432.48'
           packaging-tools: 'true'
           setup-gradle: 'true'
           setup-node: 'true'

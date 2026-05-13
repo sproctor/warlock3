@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
+
 kotlin {
     jvm()
     androidTarget()
@@ -19,13 +21,15 @@ kotlin {
 //        minSdk = libs.versions.minSdk.get().toInt()
 //        androidResources.enable = true
 //    }
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Compose"
-            isStatic = true
+    if (!skipIos) {
+        listOf(
+            iosArm64(),
+            iosSimulatorArm64(),
+        ).forEach { iosTarget ->
+            iosTarget.binaries.framework {
+                baseName = "Compose"
+                isStatic = true
+            }
         }
     }
 
@@ -39,6 +43,8 @@ kotlin {
             }
             group("mobile") {
                 withAndroidTarget()
+                // Keep the ios subgroup declared even when iOS targets are skipped so
+                // the mobileMain source set is still created for androidMain.
                 group("ios") {
                     withIos()
                 }
@@ -47,6 +53,17 @@ kotlin {
     }
 
     sourceSets {
+        if (skipIos) {
+            // The default hierarchy template only creates the intermediate `mobileMain`
+            // source set when multiple targets share it. With iOS skipped, only Android
+            // is in the mobile group, so we wire it up manually — otherwise androidMain
+            // can't find the mobile-shared sources under src/mobileMain/.
+            val mobileMain =
+                maybeCreate("mobileMain").apply {
+                    dependsOn(getByName("commonMain"))
+                }
+            getByName("androidMain").dependsOn(mobileMain)
+        }
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(project(":wrayth")) // TODO: remove when abstracting DI
@@ -87,6 +104,10 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.jewel.standalone)
+            // Jewel references AllIconsKeys (e.g. ComboBox chevron) but its standalone POM
+            // does not pull the platform icons jar, so the SVG resources have to be added
+            // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.
+            implementation(libs.intellij.platform.icons)
         }
         invokeWhenCreated("androidDebug") {
             dependencies {
@@ -94,8 +115,10 @@ kotlin {
                 implementation(libs.compose.ui.tooling)
             }
         }
-        iosMain.dependencies {
-            implementation(project(":scripting"))
+        if (!skipIos) {
+            iosMain.dependencies {
+                implementation(project(":scripting"))
+            }
         }
     }
 
