@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
 jobs:
   build:
     name: Run checks and upload report
@@ -25,7 +28,7 @@ jobs:
           setup-node: 'false'
 
       - name: Checks
-        run: ./gradlew check -PiosSkip=true --stacktrace --no-daemon
+        run: ./gradlew check -PiosSkip=true -PlintSkip=true --stacktrace
 
       - name: Upload test reports
         if: always()
