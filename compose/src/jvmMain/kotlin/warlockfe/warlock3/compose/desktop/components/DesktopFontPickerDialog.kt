@@ -72,8 +72,8 @@ fun DesktopFontPickerDialog(
             modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-                Text("Size")
-                WarlockTextField(state = size, modifier = Modifier.fillMaxWidth())
+            Text("Size")
+            WarlockTextField(state = size, modifier = Modifier.fillMaxWidth())
 
             if (systemFontFamilies.isEmpty()) {
                 Text("Loading system fonts…")
