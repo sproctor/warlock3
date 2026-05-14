@@ -66,12 +66,6 @@ class DatabaseSnapshotTest {
         assertNull(findSeedCandidate(listOf(snap(17), snap(20)), 17))
     }
 
-    @Test
-    fun findSeedCandidate_respectsMinSupported() {
-        assertNull(findSeedCandidate(listOf(snap(5), snap(7)), 17, minSupportedVersion = 8))
-        assertEquals(9, findSeedCandidate(listOf(snap(5), snap(7), snap(9)), 17, minSupportedVersion = 8)?.version)
-    }
-
     // ---- discovery + file ops ----
 
     @Test
@@ -118,33 +112,17 @@ class DatabaseSnapshotTest {
         assertEquals("existing", read(Path(dir, "warlock-v17.db")))
     }
 
-    @Test
-    fun pruneOldSnapshots_keepsCurrentAndNRecentOlder() {
-        for (v in listOf(10, 11, 12, 13, 14, 15, 17, 20)) {
-            write(Path(dir, snapshotFileName(v)), "v$v")
-        }
-        write(Path(dir, "warlock-v10.db-wal"), "old-wal")
-
-        pruneOldSnapshots(dir, currentVersion = 17, keep = 2, fileSystem = fs)
-
-        // Keep 17 (current), 15, 14 (2 most recent older), and 20 (above-current untouched).
-        assertEquals(setOf(14, 15, 17, 20), listSnapshots(dir, fs).map { it.version }.toSet())
-        assertFalse(fs.exists(Path(dir, "warlock-v10.db-wal")))
-    }
-
     // ---- end-to-end open flow ----
 
     private fun open(
         currentVersion: Int = 17,
-        legacy: String? = "prefs.db",
-        minSupported: Int? = null,
+        legacy: String = "prefs.db",
         build: (Path) -> Unit = { path -> if (!fs.exists(path)) write(path, "fresh") },
     ) = openVersionedDatabase(
         directory = dir,
         fileSystem = fs,
         currentVersion = currentVersion,
         legacyFileName = legacy,
-        minSupportedVersion = minSupported,
         buildDatabase = build,
     )
 
@@ -174,12 +152,15 @@ class DatabaseSnapshotTest {
     }
 
     @Test
-    fun legacyDatabase_isRenamedOnFirstOpen() {
+    fun legacyDatabase_isCopiedOnFirstOpenAndOriginalIsLeftInPlace() {
         write(Path(dir, "prefs.db"), "legacy-data")
         var saw: String? = null
         open { path -> saw = read(path) }
         assertEquals("legacy-data", saw)
-        assertFalse(fs.exists(Path(dir, "prefs.db")))
+        // Original prefs.db must stay so a pre-snapshot binary downgrade can still open it.
+        assertTrue(fs.exists(Path(dir, "prefs.db")))
+        assertEquals("legacy-data", read(Path(dir, "prefs.db")))
+        assertEquals("legacy-data", read(Path(dir, "warlock-v17.db")))
     }
 
     @Test
@@ -204,34 +185,4 @@ class DatabaseSnapshotTest {
         assertEquals("v10", read(Path(dir, "warlock-v10.db")))
     }
 
-    @Test
-    fun migrationFailure_skipsPruning() {
-        for (v in listOf(8, 9, 10, 11, 12, 14)) {
-            write(Path(dir, snapshotFileName(v)), "v$v")
-        }
-        assertFails { open { _ -> throw RuntimeException("boom") } }
-        assertEquals(setOf(8, 9, 10, 11, 12, 14), listSnapshots(dir, fs).map { it.version }.toSet())
-    }
-
-    @Test
-    fun pruning_runsAfterSuccessfulOpen() {
-        for (v in listOf(8, 9, 10, 11, 12, 14)) {
-            write(Path(dir, snapshotFileName(v)), "v$v")
-        }
-        open()
-        assertEquals(setOf(12, 14, 17), listSnapshots(dir, fs).map { it.version }.toSet())
-    }
-
-    @Test
-    fun seedSkipped_belowMinimumSupportedVersion() {
-        write(Path(dir, "warlock-v5.db"), "v5-data")
-        var saw: String? = null
-        open(minSupported = 8) { path ->
-            saw = if (fs.exists(path)) read(path) else null
-            write(path, "fresh-after-skip")
-        }
-        // Builder did not see the v5 source; it saw an absent target.
-        assertNull(saw)
-        assertEquals("v5-data", read(Path(dir, "warlock-v5.db")))
-    }
 }

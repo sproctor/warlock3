@@ -40,12 +40,10 @@ fun listSnapshots(
 fun findSeedCandidate(
     snapshots: List<SnapshotInfo>,
     currentVersion: Int,
-    minSupportedVersion: Int? = null,
 ): SnapshotInfo? =
     snapshots
         .asSequence()
         .filter { it.version < currentVersion }
-        .filter { minSupportedVersion == null || it.version >= minSupportedVersion }
         .maxByOrNull { it.version }
 
 /**
@@ -53,28 +51,21 @@ fun findSeedCandidate(
  *
  *  1. One-time rename of the legacy single-file database (if [legacyFileName] is provided)
  *     to `warlock-v<currentVersion>.db` when no versioned snapshot exists yet.
- *  2. If the target snapshot file is missing, seed it from the newest existing older snapshot
- *     (respecting [minSupportedVersion] if set).
+ *  2. If the target snapshot file is missing, seed it from the newest existing older snapshot.
  *  3. Hand the target path to [buildDatabase], which is responsible for invoking the platform
  *     Room builder, registering migrations, and returning the built database.
  *  4. On migration failure, delete the target so the next launch may recover, then rethrow.
- *  5. On success, prune older snapshots beyond `keep` retention. Pruning failures are logged
- *     but never thrown.
  */
 fun <T> openVersionedDatabase(
     directory: Path,
     fileSystem: FileSystem,
     currentVersion: Int,
     buildDatabase: (databasePath: Path) -> T,
-    legacyFileName: String? = null,
-    minSupportedVersion: Int? = null,
-    keepOlderSnapshots: Int = 2,
+    legacyFileName: String,
 ): T {
     fileSystem.createDirectories(directory)
 
-    if (legacyFileName != null) {
-        migrateLegacyDatabase(directory, legacyFileName, currentVersion, fileSystem)
-    }
+    migrateLegacyDatabase(directory, legacyFileName, currentVersion, fileSystem)
 
     val target = Path(directory, snapshotFileName(currentVersion))
     val seedSource: SnapshotInfo? =
@@ -84,12 +75,6 @@ fun <T> openVersionedDatabase(
             val candidate = findSeedCandidate(listSnapshots(directory, fileSystem), currentVersion)
             when {
                 candidate == null -> null
-                minSupportedVersion != null && candidate.version < minSupportedVersion -> {
-                    logger.w {
-                        "Skipped seeding from ${candidate.path.name}: below minimum supported v$minSupportedVersion"
-                    }
-                    null
-                }
                 else -> {
                     copySnapshot(candidate.path, target, fileSystem)
                     logger.i { "Seeded ${target.name} from ${candidate.path.name}" }
@@ -117,9 +102,6 @@ fun <T> openVersionedDatabase(
     if (seedSource == null && targetExistedBeforeBuild) {
         logger.i { "Opened existing ${target.name} without seeding" }
     }
-
-    runCatching { pruneOldSnapshots(directory, currentVersion, keepOlderSnapshots, fileSystem) }
-        .onFailure { logger.w(it) { "Snapshot pruning failed" } }
 
     return database
 }
@@ -199,40 +181,11 @@ private fun copyFile(
 }
 
 /**
- * Delete snapshots strictly older than [currentVersion], retaining only the [keep] most recent.
- * Snapshots at or above [currentVersion] are left alone. Per-file failures are logged but do
- * not abort the prune.
- */
-fun pruneOldSnapshots(
-    directory: Path,
-    currentVersion: Int,
-    keep: Int,
-    fileSystem: FileSystem,
-) {
-    val toDelete =
-        listSnapshots(directory, fileSystem)
-            .filter { it.version < currentVersion }
-            .sortedByDescending { it.version }
-            .drop(keep)
-    for (snapshot in toDelete) {
-        val files = listOf(snapshot.path) + sidecarSuffixes.map { Path(directory, snapshot.path.name + it) }
-        var mainDeleted = false
-        for (file in files) {
-            if (!fileSystem.exists(file)) continue
-            try {
-                fileSystem.delete(file, mustExist = false)
-                if (file == snapshot.path) mainDeleted = true
-            } catch (t: Throwable) {
-                logger.w(t) { "Failed to prune $file" }
-            }
-        }
-        if (mainDeleted) logger.i { "Pruned snapshot ${snapshot.path.name}" }
-    }
-}
-
-/**
  * One-time migration: if a legacy single-file database exists in [directory] and no versioned
- * snapshot exists yet, rename it (and its sidecars) to the versioned name for [currentVersion].
+ * snapshot exists yet, copy it (and its sidecars) to the versioned name for [currentVersion].
+ *
+ * The legacy file is left in place so an older binary that downgrades to a pre-snapshot
+ * version can still open it. Once any versioned snapshot exists this is a no-op.
  */
 private fun migrateLegacyDatabase(
     directory: Path,
@@ -245,17 +198,6 @@ private fun migrateLegacyDatabase(
     if (listSnapshots(directory, fileSystem).isNotEmpty()) return
 
     val target = Path(directory, snapshotFileName(currentVersion))
-    fileSystem.atomicMove(legacy, target)
-    for (suffix in sidecarSuffixes) {
-        val src = Path(directory, legacyFileName + suffix)
-        if (!fileSystem.exists(src)) continue
-        val dest = Path(directory, target.name + suffix)
-        try {
-            fileSystem.atomicMove(src, dest)
-        } catch (_: Throwable) {
-            // Sidecar move is defensive; if it fails, drop the orphan so SQLite can recreate.
-            runCatching { fileSystem.delete(src, mustExist = false) }
-        }
-    }
-    logger.i { "Renamed legacy $legacyFileName to ${target.name}" }
+    copySnapshot(legacy, target, fileSystem)
+    logger.i { "Copied legacy $legacyFileName to ${target.name}" }
 }
