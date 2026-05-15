@@ -100,7 +100,9 @@ import kotlin.io.path.inputStream
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 
-private val version = NucleusApp.version
+private val version =
+    System.getProperty("warlock.release.version")?.takeIf { it.isNotBlank() }
+        ?: NucleusApp.version
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
