@@ -53,17 +53,6 @@ kotlin {
     }
 
     sourceSets {
-        if (skipIos) {
-            // The default hierarchy template only creates the intermediate `mobileMain`
-            // source set when multiple targets share it. With iOS skipped, only Android
-            // is in the mobile group, so we wire it up manually — otherwise androidMain
-            // can't find the mobile-shared sources under src/mobileMain/.
-            val mobileMain =
-                maybeCreate("mobileMain").apply {
-                    dependsOn(getByName("commonMain"))
-                }
-            getByName("androidMain").dependsOn(mobileMain)
-        }
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(project(":wrayth")) // TODO: remove when abstracting DI
@@ -86,7 +75,7 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
         }
-        getByName("mobileMain") {
+        getByName(if (skipIos) "androidMain" else "mobileMain") {
             dependencies {
                 implementation(libs.compose.material3)
                 implementation(libs.fastscroller.core)

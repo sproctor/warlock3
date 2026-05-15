@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
@@ -20,6 +21,7 @@ import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MySQLiteDriver
+import warlockfe.warlock3.core.prefs.PREFS_DATABASE_VERSION
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
@@ -38,6 +40,7 @@ import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
+import warlockfe.warlock3.core.prefs.snapshot.openVersionedDatabase
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
@@ -50,19 +53,12 @@ import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 abstract class AppContainer(
-    databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
+    val database: PrefsDatabase,
     warlockDirs: WarlockDirs,
     fileSystem: FileSystem,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
-    val database =
-        databaseBuilder
-            .setDriver(MySQLiteDriver(BundledSQLiteDriver()))
-            .addMigrations(
-                MIGRATION_10_11,
-                MIGRATION_14_16,
-            ).build()
     val variableRepository = VariableRepository(database.variableDao())
     val characterRepository =
         CharacterRepository(
@@ -218,3 +214,27 @@ abstract class AppContainer(
         )
     }
 }
+
+/**
+ * Open the prefs database for the current schema version, applying the versioned-snapshot
+ * strategy. Platform entry points call this with a factory that produces a platform-correct
+ * [RoomDatabase.Builder] (Android needs a Context, JVM/iOS do not). The legacy single-file
+ * name was `prefs.db`; on first launch after this change it is renamed to `warlock-vN.db`.
+ */
+fun openPrefsDatabase(
+    directory: Path,
+    fileSystem: FileSystem,
+    builderFactory: (databaseFilePath: String) -> RoomDatabase.Builder<PrefsDatabase>,
+): PrefsDatabase =
+    openVersionedDatabase(
+        directory = directory,
+        fileSystem = fileSystem,
+        currentVersion = PREFS_DATABASE_VERSION,
+        legacyFileName = "prefs.db",
+        buildDatabase = { dbPath ->
+            builderFactory(dbPath.toString())
+                .setDriver(MySQLiteDriver(BundledSQLiteDriver()))
+                .addMigrations(MIGRATION_10_11, MIGRATION_14_16)
+                .build()
+        },
+    )

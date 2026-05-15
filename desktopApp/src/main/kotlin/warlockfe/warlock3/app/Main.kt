@@ -81,6 +81,7 @@ import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
@@ -177,10 +178,9 @@ private class WarlockCommand : CliktCommand() {
             }
         val configDir = appDirs.getUserConfigDir()
         File(configDir).mkdirs()
-        val dbFile = File(configDir, "prefs.db")
-        if (!dbFile.exists()) {
-            migrateLegacyWindowsPrefsDb(dbFile, logger)
-        }
+        val databaseDirectory = kotlinx.io.files.Path(configDir)
+        migrateLegacyWindowsPrefsDb(configDir, logger)
+
         val warlockDirs =
             WarlockDirs(
                 homeDir = System.getProperty("user.home"),
@@ -189,10 +189,15 @@ private class WarlockCommand : CliktCommand() {
                 logDir = appDirs.getUserLogDir(),
             )
 
-        println("Loading preferences from ${dbFile.absolutePath}")
-        val databaseBuilder = getPrefsDatabaseBuilder(dbFile.absolutePath)
+        println("Loading preferences from $configDir")
+        val database =
+            openPrefsDatabase(
+                directory = databaseDirectory,
+                fileSystem = SystemFileSystem,
+                builderFactory = ::getPrefsDatabaseBuilder,
+            )
 
-        val appContainer = JvmAppContainer(databaseBuilder, warlockDirs, SystemFileSystem)
+        val appContainer = JvmAppContainer(database, warlockDirs, SystemFileSystem)
 
         val json =
             Json {
@@ -581,10 +586,21 @@ private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<Pref
     )
 
 private fun migrateLegacyWindowsPrefsDb(
-    dbFile: File,
+    configDir: String,
     logger: Logger,
 ) {
     if (!System.getProperty("os.name").orEmpty().startsWith("Windows", ignoreCase = true)) {
+        return
+    }
+    val configDirFile = File(configDir)
+    val configDbFile = File(configDirFile, "prefs.db")
+    if (configDbFile.exists()) {
+        return
+    }
+    val snapshotPattern = Regex("""^warlock-v(\d+)\.db$""")
+    val hasVersionedSnapshot =
+        configDirFile.listFiles()?.any { it.isFile && snapshotPattern.matches(it.name) } ?: false
+    if (hasVersionedSnapshot) {
         return
     }
     val localAppData =
@@ -596,13 +612,13 @@ private fun migrateLegacyWindowsPrefsDb(
     if (!legacyDb.exists()) {
         return
     }
-    logger.i { "Migrating legacy prefs database from ${legacyDb.absolutePath} to ${dbFile.absolutePath}" }
+    logger.i { "Migrating legacy prefs database from ${legacyDb.absolutePath} to ${configDbFile.absolutePath}" }
     try {
-        legacyDb.copyTo(dbFile, overwrite = false)
+        legacyDb.copyTo(configDbFile, overwrite = false)
         listOf("prefs.db-wal", "prefs.db-shm").forEach { name ->
             val source = File(legacyDir, name)
             if (source.exists()) {
-                source.copyTo(File(dbFile.parentFile, name), overwrite = false)
+                source.copyTo(File(configDirFile, name), overwrite = false)
             }
         }
     } catch (e: Exception) {

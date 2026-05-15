@@ -1,6 +1,5 @@
 package warlockfe.warlock3.android.di
 
-import androidx.room.RoomDatabase
 import kotlinx.io.files.FileSystem
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.core.client.AndroidProxy
@@ -16,11 +15,11 @@ import warlockfe.warlock3.scripting.js.JsEngine
 import warlockfe.warlock3.scripting.wsl.WslEngine
 
 class AndroidAppContainer(
-    databaseBuilder: RoomDatabase.Builder<PrefsDatabase>,
+    database: PrefsDatabase,
     warlockDirs: WarlockDirs,
     fileSystem: FileSystem,
 ) : AppContainer(
-        databaseBuilder = databaseBuilder,
+        database = database,
         warlockDirs = warlockDirs,
         fileSystem = fileSystem,
     ) {
