@@ -184,5 +184,4 @@ class DatabaseSnapshotTest {
         assertFalse(fs.exists(Path(dir, "warlock-v17.db")))
         assertEquals("v10", read(Path(dir, "warlock-v10.db")))
     }
-
 }
