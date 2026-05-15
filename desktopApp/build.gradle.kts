@@ -72,6 +72,7 @@ nucleus.application {
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
+    jvmArgs += "-Dwarlock.release.version=$releaseVersion"
 
     nativeDistributions {
 
