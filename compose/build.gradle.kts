@@ -17,8 +17,14 @@ kotlin {
     jvm()
     androidLibrary {
         namespace = "warlockfe.warlock3.compose"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
+        compileSdk =
+            libs.versions.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
         androidResources.enable = true
     }
     if (!skipIos) {

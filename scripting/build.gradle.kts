@@ -45,8 +45,14 @@ kotlin {
 
     androidLibrary {
         namespace = "warlockfe.warlock3.scripting"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
+        compileSdk =
+            libs.versions.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
     }
     jvm()
     if (!skipIos) {
@@ -120,4 +126,3 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 }
-

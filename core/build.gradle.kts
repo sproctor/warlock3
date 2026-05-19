@@ -54,8 +54,14 @@ kotlin {
     jvm()
     androidLibrary {
         namespace = "warlockfe.warlock3.core"
-        compileSdk = libs.versions.compileSdk.get().toInt()
-        minSdk = libs.versions.minSdk.get().toInt()
+        compileSdk =
+            libs.versions.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
     }
     if (!skipIos) {
         listOf(
