@@ -1,12 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
-//    alias(libs.plugins.kotlin.serialization)
-//    alias(libs.plugins.ksp)
-//    alias(libs.plugins.gms.google.services)
-//    alias(libs.plugins.triplet.play)
 }
 
 android {
@@ -68,14 +63,6 @@ android {
         buildConfig = true
     }
 }
-
-// project.findProperty("ANDROID_PUBLISHER_CREDENTIALS")?.let { filename ->
-//    play {
-//        track.set("internal") //'alpha','beta' or 'production'
-//        serviceAccountCredentials.set(file(filename.toString()))
-//        defaultToAppBundles.set(true)
-//    }
-// }
 
 dependencies {
     implementation(project(":core"))

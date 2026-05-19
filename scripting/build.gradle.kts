@@ -5,7 +5,7 @@ import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.antlr.kotlin)
 }
@@ -43,13 +43,12 @@ val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
 
-    androidTarget()
+    androidLibrary {
+        namespace = "warlockfe.warlock3.scripting"
+        compileSdk = libs.versions.compileSdk.get().toInt()
+        minSdk = libs.versions.minSdk.get().toInt()
+    }
     jvm()
-//    androidLibrary {
-//        namespace = "warlockfe.warlock3.scripting"
-//        compileSdk = libs.versions.compileSdk.get().toInt()
-//        minSdk = libs.versions.minSdk.get().toInt()
-//    }
     if (!skipIos) {
         listOf(
             iosArm64(),
@@ -67,9 +66,7 @@ kotlin {
             group("commonJvmAndroid") {
                 withJvm()
                 withAndroidTarget()
-                // The following is for when we move the android kmp
-                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                // this class is provided by `com.android.kotlin.multiplatform.library`
+                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
                 withCompilations { it is KotlinMultiplatformAndroidCompilation }
             }
         }
@@ -124,20 +121,3 @@ kotlin {
     }
 }
 
-android {
-    namespace = "warlockfe.warlock3.scripting"
-    compileSdk =
-        libs.versions.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.minSdk
-                .get()
-                .toInt()
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-}

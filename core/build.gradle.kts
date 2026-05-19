@@ -1,12 +1,13 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room.schema)
     alias(libs.plugins.antlr.kotlin)
@@ -51,7 +52,11 @@ val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
     jvm()
-    androidTarget()
+    androidLibrary {
+        namespace = "warlockfe.warlock3.core"
+        compileSdk = libs.versions.compileSdk.get().toInt()
+        minSdk = libs.versions.minSdk.get().toInt()
+    }
     if (!skipIos) {
         listOf(
             iosArm64(),
@@ -63,19 +68,14 @@ kotlin {
             }
         }
     }
-//    androidLibrary {
-//        namespace = "warlockfe.warlock3.core"
-//        compileSdk = libs.versions.compileSdk.get().toInt()
-//        minSdk = libs.versions.minSdk.get().toInt()
-//    }
 
     applyDefaultHierarchyTemplate {
         common {
             group("commonJvmAndroid") {
                 withJvm()
                 withAndroidTarget()
-                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation }
             }
         }
     }
@@ -128,20 +128,6 @@ dependencies {
     if (!skipIos) {
         add("kspIosSimulatorArm64", libs.room.compiler)
         add("kspIosArm64", libs.room.compiler)
-    }
-}
-
-android {
-    namespace = "warlockfe.warlock3.core"
-    compileSdk =
-        libs.versions.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.minSdk
-                .get()
-                .toInt()
     }
 }
 
