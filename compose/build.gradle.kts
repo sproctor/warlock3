@@ -1,12 +1,13 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -14,13 +15,18 @@ val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
     jvm()
-    androidTarget()
-//    androidLibrary {
-//        namespace = "warlockfe.warlock3.compose"
-//        compileSdk = libs.versions.compileSdk.get().toInt()
-//        minSdk = libs.versions.minSdk.get().toInt()
-//        androidResources.enable = true
-//    }
+    androidLibrary {
+        namespace = "warlockfe.warlock3.compose"
+        compileSdk =
+            libs.versions.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
+        androidResources.enable = true
+    }
     if (!skipIos) {
         listOf(
             iosArm64(),
@@ -38,11 +44,13 @@ kotlin {
             group("commonJvmAndroid") {
                 withJvm()
                 withAndroidTarget()
-                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation }
             }
             group("mobile") {
                 withAndroidTarget()
+                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation }
                 // Keep the ios subgroup declared even when iOS targets are skipped so
                 // the mobileMain source set is still created for androidMain.
                 group("ios") {
@@ -98,12 +106,6 @@ kotlin {
             // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.
             implementation(libs.intellij.platform.icons)
         }
-        invokeWhenCreated("androidDebug") {
-            dependencies {
-                // For previews
-                implementation(libs.compose.ui.tooling)
-            }
-        }
         if (!skipIos) {
             iosMain.dependencies {
                 implementation(project(":scripting"))
@@ -125,19 +127,9 @@ kotlin {
     }
 }
 
-android {
-    namespace = "warlockfe.warlock3.compose"
-    compileSdk =
-        libs.versions.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.minSdk
-                .get()
-                .toInt()
-    }
-    androidResources.enable = true
+dependencies {
+    // For previews (new AGP KMP library plugin does not create per-build-type source sets)
+    androidRuntimeClasspath(libs.compose.ui.tooling)
 }
 
 compose {

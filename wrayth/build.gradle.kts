@@ -1,11 +1,12 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
+import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.antlr.kotlin)
 }
@@ -43,7 +44,17 @@ val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
     jvm()
-    androidTarget()
+    androidLibrary {
+        namespace = "warlockfe.warlock3.wrayth"
+        compileSdk =
+            libs.versions.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
+    }
 
     if (!skipIos) {
         listOf(
@@ -68,9 +79,8 @@ kotlin {
             group("commonJvmAndroid") {
                 withJvm()
                 withAndroidTarget()
-                // The following is for when we move the android kmp
-                // Following line can be remove when https://issuetracker.google.com/issues/442950553 is fixed
-                // withCompilations { it is KotlinMultiplatformAndroidCompilation } // this class is provided by `com.android.kotlin.multiplatform.library`
+                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
+                withCompilations { it is KotlinMultiplatformAndroidCompilation }
             }
         }
     }
@@ -102,19 +112,5 @@ kotlin {
         optIn.add("kotlin.uuid.ExperimentalUuidApi")
         optIn.add("kotlin.experimental.ExperimentalNativeApi")
         freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
-}
-
-android {
-    namespace = "warlockfe.warlock3.wrayth"
-    compileSdk =
-        libs.versions.compileSdk
-            .get()
-            .toInt()
-    defaultConfig {
-        minSdk =
-            libs.versions.minSdk
-                .get()
-                .toInt()
     }
 }
