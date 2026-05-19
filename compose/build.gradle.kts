@@ -37,10 +37,12 @@ kotlin {
         common {
             group("commonJvmAndroid") {
                 withJvm()
+                withAndroidTarget()
                 // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
                 withCompilations { it is KotlinMultiplatformAndroidCompilation }
             }
             group("mobile") {
+                withAndroidTarget()
                 // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
                 withCompilations { it is KotlinMultiplatformAndroidCompilation }
                 // Keep the ios subgroup declared even when iOS targets are skipped so
