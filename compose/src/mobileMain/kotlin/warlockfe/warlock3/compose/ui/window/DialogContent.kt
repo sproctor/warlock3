@@ -4,6 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -13,11 +16,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
@@ -205,6 +213,17 @@ private fun DialogButton(
     executeCommand: (String) -> Unit,
 ) {
     val shape = MaterialTheme.shapes.extraSmall
+    val baseColor = MaterialTheme.colorScheme.primaryContainer
+    val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val backgroundColor =
+        when {
+            isPressed -> lerp(baseColor, stateLayer, 0.10f)
+            isHovered -> lerp(baseColor, stateLayer, 0.08f)
+            else -> baseColor
+        }
     Box(
         modifier =
             Modifier
@@ -213,22 +232,20 @@ private fun DialogButton(
                     color = MaterialTheme.colorScheme.outline,
                     shape = shape,
                 ).background(
-                    color = MaterialTheme.colorScheme.primaryContainer,
+                    color = backgroundColor,
                     shape = shape,
-                ),
+                )
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                ) {
+                    executeCommand(data.cmd ?: "")
+                },
     ) {
         Text(
             modifier = Modifier.align(Alignment.Center),
-            text =
-                buildAnnotatedString {
-                    pushLink(
-                        LinkAnnotation.Clickable("action") {
-                            executeCommand(data.cmd ?: "")
-                        },
-                    )
-                    append(data.value)
-                    pop()
-                },
+            text = data.value ?: "",
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             maxLines = 1,

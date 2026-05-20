@@ -4,17 +4,24 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -29,6 +36,7 @@ import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
@@ -212,27 +220,44 @@ private fun DialogButton(
     executeCommand: (String) -> Unit,
 ) {
     val shape = RoundedCornerShape(2.dp)
-    val borderColor = JewelTheme.globalColors.borders.normal
-    val backgroundColor = JewelTheme.globalColors.panelBackground
-    val textColor = JewelTheme.globalColors.text.normal
+    val colors = JewelTheme.defaultButtonStyle.colors
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val backgroundBrush =
+        when {
+            isPressed -> colors.backgroundPressed
+            isHovered -> colors.backgroundHovered
+            else -> colors.background
+        }
+    val borderBrush =
+        when {
+            isPressed -> colors.borderPressed
+            isHovered -> colors.borderHovered
+            else -> colors.border
+        }
+    val textColor =
+        when {
+            isPressed -> colors.contentPressed
+            isHovered -> colors.contentHovered
+            else -> colors.content
+        }
     Box(
         modifier =
             Modifier
-                .background(backgroundColor, shape)
-                .border(width = Dp.Hairline, color = borderColor, shape = shape),
+                .background(backgroundBrush, shape)
+                .border(width = Dp.Hairline, brush = borderBrush, shape = shape)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                ) {
+                    executeCommand(data.cmd ?: "")
+                },
     ) {
         Text(
             modifier = Modifier.align(Alignment.Center),
-            text =
-                buildAnnotatedString {
-                    pushLink(
-                        LinkAnnotation.Clickable("action") {
-                            executeCommand(data.cmd ?: "")
-                        },
-                    )
-                    append(data.value)
-                    pop()
-                },
+            text = data.value ?: "",
             color = textColor,
             style = labelTinyStyle,
             maxLines = 1,
