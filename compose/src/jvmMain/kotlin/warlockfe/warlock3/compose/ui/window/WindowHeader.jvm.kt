@@ -22,12 +22,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
-import java.awt.Cursor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.core.window.WindowLocation
+import java.awt.Cursor
 
 private val moveCursor = PointerIcon(Cursor(Cursor.MOVE_CURSOR))
 
@@ -84,7 +84,8 @@ actual fun WindowHeader(
                     ).then(
                         if (isDraggable && isHovered && !isSelected) {
                             Modifier.background(
-                                JewelTheme.globalColors.borders.normal.copy(alpha = 0.4f),
+                                JewelTheme.globalColors.borders.normal
+                                    .copy(alpha = 0.4f),
                             )
                         } else {
                             Modifier
@@ -96,9 +97,11 @@ actual fun WindowHeader(
                 Image(
                     modifier = Modifier.size(16.dp),
                     painter = painterResource(Res.drawable.drag_indicator),
-                    colorFilter = ColorFilter.tint(
-                        JewelTheme.globalColors.text.normal.copy(alpha = 0.5f),
-                    ),
+                    colorFilter =
+                        ColorFilter.tint(
+                            JewelTheme.globalColors.text.normal
+                                .copy(alpha = 0.5f),
+                        ),
                     contentDescription = "Drag to re-arrange window",
                 )
             }
