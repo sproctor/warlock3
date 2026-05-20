@@ -1,6 +1,5 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -9,8 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -18,15 +15,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.window.DialogButton
+import warlockfe.warlock3.compose.ui.window.DialogImage
 import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
 import warlockfe.warlock3.compose.ui.window.DialogProgressBar
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -74,6 +69,7 @@ fun DesktopDialogContent(
                         skinObject = skinObject,
                         data = data,
                         executeCommand = executeCommand,
+                        contentColor = LocalContentColor.current,
                     )
 
                 is DialogObject.Button -> {
@@ -157,38 +153,6 @@ private fun Link(
             style = labelStyle,
             maxLines = 1,
         )
-    }
-}
-
-@Composable
-private fun DialogImage(
-    skinObject: SkinObject?,
-    data: DialogObject.Image,
-    executeCommand: (String) -> Unit,
-) {
-    val skin = LocalSkin.current
-    val colorGroup = skinObject.getColorGroup()
-    val imageData = data.name?.let { skin.getIgnoringCase(it) }
-    Box(
-        modifier =
-            if (data.cmd != null) {
-                Modifier.clickable {
-                    executeCommand(data.cmd!!)
-                }
-            } else {
-                Modifier
-            },
-    ) {
-        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
-        if (image != null) {
-            AsyncImage(image, contentDescription = null)
-        } else {
-            androidx.compose.foundation.Image(
-                painter = painterResource(Res.drawable.broken_image),
-                colorFilter = ColorFilter.tint(colorGroup.text.takeOrElse { LocalContentColor.current.copy(alpha = 0.38f) }),
-                contentDescription = null,
-            )
-        }
     }
 }
 

@@ -1,12 +1,10 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,9 +25,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
@@ -73,6 +68,7 @@ fun DialogContent(
                         skinObject = skinObject,
                         data = data,
                         executeCommand = executeCommand,
+                        contentColor = LocalContentColor.current,
                     )
 
                 is DialogObject.Button -> {
@@ -186,38 +182,6 @@ private fun Link(
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             maxLines = 1,
         )
-    }
-}
-
-@Composable
-private fun DialogImage(
-    skinObject: SkinObject?,
-    data: DialogObject.Image,
-    executeCommand: (String) -> Unit,
-) {
-    val skin = LocalSkin.current
-    val colorGroup = skinObject.getColorGroup()
-    val imageData = data.name?.let { skin.getIgnoringCase(it) }
-    Box(
-        modifier =
-            if (data.cmd != null) {
-                Modifier.clickable {
-                    executeCommand(data.cmd!!)
-                }
-            } else {
-                Modifier
-            },
-    ) {
-        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
-        if (image != null) {
-            AsyncImage(image, contentDescription = null)
-        } else {
-            Icon(
-                painter = painterResource(Res.drawable.broken_image),
-                contentDescription = null,
-                tint = colorGroup.bar,
-            )
-        }
     }
 }
 
