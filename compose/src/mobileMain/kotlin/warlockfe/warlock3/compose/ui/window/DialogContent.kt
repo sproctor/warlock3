@@ -1,14 +1,11 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,29 +14,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
-import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.io.encoding.Base64
 
 @Composable
@@ -49,35 +43,63 @@ fun DialogContent(
     style: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
-    DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
-        when (data) {
-            is DialogObject.Skin -> DialogSkin(data = data)
-            is DialogObject.ProgressBar ->
-                ProgressBar(
-                    skinObject = skinObject,
-                    data = data,
-                    defaultStyle = style,
-                )
-            is DialogObject.Label -> Label(skinObject = skinObject, data = data, defaultStyle = style)
-            is DialogObject.Link ->
-                Link(
-                    skinObject = skinObject,
-                    data = data,
-                    executeCommand = executeCommand,
-                    defaultStyle = style,
-                )
-            is DialogObject.Image ->
-                DialogImage(
-                    skinObject = skinObject,
-                    data = data,
-                    executeCommand = executeCommand,
-                    defaultStyle = style,
-                )
-            is DialogObject.Button ->
-                DialogButton(
-                    data = data,
-                    executeCommand = executeCommand,
-                )
+    CompositionLocalProvider(
+        LocalContentColor provides style.textColor.toColor(),
+    ) {
+        DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
+            when (data) {
+                is DialogObject.Skin -> DialogSkin(data = data)
+                is DialogObject.ProgressBar ->
+                    ProgressBar(
+                        skinObject = skinObject,
+                        data = data,
+                    )
+
+                is DialogObject.Label -> Label(skinObject = skinObject, data = data)
+                is DialogObject.Link ->
+                    Link(
+                        skinObject = skinObject,
+                        data = data,
+                        executeCommand = executeCommand,
+                    )
+
+                is DialogObject.Image ->
+                    DialogImage(
+                        skinObject = skinObject,
+                        data = data,
+                        executeCommand = executeCommand,
+                        contentColor = LocalContentColor.current,
+                    )
+
+                is DialogObject.Button -> {
+                    val baseColor = MaterialTheme.colorScheme.primaryContainer
+                    val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
+                    val borderBrush = SolidColor(MaterialTheme.colorScheme.outline)
+                    DialogButton(
+                        onClick = { executeCommand(data.cmd ?: "") },
+                        shape = MaterialTheme.shapes.extraSmall,
+                        background = { isHovered, isPressed ->
+                            var color = baseColor
+                            if (isPressed) {
+                                color = lerp(color, stateLayer, 0.10f)
+                            }
+                            if (isHovered) {
+                                lerp(color, stateLayer, 0.08f)
+                            }
+                            SolidColor(color)
+                        },
+                        border = { _, _ -> borderBrush },
+                    ) { _, _ ->
+                        Text(
+                            modifier = Modifier.align(Alignment.Center),
+                            text = data.value ?: "",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -86,9 +108,8 @@ fun DialogContent(
 private fun ProgressBar(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
-    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
+    val colorGroup = skinObject.getColorGroup()
     val percent = data.value.value
     val textMeasurer = rememberTextMeasurer()
     val font = MaterialTheme.typography.labelSmall
@@ -124,9 +145,8 @@ private fun ProgressBar(
 private fun Label(
     skinObject: SkinObject?,
     data: DialogObject.Label,
-    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
+    val colorGroup = skinObject.getColorGroup()
     Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
@@ -143,9 +163,8 @@ private fun Link(
     skinObject: SkinObject?,
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
-    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
+    val colorGroup = skinObject.getColorGroup()
     Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
@@ -160,76 +179,6 @@ private fun Link(
                     pop()
                 },
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-private fun DialogImage(
-    skinObject: SkinObject?,
-    data: DialogObject.Image,
-    executeCommand: (String) -> Unit,
-    defaultStyle: StyleDefinition,
-) {
-    val skin = LocalSkin.current
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
-    val imageData = data.name?.let { skin.getIgnoringCase(it) }
-    Box(
-        modifier =
-            if (data.cmd != null) {
-                Modifier.clickable {
-                    executeCommand(data.cmd!!)
-                }
-            } else {
-                Modifier
-            },
-    ) {
-        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
-        if (image != null) {
-            AsyncImage(image, contentDescription = null)
-        } else {
-            Icon(
-                painter = painterResource(Res.drawable.broken_image),
-                contentDescription = null,
-                tint = colorGroup.bar,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DialogButton(
-    data: DialogObject.Button,
-    executeCommand: (String) -> Unit,
-) {
-    val shape = MaterialTheme.shapes.extraSmall
-    Box(
-        modifier =
-            Modifier
-                .border(
-                    width = Dp.Hairline,
-                    color = MaterialTheme.colorScheme.outline,
-                    shape = shape,
-                ).background(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = shape,
-                ),
-    ) {
-        Text(
-            modifier = Modifier.align(Alignment.Center),
-            text =
-                buildAnnotatedString {
-                    pushLink(
-                        LinkAnnotation.Clickable("action") {
-                            executeCommand(data.cmd ?: "")
-                        },
-                    )
-                    append(data.value)
-                    pop()
-                },
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             maxLines = 1,
         )
@@ -251,12 +200,6 @@ private fun DialogSkin(data: DialogObject.Skin) {
         }
     }
 }
-
-private data class ColorGroup(
-    val text: Color,
-    val bar: Color,
-    val background: Color,
-)
 
 @Preview
 @Composable
@@ -814,10 +757,3 @@ private fun ExperiencePreview() {
         style = StyleDefinition(),
     )
 }
-
-private fun SkinObject?.getColorGroup(defaultStyle: StyleDefinition): ColorGroup =
-    ColorGroup(
-        text = (this?.color?.toWarlockColor() ?: defaultStyle.textColor).toColor(),
-        bar = this?.bar?.toWarlockColor()?.toColor() ?: Color.Blue,
-        background = (this?.background?.toWarlockColor() ?: defaultStyle.backgroundColor).toColor(),
-    )
