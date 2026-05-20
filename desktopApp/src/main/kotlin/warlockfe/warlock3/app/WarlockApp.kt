@@ -25,6 +25,7 @@ import warlockfe.warlock3.core.sge.SgeSettings
 @Composable
 fun DecoratedWindowScope.WarlockApp(
     title: String,
+    warlockVersion: String,
     appContainer: AppContainer,
     gameState: GameState,
     openNewWindow: () -> Unit,
@@ -85,7 +86,7 @@ fun DecoratedWindowScope.WarlockApp(
         )
     }
     if (showAboutDialog) {
-        AboutDialog { showAboutDialog = false }
+        AboutDialog(warlockVersion) { showAboutDialog = false }
     }
 
     var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }

@@ -347,6 +347,7 @@ private class WarlockCommand : CliktCommand() {
                         currentVersion.contains("alpha") -> "alpha"
                         else -> "latest"
                     }
+                currentVersion = version ?: "0.0.0"
             }
         val updateSupported = updater.isUpdateSupported()
 
@@ -525,6 +526,7 @@ private class WarlockCommand : CliktCommand() {
                         ) {
                             WarlockApp(
                                 title = title,
+                                warlockVersion = version ?: "Development",
                                 appContainer = appContainer,
                                 gameState = gameState,
                                 openNewWindow = {
