@@ -1,30 +1,26 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -32,22 +28,19 @@ import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.window.DialogButton
 import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
+import warlockfe.warlock3.compose.ui.window.DialogProgressBar
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
-import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.io.encoding.Base64
 
-private val labelSmallStyle =
-    TextStyle(
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Medium,
-        lineHeight = 16.sp,
-    )
-
-private val labelTinyStyle = labelSmallStyle.copy(fontSize = 9.sp)
+private val labelStyle = TextStyle(
+    fontSize = 10.sp,
+    fontWeight = FontWeight.Medium,
+)
 
 @Composable
 fun DesktopDialogContent(
@@ -56,102 +49,69 @@ fun DesktopDialogContent(
     style: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
-    DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
-        when (data) {
-            is DialogObject.Skin -> DialogSkin(data = data)
-            is DialogObject.ProgressBar ->
-                ProgressBar(
-                    skinObject = skinObject,
-                    data = data,
-                    defaultStyle = style,
-                )
-            is DialogObject.Label -> Label(skinObject = skinObject, data = data, defaultStyle = style)
-            is DialogObject.Link ->
-                Link(
-                    skinObject = skinObject,
-                    data = data,
-                    executeCommand = executeCommand,
-                    defaultStyle = style,
-                )
-            is DialogObject.Image ->
-                DialogImage(
-                    skinObject = skinObject,
-                    data = data,
-                    executeCommand = executeCommand,
-                    defaultStyle = style,
-                )
-            is DialogObject.Button -> {
-                val colors = JewelTheme.defaultButtonStyle.colors
-                DialogButton(
-                    onClick = { executeCommand(data.cmd ?: "") },
-                    shape = RoundedCornerShape(2.dp),
-                    background = { isHovered, isPressed ->
-                        when {
-                            isPressed -> colors.backgroundPressed
-                            isHovered -> colors.backgroundHovered
-                            else -> colors.background
-                        }
-                    },
-                    border = { isHovered, isPressed ->
-                        when {
-                            isPressed -> colors.borderPressed
-                            isHovered -> colors.borderHovered
-                            else -> colors.border
-                        }
-                    },
-                ) { isHovered, isPressed ->
-                    val textColor =
-                        when {
-                            isPressed -> colors.contentPressed
-                            isHovered -> colors.contentHovered
-                            else -> colors.content
-                        }
-                    Text(
-                        modifier = Modifier.align(Alignment.Center),
-                        text = data.value ?: "",
-                        color = textColor,
-                        style = labelTinyStyle,
-                        maxLines = 1,
+    CompositionLocalProvider(
+        LocalContentColor provides style.textColor.toColor()
+    ) {
+        DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
+            when (data) {
+                is DialogObject.Skin -> DialogSkin(data = data)
+                is DialogObject.ProgressBar ->
+                    DialogProgressBar(
+                        skinObject = skinObject,
+                        data = data,
                     )
+
+                is DialogObject.Label -> Label(skinObject = skinObject, data = data)
+                is DialogObject.Link ->
+                    Link(
+                        skinObject = skinObject,
+                        data = data,
+                        executeCommand = executeCommand,
+                    )
+
+                is DialogObject.Image ->
+                    DialogImage(
+                        skinObject = skinObject,
+                        data = data,
+                        executeCommand = executeCommand,
+                    )
+
+                is DialogObject.Button -> {
+                    val colors = JewelTheme.defaultButtonStyle.colors
+                    DialogButton(
+                        onClick = { executeCommand(data.cmd ?: "") },
+                        shape = RoundedCornerShape(2.dp),
+                        background = { isHovered, isPressed ->
+                            when {
+                                isPressed -> colors.backgroundPressed
+                                isHovered -> colors.backgroundHovered
+                                else -> colors.background
+                            }
+                        },
+                        border = { isHovered, isPressed ->
+                            when {
+                                isPressed -> colors.borderPressed
+                                isHovered -> colors.borderHovered
+                                else -> colors.border
+                            }
+                        },
+                    ) { isHovered, isPressed ->
+                        val textColor =
+                            when {
+                                isPressed -> colors.contentPressed
+                                isHovered -> colors.contentHovered
+                                else -> colors.content
+                            }
+                        Text(
+                            modifier = Modifier.align(Alignment.Center),
+                            text = data.value ?: "",
+                            color = textColor,
+                            style = labelStyle,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ProgressBar(
-    skinObject: SkinObject?,
-    data: DialogObject.ProgressBar,
-    defaultStyle: StyleDefinition,
-) {
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
-    val percent = data.value.value
-    val textMeasurer = rememberTextMeasurer()
-    Canvas(modifier = Modifier) {
-        drawRect(
-            color = colorGroup.background,
-            topLeft = Offset(1f, 1f),
-            size = Size(height = size.height - 2f, width = size.width - 2f),
-        )
-        drawRect(
-            color = colorGroup.bar,
-            topLeft = Offset(1f, 1f),
-            size = Size(width = (size.width - 2f) * percent / 100, height = size.height - 2f),
-        )
-        data.text?.let { text ->
-            val measuredText =
-                textMeasurer.measure(
-                    text = text,
-                    constraints = Constraints(maxWidth = size.width.toInt()),
-                    maxLines = 1,
-                    style = labelSmallStyle,
-                )
-            drawText(
-                textLayoutResult = measuredText,
-                color = colorGroup.text,
-                topLeft = Offset(x = (size.width - measuredText.size.width) / 2f, y = (size.height - measuredText.size.height) / 2f),
-            )
         }
     }
 }
@@ -160,15 +120,14 @@ private fun ProgressBar(
 private fun Label(
     skinObject: SkinObject?,
     data: DialogObject.Label,
-    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
+    val colorGroup = skinObject.getColorGroup()
     Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = labelTinyStyle,
+            style = labelStyle,
             maxLines = 1,
         )
     }
@@ -179,9 +138,8 @@ private fun Link(
     skinObject: SkinObject?,
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
-    defaultStyle: StyleDefinition,
 ) {
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
+    val colorGroup = skinObject.getColorGroup()
     Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
@@ -196,7 +154,7 @@ private fun Link(
                     pop()
                 },
             color = colorGroup.text,
-            style = labelTinyStyle,
+            style = labelStyle,
             maxLines = 1,
         )
     }
@@ -207,10 +165,9 @@ private fun DialogImage(
     skinObject: SkinObject?,
     data: DialogObject.Image,
     executeCommand: (String) -> Unit,
-    defaultStyle: StyleDefinition,
 ) {
     val skin = LocalSkin.current
-    val colorGroup = skinObject.getColorGroup(defaultStyle)
+    val colorGroup = skinObject.getColorGroup()
     val imageData = data.name?.let { skin.getIgnoringCase(it) }
     Box(
         modifier =
@@ -228,7 +185,7 @@ private fun DialogImage(
         } else {
             androidx.compose.foundation.Image(
                 painter = painterResource(Res.drawable.broken_image),
-                colorFilter = ColorFilter.tint(colorGroup.bar),
+                colorFilter = ColorFilter.tint(colorGroup.text.takeOrElse { LocalContentColor.current.copy(alpha = 0.38f) }),
                 contentDescription = null,
             )
         }
@@ -250,16 +207,3 @@ private fun DialogSkin(data: DialogObject.Skin) {
         }
     }
 }
-
-private data class ColorGroup(
-    val text: Color,
-    val bar: Color,
-    val background: Color,
-)
-
-private fun SkinObject?.getColorGroup(defaultStyle: StyleDefinition): ColorGroup =
-    ColorGroup(
-        text = (this?.color?.toWarlockColor() ?: defaultStyle.textColor).toColor(),
-        bar = this?.bar?.toWarlockColor()?.toColor() ?: Color.Blue,
-        background = (this?.background?.toWarlockColor() ?: defaultStyle.backgroundColor).toColor(),
-    )
