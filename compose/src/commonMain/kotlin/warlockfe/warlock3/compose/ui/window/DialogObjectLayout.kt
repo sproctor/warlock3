@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.unit.Constraints
@@ -37,7 +38,7 @@ fun DialogObjectLayout(
     }
 
     Layout(
-        modifier = modifier,
+        modifier = modifier.clipToBounds(),
         content = {
             dataObjects.forEach { data ->
                 content(data, skinObjects.getIgnoringCase(data.id))
