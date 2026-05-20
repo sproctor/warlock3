@@ -23,7 +23,10 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
-fun AboutDialog(warlockVersion: String, onCloseRequest: () -> Unit) {
+fun AboutDialog(
+    warlockVersion: String,
+    onCloseRequest: () -> Unit,
+) {
     WarlockDialog(
         title = "About Warlock",
         onCloseRequest = onCloseRequest,
