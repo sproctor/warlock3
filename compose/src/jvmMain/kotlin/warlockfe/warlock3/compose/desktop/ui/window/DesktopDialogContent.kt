@@ -5,11 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -80,91 +77,111 @@ fun DesktopDialogContent(
         }
     }
 
-    BoxWithConstraints(modifier) {
-        Layout(
-            modifier = Modifier.fillMaxSize(),
-            content = {
-                dataObjects.forEach { data ->
-                    this@BoxWithConstraints.DataObjectContent(
-                        skinObject = skinObjects.getIgnoringCase(data.id),
-                        dataObject = data,
-                        executeCommand = executeCommand,
-                        defaultStyle = style,
-                    )
+    Layout(
+        modifier = modifier,
+        content = {
+            dataObjects.forEach { data ->
+                DataObjectContent(
+                    skinObject = skinObjects.getIgnoringCase(data.id),
+                    dataObject = data,
+                    executeCommand = executeCommand,
+                    defaultStyle = style,
+                )
+            }
+        },
+    ) { measurables, constraints ->
+        val widthBasis =
+            if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
+        val heightBasis =
+            if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
+        val progressBarHeightPx = 16.dp.roundToPx()
+
+        val placements = mutableMapOf<String, ItemPlacement>()
+        var lastPlacement: ItemPlacement? = null
+
+        dataObjects.forEachIndexed { index, data ->
+            val skinObject = skinObjects.getIgnoringCase(data.id)
+            val imageData = (data as? DialogObject.Image)?.name?.let { skin.getIgnoringCase(it) }
+            val parentSkinPlacement = parentSkins.getIgnoringCase(data.id)?.let { placements[it] }
+
+            val widthSource =
+                (imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width
+            val heightSource =
+                (imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) } ?: data.height
+
+            val targetWidth = widthSource?.toPx(widthBasis, this)
+            val targetHeight =
+                heightSource?.toPx(heightBasis, this)
+                    ?: progressBarHeightPx.takeIf { data is DialogObject.ProgressBar }
+
+            val childConstraints =
+                Constraints(
+                    minWidth = targetWidth ?: 0,
+                    maxWidth = targetWidth ?: constraints.maxWidth,
+                    minHeight = targetHeight ?: 0,
+                    maxHeight = targetHeight ?: constraints.maxHeight,
+                )
+
+            val placeable = measurables[index].measure(childConstraints)
+
+            val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
+            val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
+
+            val topMargin = dataTop?.toPx(widthBasis, this) ?: 0
+            val leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0
+
+            val y =
+                when {
+                    data.topAnchor != null ->
+                        (placements[data.topAnchor]?.bottom ?: 0) + topMargin
+                    dataTop != null ->
+                        (parentSkinPlacement?.y ?: 0) + topMargin
+                    data.leftAnchor != null ->
+                        placements[data.leftAnchor]?.y ?: 0
+                    dataLeft != null ->
+                        lastPlacement?.bottom ?: 0
+                    else ->
+                        lastPlacement?.y ?: 0
                 }
-            },
-        ) { measurables, constraints ->
-            val widthBasis =
-                if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
-            val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
 
-            val placements = mutableMapOf<String, ItemPlacement>()
-            var lastPlacement: ItemPlacement? = null
-
-            dataObjects.forEachIndexed { index, data ->
-                val placeable = measurables[index].measure(childConstraints)
-                val skinObject = skinObjects.getIgnoringCase(data.id)
-                val parentSkinPlacement = parentSkins.getIgnoringCase(data.id)?.let { placements[it] }
-
-                val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
-                val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
-
-                val topMargin = dataTop?.toPx(widthBasis, this) ?: 0
-                val leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0
-
-                val y =
-                    when {
-                        data.topAnchor != null ->
-                            (placements[data.topAnchor]?.bottom ?: 0) + topMargin
-                        dataTop != null ->
-                            (parentSkinPlacement?.y ?: 0) + topMargin
-                        data.leftAnchor != null ->
-                            placements[data.leftAnchor]?.y ?: 0
-                        dataLeft != null ->
-                            lastPlacement?.bottom ?: 0
+            val x =
+                if (data.leftAnchor != null) {
+                    (placements[data.leftAnchor]?.right ?: 0) + leftMargin
+                } else {
+                    when (data.align) {
+                        "n" -> (widthBasis - placeable.width) / 2 + leftMargin
+                        "ne" -> widthBasis - placeable.width - leftMargin
                         else ->
-                            lastPlacement?.y ?: 0
+                            if (dataLeft == null) {
+                                (lastPlacement?.right ?: 0) + leftMargin
+                            } else {
+                                (parentSkinPlacement?.x ?: 0) + leftMargin
+                            }
                     }
-
-                val x =
-                    if (data.leftAnchor != null) {
-                        (placements[data.leftAnchor]?.right ?: 0) + leftMargin
-                    } else {
-                        when (data.align) {
-                            "n" -> (widthBasis - placeable.width) / 2 + leftMargin
-                            "ne" -> widthBasis - placeable.width - leftMargin
-                            else ->
-                                if (dataLeft == null) {
-                                    (lastPlacement?.right ?: 0) + leftMargin
-                                } else {
-                                    (parentSkinPlacement?.x ?: 0) + leftMargin
-                                }
-                        }
-                    }
-
-                val placement = ItemPlacement(x = x, y = y, placeable = placeable)
-                placements[data.id] = placement
-                lastPlacement = placement
-            }
-
-            val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
-            val contentHeight = placements.values.maxOfOrNull { it.bottom } ?: 0
-            val layoutWidth =
-                if (constraints.hasBoundedWidth) {
-                    constraints.maxWidth
-                } else {
-                    contentWidth.coerceAtLeast(constraints.minWidth)
-                }
-            val layoutHeight =
-                if (constraints.hasBoundedHeight) {
-                    constraints.maxHeight
-                } else {
-                    contentHeight.coerceAtLeast(constraints.minHeight)
                 }
 
-            layout(layoutWidth, layoutHeight) {
-                placements.values.forEach { it.placeable.place(it.x, it.y) }
+            val placement = ItemPlacement(x = x, y = y, placeable = placeable)
+            placements[data.id] = placement
+            lastPlacement = placement
+        }
+
+        val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
+        val contentHeight = placements.values.maxOfOrNull { it.bottom } ?: 0
+        val layoutWidth =
+            if (constraints.hasBoundedWidth) {
+                constraints.maxWidth
+            } else {
+                contentWidth.coerceAtLeast(constraints.minWidth)
             }
+        val layoutHeight =
+            if (constraints.hasBoundedHeight) {
+                constraints.maxHeight
+            } else {
+                contentHeight.coerceAtLeast(constraints.minHeight)
+            }
+
+        layout(layoutWidth, layoutHeight) {
+            placements.values.forEach { it.placeable.place(it.x, it.y) }
         }
     }
 }
@@ -179,16 +196,16 @@ private data class ItemPlacement(
 }
 
 private fun DataDistance.toPx(
-    parentWidth: Int,
+    basis: Int,
     density: Density,
 ): Int =
     when (this) {
-        is DataDistance.Percent -> parentWidth * value.value / 100
+        is DataDistance.Percent -> basis * value.value / 100
         is DataDistance.Pixels -> with(density) { value.dp.roundToPx() }
     }
 
 @Composable
-private fun BoxWithConstraintsScope.DataObjectContent(
+private fun DataObjectContent(
     skinObject: SkinObject?,
     dataObject: DialogObject,
     executeCommand: (String) -> Unit,
@@ -231,14 +248,8 @@ private fun BoxWithConstraintsScope.DataObjectContent(
     }
 }
 
-private fun DataDistance.toDp(maxWidth: Dp): Dp =
-    when (this) {
-        is DataDistance.Percent -> maxWidth * value.value / 100
-        is DataDistance.Pixels -> value.dp
-    }
-
 @Composable
-private fun BoxWithConstraintsScope.ProgressBar(
+private fun ProgressBar(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
     defaultStyle: StyleDefinition,
@@ -247,19 +258,7 @@ private fun BoxWithConstraintsScope.ProgressBar(
     val colorGroup = skinObject.getColorGroup(defaultStyle)
     val percent = data.value.value
     val textMeasurer = rememberTextMeasurer()
-    Canvas(
-        modifier =
-            modifier
-                .size(
-                    width =
-                        (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
-                            ?: Dp.Unspecified,
-                    height = (
-                        (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                            ?: 16.dp
-                    ),
-                ),
-    ) {
+    Canvas(modifier = modifier) {
         drawRect(
             color = colorGroup.background,
             topLeft = Offset(1f, 1f),
@@ -288,25 +287,14 @@ private fun BoxWithConstraintsScope.ProgressBar(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.Label(
+private fun Label(
     skinObject: SkinObject?,
     data: DialogObject.Label,
     defaultStyle: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
     val colorGroup = skinObject.getColorGroup(defaultStyle)
-    Box(
-        modifier =
-            modifier
-                .size(
-                    width =
-                        (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
-                            ?: Dp.Unspecified,
-                    height =
-                        (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                            ?: Dp.Unspecified,
-                ).padding(horizontal = 4.dp),
-    ) {
+    Box(modifier = modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
@@ -318,7 +306,7 @@ private fun BoxWithConstraintsScope.Label(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.Link(
+private fun Link(
     skinObject: SkinObject?,
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
@@ -326,18 +314,7 @@ private fun BoxWithConstraintsScope.Link(
     modifier: Modifier = Modifier,
 ) {
     val colorGroup = skinObject.getColorGroup(defaultStyle)
-    Box(
-        modifier =
-            modifier
-                .size(
-                    width =
-                        (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
-                            ?: Dp.Unspecified,
-                    height =
-                        (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                            ?: Dp.Unspecified,
-                ).padding(horizontal = 4.dp),
-    ) {
+    Box(modifier = modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text =
@@ -358,7 +335,7 @@ private fun BoxWithConstraintsScope.Link(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.DialogImage(
+private fun DialogImage(
     skinObject: SkinObject?,
     data: DialogObject.Image,
     executeCommand: (String) -> Unit,
@@ -370,28 +347,15 @@ private fun BoxWithConstraintsScope.DialogImage(
     val imageData = data.name?.let { skin.getIgnoringCase(it) }
     Box(
         modifier =
-            modifier
-                .size(
-                    width =
-                        ((imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(
-                            maxWidth,
-                        )
-                            ?: Dp.Unspecified,
-                    height =
-                        (
-                            (imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) }
-                                ?: data.height
-                        )?.toDp(maxHeight)
-                            ?: Dp.Unspecified,
-                ).then(
-                    if (data.cmd != null) {
-                        Modifier.clickable {
-                            executeCommand(data.cmd!!)
-                        }
-                    } else {
-                        Modifier
-                    },
-                ),
+            modifier.then(
+                if (data.cmd != null) {
+                    Modifier.clickable {
+                        executeCommand(data.cmd!!)
+                    }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
         if (image != null) {
@@ -407,7 +371,7 @@ private fun BoxWithConstraintsScope.DialogImage(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.DialogButton(
+private fun DialogButton(
     skinObject: SkinObject?,
     data: DialogObject.Button,
     executeCommand: (String) -> Unit,
@@ -420,14 +384,7 @@ private fun BoxWithConstraintsScope.DialogButton(
     Box(
         modifier =
             modifier
-                .size(
-                    width =
-                        (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
-                            ?: Dp.Unspecified,
-                    height =
-                        (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                            ?: Dp.Unspecified,
-                ).background(backgroundColor, shape)
+                .background(backgroundColor, shape)
                 .border(width = Dp.Hairline, color = borderColor, shape = shape),
     ) {
         Text(
@@ -450,24 +407,14 @@ private fun BoxWithConstraintsScope.DialogButton(
 }
 
 @Composable
-private fun BoxWithConstraintsScope.DialogSkin(
+private fun DialogSkin(
     data: DialogObject.Skin,
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalSkin.current
     val skinObject = skin.getIgnoringCase(data.name)
     val image = skinObject?.image?.data?.let { Base64.decode(it) }
-    Box(
-        modifier
-            .size(
-                width =
-                    (skinObject?.width?.let { DataDistance.Pixels(it) } ?: data.width)?.toDp(maxWidth)
-                        ?: Dp.Unspecified,
-                height =
-                    (skinObject?.height?.let { DataDistance.Pixels(it) } ?: data.height)?.toDp(maxHeight)
-                        ?: Dp.Unspecified,
-            ),
-    ) {
+    Box(modifier) {
         if (image != null) {
             AsyncImage(
                 modifier = Modifier.fillMaxSize(),
