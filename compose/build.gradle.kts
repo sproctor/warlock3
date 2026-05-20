@@ -70,7 +70,6 @@ kotlin {
             // Compose
             api(libs.compose.components.resources)
             api(libs.androidx.lifecycle.viewmodel.compose)
-            implementation(libs.constraintlayout)
             implementation(libs.compose.ui.tooling.preview)
 
             // Third party UI

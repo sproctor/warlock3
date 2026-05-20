@@ -15,8 +15,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -24,7 +22,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,9 +32,9 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
@@ -60,191 +57,36 @@ fun DesktopDialogContent(
     style: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
-    val skin = LocalSkin.current
-    val skinObjects = mutableMapOf<String, SkinObject>()
-    val parentSkins = mutableMapOf<String, String>()
-    dataObjects.forEach { data ->
-        if (data is DialogObject.Skin) {
-            val skinObject = skin.getIgnoringCase(data.name)
-            if (skinObject != null) {
-                data.controls.forEach { id ->
-                    skinObject.children.getIgnoringCase(id)?.let {
-                        skinObjects[id] = it
-                    }
-                    parentSkins[id] = data.id
-                }
-            }
-        }
-    }
-
-    Layout(
-        modifier = modifier,
-        content = {
-            dataObjects.forEach { data ->
-                DataObjectContent(
-                    skinObject = skinObjects.getIgnoringCase(data.id),
-                    dataObject = data,
+    DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
+        when (data) {
+            is DialogObject.Skin -> DialogSkin(data = data)
+            is DialogObject.ProgressBar ->
+                ProgressBar(
+                    skinObject = skinObject,
+                    data = data,
+                    defaultStyle = style,
+                )
+            is DialogObject.Label -> Label(skinObject = skinObject, data = data, defaultStyle = style)
+            is DialogObject.Link ->
+                Link(
+                    skinObject = skinObject,
+                    data = data,
                     executeCommand = executeCommand,
                     defaultStyle = style,
                 )
-            }
-        },
-    ) { measurables, constraints ->
-        val widthBasis =
-            if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
-        val heightBasis =
-            if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
-        val progressBarHeightPx = 16.dp.roundToPx()
-
-        val placements = mutableMapOf<String, ItemPlacement>()
-        var lastPlacement: ItemPlacement? = null
-
-        dataObjects.forEachIndexed { index, data ->
-            val skinObject = skinObjects.getIgnoringCase(data.id)
-            val imageData = (data as? DialogObject.Image)?.name?.let { skin.getIgnoringCase(it) }
-            val parentSkinPlacement = parentSkins.getIgnoringCase(data.id)?.let { placements[it] }
-
-            val widthSource =
-                (imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width
-            val heightSource =
-                (imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) } ?: data.height
-
-            val targetWidth = widthSource?.toPx(widthBasis, this)
-            val targetHeight =
-                heightSource?.toPx(heightBasis, this)
-                    ?: progressBarHeightPx.takeIf { data is DialogObject.ProgressBar }
-
-            val childConstraints =
-                Constraints(
-                    minWidth = targetWidth ?: 0,
-                    maxWidth = targetWidth ?: constraints.maxWidth,
-                    minHeight = targetHeight ?: 0,
-                    maxHeight = targetHeight ?: constraints.maxHeight,
+            is DialogObject.Image ->
+                DialogImage(
+                    skinObject = skinObject,
+                    data = data,
+                    executeCommand = executeCommand,
+                    defaultStyle = style,
                 )
-
-            val placeable = measurables[index].measure(childConstraints)
-
-            val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
-            val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
-
-            val topMargin = dataTop?.toPx(widthBasis, this) ?: 0
-            val leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0
-
-            val y =
-                when {
-                    data.topAnchor != null ->
-                        (placements[data.topAnchor]?.bottom ?: 0) + topMargin
-                    dataTop != null ->
-                        (parentSkinPlacement?.y ?: 0) + topMargin
-                    data.leftAnchor != null ->
-                        placements[data.leftAnchor]?.y ?: 0
-                    dataLeft != null ->
-                        lastPlacement?.bottom ?: 0
-                    else ->
-                        lastPlacement?.y ?: 0
-                }
-
-            val x =
-                if (data.leftAnchor != null) {
-                    (placements[data.leftAnchor]?.right ?: 0) + leftMargin
-                } else {
-                    when (data.align) {
-                        "n" -> (widthBasis - placeable.width) / 2 + leftMargin
-                        "ne" -> widthBasis - placeable.width - leftMargin
-                        else ->
-                            if (dataLeft == null) {
-                                (lastPlacement?.right ?: 0) + leftMargin
-                            } else {
-                                (parentSkinPlacement?.x ?: 0) + leftMargin
-                            }
-                    }
-                }
-
-            val placement = ItemPlacement(x = x, y = y, placeable = placeable)
-            placements[data.id] = placement
-            lastPlacement = placement
+            is DialogObject.Button ->
+                DialogButton(
+                    data = data,
+                    executeCommand = executeCommand,
+                )
         }
-
-        val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
-        val contentHeight = placements.values.maxOfOrNull { it.bottom } ?: 0
-        val layoutWidth =
-            if (constraints.hasBoundedWidth) {
-                constraints.maxWidth
-            } else {
-                contentWidth.coerceAtLeast(constraints.minWidth)
-            }
-        val layoutHeight =
-            if (constraints.hasBoundedHeight) {
-                constraints.maxHeight
-            } else {
-                contentHeight.coerceAtLeast(constraints.minHeight)
-            }
-
-        layout(layoutWidth, layoutHeight) {
-            placements.values.forEach { it.placeable.place(it.x, it.y) }
-        }
-    }
-}
-
-private data class ItemPlacement(
-    val x: Int,
-    val y: Int,
-    val placeable: Placeable,
-) {
-    val right: Int get() = x + placeable.width
-    val bottom: Int get() = y + placeable.height
-}
-
-private fun DataDistance.toPx(
-    basis: Int,
-    density: Density,
-): Int =
-    when (this) {
-        is DataDistance.Percent -> basis * value.value / 100
-        is DataDistance.Pixels -> with(density) { value.dp.roundToPx() }
-    }
-
-@Composable
-private fun DataObjectContent(
-    skinObject: SkinObject?,
-    dataObject: DialogObject,
-    executeCommand: (String) -> Unit,
-    defaultStyle: StyleDefinition,
-    modifier: Modifier = Modifier,
-) {
-    when (dataObject) {
-        is DialogObject.Skin -> DialogSkin(data = dataObject, modifier = modifier)
-        is DialogObject.ProgressBar ->
-            ProgressBar(
-                skinObject = skinObject,
-                data = dataObject,
-                defaultStyle = defaultStyle,
-                modifier = modifier,
-            )
-        is DialogObject.Label -> Label(skinObject = skinObject, data = dataObject, defaultStyle = defaultStyle, modifier = modifier)
-        is DialogObject.Link ->
-            Link(
-                skinObject = skinObject,
-                data = dataObject,
-                executeCommand = executeCommand,
-                defaultStyle = defaultStyle,
-                modifier = modifier,
-            )
-        is DialogObject.Image ->
-            DialogImage(
-                skinObject = skinObject,
-                data = dataObject,
-                executeCommand = executeCommand,
-                defaultStyle = defaultStyle,
-                modifier = modifier,
-            )
-        is DialogObject.Button ->
-            DialogButton(
-                skinObject = skinObject,
-                data = dataObject,
-                executeCommand = executeCommand,
-                modifier = modifier,
-            )
     }
 }
 
@@ -253,12 +95,11 @@ private fun ProgressBar(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
     defaultStyle: StyleDefinition,
-    modifier: Modifier = Modifier,
 ) {
     val colorGroup = skinObject.getColorGroup(defaultStyle)
     val percent = data.value.value
     val textMeasurer = rememberTextMeasurer()
-    Canvas(modifier = modifier) {
+    Canvas(modifier = Modifier) {
         drawRect(
             color = colorGroup.background,
             topLeft = Offset(1f, 1f),
@@ -291,10 +132,9 @@ private fun Label(
     skinObject: SkinObject?,
     data: DialogObject.Label,
     defaultStyle: StyleDefinition,
-    modifier: Modifier = Modifier,
 ) {
     val colorGroup = skinObject.getColorGroup(defaultStyle)
-    Box(modifier = modifier.padding(horizontal = 4.dp)) {
+    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
@@ -311,10 +151,9 @@ private fun Link(
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
     defaultStyle: StyleDefinition,
-    modifier: Modifier = Modifier,
 ) {
     val colorGroup = skinObject.getColorGroup(defaultStyle)
-    Box(modifier = modifier.padding(horizontal = 4.dp)) {
+    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             modifier = Modifier.align(Alignment.Center),
             text =
@@ -340,22 +179,19 @@ private fun DialogImage(
     data: DialogObject.Image,
     executeCommand: (String) -> Unit,
     defaultStyle: StyleDefinition,
-    modifier: Modifier = Modifier,
 ) {
     val skin = LocalSkin.current
     val colorGroup = skinObject.getColorGroup(defaultStyle)
     val imageData = data.name?.let { skin.getIgnoringCase(it) }
     Box(
         modifier =
-            modifier.then(
-                if (data.cmd != null) {
-                    Modifier.clickable {
-                        executeCommand(data.cmd!!)
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+            if (data.cmd != null) {
+                Modifier.clickable {
+                    executeCommand(data.cmd!!)
+                }
+            } else {
+                Modifier
+            },
     ) {
         val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
         if (image != null) {
@@ -372,10 +208,8 @@ private fun DialogImage(
 
 @Composable
 private fun DialogButton(
-    skinObject: SkinObject?,
     data: DialogObject.Button,
     executeCommand: (String) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(2.dp)
     val borderColor = JewelTheme.globalColors.borders.normal
@@ -383,7 +217,7 @@ private fun DialogButton(
     val textColor = JewelTheme.globalColors.text.normal
     Box(
         modifier =
-            modifier
+            Modifier
                 .background(backgroundColor, shape)
                 .border(width = Dp.Hairline, color = borderColor, shape = shape),
     ) {
@@ -407,14 +241,11 @@ private fun DialogButton(
 }
 
 @Composable
-private fun DialogSkin(
-    data: DialogObject.Skin,
-    modifier: Modifier = Modifier,
-) {
+private fun DialogSkin(data: DialogObject.Skin) {
     val skin = LocalSkin.current
     val skinObject = skin.getIgnoringCase(data.name)
     val image = skinObject?.image?.data?.let { Base64.decode(it) }
-    Box(modifier) {
+    Box {
         if (image != null) {
             AsyncImage(
                 modifier = Modifier.fillMaxSize(),
