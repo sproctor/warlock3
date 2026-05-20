@@ -18,6 +18,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -25,11 +27,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstrainedLayoutReference
-import androidx.constraintlayout.compose.ConstraintLayout
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -80,75 +81,111 @@ fun DesktopDialogContent(
     }
 
     BoxWithConstraints(modifier) {
-        ConstraintLayout(
-            Modifier.fillMaxSize(),
-        ) {
-            val refs = dataObjects.associate { it.id to createRef() }
-            var lastRef: ConstrainedLayoutReference? = null
-            dataObjects.forEach { data ->
+        Layout(
+            modifier = Modifier.fillMaxSize(),
+            content = {
+                dataObjects.forEach { data ->
+                    this@BoxWithConstraints.DataObjectContent(
+                        skinObject = skinObjects.getIgnoringCase(data.id),
+                        dataObject = data,
+                        executeCommand = executeCommand,
+                        defaultStyle = style,
+                    )
+                }
+            },
+        ) { measurables, constraints ->
+            val widthBasis =
+                if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
+            val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+
+            val placements = mutableMapOf<String, ItemPlacement>()
+            var lastPlacement: ItemPlacement? = null
+
+            dataObjects.forEachIndexed { index, data ->
+                val placeable = measurables[index].measure(childConstraints)
                 val skinObject = skinObjects.getIgnoringCase(data.id)
-                val parentSkin = parentSkins.getIgnoringCase(data.id)?.let { refs[it] }
-                this@BoxWithConstraints.DataObjectContent(
-                    modifier =
-                        Modifier
-                            .constrainAs(refs[data.id]!!) {
-                                val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
-                                val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
-                                val topAnchor =
-                                    if (data.topAnchor != null) {
-                                        refs[data.topAnchor]?.bottom
-                                    } else if (dataTop != null) {
-                                        parentSkin?.top
-                                    } else if (data.leftAnchor != null) {
-                                        refs[data.leftAnchor]?.top
-                                    } else if (dataLeft != null) {
-                                        lastRef?.bottom
-                                    } else {
-                                        lastRef?.top
-                                    }
-                                top.linkTo(
-                                    anchor = topAnchor ?: parent.top,
-                                    margin = dataTop?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp,
-                                )
-                                val leftMargin = dataLeft?.toDp(this@BoxWithConstraints.maxWidth) ?: 0.dp
-                                if (data.leftAnchor != null) {
-                                    absoluteLeft.linkTo(
-                                        anchor = refs[data.leftAnchor]?.absoluteRight ?: parent.absoluteLeft,
-                                        margin = leftMargin,
-                                    )
+                val parentSkinPlacement = parentSkins.getIgnoringCase(data.id)?.let { placements[it] }
+
+                val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
+                val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
+
+                val topMargin = dataTop?.toPx(widthBasis, this) ?: 0
+                val leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0
+
+                val y =
+                    when {
+                        data.topAnchor != null ->
+                            (placements[data.topAnchor]?.bottom ?: 0) + topMargin
+                        dataTop != null ->
+                            (parentSkinPlacement?.y ?: 0) + topMargin
+                        data.leftAnchor != null ->
+                            placements[data.leftAnchor]?.y ?: 0
+                        dataLeft != null ->
+                            lastPlacement?.bottom ?: 0
+                        else ->
+                            lastPlacement?.y ?: 0
+                    }
+
+                val x =
+                    if (data.leftAnchor != null) {
+                        (placements[data.leftAnchor]?.right ?: 0) + leftMargin
+                    } else {
+                        when (data.align) {
+                            "n" -> (widthBasis - placeable.width) / 2 + leftMargin
+                            "ne" -> widthBasis - placeable.width - leftMargin
+                            else ->
+                                if (dataLeft == null) {
+                                    (lastPlacement?.right ?: 0) + leftMargin
                                 } else {
-                                    when (data.align) {
-                                        "n" -> {
-                                            absoluteLeft.linkTo(parent.absoluteLeft, leftMargin)
-                                            absoluteRight.linkTo(parent.absoluteRight, -leftMargin)
-                                        }
-
-                                        "ne" -> {
-                                            absoluteRight.linkTo(parent.absoluteRight, leftMargin)
-                                        }
-
-                                        else -> {
-                                            val leftAnchor =
-                                                if (dataLeft == null) {
-                                                    lastRef?.absoluteRight ?: parent.absoluteLeft
-                                                } else {
-                                                    parentSkin?.absoluteLeft ?: parent.absoluteLeft
-                                                }
-                                            absoluteLeft.linkTo(leftAnchor, leftMargin)
-                                        }
-                                    }
+                                    (parentSkinPlacement?.x ?: 0) + leftMargin
                                 }
-                                lastRef = refs[data.id]
-                            },
-                    skinObject = skinObjects.getIgnoringCase(data.id),
-                    dataObject = data,
-                    executeCommand = executeCommand,
-                    defaultStyle = style,
-                )
+                        }
+                    }
+
+                val placement = ItemPlacement(x = x, y = y, placeable = placeable)
+                placements[data.id] = placement
+                lastPlacement = placement
+            }
+
+            val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
+            val contentHeight = placements.values.maxOfOrNull { it.bottom } ?: 0
+            val layoutWidth =
+                if (constraints.hasBoundedWidth) {
+                    constraints.maxWidth
+                } else {
+                    contentWidth.coerceAtLeast(constraints.minWidth)
+                }
+            val layoutHeight =
+                if (constraints.hasBoundedHeight) {
+                    constraints.maxHeight
+                } else {
+                    contentHeight.coerceAtLeast(constraints.minHeight)
+                }
+
+            layout(layoutWidth, layoutHeight) {
+                placements.values.forEach { it.placeable.place(it.x, it.y) }
             }
         }
     }
 }
+
+private data class ItemPlacement(
+    val x: Int,
+    val y: Int,
+    val placeable: Placeable,
+) {
+    val right: Int get() = x + placeable.width
+    val bottom: Int get() = y + placeable.height
+}
+
+private fun DataDistance.toPx(
+    parentWidth: Int,
+    density: Density,
+): Int =
+    when (this) {
+        is DataDistance.Percent -> parentWidth * value.value / 100
+        is DataDistance.Pixels -> with(density) { value.dp.roundToPx() }
+    }
 
 @Composable
 private fun BoxWithConstraintsScope.DataObjectContent(
