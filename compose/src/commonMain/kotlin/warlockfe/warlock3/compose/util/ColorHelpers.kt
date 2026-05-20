@@ -5,7 +5,12 @@ import androidx.compose.ui.graphics.toArgb
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
 
-fun WarlockColor.toColor(): Color = if (isUnspecified()) Color.Unspecified else Color(argb)
+fun WarlockColor?.toColor(default: Color = Color.Unspecified): Color =
+    if (this == null || isUnspecified()) {
+        default
+    } else {
+        Color(argb)
+    }
 
 fun Color.toWarlockColor(): WarlockColor {
     val argb: UInt = toArgb().toUInt()
