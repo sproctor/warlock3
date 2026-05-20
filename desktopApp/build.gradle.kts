@@ -75,12 +75,6 @@ nucleus.application {
     jvmArgs += "-Dwarlock.release.version=$releaseVersion"
 
     nativeDistributions {
-
-        // args("--input=/home/sproctor/Downloads/20251116072204.log") // Long log for testing perf
-        // args("--input=/home/sproctor/.local/state/warlock/logs/DR_Tefrin/20251122120309.log") // quick log
-        // args("--sge-port=7900", "--sge-secure=off")
-        // args("--connection=Tefrin")
-
         val currentOs = OperatingSystem.current()
         targetFormats(
             *listOfNotNull(
