@@ -2,16 +2,15 @@ package warlockfe.warlock3.compose.util
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
-import warlockfe.warlock3.core.util.toWarlockColor
 
 fun WarlockColor?.toColor(default: Color = Color.Unspecified): Color =
-    if (this == null || isUnspecified())
+    if (this == null || isUnspecified()) {
         default
-    else
+    } else {
         Color(argb)
+    }
 
 fun Color.toWarlockColor(): WarlockColor {
     val argb: UInt = toArgb().toUInt()

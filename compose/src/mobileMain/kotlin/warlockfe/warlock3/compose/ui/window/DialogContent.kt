@@ -44,7 +44,7 @@ fun DialogContent(
     modifier: Modifier = Modifier,
 ) {
     CompositionLocalProvider(
-        LocalContentColor provides style.textColor.toColor()
+        LocalContentColor provides style.textColor.toColor(),
     ) {
         DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
             when (data) {

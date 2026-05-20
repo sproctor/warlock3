@@ -32,10 +32,11 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
-private val labelStyle = TextStyle(
-    fontSize = 10.sp,
-    fontWeight = FontWeight.Medium,
-)
+private val labelStyle =
+    TextStyle(
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Medium,
+    )
 
 @Composable
 fun DesktopDialogContent(
@@ -45,7 +46,7 @@ fun DesktopDialogContent(
     modifier: Modifier = Modifier,
 ) {
     CompositionLocalProvider(
-        LocalContentColor provides style.textColor.toColor()
+        LocalContentColor provides style.textColor.toColor(),
     ) {
         DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
             when (data) {

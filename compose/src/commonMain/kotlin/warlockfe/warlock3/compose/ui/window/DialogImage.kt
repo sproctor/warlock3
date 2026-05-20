@@ -68,17 +68,19 @@ internal fun DialogImage(
             )
         }
         if (data.cmd != null) {
-            val overlayAlpha = when {
-                isPressed && isHovered -> 0.172f
-                isPressed -> 0.10f
-                isHovered -> 0.08f
-                else -> 0f
-            }
+            val overlayAlpha =
+                when {
+                    isPressed && isHovered -> 0.172f
+                    isPressed -> 0.10f
+                    isHovered -> 0.08f
+                    else -> 0f
+                }
             if (overlayAlpha > 0f) {
                 Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(contentColor.copy(alpha = overlayAlpha)),
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .background(contentColor.copy(alpha = overlayAlpha)),
                 )
             }
         }

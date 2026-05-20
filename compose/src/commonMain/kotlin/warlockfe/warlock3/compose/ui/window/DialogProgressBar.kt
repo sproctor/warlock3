@@ -21,11 +21,12 @@ import warlockfe.warlock3.core.client.DialogObject
 fun DialogProgressBar(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
+    modifier: Modifier = Modifier,
 ) {
     val colorGroup = skinObject.getColorGroup()
     val percent = data.value.value
     val textMeasurer = rememberTextMeasurer()
-    Canvas(modifier = Modifier) {
+    Canvas(modifier = modifier) {
         drawRect(
             color = colorGroup.background.takeOrElse { Color.DarkGray },
             topLeft = Offset(1f, 1f),
@@ -42,10 +43,11 @@ fun DialogProgressBar(
                     text = text,
                     constraints = Constraints(maxWidth = size.width.toInt()),
                     maxLines = 1,
-                    style = TextStyle(
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
+                    style =
+                        TextStyle(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
                 )
             drawText(
                 textLayoutResult = measuredText,
