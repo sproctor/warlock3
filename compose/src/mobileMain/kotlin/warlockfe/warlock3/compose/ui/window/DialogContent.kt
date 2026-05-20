@@ -1,12 +1,7 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,23 +11,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -81,11 +72,34 @@ fun DialogContent(
                     executeCommand = executeCommand,
                     defaultStyle = style,
                 )
-            is DialogObject.Button ->
+            is DialogObject.Button -> {
+                val baseColor = MaterialTheme.colorScheme.primaryContainer
+                val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
+                val borderBrush = SolidColor(MaterialTheme.colorScheme.outline)
                 DialogButton(
-                    data = data,
-                    executeCommand = executeCommand,
-                )
+                    onClick = { executeCommand(data.cmd ?: "") },
+                    shape = MaterialTheme.shapes.extraSmall,
+                    background = { isHovered, isPressed ->
+                        var color = baseColor
+                        if (isPressed) {
+                            color = lerp(color, stateLayer, 0.10f)
+                        }
+                        if (isHovered) {
+                            lerp(color, stateLayer, 0.08f)
+                        }
+                        SolidColor(color)
+                    },
+                    border = { _, _ -> borderBrush },
+                ) { _, _ ->
+                    Text(
+                        modifier = Modifier.align(Alignment.Center),
+                        text = data.value ?: "",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
@@ -204,52 +218,6 @@ private fun DialogImage(
                 tint = colorGroup.bar,
             )
         }
-    }
-}
-
-@Composable
-private fun DialogButton(
-    data: DialogObject.Button,
-    executeCommand: (String) -> Unit,
-) {
-    val shape = MaterialTheme.shapes.extraSmall
-    val baseColor = MaterialTheme.colorScheme.primaryContainer
-    val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val backgroundColor =
-        when {
-            isPressed -> lerp(baseColor, stateLayer, 0.10f)
-            isHovered -> lerp(baseColor, stateLayer, 0.08f)
-            else -> baseColor
-        }
-    Box(
-        modifier =
-            Modifier
-                .border(
-                    width = Dp.Hairline,
-                    color = MaterialTheme.colorScheme.outline,
-                    shape = shape,
-                ).background(
-                    color = backgroundColor,
-                    shape = shape,
-                )
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                ) {
-                    executeCommand(data.cmd ?: "")
-                },
-    ) {
-        Text(
-            modifier = Modifier.align(Alignment.Center),
-            text = data.value ?: "",
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-            maxLines = 1,
-        )
     }
 }
 

@@ -1,27 +1,18 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -29,7 +20,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -40,6 +30,7 @@ import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.ui.window.DialogButton
 import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColor
@@ -89,11 +80,41 @@ fun DesktopDialogContent(
                     executeCommand = executeCommand,
                     defaultStyle = style,
                 )
-            is DialogObject.Button ->
+            is DialogObject.Button -> {
+                val colors = JewelTheme.defaultButtonStyle.colors
                 DialogButton(
-                    data = data,
-                    executeCommand = executeCommand,
-                )
+                    onClick = { executeCommand(data.cmd ?: "") },
+                    shape = RoundedCornerShape(2.dp),
+                    background = { isHovered, isPressed ->
+                        when {
+                            isPressed -> colors.backgroundPressed
+                            isHovered -> colors.backgroundHovered
+                            else -> colors.background
+                        }
+                    },
+                    border = { isHovered, isPressed ->
+                        when {
+                            isPressed -> colors.borderPressed
+                            isHovered -> colors.borderHovered
+                            else -> colors.border
+                        }
+                    },
+                ) { isHovered, isPressed ->
+                    val textColor =
+                        when {
+                            isPressed -> colors.contentPressed
+                            isHovered -> colors.contentHovered
+                            else -> colors.content
+                        }
+                    Text(
+                        modifier = Modifier.align(Alignment.Center),
+                        text = data.value ?: "",
+                        color = textColor,
+                        style = labelTinyStyle,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
@@ -211,57 +232,6 @@ private fun DialogImage(
                 contentDescription = null,
             )
         }
-    }
-}
-
-@Composable
-private fun DialogButton(
-    data: DialogObject.Button,
-    executeCommand: (String) -> Unit,
-) {
-    val shape = RoundedCornerShape(2.dp)
-    val colors = JewelTheme.defaultButtonStyle.colors
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val backgroundBrush =
-        when {
-            isPressed -> colors.backgroundPressed
-            isHovered -> colors.backgroundHovered
-            else -> colors.background
-        }
-    val borderBrush =
-        when {
-            isPressed -> colors.borderPressed
-            isHovered -> colors.borderHovered
-            else -> colors.border
-        }
-    val textColor =
-        when {
-            isPressed -> colors.contentPressed
-            isHovered -> colors.contentHovered
-            else -> colors.content
-        }
-    Box(
-        modifier =
-            Modifier
-                .background(backgroundBrush, shape)
-                .border(width = Dp.Hairline, brush = borderBrush, shape = shape)
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                ) {
-                    executeCommand(data.cmd ?: "")
-                },
-    ) {
-        Text(
-            modifier = Modifier.align(Alignment.Center),
-            text = data.value ?: "",
-            color = textColor,
-            style = labelTinyStyle,
-            maxLines = 1,
-        )
     }
 }
 
