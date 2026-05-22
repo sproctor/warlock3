@@ -91,7 +91,7 @@ fun DesktopColorTextField(
         }
     }
     editColor?.let { (colorText, setColor) ->
-        val initialColor = colorText.toWarlockColor()?.specifiedOrNull()?.toColor() ?: Color.Black
+        val initialColor = colorText.toWarlockColor().toColor()
         DesktopColorPickerDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.dp
 import com.github.skydoves.colorpicker.compose.AlphaSlider
 import com.github.skydoves.colorpicker.compose.AlphaTile
@@ -35,6 +36,7 @@ import com.github.skydoves.colorpicker.compose.rememberColorPickerController
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.util.toArgbHexString
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
@@ -46,19 +48,17 @@ import warlockfe.warlock3.core.text.WarlockColor
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
 fun DesktopColorPickerDialog(
-    initialColor: Color?,
+    initialColor: Color,
     onCloseRequest: () -> Unit,
     onColorSelect: (color: WarlockColor) -> Unit,
 ) {
     val controller = rememberColorPickerController()
     val hexInput = rememberTextFieldState()
-    var initialized by remember { mutableStateOf(false) }
     var hexError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(initialColor) {
-        if (initialColor != null) {
-            controller.selectByColor(initialColor, fromUser = false)
-        }
+        val color = initialColor.takeOrElse { Color.White }
+        hexInput.setTextAndPlaceCursorAtEnd(color.toArgbHexString())
     }
 
     WarlockDialog(
@@ -77,8 +77,7 @@ fun DesktopColorPickerDialog(
                     modifier = Modifier.fillMaxSize(),
                     controller = controller,
                     onColorChanged = { colorEnvelope ->
-                        if (colorEnvelope.fromUser || !initialized) {
-                            initialized = true
+                        if (colorEnvelope.fromUser) {
                             hexInput.setTextAndPlaceCursorAtEnd(colorEnvelope.hexCode)
                             hexError = null
                         }
