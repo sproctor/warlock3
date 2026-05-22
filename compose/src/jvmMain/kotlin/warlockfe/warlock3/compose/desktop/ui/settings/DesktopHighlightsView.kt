@@ -105,12 +105,12 @@ fun DesktopHighlightsView(
                                     ),
                             contentAlignment = Alignment.Center,
                         ) {
-                                Image(
-                                    painter = painterResource(Res.drawable.palette),
-                                    contentDescription = "Highlight color",
-                                    modifier = Modifier.size(20.dp),
-                                    colorFilter = ColorFilter.tint(contentColor.takeOrElse { JewelTheme.globalColors.text.normal }),
-                                )
+                            Image(
+                                painter = painterResource(Res.drawable.palette),
+                                contentDescription = "Highlight color",
+                                modifier = Modifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(contentColor.takeOrElse { JewelTheme.globalColors.text.normal }),
+                            )
                         }
                     },
                     headline = { Text(highlight.pattern) },
