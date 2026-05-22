@@ -20,7 +20,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,7 +30,6 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.specifiedOrNull
 import warlockfe.warlock3.core.text.toHexString
 import warlockfe.warlock3.core.util.toWarlockColor
 
@@ -91,7 +89,7 @@ fun DesktopColorTextField(
         }
     }
     editColor?.let { (colorText, setColor) ->
-        val initialColor = colorText.toWarlockColor()?.specifiedOrNull()?.toColor() ?: Color.Black
+        val initialColor = colorText.toWarlockColor().toColor()
         DesktopColorPickerDialog(
             initialColor = initialColor,
             onCloseRequest = { editColor = null },
