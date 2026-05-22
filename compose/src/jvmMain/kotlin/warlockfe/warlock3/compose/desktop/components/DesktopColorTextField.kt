@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.desktop.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -20,14 +21,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
+import warlockfe.warlock3.compose.desktop.shim.WarlockIconButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.close
+import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
@@ -77,15 +83,31 @@ fun DesktopColorTextField(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.size(4.dp))
-            WarlockOutlinedButton(
+            WarlockIconButton(
                 onClick = {
                     editColor =
                         state.text.toString() to {
                             state.setTextAndPlaceCursorAtEnd(it.toHexString() ?: "")
                         }
                 },
-                text = "Pick",
-            )
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.edit),
+                    contentDescription = "Edit color",
+                    modifier = Modifier.size(16.dp),
+                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                )
+            }
+            WarlockIconButton(
+                onClick = { state.setTextAndPlaceCursorAtEnd("") },
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.close),
+                    contentDescription = "Clear color",
+                    modifier = Modifier.size(16.dp),
+                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                )
+            }
         }
     }
     editColor?.let { (colorText, setColor) ->

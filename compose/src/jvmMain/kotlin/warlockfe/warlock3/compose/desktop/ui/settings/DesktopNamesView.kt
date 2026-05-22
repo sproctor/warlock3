@@ -1,9 +1,6 @@
 package warlockfe.warlock3.compose.desktop.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
@@ -26,9 +22,9 @@ import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.components.DesktopColorTextField
+import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
@@ -75,18 +71,10 @@ fun DesktopNamesView(
             names.forEach { name ->
                 WarlockListItem(
                     leading = {
-                        val contentColor = name.textColor.toColor()
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .background(
-                                        color = name.backgroundColor.toColor(),
-                                        shape = RoundedCornerShape(4.dp),
-                                    ).border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(4.dp)),
+                        DesktopStylePreview(
+                            textColor = name.textColor.toColor(),
+                            backgroundColor = name.backgroundColor.toColor(),
                         )
-                        @Suppress("UNUSED_EXPRESSION")
-                        contentColor
                     },
                     headline = { Text(name.text) },
                     trailing = {

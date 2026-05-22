@@ -1,9 +1,6 @@
 package warlockfe.warlock3.compose.desktop.ui.settings
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
@@ -31,9 +27,9 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.components.DesktopColorTextField
+import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
@@ -84,19 +80,9 @@ fun DesktopHighlightsView(
                 WarlockListItem(
                     leading = {
                         val style = highlight.styles[0]
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .background(
-                                        color = style?.backgroundColor?.toColor() ?: androidx.compose.ui.graphics.Color.Unspecified,
-                                        shape = RoundedCornerShape(4.dp),
-                                    ).border(
-                                        1.dp,
-                                        style?.textColor?.toColor()?.takeIf { it != androidx.compose.ui.graphics.Color.Unspecified }
-                                            ?: JewelTheme.globalColors.borders.normal,
-                                        RoundedCornerShape(4.dp),
-                                    ),
+                        DesktopStylePreview(
+                            textColor = style?.textColor.toColor(),
+                            backgroundColor = style?.backgroundColor.toColor(),
                         )
                     },
                     headline = { Text(highlight.pattern) },
@@ -213,10 +199,9 @@ private fun DesktopEditHighlightDialog(
             WarlockTextField(state = pattern, modifier = Modifier.fillMaxWidth())
             patternError?.let { Text("Error: $it") }
 
-            if (styles.size < groupCount + 1) {
-                for (i in styles.size..groupCount) {
-                    styles.add(StyleDefinition())
-                }
+            // Add blank styles for remaining groups
+            while (styles.size <= groupCount) {
+                styles.add(StyleDefinition())
             }
             WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 for (i in 0 until groupCount) {
