@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.desktop.ui.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -26,11 +27,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.components.DesktopColorTextField
@@ -42,6 +46,8 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.models.Highlight
@@ -84,20 +90,28 @@ fun DesktopHighlightsView(
                 WarlockListItem(
                     leading = {
                         val style = highlight.styles[0]
+                        val contentColor = style?.textColor.toColor()
                         Box(
                             modifier =
                                 Modifier
                                     .size(32.dp)
                                     .background(
-                                        color = style?.backgroundColor?.toColor() ?: androidx.compose.ui.graphics.Color.Unspecified,
+                                        color = style?.backgroundColor.toColor(),
                                         shape = RoundedCornerShape(4.dp),
                                     ).border(
                                         1.dp,
-                                        style?.textColor?.toColor()?.takeIf { it != androidx.compose.ui.graphics.Color.Unspecified }
-                                            ?: JewelTheme.globalColors.borders.normal,
+                                        contentColor.takeOrElse { JewelTheme.globalColors.borders.normal },
                                         RoundedCornerShape(4.dp),
                                     ),
-                        )
+                            contentAlignment = Alignment.Center,
+                        ) {
+                                Image(
+                                    painter = painterResource(Res.drawable.palette),
+                                    contentDescription = "Highlight color",
+                                    modifier = Modifier.size(20.dp),
+                                    colorFilter = ColorFilter.tint(contentColor.takeOrElse { JewelTheme.globalColors.text.normal }),
+                                )
+                        }
                     },
                     headline = { Text(highlight.pattern) },
                     trailing = {
