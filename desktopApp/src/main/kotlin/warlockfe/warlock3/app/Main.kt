@@ -23,6 +23,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.WindowPosition
@@ -57,6 +58,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -86,6 +88,7 @@ import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
@@ -493,6 +496,9 @@ private class WarlockCommand : CliktCommand() {
                                 ?.inputStream()
                                 ?.use { BitmapPainter(it.readAllBytes().decodeToImageBitmap()) }
                         }
+                    val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
+                    val characterFlow = connectedScreen?.viewModel?.character ?: flowOf(null)
+                    val connectedCharacter by characterFlow.collectAsState(null)
                     JewelDecoratedWindow(
                         title = title,
                         state = windowState,
@@ -526,6 +532,17 @@ private class WarlockCommand : CliktCommand() {
                                 showUpdateDialog = { showUpdateDialog = true },
                                 sgeSettings = sgeSettings,
                             )
+                            LaunchedEffect(windowState, connectedCharacter?.id) {
+                                val characterId = connectedCharacter?.id ?: return@LaunchedEffect
+                                val bounds =
+                                    appContainer.characterSettingsRepository
+                                        .getMainWindowBounds(characterId)
+                                        ?: return@LaunchedEffect
+                                if (bounds.width >= 240 && bounds.height >= 240) {
+                                    windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
+                                    windowState.position = WindowPosition(bounds.x.dp, bounds.y.dp)
+                                }
+                            }
                             LaunchedEffect(windowState) {
                                 snapshotFlow { windowState.size }
                                     .debounce(2.seconds)
@@ -537,6 +554,29 @@ private class WarlockCommand : CliktCommand() {
                                         val height = size.height.value.toInt()
                                         if (height >= 240) {
                                             clientSettings.putHeight(height)
+                                        }
+                                    }.launchIn(this)
+
+                                snapshotFlow {
+                                    val characterId = connectedCharacter?.id
+                                    val position = windowState.position
+                                    val size = windowState.size
+                                    if (characterId != null) {
+                                        characterId to
+                                            MainWindowBounds(
+                                                x = position.x.value.toInt(),
+                                                y = position.y.value.toInt(),
+                                                width = size.width.value.toInt(),
+                                                height = size.height.value.toInt(),
+                                            )
+                                    } else {
+                                        null
+                                    }
+                                }.debounce(2.seconds)
+                                    .onEach { characterBounds ->
+                                        val (characterId, bounds) = characterBounds ?: return@onEach
+                                        if (bounds.width >= 240 && bounds.height >= 240) {
+                                            appContainer.characterSettingsRepository.saveMainWindowBounds(characterId, bounds)
                                         }
                                     }.launchIn(this)
                             }
