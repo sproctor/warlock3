@@ -51,49 +51,86 @@ fun DialogObjectLayout(
             if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
         val progressBarHeightPx = 16.dp.roundToPx()
 
-        val placements = mutableMapOf<String, ItemPlacement>()
-        var lastPlacement: ItemPlacement? = null
+        val itemInfos =
+            dataObjects.mapIndexed { index, data ->
+                val skinObject = skinObjects.getIgnoringCase(data.id)
+                val imageData = (data as? DialogObject.Image)?.name?.let { skin.getIgnoringCase(it) }
 
-        dataObjects.forEachIndexed { index, data ->
-            val skinObject = skinObjects.getIgnoringCase(data.id)
-            val imageData = (data as? DialogObject.Image)?.name?.let { skin.getIgnoringCase(it) }
-            val parentSkinPlacement = parentSkins.getIgnoringCase(data.id)?.let { placements[it] }
+                val widthSource =
+                    (imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width
+                val heightSource =
+                    (imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) } ?: data.height
 
-            val widthSource =
-                (imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width
-            val heightSource =
-                (imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) } ?: data.height
+                val targetWidth = widthSource?.toPx(widthBasis, this)
+                val targetHeight =
+                    heightSource?.toPx(heightBasis, this)
+                        ?: progressBarHeightPx.takeIf { data is DialogObject.ProgressBar }
 
-            val targetWidth = widthSource?.toPx(widthBasis, this)
-            val targetHeight =
-                heightSource?.toPx(heightBasis, this)
-                    ?: progressBarHeightPx.takeIf { data is DialogObject.ProgressBar }
+                val childConstraints =
+                    Constraints(
+                        minWidth = targetWidth ?: 0,
+                        maxWidth = targetWidth ?: constraints.maxWidth,
+                        minHeight = targetHeight ?: 0,
+                        maxHeight = targetHeight ?: constraints.maxHeight,
+                    )
 
-            val childConstraints =
-                Constraints(
-                    minWidth = targetWidth ?: 0,
-                    maxWidth = targetWidth ?: constraints.maxWidth,
-                    minHeight = targetHeight ?: 0,
-                    maxHeight = targetHeight ?: constraints.maxHeight,
+                val placeable = measurables[index].measure(childConstraints)
+
+                val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
+                val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
+
+                ItemInfo(
+                    data = data,
+                    placeable = placeable,
+                    dataTop = dataTop,
+                    dataLeft = dataLeft,
+                    topMargin = dataTop?.toPx(widthBasis, this) ?: 0,
+                    leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0,
+                    parentSkinId = parentSkins.getIgnoringCase(data.id),
                 )
+            }
 
-            val placeable = measurables[index].measure(childConstraints)
+        // Resolve placements in topological order so an item's anchors/parent are
+        // already placed when we read them. Items may reference anchors that appear
+        // later in the data list because the dialog state appends updated items to
+        // the end. Drawing still happens in data order to preserve z-ordering.
+        val indexById = itemInfos.withIndex().associate { (idx, info) -> info.data.id to idx }
+        val visitState = IntArray(itemInfos.size) // 0=unvisited, 1=in-progress, 2=done
+        val placementOrder = ArrayList<Int>(itemInfos.size)
 
-            val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
-            val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
+        fun visit(index: Int) {
+            // Skip if already placed; also skip if currently in-progress to break cycles.
+            if (visitState[index] != 0) return
+            visitState[index] = 1
+            val info = itemInfos[index]
+            val data = info.data
+            data.topAnchor?.let { indexById[it] }?.let(::visit)
+            data.leftAnchor?.let { indexById[it] }?.let(::visit)
+            info.parentSkinId?.let { indexById[it] }?.let(::visit)
+            if (info.usesLastPlacement() && index > 0) visit(index - 1)
+            visitState[index] = 2
+            placementOrder += index
+        }
 
-            val topMargin = dataTop?.toPx(widthBasis, this) ?: 0
-            val leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0
+        for (i in itemInfos.indices) visit(i)
+
+        val placements = HashMap<String, ItemPlacement>(itemInfos.size)
+
+        for (index in placementOrder) {
+            val info = itemInfos[index]
+            val data = info.data
+            val parentSkinPlacement = info.parentSkinId?.let { placements[it] }
+            val lastPlacement = if (index > 0) placements[itemInfos[index - 1].data.id] else null
 
             val y =
                 when {
                     data.topAnchor != null ->
-                        (placements[data.topAnchor]?.bottom ?: 0) + topMargin
-                    dataTop != null ->
-                        (parentSkinPlacement?.y ?: 0) + topMargin
+                        (placements[data.topAnchor]?.bottom ?: 0) + info.topMargin
+                    info.dataTop != null ->
+                        (parentSkinPlacement?.y ?: 0) + info.topMargin
                     data.leftAnchor != null ->
                         placements[data.leftAnchor]?.y ?: 0
-                    dataLeft != null ->
+                    info.dataLeft != null ->
                         lastPlacement?.bottom ?: 0
                     else ->
                         lastPlacement?.y ?: 0
@@ -101,23 +138,21 @@ fun DialogObjectLayout(
 
             val x =
                 if (data.leftAnchor != null) {
-                    (placements[data.leftAnchor]?.right ?: 0) + leftMargin
+                    (placements[data.leftAnchor]?.right ?: 0) + info.leftMargin
                 } else {
                     when (data.align) {
-                        "n" -> (widthBasis - placeable.width) / 2 + leftMargin
-                        "ne" -> widthBasis - placeable.width - leftMargin
+                        "n" -> (widthBasis - info.placeable.width) / 2 + info.leftMargin
+                        "ne" -> widthBasis - info.placeable.width - info.leftMargin
                         else ->
-                            if (dataLeft == null) {
-                                (lastPlacement?.right ?: 0) + leftMargin
+                            if (info.dataLeft == null) {
+                                (lastPlacement?.right ?: 0) + info.leftMargin
                             } else {
-                                (parentSkinPlacement?.x ?: 0) + leftMargin
+                                (parentSkinPlacement?.x ?: 0) + info.leftMargin
                             }
                     }
                 }
 
-            val placement = ItemPlacement(x = x, y = y, placeable = placeable)
-            placements[data.id] = placement
-            lastPlacement = placement
+            placements[data.id] = ItemPlacement(x = x, y = y, placeable = info.placeable)
         }
 
         val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
@@ -136,7 +171,9 @@ fun DialogObjectLayout(
             }
 
         layout(layoutWidth, layoutHeight) {
-            placements.values.forEach { it.placeable.place(it.x, it.y) }
+            for (info in itemInfos) {
+                placements[info.data.id]?.let { it.placeable.place(it.x, it.y) }
+            }
         }
     }
 }
@@ -148,6 +185,24 @@ private data class ItemPlacement(
 ) {
     val right: Int get() = x + placeable.width
     val bottom: Int get() = y + placeable.height
+}
+
+private class ItemInfo(
+    val data: DialogObject,
+    val placeable: Placeable,
+    val dataTop: DataDistance?,
+    val dataLeft: DataDistance?,
+    val topMargin: Int,
+    val leftMargin: Int,
+    val parentSkinId: String?,
+) {
+    // True when the placement formula will read lastPlacement (the data-order
+    // predecessor's placement). Mirrors the branches in y/x computation.
+    fun usesLastPlacement(): Boolean {
+        val needsForY = data.topAnchor == null && dataTop == null && data.leftAnchor == null
+        val needsForX = data.leftAnchor == null && data.align != "n" && data.align != "ne" && dataLeft == null
+        return needsForY || needsForX
+    }
 }
 
 private fun DataDistance.toPx(
