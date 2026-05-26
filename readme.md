@@ -23,9 +23,13 @@ Bug reports and pull requests are welcome.
 
 ### Requirements
 
-- A JetBrains Runtime (JBR) 21+ JDK. The Gradle toolchain is configured to download one automatically on first build; you don't normally need to install one yourself.
+See the [KMP quickstart](https://kotlinlang.org/docs/multiplatform/quickstart.html) for general setup instructions.
+
+You will need at least:
+
+- A JDK environment.
 - Git.
-- For Android development: Android Studio (or the standalone Android SDK).
+- Android Studio or IntelliJ IDEA + the Android SDK.
 - For iOS development: macOS with Xcode.
 
 ### Running the desktop app
