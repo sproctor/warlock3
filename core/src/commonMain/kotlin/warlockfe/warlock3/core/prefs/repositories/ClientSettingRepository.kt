@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -27,6 +28,17 @@ class ClientSettingRepository(
     suspend fun getLastUsername(): String? = get("lastUsername")
 
     fun observeTheme(): Flow<ThemeSetting> = observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
+
+    suspend fun getReleaseChannel(): ReleaseChannelSetting =
+        get(RELEASE_CHANNEL_KEY)?.let { value ->
+            ReleaseChannelSetting.entries.firstOrNull { it.name == value }
+        } ?: ReleaseChannelSetting.CURRENT
+
+    fun observeReleaseChannel(): Flow<ReleaseChannelSetting> =
+        observe(RELEASE_CHANNEL_KEY).map { value ->
+            value?.let { ReleaseChannelSetting.entries.firstOrNull { entry -> entry.name == it } }
+                ?: ReleaseChannelSetting.CURRENT
+        }
 
     fun observeSkinFile(): Flow<String?> = observe("skinFile")
 
@@ -97,6 +109,10 @@ class ClientSettingRepository(
         putBoolean("ignoreUpdates", value)
     }
 
+    suspend fun putReleaseChannel(value: ReleaseChannelSetting) {
+        put(RELEASE_CHANNEL_KEY, value.name)
+    }
+
     suspend fun putMaxScrollLines(value: Int?) {
         if (value != null) {
             putInt(SCROLLBACK_KEY, value)
@@ -154,5 +170,6 @@ class ClientSettingRepository(
         const val SCROLLBACK_KEY = "scrollback"
         const val MARK_LINKS_KEY = "markLinks"
         const val SHOW_IMAGES_KEY = "showImages"
+        const val RELEASE_CHANNEL_KEY = "releaseChannel"
     }
 }

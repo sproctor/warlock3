@@ -84,6 +84,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -333,16 +334,26 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
+        val resolvedVersion = version ?: "0.0.0"
+        val versionChannel =
+            when {
+                resolvedVersion.contains("beta") -> "beta"
+                resolvedVersion.contains("alpha") -> "alpha"
+                else -> "latest"
+            }
+        val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
+        val selectedChannel =
+            when (channelSetting) {
+                ReleaseChannelSetting.CURRENT -> versionChannel
+                ReleaseChannelSetting.STABLE -> "latest"
+                ReleaseChannelSetting.BETA -> "beta"
+                ReleaseChannelSetting.ALPHA -> "alpha"
+            }
         val updater =
             NucleusUpdater {
                 provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
-                channel =
-                    when {
-                        currentVersion.contains("beta") -> "beta"
-                        currentVersion.contains("alpha") -> "alpha"
-                        else -> "latest"
-                    }
-                currentVersion = version ?: "0.0.0"
+                channel = selectedChannel
+                currentVersion = resolvedVersion
             }
         val updateSupported = updater.isUpdateSupported()
 
