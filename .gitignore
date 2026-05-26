@@ -60,3 +60,6 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 local.properties
+
+# work-around https://github.com/Splitties/refreshVersions/issues/640
+versions.properties
