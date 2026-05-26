@@ -48,6 +48,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -305,6 +306,25 @@ fun DesktopGeneralSettingsView(
                     )
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            val currentReleaseChannel by clientSettingRepository
+                .observeReleaseChannel()
+                .collectAsState(null)
+            Text("Release channel to check for updates")
+            Column {
+                ReleaseChannelSetting.entries.forEach { entry ->
+                    WarlockRadioButtonRow(
+                        selected = currentReleaseChannel == entry,
+                        onClick = {
+                            scope.launch { clientSettingRepository.putReleaseChannel(entry) }
+                        },
+                        text = entry.name.lowercase(),
+                    )
+                }
+            }
+            Text("Changes take effect on next restart.")
 
             Spacer(Modifier.height(8.dp))
 
