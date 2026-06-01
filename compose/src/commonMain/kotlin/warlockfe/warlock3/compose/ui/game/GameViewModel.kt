@@ -411,7 +411,8 @@ class GameViewModel(
                                 val index = states.indexOfFirst { it.name == singleWindowSettings.name }
                                 if (index != -1) {
                                     val mutableStates = states.toMutableList()
-                                    (states[index].data as? StreamWindowData)?.stream
+                                    (states[index].data as? StreamWindowData)
+                                        ?.stream
                                         ?.setNameFilter(singleWindowSettings.nameFilter)
                                     mutableStates[index] =
                                         states[index].copy(
@@ -472,7 +473,8 @@ class GameViewModel(
                                                                     )
                                                             },
                                                     )
-                                                (mutableStates[index].data as? StreamWindowData)?.stream
+                                                (mutableStates[index].data as? StreamWindowData)
+                                                    ?.stream
                                                     ?.setNameFilter(uiState.nameFilter)
                                                 mutableStates
                                             }
