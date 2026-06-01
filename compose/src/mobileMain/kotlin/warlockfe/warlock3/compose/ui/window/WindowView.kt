@@ -118,6 +118,7 @@ fun WindowView(
     onActionClick: (WarlockAction) -> Int?,
     onCloseClick: () -> Unit,
     saveStyle: (StyleDefinition) -> Unit,
+    saveNameFilter: (Boolean) -> Unit,
     onSelect: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -228,6 +229,9 @@ fun WindowView(
             style = uiState.style,
             defaultStyle = defaultStyle,
             saveStyle = saveStyle,
+            nameFilterOption = window?.nameFilterOption ?: false,
+            nameFilter = uiState.nameFilter,
+            saveNameFilter = saveNameFilter,
         )
     }
 

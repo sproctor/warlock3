@@ -6,6 +6,8 @@ import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,6 +41,7 @@ class ComposeTextStream(
     private var showImages: Boolean,
     private var showTimestamps: Boolean,
     private val highlights: StateFlow<List<ViewHighlight>>,
+    private val names: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
     private val soundPlayer: SoundPlayer,
@@ -55,6 +58,9 @@ class ComposeTextStream(
 
     private var applyStyling: Boolean = true
 
+    // When true, only lines that match a name in the names list are shown
+    private var nameFilter: Boolean = false
+
     private var partialLine: StyledString? = null
 
     private val componentLocations = mutableMapOf<String, Set<Long>>()
@@ -62,6 +68,18 @@ class ComposeTextStream(
     var actionHandler: ((WarlockAction) -> Unit)? = null
 
     val mutex = Mutex()
+
+    init {
+        // Re-filter displayed lines whenever the names list changes
+        names
+            .onEach {
+                if (nameFilter) {
+                    workQueue.submit {
+                        mutex.withLock { linesUpdated() }
+                    }
+                }
+            }.launchIn(scope)
+    }
 
     override suspend fun appendPartial(
         text: StyledString,
@@ -281,7 +299,18 @@ class ComposeTextStream(
     }
 
     private fun linesUpdated() {
-        lines.value = finishedLines.toList()
+        lines.value =
+            if (nameFilter) {
+                finishedLines.filter { lineMatchesName(it) }
+            } else {
+                finishedLines.toList()
+            }
+    }
+
+    private fun lineMatchesName(line: StreamLine): Boolean {
+        val text = (line as? StreamTextLine)?.text?.text ?: return false
+        if (text.isEmpty()) return false
+        return names.value.any { it.containsMatchIn(text) }
     }
 
     override fun showTimestamps(value: Boolean) {
@@ -290,6 +319,16 @@ class ComposeTextStream(
 
     override fun setApplyStyling(value: Boolean) {
         applyStyling = value
+    }
+
+    override fun setNameFilter(value: Boolean) {
+        if (nameFilter == value) return
+        nameFilter = value
+        scope.launch {
+            workQueue.submit {
+                mutex.withLock { linesUpdated() }
+            }
+        }
     }
 }
 

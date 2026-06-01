@@ -55,6 +55,21 @@ interface WindowSettingsDao {
 
     @Query(
         """
+        INSERT INTO WindowSettings (characterId, name, nameFilter)
+        VALUES (:characterId, :name, :nameFilter)
+        ON CONFLICT(characterId, name) DO
+        UPDATE SET
+            nameFilter = :nameFilter;
+    """,
+    )
+    suspend fun setNameFilter(
+        characterId: String,
+        name: String,
+        nameFilter: Boolean,
+    )
+
+    @Query(
+        """
         INSERT INTO WindowSettings (characterId, name, location, position)
         VALUES (:characterId, :name, :location, :position)
         ON CONFLICT(characterId, name) DO

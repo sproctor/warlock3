@@ -368,6 +368,7 @@ class GameViewModel(
                                 style = entity.getStyle(),
                                 width = entity.width,
                                 height = entity.height,
+                                nameFilter = entity.nameFilter,
                                 data =
                                     when (window?.windowType) {
                                         WindowType.STREAM ->
@@ -381,6 +382,7 @@ class GameViewModel(
                                         else -> null
                                     },
                             )
+                        (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
                         when (entity.location) {
                             WindowLocation.MAIN -> _mainWindowUiState.value = uiState
                             WindowLocation.TOP -> _topWindowUiStates.update { it + uiState }
@@ -397,7 +399,11 @@ class GameViewModel(
                 currentWindowSettings.forEach { singleWindowSettings ->
                     if (singleWindowSettings.name == "main") {
                         _mainWindowUiState.update {
-                            it.copy(style = singleWindowSettings.getStyle())
+                            (it.data as? StreamWindowData)?.stream?.setNameFilter(singleWindowSettings.nameFilter)
+                            it.copy(
+                                style = singleWindowSettings.getStyle(),
+                                nameFilter = singleWindowSettings.nameFilter,
+                            )
                         }
                     } else {
                         windowUiStateLists.forEach { stateList ->
@@ -405,7 +411,13 @@ class GameViewModel(
                                 val index = states.indexOfFirst { it.name == singleWindowSettings.name }
                                 if (index != -1) {
                                     val mutableStates = states.toMutableList()
-                                    mutableStates[index] = states[index].copy(style = singleWindowSettings.getStyle())
+                                    (states[index].data as? StreamWindowData)?.stream
+                                        ?.setNameFilter(singleWindowSettings.nameFilter)
+                                    mutableStates[index] =
+                                        states[index].copy(
+                                            style = singleWindowSettings.getStyle(),
+                                            nameFilter = singleWindowSettings.nameFilter,
+                                        )
                                     mutableStates
                                 } else {
                                     states
@@ -460,6 +472,8 @@ class GameViewModel(
                                                                     )
                                                             },
                                                     )
+                                                (mutableStates[index].data as? StreamWindowData)?.stream
+                                                    ?.setNameFilter(uiState.nameFilter)
                                                 mutableStates
                                             }
                                         }
@@ -873,6 +887,7 @@ class GameViewModel(
                         style = entity?.getStyle() ?: defaultStyles["default"]!!,
                         width = null,
                         height = null,
+                        nameFilter = entity?.nameFilter ?: false,
                         data =
                             when (windowInfo?.windowType) {
                                 WindowType.STREAM ->
@@ -890,6 +905,9 @@ class GameViewModel(
                     )
                 states + newState
             }
+        }
+        newState?.let { state ->
+            (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
         }
         if (newState != null) {
             viewModelScope.launch {
@@ -930,6 +948,17 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setStyle(characterId = characterId, name = name, style = style)
+            }
+        }
+    }
+
+    fun saveWindowNameFilter(
+        name: String,
+        nameFilter: Boolean,
+    ) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.setNameFilter(characterId = characterId, name = name, nameFilter = nameFilter)
             }
         }
     }

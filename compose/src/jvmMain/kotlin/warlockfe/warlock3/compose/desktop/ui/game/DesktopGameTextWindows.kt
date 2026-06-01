@@ -42,6 +42,7 @@ fun DesktopGameTextWindows(
     onDrop: (DropResult) -> Unit,
     onCloseClick: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
+    saveNameFilter: (String, Boolean) -> Unit,
     onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -68,6 +69,7 @@ fun DesktopGameTextWindows(
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
+                saveNameFilter = saveNameFilter,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
@@ -92,6 +94,7 @@ fun DesktopGameTextWindows(
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
                     saveStyle = saveStyle,
+                    saveNameFilter = saveNameFilter,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -113,6 +116,9 @@ fun DesktopGameTextWindows(
                         onCloseClick = {},
                         saveStyle = {
                             saveStyle(mainWindowUiState.name, it)
+                        },
+                        saveNameFilter = {
+                            saveNameFilter(mainWindowUiState.name, it)
                         },
                         onSelect = { onWindowSelect(mainWindowUiState.name) },
                         scrollEvents = scrollEvents,
@@ -136,6 +142,7 @@ fun DesktopGameTextWindows(
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
                     saveStyle = saveStyle,
+                    saveNameFilter = saveNameFilter,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -160,6 +167,7 @@ fun DesktopGameTextWindows(
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
+                saveNameFilter = saveNameFilter,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
