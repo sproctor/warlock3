@@ -13,10 +13,10 @@ import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.SkinLoader
 import warlockfe.warlock3.core.sge.SgeSettings
 import java.io.File
 
@@ -35,12 +35,6 @@ class MainActivity : ComponentActivity() {
         val warlockApplication = application as WarlockApplication
         val appContainer = warlockApplication.appContainer
 
-        // TODO: Move skin loading into common code
-        val json =
-            Json {
-                ignoreUnknownKeys = true
-            }
-
         val skin = mutableStateOf<Map<String, SkinObject>>(emptyMap())
 
         appContainer.clientSettings
@@ -53,7 +47,7 @@ class MainActivity : ComponentActivity() {
                         ?.readBytes()
                         ?: Res.readBytes("files/skin.json")
                 try {
-                    skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+                    skin.value = SkinLoader.parse(bytes)
                 } catch (e: Exception) {
                     // TODO: notify user of error
                     logger.e(e) { "Failed to load skin file" }

@@ -28,7 +28,6 @@ import co.touchlab.kermit.Logger
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -39,6 +38,7 @@ import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.SkinLoader
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -53,13 +53,12 @@ fun MainViewController() =
         val skin = remember { mutableStateOf<Map<String, SkinObject>>(emptyMap()) }
 
         remember {
-            val json = Json { ignoreUnknownKeys = true }
             appContainer.clientSettings
                 .observeSkinFile()
-                .onEach { skinFile ->
+                .onEach {
                     val bytes = Res.readBytes("files/skin.json")
                     try {
-                        skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+                        skin.value = SkinLoader.parse(bytes)
                     } catch (e: Exception) {
                         logger.e(e) { "Failed to load skin file" }
                     }
