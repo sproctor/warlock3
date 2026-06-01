@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose.model
 import warlockfe.warlock3.core.text.StyleDefinition
 
 sealed interface ViewHighlight {
-    val styles: Map<Int, StyleDefinition>
     val sound: String?
 
     fun containsMatchIn(text: String): Boolean
@@ -13,7 +12,7 @@ data class LiteralHighlight(
     val literal: String,
     val matchPartialWord: Boolean,
     val ignoreCase: Boolean,
-    override val styles: Map<Int, StyleDefinition>,
+    val style: StyleDefinition?,
     override val sound: String?,
 ) : ViewHighlight {
     override fun containsMatchIn(text: String): Boolean {
@@ -30,7 +29,7 @@ data class LiteralHighlight(
 
 data class RegexHighlight(
     val regex: Regex,
-    override val styles: Map<Int, StyleDefinition>,
+    val styles: Map<Int, StyleDefinition>,
     override val sound: String?,
 ) : ViewHighlight {
     override fun containsMatchIn(text: String): Boolean = regex.containsMatchIn(text)

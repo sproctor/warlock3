@@ -87,6 +87,16 @@ class WindowSettingsRepository(
         }
     }
 
+    suspend fun setNameFilter(
+        characterId: String,
+        name: String,
+        nameFilter: Boolean,
+    ) {
+        withContext(NonCancellable) {
+            windowSettingsDao.setNameFilter(characterId = characterId, name = name, nameFilter = nameFilter)
+        }
+    }
+
     suspend fun setPosition(
         characterId: String,
         name: String,

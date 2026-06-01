@@ -230,6 +230,7 @@ fun GameView(
                     },
                     onCloseClick = viewModel::closeWindow,
                     saveStyle = viewModel::saveWindowStyle,
+                    saveNameFilter = viewModel::saveWindowNameFilter,
                     onWindowSelect = viewModel::selectWindow,
                     scrollEvents = viewModel.scrollEvents.collectAsState().value,
                     handledScrollEvent = viewModel::handledScrollEvent,
@@ -283,6 +284,7 @@ fun GameTextWindows(
     onDrop: (DropResult) -> Unit,
     onCloseClick: (String) -> Unit,
     saveStyle: (String, StyleDefinition) -> Unit,
+    saveNameFilter: (String, Boolean) -> Unit,
     onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -310,6 +312,7 @@ fun GameTextWindows(
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
+                saveNameFilter = saveNameFilter,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
@@ -335,6 +338,7 @@ fun GameTextWindows(
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
                     saveStyle = saveStyle,
+                    saveNameFilter = saveNameFilter,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -356,6 +360,9 @@ fun GameTextWindows(
                         onCloseClick = {},
                         saveStyle = {
                             saveStyle(mainWindowUiState.name, it)
+                        },
+                        saveNameFilter = {
+                            saveNameFilter(mainWindowUiState.name, it)
                         },
                         onSelect = { onWindowSelect(mainWindowUiState.name) },
                         scrollEvents = scrollEvents,
@@ -379,6 +386,7 @@ fun GameTextWindows(
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
                     saveStyle = saveStyle,
+                    saveNameFilter = saveNameFilter,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -404,6 +412,7 @@ fun GameTextWindows(
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
                 saveStyle = saveStyle,
+                saveNameFilter = saveNameFilter,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,

@@ -19,6 +19,7 @@ import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerButton
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
+import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.util.toColor
@@ -33,6 +34,9 @@ fun DesktopWindowSettingsDialog(
     style: StyleDefinition,
     defaultStyle: StyleDefinition,
     saveStyle: (StyleDefinition) -> Unit,
+    nameFilterOption: Boolean = false,
+    nameFilter: Boolean = false,
+    saveNameFilter: (Boolean) -> Unit = {},
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
     var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
@@ -104,6 +108,13 @@ fun DesktopWindowSettingsDialog(
                 },
                 text = "Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}",
             )
+            if (nameFilterOption) {
+                WarlockCheckboxRow(
+                    checked = nameFilter,
+                    onCheckedChange = { saveNameFilter(it) },
+                    text = "Only show lines with names in list",
+                )
+            }
             WarlockButton(
                 onClick = { saveStyle(StyleDefinition()) },
                 text = "Revert to defaults",

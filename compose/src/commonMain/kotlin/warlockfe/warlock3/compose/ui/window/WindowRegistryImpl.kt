@@ -88,58 +88,64 @@ class WindowRegistryImpl(
 
     private val characterId = MutableStateFlow("global")
 
+    private val names: StateFlow<List<ViewHighlight>> =
+        characterId
+            .flatMapLatest { characterId ->
+                nameRepository.observeForCharacter(characterId).map { names ->
+                    names.map { name ->
+                        LiteralHighlight(
+                            literal = name.text,
+                            matchPartialWord = false,
+                            ignoreCase = false,
+                            style =
+                                StyleDefinition(
+                                    textColor = name.textColor,
+                                    backgroundColor = name.backgroundColor,
+                                ),
+                            sound = name.sound,
+                        )
+                    }
+                }
+            }.stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
+
     private val highlights: StateFlow<List<ViewHighlight>> =
         characterId
             .flatMapLatest { characterId ->
-                combine(
-                    highlightRepository.observeForCharacter(characterId),
-                    nameRepository.observeForCharacter(characterId),
-                ) { highlights, names ->
-                    val generalHighlights =
-                        highlights.mapNotNull { highlight ->
-                            if (highlight.isRegex) {
-                                try {
-                                    RegexHighlight(
-                                        regex =
-                                            Regex(
-                                                pattern = highlight.pattern,
-                                                options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
-                                            ),
-                                        styles = highlight.styles,
-                                        sound = highlight.sound,
-                                    )
-                                } catch (_: Exception) {
-                                    // client.debug("Error while parsing highlight (${e.message}): $highlight")
-                                    null
-                                }
-                            } else {
-                                LiteralHighlight(
-                                    literal = highlight.pattern,
-                                    matchPartialWord = highlight.matchPartialWord,
-                                    ignoreCase = highlight.ignoreCase,
+                highlightRepository.observeForCharacter(characterId).map { highlights ->
+                    highlights.mapNotNull { highlight ->
+                        if (highlight.isRegex) {
+                            try {
+                                RegexHighlight(
+                                    regex =
+                                        Regex(
+                                            pattern = highlight.pattern,
+                                            options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                                        ),
                                     styles = highlight.styles,
                                     sound = highlight.sound,
                                 )
+                            } catch (_: Exception) {
+                                // client.debug("Error while parsing highlight (${e.message}): $highlight")
+                                null
                             }
-                        }
-                    val nameHighlights =
-                        names.map { name ->
+                        } else {
                             LiteralHighlight(
-                                literal = name.text,
-                                matchPartialWord = false,
-                                ignoreCase = false,
-                                styles =
-                                    mapOf(
-                                        0 to
-                                            StyleDefinition(
-                                                textColor = name.textColor,
-                                                backgroundColor = name.backgroundColor,
-                                            ),
-                                    ),
-                                sound = name.sound,
+                                literal = highlight.pattern,
+                                matchPartialWord = highlight.matchPartialWord,
+                                ignoreCase = highlight.ignoreCase,
+                                style = highlight.styles[0],
+                                sound = highlight.sound,
                             )
                         }
-                    generalHighlights + nameHighlights
+                    }
+                }
+            }.let { generalHighlights ->
+                combine(generalHighlights, names) { general, nameHighlights ->
+                    general + nameHighlights
                 }
             }.stateIn(
                 scope = scope,
@@ -178,6 +184,7 @@ class WindowRegistryImpl(
                 id = name,
                 maxLines = maxLines.value,
                 highlights = highlights,
+                names = names,
                 alterations = alterations,
                 presets = presets,
                 soundPlayer = soundPlayer,
