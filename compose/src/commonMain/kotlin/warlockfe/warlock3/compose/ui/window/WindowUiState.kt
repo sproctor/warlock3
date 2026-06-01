@@ -14,6 +14,7 @@ data class WindowUiState(
     val width: Int?,
     val height: Int?,
     val data: WindowData?,
+    val nameFilter: Boolean = false,
 )
 
 sealed interface WindowData

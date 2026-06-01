@@ -225,6 +225,7 @@ fun DesktopGameView(
                     },
                     onCloseClick = viewModel::closeWindow,
                     saveStyle = viewModel::saveWindowStyle,
+                    saveNameFilter = viewModel::saveWindowNameFilter,
                     onWindowSelect = viewModel::selectWindow,
                     scrollEvents = viewModel.scrollEvents.collectAsState().value,
                     handledScrollEvent = viewModel::handledScrollEvent,

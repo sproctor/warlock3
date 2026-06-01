@@ -19,7 +19,8 @@ class StreamWindowHandler : BaseElementListener() {
                 subtitle = element.attributes["subtitle"],
                 ifClosed = (element.attributes["ifClosed"] ?: "main").takeIf { it.isNotBlank() },
                 styleIfClosed = element.attributes["styleIfClosed"],
-                timestamp = element.attributes["timestamp"] != null,
+                nameFilterOption = element.attributes["nameFilterOption"].toBoolean(),
+                timestamp = element.attributes["timestamp"].equals("on", ignoreCase = true),
             ),
         )
     }

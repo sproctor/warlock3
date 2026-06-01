@@ -31,7 +31,7 @@ private fun AnnotatedString.Builder.applyLiteralHighlight(
     outerSpans: List<AnnotatedString.Range<SpanStyle>>,
     entireLineStyles: MutableList<StyleDefinition>,
 ) {
-    val style = highlight.styles[0] ?: return
+    val style = highlight.style ?: return
     val needle = highlight.literal
     if (needle.isEmpty()) return
     val needleLen = needle.length

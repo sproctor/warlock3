@@ -932,6 +932,7 @@ class WraythClient(
                     windowType = WindowType.STREAM,
                     showTimestamps = window.timestamp,
                     backgroundImage = existing?.backgroundImage,
+                    nameFilterOption = window.nameFilterOption,
                 )
             windowInfo.replaceOrAdd(info) { it.name == window.name }
         }
