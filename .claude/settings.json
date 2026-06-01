@@ -23,6 +23,7 @@
       "Bash(java:*)",
       "Bash(jar:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": ["..", "/tmp", "~/.gradle/caches"]
   }
 }

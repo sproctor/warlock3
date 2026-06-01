@@ -40,7 +40,7 @@ val defaultStyles =
         "default" to
             StyleDefinition(
                 textColor = WarlockColor("#F0F0FF"),
-                backgroundColor = WarlockColor("#191932"),
+                backgroundColor = WarlockColor("#2B2D30"),
             ),
         "bold" to
             StyleDefinition(
@@ -57,7 +57,7 @@ val defaultStyles =
             ),
         "error" to
             StyleDefinition(
-                textColor = WarlockColor(red = 0xFF, green = 0, blue = 0),
+                textColor = WarlockColor("#DB5C5C"),
             ),
         "link" to
             StyleDefinition(
