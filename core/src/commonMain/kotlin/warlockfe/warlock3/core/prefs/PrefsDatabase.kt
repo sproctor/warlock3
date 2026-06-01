@@ -21,6 +21,7 @@ import warlockfe.warlock3.core.prefs.dao.HighlightDao
 import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.dao.NameDao
 import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
+import warlockfe.warlock3.core.prefs.dao.ProgressBarSettingDao
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.dao.VariableDao
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
@@ -37,11 +38,12 @@ import warlockfe.warlock3.core.prefs.models.HighlightStyleEntity
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.PresetStyleEntity
+import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 
-const val PREFS_DATABASE_VERSION = 17
+const val PREFS_DATABASE_VERSION = 18
 
 @Database(
     entities = [
@@ -58,6 +60,7 @@ const val PREFS_DATABASE_VERSION = 17
         MacroEntity::class,
         NameEntity::class,
         PresetStyleEntity::class,
+        ProgressBarSettingEntity::class,
         ScriptDirEntity::class,
         VariableEntity::class,
         WindowSettingsEntity::class,
@@ -73,6 +76,7 @@ const val PREFS_DATABASE_VERSION = 17
         AutoMigration(from = 13, to = 14),
         AutoMigration(from = 15, to = 16),
         AutoMigration(from = 16, to = 17),
+        AutoMigration(from = 17, to = 18),
     ],
 )
 @TypeConverters(DatabaseConverters::class)
@@ -104,6 +108,8 @@ abstract class PrefsDatabase : RoomDatabase() {
     abstract fun nameDao(): NameDao
 
     abstract fun presetStyleDao(): PresetStyleDao
+
+    abstract fun progressBarSettingDao(): ProgressBarSettingDao
 
     abstract fun scriptDirDao(): ScriptDirDao
 

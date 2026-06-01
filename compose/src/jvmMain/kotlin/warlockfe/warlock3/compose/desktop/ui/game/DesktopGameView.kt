@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,8 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.desktop.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.desktop.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
@@ -164,61 +167,70 @@ fun DesktopGameView(
             val rightWindows by viewModel.rightWindowUiStates.collectAsState()
             val topWindows by viewModel.topWindowUiStates.collectAsState()
             val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
-            // WindowView (main text pane) still M3 — fall through. Migrated in step 8.
-            DesktopGameTextWindows(
-                modifier = Modifier.weight(1f),
-                leftWindowUiStates = leftWindows,
-                rightWindowUiStates = rightWindows,
-                topWindowUiStates = topWindows,
-                bottomWindowUiStates = bottomWindows,
-                mainWindowUiState = mainWindow.value,
-                defaultStyle = defaultStyle,
-                selectedWindow = viewModel.selectedWindow.collectAsState().value,
-                openWindows = openWindows,
-                topHeight = viewModel.topHeight.collectAsState(null).value,
-                bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
-                leftWidth = viewModel.leftWidth.collectAsState(null).value,
-                rightWidth = viewModel.rightWidth.collectAsState(null).value,
-                menuData = menuData,
-                onActionClick = { action ->
-                    when (action) {
-                        is WarlockAction.SendCommand -> {
-                            viewModel.sendCommand(action.command)
-                            null
+            val progressBarSettings by viewModel.progressBarSettings.collectAsState()
+            CompositionLocalProvider(
+                LocalProgressBarColors provides
+                    ProgressBarColorState(
+                        settings = progressBarSettings,
+                        saveColors = viewModel::saveProgressBarColors,
+                    ),
+            ) {
+                // WindowView (main text pane) still M3 — fall through. Migrated in step 8.
+                DesktopGameTextWindows(
+                    modifier = Modifier.weight(1f),
+                    leftWindowUiStates = leftWindows,
+                    rightWindowUiStates = rightWindows,
+                    topWindowUiStates = topWindows,
+                    bottomWindowUiStates = bottomWindows,
+                    mainWindowUiState = mainWindow.value,
+                    defaultStyle = defaultStyle,
+                    selectedWindow = viewModel.selectedWindow.collectAsState().value,
+                    openWindows = openWindows,
+                    topHeight = viewModel.topHeight.collectAsState(null).value,
+                    bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
+                    leftWidth = viewModel.leftWidth.collectAsState(null).value,
+                    rightWidth = viewModel.rightWidth.collectAsState(null).value,
+                    menuData = menuData,
+                    onActionClick = { action ->
+                        when (action) {
+                            is WarlockAction.SendCommand -> {
+                                viewModel.sendCommand(action.command)
+                                null
+                            }
+                            is WarlockAction.SendCommandWithLookup -> {
+                                viewModel.sendCommand(action.command)
+                                null
+                            }
+                            is WarlockAction.OpenMenu -> action.onClick()
+                            else -> null
                         }
-                        is WarlockAction.SendCommandWithLookup -> {
-                            viewModel.sendCommand(action.command)
-                            null
+                    },
+                    onWidthChange = { name, width -> viewModel.setWindowWidth(name, width) },
+                    onHeightChange = { name, height -> viewModel.setWindowHeight(name, height) },
+                    onSizeChange = viewModel::setLocationSize,
+                    onDrop = { result ->
+                        if (result.sourceLocation == result.target.location) {
+                            viewModel.changeWindowPositions(
+                                result.sourceLocation,
+                                result.sourceIndex,
+                                result.target.insertionIndex,
+                            )
+                        } else {
+                            viewModel.moveWindowToPosition(
+                                result.name,
+                                result.target.location,
+                                result.target.insertionIndex,
+                            )
                         }
-                        is WarlockAction.OpenMenu -> action.onClick()
-                        else -> null
-                    }
-                },
-                onWidthChange = { name, width -> viewModel.setWindowWidth(name, width) },
-                onHeightChange = { name, height -> viewModel.setWindowHeight(name, height) },
-                onSizeChange = viewModel::setLocationSize,
-                onDrop = { result ->
-                    if (result.sourceLocation == result.target.location) {
-                        viewModel.changeWindowPositions(
-                            result.sourceLocation,
-                            result.sourceIndex,
-                            result.target.insertionIndex,
-                        )
-                    } else {
-                        viewModel.moveWindowToPosition(
-                            result.name,
-                            result.target.location,
-                            result.target.insertionIndex,
-                        )
-                    }
-                },
-                onCloseClick = viewModel::closeWindow,
-                saveStyle = viewModel::saveWindowStyle,
-                onWindowSelect = viewModel::selectWindow,
-                scrollEvents = viewModel.scrollEvents.collectAsState().value,
-                handledScrollEvent = viewModel::handledScrollEvent,
-                clearStream = viewModel::clearStream,
-            )
+                    },
+                    onCloseClick = viewModel::closeWindow,
+                    saveStyle = viewModel::saveWindowStyle,
+                    onWindowSelect = viewModel::selectWindow,
+                    scrollEvents = viewModel.scrollEvents.collectAsState().value,
+                    handledScrollEvent = viewModel::handledScrollEvent,
+                    clearStream = viewModel::clearStream,
+                )
+            }
         }
         DesktopGameBottomBar(viewModel, entryFocusRequester)
     }

@@ -37,6 +37,7 @@ import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
@@ -75,6 +76,7 @@ abstract class AppContainer(
     val highlightRepository = HighlightRepositoryImpl(database.highlightDao())
     val nameRepository = NameRepositoryImpl(database.nameDao())
     val presetRepository = PresetRepository(database.presetStyleDao())
+    val progressBarSettingRepository = ProgressBarSettingRepository(database.progressBarSettingDao())
     val clientSettings = ClientSettingRepository(database.clientSettingDao(), warlockDirs)
     val loggingRepository = LoggingRepository(clientSettings, externalScope)
     val scriptDirRepository =
@@ -125,6 +127,7 @@ abstract class AppContainer(
             aliasRepository = aliasRepository,
             scriptManagerFactory = scriptManagerFactory,
             windowSettingsRepository = windowSettingRepository,
+            progressBarSettingRepository = progressBarSettingRepository,
             ioDispatcher = ioDispatcher,
         )
     }

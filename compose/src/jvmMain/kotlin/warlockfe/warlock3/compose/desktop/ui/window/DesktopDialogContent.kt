@@ -1,11 +1,17 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.LinkAnnotation
@@ -19,6 +25,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
+import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.window.DialogButton
 import warlockfe.warlock3.compose.ui.window.DialogImage
@@ -29,6 +36,7 @@ import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
@@ -52,7 +60,7 @@ fun DesktopDialogContent(
             when (data) {
                 is DialogObject.Skin -> DialogSkin(data = data)
                 is DialogObject.ProgressBar ->
-                    DialogProgressBar(
+                    ProgressBarWithColorMenu(
                         skinObject = skinObject,
                         data = data,
                     )
@@ -110,6 +118,75 @@ fun DesktopDialogContent(
                 }
             }
         }
+    }
+}
+
+private enum class ProgressBarColorTarget {
+    Bar,
+    Background,
+    Text,
+}
+
+@Composable
+private fun ProgressBarWithColorMenu(
+    skinObject: SkinObject?,
+    data: DialogObject.ProgressBar,
+) {
+    val colorState = LocalProgressBarColors.current
+    val setting = colorState.settings[data.id]
+    val barColor = setting?.barColor ?: WarlockColor.Unspecified
+    val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
+    val textColor = setting?.textColor ?: WarlockColor.Unspecified
+
+    var editingTarget by remember { mutableStateOf<ProgressBarColorTarget?>(null) }
+
+    ContextMenuArea(
+        items = {
+            listOf(
+                ContextMenuItem("Change bar color ...") { editingTarget = ProgressBarColorTarget.Bar },
+                ContextMenuItem("Change background color ...") { editingTarget = ProgressBarColorTarget.Background },
+                ContextMenuItem("Change text color ...") { editingTarget = ProgressBarColorTarget.Text },
+                ContextMenuItem("Reset colors") {
+                    colorState.saveColors(
+                        data.id,
+                        WarlockColor.Unspecified,
+                        WarlockColor.Unspecified,
+                        WarlockColor.Unspecified,
+                    )
+                },
+            )
+        },
+    ) {
+        DialogProgressBar(
+            modifier = Modifier.fillMaxSize(),
+            skinObject = skinObject,
+            data = data,
+            barColorOverride = barColor,
+            backgroundColorOverride = backgroundColor,
+            textColorOverride = textColor,
+        )
+    }
+
+    editingTarget?.let { target ->
+        val current =
+            when (target) {
+                ProgressBarColorTarget.Bar -> barColor
+                ProgressBarColorTarget.Background -> backgroundColor
+                ProgressBarColorTarget.Text -> textColor
+            }
+        DesktopColorPickerDialog(
+            initialColor = current.toColor(),
+            onCloseRequest = { editingTarget = null },
+            onColorSelect = { chosen ->
+                colorState.saveColors(
+                    data.id,
+                    if (target == ProgressBarColorTarget.Bar) chosen else barColor,
+                    if (target == ProgressBarColorTarget.Background) chosen else backgroundColor,
+                    if (target == ProgressBarColorTarget.Text) chosen else textColor,
+                )
+                editingTarget = null
+            },
+        )
     }
 }
 

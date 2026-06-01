@@ -63,12 +63,14 @@ import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.macro.parseMacro
+import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
 import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
@@ -78,11 +80,13 @@ import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 const val CLIENT_COMMAND_PREFIX = '/'
@@ -98,6 +102,7 @@ class GameViewModel(
     val characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
     private val windowRegistry: WindowRegistry,
+    private val progressBarSettingRepository: ProgressBarSettingRepository,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel(),
     MacroHandler {
@@ -152,6 +157,22 @@ class GameViewModel(
                 scope = viewModelScope,
                 started = SharingStarted.Lazily,
                 initialValue = emptyList(),
+            )
+
+    val progressBarSettings =
+        client.characterId
+            .flatMapLatest { characterId ->
+                if (characterId != null) {
+                    progressBarSettingRepository
+                        .observeByCharacter(characterId)
+                        .map { settings -> settings.associateBy { it.id } }
+                } else {
+                    flow<Map<String, ProgressBarSettingEntity>> {}
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Lazily,
+                initialValue = emptyMap(),
             )
 
     val openWindows =
@@ -668,7 +689,7 @@ class GameViewModel(
             }
 
             'p' -> {
-                delay(1_000L)
+                delay(1.seconds)
             }
 
             '?' -> {
@@ -909,6 +930,25 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setStyle(characterId = characterId, name = name, style = style)
+            }
+        }
+    }
+
+    fun saveProgressBarColors(
+        id: String,
+        barColor: WarlockColor,
+        backgroundColor: WarlockColor,
+        textColor: WarlockColor,
+    ) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                progressBarSettingRepository.setColors(
+                    characterId = characterId,
+                    id = id,
+                    barColor = barColor,
+                    backgroundColor = backgroundColor,
+                    textColor = textColor,
+                )
             }
         }
     }
