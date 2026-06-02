@@ -4,13 +4,18 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -85,6 +92,8 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.component.separator
+import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
@@ -103,6 +112,7 @@ import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
+import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
@@ -660,6 +670,51 @@ private class OffsetPositionProvider(
     }
 }
 
+private sealed interface MenuNode {
+    val label: String
+}
+
+private class MenuActionNode(
+    override val label: String,
+    val action: suspend () -> Unit,
+) : MenuNode
+
+private class MenuCategoryNode(
+    override val label: String,
+    val children: List<MenuNode>,
+) : MenuNode
+
+/**
+ * Builds the drill-down menu tree from the flat item list, preserving the legacy category encoding:
+ * the top-level grouping key is `category` up to the first `-`; a key containing `_` denotes a
+ * submenu whose label is the part after the `_`. Within a submenu, items are grouped by the second
+ * `-` segment, which (when present) is itself a verbatim sub-submenu label.
+ */
+private fun buildMenuTree(items: List<WarlockMenuItem>): List<MenuNode> {
+    val groups = items.groupBy { it.category.split('-').first() }
+    return groups.keys.sorted().flatMap { category ->
+        val groupItems = groups.getValue(category)
+        if (!category.contains('_')) {
+            groupItems.map { MenuActionNode(it.label, it.action) }
+        } else {
+            val subgroups = groupItems.groupBy { it.category.split('-').getOrNull(1) }
+            val children =
+                buildList {
+                    subgroups[null]?.forEach { add(MenuActionNode(it.label, it.action)) }
+                    subgroups.keys.filterNotNull().sorted().forEach { subcategory ->
+                        add(
+                            MenuCategoryNode(
+                                label = subcategory,
+                                children = subgroups.getValue(subcategory).map { MenuActionNode(it.label, it.action) },
+                            ),
+                        )
+                    }
+                }
+            listOf(MenuCategoryNode(label = category.split('_').getOrNull(1) ?: "Unknown", children = children))
+        }
+    }
+}
+
 @Composable
 private fun ActionContextMenu(
     offset: Offset?,
@@ -670,6 +725,13 @@ private fun ActionContextMenu(
     val anchorPx =
         offset?.let { IntOffset(it.x.toInt(), it.y.toInt()) } ?: IntOffset.Zero
     val positionProvider = remember(anchorPx) { OffsetPositionProvider(anchorPx) }
+    // Items arrive asynchronously after the menu opens (initially empty), so key on the items, not
+    // the menu id, or the tree would stay empty.
+    val rootNodes = remember(menuData.items) { buildMenuTree(menuData.items) }
+    // Nested popups grab focus on desktop and trap interaction, so we navigate within a single
+    // popup instead: each category drills in, the back row returns to the previous level. Reset the
+    // drill path only when a new menu opens (id changes), not when items load for the current one.
+    var path by remember(menuData.id) { mutableStateOf<List<MenuCategoryNode>>(emptyList()) }
     PopupMenu(
         onDismissRequest = {
             onDismiss()
@@ -677,69 +739,105 @@ private fun ActionContextMenu(
         },
         popupPositionProvider = positionProvider,
     ) {
-        val groups = menuData.items.groupBy { it.category.split('-').first() }
-        val categories = groups.keys.sorted()
-        categories.forEach { category ->
-            val items = groups[category]!!
-            if (!category.contains('_')) {
-                items.forEach { item ->
-                    Logger.d { "Menu item: $item" }
+        val currentNodes = path.lastOrNull()?.children ?: rootNodes
+        // Navigation rows use passiveItem + a custom clickable: Jewel's selectableItem force-closes
+        // the whole menu on click, which would dismiss the popup instead of drilling in/out.
+        if (path.isNotEmpty()) {
+            passiveItem {
+                NavMenuItem(
+                    label = path.last().label,
+                    leading = "←",
+                    onClick = { path = path.dropLast(1) },
+                )
+            }
+            separator()
+        }
+        currentNodes.forEach { node ->
+            when (node) {
+                is MenuActionNode ->
                     selectableItem(
                         selected = false,
                         onClick = {
                             scope.launch {
-                                item.action()
+                                node.action()
                                 onDismiss()
                             }
                         },
                     ) {
-                        Text(item.label)
+                        Text(node.label)
                     }
-                }
-            } else {
-                submenu(
-                    submenu = {
-                        val subgroups = items.groupBy { it.category.split('-').getOrNull(1) }
-                        subgroups[null]?.forEach { item ->
-                            selectableItem(
-                                selected = false,
-                                onClick = {
-                                    scope.launch {
-                                        item.action()
-                                        onDismiss()
-                                    }
-                                },
-                            ) {
-                                Text(item.label)
-                            }
-                        }
-                        val subcategories = subgroups.keys.filterNotNull().sorted()
-                        subcategories.forEach { subcategory ->
-                            submenu(
-                                submenu = {
-                                    subgroups[subcategory]?.forEach { item ->
-                                        selectableItem(
-                                            selected = false,
-                                            onClick = {
-                                                scope.launch {
-                                                    item.action()
-                                                    onDismiss()
-                                                }
-                                            },
-                                        ) {
-                                            Text(item.label)
-                                        }
-                                    }
-                                },
-                            ) {
-                                Text(subcategory)
-                            }
-                        }
-                    },
-                ) {
-                    Text(category.split('_').getOrNull(1) ?: "Unknown")
-                }
+
+                is MenuCategoryNode ->
+                    passiveItem {
+                        NavMenuItem(
+                            label = node.label,
+                            trailing = "›",
+                            onClick = { path = path + node },
+                        )
+                    }
             }
+        }
+    }
+}
+
+/** A menu row that navigates within the popup (drill in/out) without closing it. */
+@Composable
+private fun NavMenuItem(
+    label: String,
+    onClick: () -> Unit,
+    leading: String? = null,
+    trailing: String? = null,
+) {
+    val style = JewelTheme.menuStyle
+    val itemColors = style.colors.itemColors
+    val itemMetrics = style.metrics.itemMetrics
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
+    // Jewel's selectableItem highlights while focused and grabs focus on hover; take focus on hover
+    // here too so the previously hovered selectable item doesn't stay highlighted.
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (interaction is HoverInteraction.Enter) {
+                focusRequester.requestFocus()
+            }
+        }
+    }
+    val background =
+        when {
+            pressed -> itemColors.backgroundPressed
+            hovered -> itemColors.backgroundHovered
+            else -> itemColors.background
+        }
+    val contentColor =
+        when {
+            pressed -> itemColors.contentPressed
+            hovered -> itemColors.contentHovered
+            else -> itemColors.content
+        }
+    androidx.compose.foundation.layout.Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .background(background, RoundedCornerShape(itemMetrics.selectionCornerSize))
+                .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+                .defaultMinSize(minHeight = itemMetrics.minHeight)
+                .padding(itemMetrics.contentPadding),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (leading != null) {
+            Text(text = leading, color = contentColor)
+        }
+        Text(
+            modifier = Modifier.weight(1f),
+            text = label,
+            color = contentColor,
+        )
+        if (trailing != null) {
+            Text(text = trailing, color = contentColor)
         }
     }
 }
