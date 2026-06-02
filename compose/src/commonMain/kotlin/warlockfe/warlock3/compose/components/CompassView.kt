@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -27,7 +28,7 @@ private const val DEFAULT_COMPASS_HEIGHT = 49
 @Composable
 fun CompassView(
     size: Dp,
-    state: CompassState,
+    directions: Set<DirectionType>,
     onClick: (DirectionType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -55,11 +56,11 @@ fun CompassView(
         modifier =
             modifier
                 .size(width = size, height = height)
-                .pointerInput(children, state, scale) {
+                .pointerInput(children, directions, scale) {
                     detectTapGestures { offset ->
                         val x = offset.x / scale
                         val y = offset.y / scale
-                        state.directions
+                        directions
                             .mapNotNull { direction -> children[direction.value]?.let { direction to it.compassRect() } }
                             .filter { (_, rect) -> x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom }
                             // Smallest hit-rect wins so the small cardinal/diagonal arrows take
@@ -75,7 +76,7 @@ fun CompassView(
                 dstSize = IntSize((compassWidth * scale).roundToInt(), (compassHeight * scale).roundToInt()),
             )
         }
-        state.directions.forEach { direction ->
+        directions.forEach { direction ->
             val child = children[direction.value] ?: return@forEach
             val image = child.sprite?.let { sprites[it] } ?: return@forEach
             val rect = child.compassRect()
@@ -96,26 +97,33 @@ private fun SkinObject.compassRect(): IntRect =
         size = IntSize(width ?: 0, height ?: 0),
     )
 
-data class CompassState(
-    val directions: Set<DirectionType>,
-)
-
 @Preview
 @Composable
 private fun EmptyCompassPreview() {
-    CompassView(
-        size = 80.dp,
-        state = CompassState(directions = emptySet()),
-        onClick = {},
-    )
+    CompositionLocalProvider(LocalSkin provides previewCompassSkin()) {
+        CompassView(
+            size = 80.dp,
+            directions = emptySet(),
+            onClick = {},
+        )
+    }
 }
 
 @Preview
 @Composable
 private fun CompassPreview() {
-    CompassView(
-        size = 80.dp,
-        state = CompassState(directions = setOf(DirectionType.North, DirectionType.West)),
-        onClick = {},
-    )
+    CompositionLocalProvider(LocalSkin provides previewCompassSkin()) {
+        CompassView(
+            size = 80.dp,
+            directions =
+                setOf(
+                    DirectionType.North,
+                    DirectionType.East,
+                    DirectionType.West,
+                    DirectionType.Out,
+                    DirectionType.Up,
+                ),
+            onClick = {},
+        )
+    }
 }

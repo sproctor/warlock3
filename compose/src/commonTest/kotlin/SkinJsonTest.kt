@@ -64,7 +64,11 @@ class SkinJsonTest {
         assertEquals(15, north?.height)
         assertEquals(
             "images/compassCardinal.png",
-            skin["compass"]?.children?.get("cardinal")?.image?.file,
+            skin["compass"]
+                ?.children
+                ?.get("cardinal")
+                ?.image
+                ?.file,
         )
     }
 

@@ -478,7 +478,7 @@ fun GameBottomBar(
             )
             CompassView(
                 size = 88.dp,
-                state = viewModel.compassState.collectAsState().value,
+                directions = viewModel.compassState.collectAsState().value,
                 onClick = { direction ->
                     viewModel.sendCommand(direction.value)
                 },

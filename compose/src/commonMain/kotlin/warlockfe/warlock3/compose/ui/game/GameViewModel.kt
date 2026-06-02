@@ -42,7 +42,6 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
-import warlockfe.warlock3.compose.components.CompassState
 import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
@@ -57,6 +56,7 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.compass.DirectionType
 import warlockfe.warlock3.core.macro.MacroCommands
 import warlockfe.warlock3.core.macro.MacroHandler
 import warlockfe.warlock3.core.macro.MacroKeyCombo
@@ -116,8 +116,8 @@ class GameViewModel(
     private val _scrollEvents = MutableStateFlow<PersistentList<ScrollEvent>>(persistentListOf())
     val scrollEvents = _scrollEvents.asStateFlow()
 
-    private val _compassState = MutableStateFlow(CompassState(emptySet()))
-    val compassState: StateFlow<CompassState> = _compassState
+    private val _compassState = MutableStateFlow(emptySet<DirectionType>())
+    val compassState = _compassState.asStateFlow()
 
     val vitalBars: ComposeDialogState = windowRegistry.getOrCreateDialog("minivitals") as ComposeDialogState
 
@@ -433,7 +433,7 @@ class GameViewModel(
                 when (event) {
 
                     is ClientCompassEvent -> {
-                        _compassState.value = CompassState(directions = event.directions.toSet())
+                        _compassState.value = event.directions.toSet()
                     }
 
                     is ClientOpenUrlEvent -> {
