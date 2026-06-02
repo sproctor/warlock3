@@ -47,7 +47,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -82,15 +81,12 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
 import warlockfe.warlock3.compose.ui.window.StreamImageLine
@@ -736,33 +732,15 @@ private fun ActionContextMenu(
                                     }
                                 },
                             ) {
-                                SubmenuLabel(subcategory)
+                                Text(subcategory)
                             }
                         }
                     },
                 ) {
-                    SubmenuLabel(category.split('_').getOrNull(1) ?: "Unknown")
+                    Text(category.split('_').getOrNull(1) ?: "Unknown")
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SubmenuLabel(label: String) {
-    androidx.compose.foundation.layout.Row(
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            modifier = Modifier.weight(1f),
-            text = label,
-        )
-        Image(
-            modifier = Modifier.padding(start = 8.dp),
-            painter = painterResource(Res.drawable.arrow_right),
-            colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
-            contentDescription = "expandable",
-        )
     }
 }
 
