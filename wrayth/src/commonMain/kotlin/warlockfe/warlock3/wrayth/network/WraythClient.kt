@@ -839,7 +839,7 @@ class WraythClient(
     private suspend fun disconnected() {
         if (!disconnected.value) {
             getMainStream().appendLine(
-                StyledString(text = "Connection closed by server.", style = WarlockStyle.Echo)
+                StyledString(text = "Connection closed by server.", style = WarlockStyle.Echo),
             )
         }
         doDisconnect()
