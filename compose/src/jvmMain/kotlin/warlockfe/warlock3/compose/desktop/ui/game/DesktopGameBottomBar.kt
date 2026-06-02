@@ -73,8 +73,8 @@ fun DesktopGameBottomBar(
             CompassView(
                 size = 88.dp,
                 state = viewModel.compassState.collectAsState().value,
-                onClick = {
-                    viewModel.sendCommand(it.abbreviation)
+                onClick = { direction ->
+                    viewModel.sendCommand(direction.value)
                 },
             )
         }

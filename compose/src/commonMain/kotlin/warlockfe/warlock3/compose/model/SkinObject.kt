@@ -12,6 +12,8 @@ data class SkinObject(
     val bar: String? = null,
     val background: String? = null,
     val image: SkinImage? = null,
+    // Compass: key of the sibling child whose image is the sprite sheet this direction slices from.
+    val sprite: String? = null,
     val children: Map<String, SkinObject> = emptyMap(),
 )
 
