@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
+import org.gradle.api.tasks.bundling.Zip
+import org.gradle.api.tasks.bundling.ZipEntryCompression
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
@@ -108,6 +110,8 @@ kotlin {
         if (!skipIos) {
             iosMain.dependencies {
                 implementation(project(":scripting"))
+                // Pure-Kotlin DEFLATE for the iOS in-memory zip reader (see ZipReader.ios.kt).
+                implementation(libs.kompress.core)
             }
         }
     }
@@ -131,8 +135,30 @@ dependencies {
     androidRuntimeClasspath(libs.compose.ui.tooling)
 }
 
+// The default skin is authored as a directory (skin.json + referenced images) under skin/ and
+// packaged into a zip at build time, instead of committing a binary zip. Reproducible so it doesn't
+// churn between builds. The zip readers on every platform (java.util.zip on JVM/Android, kompress on
+// iOS) handle DEFLATE, so the archive is compressed.
+val packageDefaultSkin by tasks.registering(Zip::class) {
+    from(layout.projectDirectory.dir("skin"))
+    archiveFileName.set("skin.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("generated/skin/files"))
+    entryCompression = ZipEntryCompression.DEFLATED
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
 compose {
     resources {
         publicResClass = true
+        // Attach the generated skin directory to each platform leaf source set rather than
+        // commonMain: a custom directory replaces a source set's convention directory, and the
+        // drawables/fonts live in commonMain's convention directory.
+        val skinResourceDir = packageDefaultSkin.map { layout.buildDirectory.dir("generated/skin").get() }
+        customDirectory(sourceSetName = "jvmMain", directoryProvider = skinResourceDir)
+        customDirectory(sourceSetName = "androidMain", directoryProvider = skinResourceDir)
+        if (!skipIos) {
+            customDirectory(sourceSetName = "iosMain", directoryProvider = skinResourceDir)
+        }
     }
 }

@@ -66,7 +66,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
-import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
@@ -84,6 +83,7 @@ import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
+import warlockfe.warlock3.compose.util.SkinLoader
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
@@ -200,11 +200,6 @@ private class WarlockCommand : CliktCommand() {
 
         val appContainer = JvmAppContainer(database, warlockDirs, SystemFileSystem)
 
-        val json =
-            Json {
-                ignoreUnknownKeys = true
-            }
-
         val skin = mutableStateOf<Map<String, SkinObject>>(emptyMap())
 
         appContainer.clientSettings
@@ -215,9 +210,9 @@ private class WarlockCommand : CliktCommand() {
                         ?.let { File(it) }
                         ?.takeIf { it.exists() }
                         ?.readBytes()
-                        ?: Res.readBytes("files/skin.json")
+                        ?: Res.readBytes("files/skin.zip")
                 try {
-                    skin.value = json.decodeFromString<Map<String, SkinObject>>(bytes.decodeToString())
+                    skin.value = SkinLoader.parse(bytes)
                 } catch (e: Exception) {
                     // TODO: notify user of error
                     logger.e(e) { "Failed to load skin file" }

@@ -1,0 +1,222 @@
+{
+  "HealthBar": {
+    "children": {
+      "health": {
+        "top": 0,
+        "left": 0,
+        "color": "#FFFFFF",
+        "bar": "#800000",
+        "background": "#888888"
+      }
+    }
+  },
+  "HealthBar2": {
+    "children": {
+      "health2": {
+        "top": 0,
+        "left": 0,
+        "color": "#FFFFFF",
+        "bar": "#800000",
+        "background": "#888888"
+      }
+    }
+  },
+  "ManaBar": {
+    "children": {
+      "mana": {
+        "top": 0,
+        "left": 0,
+        "color": "#FFFFFF",
+        "bar": "#0000FF",
+        "background": "#888888"
+      }
+    }
+  },
+  "StaminaBar": {
+    "children": {
+      "stamina": {
+        "top": 0,
+        "left": 0,
+        "color": "#000000",
+        "bar": "#D0982F",
+        "background": "#888888"
+      }
+    }
+  },
+  "SpiritBar": {
+    "children": {
+      "spirit": {
+        "top": 0,
+        "left": 0,
+        "color": "#000000",
+        "bar": "#CCCCCC",
+        "background": "#888888"
+      }
+    }
+  },
+  "InjuriesPanel": {
+    "width": 80,
+    "height": 150,
+    "image": {
+      "type": "image/png",
+      "file": "images/InjuriesPanel.png"
+    },
+    "children": {
+      "nsys": {
+        "top": 26,
+        "left": 60
+      },
+      "leftEye": {
+        "top": 6,
+        "left": 60
+      },
+      "rightEye": {
+        "top": 6,
+        "left": 11
+      },
+      "head": {
+        "top": 3,
+        "left": 36
+      },
+      "neck": {
+        "top": 15,
+        "left": 36
+      },
+      "chest": {
+        "top": 29,
+        "left": 36
+      },
+      "abdomen": {
+        "top": 46,
+        "left": 36
+      },
+      "leftArm": {
+        "top": 49,
+        "left": 60
+      },
+      "rightArm": {
+        "top": 49,
+        "left": 17
+      },
+      "leftHand": {
+        "top": 68,
+        "left": 63
+      },
+      "rightHand": {
+        "top": 68,
+        "left": 10
+      },
+      "back": {
+        "top": 26,
+        "left": 0
+      },
+      "leftLeg": {
+        "top": 104,
+        "left": 49
+      },
+      "rightLeg": {
+        "top": 104,
+        "left": 25
+      },
+      "leftFoot": {
+        "top": 133,
+        "left": 57
+      },
+      "rightFoot": {
+        "top": 133,
+        "left": 21
+      }
+    }
+  },
+  "Injury1": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Injury1.png"
+    }
+  },
+  "Injury2": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Injury2.png"
+    }
+  },
+  "Injury3": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Injury3.png"
+    }
+  },
+  "Scar1": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Scar1.png"
+    }
+  },
+  "Scar2": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Scar2.png"
+    }
+  },
+  "Scar3": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Scar3.png"
+    }
+  },
+  "Nsys1": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Nsys1.png"
+    }
+  },
+  "Nsys2": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Nsys2.png"
+    }
+  },
+  "Nsys3": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Nsys3.png"
+    }
+  },
+  "compass": {
+    "children": {
+      "background": { "image": { "file": "images/compassAllOff.png" } },
+      "cardinal": { "image": { "file": "images/compassCardinal.png" } },
+      "nonCardinal": { "image": { "file": "images/nonCardinal.png" } },
+      "upDown": { "image": { "file": "images/compassUpDownGlow.png" } },
+      "north": { "sprite": "cardinal", "left": 102, "top": 3, "width": 42, "height": 45 },
+      "east": { "sprite": "cardinal", "left": 147, "top": 42, "width": 51, "height": 51 },
+      "south": { "sprite": "cardinal", "left": 96, "top": 99, "width": 54, "height": 48 },
+      "west": { "sprite": "cardinal", "left": 30, "top": 48, "width": 72, "height": 57 },
+      "out": { "sprite": "cardinal", "left": 96, "top": 45, "width": 54, "height": 54 },
+      "northeast": { "sprite": "nonCardinal", "left": 132, "top": 18, "width": 48, "height": 51 },
+      "northwest": { "sprite": "nonCardinal", "left": 72, "top": 21, "width": 51, "height": 51 },
+      "southwest": { "sprite": "nonCardinal", "left": 69, "top": 84, "width": 54, "height": 45 },
+      "southeast": { "sprite": "nonCardinal", "left": 126, "top": 84, "width": 57, "height": 42 },
+      "up": { "sprite": "upDown", "left": 0, "top": 0, "width": 120, "height": 147 },
+      "down": { "sprite": "upDown", "left": 156, "top": 0, "width": 87, "height": 147 }
+    }
+  }
+}

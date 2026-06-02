@@ -12,11 +12,17 @@ data class SkinObject(
     val bar: String? = null,
     val background: String? = null,
     val image: SkinImage? = null,
+    // Compass: key of the sibling child whose image is the sprite sheet this direction slices from.
+    val sprite: String? = null,
     val children: Map<String, SkinObject> = emptyMap(),
 )
 
 @Serializable
 data class SkinImage(
-    val type: String?,
-    val data: String?,
+    val type: String? = null,
+    // Base64-encoded image bytes. Inlined directly in a .json skin, or resolved from [file] when
+    // the skin is loaded from a .zip.
+    val data: String? = null,
+    // Name of a file inside the skin .zip to load the image bytes from. Ignored when [data] is set.
+    val file: String? = null,
 )
