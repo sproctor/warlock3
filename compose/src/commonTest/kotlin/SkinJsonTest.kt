@@ -41,6 +41,38 @@ class SkinJsonTest {
     }
 
     @Test
+    fun compass_direction_parses_sprite_and_rect() {
+        val skinJson =
+            """
+            {
+                "compass": {
+                    "children": {
+                        "cardinal": { "image": { "file": "images/compassCardinal.png" } },
+                        "north": { "sprite": "cardinal", "left": 34, "top": 1, "width": 14, "height": 15 }
+                    }
+                }
+            }
+            """.trimIndent()
+
+        val skin = json.decodeFromString<Map<String, SkinObject>>(skinJson)
+        val north = skin["compass"]?.children?.get("north")
+
+        assertEquals("cardinal", north?.sprite)
+        assertEquals(34, north?.left)
+        assertEquals(1, north?.top)
+        assertEquals(14, north?.width)
+        assertEquals(15, north?.height)
+        assertEquals(
+            "images/compassCardinal.png",
+            skin["compass"]
+                ?.children
+                ?.get("cardinal")
+                ?.image
+                ?.file,
+        )
+    }
+
+    @Test
     fun skin_map_parses() {
         val skinJson =
             """
