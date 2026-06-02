@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import warlockfe.warlock3.compose.model.SkinColor
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
@@ -213,9 +214,9 @@ private fun VitalBarsPreview() {
                             mapOf(
                                 "health" to
                                     SkinObject(
-                                        color = "#FFFFFF",
-                                        bar = "#800000",
-                                        background = "#444444",
+                                        color = SkinColor("#FFFFFF"),
+                                        bar = SkinColor("#800000"),
+                                        background = SkinColor("#444444"),
                                     ),
                             ),
                     ),

@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,14 +47,14 @@ fun WarlockApp(
     modifier: Modifier = Modifier,
 ) {
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
-    AppTheme(
-        useDarkTheme =
-            when (themeSetting) {
-                ThemeSetting.AUTO -> isSystemInDarkTheme()
-                ThemeSetting.LIGHT -> false
-                ThemeSetting.DARK -> true
-            },
-    ) {
+    val darkMode =
+        when (themeSetting) {
+            ThemeSetting.AUTO -> isSystemInDarkTheme()
+            ThemeSetting.LIGHT -> false
+            ThemeSetting.DARK -> true
+        }
+    LaunchedEffect(darkMode) { appContainer.darkMode.value = darkMode }
+    AppTheme(useDarkTheme = darkMode) {
         val gameState = GameState()
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }

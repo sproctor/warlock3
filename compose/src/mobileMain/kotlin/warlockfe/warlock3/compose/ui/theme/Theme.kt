@@ -4,6 +4,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import warlockfe.warlock3.compose.util.LocalDarkTheme
 
 private val LightColors =
     lightColorScheme(
@@ -83,8 +85,10 @@ fun AppTheme(
             DarkColors
         }
 
-    MaterialTheme(
-        colorScheme = colors,
-        content = content,
-    )
+    MaterialTheme(colorScheme = colors) {
+        CompositionLocalProvider(
+            LocalDarkTheme provides useDarkTheme,
+            content = content,
+        )
+    }
 }

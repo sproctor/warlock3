@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.nucleus.core.runtime.Platform
 import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
@@ -25,6 +26,7 @@ import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.modifier.onHover
+import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
@@ -79,6 +81,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                                     Res.drawable.space_dashboard_outlined
                                 },
                             ),
+                        colorFilter = ColorFilter.tint(LocalContentColor.current),
                         contentDescription = null,
                     )
                 }

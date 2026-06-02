@@ -8,12 +8,19 @@ data class SkinObject(
     val left: Int? = null,
     val width: Int? = null,
     val height: Int? = null,
-    val color: String? = null,
-    val bar: String? = null,
-    val background: String? = null,
+    val color: SkinColor? = null,
+    val bar: SkinColor? = null,
+    val background: SkinColor? = null,
     val image: SkinImage? = null,
     // Compass: key of the sibling child whose image is the sprite sheet this direction slices from.
     val sprite: String? = null,
+    // Text-style fields, used by the "presets" section (color = text color, background = background).
+    val bold: Boolean? = null,
+    val italic: Boolean? = null,
+    val underline: Boolean? = null,
+    val entireLine: Boolean? = null,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
     val children: Map<String, SkinObject> = emptyMap(),
 )
 

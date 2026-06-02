@@ -4,7 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.platformLogWriter
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SkinLoader
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -35,8 +35,6 @@ class MainActivity : ComponentActivity() {
         val warlockApplication = application as WarlockApplication
         val appContainer = warlockApplication.appContainer
 
-        val skin = mutableStateOf<Map<String, SkinObject>>(emptyMap())
-
         appContainer.clientSettings
             .observeSkinFile()
             .onEach { skinFile ->
@@ -47,7 +45,7 @@ class MainActivity : ComponentActivity() {
                         ?.readBytes()
                         ?: Res.readBytes("files/skin.zip")
                 try {
-                    skin.value = SkinLoader.parse(bytes)
+                    appContainer.skin.value = SkinLoader.parse(bytes)
                 } catch (e: Exception) {
                     // TODO: notify user of error
                     logger.e(e) { "Failed to load skin file" }
@@ -57,8 +55,9 @@ class MainActivity : ComponentActivity() {
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 
         setContent {
+            val skin by appContainer.skin.collectAsState()
             CompositionLocalProvider(
-                LocalSkin provides skin.value,
+                LocalSkin provides skin,
             ) {
                 WarlockApp(
                     appContainer = appContainer,

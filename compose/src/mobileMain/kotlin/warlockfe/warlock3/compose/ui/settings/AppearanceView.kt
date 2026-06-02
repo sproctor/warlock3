@@ -39,12 +39,14 @@ import warlockfe.warlock3.compose.components.FontUpdate
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.compose.util.toStyleDefinition
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
@@ -70,7 +72,11 @@ fun AppearanceView(
     }
     val presetFlow =
         remember(currentCharacter.id) { presetRepository.observePresetsForCharacter(currentCharacter.id) }
-    val presets by presetFlow.collectAsState(emptyMap())
+    val savedPresets by presetFlow.collectAsState(emptyMap())
+    // Show all presets: the skin's defaults (resolved for the current mode), overridden by saved ones.
+    val skin = LocalSkin.current
+    val isDark = LocalDarkTheme.current
+    val presets = remember(skin, isDark, savedPresets) { skin.toPresets(isDark) + savedPresets }
     val previewLines =
         remember(presets) {
             listOf(
@@ -273,7 +279,7 @@ fun ColumnScope.PresetSettings(
         modifier = modifier.weight(1f).fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 8.dp),
     ) {
-        defaultStyles.keys.forEach { preset ->
+        styleMap.keys.forEach { preset ->
             val style = styleMap[preset]
             if (style != null) {
                 Row(

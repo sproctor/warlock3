@@ -121,8 +121,7 @@ fun DesktopColorPickerDialog(
                     modifier =
                         Modifier
                             .size(40.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp)),
+                            .clip(RoundedCornerShape(6.dp)),
                     controller = controller,
                 )
             }

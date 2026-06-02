@@ -1,5 +1,9 @@
 import kotlinx.serialization.json.Json
+import warlockfe.warlock3.compose.model.SkinColor
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.model.forMode
+import warlockfe.warlock3.compose.util.toPresets
+import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -38,6 +42,63 @@ class SkinJsonTest {
                 ),
             actual = skin,
         )
+    }
+
+    @Test
+    fun skin_color_string_applies_to_both_modes() {
+        val skin = json.decodeFromString<SkinObject>("""{ "background": "#222222" }""")
+
+        assertEquals(SkinColor(light = "#222222", dark = "#222222"), skin.background)
+        assertEquals("#222222", skin.background.forMode(isDark = false))
+        assertEquals("#222222", skin.background.forMode(isDark = true))
+    }
+
+    @Test
+    fun skin_color_object_resolves_per_mode() {
+        val skin =
+            json.decodeFromString<SkinObject>(
+                """{ "background": { "light": "#EEEEEE", "dark": "#222222" } }""",
+            )
+
+        assertEquals("#EEEEEE", skin.background.forMode(isDark = false))
+        assertEquals("#222222", skin.background.forMode(isDark = true))
+    }
+
+    @Test
+    fun skin_color_object_falls_back_when_a_mode_is_missing() {
+        val skin = json.decodeFromString<SkinObject>("""{ "background": { "dark": "#222222" } }""")
+
+        // light is absent, so it falls back to the dark value.
+        assertEquals("#222222", skin.background.forMode(isDark = false))
+        assertEquals("#222222", skin.background.forMode(isDark = true))
+    }
+
+    @Test
+    fun presets_section_converts_to_style_definitions() {
+        val skinJson =
+            """
+            {
+                "presets": {
+                    "children": {
+                        "default": { "color": "#F0F0FF", "background": { "light": "#EEEEEE", "dark": "#1E1F22" } },
+                        "link": { "color": "#ADD8E6", "underline": true },
+                        "roomName": { "color": "#FFFFFF", "background": "#0000FF", "entireLine": true },
+                        "mono": { "fontFamily": "Monospace" }
+                    }
+                }
+            }
+            """.trimIndent()
+        val skin = json.decodeFromString<Map<String, SkinObject>>(skinJson)
+
+        val light = skin.toPresets(isDark = false)
+        val dark = skin.toPresets(isDark = true)
+
+        assertEquals(WarlockColor("#F0F0FF"), light["default"]?.textColor)
+        assertEquals(WarlockColor("#EEEEEE"), light["default"]?.backgroundColor)
+        assertEquals(WarlockColor("#1E1F22"), dark["default"]?.backgroundColor)
+        assertEquals(true, light["link"]?.underline)
+        assertEquals(true, light["roomName"]?.entireLine)
+        assertEquals("Monospace", light["mono"]?.fontFamily)
     }
 
     @Test

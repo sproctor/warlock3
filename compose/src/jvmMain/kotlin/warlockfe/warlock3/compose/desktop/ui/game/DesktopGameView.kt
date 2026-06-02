@@ -49,10 +49,10 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.window.WindowInfo
 
@@ -116,7 +116,7 @@ fun DesktopGameView(
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
         val presets by viewModel.presets.collectAsState(emptyMap())
-        val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+        val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
 
         Row(modifier = Modifier.weight(1f)) {

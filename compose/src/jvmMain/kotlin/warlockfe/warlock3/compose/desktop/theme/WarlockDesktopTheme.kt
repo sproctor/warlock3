@@ -8,6 +8,7 @@ import org.jetbrains.jewel.intui.standalone.theme.darkThemeDefinition
 import org.jetbrains.jewel.intui.standalone.theme.default
 import org.jetbrains.jewel.intui.standalone.theme.lightThemeDefinition
 import org.jetbrains.jewel.ui.ComponentStyling
+import warlockfe.warlock3.compose.util.LocalDarkTheme
 
 @Composable
 fun WarlockDesktopTheme(
@@ -24,7 +25,7 @@ fun WarlockDesktopTheme(
         styling = ComponentStyling.default(),
     ) {
         CompositionLocalProvider(
-            LocalWarlockColors provides WarlockColors.from(isDark),
+            LocalDarkTheme provides isDark,
             content = content,
         )
     }

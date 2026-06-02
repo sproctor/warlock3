@@ -8,16 +8,17 @@ import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
 import warlockfe.warlock3.core.prefs.mappers.toPresetStyleEntity
 import warlockfe.warlock3.core.prefs.mappers.toStyleDefinition
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
 
 class PresetRepository(
     private val presetStyleQueries: PresetStyleDao,
 ) {
+    // Returns only the character's saved presets. The default styles now live in the skin's
+    // "presets" section and are merged in at the compose layer (WindowRegistryImpl).
     fun observePresetsForCharacter(characterId: String): Flow<Map<String, StyleDefinition>> =
         presetStyleQueries
             .observeByCharacter(
                 characterId = characterId,
-            ).map { preset -> defaultStyles + preset.associate { it.presetId to it.toStyleDefinition() } }
+            ).map { preset -> preset.associate { it.presetId to it.toStyleDefinition() } }
 
     suspend fun save(
         characterId: String,
@@ -34,57 +35,3 @@ class PresetRepository(
         }
     }
 }
-
-val defaultStyles =
-    mapOf(
-        "default" to
-            StyleDefinition(
-                textColor = WarlockColor("#F0F0FF"),
-                backgroundColor = WarlockColor("#2B2D30"),
-            ),
-        "bold" to
-            StyleDefinition(
-                textColor = WarlockColor("#FFFF00"),
-            ),
-        "command" to
-            StyleDefinition(
-                textColor = WarlockColor("#FFFFFF"),
-                backgroundColor = WarlockColor("#404040"),
-            ),
-        "echo" to
-            StyleDefinition(
-                textColor = WarlockColor("#FFFF80"),
-            ),
-        "error" to
-            StyleDefinition(
-                textColor = WarlockColor("#DB5C5C"),
-            ),
-        "link" to
-            StyleDefinition(
-                textColor = WarlockColor("#ADD8E6"),
-                underline = true,
-            ),
-        "mono" to StyleDefinition(fontFamily = "Monospace"),
-        "roomName" to
-            StyleDefinition(
-                textColor = WarlockColor("#FFFFFF"),
-                backgroundColor = WarlockColor("#0000FF"),
-                entireLine = true,
-            ),
-        "speech" to
-            StyleDefinition(
-                textColor = WarlockColor("#80FF80"),
-            ),
-        "thought" to
-            StyleDefinition(
-                textColor = WarlockColor("#FF8000"),
-            ),
-        "watching" to
-            StyleDefinition(
-                textColor = WarlockColor("#FFFF00"),
-            ),
-        "whisper" to
-            StyleDefinition(
-                textColor = WarlockColor("#80FFFF"),
-            ),
-    )

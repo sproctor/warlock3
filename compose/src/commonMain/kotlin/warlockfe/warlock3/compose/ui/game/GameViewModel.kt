@@ -48,6 +48,7 @@ import warlockfe.warlock3.compose.ui.window.DialogWindowData
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
@@ -74,7 +75,6 @@ import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
@@ -332,7 +332,7 @@ class GameViewModel(
             WindowUiState(
                 name = "main",
                 windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),
-                style = defaultStyles["default"]!!,
+                style = SAFE_DEFAULT_STYLE,
                 data =
                     StreamWindowData(
                         stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
@@ -886,7 +886,7 @@ class GameViewModel(
                     WindowUiState(
                         name = name,
                         windowInfo = mutableStateOf(windowInfo),
-                        style = entity?.getStyle() ?: defaultStyles["default"]!!,
+                        style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
                         width = null,
                         height = null,
                         nameFilter = entity?.nameFilter ?: false,
