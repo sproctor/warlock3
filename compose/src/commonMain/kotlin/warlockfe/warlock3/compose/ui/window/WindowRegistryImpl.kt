@@ -38,6 +38,7 @@ class WindowRegistryImpl(
     nameRepository: NameRepository,
     alterationRepository: AlterationRepository,
     presetRepository: PresetRepository,
+    skinPresets: StateFlow<Map<String, StyleDefinition>>,
 ) : WindowRegistry {
     private val streams = AtomicReference(persistentMapOf<String, ComposeTextStream>())
 
@@ -171,11 +172,13 @@ class WindowRegistryImpl(
                 initialValue = emptyList(),
             )
 
+    // Skin presets are the defaults; the character's saved presets (from the DB) override them.
     override val presets: StateFlow<Map<String, StyleDefinition>> =
-        characterId
-            .flatMapLatest { characterId ->
-                presetRepository.observePresetsForCharacter(characterId)
-            }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+        combine(
+            skinPresets,
+            characterId.flatMapLatest { presetRepository.observePresetsForCharacter(it) },
+        ) { skinDefaults, dbPresets -> skinDefaults + dbPresets }
+            .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     override fun getOrCreateStream(name: String): TextStream {
         streams.load()[name]?.let { return it }
@@ -233,6 +236,7 @@ class WindowRegistryFactory(
     private val nameRepository: NameRepository,
     private val alterationRepository: AlterationRepository,
     private val presetRepository: PresetRepository,
+    private val skinPresets: StateFlow<Map<String, StyleDefinition>>,
 ) {
     fun create(): WindowRegistry =
         WindowRegistryImpl(
@@ -242,5 +246,6 @@ class WindowRegistryFactory(
             nameRepository = nameRepository,
             alterationRepository = alterationRepository,
             presetRepository = presetRepository,
+            skinPresets = skinPresets,
         )
 }

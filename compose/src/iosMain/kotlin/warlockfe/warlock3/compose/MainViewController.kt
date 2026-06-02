@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +34,6 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.settings.SettingsContent
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.theme.AppTheme
@@ -50,7 +50,6 @@ fun MainViewController() =
         val sgeSettings = remember { IosAppContainerProvider.sgeSettings }
 
         val logger = remember { Logger.withTag("WarlockiOS") }
-        val skin = remember { mutableStateOf<Map<String, SkinObject>>(emptyMap()) }
 
         remember {
             appContainer.clientSettings
@@ -58,7 +57,7 @@ fun MainViewController() =
                 .onEach {
                     val bytes = Res.readBytes("files/skin.zip")
                     try {
-                        skin.value = SkinLoader.parse(bytes)
+                        appContainer.skin.value = SkinLoader.parse(bytes)
                     } catch (e: Exception) {
                         logger.e(e) { "Failed to load skin file" }
                     }
@@ -66,8 +65,9 @@ fun MainViewController() =
             true
         }
 
+        val skin by appContainer.skin.collectAsState()
         CompositionLocalProvider(
-            LocalSkin provides skin.value,
+            LocalSkin provides skin,
         ) {
             IosWarlockApp(
                 appContainer = appContainer,
@@ -84,14 +84,14 @@ private fun IosWarlockApp(
     sgeSettings: SgeSettings,
 ) {
     val themeSetting by appContainer.clientSettings.observeTheme().collectAsState(ThemeSetting.AUTO)
-    AppTheme(
-        useDarkTheme =
-            when (themeSetting) {
-                ThemeSetting.AUTO -> isSystemInDarkTheme()
-                ThemeSetting.LIGHT -> false
-                ThemeSetting.DARK -> true
-            },
-    ) {
+    val darkMode =
+        when (themeSetting) {
+            ThemeSetting.AUTO -> isSystemInDarkTheme()
+            ThemeSetting.LIGHT -> false
+            ThemeSetting.DARK -> true
+        }
+    LaunchedEffect(darkMode) { appContainer.darkMode.value = darkMode }
+    AppTheme(useDarkTheme = darkMode) {
         val gameState = GameState()
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }

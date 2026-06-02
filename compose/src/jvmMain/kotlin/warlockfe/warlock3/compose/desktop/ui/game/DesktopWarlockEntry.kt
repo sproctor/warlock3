@@ -46,11 +46,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
 import kotlin.time.Duration
@@ -74,7 +74,7 @@ fun DesktopWarlockEntry(
             getCurrentTime = viewModel::getCurrentTime,
         )
     val presets by viewModel.presets.collectAsState(emptyMap())
-    val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+    val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
     val style = presets["entry"] ?: StyleDefinition()
     DesktopWarlockEntryContent(
         style = style,

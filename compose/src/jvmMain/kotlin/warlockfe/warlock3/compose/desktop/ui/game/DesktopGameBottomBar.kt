@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopDialogContent
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -28,7 +28,7 @@ fun DesktopGameBottomBar(
     modifier: Modifier = Modifier,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
-    val style = presets["default"] ?: defaultStyles["default"]!!
+    val style = presets["default"] ?: SAFE_DEFAULT_STYLE
     val backgroundColor = style.backgroundColor.toColor()
     val textColor = style.textColor.toColor()
     BoxWithConstraints(modifier) {

@@ -56,11 +56,11 @@ import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.window.WindowInfo
@@ -124,7 +124,7 @@ fun GameView(
             val mainWindow = viewModel.mainWindowUiState.collectAsState()
             val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
             val presets by viewModel.presets.collectAsState(emptyMap())
-            val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+            val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
             val openWindows by viewModel.openWindows.collectAsState(emptyList())
 
             Row(modifier = Modifier.weight(1f)) {
@@ -434,7 +434,7 @@ fun GameBottomBar(
     modifier: Modifier = Modifier,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
-    val style = presets["default"] ?: defaultStyles["default"]!!
+    val style = presets["default"] ?: SAFE_DEFAULT_STYLE
     val backgroundColor = style.backgroundColor.toColor()
     val textColor = style.textColor.toColor()
     BoxWithConstraints(modifier) {

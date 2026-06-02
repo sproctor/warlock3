@@ -79,7 +79,6 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
-import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
@@ -200,8 +199,6 @@ private class WarlockCommand : CliktCommand() {
 
         val appContainer = JvmAppContainer(database, warlockDirs, SystemFileSystem)
 
-        val skin = mutableStateOf<Map<String, SkinObject>>(emptyMap())
-
         appContainer.clientSettings
             .observeSkinFile()
             .onEach { skinFile ->
@@ -212,7 +209,7 @@ private class WarlockCommand : CliktCommand() {
                         ?.readBytes()
                         ?: Res.readBytes("files/skin.zip")
                 try {
-                    skin.value = SkinLoader.parse(bytes)
+                    appContainer.skin.value = SkinLoader.parse(bytes)
                 } catch (e: Exception) {
                     // TODO: notify user of error
                     logger.e(e) { "Failed to load skin file" }
@@ -363,6 +360,8 @@ private class WarlockCommand : CliktCommand() {
                     ThemeSetting.LIGHT -> false
                     ThemeSetting.DARK -> true
                 }
+            LaunchedEffect(darkMode) { appContainer.darkMode.value = darkMode }
+            val skin by appContainer.skin.collectAsState()
             WarlockDesktopTheme(isDark = darkMode) {
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
@@ -518,7 +517,7 @@ private class WarlockCommand : CliktCommand() {
                         window.minimumSize = Dimension(240, 240)
                         CompositionLocalProvider(
                             LocalWindowComponent provides window,
-                            LocalSkin provides skin.value,
+                            LocalSkin provides skin,
                         ) {
                             WarlockApp(
                                 title = title,

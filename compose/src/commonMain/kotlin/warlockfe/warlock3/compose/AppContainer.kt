@@ -5,15 +5,21 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
+import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
+import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
@@ -46,6 +52,7 @@ import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
+import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.WindowRegistry
@@ -60,6 +67,15 @@ abstract class AppContainer(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+
+    // The loaded skin and current dark-mode are pushed here by the platform entry points; the
+    // skin's "presets" section (resolved for the mode) becomes the default text styles.
+    val skin = MutableStateFlow<Map<String, SkinObject>>(emptyMap())
+    val darkMode = MutableStateFlow(false)
+    val skinPresets: StateFlow<Map<String, StyleDefinition>> =
+        combine(skin, darkMode) { skinMap, isDark -> skinMap.toPresets(isDark) }
+            .stateIn(externalScope, SharingStarted.Eagerly, emptyMap())
+
     val variableRepository = VariableRepository(database.variableDao())
     val characterRepository =
         CharacterRepository(
@@ -161,6 +177,7 @@ abstract class AppContainer(
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
             presetRepository = presetRepository,
+            skinPresets = skinPresets,
             alterationRepository = alterationRepository,
         )
     }

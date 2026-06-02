@@ -50,11 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.prefs.repositories.defaultStyles
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
 import kotlin.time.Duration
@@ -77,7 +77,7 @@ fun WarlockEntry(
             getCurrentTime = viewModel::getCurrentTime,
         )
     val presets by viewModel.presets.collectAsState(emptyMap())
-    val defaultStyle = presets["default"] ?: defaultStyles["default"]!!
+    val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
     val style = presets["entry"] ?: StyleDefinition()
     WarlockEntryContent(
         style = style,
@@ -267,8 +267,8 @@ private fun WarlockEntryDarkPreview() {
         roundTime = 8,
         castTime = 4,
         entryFocusRequester = remember { FocusRequester() },
-        style = defaultStyles["default"]!!,
-        defaultStyle = defaultStyles["default"]!!,
+        style = SAFE_DEFAULT_STYLE,
+        defaultStyle = SAFE_DEFAULT_STYLE,
         saveStyle = {},
         sendCommand = {},
     )
@@ -282,8 +282,8 @@ private fun WarlockEntryLightPreview() {
         roundTime = 8,
         castTime = 4,
         entryFocusRequester = remember { FocusRequester() },
-        style = defaultStyles["default"]!!,
-        defaultStyle = defaultStyles["default"]!!,
+        style = SAFE_DEFAULT_STYLE,
+        defaultStyle = SAFE_DEFAULT_STYLE,
         saveStyle = {},
         sendCommand = {},
     )
