@@ -1,0 +1,255 @@
+{
+  "HealthBar": {
+    "children": {
+      "health": {
+        "top": 0,
+        "left": 0,
+        "color": "#FFFFFF",
+        "bar": "#800000",
+        "background": "#888888"
+      }
+    }
+  },
+  "HealthBar2": {
+    "children": {
+      "health2": {
+        "top": 0,
+        "left": 0,
+        "color": "#FFFFFF",
+        "bar": "#800000",
+        "background": "#888888"
+      }
+    }
+  },
+  "ManaBar": {
+    "children": {
+      "mana": {
+        "top": 0,
+        "left": 0,
+        "color": "#FFFFFF",
+        "bar": "#0000FF",
+        "background": "#888888"
+      }
+    }
+  },
+  "StaminaBar": {
+    "children": {
+      "stamina": {
+        "top": 0,
+        "left": 0,
+        "color": "#000000",
+        "bar": "#D0982F",
+        "background": "#888888"
+      }
+    }
+  },
+  "SpiritBar": {
+    "children": {
+      "spirit": {
+        "top": 0,
+        "left": 0,
+        "color": "#000000",
+        "bar": "#CCCCCC",
+        "background": "#888888"
+      }
+    }
+  },
+  "InjuriesPanel": {
+    "width": 80,
+    "height": 150,
+    "image": {
+      "type": "image/png",
+      "file": "images/InjuriesPanel.png"
+    },
+    "children": {
+      "nsys": {
+        "top": 26,
+        "left": 60
+      },
+      "leftEye": {
+        "top": 6,
+        "left": 60
+      },
+      "rightEye": {
+        "top": 6,
+        "left": 11
+      },
+      "head": {
+        "top": 3,
+        "left": 36
+      },
+      "neck": {
+        "top": 15,
+        "left": 36
+      },
+      "chest": {
+        "top": 29,
+        "left": 36
+      },
+      "abdomen": {
+        "top": 46,
+        "left": 36
+      },
+      "leftArm": {
+        "top": 49,
+        "left": 60
+      },
+      "rightArm": {
+        "top": 49,
+        "left": 17
+      },
+      "leftHand": {
+        "top": 68,
+        "left": 63
+      },
+      "rightHand": {
+        "top": 68,
+        "left": 10
+      },
+      "back": {
+        "top": 26,
+        "left": 0
+      },
+      "leftLeg": {
+        "top": 104,
+        "left": 49
+      },
+      "rightLeg": {
+        "top": 104,
+        "left": 25
+      },
+      "leftFoot": {
+        "top": 133,
+        "left": 57
+      },
+      "rightFoot": {
+        "top": 133,
+        "left": 21
+      }
+    }
+  },
+  "Injury1": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Injury1.png"
+    }
+  },
+  "Injury2": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Injury2.png"
+    }
+  },
+  "Injury3": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Injury3.png"
+    }
+  },
+  "Scar1": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Scar1.png"
+    }
+  },
+  "Scar2": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Scar2.png"
+    }
+  },
+  "Scar3": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Scar3.png"
+    }
+  },
+  "Nsys1": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Nsys1.png"
+    }
+  },
+  "Nsys2": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Nsys2.png"
+    }
+  },
+  "Nsys3": {
+    "width": 16,
+    "height": 16,
+    "image": {
+      "type": "image/png",
+      "file": "images/Nsys3.png"
+    }
+  },
+  "compass": {
+    "children": {
+      "background_image": {
+        "type": "image/png",
+        "resource": "compass_main.png"
+      },
+      "north": {
+        "left": 23,
+        "top": -2
+      },
+      "northeast": {
+        "left": 39,
+        "top": 6
+      },
+      "east": {
+        "left": 47,
+        "top": 22
+      },
+      "southeast": {
+        "left": 39,
+        "top": 39
+      },
+      "south": {
+        "left": 23,
+        "top": 47
+      },
+      "southwest": {
+        "left": 6,
+        "top": 39
+      },
+      "west": {
+        "left": -1,
+        "top": 23
+      },
+      "northwest": {
+        "left": 6,
+        "top": 6
+      },
+      "up": {
+        "left": 23,
+        "top": 13
+      },
+      "down": {
+        "left": 23,
+        "top": 32
+      },
+      "out": {
+        "left": 23,
+        "top": 23
+      }
+    }
+  }
+}

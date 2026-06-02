@@ -1,5 +1,6 @@
 import warlockfe.warlock3.compose.util.SkinLoader
 import java.io.ByteArrayOutputStream
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.io.encoding.Base64
@@ -13,6 +14,23 @@ class SkinZipLoaderTest {
         ZipOutputStream(out).use { zip ->
             entries.forEach { (name, bytes) ->
                 zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    private fun storedZipOf(entries: Map<String, ByteArray>): ByteArray {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.setMethod(ZipOutputStream.STORED)
+            entries.forEach { (name, bytes) ->
+                val entry = ZipEntry(name)
+                entry.size = bytes.size.toLong()
+                entry.compressedSize = bytes.size.toLong()
+                entry.crc = CRC32().apply { update(bytes) }.value
+                zip.putNextEntry(entry)
                 zip.write(bytes)
                 zip.closeEntry()
             }
@@ -97,6 +115,24 @@ class SkinZipLoaderTest {
         val skin = SkinLoader.parse(zip)
 
         assertEquals("already-here", skin["injury1"]?.image?.data)
+    }
+
+    @Test
+    fun stored_zip_skin_resolves_through_skin_loader() {
+        // The bundled default skin is stored uncompressed; make sure that format loads end-to-end.
+        val imageBytes = byteArrayOf(10, 20, 30)
+        val skinJson = """{ "injury1": { "image": { "file": "images/injury1.png" } } }"""
+        val zip =
+            storedZipOf(
+                mapOf(
+                    "skin.json" to skinJson.toByteArray(),
+                    "images/injury1.png" to imageBytes,
+                ),
+            )
+
+        val skin = SkinLoader.parse(zip)
+
+        assertEquals(Base64.encode(imageBytes), skin["injury1"]?.image?.data)
     }
 
     @Test

@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                         ?.let { File(it) }
                         ?.takeIf { it.exists() }
                         ?.readBytes()
-                        ?: Res.readBytes("files/skin.json")
+                        ?: Res.readBytes("files/skin.zip")
                 try {
                     skin.value = SkinLoader.parse(bytes)
                 } catch (e: Exception) {

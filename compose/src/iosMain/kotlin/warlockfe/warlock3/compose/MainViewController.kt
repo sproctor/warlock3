@@ -56,7 +56,7 @@ fun MainViewController() =
             appContainer.clientSettings
                 .observeSkinFile()
                 .onEach {
-                    val bytes = Res.readBytes("files/skin.json")
+                    val bytes = Res.readBytes("files/skin.zip")
                     try {
                         skin.value = SkinLoader.parse(bytes)
                     } catch (e: Exception) {
