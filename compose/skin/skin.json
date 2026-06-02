@@ -206,17 +206,17 @@
       "cardinal": { "image": { "file": "images/compassCardinal.png" } },
       "nonCardinal": { "image": { "file": "images/nonCardinal.png" } },
       "upDown": { "image": { "file": "images/compassUpDownGlow.png" } },
-      "north": { "sprite": "cardinal", "left": 34, "top": 1, "width": 14, "height": 15 },
-      "east": { "sprite": "cardinal", "left": 49, "top": 14, "width": 17, "height": 17 },
-      "south": { "sprite": "cardinal", "left": 32, "top": 33, "width": 18, "height": 16 },
-      "west": { "sprite": "cardinal", "left": 10, "top": 16, "width": 24, "height": 19 },
-      "out": { "sprite": "cardinal", "left": 32, "top": 15, "width": 18, "height": 18 },
-      "northeast": { "sprite": "nonCardinal", "left": 44, "top": 6, "width": 16, "height": 17 },
-      "northwest": { "sprite": "nonCardinal", "left": 24, "top": 7, "width": 17, "height": 17 },
-      "southwest": { "sprite": "nonCardinal", "left": 23, "top": 28, "width": 18, "height": 15 },
-      "southeast": { "sprite": "nonCardinal", "left": 42, "top": 28, "width": 19, "height": 14 },
-      "up": { "sprite": "upDown", "left": 0, "top": 0, "width": 40, "height": 49 },
-      "down": { "sprite": "upDown", "left": 52, "top": 0, "width": 29, "height": 49 }
+      "north": { "sprite": "cardinal", "left": 102, "top": 3, "width": 42, "height": 45 },
+      "east": { "sprite": "cardinal", "left": 147, "top": 42, "width": 51, "height": 51 },
+      "south": { "sprite": "cardinal", "left": 96, "top": 99, "width": 54, "height": 48 },
+      "west": { "sprite": "cardinal", "left": 30, "top": 48, "width": 72, "height": 57 },
+      "out": { "sprite": "cardinal", "left": 96, "top": 45, "width": 54, "height": 54 },
+      "northeast": { "sprite": "nonCardinal", "left": 132, "top": 18, "width": 48, "height": 51 },
+      "northwest": { "sprite": "nonCardinal", "left": 72, "top": 21, "width": 51, "height": 51 },
+      "southwest": { "sprite": "nonCardinal", "left": 69, "top": 84, "width": 54, "height": 45 },
+      "southeast": { "sprite": "nonCardinal", "left": 126, "top": 84, "width": 57, "height": 42 },
+      "up": { "sprite": "upDown", "left": 0, "top": 0, "width": 120, "height": 147 },
+      "down": { "sprite": "upDown", "left": 156, "top": 0, "width": 87, "height": 147 }
     }
   }
 }

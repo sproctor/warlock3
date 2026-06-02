@@ -27,7 +27,7 @@ private const val DEFAULT_COMPASS_HEIGHT = 49
 
 @Composable
 fun CompassView(
-    size: Dp,
+    height: Dp,
     directions: Set<DirectionType>,
     onClick: (DirectionType) -> Unit,
     modifier: Modifier = Modifier,
@@ -49,13 +49,13 @@ fun CompassView(
     val compassWidth = background?.width ?: DEFAULT_COMPASS_WIDTH
     val compassHeight = background?.height ?: DEFAULT_COMPASS_HEIGHT
 
-    val scale = with(LocalDensity.current) { size.toPx() } / compassWidth
-    val height = size * (compassHeight.toFloat() / compassWidth.toFloat())
+    val scale = with(LocalDensity.current) { height.toPx() } / compassHeight
+    val width = height * (compassWidth.toFloat() / compassHeight.toFloat())
 
     Canvas(
         modifier =
             modifier
-                .size(width = size, height = height)
+                .size(width = width, height = height)
                 .pointerInput(children, directions, scale) {
                     detectTapGestures { offset ->
                         val x = offset.x / scale
@@ -102,7 +102,7 @@ private fun SkinObject.compassRect(): IntRect =
 private fun EmptyCompassPreview() {
     CompositionLocalProvider(LocalSkin provides previewCompassSkin()) {
         CompassView(
-            size = 80.dp,
+            height = 88.dp,
             directions = emptySet(),
             onClick = {},
         )
@@ -114,7 +114,7 @@ private fun EmptyCompassPreview() {
 private fun CompassPreview() {
     CompositionLocalProvider(LocalSkin provides previewCompassSkin()) {
         CompassView(
-            size = 80.dp,
+            height = 88.dp,
             directions =
                 setOf(
                     DirectionType.North,
