@@ -34,6 +34,9 @@ interface HighlightDao {
     @Query("DELETE FROM Highlight WHERE id = :id")
     suspend fun deleteById(id: Uuid)
 
+    @Query("DELETE FROM Highlight WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(highlight: HighlightEntity)
 

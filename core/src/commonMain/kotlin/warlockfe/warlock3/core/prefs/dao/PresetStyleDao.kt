@@ -15,6 +15,9 @@ interface PresetStyleDao {
     @Query("SELECT * FROM PresetStyle WHERE characterId = :characterId")
     suspend fun getByCharacter(characterId: String): List<PresetStyleEntity>
 
+    @Query("DELETE FROM PresetStyle WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(presetStyle: PresetStyleEntity)
 }

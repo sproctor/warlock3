@@ -24,4 +24,7 @@ interface AliasDao {
 
     @Query("DELETE FROM Alias WHERE id = :id")
     suspend fun delete(id: Uuid)
+
+    @Query("DELETE FROM Alias WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
 }

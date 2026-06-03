@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -35,12 +33,10 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.io.files.Path
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
-import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
@@ -57,7 +53,6 @@ import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.util.LogType
-import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
 fun DesktopGeneralSettingsView(
@@ -66,7 +61,6 @@ fun DesktopGeneralSettingsView(
     characters: List<GameCharacter>,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
-    wraythImporter: WraythImporter,
     modifier: Modifier = Modifier,
 ) {
     val currentCharacterState =
@@ -74,7 +68,6 @@ fun DesktopGeneralSettingsView(
     val currentCharacter = currentCharacterState.value
     val currentCharacterId = currentCharacter?.id ?: "global"
     val scope = rememberCoroutineScope()
-    var importResultMessages by remember { mutableStateOf(emptyList<String>()) }
 
     Column(modifier.fillMaxSize()) {
         DesktopSettingsCharacterSelector(
@@ -83,52 +76,6 @@ fun DesktopGeneralSettingsView(
             onSelect = { currentCharacterState.value = it },
             allowGlobal = true,
         )
-        Spacer(Modifier.height(16.dp))
-        val wraythSettingsFileLauncher =
-            rememberFilePickerLauncher(
-                dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Choose Wrayth settings file to import"),
-            ) { platformFile ->
-                if (platformFile != null) {
-                    scope.launch {
-                        importResultMessages =
-                            wraythImporter.importFile(
-                                currentCharacterId,
-                                Path(platformFile.absolutePath()),
-                            )
-                    }
-                }
-            }
-        WarlockButton(
-            onClick = { wraythSettingsFileLauncher.launch() },
-            text = "Import settings from Wrayth settings file",
-        )
-        if (importResultMessages.isNotEmpty()) {
-            WarlockDialog(
-                title = "Import results",
-                onCloseRequest = { importResultMessages = emptyList() },
-                width = 600.dp,
-                height = 400.dp,
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    SelectionContainer {
-                        WarlockScrollableColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            importResultMessages.forEach { message ->
-                                Text(message)
-                            }
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                    ) {
-                        WarlockButton(
-                            onClick = { importResultMessages = emptyList() },
-                            text = "OK",
-                        )
-                    }
-                }
-            }
-        }
         Spacer(Modifier.height(16.dp))
         WarlockScrollableColumn {
             val maxLinesValue = rememberTextFieldState()

@@ -14,7 +14,6 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
 fun SettingsDialog(
@@ -30,7 +29,6 @@ fun SettingsDialog(
     aliasRepository: AliasRepository,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
-    wraythImporter: WraythImporter,
     closeDialog: () -> Unit,
 ) {
     DesktopSettingsDialog(
@@ -46,7 +44,6 @@ fun SettingsDialog(
         aliasRepository = aliasRepository,
         scriptDirRepository = scriptDirRepository,
         clientSettingRepository = clientSettingRepository,
-        wraythImporter = wraythImporter,
         closeDialog = closeDialog,
     )
 }

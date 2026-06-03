@@ -32,6 +32,9 @@ interface NameDao {
     @Query("DELETE FROM Name WHERE id = :id")
     suspend fun deleteById(id: Uuid)
 
+    @Query("DELETE FROM Name WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(name: NameEntity)
 

@@ -50,4 +50,7 @@ interface MacroDao {
 
     @Query("DELETE FROM Macro WHERE characterId = 'global'")
     suspend fun deleteAllGlobals()
+
+    @Query("DELETE FROM Macro WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
 }

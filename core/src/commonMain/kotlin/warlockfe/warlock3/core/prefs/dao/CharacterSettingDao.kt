@@ -32,4 +32,7 @@ interface CharacterSettingDao {
         key: String,
         characterId: String,
     )
+
+    @Query("DELETE FROM CharacterSetting WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
 }

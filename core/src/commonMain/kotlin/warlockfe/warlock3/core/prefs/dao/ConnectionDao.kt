@@ -19,6 +19,10 @@ interface ConnectionDao {
     @Query("SELECT * FROM connection")
     fun observeAllWithDetails(): Flow<List<ConnectionWithSettings>>
 
+    @Transaction
+    @Query("SELECT * FROM connection")
+    suspend fun getAllWithSettings(): List<ConnectionWithSettings>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(connection: ConnectionEntity)
 

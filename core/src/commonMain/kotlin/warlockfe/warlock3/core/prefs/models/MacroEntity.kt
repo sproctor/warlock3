@@ -12,14 +12,22 @@ data class MacroEntity(
     @ColumnInfo(defaultValue = "")
     val key: String,
     val value: String,
+    // The keyCode/modifier columns below are deprecated: `key` now encodes the full key combo and is
+    // the authoritative identifier. They are retained only because they're part of the legacy
+    // composite primary key.
+    @Deprecated("Redundant with `key`; retained only for the legacy composite primary key.")
     @ColumnInfo(defaultValue = "0")
     val keyCode: Long,
+    @Deprecated("Redundant with `key`; retained only for the legacy composite primary key.")
     @ColumnInfo(defaultValue = "0")
     val ctrl: Boolean,
+    @Deprecated("Redundant with `key`; retained only for the legacy composite primary key.")
     @ColumnInfo(defaultValue = "0")
     val alt: Boolean,
+    @Deprecated("Redundant with `key`; retained only for the legacy composite primary key.")
     @ColumnInfo(defaultValue = "0")
     val shift: Boolean,
+    @Deprecated("Redundant with `key`; retained only for the legacy composite primary key.")
     @ColumnInfo(defaultValue = "0")
     val meta: Boolean,
 )
