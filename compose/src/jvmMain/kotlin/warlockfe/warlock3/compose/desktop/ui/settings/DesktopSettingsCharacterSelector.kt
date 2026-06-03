@@ -37,6 +37,7 @@ fun DesktopSettingsCharacterSelector(
                 items = list,
                 selected = selectedCharacter,
                 onSelect = onSelect,
+                modifier = Modifier.width(280.dp),
                 itemLabelBuilder = {
                     if (it == null) "Global" else "${it.gameCode} ${it.name}"
                 },

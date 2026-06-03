@@ -21,6 +21,9 @@ interface VariableDao {
         name: String,
     )
 
+    @Query("DELETE FROM Variable WHERE characterId = :characterId;")
+    suspend fun deleteByCharacter(characterId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(variable: VariableEntity)
 }

@@ -215,6 +215,10 @@ abstract class AppContainer(
         )
     }
 
+    val settingsTransferUseCase by lazy {
+        SettingsTransferUseCase(exportRepository)
+    }
+
     val exportRepository by lazy {
         ExportRepository(
             accountDao = database.accountDao(),
@@ -224,6 +228,7 @@ abstract class AppContainer(
             characterSettingDao = database.characterSettingDao(),
             clientSettingDao = database.clientSettingDao(),
             connectionDao = database.connectionDao(),
+            connectionSettingDao = database.connectionSettingDao(),
             highlightDao = database.highlightDao(),
             macroDao = database.macroDao(),
             nameDao = database.nameDao(),

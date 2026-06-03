@@ -16,7 +16,6 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
 fun DesktopSettingsContent(
@@ -33,7 +32,6 @@ fun DesktopSettingsContent(
     aliasRepository: AliasRepository,
     alterationRepository: AlterationRepository,
     clientSettingRepository: ClientSettingRepository,
-    wraythImporter: WraythImporter,
 ) {
     val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
@@ -45,7 +43,6 @@ fun DesktopSettingsContent(
                 characters = characters,
                 scriptDirRepository = scriptDirRepository,
                 clientSettingRepository = clientSettingRepository,
-                wraythImporter = wraythImporter,
             )
         }
         SettingsPage.Variables -> {

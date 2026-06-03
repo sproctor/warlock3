@@ -37,7 +37,6 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
@@ -54,7 +53,6 @@ fun DesktopSettingsDialog(
     aliasRepository: AliasRepository,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
-    wraythImporter: WraythImporter,
     closeDialog: () -> Unit,
 ) {
     DialogWindow(
@@ -107,7 +105,6 @@ fun DesktopSettingsDialog(
                         aliasRepository = aliasRepository,
                         alterationRepository = alterationRepository,
                         clientSettingRepository = clientSettingRepository,
-                        wraythImporter = wraythImporter,
                     )
                 }
             }

@@ -14,6 +14,9 @@ fun FrameWindowScope.AppMenuBar(
     disconnect: () -> Unit,
     showAboutDialog: () -> Unit,
     exportSettings: () -> Unit,
+    exportCharacterSettings: (() -> Unit)?,
+    importSettings: () -> Unit,
+    importWraythSettings: () -> Unit,
 ) {
     MenuBar {
         Menu("File") {
@@ -25,8 +28,21 @@ fun FrameWindowScope.AppMenuBar(
             )
             Separator()
             Item(
-                text = "Export settings...",
+                text = "Export all settings...",
                 onClick = exportSettings,
+            )
+            Item(
+                text = "Export current character...",
+                enabled = exportCharacterSettings != null,
+                onClick = { exportCharacterSettings?.invoke() },
+            )
+            Item(
+                text = "Import settings...",
+                onClick = importSettings,
+            )
+            Item(
+                text = "Import wrayth settings...",
+                onClick = importWraythSettings,
             )
             Item(
                 text = "Settings",

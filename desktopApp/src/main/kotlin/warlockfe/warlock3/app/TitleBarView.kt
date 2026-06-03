@@ -52,6 +52,10 @@ internal fun DecoratedWindowScope.TitleBarView(
     showUpdateDialog: () -> Unit,
     showAboutDialog: () -> Unit,
     exportSettings: (File) -> Unit,
+    exportCharacterSettings: (File) -> Unit,
+    importSettings: (File) -> Unit,
+    importWraythSettings: () -> Unit,
+    currentCharacterName: String?,
 ) {
     val scriptFilePickerLauncher =
         rememberFilePickerLauncher(
@@ -66,6 +70,20 @@ internal fun DecoratedWindowScope.TitleBarView(
         rememberFileSaverLauncher { file ->
             if (file != null) {
                 exportSettings(file.file)
+            }
+        }
+    val exportCharacterFileSaveLauncher =
+        rememberFileSaverLauncher { file ->
+            if (file != null) {
+                exportCharacterSettings(file.file)
+            }
+        }
+    val importFilePickerLauncher =
+        rememberFilePickerLauncher(
+            dialogSettings = FileKitDialogSettings.createPlatformDialogSettings("Import settings"),
+        ) { file ->
+            if (file != null) {
+                importSettings(file.file)
             }
         }
     JewelTitleBar {
@@ -98,6 +116,14 @@ internal fun DecoratedWindowScope.TitleBarView(
                     exportSettings = {
                         exportFileSaveLauncher.launch(suggestedName = "settings", defaultExtension = "json")
                     },
+                    exportCharacterSettings =
+                        currentCharacterName?.let {
+                            {
+                                exportCharacterFileSaveLauncher.launch(suggestedName = it, defaultExtension = "json")
+                            }
+                        },
+                    importSettings = { importFilePickerLauncher.launch() },
+                    importWraythSettings = importWraythSettings,
                 )
             } else {
                 var active by remember { mutableStateOf(false) }
@@ -142,7 +168,31 @@ internal fun DecoratedWindowScope.TitleBarView(
                                     )
                                 },
                             ) {
-                                Text("Export settings...")
+                                Text("Export all settings...")
+                            }
+                            selectableItem(
+                                selected = false,
+                                enabled = currentCharacterName != null,
+                                onClick = {
+                                    exportCharacterFileSaveLauncher.launch(
+                                        suggestedName = currentCharacterName ?: "character",
+                                        defaultExtension = "json",
+                                    )
+                                },
+                            ) {
+                                Text("Export current character...")
+                            }
+                            selectableItem(
+                                selected = false,
+                                onClick = { importFilePickerLauncher.launch() },
+                            ) {
+                                Text("Import settings...")
+                            }
+                            selectableItem(
+                                selected = false,
+                                onClick = importWraythSettings,
+                            ) {
+                                Text("Import wrayth settings...")
                             }
                             selectableItem(
                                 selected = false,

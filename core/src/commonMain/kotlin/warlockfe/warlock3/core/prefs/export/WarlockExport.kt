@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class WarlockExport(
     val accounts: List<AccountExport>,
     val characters: List<CharacterExport>,
+    val connections: List<ConnectionExport> = emptyList(),
     val settings: Map<String, String>,
 )

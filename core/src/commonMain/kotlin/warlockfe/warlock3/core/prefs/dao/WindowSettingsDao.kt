@@ -15,6 +15,12 @@ interface WindowSettingsDao {
     @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId ORDER BY position")
     fun observeByCharacter(characterId: String): Flow<List<WindowSettingsEntity>>
 
+    @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId ORDER BY position")
+    suspend fun getByCharacter(characterId: String): List<WindowSettingsEntity>
+
+    @Query("DELETE FROM WindowSettings WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(windowSettings: WindowSettingsEntity)
 

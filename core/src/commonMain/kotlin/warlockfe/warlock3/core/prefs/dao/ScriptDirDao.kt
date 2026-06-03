@@ -32,4 +32,7 @@ interface ScriptDirDao {
         characterId: String,
         path: String,
     )
+
+    @Query("DELETE FROM ScriptDir WHERE characterId = :characterId")
+    suspend fun deleteByCharacter(characterId: String)
 }
