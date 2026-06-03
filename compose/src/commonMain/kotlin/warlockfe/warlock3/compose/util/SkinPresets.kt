@@ -28,6 +28,7 @@ fun SkinObject.toStyleDefinition(isDark: Boolean): StyleDefinition =
         underline = underline ?: false,
         fontFamily = fontFamily,
         fontSize = fontSize,
+        fontWeight = fontWeight,
     )
 
 /** Resolves the skin's "presets" section into a name -> [StyleDefinition] map for the given mode. */

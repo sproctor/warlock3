@@ -32,6 +32,7 @@ fun Highlight.toStyleEntities(highlightId: Uuid): List<HighlightStyleEntity> =
             underline = style.underline,
             fontFamily = style.fontFamily,
             fontSize = style.fontSize,
+            fontWeight = style.fontWeight,
         )
     }
 
@@ -56,4 +57,5 @@ fun HighlightStyleEntity.toStyleDefinition(): StyleDefinition =
         underline = underline,
         fontFamily = fontFamily,
         fontSize = fontSize,
+        fontWeight = fontWeight,
     )

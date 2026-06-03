@@ -128,6 +128,9 @@ fun WarlockEntryContent(
                         fontFamily =
                             usableStyle.fontFamily?.let { createFontFamily(it) }
                                 ?: defaultTextStyle.fontFamily,
+                        fontWeight =
+                            usableStyle.fontWeight?.let { FontWeight(it) }
+                                ?: defaultTextStyle.fontWeight,
                         lineHeight = fontSize,
                         color = usableStyle.textColor.toColor(),
                     )

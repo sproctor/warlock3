@@ -461,6 +461,7 @@ class WslContext(
                     underline = false,
                     fontFamily = null,
                     fontSize = null,
+                    fontWeight = null,
                     sound = sound,
                 ),
             )

@@ -112,6 +112,7 @@ class WraythImporter(
                             underline = false,
                             fontFamily = null,
                             fontSize = null,
+                            fontWeight = null,
                             sound = name.sound,
                         )
                     }

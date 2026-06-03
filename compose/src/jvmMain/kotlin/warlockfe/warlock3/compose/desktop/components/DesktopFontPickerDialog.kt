@@ -34,9 +34,11 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import warlockfe.warlock3.compose.components.FontFamilyInfo
 import warlockfe.warlock3.compose.components.FontUpdate
+import warlockfe.warlock3.compose.components.fontWeightOptions
 import warlockfe.warlock3.compose.components.loadSystemFonts
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
+import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -52,6 +54,9 @@ fun DesktopFontPickerDialog(
     val size = rememberTextFieldState(initialFontSize.toString())
     var newFontFamily by remember(currentStyle.fontFamily) {
         mutableStateOf(currentStyle.fontFamily ?: "Default")
+    }
+    var newWeight by remember(currentStyle.fontWeight) {
+        mutableStateOf(currentStyle.fontWeight)
     }
     var systemFontFamilies by remember { mutableStateOf(emptyList<FontFamilyInfo>()) }
 
@@ -74,6 +79,15 @@ fun DesktopFontPickerDialog(
         ) {
             Text("Size")
             WarlockTextField(state = size, modifier = Modifier.fillMaxWidth())
+
+            Text("Weight")
+            WarlockDropdownSelect(
+                items = fontWeightOptions,
+                selected = fontWeightOptions.firstOrNull { it.weight == newWeight } ?: fontWeightOptions.first(),
+                onSelect = { newWeight = it.weight },
+                modifier = Modifier.fillMaxWidth(),
+                itemLabelBuilder = { it.label },
+            )
 
             if (systemFontFamilies.isEmpty()) {
                 Text("Loading system fonts…")
@@ -137,7 +151,8 @@ fun DesktopFontPickerDialog(
                         onSaveClick(
                             FontUpdate(
                                 size = size.text.toString().toFloatOrNull(),
-                                newFontFamily,
+                                fontFamily = newFontFamily,
+                                weight = newWeight,
                             ),
                         )
                     },

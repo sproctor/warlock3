@@ -13,4 +13,5 @@ data class StyleExport(
     val underline: Boolean,
     val fontFamily: String?,
     val fontSize: Float?,
+    val fontWeight: Int? = null,
 )

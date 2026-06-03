@@ -9,6 +9,7 @@ data class StyleDefinition(
     val underline: Boolean = false,
     val fontFamily: String? = null,
     val fontSize: Float? = null,
+    val fontWeight: Int? = null,
 ) {
     fun mergeWith(other: StyleDefinition): StyleDefinition =
         StyleDefinition(
@@ -20,6 +21,7 @@ data class StyleDefinition(
             underline = underline || other.underline,
             fontFamily = fontFamily ?: other.fontFamily,
             fontSize = fontSize ?: other.fontSize,
+            fontWeight = fontWeight ?: other.fontWeight,
         )
 }
 

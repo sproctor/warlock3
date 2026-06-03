@@ -28,4 +28,5 @@ data class HighlightStyleEntity(
     val underline: Boolean,
     val fontFamily: String?,
     val fontSize: Float?,
+    val fontWeight: Int?,
 )

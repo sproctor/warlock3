@@ -83,6 +83,7 @@ class WindowSettingsRepository(
                 backgroundColor = style.backgroundColor,
                 fontFamily = style.fontFamily,
                 fontSize = style.fontSize,
+                fontWeight = style.fontWeight,
             )
         }
     }

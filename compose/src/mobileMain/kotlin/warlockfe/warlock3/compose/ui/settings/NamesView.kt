@@ -156,6 +156,7 @@ fun NamesView(
                             underline = false,
                             fontFamily = null,
                             fontSize = null,
+                            fontWeight = null,
                             sound = null,
                         )
                 },

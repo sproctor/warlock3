@@ -33,7 +33,7 @@ fun StyleDefinition.toSpanStyle(): SpanStyle =
         background = backgroundColor.toColor(),
         fontFamily = fontFamily?.let { createFontFamily(it) },
         textDecoration = if (underline) TextDecoration.Underline else null,
-        fontWeight = if (bold) FontWeight.Bold else null,
+        fontWeight = fontWeight?.let { FontWeight(it) } ?: if (bold) FontWeight.Bold else null,
         fontStyle = if (italic) FontStyle.Italic else null,
         fontSize = fontSize?.sp ?: TextUnit.Unspecified,
     )

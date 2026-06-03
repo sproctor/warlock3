@@ -33,4 +33,5 @@ fun WindowSettingsEntity.getStyle(): StyleDefinition =
         backgroundColor = backgroundColor,
         fontFamily = fontFamily,
         fontSize = fontSize,
+        fontWeight = fontWeight,
     )

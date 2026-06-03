@@ -101,7 +101,13 @@ fun WindowSettingsDialog(
                     onClick = {
                         editFont =
                             Pair(style) { fontUpdate ->
-                                saveStyle(style.copy(fontFamily = fontUpdate.fontFamily, fontSize = fontUpdate.size))
+                                saveStyle(
+                                    style.copy(
+                                        fontFamily = fontUpdate.fontFamily,
+                                        fontSize = fontUpdate.size,
+                                        fontWeight = fontUpdate.weight,
+                                    ),
+                                )
                             }
                     },
                 ) {

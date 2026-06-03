@@ -197,6 +197,7 @@ private fun ColumnScope.PresetSettings(
                                     style.copy(
                                         fontFamily = update.fontFamily,
                                         fontSize = update.size,
+                                        fontWeight = update.weight,
                                     ),
                                 )
                             }
