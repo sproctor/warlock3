@@ -48,4 +48,8 @@ class FakeMacroDao : MacroDao {
     override suspend fun deleteAllGlobals() {
         TODO("Not yet implemented")
     }
+
+    override suspend fun deleteByCharacter(characterId: String) {
+        TODO("Not yet implemented")
+    }
 }
