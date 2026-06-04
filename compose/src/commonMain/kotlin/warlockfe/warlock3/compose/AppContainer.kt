@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
@@ -29,6 +30,8 @@ import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MySQLiteDriver
 import warlockfe.warlock3.core.prefs.PREFS_DATABASE_VERSION
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.ConfigMigration
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -76,7 +79,12 @@ abstract class AppContainer(
         combine(skin, darkMode) { skinMap, isDark -> skinMap.toPresets(isDark) }
             .stateIn(externalScope, SharingStarted.Eagerly, emptyMap())
 
-    val variableRepository = VariableRepository(database.variableDao())
+    // Highlights, names, and variables live in human-editable TOML files (one per character)
+    // rather than the database. The store owns them in memory and persists on every change; a
+    // one-time migration copies any existing rows out of SQLite on first launch.
+    val characterConfigStore = CharacterConfigStore(warlockDirs.configDir, fileSystem)
+
+    val variableRepository = VariableRepository(characterConfigStore)
     val characterRepository =
         CharacterRepository(
             characterDao = database.characterDao(),
@@ -89,8 +97,8 @@ abstract class AppContainer(
             KeyboardKeyMappings.reverseKeyCodeMap,
         )
     val accountRepository = AccountRepository(database.accountDao())
-    val highlightRepository = HighlightRepositoryImpl(database.highlightDao())
-    val nameRepository = NameRepositoryImpl(database.nameDao())
+    val highlightRepository = HighlightRepositoryImpl(characterConfigStore)
+    val nameRepository = NameRepositoryImpl(characterConfigStore)
     val presetRepository = PresetRepository(database.presetStyleDao())
     val progressBarSettingRepository = ProgressBarSettingRepository(database.progressBarSettingDao())
     val clientSettings = ClientSettingRepository(database.clientSettingDao(), warlockDirs)
@@ -120,6 +128,21 @@ abstract class AppContainer(
         AlterationRepository(
             database.alterationDao(),
         )
+
+    init {
+        externalScope.launch {
+            characterConfigStore.load()
+            ConfigMigration(
+                store = characterConfigStore,
+                characterDao = database.characterDao(),
+                highlightDao = database.highlightDao(),
+                nameDao = database.nameDao(),
+                variableDao = database.variableDao(),
+                fileSystem = fileSystem,
+                configDirectory = warlockDirs.configDir,
+            ).migrateIfNeeded()
+        }
+    }
 
     abstract val scriptEngineRepository: WarlockScriptEngineRepository
     abstract val scriptManagerFactory: ScriptManagerFactory
@@ -229,13 +252,11 @@ abstract class AppContainer(
             clientSettingDao = database.clientSettingDao(),
             connectionDao = database.connectionDao(),
             connectionSettingDao = database.connectionSettingDao(),
-            highlightDao = database.highlightDao(),
             macroDao = database.macroDao(),
-            nameDao = database.nameDao(),
             presetStyleDao = database.presetStyleDao(),
             scriptDirDao = database.scriptDirDao(),
-            variableDao = database.variableDao(),
             windowSettingsDao = database.windowSettingsDao(),
+            characterConfigStore = characterConfigStore,
         )
     }
 }
