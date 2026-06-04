@@ -13,6 +13,7 @@ fun PresetStyleEntity.toStyleDefinition(): StyleDefinition =
         underline = underline,
         fontFamily = fontFamily,
         fontSize = fontSize,
+        fontWeight = fontWeight,
     )
 
 fun StyleDefinition.toPresetStyleEntity(
@@ -30,4 +31,5 @@ fun StyleDefinition.toPresetStyleEntity(
         underline = underline,
         fontFamily = fontFamily,
         fontSize = fontSize,
+        fontWeight = fontWeight,
     )

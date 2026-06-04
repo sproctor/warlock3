@@ -68,6 +68,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -306,6 +307,7 @@ private fun WindowViewContent(
     val textColor = style.textColor.toColor()
     val fontFamily = style.fontFamily?.let { createFontFamily(it) }
     val fontSize = style.fontSize?.sp ?: MaterialTheme.typography.bodyMedium.fontSize
+    val fontWeight = style.fontWeight?.let { FontWeight(it) }
 
     val lines = stream.lines.collectAsState(emptyList()).value
 
@@ -396,6 +398,7 @@ private fun WindowViewContent(
                                                 color = textColor,
                                                 fontFamily = fontFamily,
                                                 fontSize = fontSize,
+                                                fontWeight = fontWeight,
                                             ),
                                     )
                                 }

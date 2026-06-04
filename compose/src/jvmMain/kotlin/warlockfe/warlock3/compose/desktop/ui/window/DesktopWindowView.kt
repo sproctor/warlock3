@@ -329,6 +329,7 @@ private fun DesktopWindowViewContent(
     val textColor = style.textColor.toColor()
     val fontFamily = style.fontFamily?.let { createFontFamily(it) }
     val fontSize = style.fontSize?.sp ?: JewelTheme.defaultTextStyle.fontSize
+    val fontWeight = style.fontWeight?.let { FontWeight(it) }
 
     val lines = stream.lines.collectAsState(emptyList()).value
 
@@ -422,6 +423,7 @@ private fun DesktopWindowViewContent(
                                                     color = textColor,
                                                     fontFamily = fontFamily,
                                                     fontSize = fontSize,
+                                                    fontWeight = fontWeight,
                                                 ),
                                         )
                                     }

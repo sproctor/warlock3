@@ -24,5 +24,6 @@ data class NameEntity(
     val underline: Boolean,
     val fontFamily: String?,
     val fontSize: Float?,
+    val fontWeight: Int?,
     val sound: String?,
 )

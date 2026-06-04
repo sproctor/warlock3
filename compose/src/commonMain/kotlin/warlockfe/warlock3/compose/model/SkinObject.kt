@@ -21,6 +21,7 @@ data class SkinObject(
     val entireLine: Boolean? = null,
     val fontFamily: String? = null,
     val fontSize: Float? = null,
+    val fontWeight: Int? = null,
     val children: Map<String, SkinObject> = emptyMap(),
 )
 

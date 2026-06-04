@@ -15,5 +15,6 @@ data class WindowSettingsExport(
     val backgroundColor: WarlockColor,
     val fontFamily: String?,
     val fontSize: Float?,
+    val fontWeight: Int? = null,
     val nameFilter: Boolean = false,
 )

@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +43,10 @@ fun FontPickerDialog(
     var newFontFamily by remember(currentStyle.fontFamily) {
         mutableStateOf(currentStyle.fontFamily ?: "Default")
     }
+    var newWeight by remember(currentStyle.fontWeight) {
+        mutableStateOf(currentStyle.fontWeight)
+    }
+    var weightMenuExpanded by remember { mutableStateOf(false) }
     var systemFontFamilies by remember { mutableStateOf(emptyList<FontFamilyInfo>()) }
 
     LaunchedEffect(Unit) {
@@ -53,7 +60,8 @@ fun FontPickerDialog(
                 onSaveClick(
                     FontUpdate(
                         size = size.text.toString().toFloatOrNull(),
-                        newFontFamily,
+                        fontFamily = newFontFamily,
+                        weight = newWeight,
                     ),
                 )
             }) {
@@ -71,6 +79,27 @@ fun FontPickerDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedTextField(state = size)
+
+                val weightLabel = fontWeightOptions.firstOrNull { it.weight == newWeight }?.label ?: "Default"
+                Column {
+                    OutlinedButton(onClick = { weightMenuExpanded = true }) {
+                        Text("Weight: $weightLabel")
+                    }
+                    DropdownMenu(
+                        expanded = weightMenuExpanded,
+                        onDismissRequest = { weightMenuExpanded = false },
+                    ) {
+                        fontWeightOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                onClick = {
+                                    newWeight = option.weight
+                                    weightMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
 
                 ScrollableColumn(
                     modifier =

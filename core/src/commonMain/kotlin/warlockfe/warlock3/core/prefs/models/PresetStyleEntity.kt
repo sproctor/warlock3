@@ -18,4 +18,5 @@ data class PresetStyleEntity(
     val underline: Boolean,
     val fontFamily: String?,
     val fontSize: Float?,
+    val fontWeight: Int?,
 )

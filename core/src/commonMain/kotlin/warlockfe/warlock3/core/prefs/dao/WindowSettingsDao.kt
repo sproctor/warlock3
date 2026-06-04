@@ -32,7 +32,8 @@ interface WindowSettingsDao {
             textColor,
             backgroundColor,
             fontFamily,
-            fontSize
+            fontSize,
+            fontWeight
         )
         VALUES (
             :characterId,
@@ -40,14 +41,16 @@ interface WindowSettingsDao {
             :textColor,
             :backgroundColor,
             :fontFamily,
-            :fontSize
+            :fontSize,
+            :fontWeight
         )
         ON CONFLICT(characterId, name) DO
         UPDATE SET
             textColor = :textColor,
             backgroundColor = :backgroundColor,
             fontFamily = :fontFamily,
-            fontSize = :fontSize;
+            fontSize = :fontSize,
+            fontWeight = :fontWeight;
     """,
     )
     suspend fun setStyle(
@@ -57,6 +60,7 @@ interface WindowSettingsDao {
         backgroundColor: WarlockColor,
         fontFamily: String?,
         fontSize: Float?,
+        fontWeight: Int?,
     )
 
     @Query(

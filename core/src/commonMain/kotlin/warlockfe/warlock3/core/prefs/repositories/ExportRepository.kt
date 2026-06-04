@@ -148,6 +148,7 @@ class ExportRepository(
                                         underline = style.underline,
                                         fontFamily = style.fontFamily,
                                         fontSize = style.fontSize,
+                                        fontWeight = style.fontWeight,
                                     )
                             },
                     )
@@ -170,6 +171,7 @@ class ExportRepository(
                                 underline = it.underline,
                                 fontFamily = it.fontFamily,
                                 fontSize = it.fontSize,
+                                fontWeight = it.fontWeight,
                                 entireLine = false,
                             ),
                     )
@@ -187,6 +189,7 @@ class ExportRepository(
                                 underline = preset.underline,
                                 fontFamily = preset.fontFamily,
                                 fontSize = preset.fontSize,
+                                fontWeight = preset.fontWeight,
                                 entireLine = preset.entireLine,
                             ),
                     )
@@ -203,6 +206,7 @@ class ExportRepository(
                         backgroundColor = it.backgroundColor,
                         fontFamily = it.fontFamily,
                         fontSize = it.fontSize,
+                        fontWeight = it.fontWeight,
                         nameFilter = it.nameFilter,
                     )
                 },
@@ -344,6 +348,7 @@ class ExportRepository(
                         underline = style.underline,
                         fontFamily = style.fontFamily,
                         fontSize = style.fontSize,
+                        fontWeight = style.fontWeight,
                     )
                 },
             )
@@ -362,6 +367,7 @@ class ExportRepository(
                     underline = name.style.underline,
                     fontFamily = name.style.fontFamily,
                     fontSize = name.style.fontSize,
+                    fontWeight = name.style.fontWeight,
                     sound = name.sound,
                 ),
             )
@@ -403,6 +409,7 @@ class ExportRepository(
                     underline = preset.style.underline,
                     fontFamily = preset.style.fontFamily,
                     fontSize = preset.style.fontSize,
+                    fontWeight = preset.style.fontWeight,
                 ),
             )
         }
@@ -428,6 +435,7 @@ class ExportRepository(
                     backgroundColor = window.backgroundColor,
                     fontFamily = window.fontFamily,
                     fontSize = window.fontSize,
+                    fontWeight = window.fontWeight,
                     nameFilter = window.nameFilter,
                 ),
             )

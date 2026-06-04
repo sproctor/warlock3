@@ -22,6 +22,7 @@ data class WindowSettingsEntity(
     val backgroundColor: WarlockColor,
     val fontFamily: String?,
     val fontSize: Float?,
+    val fontWeight: Int?,
     @ColumnInfo(defaultValue = "0")
     val nameFilter: Boolean = false,
 )
