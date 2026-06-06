@@ -7,7 +7,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import net.peanuuutz.tomlkt.TomlComment
+import dev.eav.tomlkt.TomlComment
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
 import warlockfe.warlock3.core.util.toWarlockColor

@@ -13,7 +13,7 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.readString
 import kotlinx.io.writeString
-import net.peanuuutz.tomlkt.Toml
+import dev.eav.tomlkt.Toml
 import kotlin.uuid.Uuid
 
 const val GLOBAL_CHARACTER_ID = "global"
@@ -66,7 +66,7 @@ class CharacterConfigStore(
         val loaded = mutableMapOf<String, CharacterConfig>()
         for (path in listConfigFiles()) {
             val config = readConfig(path) ?: continue
-            val key = config.character.ifEmpty { characterIdFromFileName(path) }
+            val key = config.character.ifEmpty { characterIdFromPath(path) }
             loaded[key] = config.copy(character = key)
         }
         // Fill in any missing ids, persisting only the files we actually changed.
@@ -100,9 +100,16 @@ class CharacterConfigStore(
         if (fileSystem.metadataOrNull(globalFile) != null) {
             files += globalFile
         }
-        val charactersMeta = fileSystem.metadataOrNull(charactersDir)
-        if (charactersMeta?.isDirectory == true) {
-            files += fileSystem.list(charactersDir).filter { it.name.endsWith(".toml") }
+        if (fileSystem.metadataOrNull(charactersDir)?.isDirectory == true) {
+            // Files live one level down, in characters/<gameCode>/<name>.toml. Tolerate a stray
+            // .toml directly under characters/ as well.
+            for (entry in fileSystem.list(charactersDir)) {
+                if (fileSystem.metadataOrNull(entry)?.isDirectory == true) {
+                    files += fileSystem.list(entry).filter { it.name.endsWith(".toml") }
+                } else if (entry.name.endsWith(".toml")) {
+                    files += entry
+                }
+            }
         }
         return files
     }
@@ -116,12 +123,7 @@ class CharacterConfigStore(
         }.getOrNull()
 
     private fun persist(characterId: String, config: CharacterConfig) {
-        val target =
-            if (characterId == GLOBAL_CHARACTER_ID) {
-                globalFile
-            } else {
-                Path(charactersDir, fileNameForCharacter(characterId))
-            }
+        val target = pathForCharacter(characterId)
         runCatching {
             val parent = target.parent
             if (parent != null && fileSystem.metadataOrNull(parent) == null) {
@@ -136,15 +138,29 @@ class CharacterConfigStore(
         }
     }
 
-    private fun fileNameForCharacter(characterId: String): String {
-        // Character ids look like "gs4:tholan"; sanitize anything a filesystem might dislike.
-        // The authoritative id is stored inside the file, so this only needs to be stable.
-        val safe = characterId.map { c -> if (c.isLetterOrDigit() || c == '-' || c == '_' || c == '.') c else '_' }.joinToString("")
-        return "$safe.toml"
+    // Character ids look like "gs4:tholan"; lay them out as characters/<gameCode>/<name>.toml so the
+    // files are easy to browse. The authoritative id is also stored inside the file.
+    private fun pathForCharacter(characterId: String): Path {
+        if (characterId == GLOBAL_CHARACTER_ID) return globalFile
+        val colon = characterId.indexOf(':')
+        return if (colon >= 0) {
+            val gameCode = sanitize(characterId.substring(0, colon))
+            val name = sanitize(characterId.substring(colon + 1))
+            Path(Path(charactersDir, gameCode), "$name.toml")
+        } else {
+            Path(charactersDir, "${sanitize(characterId)}.toml")
+        }
     }
 
-    private fun characterIdFromFileName(path: Path): String =
-        path.name.removeSuffix(".toml")
+    private fun sanitize(component: String): String =
+        component.map { c -> if (c.isLetterOrDigit() || c == '-' || c == '_' || c == '.') c else '_' }.joinToString("")
+
+    private fun characterIdFromPath(path: Path): String {
+        val name = path.name.removeSuffix(".toml")
+        val parentName = path.parent?.name
+        // Reconstruct "gameCode:name" from the directory layout when the file omits its own id.
+        return if (parentName != null && parentName != charactersDir.name) "$parentName:$name" else name
+    }
 }
 
 private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {
