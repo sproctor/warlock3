@@ -103,7 +103,6 @@ kompress-core = { group = "dev.karmakrafts.kompress", name = "kompress-core", ve
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
-tomlkt = { module = "dev.eav.tomlkt:tomlkt", version.ref = "tomlkt" }
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
@@ -120,5 +119,6 @@ slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version.ref = "slf4jAn
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidxSqlite" }
+tomlkt = { module = "com.seanproctor:tomlkt", version.ref = "tomlkt" }
 uri = { module = "com.eygraber:uri-kmp", version.ref = "uri" }
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }
