@@ -35,13 +35,12 @@ coil = "3.4.0"
 compose = "1.11.1"
 compose-material3 = "1.11.0-alpha07"
 ##             ⬆ = "1.12.0-alpha01"
-colorpicker = "1.1.4"
+colorpicker = "1.2.0"
 fastscroller = "0.3.2"
 filekit = "0.14.1"
-intellij = "261.24374.191"
+intellij ="261.25134.95"
 # Jewel 0.37 is still a pre-release as of may 13, 2026
-jewel = "0.36.0-261.24374.151"
-## ⬆ = "0.37.0-261.25134.92"
+jewel = "0.37.0-261.25134.95"
 ## ⬆ = "0.37.0-262.4852.51"
 kermit = "2.1.0"
 kotlin = "2.4.0"
@@ -83,7 +82,7 @@ bignum = { module = "com.ionspin.kotlin:bignum", version.ref = "bignum" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
-colorpicker = { group = "com.seanproctor", name = "colorpicker-compose", version.ref = "colorpicker" }
+colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui-tooling = { module = " org.jetbrains.compose.ui:ui-tooling", version.ref = "compose" }
