@@ -35,13 +35,13 @@ coil = "3.4.0"
 compose = "1.11.1"
 compose-material3 = "1.11.0-alpha07"
 ##             ⬆ = "1.12.0-alpha01"
-colorpicker = "1.1.4"
+colorpicker = "1.2.0"
 fastscroller = "0.3.2"
 filekit = "0.14.1"
-intellij = "261.24374.191"
+intellij ="261.25134.95"
+##   ⬆ = "261.25134.137"
 # Jewel 0.37 is still a pre-release as of may 13, 2026
-jewel = "0.36.0-261.24374.151"
-## ⬆ = "0.37.0-261.25134.92"
+jewel = "0.37.0-261.25134.95"
 ## ⬆ = "0.37.0-262.4852.51"
 kermit = "2.1.0"
 kotlin = "2.4.0"
@@ -56,7 +56,7 @@ tomlkt = "0.6.0"
 ksp = "2.3.9"
 ktlint = "1.5.0"
 ktlint-gradle = "14.2.0"
-ktlint-compose-rules = "0.5.9"
+ktlint-compose-rules = "0.6.0"
 ktor = "3.5.0"
 nucleus = "1.15.7"
 rhino = "1.9.1"
@@ -84,7 +84,7 @@ bignum = { module = "com.ionspin.kotlin:bignum", version.ref = "bignum" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
-colorpicker = { group = "com.seanproctor", name = "colorpicker-compose", version.ref = "colorpicker" }
+colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui-tooling = { module = " org.jetbrains.compose.ui:ui-tooling", version.ref = "compose" }
@@ -98,6 +98,7 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kompress-core = { group = "dev.karmakrafts.kompress", name = "kompress-core", version.ref = "kompress" }
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
