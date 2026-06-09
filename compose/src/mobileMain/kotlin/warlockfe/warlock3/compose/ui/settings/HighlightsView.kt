@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,14 +55,19 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.rememberReorderableState
+import warlockfe.warlock3.compose.components.reorderableHandle
+import warlockfe.warlock3.compose.components.reorderableItem
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
+import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -98,61 +104,82 @@ fun HighlightsView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Highlights", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
+        val reorderState =
+            rememberReorderableState(
+                items = highlights,
+                key = { it.id },
+                onMove = { from, to ->
+                    coroutineScope.launch {
+                        highlightRepository.move(currentCharacterId ?: GLOBAL_CHARACTER_ID, from, to)
+                    }
+                },
+            )
         ScrollableColumn(
             Modifier.fillMaxWidth().weight(1f),
         ) {
-            highlights.forEach { highlight ->
-                ListItem(
-                    headlineContent = {
-                        Text(text = highlight.pattern)
-                    },
-                    leadingContent = {
-                        val style = highlight.styles[0]
-                        val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
-                                        shape = MaterialTheme.shapes.small,
-                                    ).border(1.dp, contentColor, MaterialTheme.shapes.small),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (contentColor.isSpecified) {
+            reorderState.items.forEach { highlight ->
+                key(highlight.id) {
+                    ListItem(
+                        modifier = Modifier.reorderableItem(reorderState, highlight.id),
+                        headlineContent = {
+                            Text(text = highlight.pattern)
+                        },
+                        leadingContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    painterResource(Res.drawable.palette),
-                                    contentDescription = "Highlight color",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = contentColor,
+                                    painter = painterResource(Res.drawable.drag_indicator),
+                                    contentDescription = "Drag to reorder",
+                                    modifier = Modifier.reorderableHandle(reorderState, highlight.id),
                                 )
+                                Spacer(Modifier.width(8.dp))
+                                val style = highlight.styles[0]
+                                val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .size(40.dp)
+                                            .background(
+                                                color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
+                                                shape = MaterialTheme.shapes.small,
+                                            ).border(1.dp, contentColor, MaterialTheme.shapes.small),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (contentColor.isSpecified) {
+                                        Icon(
+                                            painterResource(Res.drawable.palette),
+                                            contentDescription = "Highlight color",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = contentColor,
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    },
-                    trailingContent = {
-                        Row {
-                            IconButton(
-                                onClick = { editingHighlight = highlight },
-                            ) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.edit),
-                                    contentDescription = "Edit",
-                                )
+                        },
+                        trailingContent = {
+                            Row {
+                                IconButton(
+                                    onClick = { editingHighlight = highlight },
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.edit),
+                                        contentDescription = "Edit",
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
+                                    },
+                                ) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.delete),
+                                        contentDescription = "Delete",
+                                    )
+                                }
                             }
-                            Spacer(Modifier.width(8.dp))
-                            IconButton(
-                                onClick = {
-                                    coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
-                                },
-                            ) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.delete),
-                                    contentDescription = "Delete",
-                                )
-                            }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
         Row(

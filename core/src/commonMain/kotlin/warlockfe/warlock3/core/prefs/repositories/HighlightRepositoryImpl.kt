@@ -61,9 +61,36 @@ class HighlightRepositoryImpl(
             current.copy(highlights = current.highlights.filterNot { it.id == idString })
         }
     }
+
+    override suspend fun move(
+        characterId: String,
+        fromIndex: Int,
+        toIndex: Int,
+    ) {
+        store.mutate(characterId) { current ->
+            val highlights = current.highlights
+            if (fromIndex == toIndex || fromIndex !in highlights.indices || toIndex !in highlights.indices) {
+                current
+            } else {
+                val reordered = highlights.toMutableList()
+                reordered.add(toIndex, reordered.removeAt(fromIndex))
+                current.copy(highlights = reordered)
+            }
+        }
+    }
 }
 
-// Mirror the database's uniqueness (primary key on id, unique index on pattern): replace any
-// existing highlight that collides on either, then append the new one.
-private fun List<HighlightConfig>.upsert(item: HighlightConfig): List<HighlightConfig> =
-    filterNot { it.id == item.id || it.pattern == item.pattern } + item
+// Mirror the database's uniqueness (primary key on id, unique index on pattern): drop any other
+// entry that collides on id or pattern, then replace the matching highlight in place so an edit
+// preserves its position. A brand-new highlight (no match) is appended at the end.
+private fun List<HighlightConfig>.upsert(item: HighlightConfig): List<HighlightConfig> {
+    val existingIndex = indexOfFirst { it.id == item.id || it.pattern == item.pattern }
+    if (existingIndex < 0) return this + item
+    return mapIndexedNotNull { index, existing ->
+        when {
+            index == existingIndex -> item
+            existing.id == item.id || existing.pattern == item.pattern -> null
+            else -> existing
+        }
+    }
+}

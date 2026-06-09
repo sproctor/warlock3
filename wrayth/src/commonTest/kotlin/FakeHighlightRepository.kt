@@ -37,4 +37,12 @@ class FakeHighlightRepository : HighlightRepository {
     override suspend fun deleteById(id: Uuid) {
         TODO("Not yet implemented")
     }
+
+    override suspend fun move(
+        characterId: String,
+        fromIndex: Int,
+        toIndex: Int,
+    ) {
+        TODO("Not yet implemented")
+    }
 }
