@@ -13,6 +13,9 @@ fun buildTestContext(
     client: FakeWarlockClient = FakeWarlockClient(),
     variableDao: FakeVariableDao = FakeVariableDao(),
     scriptManager: FakeScriptManager = FakeScriptManager(),
+    soundPlayer: FakeSoundPlayer = FakeSoundPlayer(),
+    highlightRepository: FakeHighlightRepository = FakeHighlightRepository(),
+    nameRepository: FakeNameRepository = FakeNameRepository(),
     file: Path = Path(SystemTemporaryDirectory, "wsl-test-instance.wsl"),
 ): WslContext {
     val variableRepository = VariableRepository(variableDao)
@@ -22,10 +25,10 @@ fun buildTestContext(
             name = "test",
             file = file,
             variableRepository = variableRepository,
-            highlightRepository = FakeHighlightRepository(),
-            nameRepository = FakeNameRepository(),
+            highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
             scriptManager = scriptManager,
-            soundPlayer = FakeSoundPlayer(),
+            soundPlayer = soundPlayer,
             fileSystem = SystemFileSystem,
         )
     return WslContext(
@@ -35,10 +38,10 @@ fun buildTestContext(
         scriptInstance = scriptInstance,
         scope = scope,
         variableRepository = variableRepository,
-        highlightRepository = FakeHighlightRepository(),
-        nameRepository = FakeNameRepository(),
+        highlightRepository = highlightRepository,
+        nameRepository = nameRepository,
         commandHandler = { client.sendCommand(it) },
-        soundPlayer = FakeSoundPlayer(),
+        soundPlayer = soundPlayer,
         fileSystem = SystemFileSystem,
     )
 }
