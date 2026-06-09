@@ -2,6 +2,8 @@ package warlockfe.warlock3.compose
 
 import androidx.room.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -262,4 +264,28 @@ fun openPrefsDatabase(
                 .addMigrations(MIGRATION_10_11, MIGRATION_14_16)
                 .build()
         },
+        checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem) },
     )
+
+private val snapshotLogger = Logger.withTag("DatabaseSnapshot")
+
+/**
+ * Fold a source database's write-ahead log into its main `.db` file (via
+ * `PRAGMA wal_checkpoint(TRUNCATE)`) so that copying the main file alone captures all committed
+ * data. Best-effort: a non-WAL database makes this a no-op, and any failure is logged rather than
+ * aborting startup.
+ */
+private fun checkpointDatabase(
+    path: Path,
+    fileSystem: FileSystem,
+) {
+    if (!fileSystem.exists(path)) return
+    runCatching {
+        val connection = MySQLiteDriver(BundledSQLiteDriver()).open(path.toString())
+        try {
+            connection.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
+        } finally {
+            connection.close()
+        }
+    }.onFailure { snapshotLogger.w(it) { "Failed to checkpoint ${path.name} before seeding snapshot" } }
+}

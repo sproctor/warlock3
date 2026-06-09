@@ -82,7 +82,7 @@ class DatabaseSnapshotTest {
     }
 
     @Test
-    fun copySnapshot_copiesMainAndSidecarsAtomically() {
+    fun copySnapshot_copiesOnlyMainAndIgnoresSourceSidecars() {
         val source = Path(dir, "warlock-v10.db")
         write(source, "main")
         write(Path(dir, "warlock-v10.db-wal"), "wal")
@@ -92,11 +92,27 @@ class DatabaseSnapshotTest {
         copySnapshot(source, target, fs)
 
         assertEquals("main", read(target))
-        assertEquals("wal", read(Path(dir, "warlock-v17.db-wal")))
-        assertEquals("shm", read(Path(dir, "warlock-v17.db-shm")))
+        // Sidecars are deliberately not copied; the main file is expected to be self-contained.
+        assertFalse(fs.exists(Path(dir, "warlock-v17.db-wal")))
+        assertFalse(fs.exists(Path(dir, "warlock-v17.db-shm")))
         assertFalse(fs.exists(Path(dir, "warlock-v17.db.tmp")))
-        assertFalse(fs.exists(Path(dir, "warlock-v17.db-wal.tmp")))
         assertTrue(fs.exists(source))
+        // Source sidecars are left untouched.
+        assertTrue(fs.exists(Path(dir, "warlock-v10.db-wal")))
+    }
+
+    @Test
+    fun copySnapshot_removesStaleTargetSidecars() {
+        write(Path(dir, "warlock-v10.db"), "main")
+        // Leftovers from a previous crashed/aborted seed next to the target.
+        write(Path(dir, "warlock-v17.db-wal"), "stale-wal")
+        write(Path(dir, "warlock-v17.db-shm"), "stale-shm")
+
+        copySnapshot(Path(dir, "warlock-v10.db"), Path(dir, "warlock-v17.db"), fs)
+
+        assertEquals("main", read(Path(dir, "warlock-v17.db")))
+        assertFalse(fs.exists(Path(dir, "warlock-v17.db-wal")))
+        assertFalse(fs.exists(Path(dir, "warlock-v17.db-shm")))
     }
 
     @Test
@@ -117,6 +133,7 @@ class DatabaseSnapshotTest {
     private fun open(
         currentVersion: Int = 17,
         legacy: String = "prefs.db",
+        checkpoint: (Path) -> Unit = {},
         build: (Path) -> Unit = { path -> if (!fs.exists(path)) write(path, "fresh") },
     ) = openVersionedDatabase(
         directory = dir,
@@ -124,6 +141,7 @@ class DatabaseSnapshotTest {
         currentVersion = currentVersion,
         legacyFileName = legacy,
         buildDatabase = build,
+        checkpoint = checkpoint,
     )
 
     @Test
@@ -146,9 +164,27 @@ class DatabaseSnapshotTest {
         write(Path(dir, "warlock-v10.db"), "v10-data")
         write(Path(dir, "warlock-v14.db"), "v14-data")
         var saw: String? = null
-        open { path -> saw = read(path) }
+        open(build = { path -> saw = read(path) })
         assertEquals("v14-data", saw)
         assertTrue(fs.exists(Path(dir, "warlock-v14.db")))
+    }
+
+    @Test
+    fun checkpointsSeedSourceBeforeCopying() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+        write(Path(dir, "warlock-v14.db"), "v14-data")
+        val checkpointed = mutableListOf<String>()
+        // The seed source must be checkpointed before it is copied so its WAL is folded in first.
+        open(checkpoint = { path -> checkpointed.add(path.name) })
+        assertEquals(listOf("warlock-v14.db"), checkpointed)
+    }
+
+    @Test
+    fun checkpointsLegacySourceBeforeCopying() {
+        write(Path(dir, "prefs.db"), "legacy-data")
+        val checkpointed = mutableListOf<String>()
+        open(checkpoint = { path -> checkpointed.add(path.name) })
+        assertEquals(listOf("prefs.db"), checkpointed)
     }
 
     @Test

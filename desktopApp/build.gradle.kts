@@ -56,13 +56,14 @@ kotlin {
 }
 
 // TODO: verify version fits nucleus tag pattern
-val releaseVersion: String =
+val resolvedReleaseVersion: String? =
     System
         .getenv("RELEASE_VERSION")
         ?.removePrefix("v")
         ?.takeIf { it.isNotBlank() }
         ?: project.version.toString().takeIf { it != "unspecified" }
-        ?: "0.0.0"
+
+val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0"
 
 // Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
 val numericPackageVersion: String = releaseVersion.substringBefore('-')
@@ -72,7 +73,11 @@ nucleus.application {
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
-    jvmArgs += "-Dwarlock.release.version=$releaseVersion"
+    // Only inject a version for real releases; leaving it unset in dev lets the app
+    // detect dev mode (version == null) and enable debug logging.
+    if (resolvedReleaseVersion != null) {
+        jvmArgs += "-Dwarlock.release.version=$releaseVersion"
+    }
 
     nativeDistributions {
         val currentOs = OperatingSystem.current()
