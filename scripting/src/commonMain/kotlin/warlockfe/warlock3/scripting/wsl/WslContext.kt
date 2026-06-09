@@ -134,7 +134,9 @@ class WslContext(
                         navChannel.trySend(Unit)
                     }
 
-                    else -> Unit
+                    else -> {
+                        Unit
+                    }
                 }
             }.launchIn(scope)
     }

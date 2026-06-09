@@ -30,14 +30,8 @@ class JavascriptClient(
         client.eventFlow
             .onEach { event ->
                 when (event) {
-                    is ClientPromptEvent -> {
-                        promptChannel.trySend(Unit)
-                    }
-
-                    ClientNavEvent -> {
-                        navChannel.trySend(Unit)
-                    }
-
+                    is ClientPromptEvent -> promptChannel.trySend(Unit)
+                    ClientNavEvent -> navChannel.trySend(Unit)
                     else -> Unit
                 }
             }.launchIn(scope)

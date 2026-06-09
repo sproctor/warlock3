@@ -45,6 +45,7 @@ fun DesktopSettingsContent(
                 clientSettingRepository = clientSettingRepository,
             )
         }
+
         SettingsPage.Variables -> {
             DesktopVariablesView(
                 initialCharacter = currentCharacter,
@@ -52,30 +53,39 @@ fun DesktopSettingsContent(
                 variableRepository = variableRepository,
             )
         }
-        SettingsPage.Macros ->
+
+        SettingsPage.Macros -> {
             DesktopMacrosView(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 macroRepository = macroRepository,
             )
-        SettingsPage.Highlights ->
+        }
+
+        SettingsPage.Highlights -> {
             DesktopHighlightsView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 highlightRepository = highlightRepository,
             )
-        SettingsPage.Names ->
+        }
+
+        SettingsPage.Names -> {
             DesktopNamesView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 nameRepository = nameRepository,
             )
-        SettingsPage.Appearance ->
+        }
+
+        SettingsPage.Appearance -> {
             DesktopAppearanceView(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 presetRepository = presetRepository,
             )
+        }
+
         SettingsPage.Aliases -> {
             DesktopAliasView(
                 currentCharacter = currentCharacter,
@@ -83,6 +93,7 @@ fun DesktopSettingsContent(
                 aliasRepository = aliasRepository,
             )
         }
+
         SettingsPage.Alterations -> {
             DesktopAlterationsView(
                 currentCharacter = currentCharacter,

@@ -176,7 +176,7 @@ fun WindowView(
             )
 
             when (val data = uiState.data) {
-                is StreamWindowData ->
+                is StreamWindowData -> {
                     WindowViewContent(
                         modifier =
                             Modifier.addTextContextMenuOptions(
@@ -193,6 +193,7 @@ fun WindowView(
                         menuData = menuData,
                         onActionClick = onActionClick,
                     )
+                }
 
                 is DialogWindowData -> {
                     ScrollableColumn(
@@ -242,8 +243,13 @@ fun WindowView(
             val event = scrollEvents.firstOrNull()
             if (event != null) {
                 when (event) {
-                    ScrollEvent.PAGE_UP -> scrollState.scrollBy(-viewportHeight.toFloat())
-                    ScrollEvent.PAGE_DOWN -> scrollState.scrollBy(viewportHeight.toFloat())
+                    ScrollEvent.PAGE_UP -> {
+                        scrollState.scrollBy(-viewportHeight.toFloat())
+                    }
+
+                    ScrollEvent.PAGE_DOWN -> {
+                        scrollState.scrollBy(viewportHeight.toFloat())
+                    }
 
                     ScrollEvent.LINE_UP -> {
                         scrollState.scrollBy(-20f)
@@ -522,23 +528,29 @@ private fun WindowBackgroundImage(
     val scaledHeight = width / aspectRatio
     val imageModifier =
         when (backgroundImage.mode) {
-            BackgroundImageMode.FILL -> modifier.fillMaxSize()
+            BackgroundImageMode.FILL -> {
+                modifier.fillMaxSize()
+            }
+
             BackgroundImageMode.HEIGHT_FILL,
             BackgroundImageMode.GRADIENT,
-            ->
+            -> {
                 modifier
                     .fillMaxHeight()
                     .width(scaledWidth)
+            }
 
-            BackgroundImageMode.WIDTH_FILL ->
+            BackgroundImageMode.WIDTH_FILL -> {
                 modifier
                     .fillMaxWidth()
                     .height(scaledHeight)
+            }
 
-            BackgroundImageMode.FULL ->
+            BackgroundImageMode.FULL -> {
                 modifier
                     .requiredWidth(imageWidthDp)
                     .requiredHeight(imageHeightDp)
+            }
         }.then(backgroundImage.opacityModifier())
             .then(backgroundImage.gradientModifier())
 
@@ -552,33 +564,39 @@ private fun WindowBackgroundImage(
 
 private fun ClientBackgroundImage.backgroundAlignment(): Alignment =
     when (verticalAlignment) {
-        BackgroundImageVerticalAlignment.TOP ->
+        BackgroundImageVerticalAlignment.TOP -> {
             when (horizontalAlignment) {
                 BackgroundImageHorizontalAlignment.LEFT -> Alignment.TopStart
                 BackgroundImageHorizontalAlignment.CENTER -> Alignment.TopCenter
                 BackgroundImageHorizontalAlignment.RIGHT -> Alignment.TopEnd
             }
+        }
 
-        BackgroundImageVerticalAlignment.MIDDLE ->
+        BackgroundImageVerticalAlignment.MIDDLE -> {
             when (horizontalAlignment) {
                 BackgroundImageHorizontalAlignment.LEFT -> Alignment.CenterStart
                 BackgroundImageHorizontalAlignment.CENTER -> Alignment.Center
                 BackgroundImageHorizontalAlignment.RIGHT -> Alignment.CenterEnd
             }
+        }
 
-        BackgroundImageVerticalAlignment.BOTTOM ->
+        BackgroundImageVerticalAlignment.BOTTOM -> {
             when (horizontalAlignment) {
                 BackgroundImageHorizontalAlignment.LEFT -> Alignment.BottomStart
                 BackgroundImageHorizontalAlignment.CENTER -> Alignment.BottomCenter
                 BackgroundImageHorizontalAlignment.RIGHT -> Alignment.BottomEnd
             }
+        }
     }
 
 private fun BackgroundImageMode.contentScale(): ContentScale =
     when (this) {
         BackgroundImageMode.FILL -> ContentScale.FillBounds
+
         BackgroundImageMode.WIDTH_FILL -> ContentScale.FillWidth
+
         BackgroundImageMode.FULL -> ContentScale.None
+
         BackgroundImageMode.HEIGHT_FILL,
         BackgroundImageMode.GRADIENT,
         -> ContentScale.FillHeight
@@ -586,7 +604,7 @@ private fun BackgroundImageMode.contentScale(): ContentScale =
 
 private fun ClientBackgroundImage.gradientModifier(): Modifier =
     when (mode) {
-        BackgroundImageMode.GRADIENT ->
+        BackgroundImageMode.GRADIENT -> {
             Modifier
                 .graphicsLayer {
                     compositingStrategy = CompositingStrategy.Offscreen
@@ -597,8 +615,11 @@ private fun ClientBackgroundImage.gradientModifier(): Modifier =
                         blendMode = BlendMode.DstIn,
                     )
                 }
+        }
 
-        else -> Modifier
+        else -> {
+            Modifier
+        }
     }
 
 private fun ClientBackgroundImage.gradientColorStops(): Array<Pair<Float, Color>> {

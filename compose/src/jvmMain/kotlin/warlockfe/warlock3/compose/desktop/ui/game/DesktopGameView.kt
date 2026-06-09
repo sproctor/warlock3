@@ -197,12 +197,19 @@ fun DesktopGameView(
                                 viewModel.sendCommand(action.command)
                                 null
                             }
+
                             is WarlockAction.SendCommandWithLookup -> {
                                 viewModel.sendCommand(action.command)
                                 null
                             }
-                            is WarlockAction.OpenMenu -> action.onClick()
-                            else -> null
+
+                            is WarlockAction.OpenMenu -> {
+                                action.onClick()
+                            }
+
+                            else -> {
+                                null
+                            }
                         }
                     },
                     onWidthChange = { name, width -> viewModel.setWindowWidth(name, width) },

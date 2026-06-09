@@ -203,7 +203,9 @@ fun GameView(
                                 action.onClick()
                             }
 
-                            else -> null
+                            else -> {
+                                null
+                            }
                         }
                     },
                     onWidthChange = { name, width ->

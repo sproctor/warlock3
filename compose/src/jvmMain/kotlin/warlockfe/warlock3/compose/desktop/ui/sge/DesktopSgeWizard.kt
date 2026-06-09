@@ -39,16 +39,24 @@ fun DesktopSgeWizard(
                     onCancel = onCancel,
                 )
             }
-            SgeViewState.SgeLoadingGameList -> DesktopSgeLoadingView("Loading game list")
-            is SgeViewState.SgeGameSelector ->
+
+            SgeViewState.SgeLoadingGameList -> {
+                DesktopSgeLoadingView("Loading game list")
+            }
+
+            is SgeViewState.SgeGameSelector -> {
                 DesktopSgeGameView(
                     games = currentState.games,
                     onBackPress = { viewModel.goBack() },
                     onGameSelect = { viewModel.gameSelected(it) },
                 )
-            is SgeViewState.SgeLoadingCharacterList ->
+            }
+
+            is SgeViewState.SgeLoadingCharacterList -> {
                 DesktopSgeLoadingView("Loading character list for game: ${currentState.game.code}")
-            is SgeViewState.SgeCharacterSelector ->
+            }
+
+            is SgeViewState.SgeCharacterSelector -> {
                 DesktopSgeCharacterView(
                     characters = currentState.characters,
                     onBackPress = { viewModel.goBack() },
@@ -56,10 +64,19 @@ fun DesktopSgeWizard(
                         viewModel.characterSelected(currentState.game, character)
                     },
                 )
-            is SgeViewState.SgeConnecting -> DesktopSgeLoadingView("Connecting to SGE server")
-            is SgeViewState.SgeError ->
+            }
+
+            is SgeViewState.SgeConnecting -> {
+                DesktopSgeLoadingView("Connecting to SGE server")
+            }
+
+            is SgeViewState.SgeError -> {
                 DesktopSgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
-            is SgeViewState.SgeConnectingToGame -> Unit
+            }
+
+            is SgeViewState.SgeConnectingToGame -> {
+                Unit
+            }
         }
     }
 }

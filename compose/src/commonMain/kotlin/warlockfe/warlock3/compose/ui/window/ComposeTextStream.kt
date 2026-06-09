@@ -560,6 +560,7 @@ private fun buildReplacement(
                 sb.append(replacement[i + 1])
                 i += 2
             }
+
             c == '$' && i + 1 < replacement.length -> {
                 val next = replacement[i + 1]
                 if (next.isDigit()) {
@@ -587,6 +588,7 @@ private fun buildReplacement(
                     i++
                 }
             }
+
             else -> {
                 sb.append(c)
                 i++

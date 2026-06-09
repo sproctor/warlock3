@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.prefs.config
 
+import dev.eav.tomlkt.TomlComment
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -7,7 +8,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import dev.eav.tomlkt.TomlComment
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
 import warlockfe.warlock3.core.util.toWarlockColor
@@ -21,7 +21,10 @@ object WarlockColorAsHexSerializer : KSerializer<WarlockColor> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("WarlockColor", PrimitiveKind.STRING)
 
-    override fun serialize(encoder: Encoder, value: WarlockColor) {
+    override fun serialize(
+        encoder: Encoder,
+        value: WarlockColor,
+    ) {
         val text =
             if (value.isUnspecified()) {
                 "default"

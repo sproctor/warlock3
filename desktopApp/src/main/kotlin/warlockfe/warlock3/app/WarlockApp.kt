@@ -138,7 +138,7 @@ fun DecoratedWindowScope.WarlockApp(
     }
 
     when (val import = pendingImport) {
-        is WarlockExportFile.SingleCharacter ->
+        is WarlockExportFile.SingleCharacter -> {
             ImportCharacterDialog(
                 character = import.character,
                 characters = characters,
@@ -156,8 +156,9 @@ fun DecoratedWindowScope.WarlockApp(
                     }
                 },
             )
+        }
 
-        is WarlockExportFile.Full ->
+        is WarlockExportFile.Full -> {
             ImportFullDialog(
                 export = import.export,
                 existingCharacterIds = characters.map { it.id }.toSet(),
@@ -175,6 +176,7 @@ fun DecoratedWindowScope.WarlockApp(
                     }
                 },
             )
+        }
 
         null -> {}
     }

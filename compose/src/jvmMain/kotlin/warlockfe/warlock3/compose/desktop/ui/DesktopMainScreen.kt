@@ -61,6 +61,7 @@ fun DesktopMainScreen(
                     modifier = modifier,
                 )
             }
+
             GameScreen.NewGameState -> {
                 val viewModel =
                     remember {
@@ -76,6 +77,7 @@ fun DesktopMainScreen(
                     modifier = modifier,
                 )
             }
+
             is GameScreen.ConnectedGameState -> {
                 val character =
                     screen.viewModel.character
@@ -94,6 +96,7 @@ fun DesktopMainScreen(
                     modifier = modifier,
                 )
             }
+
             is GameScreen.ErrorState -> {
                 Column(
                     modifier =

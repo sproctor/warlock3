@@ -61,17 +61,32 @@ val wslCommands =
                         val current = context.lookupVariable("c")?.toNumber() ?: BigDecimal.ZERO
                         val result =
                             when (operator.lowercase()) {
-                                "set" -> operand
-                                "add" -> current + operand
-                                "subtract" -> current - operand
-                                "multiply" -> current * operand
+                                "set" -> {
+                                    operand
+                                }
+
+                                "add" -> {
+                                    current + operand
+                                }
+
+                                "subtract" -> {
+                                    current - operand
+                                }
+
+                                "multiply" -> {
+                                    current * operand
+                                }
+
                                 "divide" -> {
                                     if (operand.isZero()) {
                                         throw WslRuntimeException("Cannot divide by 0")
                                     }
                                     current / operand
                                 }
-                                else -> throw WslRuntimeException("Unsupported counter operator")
+
+                                else -> {
+                                    throw WslRuntimeException("Unsupported counter operator")
+                                }
                             }
                         context.setScriptVariable("c", WslNumber(result))
                     },
@@ -431,16 +446,37 @@ private suspend fun addName(
         }
         val arg = parts[1]
         when (val name = parts[0].lowercase()) {
-            "string" -> pattern = arg
-            "forecolor" -> textColor = arg.toWarlockColor()
-            "backcolor" -> backgroundColor = arg.toWarlockColor()
+            "string" -> {
+                pattern = arg
+            }
+
+            "forecolor" -> {
+                textColor = arg.toWarlockColor()
+            }
+
+            "backcolor" -> {
+                backgroundColor = arg.toWarlockColor()
+            }
+
             "highlightentireline" -> {}
+
             "notonwordboundary", "matchpartialword" -> {}
+
             "caseinsensitive", "ignorecase" -> {}
+
             "isregex" -> {}
-            "global" -> global = arg.toBoolean()
-            "sound" -> sound = arg
-            else -> throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightNames")
+
+            "global" -> {
+                global = arg.toBoolean()
+            }
+
+            "sound" -> {
+                sound = arg
+            }
+
+            else -> {
+                throw WslRuntimeException("Invalid argument \"$name\" to AddToHighlightNames")
+            }
         }
     }
     if (pattern == null) {

@@ -1,5 +1,9 @@
 package warlockfe.warlock3.core.prefs.repositories
 
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.HighlightConfig
+import warlockfe.warlock3.core.prefs.config.HighlightStyleConfig
+import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.dao.AccountDao
 import warlockfe.warlock3.core.prefs.dao.AliasDao
 import warlockfe.warlock3.core.prefs.dao.AlterationDao
@@ -12,10 +16,6 @@ import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
-import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
-import warlockfe.warlock3.core.prefs.config.HighlightConfig
-import warlockfe.warlock3.core.prefs.config.HighlightStyleConfig
-import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.export.AccountExport
 import warlockfe.warlock3.core.prefs.export.AliasExport
 import warlockfe.warlock3.core.prefs.export.AlterationExport

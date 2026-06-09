@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.prefs.config
 
 import co.touchlab.kermit.Logger
+import dev.eav.tomlkt.Toml
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,6 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.readString
 import kotlinx.io.writeString
-import dev.eav.tomlkt.Toml
 import kotlin.uuid.Uuid
 
 const val GLOBAL_CHARACTER_ID = "global"
@@ -52,8 +52,7 @@ class CharacterConfigStore(
             .map { it[characterId] ?: CharacterConfig(character = characterId) }
             .distinctUntilChanged()
 
-    fun current(characterId: String): CharacterConfig =
-        state.value[characterId] ?: CharacterConfig(character = characterId)
+    fun current(characterId: String): CharacterConfig = state.value[characterId] ?: CharacterConfig(character = characterId)
 
     fun snapshot(): Map<String, CharacterConfig> = state.value
 
@@ -122,7 +121,10 @@ class CharacterConfigStore(
             Logger.e(it) { "Failed to read config file $path; ignoring it" }
         }.getOrNull()
 
-    private fun persist(characterId: String, config: CharacterConfig) {
+    private fun persist(
+        characterId: String,
+        config: CharacterConfig,
+    ) {
         val target = pathForCharacter(characterId)
         runCatching {
             val parent = target.parent

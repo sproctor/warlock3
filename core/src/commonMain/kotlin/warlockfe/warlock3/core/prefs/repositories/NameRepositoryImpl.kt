@@ -58,5 +58,4 @@ class NameRepositoryImpl(
 }
 
 // Mirror the database's uniqueness (primary key on id, unique index on text).
-private fun List<NameConfig>.upsert(item: NameConfig): List<NameConfig> =
-    filterNot { it.id == item.id || it.text == item.text } + item
+private fun List<NameConfig>.upsert(item: NameConfig): List<NameConfig> = filterNot { it.id == item.id || it.text == item.text } + item

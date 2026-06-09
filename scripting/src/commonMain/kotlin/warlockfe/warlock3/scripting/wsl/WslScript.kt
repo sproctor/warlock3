@@ -228,14 +228,21 @@ class WslScript(
         val disjunction = primaryExpression.disjunction()
         val valueExpression = primaryExpression.valueExpression()
         return when {
-            disjunction != null -> WslPrimaryExpression.WithParens(parseDisjunction(disjunction))
-            valueExpression != null ->
+            disjunction != null -> {
+                WslPrimaryExpression.WithParens(parseDisjunction(disjunction))
+            }
+
+            valueExpression != null -> {
                 WslPrimaryExpression.WithValue(
                     parseValueExpression(
                         valueExpression,
                     ),
                 )
-            else -> throw WslParseException("Unexpected state parsing primary expression")
+            }
+
+            else -> {
+                throw WslParseException("Unexpected state parsing primary expression")
+            }
         }
     }
 
@@ -248,13 +255,23 @@ class WslScript(
         val numberLiteral = valueExpression.NUMBER()
         val value =
             when {
-                valueExpression.FALSE() != null -> WslBoolean(false)
-                valueExpression.TRUE() != null -> WslBoolean(true)
-                numberLiteral != null ->
+                valueExpression.FALSE() != null -> {
+                    WslBoolean(false)
+                }
+
+                valueExpression.TRUE() != null -> {
+                    WslBoolean(true)
+                }
+
+                numberLiteral != null -> {
                     WslNumber(
                         numberLiteral.text.toBigDecimalOrNull() ?: throw WslParseException("Could not parse number"),
                     )
-                else -> throw WslParseException("Unhandled alternative in value expression")
+                }
+
+                else -> {
+                    throw WslParseException("Unhandled alternative in value expression")
+                }
             }
         return WslValueExpression.WslLiteralExpression(value)
     }

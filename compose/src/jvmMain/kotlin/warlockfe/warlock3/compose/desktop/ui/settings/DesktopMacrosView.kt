@@ -138,7 +138,10 @@ fun DesktopMacrosView(
                 onClose = { editingMacro = DesktopEditMacroState.Closed },
             )
         }
-        else -> Unit
+
+        else -> {
+            Unit
+        }
     }
 }
 

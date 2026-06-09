@@ -58,28 +58,37 @@ fun DesktopDialogContent(
     ) {
         DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
             when (data) {
-                is DialogObject.Skin -> DialogSkin(data = data)
-                is DialogObject.ProgressBar ->
+                is DialogObject.Skin -> {
+                    DialogSkin(data = data)
+                }
+
+                is DialogObject.ProgressBar -> {
                     ProgressBarWithColorMenu(
                         skinObject = skinObject,
                         data = data,
                     )
+                }
 
-                is DialogObject.Label -> Label(skinObject = skinObject, data = data)
-                is DialogObject.Link ->
+                is DialogObject.Label -> {
+                    Label(skinObject = skinObject, data = data)
+                }
+
+                is DialogObject.Link -> {
                     Link(
                         skinObject = skinObject,
                         data = data,
                         executeCommand = executeCommand,
                     )
+                }
 
-                is DialogObject.Image ->
+                is DialogObject.Image -> {
                     DialogImage(
                         skinObject = skinObject,
                         data = data,
                         executeCommand = executeCommand,
                         contentColor = LocalContentColor.current,
                     )
+                }
 
                 is DialogObject.Button -> {
                     val colors = JewelTheme.defaultButtonStyle.colors

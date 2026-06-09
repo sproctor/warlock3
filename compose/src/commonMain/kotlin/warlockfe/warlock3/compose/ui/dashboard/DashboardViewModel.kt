@@ -52,11 +52,13 @@ class DashboardViewModel(
                     val result = sgeClient.autoConnect(sgeSettings, connection)
                     sgeClient.close()
                     when (result) {
-                        is AutoConnectResult.Failure ->
+                        is AutoConnectResult.Failure -> {
                             message = result.reason
+                        }
 
-                        is AutoConnectResult.Success ->
+                        is AutoConnectResult.Success -> {
                             connectToGame(result.credentials, connection.proxySettings, gameState)
+                        }
                     }
                 } catch (e: Exception) {
                     ensureActive()
