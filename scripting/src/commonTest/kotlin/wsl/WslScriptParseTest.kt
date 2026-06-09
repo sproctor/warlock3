@@ -13,7 +13,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WslScriptParseTest {
-    private fun parse(name: String, content: String): List<WslLine> {
+    private fun parse(
+        name: String,
+        content: String,
+    ): List<WslLine> {
         val path = Path(SystemTemporaryDirectory, "wsltest-$name.wsl")
         SystemFileSystem.sink(path).buffered().use { it.writeString(content) }
         try {
