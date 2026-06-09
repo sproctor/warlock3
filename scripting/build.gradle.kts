@@ -121,7 +121,6 @@ kotlin {
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
-        optIn.add("kotlin.uuid.ExperimentalUuidApi")
         optIn.add("kotlin.experimental.ExperimentalNativeApi")
         optIn.add("kotlin.concurrent.atomics.ExperimentalAtomicApi")
         freeCompilerArgs.add("-Xexpect-actual-classes")
