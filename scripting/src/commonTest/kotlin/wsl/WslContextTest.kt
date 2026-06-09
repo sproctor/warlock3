@@ -11,7 +11,6 @@ import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.models.VariableEntity
-import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -38,34 +37,15 @@ class WslContextTest {
         client: FakeWarlockClient = FakeWarlockClient(),
         variableDao: FakeVariableDao = FakeVariableDao(),
         scriptManager: FakeScriptManager = FakeScriptManager(),
-    ): WslContext {
-        val variableRepository = VariableRepository(variableDao)
-        val scriptInstance =
-            WslScriptInstance(
-                id = 1L,
-                name = "test",
-                file = file,
-                variableRepository = variableRepository,
-                highlightRepository = FakeHighlightRepository(),
-                nameRepository = FakeNameRepository(),
-                scriptManager = scriptManager,
-                soundPlayer = FakeSoundPlayer(),
-                fileSystem = SystemFileSystem,
-            )
-        return WslContext(
-            client = client,
-            scriptManager = scriptManager,
-            lines = lines,
-            scriptInstance = scriptInstance,
+    ): WslContext =
+        buildTestContext(
             scope = scope,
-            variableRepository = variableRepository,
-            highlightRepository = FakeHighlightRepository(),
-            nameRepository = FakeNameRepository(),
-            commandHandler = { client.sendCommand(it) },
-            soundPlayer = FakeSoundPlayer(),
-            fileSystem = SystemFileSystem,
+            lines = lines,
+            client = client,
+            variableDao = variableDao,
+            scriptManager = scriptManager,
+            file = file,
         )
-    }
 
     @Test
     fun lookupUnknownVariableReturnsNull() = runTest {
