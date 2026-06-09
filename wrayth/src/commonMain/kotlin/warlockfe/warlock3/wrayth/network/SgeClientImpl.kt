@@ -169,7 +169,11 @@ class SgeClientImpl(
                 _eventFlow.emit(SgeEvent.SgeReadyToPlayEvent(credentials))
             }
 
-            SgeResponse.SgeUnrecognizedResponse -> Unit // TODO: implement?
+            SgeResponse.SgeUnrecognizedResponse -> {
+                // Don't leave the login flow waiting on data we can't interpret; report it.
+                logger.w { "Unrecognized SGE response, treating as error: $line" }
+                _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.UNKNOWN_ERROR))
+            }
         }
     }
 
@@ -236,6 +240,10 @@ class SgeClientImpl(
                 }
             }
 
+            // The server replies with a bare "?" when it cannot parse the command we sent
+            // (e.g. a malformed login). Surface it as an error instead of waiting for a timeout.
+            '?' -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+
             else -> SgeResponse.SgeUnrecognizedResponse
         }
 
@@ -268,6 +276,13 @@ class SgeClientImpl(
         password: String,
     ) {
         this@SgeClientImpl.username = username
+        if (password.isEmpty()) {
+            // An empty password produces a malformed "A\t<user>\t\n" command that the server
+            // rejects with "?". Fail up front with a clear error instead of sending it.
+            logger.w { "Refusing to log in with an empty password" }
+            _eventFlow.emit(SgeEvent.SgeErrorEvent(SgeError.INVALID_PASSWORD))
+            return
+        }
         val encryptedPassword = encryptPassword(password.encodeWindows1252())
         val output = "A\t$username\t".encodeWindows1252() + encryptedPassword + '\n'.code.toByte()
         send(output)
@@ -307,11 +322,16 @@ class SgeClientImpl(
         settings: SgeSettings,
         connection: StoredConnection,
     ): AutoConnectResult {
+        val password = connection.password
+        if (password.isNullOrEmpty()) {
+            logger.e { "No password stored for ${connection.username}; cannot auto-connect" }
+            return AutoConnectResult.Failure("No password saved for ${connection.username}")
+        }
         if (!connect(settings)) {
             logger.e { "Unable to connect to server" }
             return AutoConnectResult.Failure("Could not connect to SGE")
         }
-        login(username = connection.username, password = connection.password ?: "")
+        login(username = connection.username, password = password)
 
         return withTimeoutOrNull(30.seconds) {
             while (true) {
