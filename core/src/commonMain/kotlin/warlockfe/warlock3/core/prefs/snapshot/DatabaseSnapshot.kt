@@ -145,11 +145,12 @@ fun copySnapshot(
             runCatching { fileSystem.delete(mainTmp, mustExist = false) }
             return
         }
-        fileSystem.atomicMove(mainTmp, target)
-        // Drop any leftover sidecars so SQLite opens the copied main file from a clean state.
+        // Drop any leftover sidecars BEFORE the main file lands, so there is never a moment where
+        // the freshly copied main coexists with a stale -wal/-shm that SQLite could mis-apply.
         for (suffix in sidecarSuffixes) {
             runCatching { fileSystem.delete(Path(targetParent, target.name + suffix), mustExist = false) }
         }
+        fileSystem.atomicMove(mainTmp, target)
     } catch (t: Throwable) {
         runCatching { fileSystem.delete(mainTmp, mustExist = false) }
         throw t
