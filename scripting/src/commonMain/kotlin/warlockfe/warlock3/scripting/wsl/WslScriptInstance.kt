@@ -13,8 +13,8 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
-import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
@@ -29,8 +29,8 @@ class WslScriptInstance(
     override val name: String,
     val file: Path,
     private val variableRepository: VariableRepository,
-    private val highlightRepository: HighlightRepositoryImpl,
-    private val nameRepository: NameRepositoryImpl,
+    private val highlightRepository: HighlightRepository,
+    private val nameRepository: NameRepository,
     private val scriptManager: ScriptManager,
     private val soundPlayer: SoundPlayer,
     private val fileSystem: FileSystem,

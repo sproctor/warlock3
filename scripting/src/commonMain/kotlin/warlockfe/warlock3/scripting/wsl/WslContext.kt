@@ -24,8 +24,8 @@ import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.models.NameEntity
-import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
-import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
@@ -56,8 +56,8 @@ class WslContext(
     val scriptInstance: WslScriptInstance,
     scope: CoroutineScope,
     private val variableRepository: VariableRepository,
-    private val highlightRepository: HighlightRepositoryImpl,
-    private val nameRepository: NameRepositoryImpl,
+    private val highlightRepository: HighlightRepository,
+    private val nameRepository: NameRepository,
     private val commandHandler: suspend (String) -> SendCommandType,
     private val soundPlayer: SoundPlayer,
     private val fileSystem: FileSystem,

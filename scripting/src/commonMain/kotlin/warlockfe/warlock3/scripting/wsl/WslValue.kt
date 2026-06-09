@@ -125,11 +125,9 @@ class WslNumber(
 }
 
 object WslNull : WslValue {
-    override fun equals(other: Any?): Boolean =
-        when (other) {
-            WslNull -> true
-            else -> false
-        }
+    override fun equals(other: Any?): Boolean = other === WslNull
+
+    override fun hashCode(): Int = 0
 
     override fun toString(): String = ""
 
