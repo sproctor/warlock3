@@ -55,6 +55,11 @@ fun findSeedCandidate(
  *  3. Hand the target path to [buildDatabase], which is responsible for invoking the platform
  *     Room builder, registering migrations, and returning the built database.
  *  4. On migration failure, delete the target so the next launch may recover, then rethrow.
+ *
+ * [checkpoint] is invoked on a source database immediately before it is copied. It must fold any
+ * write-ahead log into the main `.db` file (e.g. `PRAGMA wal_checkpoint(TRUNCATE)`) so that copying
+ * the main file alone captures all committed data. This is required because only the main file is
+ * copied -- copying the `-wal`/`-shm` sidecars to a new path is unsafe and can drop recent writes.
  */
 fun <T> openVersionedDatabase(
     directory: Path,
@@ -62,10 +67,11 @@ fun <T> openVersionedDatabase(
     currentVersion: Int,
     buildDatabase: (databasePath: Path) -> T,
     legacyFileName: String,
+    checkpoint: (databasePath: Path) -> Unit = {},
 ): T {
     fileSystem.createDirectories(directory)
 
-    migrateLegacyDatabase(directory, legacyFileName, currentVersion, fileSystem)
+    migrateLegacyDatabase(directory, legacyFileName, currentVersion, fileSystem, checkpoint)
 
     val target = Path(directory, snapshotFileName(currentVersion))
     val seedSource: SnapshotInfo? =
@@ -76,6 +82,7 @@ fun <T> openVersionedDatabase(
             when {
                 candidate == null -> null
                 else -> {
+                    checkpoint(candidate.path)
                     copySnapshot(candidate.path, target, fileSystem)
                     logger.i { "Seeded ${target.name} from ${candidate.path.name}" }
                     candidate
@@ -107,7 +114,14 @@ fun <T> openVersionedDatabase(
 }
 
 /**
- * Copy [source] to [target] (plus any -wal/-shm sidecars that exist next to [source]).
+ * Copy the main `.db` file of [source] to [target]. The `-wal`/`-shm` sidecars are deliberately
+ * NOT copied: a `-shm` is shared-memory coordination state and a `-wal` copied to a new path can
+ * be ignored or mis-replayed by SQLite, reverting the database to a pre-checkpoint state and
+ * silently dropping recent writes. Callers must checkpoint [source] first so the main file holds
+ * all committed data (see [openVersionedDatabase]).
+ *
+ * Any stale `-wal`/`-shm` left next to [target] is removed after the copy so it cannot be applied
+ * on top of the freshly seeded, self-contained main file.
  *
  * The copy is atomic-ish: bytes are written to a `<target>.tmp` companion first and only renamed
  * into place once the write completes. If [target] appears between the existence check and the
@@ -122,48 +136,22 @@ fun copySnapshot(
     if (fileSystem.exists(target)) return // another process / earlier step won
 
     val targetParent = target.parent ?: Path(".")
-    val sourceParent = source.parent ?: Path(".")
-
-    data class SidecarCopy(
-        val source: Path,
-        val tmp: Path,
-        val target: Path,
-    )
     val mainTmp = Path(targetParent, target.name + ".tmp")
-    val sidecars =
-        sidecarSuffixes.mapNotNull { suffix ->
-            val src = Path(sourceParent, source.name + suffix)
-            if (!fileSystem.exists(src)) return@mapNotNull null
-            SidecarCopy(
-                source = src,
-                tmp = Path(targetParent, target.name + suffix + ".tmp"),
-                target = Path(targetParent, target.name + suffix),
-            )
-        }
-
-    fun cleanupTmps() {
-        runCatching { fileSystem.delete(mainTmp, mustExist = false) }
-        for (s in sidecars) runCatching { fileSystem.delete(s.tmp, mustExist = false) }
-    }
 
     try {
         copyFile(source, mainTmp, fileSystem)
-        for (s in sidecars) copyFile(s.source, s.tmp, fileSystem)
 
         if (fileSystem.exists(target)) {
-            cleanupTmps()
+            runCatching { fileSystem.delete(mainTmp, mustExist = false) }
             return
         }
         fileSystem.atomicMove(mainTmp, target)
-        for (s in sidecars) {
-            if (fileSystem.exists(s.target)) {
-                fileSystem.delete(s.tmp, mustExist = false)
-            } else {
-                fileSystem.atomicMove(s.tmp, s.target)
-            }
+        // Drop any leftover sidecars so SQLite opens the copied main file from a clean state.
+        for (suffix in sidecarSuffixes) {
+            runCatching { fileSystem.delete(Path(targetParent, target.name + suffix), mustExist = false) }
         }
     } catch (t: Throwable) {
-        cleanupTmps()
+        runCatching { fileSystem.delete(mainTmp, mustExist = false) }
         throw t
     }
 }
@@ -192,12 +180,14 @@ private fun migrateLegacyDatabase(
     legacyFileName: String,
     currentVersion: Int,
     fileSystem: FileSystem,
+    checkpoint: (databasePath: Path) -> Unit,
 ) {
     val legacy = Path(directory, legacyFileName)
     if (!fileSystem.exists(legacy)) return
     if (listSnapshots(directory, fileSystem).isNotEmpty()) return
 
     val target = Path(directory, snapshotFileName(currentVersion))
+    checkpoint(legacy)
     copySnapshot(legacy, target, fileSystem)
     logger.i { "Copied legacy $legacyFileName to ${target.name}" }
 }
