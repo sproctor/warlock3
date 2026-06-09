@@ -139,9 +139,7 @@ fun DesktopMacrosView(
             )
         }
 
-        else -> {
-            Unit
-        }
+        else -> {}
     }
 }
 

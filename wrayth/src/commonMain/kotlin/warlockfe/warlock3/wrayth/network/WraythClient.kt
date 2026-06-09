@@ -292,9 +292,7 @@ class WraythClient(
                         val events = protocolHandler.parseLine(line)
                         events.forEach { event ->
                             when (event) {
-                                WraythHandledEvent -> {
-                                    Unit
-                                }
+                                WraythHandledEvent -> {}
 
                                 is WraythModeEvent -> {
                                     if (event.id.equals("cmgr", true)) {

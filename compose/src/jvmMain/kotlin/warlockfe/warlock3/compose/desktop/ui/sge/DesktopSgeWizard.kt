@@ -74,9 +74,7 @@ fun DesktopSgeWizard(
                 DesktopSgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
             }
 
-            is SgeViewState.SgeConnectingToGame -> {
-                Unit
-            }
+            is SgeViewState.SgeConnectingToGame -> {}
         }
     }
 }
