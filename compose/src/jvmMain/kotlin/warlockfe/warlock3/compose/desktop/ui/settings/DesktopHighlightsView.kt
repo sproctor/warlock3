@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.desktop.ui.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,12 +24,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.components.rememberReorderableState
+import warlockfe.warlock3.compose.components.reorderableHandle
+import warlockfe.warlock3.compose.components.reorderableItem
 import warlockfe.warlock3.compose.desktop.components.DesktopColorTextField
 import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -38,8 +46,11 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -75,32 +86,59 @@ fun DesktopHighlightsView(
         Spacer(Modifier.height(16.dp))
         Text("Highlights")
         Spacer(Modifier.height(8.dp))
+        val reorderState =
+            rememberReorderableState(
+                items = highlights,
+                key = { it.id },
+                onMove = { from, to ->
+                    scope.launch {
+                        highlightRepository.move(currentCharacterId ?: GLOBAL_CHARACTER_ID, from, to)
+                    }
+                },
+            )
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            highlights.forEach { highlight ->
-                WarlockListItem(
-                    leading = {
-                        val style = highlight.styles[0]
-                        DesktopStylePreview(
-                            textColor = style?.textColor.toColor(),
-                            backgroundColor = style?.backgroundColor.toColor(),
-                        )
-                    },
-                    headline = { Text(highlight.pattern) },
-                    trailing = {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            WarlockOutlinedButton(
-                                onClick = { editingHighlight = highlight },
-                                text = "Edit",
-                            )
-                            WarlockOutlinedButton(
-                                onClick = {
-                                    scope.launch { highlightRepository.deleteById(highlight.id) }
-                                },
-                                text = "Delete",
-                            )
-                        }
-                    },
-                )
+            reorderState.items.forEach { highlight ->
+                key(highlight.id) {
+                    WarlockListItem(
+                        modifier = Modifier.reorderableItem(reorderState, highlight.id),
+                        leading = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Image(
+                                    painter = painterResource(Res.drawable.drag_indicator),
+                                    contentDescription = "Drag to reorder",
+                                    modifier =
+                                        Modifier
+                                            .size(20.dp)
+                                            .reorderableHandle(reorderState, highlight.id),
+                                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                                )
+                                val style = highlight.styles[0]
+                                DesktopStylePreview(
+                                    textColor = style?.textColor.toColor(),
+                                    backgroundColor = style?.backgroundColor.toColor(),
+                                )
+                            }
+                        },
+                        headline = { Text(highlight.pattern) },
+                        trailing = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                WarlockOutlinedButton(
+                                    onClick = { editingHighlight = highlight },
+                                    text = "Edit",
+                                )
+                                WarlockOutlinedButton(
+                                    onClick = {
+                                        scope.launch { highlightRepository.deleteById(highlight.id) }
+                                    },
+                                    text = "Delete",
+                                )
+                            }
+                        },
+                    )
+                }
             }
         }
         Row(

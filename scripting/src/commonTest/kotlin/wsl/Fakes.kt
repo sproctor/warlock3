@@ -106,6 +106,12 @@ class FakeHighlightRepository : HighlightRepository {
     }
 
     override suspend fun deleteById(id: Uuid) = Unit
+
+    override suspend fun move(
+        characterId: String,
+        fromIndex: Int,
+        toIndex: Int,
+    ) = Unit
 }
 
 class FakeNameRepository : NameRepository {
