@@ -10,7 +10,7 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.client.ClientTextEvent
-import warlockfe.warlock3.core.prefs.models.VariableEntity
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -38,14 +38,14 @@ class WslContextTest {
         file: Path,
         lines: List<WslLine>,
         client: FakeWarlockClient = FakeWarlockClient(),
-        variableDao: FakeVariableDao = FakeVariableDao(),
+        configStore: CharacterConfigStore = newTestConfigStore(),
         scriptManager: FakeScriptManager = FakeScriptManager(),
     ): WslContext =
         buildTestContext(
             scope = scope,
             lines = lines,
             client = client,
-            variableDao = variableDao,
+            configStore = configStore,
             scriptManager = scriptManager,
             file = file,
         )
@@ -122,12 +122,12 @@ class WslContextTest {
     @Test
     fun storedVariableLookupFallsThroughToGlobal() =
         runTest(UnconfinedTestDispatcher()) {
-            val dao = FakeVariableDao()
-            dao.save(VariableEntity("testchar", "foo", "bar"))
+            val store = newTestConfigStore()
+            store.mutate("testchar") { it.copy(variables = it.variables + ("foo" to "bar")) }
             val client = FakeWarlockClient(characterId = "testchar")
             val (file, lines) = script("global", "echo hi")
             // Unconfined dispatcher so the globalVariables stateIn collector runs eagerly.
-            val ctx = makeContext(backgroundScope, file, lines, client = client, variableDao = dao)
+            val ctx = makeContext(backgroundScope, file, lines, client = client, configStore = store)
             assertEquals(WslString("bar"), ctx.lookupVariable("foo"))
         }
 
