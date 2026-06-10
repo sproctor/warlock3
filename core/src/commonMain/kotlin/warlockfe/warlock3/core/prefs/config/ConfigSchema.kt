@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.prefs.config
 
 import dev.eav.tomlkt.TomlComment
+import dev.eav.tomlkt.TomlInline
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -69,6 +70,9 @@ data class HighlightConfig(
     val matchPartialWord: Boolean = false,
     val ignoreCase: Boolean = false,
     val sound: String? = null,
+    // Emit styles as an inline array of inline tables (styles = [{ group = 0, ... }]) instead of a
+    // nested [[highlights.styles]] sub-section, which is far easier to read and hand-edit.
+    @TomlInline
     val styles: List<HighlightStyleConfig> = emptyList(),
 )
 
