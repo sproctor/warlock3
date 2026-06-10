@@ -168,7 +168,9 @@ fun MacrosView(
             )
         }
 
-        else -> Unit
+        else -> {
+            Unit
+        }
     }
 }
 

@@ -77,9 +77,18 @@ class SgeViewModel(
                 client.eventFlow.collect { event ->
                     logger.d { "Got event: $event" }
                     when (event) {
-                        SgeEvent.SgeLoginSucceededEvent -> client.requestGameList()
-                        is SgeEvent.SgeGamesReadyEvent -> navigate(SgeViewState.SgeGameSelector(event.games))
-                        is SgeEvent.SgeGameSelectedEvent -> client.requestCharacterList()
+                        SgeEvent.SgeLoginSucceededEvent -> {
+                            client.requestGameList()
+                        }
+
+                        is SgeEvent.SgeGamesReadyEvent -> {
+                            navigate(SgeViewState.SgeGameSelector(event.games))
+                        }
+
+                        is SgeEvent.SgeGameSelectedEvent -> {
+                            client.requestCharacterList()
+                        }
+
                         is SgeEvent.SgeCharactersReadyEvent -> {
                             val currentState = _state.value
                             if (currentState is SgeViewState.SgeLoadingCharacterList) {

@@ -42,6 +42,7 @@ class ScriptManagerImpl(
             is ScriptLaunchResult.Success -> {
                 startInstance(client, result.instance, argString, commandHandler)
             }
+
             is ScriptLaunchResult.Failure -> {
                 client.print(StyledString(result.message, style = WarlockStyle.Error))
             }
@@ -58,6 +59,7 @@ class ScriptManagerImpl(
                 is ScriptLaunchResult.Success -> {
                     startInstance(client, result.instance, null, commandHandler)
                 }
+
                 is ScriptLaunchResult.Failure -> {
                     client.print(StyledString(result.message, style = WarlockStyle.Error))
                 }

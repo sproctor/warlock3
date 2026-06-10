@@ -24,4 +24,15 @@ interface HighlightRepository {
     )
 
     suspend fun deleteById(id: Uuid)
+
+    /**
+     * Reorders the highlights for [characterId], moving the one at [fromIndex] to [toIndex].
+     * Indices refer to the list emitted by [observeByCharacter]. Highlights are applied in stored
+     * order, so this also changes which highlight wins on overlapping matches.
+     */
+    suspend fun move(
+        characterId: String,
+        fromIndex: Int,
+        toIndex: Int,
+    )
 }

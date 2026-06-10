@@ -292,11 +292,13 @@ class WraythClient(
                         val events = protocolHandler.parseLine(line)
                         events.forEach { event ->
                             when (event) {
-                                WraythHandledEvent -> Unit
-                                is WraythModeEvent ->
+                                WraythHandledEvent -> {}
+
+                                is WraythModeEvent -> {
                                     if (event.id.equals("cmgr", true)) {
                                         parseText = false
                                     }
+                                }
 
                                 is WraythStreamEvent -> {
                                     componentId = null
@@ -304,8 +306,9 @@ class WraythClient(
                                     currentStream = getStream(event.id ?: "main")
                                 }
 
-                                is WraythClearStreamEvent ->
+                                is WraythClearStreamEvent -> {
                                     getStream(event.id).clear()
+                                }
 
                                 is WraythDataReceivedEvent -> {
                                     bufferText(StyledString(event.text))
@@ -341,17 +344,21 @@ class WraythClient(
                                     }
                                 }
 
-                                is WraythOutputEvent ->
+                                is WraythOutputEvent -> {
                                     outputStyle = event.style
+                                }
 
-                                is WraythStyleEvent ->
+                                is WraythStyleEvent -> {
                                     currentStyle = event.style
+                                }
 
-                                is WraythPushStyleEvent ->
+                                is WraythPushStyleEvent -> {
                                     styleStack.addLast(event.style)
+                                }
 
-                                WraythPopStyleEvent ->
+                                WraythPopStyleEvent -> {
                                     styleStack.removeLastOrNull()
+                                }
 
                                 is WraythPromptEvent -> {
                                     currentTypeAhead.update { max(0, it - 1) }
@@ -382,15 +389,17 @@ class WraythClient(
                                     }
                                 }
 
-                                is WraythRoundTimeEvent ->
+                                is WraythRoundTimeEvent -> {
                                     event.time.toLongOrNull()?.let {
                                         _roundTimeEnd.value = it
                                     }
+                                }
 
-                                is WraythCastTimeEvent ->
+                                is WraythCastTimeEvent -> {
                                     event.time.toLongOrNull()?.let {
                                         _castTimeEnd.value = it
                                     }
+                                }
 
                                 is WraythIndicatorEvent -> {
                                     if (event.visible) {
@@ -444,14 +453,17 @@ class WraythClient(
                                     directions += event.direction
                                 }
 
-                                is WraythLeftEvent ->
+                                is WraythLeftEvent -> {
                                     _leftHand.value = event.value
+                                }
 
-                                is WraythRightEvent ->
+                                is WraythRightEvent -> {
                                     _rightHand.value = event.value
+                                }
 
-                                is WraythSpellEvent ->
+                                is WraythSpellEvent -> {
                                     _spellHand.value = event.value
+                                }
 
                                 is WraythComponentDefinitionEvent -> {
                                     // Should not happen on main stream, so don't clear prompt
@@ -499,7 +511,9 @@ class WraythClient(
                                     }
                                 }
 
-                                WraythNavEvent -> notifyListeners(ClientNavEvent)
+                                WraythNavEvent -> {
+                                    notifyListeners(ClientNavEvent)
+                                }
 
                                 is WraythBackgroundEvent -> {
                                     var updatedWindow: WindowInfo? = null

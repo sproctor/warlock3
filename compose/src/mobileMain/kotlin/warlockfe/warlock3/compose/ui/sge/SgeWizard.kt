@@ -32,16 +32,23 @@ fun SgeWizard(
                 )
             }
 
-            SgeViewState.SgeLoadingGameList -> SgeLoadingView("Loading game list")
-            is SgeViewState.SgeGameSelector ->
+            SgeViewState.SgeLoadingGameList -> {
+                SgeLoadingView("Loading game list")
+            }
+
+            is SgeViewState.SgeGameSelector -> {
                 SgeGameView(
                     games = currentState.games,
                     onBackPress = { viewModel.goBack() },
                     onGameSelect = { viewModel.gameSelected(it) },
                 )
+            }
 
-            is SgeViewState.SgeLoadingCharacterList -> SgeLoadingView("Loading character list for game: ${currentState.game.code}")
-            is SgeViewState.SgeCharacterSelector ->
+            is SgeViewState.SgeLoadingCharacterList -> {
+                SgeLoadingView("Loading character list for game: ${currentState.game.code}")
+            }
+
+            is SgeViewState.SgeCharacterSelector -> {
                 SgeCharacterView(
                     characters = currentState.characters,
                     onBackPress = { viewModel.goBack() },
@@ -49,10 +56,19 @@ fun SgeWizard(
                         viewModel.characterSelected(currentState.game, character)
                     },
                 )
+            }
 
-            is SgeViewState.SgeConnecting -> SgeLoadingView("Connecting to SGE server")
-            is SgeViewState.SgeError -> SgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
-            is SgeViewState.SgeConnectingToGame -> Unit // TODO: implement?
+            is SgeViewState.SgeConnecting -> {
+                SgeLoadingView("Connecting to SGE server")
+            }
+
+            is SgeViewState.SgeError -> {
+                SgeErrorView(currentState.error, backPressed = { viewModel.goBack() })
+            }
+
+            is SgeViewState.SgeConnectingToGame -> {
+                Unit
+            } // TODO: implement?
         }
     }
 }

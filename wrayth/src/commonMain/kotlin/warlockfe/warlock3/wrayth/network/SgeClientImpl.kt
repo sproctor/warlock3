@@ -140,21 +140,29 @@ class SgeClientImpl(
                 _eventFlow.emit(SgeEvent.SgeErrorEvent(response.error))
             }
 
-            SgeResponse.SgeLoginSucceededResponse -> _eventFlow.emit(SgeEvent.SgeLoginSucceededEvent)
-            is SgeResponse.SgeGameListResponse ->
+            SgeResponse.SgeLoginSucceededResponse -> {
+                _eventFlow.emit(SgeEvent.SgeLoginSucceededEvent)
+            }
+
+            is SgeResponse.SgeGameListResponse -> {
                 _eventFlow.emit(
                     SgeEvent.SgeGamesReadyEvent(
                         response.games,
                     ),
                 )
+            }
 
-            SgeResponse.SgeGameDetailsResponse -> _eventFlow.emit(SgeEvent.SgeGameSelectedEvent)
-            is SgeResponse.SgeCharacterListResponse ->
+            SgeResponse.SgeGameDetailsResponse -> {
+                _eventFlow.emit(SgeEvent.SgeGameSelectedEvent)
+            }
+
+            is SgeResponse.SgeCharacterListResponse -> {
                 _eventFlow.emit(
                     SgeEvent.SgeCharactersReadyEvent(
                         response.characters,
                     ),
                 )
+            }
 
             is SgeResponse.SgeReadyToPlayResponse -> {
                 closeConnection?.invoke()
@@ -199,6 +207,7 @@ class SgeClientImpl(
                     else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
                 }
             }
+
             // response for request for games
             'M' -> {
                 val games = ArrayList<SgeGame>()
@@ -211,8 +220,12 @@ class SgeClientImpl(
                 }
                 SgeResponse.SgeGameListResponse(games)
             }
+
             // We're ignoring the details. Some might be interesting if your account is deactivated
-            'G' -> SgeResponse.SgeGameDetailsResponse
+            'G' -> {
+                SgeResponse.SgeGameDetailsResponse
+            }
+
             'C' -> {
                 val characters = ArrayList<SgeCharacter>()
                 val tokens = line.split("\t").drop(5)
@@ -235,16 +248,25 @@ class SgeClientImpl(
                         SgeResponse.SgeReadyToPlayResponse(properties)
                     }
 
-                    "PROBLEM" -> SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_EXPIRED)
-                    else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+                    "PROBLEM" -> {
+                        SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_EXPIRED)
+                    }
+
+                    else -> {
+                        SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+                    }
                 }
             }
 
             // The server replies with a bare "?" when it cannot parse the command we sent
             // (e.g. a malformed login). Surface it as an error instead of waiting for a timeout.
-            '?' -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+            '?' -> {
+                SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+            }
 
-            else -> SgeResponse.SgeUnrecognizedResponse
+            else -> {
+                SgeResponse.SgeUnrecognizedResponse
+            }
         }
 
     private suspend fun readline(): String? {
@@ -336,8 +358,14 @@ class SgeClientImpl(
         return withTimeoutOrNull(30.seconds) {
             while (true) {
                 when (val event = eventFlow.first()) {
-                    is SgeEvent.SgeLoginSucceededEvent -> selectGame(connection.code)
-                    is SgeEvent.SgeGameSelectedEvent -> requestCharacterList()
+                    is SgeEvent.SgeLoginSucceededEvent -> {
+                        selectGame(connection.code)
+                    }
+
+                    is SgeEvent.SgeGameSelectedEvent -> {
+                        requestCharacterList()
+                    }
+
                     is SgeEvent.SgeCharactersReadyEvent -> {
                         val characters = event.characters
                         val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
@@ -350,15 +378,17 @@ class SgeClientImpl(
                         }
                     }
 
-                    is SgeEvent.SgeReadyToPlayEvent ->
+                    is SgeEvent.SgeReadyToPlayEvent -> {
                         return@withTimeoutOrNull AutoConnectResult.Success(event.credentials)
+                    }
 
                     is SgeEvent.SgeErrorEvent -> {
                         return@withTimeoutOrNull AutoConnectResult.Failure("Error code (${event.errorCode})")
                     }
 
-                    else ->
+                    else -> {
                         logger.i { "Unrecognized event: $event" }
+                    }
                 }
             }
             @Suppress("UNREACHABLE_CODE")

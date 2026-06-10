@@ -56,26 +56,29 @@ fun SettingsContent(
             )
         }
 
-        SettingsPage.Macros ->
+        SettingsPage.Macros -> {
             MacrosView(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 macroRepository = macroRepository,
             )
+        }
 
-        SettingsPage.Highlights ->
+        SettingsPage.Highlights -> {
             HighlightsView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 highlightRepository = highlightRepository,
             )
+        }
 
-        SettingsPage.Names ->
+        SettingsPage.Names -> {
             NamesView(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 nameRepository = nameRepository,
             )
+        }
 
         SettingsPage.Appearance -> {
             AppearanceView(

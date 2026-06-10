@@ -292,7 +292,7 @@ private class WarlockCommand : CliktCommand() {
                                     exitProcess(-1)
                                 }
 
-                                is AutoConnectResult.Success ->
+                                is AutoConnectResult.Success -> {
                                     // TODO: merge with the above, and probably below
                                     try {
                                         appContainer.connectToGameUseCase(
@@ -305,6 +305,7 @@ private class WarlockCommand : CliktCommand() {
                                         println("Error connecting to server: ${e.message}")
                                         exitProcess(-1)
                                     }
+                                }
                             }
                         }
                     }
@@ -588,17 +589,21 @@ fun main(args: Array<String>) = WarlockCommand().versionOption(version ?: "Devel
 
 private fun GameState.getTitle(): Flow<String> =
     when (val screen = this.screen) {
-        GameScreen.Dashboard ->
+        GameScreen.Dashboard -> {
             flow { emit("Dashboard") }
+        }
 
-        is GameScreen.ConnectedGameState ->
+        is GameScreen.ConnectedGameState -> {
             screen.viewModel.character.map { it?.name ?: "Loading..." }
+        }
 
-        is GameScreen.NewGameState ->
+        is GameScreen.NewGameState -> {
             flow { emit("New game") }
+        }
 
-        is GameScreen.ErrorState ->
+        is GameScreen.ErrorState -> {
             flow { emit("Error") }
+        }
     }
 
 fun initializeSentry(version: String) {

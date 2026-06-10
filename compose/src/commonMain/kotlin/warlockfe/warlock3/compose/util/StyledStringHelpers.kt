@@ -66,25 +66,31 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
         st.action?.let { action ->
             val link =
                 when (action) {
-                    is WarlockAction.OpenLink ->
+                    is WarlockAction.OpenLink -> {
                         LinkAnnotation.Url(action.url)
+                    }
 
-                    else ->
+                    else -> {
                         LinkAnnotation.Clickable("action") {
                             actionHandler(action)
                         }
+                    }
                 }
             pushLink(link)
             linksPushed++
         }
     }
     when (leaf) {
-        is StyledStringSubstring -> append(leaf.text)
-        is StyledStringVariable ->
+        is StyledStringSubstring -> {
+            append(leaf.text)
+        }
+
+        is StyledStringVariable -> {
             // TODO: break circular references
             variables[leaf.name]?.let {
                 appendStyledString(it, variables, styleMap, actionHandler)
             }
+        }
     }
     if (style != null) {
         pop()
@@ -103,11 +109,15 @@ fun StyledStringLeaf.getEntireLineStyles(
 ): List<StyleDefinition> {
     val entireLineStyles = styles.mapNotNull { styleMap[it.name] }.filter { it.entireLine }
     return when (this) {
-        is StyledStringSubstring -> entireLineStyles
-        is StyledStringVariable ->
+        is StyledStringSubstring -> {
+            entireLineStyles
+        }
+
+        is StyledStringVariable -> {
             entireLineStyles + (
                 variables[name]?.getEntireLineStyles(variables, styleMap)
                     ?: emptyList()
             )
+        }
     }
 }

@@ -45,12 +45,17 @@ object SkinColorSerializer : KSerializer<SkinColor> {
                 val value = element.contentOrNull
                 SkinColor(light = value, dark = value)
             }
-            is JsonObject ->
+
+            is JsonObject -> {
                 SkinColor(
                     light = (element["light"] as? JsonPrimitive)?.contentOrNull,
                     dark = (element["dark"] as? JsonPrimitive)?.contentOrNull,
                 )
-            else -> throw SerializationException("Expected a hex string or a { light, dark } object")
+            }
+
+            else -> {
+                throw SerializationException("Expected a hex string or a { light, dark } object")
+            }
         }
     }
 

@@ -20,16 +20,37 @@ fun unescapeXml(text: String): String {
         val entity = text.substring(i + 1, end)
         val replacement =
             when {
-                entity == "amp" -> "&"
-                entity == "lt" -> "<"
-                entity == "gt" -> ">"
-                entity == "quot" -> "\""
-                entity == "apos" -> "'"
-                entity.startsWith("#x") || entity.startsWith("#X") ->
+                entity == "amp" -> {
+                    "&"
+                }
+
+                entity == "lt" -> {
+                    "<"
+                }
+
+                entity == "gt" -> {
+                    ">"
+                }
+
+                entity == "quot" -> {
+                    "\""
+                }
+
+                entity == "apos" -> {
+                    "'"
+                }
+
+                entity.startsWith("#x") || entity.startsWith("#X") -> {
                     entity.substring(2).toIntOrNull(16)?.let { codePointToString(it) }
-                entity.startsWith("#") ->
+                }
+
+                entity.startsWith("#") -> {
                     entity.substring(1).toIntOrNull()?.let { codePointToString(it) }
-                else -> null
+                }
+
+                else -> {
+                    null
+                }
             }
         if (replacement != null) {
             sb.append(replacement)

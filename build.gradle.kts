@@ -19,7 +19,7 @@ subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     extensions.configure<KtlintExtension> {
-        version.set(rootProject.libs.versions.ktlint.asProvider().get())
+        version = "1.8.0"
         filter {
             exclude { entry ->
                 entry.file.invariantSeparatorsPath.contains("/build/")

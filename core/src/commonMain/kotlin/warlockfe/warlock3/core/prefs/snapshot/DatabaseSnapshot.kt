@@ -80,7 +80,10 @@ fun <T> openVersionedDatabase(
         } else {
             val candidate = findSeedCandidate(listSnapshots(directory, fileSystem), currentVersion)
             when {
-                candidate == null -> null
+                candidate == null -> {
+                    null
+                }
+
                 else -> {
                     checkpoint(candidate.path)
                     copySnapshot(candidate.path, target, fileSystem)

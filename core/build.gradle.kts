@@ -100,6 +100,8 @@ kotlin {
 
                 // Preferences
                 api(libs.room.runtime)
+                api(libs.kotlinx.serialization.core)
+                implementation(libs.tomlkt)
 
                 // Networking libs
                 api(libs.uri)

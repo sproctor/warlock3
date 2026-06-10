@@ -148,6 +148,7 @@ class WraythProtocolHandler {
                         events.add(WraythUnhandledTagEvent(content.name))
                     }
                 }
+
                 is EndElement -> {
                     // This is ugly. It's inherently a bit complicated because we're working around protocol bugs.
                     // 0: <tag></tag> - all good! - <tag></tag>
@@ -184,6 +185,7 @@ class WraythProtocolHandler {
                         events.add(it)
                     }
                 }
+
                 is CharData -> {
                     var charEvent: WraythEvent? = null
 

@@ -124,16 +124,25 @@ fun DialogObjectLayout(
 
             val y =
                 when {
-                    data.topAnchor != null ->
+                    data.topAnchor != null -> {
                         (placements[data.topAnchor]?.bottom ?: 0) + info.topMargin
-                    info.dataTop != null ->
+                    }
+
+                    info.dataTop != null -> {
                         (parentSkinPlacement?.y ?: 0) + info.topMargin
-                    data.leftAnchor != null ->
+                    }
+
+                    data.leftAnchor != null -> {
                         placements[data.leftAnchor]?.y ?: 0
-                    info.dataLeft != null ->
+                    }
+
+                    info.dataLeft != null -> {
                         lastPlacement?.bottom ?: 0
-                    else ->
+                    }
+
+                    else -> {
                         lastPlacement?.y ?: 0
+                    }
                 }
 
             val x =
@@ -141,14 +150,21 @@ fun DialogObjectLayout(
                     (placements[data.leftAnchor]?.right ?: 0) + info.leftMargin
                 } else {
                     when (data.align) {
-                        "n" -> (widthBasis - info.placeable.width) / 2 + info.leftMargin
-                        "ne" -> widthBasis - info.placeable.width - info.leftMargin
-                        else ->
+                        "n" -> {
+                            (widthBasis - info.placeable.width) / 2 + info.leftMargin
+                        }
+
+                        "ne" -> {
+                            widthBasis - info.placeable.width - info.leftMargin
+                        }
+
+                        else -> {
                             if (info.dataLeft == null) {
                                 (lastPlacement?.right ?: 0) + info.leftMargin
                             } else {
                                 (parentSkinPlacement?.x ?: 0) + info.leftMargin
                             }
+                        }
                     }
                 }
 

@@ -1,19 +1,21 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
-import warlockfe.warlock3.core.prefs.dao.VariableDao
+import kotlinx.coroutines.flow.map
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 
 class VariableRepository(
-    private val variableDao: VariableDao,
+    private val store: CharacterConfigStore,
 ) {
-    fun observeCharacterVariables(characterId: String): Flow<List<VariableEntity>> = variableDao.observeByCharacter(characterId)
+    fun observeCharacterVariables(characterId: String): Flow<List<VariableEntity>> =
+        store.observe(characterId).map { config ->
+            config.variables.map { (name, value) -> VariableEntity(characterId, name, value) }
+        }
 
     suspend fun put(variable: VariableEntity) {
-        withContext(NonCancellable) {
-            variableDao.save(variable)
+        store.mutate(variable.characterId) { current ->
+            current.copy(variables = current.variables + (variable.name to variable.value))
         }
     }
 
@@ -29,8 +31,8 @@ class VariableRepository(
         characterId: String,
         name: String,
     ) {
-        withContext(NonCancellable) {
-            variableDao.delete(characterId, name)
+        store.mutate(characterId) { current ->
+            current.copy(variables = current.variables - name)
         }
     }
 }

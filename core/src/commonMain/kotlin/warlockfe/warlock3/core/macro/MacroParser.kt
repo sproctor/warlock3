@@ -34,7 +34,9 @@ fun parseMacro(text: String): List<MacroToken>? =
                 MacroToken.Command(token.text!!.lowercase())
             }
 
-            else -> error("Unexpected token: ${token.type}")
+            else -> {
+                error("Unexpected token: ${token.type}")
+            }
         }
     }
 

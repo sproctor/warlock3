@@ -1,5 +1,9 @@
 package warlockfe.warlock3.core.prefs.repositories
 
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.HighlightConfig
+import warlockfe.warlock3.core.prefs.config.HighlightStyleConfig
+import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.dao.AccountDao
 import warlockfe.warlock3.core.prefs.dao.AliasDao
 import warlockfe.warlock3.core.prefs.dao.AlterationDao
@@ -8,12 +12,9 @@ import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.dao.ConnectionDao
 import warlockfe.warlock3.core.prefs.dao.ConnectionSettingDao
-import warlockfe.warlock3.core.prefs.dao.HighlightDao
 import warlockfe.warlock3.core.prefs.dao.MacroDao
-import warlockfe.warlock3.core.prefs.dao.NameDao
 import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
-import warlockfe.warlock3.core.prefs.dao.VariableDao
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.export.AccountExport
 import warlockfe.warlock3.core.prefs.export.AliasExport
@@ -35,13 +36,9 @@ import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 import warlockfe.warlock3.core.prefs.models.ConnectionEntity
 import warlockfe.warlock3.core.prefs.models.ConnectionSettingEntity
-import warlockfe.warlock3.core.prefs.models.HighlightEntity
-import warlockfe.warlock3.core.prefs.models.HighlightStyleEntity
 import warlockfe.warlock3.core.prefs.models.MacroEntity
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.PresetStyleEntity
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
-import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 import kotlin.uuid.Uuid
 
@@ -66,13 +63,12 @@ class ExportRepository(
     private val clientSettingDao: ClientSettingDao,
     private val connectionDao: ConnectionDao,
     private val connectionSettingDao: ConnectionSettingDao,
-    private val highlightDao: HighlightDao,
     private val macroDao: MacroDao,
-    private val nameDao: NameDao,
     private val presetStyleDao: PresetStyleDao,
     private val scriptDirDao: ScriptDirDao,
-    private val variableDao: VariableDao,
     private val windowSettingsDao: WindowSettingsDao,
+    // Highlights, names, and variables live in the human-editable config files, not the database.
+    private val characterConfigStore: CharacterConfigStore,
 ) {
     // region Export
 
@@ -112,7 +108,7 @@ class ExportRepository(
             gameCode = character.gameCode,
             scriptDirectories = scriptDirDao.getByCharacter(character.id),
             settings = characterSettingDao.getByCharacter(character.id).associate { it.key to it.value },
-            variables = variableDao.getAllByCharacter(character.id).associate { it.name to it.value },
+            variables = characterConfigStore.current(character.id).variables,
             aliases =
                 aliasDao.getByCharacter(character.id).map {
                     AliasExport(pattern = it.pattern, replacement = it.replacement)
@@ -129,16 +125,16 @@ class ExportRepository(
                     )
                 },
             highlights =
-                highlightDao.getHighlightsByCharacter(character.id).map {
+                characterConfigStore.current(character.id).highlights.map { highlight ->
                     HighlightExport(
-                        pattern = it.highlight.pattern,
-                        isRegex = it.highlight.isRegex,
-                        matchPartialWord = it.highlight.matchPartialWord,
-                        ignoreCase = it.highlight.ignoreCase,
-                        sound = it.highlight.sound,
+                        pattern = highlight.pattern,
+                        isRegex = highlight.isRegex,
+                        matchPartialWord = highlight.matchPartialWord,
+                        ignoreCase = highlight.ignoreCase,
+                        sound = highlight.sound,
                         styles =
-                            it.styles.associate { style ->
-                                style.groupNumber to
+                            highlight.styles.associate { style ->
+                                style.group to
                                     StyleExport(
                                         textColor = style.textColor,
                                         backgroundColor = style.backgroundColor,
@@ -158,7 +154,7 @@ class ExportRepository(
                     MacroExport(key = it.key, value = it.value)
                 },
             names =
-                nameDao.getByCharacter(character.id).map {
+                characterConfigStore.current(character.id).names.map {
                     NameExport(
                         text = it.text,
                         sound = it.sound,
@@ -272,14 +268,12 @@ class ExportRepository(
         if (mode == ImportMode.REPLACE) {
             aliasDao.deleteByCharacter(targetCharacterId)
             alterationDao.deleteByCharacter(targetCharacterId)
-            highlightDao.deleteByCharacter(targetCharacterId)
-            nameDao.deleteByCharacter(targetCharacterId)
             macroDao.deleteByCharacter(targetCharacterId)
-            variableDao.deleteByCharacter(targetCharacterId)
             scriptDirDao.deleteByCharacter(targetCharacterId)
             presetStyleDao.deleteByCharacter(targetCharacterId)
             characterSettingDao.deleteByCharacter(targetCharacterId)
             windowSettingsDao.deleteByCharacter(targetCharacterId)
+            // highlights/names/variables are cleared and rewritten via the config store below
         }
 
         // Aliases/alterations have no natural unique key, so when merging we reuse the existing row's
@@ -322,44 +316,40 @@ class ExportRepository(
             )
         }
 
-        // Highlights (unique on characterId+pattern) and names (unique on characterId+text) dedupe via
-        // REPLACE, so a fresh id is safe; a conflicting row is replaced and its styles cascade-deleted.
-        data.highlights.forEach { highlight ->
-            val id = Uuid.random()
-            highlightDao.save(
-                HighlightEntity(
-                    id = id,
-                    characterId = targetCharacterId,
+        // Highlights, names, and variables live in the config store. On REPLACE we swap the sections
+        // wholesale; on MERGE we overlay, deduping highlights by pattern and names by text.
+        val importedHighlights =
+            data.highlights.map { highlight ->
+                HighlightConfig(
+                    id = Uuid.random().toString(),
                     pattern = highlight.pattern,
                     isRegex = highlight.isRegex,
                     matchPartialWord = highlight.matchPartialWord,
                     ignoreCase = highlight.ignoreCase,
                     sound = highlight.sound,
-                ),
-                highlight.styles.map { (groupNumber, style) ->
-                    HighlightStyleEntity(
-                        highlightId = id,
-                        groupNumber = groupNumber,
-                        textColor = style.textColor,
-                        backgroundColor = style.backgroundColor,
-                        entireLine = style.entireLine,
-                        bold = style.bold,
-                        italic = style.italic,
-                        underline = style.underline,
-                        fontFamily = style.fontFamily,
-                        fontSize = style.fontSize,
-                        fontWeight = style.fontWeight,
-                    )
-                },
-            )
-        }
-
-        data.names.forEach { name ->
-            nameDao.save(
-                NameEntity(
-                    id = Uuid.random(),
-                    characterId = targetCharacterId,
+                    styles =
+                        highlight.styles.map { (groupNumber, style) ->
+                            HighlightStyleConfig(
+                                group = groupNumber,
+                                textColor = style.textColor,
+                                backgroundColor = style.backgroundColor,
+                                entireLine = style.entireLine,
+                                bold = style.bold,
+                                italic = style.italic,
+                                underline = style.underline,
+                                fontFamily = style.fontFamily,
+                                fontSize = style.fontSize,
+                                fontWeight = style.fontWeight,
+                            )
+                        },
+                )
+            }
+        val importedNames =
+            data.names.map { name ->
+                NameConfig(
+                    id = Uuid.random().toString(),
                     text = name.text,
+                    sound = name.sound,
                     textColor = name.style.textColor,
                     backgroundColor = name.style.backgroundColor,
                     bold = name.style.bold,
@@ -368,9 +358,24 @@ class ExportRepository(
                     fontFamily = name.style.fontFamily,
                     fontSize = name.style.fontSize,
                     fontWeight = name.style.fontWeight,
-                    sound = name.sound,
-                ),
-            )
+                )
+            }
+        characterConfigStore.mutate(targetCharacterId) { current ->
+            if (mode == ImportMode.REPLACE) {
+                current.copy(
+                    highlights = importedHighlights,
+                    names = importedNames,
+                    variables = data.variables,
+                )
+            } else {
+                val importedPatterns = importedHighlights.mapTo(mutableSetOf()) { it.pattern }
+                val importedTexts = importedNames.mapTo(mutableSetOf()) { it.text }
+                current.copy(
+                    highlights = current.highlights.filterNot { it.pattern in importedPatterns } + importedHighlights,
+                    names = current.names.filterNot { it.text in importedTexts } + importedNames,
+                    variables = current.variables + data.variables,
+                )
+            }
         }
 
         data.macros.forEach { macro ->
@@ -390,10 +395,6 @@ class ExportRepository(
                     meta = false,
                 ),
             )
-        }
-
-        data.variables.forEach { (name, value) ->
-            variableDao.save(VariableEntity(characterId = targetCharacterId, name = name, value = value))
         }
 
         data.presets.forEach { preset ->

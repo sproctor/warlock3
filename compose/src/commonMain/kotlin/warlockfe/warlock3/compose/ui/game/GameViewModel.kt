@@ -371,15 +371,19 @@ class GameViewModel(
                                 nameFilter = entity.nameFilter,
                                 data =
                                     when (window?.windowType) {
-                                        WindowType.STREAM ->
+                                        WindowType.STREAM -> {
                                             StreamWindowData(
                                                 windowRegistry.getOrCreateStream(window.name) as ComposeTextStream,
                                             )
+                                        }
 
-                                        WindowType.DIALOG ->
+                                        WindowType.DIALOG -> {
                                             DialogWindowData(windowRegistry.getOrCreateDialog(window.name) as ComposeDialogState)
+                                        }
 
-                                        else -> null
+                                        else -> {
+                                            null
+                                        }
                                     },
                             )
                         (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
@@ -458,19 +462,21 @@ class GameViewModel(
                                                     uiState.copy(
                                                         data =
                                                             when (event.info.windowType) {
-                                                                WindowType.STREAM ->
+                                                                WindowType.STREAM -> {
                                                                     StreamWindowData(
                                                                         windowRegistry.getOrCreateStream(
                                                                             event.info.name,
                                                                         ) as ComposeTextStream,
                                                                     )
+                                                                }
 
-                                                                WindowType.DIALOG ->
+                                                                WindowType.DIALOG -> {
                                                                     DialogWindowData(
                                                                         windowRegistry.getOrCreateDialog(
                                                                             event.info.name,
                                                                         ) as ComposeDialogState,
                                                                     )
+                                                                }
                                                             },
                                                     )
                                                 (mutableStates[index].data as? StreamWindowData)
@@ -507,19 +513,21 @@ class GameViewModel(
                     val instance = entry.value.instance
                     var text = StyledString("${instance.name}: ${instance.status} ")
                     when (instance.status) {
-                        ScriptStatus.Running ->
+                        ScriptStatus.Running -> {
                             text +=
                                 StyledString(
                                     "pause",
                                     WarlockStyle.Link(WarlockAction.SendCommand("/pause ${entry.key}")),
                                 )
+                        }
 
-                        ScriptStatus.Suspended ->
+                        ScriptStatus.Suspended -> {
                             text +=
                                 StyledString(
                                     "resume",
                                     WarlockStyle.Link(WarlockAction.SendCommand("/resume ${entry.key}")),
                                 )
+                        }
 
                         else -> {
                             // do nothing
@@ -892,17 +900,21 @@ class GameViewModel(
                         nameFilter = entity?.nameFilter ?: false,
                         data =
                             when (windowInfo?.windowType) {
-                                WindowType.STREAM ->
+                                WindowType.STREAM -> {
                                     StreamWindowData(
                                         stream = windowRegistry.getOrCreateStream(name) as ComposeTextStream,
                                     )
+                                }
 
-                                WindowType.DIALOG ->
+                                WindowType.DIALOG -> {
                                     DialogWindowData(
                                         dialogData = windowRegistry.getOrCreateDialog(name) as ComposeDialogState,
                                     )
+                                }
 
-                                else -> null
+                                else -> {
+                                    null
+                                }
                             },
                     )
                 states + newState

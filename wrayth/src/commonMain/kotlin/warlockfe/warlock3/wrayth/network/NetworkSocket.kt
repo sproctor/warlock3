@@ -91,7 +91,9 @@ class NetworkSocket(
                                 return true
                             }
 
-                            else -> lineBuffer.writeByte(b)
+                            else -> {
+                                lineBuffer.writeByte(b)
+                            }
                         }
                     }
                     if (lineBuffer.size >= max) {
