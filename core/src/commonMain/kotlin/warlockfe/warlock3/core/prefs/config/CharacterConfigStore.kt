@@ -6,11 +6,14 @@ import dev.eav.tomlkt.TomlElement
 import dev.eav.tomlkt.TomlLiteral
 import dev.eav.tomlkt.TomlTable
 import dev.eav.tomlkt.encodeToString
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.buffered
@@ -88,7 +91,38 @@ class CharacterConfigStore(
         }
         state.value = normalized
         for (key in changed) {
-            writeMutex.withLock { persist(key, normalized.getValue(key)) }
+            val target = pathForCharacter(key)
+            writeMutex.withLock {
+                ensureParentDir(target)
+                withFileLock(lockFileFor(target)) { persist(key, normalized.getValue(key)) }
+            }
+        }
+    }
+
+    /**
+     * Watches the config directory and reloads any file changed out of band (a hand edit, or a save
+     * from another app instance) into memory, so observers see the latest content. Call once after
+     * [load]; the watch runs for the lifetime of [scope].
+     */
+    fun startWatching(scope: CoroutineScope) {
+        scope.launch {
+            watchConfigChanges(rootDir.toString()).collect { changedPath ->
+                reloadFile(Path(changedPath))
+            }
+        }
+    }
+
+    // Reload a single externally-changed file. Reads under [writeMutex] so it can't race a concurrent
+    // mutate, and skips when the content already matches memory (e.g. our own save echoing back).
+    private suspend fun reloadFile(path: Path) {
+        writeMutex.withLock {
+            val (element, config) = readConfig(path) ?: return@withLock
+            val key = config.character.ifEmpty { characterIdFromPath(path) }
+            val fixed = config.copy(character = key)
+            if (state.value[key] != fixed) {
+                templates[key] = element
+                state.value = state.value + (key to fixed)
+            }
         }
     }
 
@@ -96,11 +130,24 @@ class CharacterConfigStore(
         characterId: String,
         transform: (CharacterConfig) -> CharacterConfig,
     ) {
+        val target = pathForCharacter(characterId)
         writeMutex.withLock {
-            val current = state.value[characterId] ?: CharacterConfig(character = characterId)
-            val updated = transform(current).copy(character = characterId)
-            state.value = state.value + (characterId to updated)
-            persist(characterId, updated)
+            ensureParentDir(target)
+            withFileLock(lockFileFor(target)) {
+                // Read-modify-write against the current on-disk file so a concurrent write from
+                // another app instance isn't clobbered: re-read inside the lock, apply the transform
+                // to that, then persist. The transform (an upsert / move / delete) composes onto
+                // whatever the other process last wrote, instead of overwriting it with a stale
+                // in-memory snapshot.
+                val onDisk = readConfig(target)
+                if (onDisk != null) templates[characterId] = onDisk.first
+                val base =
+                    (onDisk?.second ?: state.value[characterId] ?: CharacterConfig(character = characterId))
+                        .copy(character = characterId)
+                val updated = transform(base).copy(character = characterId)
+                state.value = state.value + (characterId to updated)
+                persist(characterId, updated)
+            }
         }
     }
 
@@ -140,10 +187,7 @@ class CharacterConfigStore(
     ) {
         val target = pathForCharacter(characterId)
         runCatching {
-            val parent = target.parent
-            if (parent != null && fileSystem.metadataOrNull(parent) == null) {
-                fileSystem.createDirectories(parent)
-            }
+            ensureParentDir(target)
             // When we have the file's previously parsed document, re-encode against it so existing
             // comments are carried over (matched to highlights/names by their `id` so they follow an
             // entry across reorders). Brand-new files have no template and just encode fresh.
@@ -163,6 +207,17 @@ class CharacterConfigStore(
             Logger.e(it) { "Failed to write config file $target" }
         }
     }
+
+    private fun ensureParentDir(target: Path) {
+        val parent = target.parent
+        if (parent != null && fileSystem.metadataOrNull(parent) == null) {
+            fileSystem.createDirectories(parent)
+        }
+    }
+
+    // A sibling `.lock` file we hold the cross-process lock on while writing `target`. Kept separate
+    // from the config file itself because the config is replaced via atomicMove on every save.
+    private fun lockFileFor(target: Path): Path = Path(target.parent ?: rootDir, target.name + ".lock")
 
     // Character ids look like "gs4:tholan"; lay them out as characters/<gameCode>/<name>.toml so the
     // files are easy to browse. The authoritative id is also stored inside the file.
