@@ -6,11 +6,14 @@ import dev.eav.tomlkt.TomlElement
 import dev.eav.tomlkt.TomlLiteral
 import dev.eav.tomlkt.TomlTable
 import dev.eav.tomlkt.encodeToString
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.buffered
@@ -92,6 +95,33 @@ class CharacterConfigStore(
             writeMutex.withLock {
                 ensureParentDir(target)
                 withFileLock(lockFileFor(target)) { persist(key, normalized.getValue(key)) }
+            }
+        }
+    }
+
+    /**
+     * Watches the config directory and reloads any file changed out of band (a hand edit, or a save
+     * from another app instance) into memory, so observers see the latest content. Call once after
+     * [load]; the watch runs for the lifetime of [scope].
+     */
+    fun startWatching(scope: CoroutineScope) {
+        scope.launch {
+            watchConfigChanges(rootDir.toString()).collect { changedPath ->
+                reloadFile(Path(changedPath))
+            }
+        }
+    }
+
+    // Reload a single externally-changed file. Reads under [writeMutex] so it can't race a concurrent
+    // mutate, and skips when the content already matches memory (e.g. our own save echoing back).
+    private suspend fun reloadFile(path: Path) {
+        writeMutex.withLock {
+            val (element, config) = readConfig(path) ?: return@withLock
+            val key = config.character.ifEmpty { characterIdFromPath(path) }
+            val fixed = config.copy(character = key)
+            if (state.value[key] != fixed) {
+                templates[key] = element
+                state.value = state.value + (key to fixed)
             }
         }
     }

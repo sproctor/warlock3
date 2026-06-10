@@ -143,6 +143,8 @@ abstract class AppContainer(
                 fileSystem = fileSystem,
                 configDirectory = warlockDirs.configDir,
             ).migrateIfNeeded()
+            // Pick up external edits and writes from other app instances for the app's lifetime.
+            characterConfigStore.startWatching(externalScope)
         }
     }
 
