@@ -2,6 +2,10 @@ package warlockfe.warlock3.core.prefs.config
 
 import co.touchlab.kermit.Logger
 import dev.eav.tomlkt.Toml
+import dev.eav.tomlkt.TomlElement
+import dev.eav.tomlkt.TomlLiteral
+import dev.eav.tomlkt.TomlTable
+import dev.eav.tomlkt.encodeToString
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +48,11 @@ class CharacterConfigStore(
     private val writeMutex = Mutex()
     private val state = MutableStateFlow<Map<String, CharacterConfig>>(emptyMap())
 
+    // The last-parsed TOML document for each character, used as the comment/formatting template when
+    // we re-encode on save so hand-written comments survive the rewrite. Only touched during [load]
+    // and on the write path (under [writeMutex]).
+    private val templates = mutableMapOf<String, TomlElement>()
+
     /** Exposed for tests/diagnostics; observers should prefer [observe]. */
     val configs: StateFlow<Map<String, CharacterConfig>> = state
 
@@ -64,9 +73,10 @@ class CharacterConfigStore(
     suspend fun load() {
         val loaded = mutableMapOf<String, CharacterConfig>()
         for (path in listConfigFiles()) {
-            val config = readConfig(path) ?: continue
+            val (element, config) = readConfig(path) ?: continue
             val key = config.character.ifEmpty { characterIdFromPath(path) }
             loaded[key] = config.copy(character = key)
+            templates[key] = element
         }
         // Fill in any missing ids, persisting only the files we actually changed.
         val normalized = mutableMapOf<String, CharacterConfig>()
@@ -113,10 +123,13 @@ class CharacterConfigStore(
         return files
     }
 
-    private fun readConfig(path: Path): CharacterConfig? =
+    // Parse to a TomlElement first (which retains comments) and decode the typed config from it, so
+    // the element can later serve as the comment template on save.
+    private fun readConfig(path: Path): Pair<TomlTable, CharacterConfig>? =
         runCatching {
             val text = fileSystem.source(path).buffered().use { it.readString() }
-            toml.decodeFromString(CharacterConfig.serializer(), text)
+            val element = toml.parseToTomlTable(text)
+            element to toml.decodeFromTomlElement(CharacterConfig.serializer(), element)
         }.onFailure {
             Logger.e(it) { "Failed to read config file $path; ignoring it" }
         }.getOrNull()
@@ -131,10 +144,21 @@ class CharacterConfigStore(
             if (parent != null && fileSystem.metadataOrNull(parent) == null) {
                 fileSystem.createDirectories(parent)
             }
-            val text = toml.encodeToString(CharacterConfig.serializer(), config)
+            // When we have the file's previously parsed document, re-encode against it so existing
+            // comments are carried over (matched to highlights/names by their `id` so they follow an
+            // entry across reorders). Brand-new files have no template and just encode fresh.
+            val template = templates[characterId]
+            val text =
+                if (template != null) {
+                    toml.encodeToString(CharacterConfig.serializer(), config, template, CONFIG_ELEMENT_KEY)
+                } else {
+                    toml.encodeToString(CharacterConfig.serializer(), config)
+                }
             val tmp = Path(target.parent ?: rootDir, target.name + ".tmp")
             fileSystem.sink(tmp).buffered().use { it.writeString(text) }
             fileSystem.atomicMove(tmp, target)
+            // Refresh the template from what we just wrote so the next save builds on current comments.
+            templates[characterId] = toml.parseToTomlTable(text)
         }.onFailure {
             Logger.e(it) { "Failed to write config file $target" }
         }
@@ -163,6 +187,12 @@ class CharacterConfigStore(
         // Reconstruct "gameCode:name" from the directory layout when the file omits its own id.
         return if (parentName != null && parentName != charactersDir.name) "$parentName:$name" else name
     }
+}
+
+// Identity for comment carry-over: match array entries (highlights, names) by their `id` so a
+// comment follows its entry when the list is reordered. Entries without an id fall back to position.
+private val CONFIG_ELEMENT_KEY: (TomlElement) -> Any? = { element ->
+    (element as? TomlTable)?.get("id")?.let { (it as? TomlLiteral)?.content }
 }
 
 private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {
