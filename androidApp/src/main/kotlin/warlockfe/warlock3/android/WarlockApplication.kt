@@ -3,13 +3,11 @@ package warlockfe.warlock3.android
 import android.app.Application
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.android.di.AndroidAppContainer
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.openPrefsDatabase
-import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.util.WarlockDirs
 
@@ -38,10 +36,8 @@ class WarlockApplication : Application() {
                 builderFactory = ::getPrefsDatabaseBuilder,
             )
 
+        // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
         appContainer = AndroidAppContainer(database, warlockDirs, SystemFileSystem)
-        runBlocking {
-            appContainer.macroRepository.insertDefaultMacrosIfNeeded()
-        }
     }
 
     private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =

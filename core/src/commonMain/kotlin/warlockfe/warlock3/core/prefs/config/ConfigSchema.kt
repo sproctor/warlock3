@@ -59,7 +59,79 @@ data class CharacterConfig(
     val character: String = "",
     val highlights: List<HighlightConfig> = emptyList(),
     val names: List<NameConfig> = emptyList(),
+    val aliases: List<AliasConfig> = emptyList(),
+    val alterations: List<AlterationConfig> = emptyList(),
     val variables: Map<String, String> = emptyMap(),
+    // Keyed by key-combo string (e.g. "ctrl alt f1"); value is the macro action.
+    val macros: Map<String, String> = emptyMap(),
+    // Keyed by preset id (e.g. "speech", "bold"); the default styles still come from the skin.
+    val presets: Map<String, PresetStyleConfig> = emptyMap(),
+    // Keyed by progress-bar id (e.g. "health", "mana").
+    val progressBars: Map<String, ProgressBarConfig> = emptyMap(),
+    // Keyed by window name; holds the styling half of the window settings (geometry stays in SQLite).
+    val windows: Map<String, WindowStyleConfig> = emptyMap(),
+    val settings: CharacterSettingsConfig = CharacterSettingsConfig(),
+)
+
+@Serializable
+data class AliasConfig(
+    val id: String? = null,
+    val pattern: String = "",
+    val replacement: String = "",
+)
+
+@Serializable
+data class AlterationConfig(
+    val id: String? = null,
+    val pattern: String = "",
+    val sourceStream: String? = null,
+    val destinationStream: String? = null,
+    val result: String? = null,
+    val ignoreCase: Boolean = false,
+    val keepOriginal: Boolean = false,
+)
+
+@Serializable
+data class PresetStyleConfig(
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val textColor: WarlockColor = WarlockColor.Unspecified,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val backgroundColor: WarlockColor = WarlockColor.Unspecified,
+    val entireLine: Boolean = false,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
+    val fontWeight: Int? = null,
+)
+
+@Serializable
+data class ProgressBarConfig(
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val barColor: WarlockColor = WarlockColor.Unspecified,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val backgroundColor: WarlockColor = WarlockColor.Unspecified,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val textColor: WarlockColor = WarlockColor.Unspecified,
+)
+
+@Serializable
+data class WindowStyleConfig(
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val textColor: WarlockColor = WarlockColor.Unspecified,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val backgroundColor: WarlockColor = WarlockColor.Unspecified,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
+    val fontWeight: Int? = null,
+    val nameFilter: Boolean = false,
+)
+
+@Serializable
+data class CharacterSettingsConfig(
+    val typeahead: Int? = null,
+    val scriptCommandPrefix: String? = null,
 )
 
 @Serializable
@@ -108,4 +180,53 @@ data class NameConfig(
     val fontFamily: String? = null,
     val fontSize: Float? = null,
     val fontWeight: Int? = null,
+)
+
+/**
+ * Root of `client.toml`: the client-wide application settings that used to live in the
+ * `clientsetting` SQLite table. Enums are stored by their `name` so the file stays readable;
+ * window geometry (`width`/`height`) and machine state (`lastUsername`) deliberately stay in SQLite.
+ */
+@Serializable
+data class ClientConfig(
+    val theme: String? = null,
+    val scrollback: Int? = null,
+    val markLinks: Boolean = true,
+    val showImages: Boolean = true,
+    val logPath: String? = null,
+    val logType: String? = null,
+    val logTimestamps: Boolean = true,
+    val skinFile: String? = null,
+    val releaseChannel: String? = null,
+)
+
+/**
+ * Root of `connections.toml`: the human-readable registry of known characters and the saved
+ * connection profiles (with per-connection proxy settings folded in). Mostly machine-written, but
+ * interesting to read and occasionally hand-edit.
+ */
+@Serializable
+data class ConnectionRegistryConfig(
+    val characters: List<CharacterEntry> = emptyList(),
+    val connections: List<ConnectionConfig> = emptyList(),
+)
+
+@Serializable
+data class CharacterEntry(
+    val id: String = "",
+    val gameCode: String = "",
+    val name: String = "",
+)
+
+@Serializable
+data class ConnectionConfig(
+    val id: String = "",
+    val name: String = "",
+    val username: String = "",
+    val gameCode: String = "",
+    val character: String = "",
+    val proxyEnabled: Boolean = false,
+    val proxyLaunchCommand: String? = null,
+    val proxyHost: String? = null,
+    val proxyPort: String? = null,
 )

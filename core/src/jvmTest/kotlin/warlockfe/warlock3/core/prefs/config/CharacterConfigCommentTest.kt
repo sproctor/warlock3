@@ -26,6 +26,7 @@ class CharacterConfigCommentTest {
     fun setUp() {
         dir = Path(Files.createTempDirectory("config-comment-test").toAbsolutePath().toString())
         configDir = dir.toString()
+        fs.createDirectories(Path(configDir, "characters"))
     }
 
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
@@ -36,7 +37,7 @@ class CharacterConfigCommentTest {
             .deleteRecursively()
     }
 
-    private fun globalFile() = Path(configDir, "$GLOBAL_CHARACTER_ID.toml")
+    private fun globalFile() = Path(Path(configDir, "characters"), "$GLOBAL_CHARACTER_ID.toml")
 
     private fun write(
         path: Path,

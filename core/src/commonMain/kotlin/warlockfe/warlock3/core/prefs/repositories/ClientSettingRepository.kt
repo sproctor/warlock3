@@ -2,21 +2,30 @@ package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 import warlockfe.warlock3.core.util.LogSettings
 import warlockfe.warlock3.core.util.LogType
 import warlockfe.warlock3.core.util.WarlockDirs
 
+/**
+ * Client-wide settings. The user-editable application settings (theme, scrollback, link/image
+ * toggles, logging, skin, release channel) live in `client.toml` via [ClientConfigStore]; the
+ * machine-managed bits, the main window's last size ([getWidth]/[getHeight]), the last logged-in
+ * username, and the update-skip flag, stay in SQLite where high-churn geometry belongs.
+ */
 class ClientSettingRepository(
     private val clientSettingDao: ClientSettingDao,
+    private val clientConfigStore: ClientConfigStore,
     private val warlockDirs: WarlockDirs,
 ) {
+    // --- Machine state / geometry: SQLite ---
+
     suspend fun getWidth(): Int? = getInt("width")
 
     suspend fun getHeight(): Int? = getInt("height")
@@ -27,78 +36,12 @@ class ClientSettingRepository(
 
     suspend fun getLastUsername(): String? = get("lastUsername")
 
-    fun observeTheme(): Flow<ThemeSetting> = observe("theme").map { if (it != null) ThemeSetting.valueOf(it) else ThemeSetting.AUTO }
-
-    suspend fun getReleaseChannel(): ReleaseChannelSetting =
-        get(RELEASE_CHANNEL_KEY)?.let { value ->
-            ReleaseChannelSetting.entries.firstOrNull { it.name == value }
-        } ?: ReleaseChannelSetting.CURRENT
-
-    fun observeReleaseChannel(): Flow<ReleaseChannelSetting> =
-        observe(RELEASE_CHANNEL_KEY).map { value ->
-            value?.let { ReleaseChannelSetting.entries.firstOrNull { entry -> entry.name == it } }
-                ?: ReleaseChannelSetting.CURRENT
-        }
-
-    fun observeSkinFile(): Flow<String?> = observe("skinFile")
-
-    fun observeLogSettings(): Flow<LogSettings> =
-        combine(
-            observe("logPath"),
-            observe("logType"),
-            observe("logTimestamps"),
-        ) { logPath, logType, logTimestamps ->
-            LogSettings(
-                basePath = logPath ?: warlockDirs.logDir,
-                type = logType?.let { LogType.valueOf(it) } ?: LogType.SIMPLE,
-                logTimestamps = logTimestamps?.toBooleanStrictOrNull() ?: true,
-            )
-        }
-
-    fun observeMaxScrollLines(): Flow<Int> =
-        observe(SCROLLBACK_KEY)
-            .map { it?.toIntOrNull() ?: DEFAULT_MAX_SCROLL_LINES }
-
-    fun observeMarkLinks(): Flow<Boolean> = observe(MARK_LINKS_KEY).map { it?.toBooleanStrictOrNull() ?: true }
-
-    fun observeShowImages(): Flow<Boolean> = observe(SHOW_IMAGES_KEY).map { it?.toBooleanStrictOrNull() ?: true }
-
-    private suspend fun get(key: String): String? = clientSettingDao.getByKey(key)
-
-    private fun observe(key: String): Flow<String?> = clientSettingDao.observeByKey(key)
-
-    private suspend fun getInt(key: String): Int? = get(key)?.toIntOrNull()
-
-    private suspend fun getFloat(key: String): Float? = get(key)?.toFloatOrNull()
-
-    private suspend fun getBoolean(key: String): Boolean? = get(key)?.toBoolean()
-
     suspend fun putWidth(value: Int) {
         putInt("width", value)
     }
 
     suspend fun putHeight(value: Int) {
         putInt("height", value)
-    }
-
-    suspend fun putLoggingPath(value: String) {
-        put("logPath", value)
-    }
-
-    suspend fun putLoggingType(value: LogType) {
-        put("logType", value.name)
-    }
-
-    suspend fun putLoggingTimestamps(value: Boolean) {
-        putBoolean("logTimestamps", value)
-    }
-
-    suspend fun putTheme(value: ThemeSetting) {
-        put("theme", value.name)
-    }
-
-    suspend fun putSkinFile(value: String?) {
-        put("skinFile", value)
     }
 
     suspend fun putLastUsername(value: String?) {
@@ -109,36 +52,92 @@ class ClientSettingRepository(
         putBoolean("ignoreUpdates", value)
     }
 
+    // --- User-editable application settings: client.toml ---
+
+    fun observeTheme(): Flow<ThemeSetting> =
+        clientConfigStore.observeClient().map { config ->
+            config.theme?.let { runCatching { ThemeSetting.valueOf(it) }.getOrNull() } ?: ThemeSetting.AUTO
+        }
+
+    suspend fun getReleaseChannel(): ReleaseChannelSetting =
+        clientConfigStore
+            .currentClient()
+            .releaseChannel
+            ?.let { value -> ReleaseChannelSetting.entries.firstOrNull { it.name == value } }
+            ?: ReleaseChannelSetting.CURRENT
+
+    fun observeReleaseChannel(): Flow<ReleaseChannelSetting> =
+        clientConfigStore.observeClient().map { config ->
+            config.releaseChannel?.let { value -> ReleaseChannelSetting.entries.firstOrNull { it.name == value } }
+                ?: ReleaseChannelSetting.CURRENT
+        }
+
+    fun observeSkinFile(): Flow<String?> = clientConfigStore.observeClient().map { it.skinFile }
+
+    fun observeLogSettings(): Flow<LogSettings> =
+        clientConfigStore.observeClient().map { config ->
+            LogSettings(
+                basePath = config.logPath ?: warlockDirs.logDir,
+                type = config.logType?.let { runCatching { LogType.valueOf(it) }.getOrNull() } ?: LogType.SIMPLE,
+                logTimestamps = config.logTimestamps,
+            )
+        }
+
+    fun observeMaxScrollLines(): Flow<Int> = clientConfigStore.observeClient().map { it.scrollback ?: DEFAULT_MAX_SCROLL_LINES }
+
+    fun observeMarkLinks(): Flow<Boolean> = clientConfigStore.observeClient().map { it.markLinks }
+
+    fun observeShowImages(): Flow<Boolean> = clientConfigStore.observeClient().map { it.showImages }
+
+    suspend fun putLoggingPath(value: String) {
+        clientConfigStore.mutateClient { it.copy(logPath = value) }
+    }
+
+    suspend fun putLoggingType(value: LogType) {
+        clientConfigStore.mutateClient { it.copy(logType = value.name) }
+    }
+
+    suspend fun putLoggingTimestamps(value: Boolean) {
+        clientConfigStore.mutateClient { it.copy(logTimestamps = value) }
+    }
+
+    suspend fun putTheme(value: ThemeSetting) {
+        clientConfigStore.mutateClient { it.copy(theme = value.name) }
+    }
+
+    suspend fun putSkinFile(value: String?) {
+        clientConfigStore.mutateClient { it.copy(skinFile = value) }
+    }
+
     suspend fun putReleaseChannel(value: ReleaseChannelSetting) {
-        put(RELEASE_CHANNEL_KEY, value.name)
+        clientConfigStore.mutateClient { it.copy(releaseChannel = value.name) }
     }
 
     suspend fun putMaxScrollLines(value: Int?) {
-        if (value != null) {
-            putInt(SCROLLBACK_KEY, value)
-        } else {
-            removeKey(SCROLLBACK_KEY)
-        }
+        clientConfigStore.mutateClient { it.copy(scrollback = value) }
     }
 
     suspend fun putMarkLinks(value: Boolean) {
-        putBoolean("markLinks", value)
+        clientConfigStore.mutateClient { it.copy(markLinks = value) }
     }
 
     suspend fun putShowImages(value: Boolean) {
-        putBoolean(SHOW_IMAGES_KEY, value)
+        clientConfigStore.mutateClient { it.copy(showImages = value) }
     }
+
+    // --- SQLite helpers ---
+
+    private suspend fun get(key: String): String? = clientSettingDao.getByKey(key)
+
+    private fun observe(key: String): Flow<String?> = clientSettingDao.observeByKey(key)
+
+    private suspend fun getInt(key: String): Int? = get(key)?.toIntOrNull()
+
+    private suspend fun getBoolean(key: String): Boolean? = get(key)?.toBoolean()
 
     private suspend fun putInt(
         key: String,
         value: Int,
-    ) {
-        put(key, value.toString())
-    }
-
-    private suspend fun putFloat(
-        key: String,
-        value: Float,
     ) {
         put(key, value.toString())
     }
@@ -156,12 +155,6 @@ class ClientSettingRepository(
     ) {
         withContext(NonCancellable) {
             clientSettingDao.save(ClientSettingEntity(key, value))
-        }
-    }
-
-    private suspend fun removeKey(key: String) {
-        withContext(NonCancellable) {
-            clientSettingDao.removeByKey(key)
         }
     }
 

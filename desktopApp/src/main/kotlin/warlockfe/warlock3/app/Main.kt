@@ -82,7 +82,6 @@ import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.SkinLoader
-import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -213,9 +212,10 @@ private class WarlockCommand : CliktCommand() {
                 }
             }.launchIn(appContainer.externalScope)
 
+        // Load config files + run the DB->TOML migration + seed default macros before any startup
+        // reads below (window size, release channel, auto-connect) touch the config stores.
         runBlocking {
-            appContainer.macroRepository.migrateMacros(KeyboardKeyMappings.reverseKeyCodeMap)
-            appContainer.macroRepository.insertDefaultMacrosIfNeeded()
+            appContainer.initialize()
         }
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 

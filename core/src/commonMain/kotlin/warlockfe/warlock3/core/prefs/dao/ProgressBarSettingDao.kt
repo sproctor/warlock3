@@ -12,6 +12,10 @@ interface ProgressBarSettingDao {
     @Query("SELECT * FROM ProgressBarSetting WHERE characterId = :characterId;")
     fun observeByCharacter(characterId: String): Flow<List<ProgressBarSettingEntity>>
 
+    // Used by the one-time TOML migration to read existing progress-bar styling.
+    @Query("SELECT * FROM ProgressBarSetting WHERE characterId = :characterId;")
+    suspend fun getByCharacter(characterId: String): List<ProgressBarSettingEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(setting: ProgressBarSettingEntity)
 

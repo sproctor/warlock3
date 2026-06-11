@@ -2,7 +2,9 @@ package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 
@@ -21,25 +23,70 @@ data class MainWindowBounds(
     val height: Int,
 )
 
+/**
+ * Per-character settings. The two user-editable scalars ([MAX_TYPE_AHEAD_KEY],
+ * [SCRIPT_COMMAND_PREFIX_KEY]) live in the character's TOML config via [CharacterConfigStore]; the
+ * generic key/value API routes everything else (main-window bounds, pane splits, ...) to SQLite,
+ * since that's auto-saved geometry that churns on every resize.
+ */
 class CharacterSettingsRepository(
     private val characterSettingsQueries: CharacterSettingDao,
+    private val store: CharacterConfigStore,
 ) {
     suspend fun save(
         characterId: String,
         key: String,
         value: String,
     ) {
-        withContext(NonCancellable) {
-            characterSettingsQueries.save(
-                CharacterSettingEntity(characterId = characterId, key = key, value = value),
-            )
+        when (key) {
+            MAX_TYPE_AHEAD_KEY -> {
+                store.mutate(characterId) { it.copy(settings = it.settings.copy(typeahead = value.toIntOrNull())) }
+            }
+
+            SCRIPT_COMMAND_PREFIX_KEY -> {
+                store.mutate(characterId) { it.copy(settings = it.settings.copy(scriptCommandPrefix = value)) }
+            }
+
+            else -> {
+                withContext(NonCancellable) {
+                    characterSettingsQueries.save(
+                        CharacterSettingEntity(characterId = characterId, key = key, value = value),
+                    )
+                }
+            }
         }
     }
 
     suspend fun get(
         characterId: String,
         key: String,
-    ): String? = characterSettingsQueries.getByKey(characterId = characterId, key = key)
+    ): String? =
+        when (key) {
+            MAX_TYPE_AHEAD_KEY -> {
+                store
+                    .current(characterId)
+                    .settings.typeahead
+                    ?.toString()
+            }
+
+            SCRIPT_COMMAND_PREFIX_KEY -> {
+                store.current(characterId).settings.scriptCommandPrefix
+            }
+
+            else -> {
+                characterSettingsQueries.getByKey(characterId = characterId, key = key)
+            }
+        }
+
+    fun observe(
+        characterId: String,
+        key: String,
+    ): Flow<String?> =
+        when (key) {
+            MAX_TYPE_AHEAD_KEY -> store.observe(characterId).map { it.settings.typeahead?.toString() }
+            SCRIPT_COMMAND_PREFIX_KEY -> store.observe(characterId).map { it.settings.scriptCommandPrefix }
+            else -> characterSettingsQueries.observeByKey(characterId = characterId, key = key)
+        }
 
     suspend fun saveMainWindowBounds(
         characterId: String,
@@ -64,9 +111,4 @@ class CharacterSettingsRepository(
             height = height,
         )
     }
-
-    fun observe(
-        characterId: String,
-        key: String,
-    ): Flow<String?> = characterSettingsQueries.observeByKey(characterId = characterId, key = key)
 }

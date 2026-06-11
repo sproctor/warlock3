@@ -2,35 +2,55 @@ package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import warlockfe.warlock3.core.prefs.dao.ConnectionDao
-import warlockfe.warlock3.core.prefs.mappers.toDomain
-import warlockfe.warlock3.core.prefs.models.ConnectionEntity
+import warlockfe.warlock3.core.prefs.config.ClientConfigStore
+import warlockfe.warlock3.core.prefs.config.ConnectionConfig
+import warlockfe.warlock3.core.prefs.config.toStoredConnection
+import warlockfe.warlock3.core.prefs.dao.AccountDao
 import warlockfe.warlock3.core.sge.StoredConnection
 
+/**
+ * Saved connection profiles, stored in `connections.toml` via [ClientConfigStore]. The account
+ * password is looked up from the SQLite account table when building a [StoredConnection] (credentials
+ * deliberately stay out of plaintext TOML).
+ */
 class ConnectionRepository(
-    private val connectionDao: ConnectionDao,
+    private val store: ClientConfigStore,
+    private val accountDao: AccountDao,
 ) {
     fun observeAllConnections(): Flow<List<StoredConnection>> =
-        connectionDao.observeAllWithDetails().map { connections ->
-            connections.map { it.toDomain() }
+        store.observeConnections().map { registry ->
+            registry.connections.map { connection ->
+                connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
+            }
         }
 
     suspend fun deleteConnection(name: String) {
-        connectionDao.delete(name)
+        // Matches the old DAO behavior: delete by id (the argument is the connection id).
+        store.mutateConnections { registry ->
+            registry.copy(connections = registry.connections.filterNot { it.id == name })
+        }
     }
 
     suspend fun rename(
         oldName: String,
         newName: String,
     ) {
-        connectionDao.rename(oldName, newName)
+        store.mutateConnections { registry ->
+            registry.copy(
+                connections = registry.connections.map { if (it.name == oldName) it.copy(name = newName) else it },
+            )
+        }
     }
 
     suspend fun renameById(
         id: String,
         newName: String,
     ) {
-        connectionDao.renameById(id, newName)
+        store.mutateConnections { registry ->
+            registry.copy(
+                connections = registry.connections.map { if (it.id == id) it.copy(name = newName) else it },
+            )
+        }
     }
 
     suspend fun save(
@@ -39,16 +59,23 @@ class ConnectionRepository(
         gameCode: String,
         name: String,
     ) {
-        connectionDao.save(
-            ConnectionEntity(
-                id = "$gameCode:$character".lowercase(),
-                username = username,
-                character = character,
-                gameCode = gameCode,
-                name = name,
-            ),
-        )
+        val id = "$gameCode:$character".lowercase()
+        store.mutateConnections { registry ->
+            // Preserve any existing proxy settings on this connection; only identity fields change.
+            val existing = registry.connections.firstOrNull { it.id == id }
+            val updated =
+                (existing ?: ConnectionConfig(id = id)).copy(
+                    name = name,
+                    username = username,
+                    gameCode = gameCode,
+                    character = character,
+                )
+            registry.copy(connections = registry.connections.filterNot { it.id == id } + updated)
+        }
     }
 
-    suspend fun getByName(name: String): StoredConnection? = connectionDao.getByName(name)?.toDomain()
+    suspend fun getByName(name: String): StoredConnection? {
+        val connection = store.currentConnections().connections.firstOrNull { it.name == name } ?: return null
+        return connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
+    }
 }
