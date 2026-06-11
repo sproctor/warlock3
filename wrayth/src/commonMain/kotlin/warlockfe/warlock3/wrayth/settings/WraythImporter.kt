@@ -7,11 +7,11 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
 import warlockfe.warlock3.core.macro.MacroCommands
-import warlockfe.warlock3.core.prefs.dao.MacroDao
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
@@ -22,7 +22,7 @@ import kotlin.uuid.Uuid
 class WraythImporter(
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
-    private val macroDao: MacroDao,
+    private val macroRepository: MacroRepository,
     private val fileSystem: FileSystem,
 ) {
     suspend fun importFile(
@@ -47,9 +47,7 @@ class WraythImporter(
                 nameRepository.save(name)
             }
             messages.add("Imported ${settings.names.size} names")
-            settings.macros.forEach { macro ->
-                macroDao.save(macro)
-            }
+            macroRepository.importMacros(settings.macros)
             messages.add("Imported ${settings.macros.size} macros")
             if (settings.ignoredMacros.isNotEmpty()) {
                 messages.add("Ignored ${settings.ignoredMacros.size} invalid macros:")

@@ -1,21 +1,24 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
-import warlockfe.warlock3.core.prefs.dao.ProgressBarSettingDao
+import kotlinx.coroutines.flow.map
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.toConfig
+import warlockfe.warlock3.core.prefs.config.toEntity
 import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.text.WarlockColor
 
 class ProgressBarSettingRepository(
-    private val progressBarSettingDao: ProgressBarSettingDao,
+    private val store: CharacterConfigStore,
 ) {
     fun observeByCharacter(characterId: String): Flow<List<ProgressBarSettingEntity>> =
-        progressBarSettingDao.observeByCharacter(characterId)
+        store.observe(characterId).map { config ->
+            config.progressBars.map { (id, setting) -> setting.toEntity(characterId = characterId, id = id) }
+        }
 
     suspend fun save(setting: ProgressBarSettingEntity) {
-        withContext(NonCancellable) {
-            progressBarSettingDao.save(setting)
+        store.mutate(setting.characterId) { current ->
+            current.copy(progressBars = current.progressBars + (setting.id to setting.toConfig()))
         }
     }
 
@@ -41,8 +44,8 @@ class ProgressBarSettingRepository(
         characterId: String,
         id: String,
     ) {
-        withContext(NonCancellable) {
-            progressBarSettingDao.delete(characterId, id)
+        store.mutate(characterId) { current ->
+            current.copy(progressBars = current.progressBars - id)
         }
     }
 }

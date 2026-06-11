@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
@@ -22,6 +24,7 @@ import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
+import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
@@ -33,6 +36,7 @@ import warlockfe.warlock3.core.prefs.MySQLiteDriver
 import warlockfe.warlock3.core.prefs.PREFS_DATABASE_VERSION
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.config.ConfigMigration
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
@@ -67,8 +71,8 @@ import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 abstract class AppContainer(
     val database: PrefsDatabase,
-    warlockDirs: WarlockDirs,
-    fileSystem: FileSystem,
+    private val warlockDirs: WarlockDirs,
+    private val fileSystem: FileSystem,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
@@ -86,24 +90,26 @@ abstract class AppContainer(
     // one-time migration copies any existing rows out of SQLite on first launch.
     val characterConfigStore = CharacterConfigStore(warlockDirs.configDir, fileSystem)
 
+    // Client-wide settings and the connection/character registry live in their own TOML files
+    // (client.toml, connections.toml), separate from the per-character files above.
+    val clientConfigStore = ClientConfigStore(warlockDirs.configDir, fileSystem)
+
     val variableRepository = VariableRepository(characterConfigStore)
-    val characterRepository =
-        CharacterRepository(
-            characterDao = database.characterDao(),
-        )
-    val windowSettingRepository = WindowSettingsRepository(database.windowSettingsDao())
+    val characterRepository = CharacterRepository(clientConfigStore)
+    val windowSettingRepository = WindowSettingsRepository(database.windowSettingsDao(), characterConfigStore)
     val macroRepository =
         MacroRepository(
             database.macroDao(),
+            characterConfigStore,
             KeyboardKeyMappings.keyCodeMap,
             KeyboardKeyMappings.reverseKeyCodeMap,
         )
     val accountRepository = AccountRepository(database.accountDao())
     val highlightRepository = HighlightRepositoryImpl(characterConfigStore)
     val nameRepository = NameRepositoryImpl(characterConfigStore)
-    val presetRepository = PresetRepository(database.presetStyleDao())
-    val progressBarSettingRepository = ProgressBarSettingRepository(database.progressBarSettingDao())
-    val clientSettings = ClientSettingRepository(database.clientSettingDao(), warlockDirs)
+    val presetRepository = PresetRepository(characterConfigStore)
+    val progressBarSettingRepository = ProgressBarSettingRepository(characterConfigStore)
+    val clientSettings = ClientSettingRepository(database.clientSettingDao(), clientConfigStore, warlockDirs)
     val loggingRepository = LoggingRepository(clientSettings, externalScope)
     val scriptDirRepository =
         ScriptDirRepository(
@@ -113,38 +119,67 @@ abstract class AppContainer(
     val characterSettingsRepository =
         CharacterSettingsRepository(
             characterSettingsQueries = database.characterSettingDao(),
+            store = characterConfigStore,
         )
     val connectionRepository =
         ConnectionRepository(
-            connectionDao = database.connectionDao(),
+            store = clientConfigStore,
+            accountDao = database.accountDao(),
         )
-    val connectionSettingsRepository =
-        ConnectionSettingsRepository(
-            connectionSettingDao = database.connectionSettingDao(),
-        )
-    val aliasRepository =
-        AliasRepository(
-            database.aliasDao(),
-        )
-    val alterationRepository =
-        AlterationRepository(
-            database.alterationDao(),
-        )
+    val connectionSettingsRepository = ConnectionSettingsRepository(clientConfigStore)
+    val aliasRepository = AliasRepository(characterConfigStore)
+    val alterationRepository = AlterationRepository(characterConfigStore)
+
+    private val initializeMutex = Mutex()
+    private var initialized = false
 
     init {
-        externalScope.launch {
-            characterConfigStore.load()
-            ConfigMigration(
-                store = characterConfigStore,
-                characterDao = database.characterDao(),
-                highlightDao = database.highlightDao(),
-                nameDao = database.nameDao(),
-                variableDao = database.variableDao(),
-                fileSystem = fileSystem,
-                configDirectory = warlockDirs.configDir,
-            ).migrateIfNeeded()
+        // Kick initialization off eagerly so reactive consumers get data without having to ask;
+        // callers that read config synchronously at startup should still call [initialize] to await it.
+        externalScope.launch { initialize() }
+    }
+
+    /**
+     * Loads the config files, runs the one-time DB->TOML migration, and seeds default macros, in that
+     * order, then starts watching for external edits. Suspends until that's done. Safe to call more
+     * than once (and from multiple places): the work runs exactly once and later calls just await /
+     * return. Callers that read config at startup should call this first so they don't observe empty
+     * stores before the migration has populated them.
+     */
+    suspend fun initialize() {
+        initializeMutex.withLock {
+            if (initialized) return
+            runCatching {
+                characterConfigStore.load()
+                clientConfigStore.load()
+                ConfigMigration(
+                    store = characterConfigStore,
+                    clientConfigStore = clientConfigStore,
+                    characterDao = database.characterDao(),
+                    highlightDao = database.highlightDao(),
+                    nameDao = database.nameDao(),
+                    variableDao = database.variableDao(),
+                    aliasDao = database.aliasDao(),
+                    alterationDao = database.alterationDao(),
+                    presetStyleDao = database.presetStyleDao(),
+                    progressBarSettingDao = database.progressBarSettingDao(),
+                    windowSettingsDao = database.windowSettingsDao(),
+                    characterSettingDao = database.characterSettingDao(),
+                    clientSettingDao = database.clientSettingDao(),
+                    connectionDao = database.connectionDao(),
+                    macroRepository = macroRepository,
+                    fileSystem = fileSystem,
+                    configDirectory = warlockDirs.configDir,
+                ).migrateIfNeeded()
+                // Seed default global macros on first run, after migration so any migrated macros win.
+                macroRepository.insertDefaultMacrosIfNeeded()
+            }.onFailure {
+                Logger.e(it) { "Failed to initialize config stores" }
+            }
             // Pick up external edits and writes from other app instances for the app's lifetime.
             characterConfigStore.startWatching(externalScope)
+            clientConfigStore.startWatching(externalScope)
+            initialized = true
         }
     }
 
@@ -157,7 +192,7 @@ abstract class AppContainer(
         WraythImporter(
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
-            macroDao = database.macroDao(),
+            macroRepository = macroRepository,
             fileSystem = fileSystem,
         )
 
@@ -249,18 +284,12 @@ abstract class AppContainer(
     val exportRepository by lazy {
         ExportRepository(
             accountDao = database.accountDao(),
-            aliasDao = database.aliasDao(),
-            alterationDao = database.alterationDao(),
-            characterDao = database.characterDao(),
             characterSettingDao = database.characterSettingDao(),
             clientSettingDao = database.clientSettingDao(),
-            connectionDao = database.connectionDao(),
-            connectionSettingDao = database.connectionSettingDao(),
-            macroDao = database.macroDao(),
-            presetStyleDao = database.presetStyleDao(),
             scriptDirDao = database.scriptDirDao(),
             windowSettingsDao = database.windowSettingsDao(),
             characterConfigStore = characterConfigStore,
+            clientConfigStore = clientConfigStore,
         )
     }
 }

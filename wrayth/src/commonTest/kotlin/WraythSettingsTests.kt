@@ -1,4 +1,6 @@
 import kotlinx.io.files.SystemFileSystem
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 import kotlin.test.Test
@@ -149,7 +151,13 @@ class WraythSettingsTests {
             WraythImporter(
                 highlightRepository = FakeHighlightRepository(),
                 nameRepository = FakeNameRepository(),
-                macroDao = FakeMacroDao(),
+                macroRepository =
+                    MacroRepository(
+                        FakeMacroDao(),
+                        CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
+                        emptyMap(),
+                        emptyMap(),
+                    ),
                 fileSystem = SystemFileSystem,
             )
         val wraythSettings = importer.importString(exampleXml)

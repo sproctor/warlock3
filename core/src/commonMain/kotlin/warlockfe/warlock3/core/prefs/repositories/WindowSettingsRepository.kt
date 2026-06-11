@@ -4,19 +4,58 @@ import co.touchlab.kermit.Logger
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.WindowStyleConfig
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
-import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
+import warlockfe.warlock3.core.prefs.models.WindowSettings
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 
+/**
+ * Window settings, split across two stores: geometry (size/location/position) lives in SQLite via
+ * [WindowSettingsDao] because it's auto-saved and churns on every resize, while styling (colors,
+ * font, name filter) lives in the character's TOML config. [observeWindowSettings] merges the two by
+ * window name; the geometry mutators hit the DAO and the styling mutators hit the config store.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WindowSettingsRepository(
     private val windowSettingsDao: WindowSettingsDao,
+    private val store: CharacterConfigStore,
 ) {
     private val logger = Logger.withTag("WindowSettingsRepository")
 
-    fun observeWindowSettings(characterId: String): Flow<List<WindowSettingsEntity>> = windowSettingsDao.observeByCharacter(characterId)
+    fun observeWindowSettings(characterId: String): Flow<List<WindowSettings>> =
+        combine(
+            windowSettingsDao.observeByCharacter(characterId),
+            store.observe(characterId),
+        ) { geometryRows, config ->
+            val geometryByName = geometryRows.associateBy { it.name }
+            // Union of names so a window with only styling (or only geometry) isn't dropped.
+            val names = geometryByName.keys + config.windows.keys
+            names
+                .map { name ->
+                    val geometry = geometryByName[name]
+                    val style = config.windows[name] ?: WindowStyleConfig()
+                    WindowSettings(
+                        characterId = characterId,
+                        name = name,
+                        width = geometry?.width,
+                        height = geometry?.height,
+                        location = geometry?.location,
+                        position = geometry?.position,
+                        textColor = style.textColor,
+                        backgroundColor = style.backgroundColor,
+                        fontFamily = style.fontFamily,
+                        fontSize = style.fontSize,
+                        fontWeight = style.fontWeight,
+                        nameFilter = style.nameFilter,
+                    )
+                }
+                // Match the DAO's `ORDER BY position` (SQLite sorts NULLs first on ascending).
+                .sortedWith(compareBy { it.position })
+        }
 
     suspend fun openWindow(
         characterId: String,
@@ -75,16 +114,17 @@ class WindowSettingsRepository(
         name: String,
         style: StyleDefinition,
     ) {
-        withContext(NonCancellable) {
-            windowSettingsDao.setStyle(
-                characterId = characterId,
-                name = name,
-                textColor = style.textColor,
-                backgroundColor = style.backgroundColor,
-                fontFamily = style.fontFamily,
-                fontSize = style.fontSize,
-                fontWeight = style.fontWeight,
-            )
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            val updated =
+                existing.copy(
+                    textColor = style.textColor,
+                    backgroundColor = style.backgroundColor,
+                    fontFamily = style.fontFamily,
+                    fontSize = style.fontSize,
+                    fontWeight = style.fontWeight,
+                )
+            current.copy(windows = current.windows + (name to updated))
         }
     }
 
@@ -93,8 +133,9 @@ class WindowSettingsRepository(
         name: String,
         nameFilter: Boolean,
     ) {
-        withContext(NonCancellable) {
-            windowSettingsDao.setNameFilter(characterId = characterId, name = name, nameFilter = nameFilter)
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            current.copy(windows = current.windows + (name to existing.copy(nameFilter = nameFilter)))
         }
     }
 

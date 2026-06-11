@@ -46,11 +46,7 @@ dependencies {
 kotlin {
     jvmToolchain {
         languageVersion =
-            JavaLanguageVersion.of(
-                libs.versions.jvmToolchainVersion
-                    .get()
-                    .toInt(),
-            )
+            JavaLanguageVersion.of(25)
         vendor = JvmVendorSpec.JETBRAINS
     }
 }

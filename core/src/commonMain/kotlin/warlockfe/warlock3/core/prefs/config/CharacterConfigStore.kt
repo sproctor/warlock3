@@ -40,7 +40,9 @@ class CharacterConfigStore(
 ) {
     private val rootDir = Path(configDirectory)
     private val charactersDir = Path(rootDir, "characters")
-    private val globalFile = Path(rootDir, "$GLOBAL_CHARACTER_ID.toml")
+
+    // The "global character" file lives alongside the per-character files in characters/.
+    private val globalFile = Path(charactersDir, "$GLOBAL_CHARACTER_ID.toml")
 
     private val toml =
         Toml {
@@ -153,9 +155,6 @@ class CharacterConfigStore(
 
     private fun listConfigFiles(): List<Path> {
         val files = mutableListOf<Path>()
-        if (fileSystem.metadataOrNull(globalFile) != null) {
-            files += globalFile
-        }
         if (fileSystem.metadataOrNull(charactersDir)?.isDirectory == true) {
             // Files live one level down, in characters/<gameCode>/<name>.toml. Tolerate a stray
             // .toml directly under characters/ as well.
@@ -171,15 +170,19 @@ class CharacterConfigStore(
     }
 
     // Parse to a TomlElement first (which retains comments) and decode the typed config from it, so
-    // the element can later serve as the comment template on save.
-    private fun readConfig(path: Path): Pair<TomlTable, CharacterConfig>? =
-        runCatching {
+    // the element can later serve as the comment template on save. A missing file is normal (e.g. the
+    // first read-modify-write of a brand-new character during migration) and returns null silently;
+    // only an actual read/parse failure is logged.
+    private fun readConfig(path: Path): Pair<TomlTable, CharacterConfig>? {
+        if (fileSystem.metadataOrNull(path) == null) return null
+        return runCatching {
             val text = fileSystem.source(path).buffered().use { it.readString() }
             val element = toml.parseToTomlTable(text)
             element to toml.decodeFromTomlElement(CharacterConfig.serializer(), element)
         }.onFailure {
             Logger.e(it) { "Failed to read config file $path; ignoring it" }
         }.getOrNull()
+    }
 
     private fun persist(
         characterId: String,
@@ -246,7 +249,7 @@ class CharacterConfigStore(
 
 // Identity for comment carry-over: match array entries (highlights, names) by their `id` so a
 // comment follows its entry when the list is reordered. Entries without an id fall back to position.
-private val CONFIG_ELEMENT_KEY: (TomlElement) -> Any? = { element ->
+internal val CONFIG_ELEMENT_KEY: (TomlElement) -> Any? = { element ->
     (element as? TomlTable)?.get("id")?.let { (it as? TomlLiteral)?.content }
 }
 
@@ -270,5 +273,23 @@ private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {
                 name
             }
         }
-    return copy(highlights = highlights, names = names) to changed
+    val aliases =
+        aliases.map { alias ->
+            if (alias.id.isNullOrBlank()) {
+                changed = true
+                alias.copy(id = Uuid.random().toString())
+            } else {
+                alias
+            }
+        }
+    val alterations =
+        alterations.map { alteration ->
+            if (alteration.id.isNullOrBlank()) {
+                changed = true
+                alteration.copy(id = Uuid.random().toString())
+            } else {
+                alteration
+            }
+        }
+    return copy(highlights = highlights, names = names, aliases = aliases, alterations = alterations) to changed
 }

@@ -12,7 +12,6 @@ import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSLibraryDirectory
 import platform.Foundation.NSUserDomainMask
-import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.script.ScriptManagerFactory
@@ -54,13 +53,8 @@ object IosAppContainerProvider {
                 builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
             )
 
-        val container = IosAppContainer(database, warlockDirs, SystemFileSystem)
-
-        runBlocking {
-            container.macroRepository.insertDefaultMacrosIfNeeded()
-        }
-
-        container
+        // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
+        IosAppContainer(database, warlockDirs, SystemFileSystem)
     }
 
     val sgeSettings: SgeSettings by lazy {

@@ -1,19 +1,21 @@
 package warlockfe.warlock3.core.prefs.repositories
 
+import warlockfe.warlock3.core.prefs.config.AliasConfig
+import warlockfe.warlock3.core.prefs.config.AlterationConfig
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.CharacterEntry
+import warlockfe.warlock3.core.prefs.config.CharacterSettingsConfig
+import warlockfe.warlock3.core.prefs.config.ClientConfigStore
+import warlockfe.warlock3.core.prefs.config.ConnectionConfig
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.HighlightConfig
 import warlockfe.warlock3.core.prefs.config.HighlightStyleConfig
 import warlockfe.warlock3.core.prefs.config.NameConfig
+import warlockfe.warlock3.core.prefs.config.PresetStyleConfig
+import warlockfe.warlock3.core.prefs.config.WindowStyleConfig
 import warlockfe.warlock3.core.prefs.dao.AccountDao
-import warlockfe.warlock3.core.prefs.dao.AliasDao
-import warlockfe.warlock3.core.prefs.dao.AlterationDao
-import warlockfe.warlock3.core.prefs.dao.CharacterDao
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
-import warlockfe.warlock3.core.prefs.dao.ConnectionDao
-import warlockfe.warlock3.core.prefs.dao.ConnectionSettingDao
-import warlockfe.warlock3.core.prefs.dao.MacroDao
-import warlockfe.warlock3.core.prefs.dao.PresetStyleDao
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.export.AccountExport
@@ -29,17 +31,11 @@ import warlockfe.warlock3.core.prefs.export.StyleExport
 import warlockfe.warlock3.core.prefs.export.WarlockExport
 import warlockfe.warlock3.core.prefs.export.WindowSettingsExport
 import warlockfe.warlock3.core.prefs.models.AccountEntity
-import warlockfe.warlock3.core.prefs.models.AliasEntity
-import warlockfe.warlock3.core.prefs.models.AlterationEntity
-import warlockfe.warlock3.core.prefs.models.CharacterEntity
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
-import warlockfe.warlock3.core.prefs.models.ConnectionEntity
-import warlockfe.warlock3.core.prefs.models.ConnectionSettingEntity
-import warlockfe.warlock3.core.prefs.models.MacroEntity
-import warlockfe.warlock3.core.prefs.models.PresetStyleEntity
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
+import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.uuid.Uuid
 
 /** Resolution applied to a character whose settings are being imported. */
@@ -51,70 +47,84 @@ enum class ImportMode {
     REPLACE,
 }
 
-/** Pseudo-character id used for settings that aren't tied to a specific character. */
-private const val GLOBAL_CHARACTER_ID = "global"
+// Client-setting keys that now live in client.toml; everything else in the export's `settings` map
+// (window size, last username, ...) stays in SQLite.
+private val CLIENT_CONFIG_KEYS =
+    setOf("theme", "scrollback", "markLinks", "showImages", "logPath", "logType", "logTimestamps", "skinFile", "releaseChannel")
 
 class ExportRepository(
     private val accountDao: AccountDao,
-    private val aliasDao: AliasDao,
-    private val alterationDao: AlterationDao,
-    private val characterDao: CharacterDao,
     private val characterSettingDao: CharacterSettingDao,
     private val clientSettingDao: ClientSettingDao,
-    private val connectionDao: ConnectionDao,
-    private val connectionSettingDao: ConnectionSettingDao,
-    private val macroDao: MacroDao,
-    private val presetStyleDao: PresetStyleDao,
     private val scriptDirDao: ScriptDirDao,
     private val windowSettingsDao: WindowSettingsDao,
-    // Highlights, names, and variables live in the human-editable config files, not the database.
+    // Most settings now live in the human-editable config files rather than the database.
     private val characterConfigStore: CharacterConfigStore,
+    private val clientConfigStore: ClientConfigStore,
 ) {
     // region Export
 
     suspend fun getExport(): WarlockExport {
-        val characters =
-            characterDao.getAll() +
-                CharacterEntity(id = GLOBAL_CHARACTER_ID, name = GLOBAL_CHARACTER_ID, gameCode = GLOBAL_CHARACTER_ID)
+        val registry = clientConfigStore.currentConnections()
+        val characterIds =
+            (
+                registry.characters.map { Triple(it.id, it.gameCode, it.name) } +
+                    Triple(GLOBAL_CHARACTER_ID, GLOBAL_CHARACTER_ID, GLOBAL_CHARACTER_ID)
+            ).distinctBy { it.first }
         return WarlockExport(
             accounts = accountDao.getAll().map { AccountExport(username = it.username, password = null) },
-            characters = characters.map { buildCharacterExport(it) },
+            characters = characterIds.map { (id, gameCode, name) -> buildCharacterExport(id, gameCode, name) },
             connections =
-                connectionDao.getAllWithSettings().map { connection ->
+                registry.connections.map { connection ->
                     ConnectionExport(
-                        id = connection.connection.id,
-                        name = connection.connection.name,
-                        username = connection.connection.username,
-                        gameCode = connection.connection.gameCode,
-                        character = connection.connection.character,
-                        settings = connection.settings.associate { it.key to it.value },
+                        id = connection.id,
+                        name = connection.name,
+                        username = connection.username,
+                        gameCode = connection.gameCode,
+                        character = connection.character,
+                        settings = connection.proxySettingsMap(),
                     )
                 },
-            settings = clientSettingDao.getAll().mapNotNull { setting -> setting.value?.let { setting.key to it } }.toMap(),
+            settings = exportClientSettings(),
         )
     }
 
     suspend fun getCharacterExport(characterId: String): CharacterExport {
-        val character =
-            characterDao.getById(characterId)
-                ?: CharacterEntity(id = characterId, name = characterId, gameCode = GLOBAL_CHARACTER_ID)
-        return buildCharacterExport(character)
+        val entry = clientConfigStore.currentConnections().characters.firstOrNull { it.id == characterId }
+        return buildCharacterExport(
+            id = characterId,
+            gameCode = entry?.gameCode ?: GLOBAL_CHARACTER_ID,
+            name = entry?.name ?: characterId,
+        )
     }
 
-    private suspend fun buildCharacterExport(character: CharacterEntity): CharacterExport =
-        CharacterExport(
-            id = character.id,
-            name = character.name,
-            gameCode = character.gameCode,
-            scriptDirectories = scriptDirDao.getByCharacter(character.id),
-            settings = characterSettingDao.getByCharacter(character.id).associate { it.key to it.value },
-            variables = characterConfigStore.current(character.id).variables,
-            aliases =
-                aliasDao.getByCharacter(character.id).map {
-                    AliasExport(pattern = it.pattern, replacement = it.replacement)
-                },
+    private suspend fun buildCharacterExport(
+        id: String,
+        gameCode: String,
+        name: String,
+    ): CharacterExport {
+        val config = characterConfigStore.current(id)
+        // Per-character settings: typeahead/script-prefix come from the config, the rest (geometry) from SQLite.
+        val dbSettings = characterSettingDao.getByCharacter(id).associate { it.key to it.value }
+        val settings =
+            dbSettings +
+                buildMap {
+                    config.settings.typeahead?.let { put(MAX_TYPE_AHEAD_KEY, it.toString()) }
+                    config.settings.scriptCommandPrefix?.let { put(SCRIPT_COMMAND_PREFIX_KEY, it) }
+                }
+        // Window styling lives in the config; geometry in SQLite. Union the names so neither half is lost.
+        val geometryByName = windowSettingsDao.getByCharacter(id).associateBy { it.name }
+        val windowNames = geometryByName.keys + config.windows.keys
+        return CharacterExport(
+            id = id,
+            name = name,
+            gameCode = gameCode,
+            scriptDirectories = scriptDirDao.getByCharacter(id),
+            settings = settings,
+            variables = config.variables,
+            aliases = config.aliases.map { AliasExport(pattern = it.pattern, replacement = it.replacement) },
             alterations =
-                alterationDao.getAlterationsByCharacter(character.id).map {
+                config.alterations.map {
                     AlterationExport(
                         pattern = it.pattern,
                         sourceStream = it.sourceStream,
@@ -125,7 +135,7 @@ class ExportRepository(
                     )
                 },
             highlights =
-                characterConfigStore.current(character.id).highlights.map { highlight ->
+                config.highlights.map { highlight ->
                     HighlightExport(
                         pattern = highlight.pattern,
                         isRegex = highlight.isRegex,
@@ -149,12 +159,9 @@ class ExportRepository(
                             },
                     )
                 },
-            macros =
-                macroDao.getByCharacter(character.id).map {
-                    MacroExport(key = it.key, value = it.value)
-                },
+            macros = config.macros.map { (key, value) -> MacroExport(key = key, value = value) },
             names =
-                characterConfigStore.current(character.id).names.map {
+                config.names.map {
                     NameExport(
                         text = it.text,
                         sound = it.sound,
@@ -173,9 +180,9 @@ class ExportRepository(
                     )
                 },
             presets =
-                presetStyleDao.getByCharacter(character.id).map { preset ->
+                config.presets.map { (presetId, preset) ->
                     PresetStyleExport(
-                        id = preset.presetId,
+                        id = presetId,
                         style =
                             StyleExport(
                                 textColor = preset.textColor,
@@ -191,22 +198,49 @@ class ExportRepository(
                     )
                 },
             windows =
-                windowSettingsDao.getByCharacter(character.id).map {
+                windowNames.map { windowName ->
+                    val geometry = geometryByName[windowName]
+                    val style = config.windows[windowName] ?: WindowStyleConfig()
                     WindowSettingsExport(
-                        name = it.name,
-                        width = it.width,
-                        height = it.height,
-                        location = it.location,
-                        position = it.position,
-                        textColor = it.textColor,
-                        backgroundColor = it.backgroundColor,
-                        fontFamily = it.fontFamily,
-                        fontSize = it.fontSize,
-                        fontWeight = it.fontWeight,
-                        nameFilter = it.nameFilter,
+                        name = windowName,
+                        width = geometry?.width,
+                        height = geometry?.height,
+                        location = geometry?.location,
+                        position = geometry?.position,
+                        textColor = style.textColor,
+                        backgroundColor = style.backgroundColor,
+                        fontFamily = style.fontFamily,
+                        fontSize = style.fontSize,
+                        fontWeight = style.fontWeight,
+                        nameFilter = style.nameFilter,
                     )
                 },
         )
+    }
+
+    private fun exportClientSettings(): Map<String, String> {
+        val client = clientConfigStore.currentClient()
+        return buildMap {
+            // Authoritative values from client.toml.
+            client.theme?.let { put("theme", it) }
+            client.scrollback?.let { put("scrollback", it.toString()) }
+            put("markLinks", client.markLinks.toString())
+            put("showImages", client.showImages.toString())
+            client.logPath?.let { put("logPath", it) }
+            client.logType?.let { put("logType", it) }
+            put("logTimestamps", client.logTimestamps.toString())
+            client.skinFile?.let { put("skinFile", it) }
+            client.releaseChannel?.let { put("releaseChannel", it) }
+        }
+    }
+
+    private fun ConnectionConfig.proxySettingsMap(): Map<String, String> =
+        buildMap {
+            put("proxyEnabled", proxyEnabled.toString())
+            proxyLaunchCommand?.let { put("proxyLaunchCommand", it) }
+            proxyHost?.let { put("proxyHost", it) }
+            proxyPort?.let { put("proxyPort", it) }
+        }
 
     // endregion
 
@@ -223,20 +257,24 @@ class ExportRepository(
     ) {
         export.accounts.forEach { accountDao.save(AccountEntity(username = it.username, password = null)) }
         export.connections.forEach { connection ->
-            connectionDao.save(
-                ConnectionEntity(
-                    id = connection.id,
-                    username = connection.username,
-                    gameCode = connection.gameCode,
-                    character = connection.character,
-                    name = connection.name,
-                ),
-            )
-            connection.settings.forEach { (key, value) ->
-                connectionSettingDao.save(ConnectionSettingEntity(connectionId = connection.id, key = key, value = value))
+            val proxy = connection.settings
+            clientConfigStore.mutateConnections { registry ->
+                val updated =
+                    ConnectionConfig(
+                        id = connection.id,
+                        name = connection.name,
+                        username = connection.username,
+                        gameCode = connection.gameCode,
+                        character = connection.character,
+                        proxyEnabled = proxy["proxyEnabled"]?.toBooleanStrictOrNull() == true,
+                        proxyLaunchCommand = proxy["proxyLaunchCommand"],
+                        proxyHost = proxy["proxyHost"],
+                        proxyPort = proxy["proxyPort"],
+                    )
+                registry.copy(connections = registry.connections.filterNot { it.id == connection.id } + updated)
             }
         }
-        export.settings.forEach { (key, value) -> clientSettingDao.save(ClientSettingEntity(key = key, value = value)) }
+        importClientSettings(export.settings)
         export.characters.forEach { character ->
             val mode = resolutions[character.id] ?: return@forEach
             applyCharacter(targetCharacterId = character.id, data = character, mode = mode, createCharacterRow = true)
@@ -255,6 +293,25 @@ class ExportRepository(
         applyCharacter(targetCharacterId = targetCharacterId, data = source, mode = mode, createCharacterRow = false)
     }
 
+    private suspend fun importClientSettings(settings: Map<String, String>) {
+        clientConfigStore.mutateClient { current ->
+            current.copy(
+                theme = settings["theme"] ?: current.theme,
+                scrollback = settings["scrollback"]?.toIntOrNull() ?: current.scrollback,
+                markLinks = settings["markLinks"]?.toBooleanStrictOrNull() ?: current.markLinks,
+                showImages = settings["showImages"]?.toBooleanStrictOrNull() ?: current.showImages,
+                logPath = settings["logPath"] ?: current.logPath,
+                logType = settings["logType"] ?: current.logType,
+                logTimestamps = settings["logTimestamps"]?.toBooleanStrictOrNull() ?: current.logTimestamps,
+                skinFile = settings["skinFile"] ?: current.skinFile,
+                releaseChannel = settings["releaseChannel"] ?: current.releaseChannel,
+            )
+        }
+        settings.filterKeys { it !in CLIENT_CONFIG_KEYS }.forEach { (key, value) ->
+            clientSettingDao.save(ClientSettingEntity(key = key, value = value))
+        }
+    }
+
     private suspend fun applyCharacter(
         targetCharacterId: String,
         data: CharacterExport,
@@ -262,62 +319,20 @@ class ExportRepository(
         createCharacterRow: Boolean,
     ) {
         if (createCharacterRow && targetCharacterId != GLOBAL_CHARACTER_ID) {
-            characterDao.save(CharacterEntity(id = targetCharacterId, gameCode = data.gameCode, name = data.name))
+            val entry = CharacterEntry(id = targetCharacterId, gameCode = data.gameCode, name = data.name)
+            clientConfigStore.mutateConnections { registry ->
+                registry.copy(characters = registry.characters.filterNot { it.id == entry.id } + entry)
+            }
         }
 
         if (mode == ImportMode.REPLACE) {
-            aliasDao.deleteByCharacter(targetCharacterId)
-            alterationDao.deleteByCharacter(targetCharacterId)
-            macroDao.deleteByCharacter(targetCharacterId)
             scriptDirDao.deleteByCharacter(targetCharacterId)
-            presetStyleDao.deleteByCharacter(targetCharacterId)
             characterSettingDao.deleteByCharacter(targetCharacterId)
             windowSettingsDao.deleteByCharacter(targetCharacterId)
-            // highlights/names/variables are cleared and rewritten via the config store below
+            // Config-resident sections are swapped wholesale in the mutate below.
         }
 
-        // Aliases/alterations have no natural unique key, so when merging we reuse the existing row's
-        // id for a matching pattern to overwrite rather than duplicate it.
-        val existingAliasIds =
-            if (mode == ImportMode.MERGE) {
-                aliasDao.getByCharacter(targetCharacterId).associate { it.pattern to it.id }
-            } else {
-                emptyMap()
-            }
-        data.aliases.forEach {
-            aliasDao.save(
-                AliasEntity(
-                    id = existingAliasIds[it.pattern] ?: Uuid.random(),
-                    characterId = targetCharacterId,
-                    pattern = it.pattern,
-                    replacement = it.replacement,
-                ),
-            )
-        }
-
-        val existingAlterationIds =
-            if (mode == ImportMode.MERGE) {
-                alterationDao.getAlterationsByCharacter(targetCharacterId).associate { it.pattern to it.id }
-            } else {
-                emptyMap()
-            }
-        data.alterations.forEach {
-            alterationDao.save(
-                AlterationEntity(
-                    id = existingAlterationIds[it.pattern] ?: Uuid.random(),
-                    characterId = targetCharacterId,
-                    pattern = it.pattern,
-                    sourceStream = it.sourceStream,
-                    destinationStream = it.destinationStream,
-                    result = it.result,
-                    ignoreCase = it.ignoreCase,
-                    keepOriginal = it.keepOriginal,
-                ),
-            )
-        }
-
-        // Highlights, names, and variables live in the config store. On REPLACE we swap the sections
-        // wholesale; on MERGE we overlay, deduping highlights by pattern and names by text.
+        // Build the config-resident sections from the export.
         val importedHighlights =
             data.highlights.map { highlight ->
                 HighlightConfig(
@@ -360,69 +375,105 @@ class ExportRepository(
                     fontWeight = name.style.fontWeight,
                 )
             }
+        val importedAliases =
+            data.aliases.map { AliasConfig(id = Uuid.random().toString(), pattern = it.pattern, replacement = it.replacement) }
+        val importedAlterations =
+            data.alterations.map {
+                AlterationConfig(
+                    id = Uuid.random().toString(),
+                    pattern = it.pattern,
+                    sourceStream = it.sourceStream,
+                    destinationStream = it.destinationStream,
+                    result = it.result,
+                    ignoreCase = it.ignoreCase,
+                    keepOriginal = it.keepOriginal,
+                )
+            }
+        val importedMacros = data.macros.associate { it.key to it.value }
+        val importedPresets =
+            data.presets.associate { preset ->
+                preset.id to
+                    PresetStyleConfig(
+                        textColor = preset.style.textColor,
+                        backgroundColor = preset.style.backgroundColor,
+                        entireLine = preset.style.entireLine,
+                        bold = preset.style.bold,
+                        italic = preset.style.italic,
+                        underline = preset.style.underline,
+                        fontFamily = preset.style.fontFamily,
+                        fontSize = preset.style.fontSize,
+                        fontWeight = preset.style.fontWeight,
+                    )
+            }
+        val importedWindowStyles =
+            data.windows.associate { window ->
+                window.name to
+                    WindowStyleConfig(
+                        textColor = window.textColor,
+                        backgroundColor = window.backgroundColor,
+                        fontFamily = window.fontFamily,
+                        fontSize = window.fontSize,
+                        fontWeight = window.fontWeight,
+                        nameFilter = window.nameFilter,
+                    )
+            }
+        val importedCharacterSettings =
+            CharacterSettingsConfig(
+                typeahead = data.settings[MAX_TYPE_AHEAD_KEY]?.toIntOrNull(),
+                scriptCommandPrefix = data.settings[SCRIPT_COMMAND_PREFIX_KEY],
+            )
+
         characterConfigStore.mutate(targetCharacterId) { current ->
             if (mode == ImportMode.REPLACE) {
                 current.copy(
                     highlights = importedHighlights,
                     names = importedNames,
                     variables = data.variables,
+                    aliases = importedAliases,
+                    alterations = importedAlterations,
+                    macros = importedMacros,
+                    presets = importedPresets,
+                    windows = importedWindowStyles,
+                    settings = importedCharacterSettings,
                 )
             } else {
                 val importedPatterns = importedHighlights.mapTo(mutableSetOf()) { it.pattern }
                 val importedTexts = importedNames.mapTo(mutableSetOf()) { it.text }
+                val importedAliasPatterns = importedAliases.mapTo(mutableSetOf()) { it.pattern }
+                val importedAlterationPatterns = importedAlterations.mapTo(mutableSetOf()) { it.pattern }
                 current.copy(
                     highlights = current.highlights.filterNot { it.pattern in importedPatterns } + importedHighlights,
                     names = current.names.filterNot { it.text in importedTexts } + importedNames,
                     variables = current.variables + data.variables,
+                    aliases = current.aliases.filterNot { it.pattern in importedAliasPatterns } + importedAliases,
+                    alterations =
+                        current.alterations.filterNot { it.pattern in importedAlterationPatterns } + importedAlterations,
+                    macros = current.macros + importedMacros,
+                    presets = current.presets + importedPresets,
+                    windows = current.windows + importedWindowStyles,
+                    settings =
+                        current.settings.copy(
+                            typeahead = importedCharacterSettings.typeahead ?: current.settings.typeahead,
+                            scriptCommandPrefix =
+                                importedCharacterSettings.scriptCommandPrefix ?: current.settings.scriptCommandPrefix,
+                        ),
                 )
             }
         }
 
-        data.macros.forEach { macro ->
-            // `key` is the macro's identity; drop any existing row for it so a UI-created row (which
-            // carries legacy keyCode/modifier values in its primary key) isn't left as a duplicate.
-            macroDao.deleteByKey(characterId = targetCharacterId, key = macro.key)
-            @Suppress("DEPRECATION")
-            macroDao.save(
-                MacroEntity(
-                    characterId = targetCharacterId,
-                    key = macro.key,
-                    value = macro.value,
-                    keyCode = 0,
-                    ctrl = false,
-                    alt = false,
-                    shift = false,
-                    meta = false,
-                ),
-            )
-        }
-
-        data.presets.forEach { preset ->
-            presetStyleDao.save(
-                PresetStyleEntity(
-                    presetId = preset.id,
-                    characterId = targetCharacterId,
-                    textColor = preset.style.textColor,
-                    backgroundColor = preset.style.backgroundColor,
-                    entireLine = preset.style.entireLine,
-                    bold = preset.style.bold,
-                    italic = preset.style.italic,
-                    underline = preset.style.underline,
-                    fontFamily = preset.style.fontFamily,
-                    fontSize = preset.style.fontSize,
-                    fontWeight = preset.style.fontWeight,
-                ),
-            )
-        }
-
-        data.settings.forEach { (key, value) ->
-            characterSettingDao.save(CharacterSettingEntity(characterId = targetCharacterId, key = key, value = value))
-        }
+        // Per-character DB settings (geometry/main-window bounds): everything not owned by the config.
+        data.settings
+            .filterKeys { it != MAX_TYPE_AHEAD_KEY && it != SCRIPT_COMMAND_PREFIX_KEY }
+            .forEach { (key, value) ->
+                characterSettingDao.save(CharacterSettingEntity(characterId = targetCharacterId, key = key, value = value))
+            }
 
         data.scriptDirectories.forEach { path ->
             scriptDirDao.save(ScriptDirEntity(characterId = targetCharacterId, path = path))
         }
 
+        // Window geometry → SQLite (styling was written to the config above; the entity's styling
+        // columns are vestigial, so they're left at their defaults here).
         data.windows.forEach { window ->
             windowSettingsDao.save(
                 WindowSettingsEntity(
@@ -432,12 +483,12 @@ class ExportRepository(
                     height = window.height,
                     location = window.location,
                     position = window.position,
-                    textColor = window.textColor,
-                    backgroundColor = window.backgroundColor,
-                    fontFamily = window.fontFamily,
-                    fontSize = window.fontSize,
-                    fontWeight = window.fontWeight,
-                    nameFilter = window.nameFilter,
+                    textColor = WarlockColor.Unspecified,
+                    backgroundColor = WarlockColor.Unspecified,
+                    fontFamily = null,
+                    fontSize = null,
+                    fontWeight = null,
+                    nameFilter = false,
                 ),
             )
         }
