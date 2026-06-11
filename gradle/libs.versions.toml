@@ -70,7 +70,7 @@ xmlutil = "0.91.3"
 compileSdk = "36"
 minSdk = "26"
 targetSdk = "36"
-jvmToolchainVersion = "25"
+jvmToolchainVersion = "21"
 
 [libraries]
 
