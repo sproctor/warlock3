@@ -43,16 +43,15 @@ class CharacterConfigWatchTest {
             .deleteRecursively()
     }
 
-    private fun globalFile() = Path(Path(configDir, "characters"), "$GLOBAL_CHARACTER_ID.toml")
+    private fun globalHighlightsFile() = Path(Path(Path(configDir, "characters"), GLOBAL_CHARACTER_ID), "highlights.toml")
 
     private fun globalToml(vararg patterns: String): String =
         buildString {
-            appendLine("character = \"global\"")
             for (p in patterns) {
-                appendLine()
                 appendLine("[[highlights]]")
                 appendLine("id = \"$p-id\"")
                 appendLine("pattern = \"$p\"")
+                appendLine()
             }
         }
 
@@ -61,6 +60,7 @@ class CharacterConfigWatchTest {
         path: Path,
         text: String,
     ) {
+        path.parent?.let { if (fs.metadataOrNull(it) == null) fs.createDirectories(it) }
         val tmp = Path(path.parent ?: Path(configDir), path.name + ".ext.tmp")
         fs.sink(tmp).buffered().use { it.writeString(text) }
         fs.atomicMove(tmp, path)
@@ -69,7 +69,7 @@ class CharacterConfigWatchTest {
     @Test
     fun external_edit_is_reloaded_into_memory() =
         runBlocking {
-            atomicWrite(globalFile(), globalToml("apple"))
+            atomicWrite(globalHighlightsFile(), globalToml("apple"))
 
             val store = CharacterConfigStore(configDir, fs)
             store.load()
@@ -86,7 +86,7 @@ class CharacterConfigWatchTest {
             delay(500) // let the watcher register its directories before we change the file
 
             // Another instance (or the user in a text editor) adds a highlight.
-            atomicWrite(globalFile(), globalToml("apple", "banana"))
+            atomicWrite(globalHighlightsFile(), globalToml("apple", "banana"))
 
             try {
                 withTimeout(15_000) {

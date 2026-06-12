@@ -75,8 +75,8 @@ class CharacterConfigStoreTest {
             assertEquals("you are bleeding", observed.single().pattern)
             assertTrue(observed.single().ignoreCase)
 
-            // Written to the character's file with a human-friendly hex color, not a raw argb long
-            val file = Path(Path(Path(configDir, "characters"), "gs4"), "tholan.toml")
+            // Written to the character's highlights file with a human-friendly hex color, not raw argb
+            val file = Path(Path(Path(Path(configDir, "characters"), "gs4"), "tholan"), "highlights.toml")
             val text = readFile(file)
             assertTrue(text.contains("#ffff0000"), "expected hex color in file, was:\n$text")
             assertTrue(!text.contains("argb"), "raw argb should not leak into file:\n$text")
@@ -199,15 +199,13 @@ class CharacterConfigStoreTest {
     @Test
     fun handAuthoredEntryWithoutId_getsStableIdOnLoad() =
         runBlocking {
-            // Simulate a user hand-writing a file with no id field.
-            val charsDir = Path(Path(configDir, "characters"), "gs4")
-            fs.createDirectories(charsDir)
-            val file = Path(charsDir, "tholan.toml")
+            // Simulate a user hand-writing a highlights file with no id field.
+            val charDir = Path(Path(Path(configDir, "characters"), "gs4"), "tholan")
+            fs.createDirectories(charDir)
+            val file = Path(charDir, "highlights.toml")
             fs.sink(file).buffered().use {
                 it.writeString(
                     """
-                    character = "gs4:tholan"
-
                     [[highlights]]
                     pattern = "ouch"
                     ignoreCase = true

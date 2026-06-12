@@ -134,6 +134,55 @@ data class CharacterSettingsConfig(
     val scriptCommandPrefix: String? = null,
 )
 
+// Per-section file wrappers. Each per-character section is stored in its own file under
+// characters/<gameCode>/<name>/ (e.g. highlights.toml, variables.toml); these wrap the section so the
+// TOML root is a table. settings.toml uses [CharacterSettingsConfig] directly (its fields are the root).
+
+@Serializable
+internal data class HighlightsFile(
+    val highlights: List<HighlightConfig> = emptyList(),
+)
+
+@Serializable
+internal data class NamesFile(
+    val names: List<NameConfig> = emptyList(),
+)
+
+@Serializable
+internal data class AliasesFile(
+    val aliases: List<AliasConfig> = emptyList(),
+)
+
+@Serializable
+internal data class AlterationsFile(
+    val alterations: List<AlterationConfig> = emptyList(),
+)
+
+@Serializable
+internal data class VariablesFile(
+    val variables: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+internal data class MacrosFile(
+    val macros: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+internal data class PresetsFile(
+    val presets: Map<String, PresetStyleConfig> = emptyMap(),
+)
+
+@Serializable
+internal data class ProgressBarsFile(
+    val progressBars: Map<String, ProgressBarConfig> = emptyMap(),
+)
+
+@Serializable
+internal data class WindowsFile(
+    val windows: Map<String, WindowStyleConfig> = emptyMap(),
+)
+
 @Serializable
 data class HighlightConfig(
     val id: String? = null,
