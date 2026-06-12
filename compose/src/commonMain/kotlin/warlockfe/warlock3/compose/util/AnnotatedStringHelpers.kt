@@ -6,17 +6,23 @@ import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.model.isWordBoundary
+import warlockfe.warlock3.compose.model.isWordChar
 import warlockfe.warlock3.core.text.StyleDefinition
 
 fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringHighlightResult {
     val sourceText = this.text
     val outerSpans = this.spanStyles
     val entireLineStyles = mutableListOf<StyleDefinition>()
+    // Cheap pre-filter for the common, hot case: a power user can have hundreds of single-word,
+    // whole-word literal highlights, almost none of which match a given line. Build the set of the
+    // line's lowercased word tokens once, so those highlights become an O(1) membership check instead
+    // of a per-highlight (case-insensitive) scan of the whole line.
+    val lineWords = wordTokens(sourceText)
     val text =
         with(AnnotatedString.Builder(this)) {
             highlights.forEach { highlight ->
                 when (highlight) {
-                    is LiteralHighlight -> applyLiteralHighlight(highlight, sourceText, outerSpans, entireLineStyles)
+                    is LiteralHighlight -> applyLiteralHighlight(highlight, sourceText, lineWords, outerSpans, entireLineStyles)
                     is RegexHighlight -> applyRegexHighlight(highlight, sourceText, outerSpans, entireLineStyles)
                 }
             }
@@ -25,15 +31,36 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
     return AnnotatedStringHighlightResult(text, entireLineStyles)
 }
 
+// The lowercased maximal runs of word characters in [text], used to pre-filter whole-word highlights.
+private fun wordTokens(text: String): Set<String> {
+    val tokens = HashSet<String>()
+    var start = -1
+    for (i in text.indices) {
+        if (isWordChar(text[i])) {
+            if (start < 0) start = i
+        } else if (start >= 0) {
+            tokens.add(text.substring(start, i).lowercase())
+            start = -1
+        }
+    }
+    if (start >= 0) tokens.add(text.substring(start).lowercase())
+    return tokens
+}
+
 private fun AnnotatedString.Builder.applyLiteralHighlight(
     highlight: LiteralHighlight,
     text: String,
+    lineWords: Set<String>,
     outerSpans: List<AnnotatedString.Range<SpanStyle>>,
     entireLineStyles: MutableList<StyleDefinition>,
 ) {
     val style = highlight.style ?: return
     val needle = highlight.literal
     if (needle.isEmpty()) return
+    // A whole-word literal can only match if it is itself a single word token present in the line; an
+    // O(1) check that lets us skip the scan for the (overwhelmingly common) non-matching highlights.
+    // The scan below still confirms the actual match (incl. case for case-sensitive highlights).
+    if (!highlight.matchPartialWord && needle.all { isWordChar(it) } && needle.lowercase() !in lineWords) return
     val needleLen = needle.length
     var idx = text.indexOf(needle, startIndex = 0, ignoreCase = highlight.ignoreCase)
     while (idx >= 0) {

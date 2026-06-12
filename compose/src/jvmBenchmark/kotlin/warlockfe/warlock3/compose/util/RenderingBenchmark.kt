@@ -93,7 +93,7 @@ class RenderingBenchmark {
     }
 
     private fun buildHighlights(): List<ViewHighlight> {
-        val names =
+        val realNames =
             listOf(
                 "orc",
                 "scroll",
@@ -111,6 +111,9 @@ class RenderingBenchmark {
                 "herb",
                 "rune",
             )
+        // Model a power user's highlight list (~975 in the wild): a handful match a given line, the
+        // vast majority don't. All single-word, whole-word, case-insensitive (the common kind).
+        val names = realNames + (0 until 945).map { "hlword$it" }
         val literal =
             names.map { name ->
                 LiteralHighlight(
