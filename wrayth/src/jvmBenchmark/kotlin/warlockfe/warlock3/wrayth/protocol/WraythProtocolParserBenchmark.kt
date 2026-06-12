@@ -1,7 +1,11 @@
 package warlockfe.warlock3.wrayth.protocol
 
 import kotlinx.benchmark.Benchmark
+import kotlinx.benchmark.BenchmarkMode
+import kotlinx.benchmark.BenchmarkTimeUnit
 import kotlinx.benchmark.Blackhole
+import kotlinx.benchmark.Mode
+import kotlinx.benchmark.OutputTimeUnit
 import kotlinx.benchmark.Scope
 import kotlinx.benchmark.State
 import org.antlr.v4.kotlinruntime.CharStreams
@@ -15,8 +19,13 @@ import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
  * protocol-handler state), measured across representative line shapes.
  *
  * Run with: `./gradlew :wrayth:jvmBenchmarkBenchmark` (or `:wrayth:benchmark` for all targets).
+ *
+ * Throughput is reported in operations per millisecond - small, readable numbers, vs. the
+ * ~10^5-10^6 ops/second the default unit would print.
  */
 @State(Scope.Benchmark)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(BenchmarkTimeUnit.MILLISECONDS)
 class WraythProtocolParserBenchmark {
     // Plain narrative text with no tags - the common case, exercises the TEXT lexer rule.
     private val plainText = "You see a tall orc warrior standing guard by the gate, gripping a rusty halberd."
