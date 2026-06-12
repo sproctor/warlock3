@@ -1,13 +1,12 @@
 import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
-import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
-import warlockfe.warlock3.core.window.BackgroundImageMode
-import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
 import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
-import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
+import warlockfe.warlock3.wrayth.protocol.CharData
+import warlockfe.warlock3.wrayth.protocol.Content
+import warlockfe.warlock3.wrayth.protocol.EndElement
+import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythNodeVisitor
-import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -23,195 +22,134 @@ class WraythParserTests {
     }
 
     @Test
-    fun backgroundTagIncludesWindowAndImage() {
-        val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\"/>")
+    fun startTagAttributesAndText() {
+        val content = parse("<a exist=\"123\" noun=\"orc\">an orc</a>")
 
         assertEquals(
-            backgroundEvent(image = "room.png"),
-            events.first(),
-        )
-    }
-
-    @Test
-    fun backgroundTagIncludesMode() {
-        val modes =
-            mapOf(
-                "fill" to BackgroundImageMode.FILL,
-                "hfill" to BackgroundImageMode.HEIGHT_FILL,
-                "wfill" to BackgroundImageMode.WIDTH_FILL,
-                "full" to BackgroundImageMode.FULL,
-                "gradient" to BackgroundImageMode.GRADIENT,
-            )
-
-        modes.forEach { (mode, expectedMode) ->
-            val events = WraythProtocolHandler().parseLine("<background window=\"main\" img=\"room.png\" mode=\"$mode\"/>")
-
-            assertEquals(
-                backgroundEvent(image = "room.png", mode = expectedMode),
-                events.first(),
-            )
-        }
-    }
-
-    @Test
-    fun backgroundGradientTagIncludesStartAndEnd() {
-        val events =
-            WraythProtocolHandler().parseLine(
-                "<background window=\"main\" img=\"room.png\" mode=\"gradient\" start=\"25\" end=\"75\"/>",
-            )
-
-        assertEquals(
-            backgroundEvent(
-                image = "room.png",
-                mode = BackgroundImageMode.GRADIENT,
-                gradientStart = 25,
-                gradientEnd = 75,
+            listOf(
+                StartElement("a", mapOf("exist" to "123", "noun" to "orc")),
+                CharData("an orc"),
+                EndElement("a"),
             ),
-            events.first(),
+            content,
         )
     }
 
     @Test
-    fun backgroundGradientStartAndEndAreClamped() {
-        val events =
-            WraythProtocolHandler().parseLine(
-                "<background img=\"room.png\" mode=\"gradient\" start=\"-10\" end=\"120\"/>",
-            )
-
+    fun emptyTagExpandsToStartAndEnd() {
         assertEquals(
-            backgroundEvent(
-                image = "room.png",
-                mode = BackgroundImageMode.GRADIENT,
-                gradientStart = 0,
-                gradientEnd = 100,
+            listOf(
+                StartElement("prompt", mapOf("time" to "1234")),
+                EndElement("prompt"),
             ),
-            events.first(),
+            parse("<prompt time=\"1234\"/>"),
         )
     }
 
     @Test
-    fun backgroundTagIncludesOpacity() {
-        val events = WraythProtocolHandler().parseLine("<background img=\"room.png\" opacity=\"45\"/>")
-
+    fun attributeWithoutValueUsesNameAsValue() {
+        // `attribute : Name (EQUALS STRING)?` — a valueless attribute falls back to its name as value.
         assertEquals(
-            backgroundEvent(image = "room.png", opacity = 45),
-            events.first(),
+            StartElement("style", mapOf("id" to "ROOMNAME", "bold" to "bold")),
+            parse("<style id=\"ROOMNAME\" bold/>").first(),
         )
     }
 
     @Test
-    fun backgroundGradientOpacityDoesNotClampStartAndEnd() {
-        val events =
-            WraythProtocolHandler().parseLine(
-                "<background img=\"room.png\" mode=\"gradient\" opacity=\"60\" start=\"90\" end=\"30\"/>",
-            )
+    fun literalAngleBracketsInsideAttributeString() {
+        // The lexer's STRING rule consumes `<` and `>` inside a quoted value, so they don't prematurely
+        // close the tag. The game sends command links whose value contains angle brackets.
+        val content = parse("<d cmd=\"look in <chest>\">look</d>")
 
         assertEquals(
-            backgroundEvent(
-                image = "room.png",
-                mode = BackgroundImageMode.GRADIENT,
-                gradientStart = 90,
-                gradientEnd = 30,
-                opacity = 60,
+            StartElement("d", mapOf("cmd" to "look in <chest>")),
+            content.first(),
+        )
+        assertEquals(CharData("look"), content[1])
+    }
+
+    @Test
+    fun escapedAngleBracketsInsideAttributeStringAreUnescaped() {
+        assertEquals(
+            StartElement("d", mapOf("cmd" to "go <north> & <south>")),
+            parse("<d cmd=\"go &lt;north&gt; &amp; &lt;south&gt;\"/>").first(),
+        )
+    }
+
+    @Test
+    fun greaterThanInsideAttributeStringDoesNotCloseTag() {
+        val content = parse("<a cmd=\"swing > orc\">x</a>")
+
+        assertEquals(StartElement("a", mapOf("cmd" to "swing > orc")), content.first())
+        assertEquals(CharData("x"), content[1])
+        assertEquals(EndElement("a"), content[2])
+    }
+
+    @Test
+    fun embeddedQuotesInAttributeStringAreRead() {
+        // The STRING rule tolerates non-XML values with embedded quotes (it reads past an inner quote
+        // as long as it isn't followed by `=` or `>`), e.g. the bracketed, quoted noun the game sends.
+        val content = parse("<a noun=\" - [\"Kertigen's Honor\"]\">item</a>")
+
+        assertEquals(
+            StartElement("a", mapOf("noun" to " - [\"Kertigen's Honor\"]")),
+            content.first(),
+        )
+        assertEquals(CharData("item"), content[1])
+    }
+
+    @Test
+    fun embeddedSingleQuotesInAttributeStringAreRead() {
+        // The STRING rule tolerates non-XML values with embedded quotes (it reads past an inner quote
+        // as long as it isn't followed by `=` or `>`), e.g. the bracketed, quoted noun the game sends.
+        val content = parse("<a noun=' - Kertigen's Honor'>item</a>")
+
+        assertEquals(
+            StartElement("a", mapOf("noun" to " - Kertigen's Honor")),
+            content.first(),
+        )
+        assertEquals(CharData("item"), content[1])
+    }
+
+    @Test
+    fun entityReferencesInTextAreUnescaped() {
+        // References are their own nodes; concatenating the text yields the unescaped string.
+        val content = parse("you see &lt;1&gt; &amp; more")
+        val text = content.filterIsInstance<CharData>().joinToString("") { it.data }
+
+        assertEquals("you see <1> & more", text)
+    }
+
+    @Test
+    fun numericCharacterReferencesInTextAreUnescaped() {
+        val decimal = parse("&#62;").filterIsInstance<CharData>().joinToString("") { it.data }
+        val hex = parse("&#x3c;").filterIsInstance<CharData>().joinToString("") { it.data }
+
+        assertEquals(">", decimal)
+        assertEquals("<", hex)
+    }
+
+    @Test
+    fun multipleSiblingElements() {
+        assertEquals(
+            listOf(
+                StartElement("pushBold", emptyMap()),
+                EndElement("pushBold"),
+                CharData("You attack the "),
+                StartElement("a", mapOf("noun" to "orc")),
+                CharData("orc"),
+                EndElement("a"),
+                CharData("."),
             ),
-            events.first(),
+            parse("<pushBold/>You attack the <a noun=\"orc\">orc</a>."),
         )
     }
 
-    @Test
-    fun backgroundOpacityIsClamped() {
-        val events = WraythProtocolHandler().parseLine("<background img=\"room.png\" opacity=\"120\"/>")
-
-        assertEquals(
-            backgroundEvent(image = "room.png", opacity = 100),
-            events.first(),
-        )
+    private fun parse(line: String): List<Content> {
+        val lexer = WraythLexer(CharStreams.fromString(line))
+        val parser = WraythParser(CommonTokenStream(lexer))
+        val content = WraythNodeVisitor.visitDocument(parser.document())
+        assertEquals(0, parser.numberOfSyntaxErrors, "unexpected syntax errors parsing: $line")
+        return content
     }
-
-    @Test
-    fun backgroundTagIncludesAlignment() {
-        val horizontalAlignments =
-            mapOf(
-                "left" to BackgroundImageHorizontalAlignment.LEFT,
-                "center" to BackgroundImageHorizontalAlignment.CENTER,
-                "right" to BackgroundImageHorizontalAlignment.RIGHT,
-            )
-        val verticalAlignments =
-            mapOf(
-                "top" to BackgroundImageVerticalAlignment.TOP,
-                "middle" to BackgroundImageVerticalAlignment.MIDDLE,
-                "bottom" to BackgroundImageVerticalAlignment.BOTTOM,
-            )
-
-        horizontalAlignments.forEach { (align, expectedHorizontalAlignment) ->
-            verticalAlignments.forEach { (valign, expectedVerticalAlignment) ->
-                val events =
-                    WraythProtocolHandler().parseLine(
-                        "<background img=\"room.png\" align=\"$align\" valign=\"$valign\"/>",
-                    )
-
-                assertEquals(
-                    backgroundEvent(
-                        image = "room.png",
-                        horizontalAlignment = expectedHorizontalAlignment,
-                        verticalAlignment = expectedVerticalAlignment,
-                    ),
-                    events.first(),
-                )
-            }
-        }
-    }
-
-    @Test
-    fun unknownBackgroundAlignmentUsesDefault() {
-        val events =
-            WraythProtocolHandler().parseLine(
-                "<background img=\"room.png\" align=\"unknown\" valign=\"unknown\"/>",
-            )
-
-        assertEquals(
-            backgroundEvent(image = "room.png"),
-            events.first(),
-        )
-    }
-
-    @Test
-    fun unknownBackgroundModeUsesDefault() {
-        val events = WraythProtocolHandler().parseLine("<background img=\"room.png\" mode=\"unknown\"/>")
-
-        assertEquals(
-            backgroundEvent(image = "room.png"),
-            events.first(),
-        )
-    }
-
-    @Test
-    fun emptyBackgroundTagDefaultsToMainWindow() {
-        val events = WraythProtocolHandler().parseLine("<background/>")
-
-        assertEquals(
-            backgroundEvent(),
-            events.first(),
-        )
-    }
-
-    private fun backgroundEvent(
-        windowName: String = "main",
-        image: String? = null,
-        mode: BackgroundImageMode = BackgroundImageMode.HEIGHT_FILL,
-        gradientStart: Int = 0,
-        gradientEnd: Int = 100,
-        opacity: Int = 100,
-        horizontalAlignment: BackgroundImageHorizontalAlignment = BackgroundImageHorizontalAlignment.CENTER,
-        verticalAlignment: BackgroundImageVerticalAlignment = BackgroundImageVerticalAlignment.MIDDLE,
-    ) = WraythBackgroundEvent(
-        windowName = windowName,
-        image = image,
-        mode = mode,
-        gradientStart = gradientStart,
-        gradientEnd = gradientEnd,
-        opacity = opacity,
-        horizontalAlignment = horizontalAlignment,
-        verticalAlignment = verticalAlignment,
-    )
 }
