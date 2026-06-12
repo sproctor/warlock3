@@ -9,6 +9,14 @@ plugins {
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.antlr.kotlin)
+    alias(libs.plugins.kotlin.allopen)
+    alias(libs.plugins.kotlinx.benchmark)
+}
+
+// JMH (which kotlinx-benchmark uses on the JVM) subclasses @State benchmark classes, so they must be open.
+allOpen {
+    annotation("org.openjdk.jmh.annotations.State")
+    annotation("kotlinx.benchmark.State")
 }
 
 val generateKotlinGrammarSource =
@@ -43,7 +51,14 @@ val generateKotlinGrammarSource =
 val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
-    jvm()
+    jvm {
+        // A separate compilation so benchmark code (and the kotlinx-benchmark runtime) stays out of the
+        // published library. Sources live in src/jvmBenchmark/kotlin; it can see the main classpath.
+        val main by compilations.getting
+        compilations.create("benchmark") {
+            associateWith(main)
+        }
+    }
     androidLibrary {
         namespace = "warlockfe.warlock3.wrayth"
         compileSdk =
@@ -96,7 +111,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.core)
                 implementation(libs.xmlutil.serialization)
-                implementation(libs.antlr.kotlin.runtime)
+                api(libs.antlr.kotlin.runtime)
                 implementation(libs.ktor.network)
                 implementation(libs.ktor.network.tls)
             }
@@ -105,11 +120,30 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+
+        getByName("jvmBenchmark").dependencies {
+            implementation(libs.kotlinx.benchmark.runtime)
+        }
     }
 
     compilerOptions {
         optIn.add("kotlin.time.ExperimentalTime")
         optIn.add("kotlin.experimental.ExperimentalNativeApi")
         freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+}
+
+benchmark {
+    configurations {
+        named("main") {
+            warmups = 5
+            iterations = 5
+            iterationTime = 1
+            iterationTimeUnit = "s"
+        }
+    }
+    targets {
+        // <jvm target><Benchmark compilation> -> "jvmBenchmark"
+        register("jvmBenchmark")
     }
 }
