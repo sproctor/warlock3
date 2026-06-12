@@ -15,7 +15,6 @@ import kotlinx.benchmark.OutputTimeUnit
 import kotlinx.benchmark.Scope
 import kotlinx.benchmark.State
 import warlockfe.warlock3.compose.model.LiteralHighlight
-import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -49,7 +48,8 @@ class RenderingBenchmark {
             "link" to StyleDefinition(textColor = WarlockColor(red = 120, green = 180, blue = 255), underline = true),
         )
 
-    // A representative room/combat line with several styled spans.
+    // A representative room/combat line with several styled spans, including Capitalized proper names
+    // (as real "Also here:" lines have) so the case-sensitive name-highlight match path is exercised.
     private val styledLine: StyledString =
         StyledString("You also see ") +
             StyledString("a greater orc", WarlockStyle("creature")) +
@@ -57,7 +57,7 @@ class RenderingBenchmark {
             StyledString("a tattered scroll", WarlockStyle("object")) +
             StyledString(", and ") +
             StyledString("a wooden chest", WarlockStyle("object")) +
-            StyledString(". Obvious exits: north, east, down.")
+            StyledString(". Obvious exits: north, east, down. Also here: Zarnok, Vexil, Quorth.")
 
     // A realistic set of user highlights: a stack of literal names plus a couple of regexes.
     private val highlights: List<ViewHighlight> = buildHighlights()
@@ -93,47 +93,35 @@ class RenderingBenchmark {
     }
 
     private fun buildHighlights(): List<ViewHighlight> {
-        val names =
-            listOf(
-                "orc",
-                "scroll",
-                "chest",
-                "kobold",
-                "goblin",
-                "troll",
-                "gold",
-                "gem",
-                "ring",
-                "cloak",
-                "dagger",
-                "shield",
-                "potion",
-                "herb",
-                "rune",
-            )
+        // Model the real-world profile measured in the app: ~975 highlights, ALL literal (zero regex),
+        // overwhelmingly single-word, whole-word, CASE-SENSITIVE proper names that are Capitalized
+        // (player/creature names). Capitalization matters: the per-line pre-filter works in lowercase,
+        // so lowercasing a Capitalized needle allocates a fresh string every time — which is precisely
+        // the per-line garbage that precomputing the lowercased form removes. An all-lowercase set would
+        // hide that cost, because String.lowercase() returns the same instance when nothing changes.
+        val realNames = listOf("Zarnok", "Vexil", "Quorth", "Kobold", "Goblin", "Troll", "Orc", "Drake")
+        val names = realNames + (0 until 965).map { "Hlword$it" }
         val literal =
             names.map { name ->
                 LiteralHighlight(
                     literal = name,
                     matchPartialWord = false,
-                    ignoreCase = true,
+                    ignoreCase = false,
                     style = StyleDefinition(bold = true, textColor = WarlockColor(red = 255, green = 200, blue = 0)),
                     sound = null,
                 )
             }
-        val regex =
-            listOf(
-                RegexHighlight(
-                    regex = Regex("\\b(north|south|east|west|up|down)\\b"),
-                    styles = mapOf(0 to StyleDefinition(textColor = WarlockColor(red = 120, green = 200, blue = 255))),
+        // A couple of partial-word literals, as real highlight lists tend to have.
+        val partialWord =
+            listOf("stone", "wood").map { fragment ->
+                LiteralHighlight(
+                    literal = fragment,
+                    matchPartialWord = true,
+                    ignoreCase = true,
+                    style = StyleDefinition(textColor = WarlockColor(red = 120, green = 200, blue = 255)),
                     sound = null,
-                ),
-                RegexHighlight(
-                    regex = Regex("\\d+"),
-                    styles = mapOf(0 to StyleDefinition(textColor = WarlockColor(red = 255, green = 255, blue = 120))),
-                    sound = null,
-                ),
-            )
-        return literal + regex
+                )
+            }
+        return literal + partialWord
     }
 }

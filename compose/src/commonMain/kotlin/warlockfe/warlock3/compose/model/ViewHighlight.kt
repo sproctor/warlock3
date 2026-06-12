@@ -15,8 +15,13 @@ data class LiteralHighlight(
     val style: StyleDefinition?,
     override val sound: String?,
 ) : ViewHighlight {
+    // Precomputed once per highlight (not per line): highlight()'s pre-filter checks whole-word literals
+    // against the line's word-token set, so it needs the lowercased literal and whether the literal is a
+    // single word token. Computing these here keeps that check allocation-free on the per-line hot path.
+    val loweredLiteral: String = literal.lowercase()
+    val isSingleWord: Boolean = literal.isNotEmpty() && literal.all { isWordChar(it) }
+
     override fun containsMatchIn(text: String): Boolean {
-        if (literal.isEmpty()) return false
         if (matchPartialWord) return text.contains(literal, ignoreCase = ignoreCase)
         var idx = text.indexOf(literal, startIndex = 0, ignoreCase = ignoreCase)
         while (idx >= 0) {

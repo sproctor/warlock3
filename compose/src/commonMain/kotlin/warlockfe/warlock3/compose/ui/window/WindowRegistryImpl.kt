@@ -93,7 +93,8 @@ class WindowRegistryImpl(
         characterId
             .flatMapLatest { characterId ->
                 nameRepository.observeForCharacter(characterId).map { names ->
-                    names.map { name ->
+                    names.mapNotNull { name ->
+                        if (name.text.isBlank()) return@mapNotNull null
                         LiteralHighlight(
                             literal = name.text,
                             matchPartialWord = false,
@@ -133,6 +134,8 @@ class WindowRegistryImpl(
                                 // client.debug("Error while parsing highlight (${e.message}): $highlight")
                                 null
                             }
+                        } else if (highlight.pattern.isBlank()) {
+                            null
                         } else {
                             LiteralHighlight(
                                 literal = highlight.pattern,
