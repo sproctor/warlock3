@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import warlockfe.warlock3.compose.model.LiteralHighlight
+import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.AnnotatedStringHighlightResult
 import warlockfe.warlock3.compose.util.getEntireLineStyles
@@ -28,7 +30,8 @@ import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.microseconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.TimeSource
@@ -372,11 +375,11 @@ data class CachedLine(
 
 private val streamLineLogger = Logger.withTag("toStreamLine")
 
-// Lines whose total render time exceeds this threshold get logged with a
-// per-stage breakdown. Set to Duration.ZERO to log every line.
-private val SLOW_LINE_THRESHOLD = 5.milliseconds
+// Lines whose total render time exceeds this threshold get logged with a per-stage breakdown.
+// The frame budget at 60fps is ~16ms for all lines combined, so a single line over 1ms is already
+// consuming a significant fraction of a frame. Set to Duration.ZERO to log every line.
+private val SLOW_LINE_THRESHOLD = 500.microseconds
 
-@OptIn(ExperimentalTime::class)
 fun StyledString.toStreamLine(
     streamName: String,
     showTimestamp: Boolean,
@@ -393,101 +396,135 @@ fun StyledString.toStreamLine(
     markLinks: Boolean,
     applyStyling: Boolean,
 ): StreamTextLine {
-    val t0 = TimeSource.Monotonic.markNow()
-    val text =
-        if (showTimestamp) {
-            this + StyledString(" [${timestamp.toTimeString()}]")
-        } else {
-            this
-        }
-    val annotated =
-        text.toAnnotatedString(
-            variables = components,
-            styleMap = presets,
-            actionHandler = actionHandler,
-        )
-    val tAnnotated = TimeSource.Monotonic.markNow()
-    val textWithComponents =
-        if (applyStyling) {
-            annotated
-                .alter(alterations, streamName)
-                ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
-        } else {
-            annotated.takeIf { !ignoreWhenBlank || it.text.isNotBlank() }
-        }
-    val tAltered = TimeSource.Monotonic.markNow()
-    val textWithLinks =
-        textWithComponents?.let { content ->
-            if (applyStyling && markLinks) {
-                buildAnnotatedString {
-                    append(content)
-                    markLinks(content, presets)
-                }
+    val source = this
+
+    // Runs the full per-line transform once and returns the line plus a per-stage timing breakdown.
+    fun render(): RenderedLine {
+        val t0 = TimeSource.Monotonic.markNow()
+        val text =
+            if (showTimestamp) {
+                source + StyledString(" [${timestamp.toTimeString()}]")
             } else {
-                content
+                source
             }
-        }
-    val tLinked = TimeSource.Monotonic.markNow()
-    val highlightedResult =
-        textWithLinks?.let { content ->
-            if (applyStyling && content.text.isNotEmpty()) {
-                content.highlight(highlights)
+        val annotated =
+            text.toAnnotatedString(
+                variables = components,
+                styleMap = presets,
+                actionHandler = actionHandler,
+            )
+        val tAnnotated = TimeSource.Monotonic.markNow()
+        val textWithComponents =
+            if (applyStyling) {
+                annotated
+                    .alter(alterations, streamName)
+                    ?.takeIf { !ignoreWhenBlank || it.isNotBlank() }
             } else {
-                AnnotatedStringHighlightResult(content, emptyList())
+                annotated.takeIf { !ignoreWhenBlank || it.text.isNotBlank() }
             }
-        }
-    val tHighlighted = TimeSource.Monotonic.markNow()
-    val lineStyle =
-        flattenStyles(
-            (highlightedResult?.entireLineStyles ?: emptyList()) +
-                getEntireLineStyles(
-                    variables = components,
-                    styleMap = presets,
-                ),
-        )
-    val result =
-        StreamTextLine(
-            text =
-                highlightedResult?.let {
+        val tAltered = TimeSource.Monotonic.markNow()
+        val textWithLinks =
+            textWithComponents?.let { content ->
+                if (applyStyling && markLinks) {
                     buildAnnotatedString {
-                        lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
-                        append(it.text)
-                        if (lineStyle != null) pop()
+                        append(content)
+                        markLinks(content, presets)
                     }
-                },
-            entireLineStyle = lineStyle,
-            serialNumber = serialNumber,
-            showWhenClosed = showWhenClosed,
-            isPrompt = isPrompt,
+                } else {
+                    content
+                }
+            }
+        val tLinked = TimeSource.Monotonic.markNow()
+        val highlightedResult =
+            textWithLinks?.let { content ->
+                if (applyStyling && content.text.isNotEmpty()) {
+                    content.highlight(highlights)
+                } else {
+                    AnnotatedStringHighlightResult(content, emptyList())
+                }
+            }
+        val tHighlighted = TimeSource.Monotonic.markNow()
+        val lineStyle =
+            flattenStyles(
+                (highlightedResult?.entireLineStyles ?: emptyList()) +
+                    getEntireLineStyles(
+                        variables = components,
+                        styleMap = presets,
+                    ),
+            )
+        val line =
+            StreamTextLine(
+                text =
+                    highlightedResult?.let {
+                        buildAnnotatedString {
+                            lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
+                            append(it.text)
+                            if (lineStyle != null) pop()
+                        }
+                    },
+                entireLineStyle = lineStyle,
+                serialNumber = serialNumber,
+                showWhenClosed = showWhenClosed,
+                isPrompt = isPrompt,
+            )
+        val tEnd = TimeSource.Monotonic.markNow()
+        return RenderedLine(
+            line = line,
+            total = tEnd - t0,
+            annotate = tAnnotated - t0,
+            alter = tAltered - tAnnotated,
+            link = tLinked - tAltered,
+            highlight = tHighlighted - tLinked,
+            build = tEnd - tHighlighted,
         )
-    val tEnd = TimeSource.Monotonic.markNow()
-    val total = tEnd - t0
-    if (total >= SLOW_LINE_THRESHOLD) {
-        val annotate = tAnnotated - t0
-        val alter = tAltered - tAnnotated
-        val link = tLinked - tAltered
-        val highlight = tHighlighted - tLinked
-        val build = tEnd - tHighlighted
-        // Diagnostic: re-run annotate to distinguish structural vs. cold-path cost
-        streamLineLogger.w {
-            val before = this.toString().take(200).replace("\n", "\\n")
-            val after =
-                result.text
-                    ?.text
-                    ?.take(200)
-                    ?.replace("\n", "\\n") ?: "<filtered>"
-            "Slow line in '$streamName' total=${total.inWholeMicroseconds}µs " +
-                "annotate=${annotate.inWholeMicroseconds}µs " +
-                "alter=${alter.inWholeMicroseconds}µs " +
-                "link=${link.inWholeMicroseconds}µs " +
-                "highlight=${highlight.inWholeMicroseconds}µs " +
-                "build=${build.inWholeMicroseconds}µs " +
-                "alterations=${alterations.size} highlights=${highlights.size} " +
-                "before=\"$before\" after=\"$after\""
+    }
+
+    val rendered = render()
+    if (rendered.total >= SLOW_LINE_THRESHOLD) {
+        // The first pass can be inflated by a one-off GC/JIT pause that has nothing to do with this
+        // line's real cost, so re-run it and only warn if it is reproducibly slow. The retry breakdown
+        // reflects steady-state cost; the first-pass total is reported for reference.
+        val retry = render()
+        if (retry.total >= SLOW_LINE_THRESHOLD) {
+            val regexHighlights = highlights.filterIsInstance<RegexHighlight>()
+            val literalHighlights = highlights.filterIsInstance<LiteralHighlight>()
+            val wholeWordLiterals = literalHighlights.count { !it.matchPartialWord }
+            val partialWordLiterals = literalHighlights.count { it.matchPartialWord }
+            streamLineLogger.w {
+                val before = source.toString().take(200).replace("\n", "\\n")
+                val after =
+                    rendered.line.text
+                        ?.text
+                        ?.take(200)
+                        ?.replace("\n", "\\n") ?: "<filtered>"
+                "Slow line in '$streamName' total=${retry.total.inWholeMicroseconds}µs " +
+                    "(first=${rendered.total.inWholeMicroseconds}µs) " +
+                    "serial=$serialNumber " +
+                    "annotate=${retry.annotate.inWholeMicroseconds}µs " +
+                    "alter=${retry.alter.inWholeMicroseconds}µs " +
+                    "link=${retry.link.inWholeMicroseconds}µs " +
+                    "highlight=${retry.highlight.inWholeMicroseconds}µs " +
+                    "build=${retry.build.inWholeMicroseconds}µs " +
+                    "alterations=${alterations.size} highlights=${highlights.size} " +
+                    "(regex=${regexHighlights.size} " +
+                    "literalWhole=$wholeWordLiterals literalPartial=$partialWordLiterals) " +
+                    "before=\"$before\" after=\"$after\""
+            }
         }
     }
-    return result
+    return rendered.line
 }
+
+// A rendered stream line plus the per-stage timing of the transform that produced it.
+private class RenderedLine(
+    val line: StreamTextLine,
+    val total: Duration,
+    val annotate: Duration,
+    val alter: Duration,
+    val link: Duration,
+    val highlight: Duration,
+    val build: Duration,
+)
 
 private fun AnnotatedString.alter(
     alterations: List<CompiledAlteration>,
