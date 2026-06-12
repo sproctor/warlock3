@@ -1,6 +1,11 @@
 root = true
 
 [{*.kt,*.kts}]
+indent_style = space
+indent_size = 4
+# Match ktlint's indent rule, which uses one indent level (4) for wrapped/continuation lines.
+# IntelliJ defaults to 8 here, which makes it re-indent continuations to a width ktlint rejects.
+ij_continuation_indent_size = 4
 ij_kotlin_imports_layout = *, java.**, javax.**, kotlin.**, ^
 ij_kotlin_name_count_to_use_star_import = 2147483647
 ij_kotlin_name_count_to_use_star_import_for_members = 2147483647
