@@ -191,12 +191,10 @@ class SgeViewModel(
     }
 
     fun goBack() {
-        try {
-            backStack.removeLast()
-            _state.value = backStack.last()
-        } catch (_: NoSuchElementException) {
-            // Can't go back, double-clicked back button?
-        }
+        // Pop the current entry and show the previous one. No-op if the stack is empty
+        // (e.g. the back button was double-clicked).
+        backStack.removeLastOrNull()
+        backStack.lastOrNull()?.let { _state.value = it }
     }
 
     fun saveAccount(account: AccountEntity) {
