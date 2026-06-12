@@ -187,7 +187,7 @@ private fun DockableSection(
             itemBounds.add(Rect.Zero)
         }
         while (itemBounds.size > windowUiStates.size) {
-            itemBounds.removeLast()
+            itemBounds.removeAt(itemBounds.lastIndex)
         }
     }
 

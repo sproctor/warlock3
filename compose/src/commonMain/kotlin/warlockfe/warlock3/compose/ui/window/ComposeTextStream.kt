@@ -199,8 +199,8 @@ class ComposeTextStream(
 
     private fun removeLines() {
         while (maxLines > 0 && finishedLines.size >= maxLines) {
-            finishedLines.removeFirst()
-            cacheLines.removeFirst()
+            finishedLines.removeAt(0)
+            cacheLines.removeAt(0)
             removedLines++
             // Intentionally leak components here. They don't exist in the main window,
             // and no other windows get long enough
