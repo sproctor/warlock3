@@ -180,6 +180,27 @@ class WraythBackgroundTests {
         )
     }
 
+    @Test
+    fun reusedHandlerParsesConsecutiveLinesIndependently() {
+        // The handler reuses one lexer/parser across calls; consecutive lines must not contaminate
+        // each other.
+        val handler = WraythProtocolHandler()
+        val first = handler.parseLine("<background img=\"room1.png\" opacity=\"40\"/>")
+        val second =
+            handler.parseLine("<background img=\"room2.png\" mode=\"gradient\" start=\"10\" end=\"90\"/>")
+
+        assertEquals(backgroundEvent(image = "room1.png", opacity = 40), first.first())
+        assertEquals(
+            backgroundEvent(
+                image = "room2.png",
+                mode = BackgroundImageMode.GRADIENT,
+                gradientStart = 10,
+                gradientEnd = 90,
+            ),
+            second.first(),
+        )
+    }
+
     private fun backgroundEvent(
         windowName: String = "main",
         image: String? = null,

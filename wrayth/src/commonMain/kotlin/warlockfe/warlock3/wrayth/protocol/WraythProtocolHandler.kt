@@ -110,16 +110,24 @@ class WraythProtocolHandler {
             "updateverbs" to UpdateVerbsHandler(),
         )
 
+    // Reused across [parseLine] calls (see the note there). Error listeners are removed so malformed
+    // game lines don't spam stderr - parseLine catches parse failures and emits a WraythParseErrorEvent.
+    private val lexer = WraythLexer(CharStreams.fromString("")).apply { removeErrorListeners() }
+    private val parser = WraythParser(CommonTokenStream(lexer)).apply { removeErrorListeners() }
+
     fun parseLine(line: String): List<WraythEvent> {
         return try {
             // Ignore lines with Wizard commands
             if (line.startsWith('\u001C')) {
                 return emptyList()
             }
-            val inputStream = CharStreams.fromString(line)
-            val lexer = WraythLexer(inputStream)
-            val tokens = CommonTokenStream(lexer)
-            val parser = WraythParser(tokens)
+            // Reuse the lexer/parser (and their ATN simulators / DFA cache) across lines, resetting
+            // them per call, to avoid per-line allocation. Safe because parseLine is only ever called
+            // sequentially on a single connection's read loop.
+            lexer.inputStream = CharStreams.fromString(line)
+            lexer.reset()
+            parser.tokenStream = CommonTokenStream(lexer)
+            parser.reset()
             val contents = WraythNodeVisitor.visitDocument(parser.document())
             handleContent(contents)
         } catch (e: Exception) {
