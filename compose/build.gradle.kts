@@ -11,12 +11,27 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.allopen)
+    alias(libs.plugins.kotlinx.benchmark)
+}
+
+// JMH (which kotlinx-benchmark uses on the JVM) subclasses @State benchmark classes, so they must be open.
+allOpen {
+    annotation("org.openjdk.jmh.annotations.State")
+    annotation("kotlinx.benchmark.State")
 }
 
 val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
-    jvm()
+    jvm {
+        // Separate compilation so benchmark code + the kotlinx-benchmark runtime stay out of the
+        // published library. Sources live in src/jvmBenchmark/kotlin; it can see the main classpath.
+        val main by compilations.getting
+        compilations.create("benchmark") {
+            associateWith(main)
+        }
+    }
     androidLibrary {
         namespace = "warlockfe.warlock3.compose"
         compileSdk =
@@ -94,6 +109,13 @@ kotlin {
             implementation(libs.kotlin.test)
         }
 
+        getByName("jvmBenchmark").dependencies {
+            implementation(libs.kotlinx.benchmark.runtime)
+            // The host's Skia/desktop runtime, so TextMeasurer-based text-layout benchmarks can run
+            // (the library compilation doesn't bundle the skiko native lib).
+            implementation(compose.desktop.currentOs)
+        }
+
         getByName("commonJvmAndroidMain") {
             dependencies {
                 implementation(libs.coil.network.okhttp)
@@ -132,6 +154,20 @@ kotlin {
 dependencies {
     // For previews (new AGP KMP library plugin does not create per-build-type source sets)
     androidRuntimeClasspath(libs.compose.ui.tooling)
+}
+
+benchmark {
+    configurations {
+        named("main") {
+            warmups = 5
+            iterations = 5
+            iterationTime = 1
+            iterationTimeUnit = "s"
+        }
+    }
+    targets {
+        register("jvmBenchmark")
+    }
 }
 
 // The default skin is authored as a directory (skin.json + referenced images) under skin/ and
