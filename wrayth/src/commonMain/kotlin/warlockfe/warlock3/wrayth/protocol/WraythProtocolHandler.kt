@@ -110,16 +110,24 @@ class WraythProtocolHandler {
             "updateverbs" to UpdateVerbsHandler(),
         )
 
+    // Reused across [parseLine] calls (see the note there). Error listeners are removed so malformed
+    // game lines don't spam stderr - parseLine catches parse failures and emits a WraythParseErrorEvent.
+    private val lexer = WraythLexer(CharStreams.fromString("")).apply { removeErrorListeners() }
+    private val parser = WraythParser(CommonTokenStream(lexer)).apply { removeErrorListeners() }
+
     fun parseLine(line: String): List<WraythEvent> {
         return try {
             // Ignore lines with Wizard commands
             if (line.startsWith('\u001C')) {
                 return emptyList()
             }
-            val inputStream = CharStreams.fromString(line)
-            val lexer = WraythLexer(inputStream)
-            val tokens = CommonTokenStream(lexer)
-            val parser = WraythParser(tokens)
+            // Reuse the lexer/parser (and their ATN simulators / DFA cache) across lines, resetting
+            // them per call, to avoid per-line allocation. Safe because parseLine is only ever called
+            // sequentially on a single connection's read loop.
+            lexer.inputStream = CharStreams.fromString(line)
+            lexer.reset()
+            parser.tokenStream = CommonTokenStream(lexer)
+            parser.reset()
             val contents = WraythNodeVisitor.visitDocument(parser.document())
             handleContent(contents)
         } catch (e: Exception) {
@@ -131,14 +139,17 @@ class WraythProtocolHandler {
     private fun handleContent(contents: List<Content>): List<WraythEvent> {
         // open/close tags must occur on the same line
         var lineHasTags = false
-        val tagStack = ArrayDeque<String>()
+        val tagStack = ArrayDeque<OpenTag>()
         val events = mutableListOf<WraythEvent>()
+
+        fun close(tag: OpenTag): WraythEvent? = elementListeners[tag.name]?.endElement(tag.element.attributes, tag.chars.toString())
+
         for (content in contents) {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
                     val tagName = content.name.lowercase()
-                    tagStack.addFirst(tagName)
+                    tagStack.addFirst(OpenTag(tagName, content))
                     val listener = elementListeners[tagName]
                     if (listener != null) {
                         listener.startElement(content)?.let {
@@ -162,28 +173,27 @@ class WraythProtocolHandler {
                         tagStack.firstOrNull()
                             ?: continue // rule #1
                     val tagName = content.name.lowercase()
-                    if (topOfStack != tagName) {
-                        logger.e { "Received end element ($tagName) does not match element on the top of the stack ($topOfStack)!" }
-                        if (tagStack.contains(tagName)) {
-                            while (tagName != tagStack.first()) {
+                    val matched: OpenTag
+                    if (topOfStack.name != tagName) {
+                        logger.e {
+                            "Received end element ($tagName) does not match element on the top of the stack (${topOfStack.name})!"
+                        }
+                        if (tagStack.any { it.name == tagName }) {
+                            while (tagName != tagStack.first().name) {
                                 // close excess tags - rule #3
-                                val unbalancedTag = tagStack.removeFirst()
-                                elementListeners[unbalancedTag]?.endElement()?.let {
-                                    events.add(it)
-                                }
+                                close(tagStack.removeFirst())?.let { events.add(it) }
                             }
+                            matched = tagStack.first()
                         } else {
                             // ignore unmatched end tag - rule #2
                             continue
                         }
                     } else {
                         // remove the matched tag from the stack - rule #0
-                        tagStack.removeFirst()
+                        matched = tagStack.removeFirst()
                     }
                     // rules 0, and 3
-                    elementListeners[tagName]?.endElement()?.let {
-                        events.add(it)
-                    }
+                    close(matched)?.let { events.add(it) }
                 }
 
                 is CharData -> {
@@ -191,10 +201,12 @@ class WraythProtocolHandler {
 
                     // Go through the stack until someone handles these characters,
                     //   otherwise use the default handler
-                    for (tagName in tagStack) {
-                        val event = elementListeners[tagName]?.characters(content.data)
+                    for (tag in tagStack) {
+                        val event = elementListeners[tag.name]?.characters(content.data)
                         if (event != null) {
                             charEvent = event
+                            // Accumulate the consumed text so the tag's endElement can use it.
+                            tag.chars.append(content.data)
                             break
                         }
                     }
@@ -206,10 +218,9 @@ class WraythProtocolHandler {
                 }
             }
         }
-        // Close remaining open tags
+        // Close remaining open tags - rule #5
         while (tagStack.isNotEmpty()) {
-            val topOfStack = tagStack.removeFirst()
-            elementListeners[topOfStack]?.endElement()?.let { events.add(it) }
+            close(tagStack.removeFirst())?.let { events.add(it) }
         }
         // If a line has tags, ignore it when it has no text
         events.add(WraythEolEvent(ignoreWhenBlank = lineHasTags))
@@ -223,6 +234,26 @@ interface ElementListener {
     fun characters(data: String): WraythEvent?
 
     fun endElement(): WraythEvent?
+
+    /**
+     * Called when the element closes, with the element's [attributes] and the character [text]
+     * accumulated inside it. Listeners that need that context (e.g. a command link) override this and
+     * stay stateless; the rest inherit the default, which ignores both and falls back to [endElement].
+     */
+    fun endElement(
+        attributes: Map<String, String>,
+        text: String,
+    ): WraythEvent? = endElement()
+}
+
+// The state needed to close an open tag, tracked by the handler (not the element listeners) so the
+// shared listener instances stay stateless: the tag name, its start element (for attributes), and the
+// character data accumulated inside it.
+private class OpenTag(
+    val name: String,
+    val element: StartElement,
+) {
+    val chars = StringBuilder()
 }
 
 abstract class BaseElementListener : ElementListener {

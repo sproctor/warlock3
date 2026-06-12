@@ -7,22 +7,14 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythHandledEvent
 
 class DHandler : BaseElementListener() {
-    private val stringBuilder = StringBuilder()
-    private var command: String? = null
+    // Consume the start tag and the inner text; the command and accumulated text are supplied on close
+    // by the protocol handler, so this listener holds no state and is safe to share across elements.
+    override fun startElement(element: StartElement): WraythEvent = WraythHandledEvent
 
-    override fun startElement(element: StartElement): WraythEvent {
-        command = element.attributes["cmd"]
-        return WraythHandledEvent
-    }
+    override fun characters(data: String): WraythEvent = WraythHandledEvent
 
-    override fun characters(data: String): WraythEvent {
-        stringBuilder.append(data)
-        return WraythHandledEvent
-    }
-
-    override fun endElement(): WraythEvent {
-        val text = stringBuilder.toString()
-        stringBuilder.clear()
-        return WraythActionEvent(text, command ?: text)
-    }
+    override fun endElement(
+        attributes: Map<String, String>,
+        text: String,
+    ): WraythEvent = WraythActionEvent(text, attributes["cmd"] ?: text)
 }

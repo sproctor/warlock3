@@ -8,15 +8,11 @@ import kotlinx.benchmark.Mode
 import kotlinx.benchmark.OutputTimeUnit
 import kotlinx.benchmark.Scope
 import kotlinx.benchmark.State
-import org.antlr.v4.kotlinruntime.CharStreams
-import org.antlr.v4.kotlinruntime.CommonTokenStream
-import warlockfe.warlock3.wrayth.parsers.generated.WraythLexer
-import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 
 /**
- * Microbenchmarks for the Wrayth protocol parser: the lexer + parser + [WraythNodeVisitor] pipeline
- * that turns one line of SGE protocol into a list of [Content]. This is the pure parse step (no
- * protocol-handler state), measured across representative line shapes.
+ * Microbenchmarks for [WraythProtocolHandler.parseLine] - the full path that turns one line of SGE
+ * protocol into a list of [WraythEvent] (lex + parse + visit + element handling). Measured across
+ * representative line shapes on a single long-lived handler, as in production.
  *
  * Run with: `./gradlew :wrayth:jvmBenchmarkBenchmark` (or `:wrayth:benchmark` for all targets).
  *
@@ -27,6 +23,9 @@ import warlockfe.warlock3.wrayth.parsers.generated.WraythParser
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(BenchmarkTimeUnit.MILLISECONDS)
 class WraythProtocolParserBenchmark {
+    // One long-lived handler, reused across calls like the real connection read loop does.
+    private val handler = WraythProtocolHandler()
+
     // Plain narrative text with no tags - the common case, exercises the TEXT lexer rule.
     private val plainText = "You see a tall orc warrior standing guard by the gate, gripping a rusty halberd."
 
@@ -48,23 +47,17 @@ class WraythProtocolParserBenchmark {
         "Roundtime: 3 sec. &lt;A &amp; B&gt; deal &#62;50 damage &#x26; gain &lt;xp&gt; for the &quot;kill&quot;."
 
     @Benchmark
-    fun parsePlainText(bh: Blackhole) = bh.consume(parse(plainText))
+    fun parsePlainText(bh: Blackhole) = bh.consume(handler.parseLine(plainText))
 
     @Benchmark
-    fun parseStyledLine(bh: Blackhole) = bh.consume(parse(styledLine))
+    fun parseStyledLine(bh: Blackhole) = bh.consume(handler.parseLine(styledLine))
 
     @Benchmark
-    fun parseStreamLine(bh: Blackhole) = bh.consume(parse(streamLine))
+    fun parseStreamLine(bh: Blackhole) = bh.consume(handler.parseLine(streamLine))
 
     @Benchmark
-    fun parseLinkHeavyLine(bh: Blackhole) = bh.consume(parse(linkHeavyLine))
+    fun parseLinkHeavyLine(bh: Blackhole) = bh.consume(handler.parseLine(linkHeavyLine))
 
     @Benchmark
-    fun parseEntityHeavyLine(bh: Blackhole) = bh.consume(parse(entityHeavyLine))
-
-    private fun parse(line: String): List<Content> {
-        val lexer = WraythLexer(CharStreams.fromString(line))
-        val parser = WraythParser(CommonTokenStream(lexer))
-        return WraythNodeVisitor.visitDocument(parser.document())
-    }
+    fun parseEntityHeavyLine(bh: Blackhole) = bh.consume(handler.parseLine(entityHeavyLine))
 }
