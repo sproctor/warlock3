@@ -56,11 +56,11 @@ private fun AnnotatedString.Builder.applyLiteralHighlight(
 ) {
     val style = highlight.style ?: return
     val needle = highlight.literal
-    if (needle.isEmpty()) return
     // A whole-word literal can only match if it is itself a single word token present in the line; an
-    // O(1) check that lets us skip the scan for the (overwhelmingly common) non-matching highlights.
-    // The scan below still confirms the actual match (incl. case for case-sensitive highlights).
-    if (!highlight.matchPartialWord && needle.all { isWordChar(it) } && needle.lowercase() !in lineWords) return
+    // O(1) check (against precomputed, allocation-free fields) that lets us skip the scan for the
+    // overwhelmingly common non-matching highlights. The scan below still confirms the actual match
+    // (incl. case for case-sensitive highlights).
+    if (!highlight.matchPartialWord && highlight.isSingleWord && highlight.loweredLiteral !in lineWords) return
     val needleLen = needle.length
     var idx = text.indexOf(needle, startIndex = 0, ignoreCase = highlight.ignoreCase)
     while (idx >= 0) {
