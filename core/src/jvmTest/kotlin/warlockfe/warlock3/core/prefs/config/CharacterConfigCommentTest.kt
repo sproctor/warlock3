@@ -37,12 +37,15 @@ class CharacterConfigCommentTest {
             .deleteRecursively()
     }
 
-    private fun globalFile() = Path(Path(configDir, "characters"), "$GLOBAL_CHARACTER_ID.toml")
+    private fun globalHighlightsFile() = Path(Path(Path(configDir, "characters"), GLOBAL_CHARACTER_ID), "highlights.toml")
 
     private fun write(
         path: Path,
         text: String,
-    ) = fs.sink(path).buffered().use { it.writeString(text) }
+    ) {
+        path.parent?.let { if (fs.metadataOrNull(it) == null) fs.createDirectories(it) }
+        fs.sink(path).buffered().use { it.writeString(text) }
+    }
 
     private fun read(path: Path): String = fs.source(path).buffered().use { it.readString() }
 
@@ -50,10 +53,9 @@ class CharacterConfigCommentTest {
     fun comments_survive_save_and_follow_their_entry_across_reorder() =
         runBlocking {
             write(
-                globalFile(),
+                globalHighlightsFile(),
                 """
                 # warlock global highlights
-                character = "global"
 
                 [[highlights]]
                 # APPLE: keep this one
@@ -74,7 +76,7 @@ class CharacterConfigCommentTest {
             // Reverse the highlight order, the same kind of edit the reorder UI makes.
             store.mutate(GLOBAL_CHARACTER_ID) { it.copy(highlights = it.highlights.reversed()) }
 
-            val out = read(globalFile())
+            val out = read(globalHighlightsFile())
 
             // The section banner and both per-entry comments survived the rewrite.
             assertTrue("# warlock global highlights" in out, "banner comment lost:\n$out")
