@@ -1,27 +1,24 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.wrayth.protocol.ElementListener
+import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythHandledEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPromptEvent
 import warlockfe.warlock3.wrayth.protocol.WraythTimeEvent
 
-class PromptHandler : ElementListener {
-    // the following is undefined: <prompt> <prompt>foo</prompt> bar </prompt>
-    private val prompt = StringBuilder()
-
-    override fun startElement(element: StartElement): WraythEvent? {
-        prompt.setLength(0)
-        return element.attributes["time"]?.toLongOrNull()?.let { time ->
+class PromptHandler : BaseElementListener() {
+    // The time attribute (if any) is emitted on open; the prompt text is accumulated by the protocol
+    // handler and supplied on close, so this listener holds no state.
+    override fun startElement(element: StartElement): WraythEvent? =
+        element.attributes["time"]?.toLongOrNull()?.let { time ->
             WraythTimeEvent(time = time)
         }
-    }
 
-    override fun characters(data: String): WraythEvent {
-        prompt.append(data)
-        return WraythHandledEvent
-    }
+    override fun characters(data: String): WraythEvent = WraythHandledEvent
 
-    override fun endElement(): WraythEvent = WraythPromptEvent(prompt.toString())
+    override fun endElement(
+        attributes: Map<String, String>,
+        text: String,
+    ): WraythEvent = WraythPromptEvent(text)
 }
