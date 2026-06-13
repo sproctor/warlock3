@@ -62,6 +62,10 @@ class RenderingBenchmark {
     // A realistic set of user highlights: a stack of literal names plus a couple of regexes.
     private val highlights: List<ViewHighlight> = buildHighlights()
 
+    // Indexed once, as production does per highlight-list change, so the per-line benchmarks measure the
+    // steady-state matching cost (index reuse) rather than rebuilding the index on every line.
+    private val highlightIndex: HighlightIndex = HighlightIndex(highlights)
+
     // Pre-built so applyHighlights / layout measure only their own step.
     private val annotated: AnnotatedString = styledLine.toAnnotatedString(emptyMap(), styleMap, noopAction)
 
@@ -74,11 +78,14 @@ class RenderingBenchmark {
     fun convertStyledStringToAnnotated(bh: Blackhole) = bh.consume(styledLine.toAnnotatedString(emptyMap(), styleMap, noopAction))
 
     @Benchmark
-    fun applyHighlights(bh: Blackhole) = bh.consume(annotated.highlight(highlights))
+    fun applyHighlights(bh: Blackhole) = bh.consume(annotated.highlight(highlightIndex))
+
+    @Benchmark
+    fun buildHighlightIndex(bh: Blackhole) = bh.consume(HighlightIndex(highlights))
 
     @Benchmark
     fun convertAndHighlight(bh: Blackhole) =
-        bh.consume(styledLine.toAnnotatedString(emptyMap(), styleMap, noopAction).highlight(highlights))
+        bh.consume(styledLine.toAnnotatedString(emptyMap(), styleMap, noopAction).highlight(highlightIndex))
 
     // skipCache = true so this measures actual layout work, not a TextMeasurer cache hit (each new
     // game line is fresh text, i.e. a cache miss, so this reflects the real per-new-line layout cost).
@@ -88,7 +95,7 @@ class RenderingBenchmark {
 
     @Benchmark
     fun fullLinePipeline(bh: Blackhole) {
-        val text = styledLine.toAnnotatedString(emptyMap(), styleMap, noopAction).highlight(highlights).text
+        val text = styledLine.toAnnotatedString(emptyMap(), styleMap, noopAction).highlight(highlightIndex).text
         bh.consume(measurer.measure(text, constraints = Constraints(maxWidth = 1000), skipCache = true))
     }
 

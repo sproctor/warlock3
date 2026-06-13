@@ -14,7 +14,9 @@ import kotlinx.coroutines.sync.withLock
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.model.wordTokensOf
 import warlockfe.warlock3.compose.util.AnnotatedStringHighlightResult
+import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.compose.util.getEntireLineStyles
 import warlockfe.warlock3.compose.util.highlight
 import warlockfe.warlock3.compose.util.markLinks
@@ -43,7 +45,7 @@ class ComposeTextStream(
     private var markLinks: Boolean,
     private var showImages: Boolean,
     private var showTimestamps: Boolean,
-    private val highlights: StateFlow<List<ViewHighlight>>,
+    private val highlights: StateFlow<HighlightIndex>,
     private val names: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
@@ -263,7 +265,7 @@ class ComposeTextStream(
             streamName = id,
             showTimestamp = showTimestamps,
             serialNumber = serialNumber,
-            highlights = highlights.value,
+            highlightIndex = highlights.value,
             alterations = alterations.value,
             presets = presets.value,
             components = components,
@@ -275,7 +277,7 @@ class ComposeTextStream(
         )
 
     private fun playSound(line: String) {
-        highlights.value.forEach { highlight ->
+        highlights.value.highlights.forEach { highlight ->
             val sound = highlight.sound
             if (sound != null && highlight.containsMatchIn(line)) {
                 scope.launch {
@@ -347,7 +349,7 @@ data class CachedLine(
         streamName: String,
         showTimestamp: Boolean,
         serialNumber: Long,
-        highlights: List<ViewHighlight>,
+        highlightIndex: HighlightIndex,
         alterations: List<CompiledAlteration>,
         presets: Map<String, StyleDefinition>,
         components: Map<String, StyledString>,
@@ -362,7 +364,7 @@ data class CachedLine(
             serialNumber = serialNumber,
             isPrompt = isPrompt,
             timestamp = timestamp,
-            highlights = highlights,
+            highlightIndex = highlightIndex,
             alterations = alterations,
             presets = presets,
             components = components,
@@ -388,7 +390,7 @@ fun StyledString.toStreamLine(
     showWhenClosed: String?,
     isPrompt: Boolean,
     timestamp: Instant,
-    highlights: List<ViewHighlight>,
+    highlightIndex: HighlightIndex,
     alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,
     components: Map<String, StyledString>,
@@ -438,7 +440,7 @@ fun StyledString.toStreamLine(
         val highlightedResult =
             textWithLinks?.let { content ->
                 if (applyStyling && content.text.isNotEmpty()) {
-                    content.highlight(highlights)
+                    content.highlight(highlightIndex)
                 } else {
                     AnnotatedStringHighlightResult(content, emptyList())
                 }
@@ -486,10 +488,14 @@ fun StyledString.toStreamLine(
         // reflects steady-state cost; the first-pass total is reported for reference.
         val retry = render()
         if (retry.total >= SLOW_LINE_THRESHOLD) {
-            val regexHighlights = highlights.filterIsInstance<RegexHighlight>()
-            val literalHighlights = highlights.filterIsInstance<LiteralHighlight>()
+            val regexHighlights = highlightIndex.highlights.filterIsInstance<RegexHighlight>()
+            val literalHighlights = highlightIndex.highlights.filterIsInstance<LiteralHighlight>()
             val wholeWordLiterals = literalHighlights.count { !it.matchPartialWord }
             val partialWordLiterals = literalHighlights.count { it.matchPartialWord }
+            // How many of the highlights the index actually checked this line (the rest were excluded by
+            // probe token). Separates real highlight-matching cost from the total, which on word-rich lines
+            // pulls more candidates than a short line does.
+            val candidates = highlightIndex.candidateCount(wordTokensOf(rendered.line.text?.text ?: ""))
             streamLineLogger.w {
                 val before = source.toString().take(200).replace("\n", "\\n")
                 val after =
@@ -505,9 +511,10 @@ fun StyledString.toStreamLine(
                     "link=${retry.link.inWholeMicroseconds}µs " +
                     "highlight=${retry.highlight.inWholeMicroseconds}µs " +
                     "build=${retry.build.inWholeMicroseconds}µs " +
-                    "alterations=${alterations.size} highlights=${highlights.size} " +
+                    "alterations=${alterations.size} highlights=${highlightIndex.highlights.size} " +
                     "(regex=${regexHighlights.size} " +
                     "literalWhole=$wholeWordLiterals literalPartial=$partialWordLiterals) " +
+                    "candidates=$candidates " +
                     "before=\"$before\" after=\"$after\""
             }
         }
