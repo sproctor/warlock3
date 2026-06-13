@@ -44,6 +44,7 @@ import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ExportRepository
@@ -129,6 +130,7 @@ abstract class AppContainer(
     val connectionSettingsRepository = ConnectionSettingsRepository(clientConfigStore)
     val aliasRepository = AliasRepository(characterConfigStore)
     val alterationRepository = AlterationRepository(characterConfigStore)
+    val commandHistoryRepository = CommandHistoryRepository(characterConfigStore, fileSystem, ioDispatcher)
 
     private val initializeMutex = Mutex()
     private var initialized = false
@@ -207,6 +209,7 @@ abstract class AppContainer(
             windowSettingsRepository = windowSettingRepository,
             progressBarSettingRepository = progressBarSettingRepository,
             clientSettingRepository = clientSettings,
+            commandHistoryRepository = commandHistoryRepository,
             ioDispatcher = ioDispatcher,
         )
     }
