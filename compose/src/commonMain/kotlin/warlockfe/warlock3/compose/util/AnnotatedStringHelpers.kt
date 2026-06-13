@@ -32,8 +32,7 @@ fun AnnotatedString.highlight(index: HighlightIndex): AnnotatedStringHighlightRe
 // Convenience for tests, benchmarks, and other non-hot-path callers: builds a throwaway index for a single
 // call. Per-line production callers should build a [HighlightIndex] once per highlight-list change (see
 // HighlightIndex) and reuse it, so the O(highlights) index build stays off the per-line path.
-fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringHighlightResult =
-    highlight(HighlightIndex(highlights))
+fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringHighlightResult = highlight(HighlightIndex(highlights))
 
 /**
  * A reusable index over a highlight list that lets [highlight] skip the highlights that cannot match a
@@ -47,8 +46,13 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
  * Highlights that cannot be excluded this way (regexes, partial-word literals, and literals made entirely
  * of non-word characters) are checked against every line.
  */
-class HighlightIndex(val highlights: List<ViewHighlight>) {
-    private class Indexed(val order: Int, val highlight: ViewHighlight)
+class HighlightIndex(
+    val highlights: List<ViewHighlight>,
+) {
+    private class Indexed(
+        val order: Int,
+        val highlight: ViewHighlight,
+    )
 
     // Checked against every line.
     private val unindexed = ArrayList<Indexed>()
