@@ -6,21 +6,19 @@ import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.model.isWordBoundary
-import warlockfe.warlock3.compose.model.isWordChar
+import warlockfe.warlock3.compose.model.wordTokensOf
 import warlockfe.warlock3.core.text.StyleDefinition
 
-fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringHighlightResult {
+fun AnnotatedString.highlight(index: HighlightIndex): AnnotatedStringHighlightResult {
     val sourceText = this.text
     val outerSpans = this.spanStyles
     val entireLineStyles = mutableListOf<StyleDefinition>()
-    // Cheap pre-filter for the common, hot case: a power user can have hundreds of single-word,
-    // whole-word literal highlights, almost none of which match a given line. Build the set of the
-    // line's lowercased word tokens once, so those highlights become an O(1) membership check instead
-    // of a per-highlight (case-insensitive) scan of the whole line.
-    val lineWords = wordTokens(sourceText)
+    // The set of the line's lowercased word tokens, computed once. The index uses it to pick out the
+    // highlights that could possibly match, and applyLiteralHighlight reuses it as a per-highlight filter.
+    val lineWords = wordTokensOf(sourceText)
     val text =
         with(AnnotatedString.Builder(this)) {
-            highlights.forEach { highlight ->
+            index.candidatesFor(lineWords).forEach { highlight ->
                 when (highlight) {
                     is LiteralHighlight -> applyLiteralHighlight(highlight, sourceText, lineWords, outerSpans, entireLineStyles)
                     is RegexHighlight -> applyRegexHighlight(highlight, sourceText, outerSpans, entireLineStyles)
@@ -31,20 +29,70 @@ fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringH
     return AnnotatedStringHighlightResult(text, entireLineStyles)
 }
 
-// The lowercased maximal runs of word characters in [text], used to pre-filter whole-word highlights.
-private fun wordTokens(text: String): Set<String> {
-    val tokens = HashSet<String>()
-    var start = -1
-    for (i in text.indices) {
-        if (isWordChar(text[i])) {
-            if (start < 0) start = i
-        } else if (start >= 0) {
-            tokens.add(text.substring(start, i).lowercase())
-            start = -1
+// Convenience for tests, benchmarks, and other non-hot-path callers: builds a throwaway index for a single
+// call. Per-line production callers should build a [HighlightIndex] once per highlight-list change (see
+// HighlightIndex) and reuse it, so the O(highlights) index build stays off the per-line path.
+fun AnnotatedString.highlight(highlights: List<ViewHighlight>): AnnotatedStringHighlightResult =
+    highlight(HighlightIndex(highlights))
+
+/**
+ * A reusable index over a highlight list that lets [highlight] skip the highlights that cannot match a
+ * given line. A power user can have hundreds of highlights, almost none of which match any single line;
+ * checking each one per line is O(highlights). Building this index once per highlight-list change turns
+ * the per-line cost into O(line words + actual candidates).
+ *
+ * A whole-word literal can only occur in a line if every one of its word tokens is itself a word token of
+ * that line, so each such highlight is filed under one representative "probe" token (its longest token,
+ * which occurs in the fewest lines); a line need only consider highlights whose probe token it contains.
+ * Highlights that cannot be excluded this way (regexes, partial-word literals, and literals made entirely
+ * of non-word characters) are checked against every line.
+ */
+class HighlightIndex(val highlights: List<ViewHighlight>) {
+    private class Indexed(val order: Int, val highlight: ViewHighlight)
+
+    // Checked against every line.
+    private val unindexed = ArrayList<Indexed>()
+
+    // Whole-word literals filed under their probe token.
+    private val byProbeToken = HashMap<String, MutableList<Indexed>>()
+
+    init {
+        highlights.forEachIndexed { order, highlight ->
+            val probe = (highlight as? LiteralHighlight)?.takeIf { !it.matchPartialWord }?.probeToken
+            val entry = Indexed(order, highlight)
+            if (probe == null) {
+                unindexed.add(entry)
+            } else {
+                byProbeToken.getOrPut(probe) { ArrayList() }.add(entry)
+            }
         }
     }
-    if (start >= 0) tokens.add(text.substring(start).lowercase())
-    return tokens
+
+    // The highlights that could match a line with these word tokens, in original (configured) order so
+    // overlapping highlights resolve exactly as they would if the whole list were applied. Excluded
+    // highlights are whole-word literals whose probe token is absent from the line, which therefore
+    // cannot match and would add no styling.
+    internal fun candidatesFor(lineWords: Set<String>): List<ViewHighlight> {
+        val matched = ArrayList(unindexed)
+        if (byProbeToken.isNotEmpty()) {
+            for (word in lineWords) {
+                byProbeToken[word]?.let { matched.addAll(it) }
+            }
+        }
+        matched.sortBy { it.order }
+        return matched.map { it.highlight }
+    }
+
+    // For diagnostics: how many highlights a line with these word tokens is actually checked against
+    // (the rest are excluded by probe token). Lean — no list/sort allocation, since slow-line logging
+    // calls it on the hot path's behalf.
+    internal fun candidateCount(lineWords: Set<String>): Int {
+        var count = unindexed.size
+        if (byProbeToken.isNotEmpty()) {
+            for (word in lineWords) count += byProbeToken[word]?.size ?: 0
+        }
+        return count
+    }
 }
 
 private fun AnnotatedString.Builder.applyLiteralHighlight(
@@ -56,11 +104,12 @@ private fun AnnotatedString.Builder.applyLiteralHighlight(
 ) {
     val style = highlight.style ?: return
     val needle = highlight.literal
-    // A whole-word literal can only match if it is itself a single word token present in the line; an
-    // O(1) check (against precomputed, allocation-free fields) that lets us skip the scan for the
-    // overwhelmingly common non-matching highlights. The scan below still confirms the actual match
-    // (incl. case for case-sensitive highlights).
-    if (!highlight.matchPartialWord && highlight.isSingleWord && highlight.loweredLiteral !in lineWords) return
+    // A whole-word literal can only occur in this line if every one of its word tokens is also a word
+    // token of the line, so skip the scan when the line is missing any of them. This catches the common
+    // non-matching highlights (often hundreds per line, including multi-word ones like "greater orc") with
+    // an O(tokens) membership check instead of a case-insensitive scan of the whole line. The scan below
+    // still confirms the actual match (adjacency, boundaries, and case for case-sensitive highlights).
+    if (!highlight.matchPartialWord && highlight.wordTokens.isNotEmpty() && !lineWords.containsAll(highlight.wordTokens)) return
     val needleLen = needle.length
     var idx = text.indexOf(needle, startIndex = 0, ignoreCase = highlight.ignoreCase)
     while (idx >= 0) {

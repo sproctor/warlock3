@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
@@ -114,7 +115,7 @@ class WindowRegistryImpl(
                 initialValue = emptyList(),
             )
 
-    private val highlights: StateFlow<List<ViewHighlight>> =
+    private val highlights: StateFlow<HighlightIndex> =
         characterId
             .flatMapLatest { characterId ->
                 highlightRepository.observeForCharacter(characterId).map { highlights ->
@@ -151,10 +152,15 @@ class WindowRegistryImpl(
                 combine(generalHighlights, names) { general, nameHighlights ->
                     general + nameHighlights
                 }
-            }.stateIn(
+            }
+            // Build the matching index once per highlight-list change, here in the flow, rather than per
+            // line on the render path. The resulting index is shared by every window stream, so the
+            // O(highlights) build happens once per change in total instead of once per stream.
+            .map { HighlightIndex(it) }
+            .stateIn(
                 scope = scope,
                 started = SharingStarted.Eagerly,
-                initialValue = emptyList(),
+                initialValue = HighlightIndex(emptyList()),
             )
 
     private val alterations: StateFlow<List<CompiledAlteration>> =

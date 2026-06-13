@@ -15,11 +15,17 @@ data class LiteralHighlight(
     val style: StyleDefinition?,
     override val sound: String?,
 ) : ViewHighlight {
-    // Precomputed once per highlight (not per line): highlight()'s pre-filter checks whole-word literals
-    // against the line's word-token set, so it needs the lowercased literal and whether the literal is a
-    // single word token. Computing these here keeps that check allocation-free on the per-line hot path.
-    val loweredLiteral: String = literal.lowercase()
-    val isSingleWord: Boolean = literal.isNotEmpty() && literal.all { isWordChar(it) }
+    // Precomputed once per highlight (not per line): the lowercased maximal runs of word characters in
+    // the literal. A whole-word literal can only occur in a line if every one of these tokens is itself a
+    // word token of that line, so highlight()'s pre-filter skips the per-line scan whenever the line is
+    // missing any of them. This covers multi-word literals ("greater orc"), not just single words. Empty
+    // for literals made entirely of non-word characters (e.g. ">"), which always fall through to the scan.
+    val wordTokens: Set<String> = wordTokensOf(literal)
+
+    // The token a HighlightIndex files this whole-word literal under: the longest of its word tokens, since
+    // longer tokens occur in fewer lines and so produce the fewest false candidates. Null when the literal
+    // has no word tokens (e.g. ">"); such literals can't be token-excluded and are checked against every line.
+    val probeToken: String? = wordTokens.maxByOrNull { it.length }
 
     override fun containsMatchIn(text: String): Boolean {
         if (matchPartialWord) return text.contains(literal, ignoreCase = ignoreCase)
@@ -38,6 +44,23 @@ data class RegexHighlight(
     override val sound: String?,
 ) : ViewHighlight {
     override fun containsMatchIn(text: String): Boolean = regex.containsMatchIn(text)
+}
+
+// The lowercased maximal runs of word characters in [text]. highlight() compares a literal's tokens
+// against a line's tokens to pre-filter whole-word highlights, so both must tokenize identically.
+internal fun wordTokensOf(text: String): Set<String> {
+    val tokens = HashSet<String>()
+    var start = -1
+    for (i in text.indices) {
+        if (isWordChar(text[i])) {
+            if (start < 0) start = i
+        } else if (start >= 0) {
+            tokens.add(text.substring(start, i).lowercase())
+            start = -1
+        }
+    }
+    if (start >= 0) tokens.add(text.substring(start).lowercase())
+    return tokens
 }
 
 internal fun isWordBoundary(
