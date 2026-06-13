@@ -74,6 +74,13 @@ class CharacterConfigStore(
     fun snapshot(): Map<String, CharacterConfig> = state.value
 
     /**
+     * The on-disk directory where a character's files live (the per-section config files, and the
+     * command-history file). Exposed so sibling repositories can store their files alongside the
+     * config using the same `characters/<gameCode>/<name>/` layout.
+     */
+    fun directoryFor(characterId: String): Path = dirForCharacter(characterId)
+
+    /**
      * Reads every character's config files from disk into memory. Hand-authored entries missing an
      * `id` are assigned one and the affected section files are rewritten so the id stays stable across
      * launches. Safe to call before any data exists (results in an empty store).

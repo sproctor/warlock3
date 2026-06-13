@@ -30,7 +30,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -68,6 +70,7 @@ import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
 import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
 import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
@@ -104,7 +107,8 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val windowRegistry: WindowRegistry,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
-    private val clientSettingRepository: ClientSettingRepository,
+    clientSettingRepository: ClientSettingRepository,
+    private val commandHistoryRepository: CommandHistoryRepository,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel(),
     MacroHandler {
@@ -368,6 +372,20 @@ class GameViewModel(
                 historySize = it
                 trimHistory()
             }.launchIn(viewModelScope)
+        // Load each character's saved command history when it connects.
+        client.characterId
+            .filterNotNull()
+            .distinctUntilChanged()
+            .onEach { characterId ->
+                val saved = commandHistoryRepository.load(characterId)
+                // sendHistory[0] is the in-progress entry buffer; commands follow it newest-first,
+                // while the file stores them oldest-first, so reverse on load.
+                sendHistory.clear()
+                sendHistory.add("")
+                saved.asReversed().forEach { sendHistory.add(it) }
+                trimHistory()
+                historyPosition = 0
+            }.launchIn(viewModelScope)
         // Load initial
         client.characterId
             .onEach { characterId ->
@@ -570,6 +588,16 @@ class GameViewModel(
             sendHistory[0] = line
             sendHistory.add(0, "")
             trimHistory()
+            persistHistory()
+        }
+    }
+
+    // Persist the current command history (commands only, oldest first) for the connected character.
+    private fun persistHistory() {
+        val characterId = client.characterId.value ?: return
+        val commands = sendHistory.drop(1).filter { it.isNotEmpty() }.asReversed()
+        viewModelScope.launch {
+            commandHistoryRepository.save(characterId, commands)
         }
     }
 

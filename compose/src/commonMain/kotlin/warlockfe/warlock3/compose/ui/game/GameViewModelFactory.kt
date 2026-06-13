@@ -5,6 +5,7 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
+import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
@@ -23,6 +24,7 @@ class GameViewModelFactory(
     private val windowSettingsRepository: WindowSettingsRepository,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
     private val clientSettingRepository: ClientSettingRepository,
+    private val commandHistoryRepository: CommandHistoryRepository,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
@@ -41,6 +43,7 @@ class GameViewModelFactory(
             windowRegistry = windowRegistry,
             progressBarSettingRepository = progressBarSettingRepository,
             clientSettingRepository = clientSettingRepository,
+            commandHistoryRepository = commandHistoryRepository,
             ioDispatcher = ioDispatcher,
         )
 }
