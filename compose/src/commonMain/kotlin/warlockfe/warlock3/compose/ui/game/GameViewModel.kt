@@ -57,7 +57,7 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
-import warlockfe.warlock3.core.compass.DirectionType
+import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.macro.MacroCommands
 import warlockfe.warlock3.core.macro.MacroHandler
 import warlockfe.warlock3.core.macro.MacroKeyCombo
@@ -118,7 +118,7 @@ class GameViewModel(
     private val _scrollEvents = MutableStateFlow<PersistentList<ScrollEvent>>(persistentListOf())
     val scrollEvents = _scrollEvents.asStateFlow()
 
-    private val _compassState = MutableStateFlow(emptySet<DirectionType>())
+    private val _compassState = MutableStateFlow(emptySet<Direction>())
     val compassState = _compassState.asStateFlow()
 
     val vitalBars: ComposeDialogState = windowRegistry.getOrCreateDialog("minivitals") as ComposeDialogState

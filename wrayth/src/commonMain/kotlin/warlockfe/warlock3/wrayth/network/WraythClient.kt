@@ -44,7 +44,7 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
-import warlockfe.warlock3.core.compass.DirectionType
+import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
@@ -213,7 +213,7 @@ class WraythClient(
     private var outputStyle: WarlockStyle? = null
 
     private var dialogDataId: String? = null
-    private val directions: HashSet<DirectionType> = hashSetOf()
+    private val directions: HashSet<Direction> = hashSetOf()
     private var componentId: String? = null
 
     private val _disconnected = MutableStateFlow(false)

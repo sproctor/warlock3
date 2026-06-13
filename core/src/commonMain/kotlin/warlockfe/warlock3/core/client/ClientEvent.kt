@@ -2,7 +2,7 @@ package warlockfe.warlock3.core.client
 
 import com.eygraber.uri.Uri
 import kotlinx.collections.immutable.ImmutableSet
-import warlockfe.warlock3.core.compass.DirectionType
+import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.window.WindowInfo
 
 sealed interface ClientEvent
@@ -12,7 +12,7 @@ data class ClientTextEvent(
 ) : ClientEvent
 
 data class ClientCompassEvent(
-    val directions: ImmutableSet<DirectionType>,
+    val directions: ImmutableSet<Direction>,
 ) : ClientEvent
 
 data object ClientNavEvent : ClientEvent
