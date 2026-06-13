@@ -92,6 +92,63 @@ jobs:
             !desktopApp/build/compose/binaries/**/runtime/**
           if-no-files-found: error
 
+  android:
+    name: Build & publish Android (Play)
+    # Opt-in: set repository variable PUBLISH_ANDROID=true once the signing/Play
+    # secrets are configured. Until then this job is skipped so it can't fail releases.
+    if: ${{ vars.PUBLISH_ANDROID == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Normalize version for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$(git describe --tags --abbrev=0)"
+          echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode upload keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      - name: Build release bundle (.aab)
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew :androidApp:bundleRelease -PiosSkip=true -PlintSkip=true --stacktrace --no-daemon
+
+      - name: Publish to Play (internal track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: warlockfe.warlock3
+          releaseFiles: androidApp/build/outputs/bundle/release/androidApp-release.aab
+          track: internal
+          status: completed
+
   publish:
     name: Publish Release
     needs: [build]

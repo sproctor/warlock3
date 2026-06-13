@@ -4,6 +4,32 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+// Resolve the release version the same way desktopApp does: prefer the RELEASE_VERSION
+// env var (set from the git tag in CI), fall back to project.version, else 0.0.0.
+val resolvedReleaseVersion: String =
+    System
+        .getenv("RELEASE_VERSION")
+        ?.removePrefix("v")
+        ?.takeIf { it.isNotBlank() }
+        ?: project.version.toString().takeIf { it != "unspecified" }
+        ?: "0.0.0"
+
+// Play requires a monotonically increasing integer versionCode. Derive it from the
+// semver release version (suffixes like "-beta.1" are dropped) so a higher tag always
+// yields a higher code. Assumes minor/patch each stay below 1000.
+val derivedVersionCode: Int =
+    run {
+        val parts =
+            resolvedReleaseVersion
+                .substringBefore('-')
+                .split('.')
+                .mapNotNull { it.toIntOrNull() }
+        val major = parts.getOrElse(0) { 0 }
+        val minor = parts.getOrElse(1) { 0 }
+        val patch = parts.getOrElse(2) { 0 }
+        (major * 1_000_000 + minor * 1_000 + patch).coerceAtLeast(1)
+    }
+
 android {
     namespace = "warlockfe.warlock3.android"
     compileSdk =
@@ -20,21 +46,35 @@ android {
                 .get()
                 .toInt()
         applicationId = "warlockfe.warlock3"
-        versionCode = 1
-        versionName = version.toString()
+        versionCode = derivedVersionCode
+        versionName = resolvedReleaseVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-//    if (project.hasProperty("RELEASE_STORE_FILE")) {
-//        signingConfigs {
-//            create("release") {
-//                storeFile = file(project.findProperty("RELEASE_STORE_FILE") ?: "")
-//                storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString() ?: ""
-//                keyAlias = project.findProperty("RELEASE_KEY_ALIAS")?.toString() ?: ""
-//                keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")?.toString() ?: ""
-//            }
-//        }
-//    }
+    // Release upload-key signing. Credentials come from env vars (set as GitHub
+    // Actions secrets in CI) or, for local release builds, the matching Gradle
+    // properties. The keystore is the *upload* key; Google re-signs with the app
+    // signing key via Play App Signing. When no keystore is configured the release
+    // build is left unsigned (useful for local `bundleRelease` smoke tests).
+    val keystorePath =
+        System.getenv("ANDROID_KEYSTORE_PATH")
+            ?: project.findProperty("warlock.keystore.path") as String?
+    if (keystorePath != null && file(keystorePath).exists()) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword =
+                    System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                        ?: project.findProperty("warlock.keystore.password") as String?
+                keyAlias =
+                    System.getenv("ANDROID_KEY_ALIAS")
+                        ?: project.findProperty("warlock.key.alias") as String?
+                keyPassword =
+                    System.getenv("ANDROID_KEY_PASSWORD")
+                        ?: project.findProperty("warlock.key.password") as String?
+            }
+        }
+    }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = true
@@ -43,9 +83,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-//            if (project.hasProperty("RELEASE_STORE_FILE")) {
-//                signingConfig = signingConfigs.getByName("release")
-//            }
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         getByName("debug") {
             isDebuggable = true
