@@ -1,0 +1,34 @@
+#!/bin/sh
+# Pre-commit hook: run ktlintCheck on the Gradle modules that have staged Kotlin changes.
+#
+# This hook is committed to the repo. Enable it once per clone with:
+#     git config core.hooksPath .githooks
+#
+# Run ./gradlew ktlintFormat to auto-fix most violations.
+
+# Staged (added/copied/modified/renamed) Kotlin source files.
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- '*.kt' '*.kts')
+[ -z "$staged" ] && exit 0
+
+# Map each staged file's top-level directory to its Gradle module. A directory is treated
+# as a module if it has its own build.gradle.kts; that auto-covers any module added later.
+# Root build scripts (settings.gradle.kts, the root build.gradle.kts) have no first-level
+# directory and aren't linted by any task, so they're skipped. Assumes a flat module layout
+# (all modules are top-level dirs, as in settings.gradle.kts).
+dirs=$(printf '%s\n' "$staged" | cut -d/ -f1 | sort -u)
+tasks=""
+for d in $dirs; do
+    if [ -f "$d/build.gradle.kts" ]; then
+        tasks="$tasks :$d:ktlintCheck"
+    fi
+done
+[ -z "$tasks" ] && exit 0
+
+echo "Running ktlint on:$tasks"
+# shellcheck disable=SC2086
+if ! ./gradlew --quiet $tasks; then
+    echo
+    echo "ktlint check failed. Run './gradlew ktlintFormat' to auto-fix, then re-stage and commit."
+    echo "To bypass this hook for a single commit, use 'git commit --no-verify'."
+    exit 1
+fi
