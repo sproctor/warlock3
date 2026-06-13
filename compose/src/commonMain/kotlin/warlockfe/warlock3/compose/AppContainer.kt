@@ -206,6 +206,7 @@ abstract class AppContainer(
             scriptManagerFactory = scriptManagerFactory,
             windowSettingsRepository = windowSettingRepository,
             progressBarSettingRepository = progressBarSettingRepository,
+            clientSettingRepository = clientSettings,
             ioDispatcher = ioDispatcher,
         )
     }

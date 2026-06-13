@@ -247,6 +247,10 @@ data class ClientConfig(
     val logTimestamps: Boolean = true,
     val skinFile: String? = null,
     val releaseChannel: String? = null,
+    @TomlComment("Commands shorter than this are not saved to the command history.")
+    val minCommandLength: Int? = null,
+    @TomlComment("Maximum number of commands kept in the command history. Not exposed in the UI.")
+    val historySize: Int? = null,
 )
 
 /**

@@ -164,6 +164,29 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
+            val minCommandLengthValue = rememberTextFieldState()
+            LaunchedEffect(Unit) {
+                val initialMinCommandLength =
+                    clientSettingRepository.observeMinCommandLength().first().toString()
+                minCommandLengthValue.setTextAndPlaceCursorAtEnd(initialMinCommandLength)
+                snapshotFlow { minCommandLengthValue.text.toString() }
+                    .collectLatest {
+                        if (it != initialMinCommandLength && it.isNotBlank()) {
+                            clientSettingRepository.putMinCommandLength(it.toIntOrNull())
+                        }
+                    }
+            }
+            TextField(
+                state = minCommandLengthValue,
+                label = {
+                    Text("Minimum command length for history")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                lineLimits = TextFieldLineLimits.SingleLine,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             val markLinks by clientSettingRepository
                 .observeMarkLinks()
                 .collectAsState(initial = true)
