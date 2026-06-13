@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.core.compass.DirectionType
+import warlockfe.warlock3.core.compass.Direction
 import kotlin.io.encoding.Base64
 import kotlin.math.roundToInt
 
@@ -28,8 +28,8 @@ private const val DEFAULT_COMPASS_HEIGHT = 49
 @Composable
 fun CompassView(
     height: Dp,
-    directions: Set<DirectionType>,
-    onClick: (DirectionType) -> Unit,
+    directions: Set<Direction>,
+    onClick: (Direction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val skin = LocalSkin.current
@@ -117,11 +117,11 @@ private fun CompassPreview() {
             height = 88.dp,
             directions =
                 setOf(
-                    DirectionType.North,
-                    DirectionType.East,
-                    DirectionType.West,
-                    DirectionType.Out,
-                    DirectionType.Up,
+                    Direction("n"),
+                    Direction("e"),
+                    Direction("W"),
+                    Direction("out"),
+                    Direction("up"),
                 ),
             onClick = {},
         )

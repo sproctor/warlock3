@@ -1,7 +1,7 @@
 package warlockfe.warlock3.wrayth.protocol
 
 import warlockfe.warlock3.core.client.DialogObject
-import warlockfe.warlock3.core.compass.DirectionType
+import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
 import warlockfe.warlock3.core.window.BackgroundImageMode
@@ -85,7 +85,7 @@ data class WraythDialogDataEvent(
 data object WraythCompassEndEvent : WraythEvent
 
 data class WraythDirectionEvent(
-    val direction: DirectionType,
+    val direction: Direction,
 ) : WraythEvent
 
 data class WraythLeftEvent(
