@@ -9,6 +9,6 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 class DirHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? =
         element.attributes["value"]?.let {
-                WraythDirectionEvent(Direction(it))
+            WraythDirectionEvent(Direction(it))
         }
 }
