@@ -85,6 +85,14 @@ class ClientSettingRepository(
 
     fun observeMaxScrollLines(): Flow<Int> = clientConfigStore.observeClient().map { it.scrollback ?: DEFAULT_MAX_SCROLL_LINES }
 
+    fun observeMinCommandLength(): Flow<Int> = clientConfigStore.observeClient().map { it.minCommandLength ?: DEFAULT_MIN_COMMAND_LENGTH }
+
+    /**
+     * Maximum number of commands retained in the command history. Hidden setting: read from
+     * `client.toml` only, never written from the UI.
+     */
+    fun observeHistorySize(): Flow<Int> = clientConfigStore.observeClient().map { it.historySize ?: DEFAULT_HISTORY_SIZE }
+
     fun observeMarkLinks(): Flow<Boolean> = clientConfigStore.observeClient().map { it.markLinks }
 
     fun observeShowImages(): Flow<Boolean> = clientConfigStore.observeClient().map { it.showImages }
@@ -115,6 +123,10 @@ class ClientSettingRepository(
 
     suspend fun putMaxScrollLines(value: Int?) {
         clientConfigStore.mutateClient { it.copy(scrollback = value) }
+    }
+
+    suspend fun putMinCommandLength(value: Int?) {
+        clientConfigStore.mutateClient { it.copy(minCommandLength = value) }
     }
 
     suspend fun putMarkLinks(value: Boolean) {
@@ -160,6 +172,8 @@ class ClientSettingRepository(
 
     companion object {
         const val DEFAULT_MAX_SCROLL_LINES = 2_000
+        const val DEFAULT_MIN_COMMAND_LENGTH = 3
+        const val DEFAULT_HISTORY_SIZE = 1_000
         const val SCROLLBACK_KEY = "scrollback"
         const val MARK_LINKS_KEY = "markLinks"
         const val SHOW_IMAGES_KEY = "showImages"

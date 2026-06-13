@@ -97,6 +97,23 @@ fun DesktopGeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
+            val minCommandLengthValue = rememberTextFieldState()
+            LaunchedEffect(Unit) {
+                val initialMinCommandLength =
+                    clientSettingRepository.observeMinCommandLength().first().toString()
+                minCommandLengthValue.setTextAndPlaceCursorAtEnd(initialMinCommandLength)
+                snapshotFlow { minCommandLengthValue.text.toString() }
+                    .collectLatest {
+                        if (it != initialMinCommandLength && it.isNotBlank()) {
+                            clientSettingRepository.putMinCommandLength(it.toIntOrNull())
+                        }
+                    }
+            }
+            Text("Minimum command length for history")
+            WarlockTextField(state = minCommandLengthValue, modifier = Modifier.fillMaxWidth())
+
+            Spacer(Modifier.height(16.dp))
+
             val markLinks by clientSettingRepository
                 .observeMarkLinks()
                 .collectAsState(initial = true)

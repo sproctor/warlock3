@@ -67,6 +67,7 @@ import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
+import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
 import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
@@ -103,6 +104,7 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val windowRegistry: WindowRegistry,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
+    private val clientSettingRepository: ClientSettingRepository,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel(),
     MacroHandler {
@@ -346,13 +348,26 @@ class GameViewModel(
     private val _selectedWindow: MutableStateFlow<String> = MutableStateFlow("main")
     val selectedWindow: StateFlow<String> = _selectedWindow
 
-    private var minHistoryLen = 0
+    // Commands shorter than this are not saved to history; history is capped at historySize entries.
+    // Both are seeded from client settings (see init); the defaults apply until the flows emit.
+    private var minHistoryLen = ClientSettingRepository.DEFAULT_MIN_COMMAND_LENGTH
+    private var historySize = ClientSettingRepository.DEFAULT_HISTORY_SIZE
 
     val disconnected = client.disconnected
 
     val menuData = client.menuData
 
     init {
+        clientSettingRepository
+            .observeMinCommandLength()
+            .onEach { minHistoryLen = it }
+            .launchIn(viewModelScope)
+        clientSettingRepository
+            .observeHistorySize()
+            .onEach {
+                historySize = it
+                trimHistory()
+            }.launchIn(viewModelScope)
         // Load initial
         client.characterId
             .onEach { characterId ->
@@ -554,6 +569,15 @@ class GameViewModel(
         if (line.length >= minHistoryLen && sendHistory.getOrNull(1) != line) {
             sendHistory[0] = line
             sendHistory.add(0, "")
+            trimHistory()
+        }
+    }
+
+    // sendHistory[0] is the in-progress entry buffer; indices 1..n are the stored commands, so the
+    // list holds at most historySize + 1 elements.
+    private fun trimHistory() {
+        while (sendHistory.size > historySize + 1) {
+            sendHistory.removeAt(sendHistory.size - 1)
         }
     }
 
