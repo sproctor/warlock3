@@ -14,6 +14,7 @@ import io.github.vinceglb.filekit.dialogs.init
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
+import warlockfe.warlock3.compose.WarlockApp
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SkinLoader
