@@ -106,10 +106,18 @@ fun DesktopGameView(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text("You have been disconnected from the server")
-                WarlockButton(
-                    onClick = navigateToDashboard,
-                    text = "Back to dashboard",
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (viewModel.canReconnect) {
+                        WarlockButton(
+                            onClick = viewModel::reconnect,
+                            text = "Reconnect",
+                        )
+                    }
+                    WarlockButton(
+                        onClick = navigateToDashboard,
+                        text = "Go to dashboard",
+                    )
+                }
             }
         }
 

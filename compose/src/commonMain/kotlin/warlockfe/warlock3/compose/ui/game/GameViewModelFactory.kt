@@ -30,6 +30,7 @@ class GameViewModelFactory(
     fun create(
         client: WarlockClient,
         windowRegistry: WindowRegistry,
+        reconnect: (suspend () -> Unit)? = null,
     ): GameViewModel =
         GameViewModel(
             client = client,
@@ -45,5 +46,6 @@ class GameViewModelFactory(
             clientSettingRepository = clientSettingRepository,
             commandHistoryRepository = commandHistoryRepository,
             ioDispatcher = ioDispatcher,
+            reconnectAction = reconnect,
         )
 }

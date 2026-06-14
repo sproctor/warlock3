@@ -75,6 +75,8 @@ class ConnectToGameUseCase(
                         gameViewModelFactory.create(
                             client = sfClient,
                             windowRegistry = streamRegistry,
+                            // Reuse the same credentials (and key) on reconnect.
+                            reconnect = { invoke(credentials, proxySettings, gameState) },
                         )
                     gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
                     break

@@ -28,6 +28,7 @@ import warlockfe.warlock3.core.sge.SgeError
 import warlockfe.warlock3.core.sge.SgeEvent
 import warlockfe.warlock3.core.sge.SgeGame
 import warlockfe.warlock3.core.sge.SgeSettings
+import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 
 // FIXME: This needs some re-organization
@@ -130,37 +131,43 @@ class SgeViewModel(
                                 }
                             }
 
-                            withContext(ioDispatcher) {
-                                try {
-                                    val streamRegistry = windowRegistryFactory.create()
-                                    val socket = NetworkSocket(ioDispatcher)
-                                    socket.connect(credentials.host, credentials.port)
-                                    val sfClient =
-                                        warlockClientFactory.createClient(
-                                            windowRegistry = streamRegistry,
-                                            socket = socket,
-                                        )
-                                    sfClient.connect(credentials.key)
-                                    val gameViewModel =
-                                        gameViewModelFactory.create(
-                                            client = sfClient,
-                                            windowRegistry = streamRegistry,
-                                        )
-                                    gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
-                                } catch (e: Exception) {
-                                    ensureActive()
-                                    gameState.setScreen(
-                                        GameScreen.ErrorState(
-                                            message = "Unknown host: ${e.message}",
-                                            returnTo = GameScreen.NewGameState,
-                                        ),
-                                    )
-                                }
-                            }
+                            connectToGame(credentials)
                         }
                     }
                 }
             }
+    }
+
+    private suspend fun connectToGame(credentials: SimuGameCredentials) {
+        withContext(ioDispatcher) {
+            try {
+                val streamRegistry = windowRegistryFactory.create()
+                val socket = NetworkSocket(ioDispatcher)
+                socket.connect(credentials.host, credentials.port)
+                val sfClient =
+                    warlockClientFactory.createClient(
+                        windowRegistry = streamRegistry,
+                        socket = socket,
+                    )
+                sfClient.connect(credentials.key)
+                val gameViewModel =
+                    gameViewModelFactory.create(
+                        client = sfClient,
+                        windowRegistry = streamRegistry,
+                        // Reuse the same credentials (and key) on reconnect.
+                        reconnect = { connectToGame(credentials) },
+                    )
+                gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+            } catch (e: Exception) {
+                ensureActive()
+                gameState.setScreen(
+                    GameScreen.ErrorState(
+                        message = "Unknown host: ${e.message}",
+                        returnTo = GameScreen.NewGameState,
+                    ),
+                )
+            }
+        }
     }
 
     fun accountSelected(account: AccountEntity) {
