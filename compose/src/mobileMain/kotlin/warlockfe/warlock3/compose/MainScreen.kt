@@ -36,7 +36,7 @@ fun MainScreen(
     gameState: GameState,
     updateCurrentCharacter: (GameCharacter?) -> Unit,
     sgeSettings: SgeSettings,
-    sideBarVisible: Boolean,
+    openSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -92,7 +92,7 @@ fun MainScreen(
                             gameState.setScreen(GameScreen.Dashboard)
                         }
                     },
-                    sideBarVisible = sideBarVisible,
+                    openSettings = openSettings,
                     modifier = modifier,
                 )
             }

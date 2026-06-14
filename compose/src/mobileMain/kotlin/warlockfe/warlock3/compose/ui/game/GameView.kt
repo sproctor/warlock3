@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,6 +48,9 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.settings_filled
+import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
+import warlockfe.warlock3.compose.generated.resources.space_dashboard_outlined
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.window.DialogContent
@@ -71,10 +75,11 @@ import warlockfe.warlock3.core.window.WindowLocation
 fun GameView(
     viewModel: GameViewModel,
     navigateToDashboard: () -> Unit,
-    sideBarVisible: Boolean,
+    openSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val disconnected by viewModel.disconnected.collectAsState()
+    var windowListVisible by remember { mutableStateOf(false) }
 
     val entryFocusRequester = remember { FocusRequester() }
     // On JVM, KeyDown is followed by an Unknown/KEY_TYPED event
@@ -128,7 +133,7 @@ fun GameView(
             val openWindows by viewModel.openWindows.collectAsState(emptyList())
 
             Row(modifier = Modifier.weight(1f)) {
-                if (sideBarVisible) {
+                if (windowListVisible) {
                     val windows by viewModel.windows.collectAsState()
                     val scope = rememberCoroutineScope()
                     ScrollableColumn(
@@ -239,7 +244,13 @@ fun GameView(
                     clearStream = viewModel::clearStream,
                 )
             }
-            GameBottomBar(viewModel, entryFocusRequester)
+            GameBottomBar(
+                viewModel = viewModel,
+                entryFocusRequester = entryFocusRequester,
+                openSettings = openSettings,
+                windowListVisible = windowListVisible,
+                onToggleWindowList = { windowListVisible = !windowListVisible },
+            )
         }
         val macroError by viewModel.macroError.collectAsState()
         if (macroError != null) {
@@ -433,6 +444,9 @@ fun GameTextWindows(
 fun GameBottomBar(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
+    openSettings: () -> Unit,
+    windowListVisible: Boolean,
+    onToggleWindowList: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
@@ -456,6 +470,27 @@ fun GameBottomBar(
                     viewModel = viewModel,
                     entryFocusRequester = entryFocusRequester,
                 )
+                Row {
+                    IconButton(onClick = onToggleWindowList) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (windowListVisible) {
+                                        Res.drawable.space_dashboard_filled
+                                    } else {
+                                        Res.drawable.space_dashboard_outlined
+                                    },
+                                ),
+                            contentDescription = "Toggle window list",
+                        )
+                    }
+                    IconButton(onClick = openSettings) {
+                        Icon(
+                            painter = painterResource(Res.drawable.settings_filled),
+                            contentDescription = "Settings",
+                        )
+                    }
+                }
                 val vitalBars by viewModel.vitalBars.objects.collectAsState()
                 DialogContent(
                     dataObjects = vitalBars,
