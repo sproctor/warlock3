@@ -89,6 +89,7 @@ import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
+import warlockfe.warlock3.core.sge.parseSalCredentials
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.awt.Dimension
@@ -106,6 +107,7 @@ private class WarlockCommand : CliktCommand() {
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
     val inputFile: String? by option("-i", "--input", help = "Read input from file")
     val autoConnectName: String? by option("-c", "--connection", help = "Auto-connect to the named connection")
+    val salFile: String? by option("--sal", help = "Path to a .sal launch file to connect with")
     val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
     val sgePort: Int by option("--sge-port", help = "Credentials/SGE port").int().default(7910)
     val sgeSecure: Boolean by option("--sge-secure", help = "Credentials/SGE uses encryption").boolean().default(true)
@@ -138,6 +140,9 @@ private class WarlockCommand : CliktCommand() {
         if (autoConnectName != null) {
             loginOptions.add("connection")
         }
+        if (salFile != null) {
+            loginOptions.add("sal")
+        }
         if (loginOptions.size > 1) {
             println("More than one login method was specified. Please only use one of the following methods: $loginOptions")
             exitProcess(-1)
@@ -157,7 +162,21 @@ private class WarlockCommand : CliktCommand() {
         FileKit.init("warlock")
 
         val credentials =
-            if (port != null && host != null && key != null) {
+            if (salFile != null) {
+                val file = File(salFile!!)
+                if (!file.exists()) {
+                    println("SAL file does not exist: $salFile")
+                    exitProcess(-1)
+                }
+                try {
+                    parseSalCredentials(file.readText()).also {
+                        logger.d { "Connecting to ${it.host}:${it.port} from .sal file" }
+                    }
+                } catch (e: Exception) {
+                    println("Failed to parse .sal file: ${e.message}")
+                    exitProcess(-1)
+                }
+            } else if (port != null && host != null && key != null) {
                 logger.d { "Connecting to $host:$port with $key" }
                 SimuGameCredentials(host = host!!, port = port!!, key = key!!)
             } else if (port != null || host != null || key != null) {
