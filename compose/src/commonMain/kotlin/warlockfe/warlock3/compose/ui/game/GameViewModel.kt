@@ -110,6 +110,7 @@ class GameViewModel(
     clientSettingRepository: ClientSettingRepository,
     private val commandHistoryRepository: CommandHistoryRepository,
     private val ioDispatcher: CoroutineDispatcher,
+    private val reconnectAction: (suspend () -> Unit)? = null,
 ) : ViewModel(),
     MacroHandler {
     private val logger = Logger.withTag("GameViewModel")
@@ -358,6 +359,8 @@ class GameViewModel(
     private var historySize = ClientSettingRepository.DEFAULT_HISTORY_SIZE
 
     val disconnected = client.disconnected
+
+    val canReconnect: Boolean = reconnectAction != null
 
     val menuData = client.menuData
 
@@ -1068,6 +1071,19 @@ class GameViewModel(
         }
         client.close()
         windowRegistry.close()
+    }
+
+    /**
+     * Reconnect using the same credentials. This spins up a fresh client, window registry, and
+     * GameViewModel (replacing this screen), so all prior game state is cleared. The old client and
+     * window registry are then released. No-op if reconnecting isn't supported for this session.
+     */
+    fun reconnect() {
+        val action = reconnectAction ?: return
+        viewModelScope.launch {
+            action()
+            close()
+        }
     }
 
     fun getCurrentTime(): Instant = client.getCurrentTime()

@@ -120,8 +120,15 @@ fun GameView(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Text("You have been disconnected from the server")
-                    FilledTonalButton(onClick = navigateToDashboard) {
-                        Text("Back to dashboard")
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        if (viewModel.canReconnect) {
+                            FilledTonalButton(onClick = viewModel::reconnect) {
+                                Text("Reconnect")
+                            }
+                        }
+                        FilledTonalButton(onClick = navigateToDashboard) {
+                            Text("Go to dashboard")
+                        }
                     }
                 }
             }
