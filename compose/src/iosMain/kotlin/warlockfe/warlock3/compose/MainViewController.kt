@@ -92,7 +92,7 @@ private fun IosWarlockApp(
         }
     LaunchedEffect(darkMode) { appContainer.darkMode.value = darkMode }
     AppTheme(useDarkTheme = darkMode) {
-        val gameState = GameState()
+        val gameState = remember { GameState() }
         var settingsPage by remember { mutableStateOf<SettingsPage?>(null) }
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 
