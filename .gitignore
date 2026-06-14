@@ -23,6 +23,7 @@ android/src/main/play
 .idea/*
 !.idea/dictionaries
 !.idea/dictionaries/**
+!.idea/vcs.xml
 
 *.iml
 *.ipr
