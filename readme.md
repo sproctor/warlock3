@@ -48,6 +48,7 @@ For a faster edit-recompile loop with Compose Hot Reload:
 
 Useful command-line flags exposed by the desktop entry point — pass them after `--args="..."`:
 
+- `<path.sal>` — connect using a Simutronics `.sal` launch file passed as a positional argument
 - `-c <name>` — auto-connect to a saved connection by name
 - `-i <path>` / `--stdin` — replay a log file or stdin instead of connecting to a server
 - `-d` — enable debug logging
@@ -57,6 +58,7 @@ Example:
 
 ```
 ./gradlew :desktopApp:run --args="-c Tefrin -d"
+./gradlew :desktopApp:run --args="/path/to/launch.sal"
 ```
 
 ### Running tests and lint
