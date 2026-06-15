@@ -37,6 +37,8 @@ import co.touchlab.kermit.Severity
 import co.touchlab.kermit.platformLogWriter
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
@@ -107,7 +109,7 @@ private class WarlockCommand : CliktCommand() {
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
     val inputFile: String? by option("-i", "--input", help = "Read input from file")
     val autoConnectName: String? by option("-c", "--connection", help = "Auto-connect to the named connection")
-    val salFile: String? by option("--sal", help = "Path to a .sal launch file to connect with")
+    val salFile: String? by argument("SAL_FILE", help = "Path to a .sal launch file to connect with").optional()
     val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
     val sgePort: Int by option("--sge-port", help = "Credentials/SGE port").int().default(7910)
     val sgeSecure: Boolean by option("--sge-secure", help = "Credentials/SGE uses encryption").boolean().default(true)
