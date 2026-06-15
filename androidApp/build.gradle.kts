@@ -14,20 +14,27 @@ val resolvedReleaseVersion: String =
         ?: project.version.toString().takeIf { it != "unspecified" }
         ?: "0.0.0"
 
-// Play requires a monotonically increasing integer versionCode. Derive it from the
-// semver release version (suffixes like "-beta.1" are dropped) so a higher tag always
-// yields a higher code. Assumes minor/patch each stay below 1000.
+// Play requires a monotonically increasing integer versionCode. The old semver-derived
+// scheme (major*1_000_000 + minor*1_000 + patch) couldn't distinguish beta builds of the
+// same version, so every 3.1.0-beta.* mapped to 3_001_000 and Play rejected re-uploads.
+// Instead, count commits (which only grows) and offset past the highest code that scheme
+// ever produced so every new build outranks it and each commit bumps the code.
+val versionCodeBaseline = 3_000_000
 val derivedVersionCode: Int =
     run {
-        val parts =
-            resolvedReleaseVersion
-                .substringBefore('-')
-                .split('.')
-                .mapNotNull { it.toIntOrNull() }
-        val major = parts.getOrElse(0) { 0 }
-        val minor = parts.getOrElse(1) { 0 }
-        val patch = parts.getOrElse(2) { 0 }
-        (major * 1_000_000 + minor * 1_000 + patch).coerceAtLeast(1)
+        val commitCount =
+            try {
+                providers
+                    .exec {
+                        commandLine("git", "rev-list", "--count", "HEAD")
+                    }.standardOutput.asText
+                    .get()
+                    .trim()
+                    .toIntOrNull()
+            } catch (_: Exception) {
+                null
+            } ?: 0
+        versionCodeBaseline + commitCount
     }
 
 android {
