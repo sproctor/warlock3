@@ -131,6 +131,7 @@ class NetworkSocket(
     }
 
     override fun close() {
+        logger.d { "Closing connection" }
         socket?.close()
         selector.close()
     }
