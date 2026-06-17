@@ -46,8 +46,11 @@ dependencies {
 kotlin {
     jvmToolchain {
         languageVersion =
-            JavaLanguageVersion.of(25)
-        vendor = JvmVendorSpec.JETBRAINS
+            JavaLanguageVersion.of(
+                libs.versions.jvmToolchainVersion
+                    .get()
+                    .toInt(),
+            )
     }
 }
 
@@ -64,8 +67,24 @@ val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0"
 // Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
 val numericPackageVersion: String = releaseVersion.substringBefore('-')
 
+// JBR 25 is what gets bundled into installers (via Nucleus/jpackage) and
+// what `:desktopApp:run` launches under for local dev. Compilation happens
+// under the project toolchain (Temurin) — JBR is only used at runtime.
+val jbrRuntime =
+    javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+        vendor = JvmVendorSpec.JETBRAINS
+    }
+
 nucleus.application {
     mainClass = "warlockfe.warlock3.app.MainKt"
+
+    // Run + package under JBR 25 even though the rest of the build uses
+    // Temurin 21 (see toolchain config above).
+    javaHome =
+        jbrRuntime
+            .get()
+            .metadata.installationPath.asFile.absolutePath
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
