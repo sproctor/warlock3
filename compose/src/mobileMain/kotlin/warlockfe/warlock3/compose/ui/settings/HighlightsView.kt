@@ -53,11 +53,9 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
-import warlockfe.warlock3.compose.components.rememberReorderableState
-import warlockfe.warlock3.compose.components.reorderableHandle
-import warlockfe.warlock3.compose.components.reorderableItem
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.audio_file
@@ -104,81 +102,80 @@ fun HighlightsView(
         Spacer(Modifier.height(16.dp))
         Text(text = "Highlights", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(8.dp))
-        val reorderState =
-            rememberReorderableState(
-                items = highlights,
-                key = { it.id },
-                onMove = { from, to ->
+        ScrollableColumn(
+            Modifier.fillMaxWidth().weight(1f),
+        ) {
+            ReorderableColumn(
+                list = highlights,
+                onSettle = { from, to ->
                     coroutineScope.launch {
                         highlightRepository.move(currentCharacterId ?: GLOBAL_CHARACTER_ID, from, to)
                     }
                 },
-            )
-        ScrollableColumn(
-            Modifier.fillMaxWidth().weight(1f),
-        ) {
-            reorderState.items.forEach { highlight ->
+                modifier = Modifier.fillMaxWidth(),
+            ) { _, highlight, _ ->
                 key(highlight.id) {
-                    ListItem(
-                        modifier = Modifier.reorderableItem(reorderState, highlight.id),
-                        headlineContent = {
-                            Text(text = highlight.pattern)
-                        },
-                        leadingContent = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.drag_indicator),
-                                    contentDescription = "Drag to reorder",
-                                    modifier = Modifier.reorderableHandle(reorderState, highlight.id),
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                val style = highlight.styles[0]
-                                val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(40.dp)
-                                            .background(
-                                                color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
-                                                shape = MaterialTheme.shapes.small,
-                                            ).border(1.dp, contentColor, MaterialTheme.shapes.small),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    if (contentColor.isSpecified) {
+                    ReorderableItem(modifier = Modifier.fillMaxWidth()) {
+                        ListItem(
+                            headlineContent = {
+                                Text(text = highlight.pattern)
+                            },
+                            leadingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.drag_indicator),
+                                        contentDescription = "Drag to reorder",
+                                        modifier = Modifier.draggableHandle(),
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    val style = highlight.styles[0]
+                                    val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .size(40.dp)
+                                                .background(
+                                                    color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
+                                                    shape = MaterialTheme.shapes.small,
+                                                ).border(1.dp, contentColor, MaterialTheme.shapes.small),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        if (contentColor.isSpecified) {
+                                            Icon(
+                                                painterResource(Res.drawable.palette),
+                                                contentDescription = "Highlight color",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = contentColor,
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Row {
+                                    IconButton(
+                                        onClick = { editingHighlight = highlight },
+                                    ) {
                                         Icon(
-                                            painterResource(Res.drawable.palette),
-                                            contentDescription = "Highlight color",
-                                            modifier = Modifier.size(20.dp),
-                                            tint = contentColor,
+                                            painter = painterResource(Res.drawable.edit),
+                                            contentDescription = "Edit",
+                                        )
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = {
+                                            coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
+                                        },
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.delete),
+                                            contentDescription = "Delete",
                                         )
                                     }
                                 }
-                            }
-                        },
-                        trailingContent = {
-                            Row {
-                                IconButton(
-                                    onClick = { editingHighlight = highlight },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.edit),
-                                        contentDescription = "Edit",
-                                    )
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                IconButton(
-                                    onClick = {
-                                        coroutineScope.launch { highlightRepository.deleteById(highlight.id) }
-                                    },
-                                ) {
-                                    Icon(
-                                        painter = painterResource(Res.drawable.delete),
-                                        contentDescription = "Delete",
-                                    )
-                                }
-                            }
-                        },
-                    )
+                            },
+                        )
+                    }
                 }
             }
         }

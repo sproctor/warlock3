@@ -26,30 +26,50 @@ import kotlinx.io.unsafe.withData
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.encodeWindows1252
+import warlockfe.warlock3.wrayth.util.openDefaultTlsSocket
 import kotlin.math.min
 
 class NetworkSocket(
-    dispatcher: CoroutineDispatcher,
+    private val dispatcher: CoroutineDispatcher,
+    // When true, wrap the connection in TLS (verifying the server cert against the system trust
+    // store). Used for the MUD Mobile router; the direct play.net game connection stays plaintext.
+    private val secure: Boolean = false,
 ) : WarlockSocket {
     private val logger = Logger.withTag("NetworkSocket")
     private val selector = SelectorManager(dispatcher)
     private var socket: Socket? = null
+    private var closeConnection: (() -> Unit)? = null
+    private var closed = false
     private lateinit var sendChannel: ByteWriteChannel
     private lateinit var receiveChannel: ByteReadChannel
     private val buffer = ByteArray(4096)
 
     override val isClosed: Boolean
-        get() = socket?.isClosed == true
+        get() = closed || socket?.isClosed == true
 
     override suspend fun connect(
         host: String,
         port: Int,
     ) {
-        logger.d { "Connecting to $host:$port" }
+        logger.d { "Connecting to $host:$port (secure=$secure)" }
         try {
-            socket = aSocket(selector).tcp().connect(host, port)
-            sendChannel = socket!!.openWriteChannel(autoFlush = true)
-            receiveChannel = socket!!.openReadChannel()
+            if (secure) {
+                val conn =
+                    openDefaultTlsSocket(
+                        selectorManager = selector,
+                        host = host,
+                        port = port,
+                        coroutineContext = dispatcher,
+                    )
+                receiveChannel = conn.readChannel
+                sendChannel = conn.writeChannel
+                closeConnection = conn.close
+            } else {
+                val tcpSocket = aSocket(selector).tcp().connect(host, port)
+                socket = tcpSocket
+                sendChannel = tcpSocket.openWriteChannel(autoFlush = true)
+                receiveChannel = tcpSocket.openReadChannel()
+            }
         } catch (e: Throwable) {
             close()
             throw e
@@ -66,7 +86,7 @@ class NetworkSocket(
         out: Appendable,
         max: Int = Int.MAX_VALUE,
     ): Boolean {
-        check(socket != null)
+        check(::receiveChannel.isInitialized) { "Socket not connected" }
         with(receiveChannel) {
             if (exhausted()) return false
             if (isClosedForRead) return false
@@ -113,25 +133,28 @@ class NetworkSocket(
     }
 
     override suspend fun readAvailable(min: Int): String {
-        check(socket != null)
+        check(::receiveChannel.isInitialized) { "Socket not connected" }
         receiveChannel.awaitContent(min)
         val len = receiveChannel.readAvailable(buffer)
         return buffer.decodeWindows1252(0, len)
     }
 
     override fun ready(): Boolean {
-        check(socket != null)
+        check(::receiveChannel.isInitialized) { "Socket not connected" }
         return receiveChannel.availableForRead > 0
     }
 
     override suspend fun write(text: String) {
-        check(socket != null)
+        check(::sendChannel.isInitialized) { "Socket not connected" }
         sendChannel.writeByteArray(text.encodeWindows1252())
         sendChannel.flush()
     }
 
     override fun close() {
         logger.d { "Closing connection" }
+        closed = true
+        closeConnection?.invoke()
+        closeConnection = null
         socket?.close()
         selector.close()
     }

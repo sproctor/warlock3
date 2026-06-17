@@ -33,9 +33,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.components.rememberReorderableState
-import warlockfe.warlock3.compose.components.reorderableHandle
-import warlockfe.warlock3.compose.components.reorderableItem
+import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.desktop.components.DesktopColorTextField
 import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -86,58 +84,57 @@ fun DesktopHighlightsView(
         Spacer(Modifier.height(16.dp))
         Text("Highlights")
         Spacer(Modifier.height(8.dp))
-        val reorderState =
-            rememberReorderableState(
-                items = highlights,
-                key = { it.id },
-                onMove = { from, to ->
+        WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            ReorderableColumn(
+                list = highlights,
+                onSettle = { from, to ->
                     scope.launch {
                         highlightRepository.move(currentCharacterId ?: GLOBAL_CHARACTER_ID, from, to)
                     }
                 },
-            )
-        WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            reorderState.items.forEach { highlight ->
+                modifier = Modifier.fillMaxWidth(),
+            ) { _, highlight, _ ->
                 key(highlight.id) {
-                    WarlockListItem(
-                        modifier = Modifier.reorderableItem(reorderState, highlight.id),
-                        leading = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Image(
-                                    painter = painterResource(Res.drawable.drag_indicator),
-                                    contentDescription = "Drag to reorder",
-                                    modifier =
-                                        Modifier
-                                            .size(20.dp)
-                                            .reorderableHandle(reorderState, highlight.id),
-                                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
-                                )
-                                val style = highlight.styles[0]
-                                DesktopStylePreview(
-                                    textColor = style?.textColor.toColor(),
-                                    backgroundColor = style?.backgroundColor.toColor(),
-                                )
-                            }
-                        },
-                        headline = { Text(highlight.pattern) },
-                        trailing = {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                WarlockOutlinedButton(
-                                    onClick = { editingHighlight = highlight },
-                                    text = "Edit",
-                                )
-                                WarlockOutlinedButton(
-                                    onClick = {
-                                        scope.launch { highlightRepository.deleteById(highlight.id) }
-                                    },
-                                    text = "Delete",
-                                )
-                            }
-                        },
-                    )
+                    ReorderableItem(modifier = Modifier.fillMaxWidth()) {
+                        WarlockListItem(
+                            leading = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Image(
+                                        painter = painterResource(Res.drawable.drag_indicator),
+                                        contentDescription = "Drag to reorder",
+                                        modifier =
+                                            Modifier
+                                                .size(20.dp)
+                                                .draggableHandle(),
+                                        colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                                    )
+                                    val style = highlight.styles[0]
+                                    DesktopStylePreview(
+                                        textColor = style?.textColor.toColor(),
+                                        backgroundColor = style?.backgroundColor.toColor(),
+                                    )
+                                }
+                            },
+                            headline = { Text(highlight.pattern) },
+                            trailing = {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    WarlockOutlinedButton(
+                                        onClick = { editingHighlight = highlight },
+                                        text = "Edit",
+                                    )
+                                    WarlockOutlinedButton(
+                                        onClick = {
+                                            scope.launch { highlightRepository.deleteById(highlight.id) }
+                                        },
+                                        text = "Delete",
+                                    )
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }

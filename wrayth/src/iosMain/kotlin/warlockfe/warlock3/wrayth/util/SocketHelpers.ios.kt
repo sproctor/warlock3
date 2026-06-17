@@ -313,6 +313,108 @@ actual suspend fun openPlainSocket(
     )
 }
 
+private fun setupDefaultTLS(
+    fd: Int,
+    host: String,
+): Pair<SSLContextRef, StableRef<IntArray>> {
+    val sslCtx =
+        checkNotNull(
+            SSLCreateContext(null, SSLProtocolSide.kSSLClientSide, SSLConnectionType.kSSLStreamType),
+        ) {
+            "SSLCreateContext failed"
+        }
+    val fdHolder = intArrayOf(fd)
+    val stableRef = StableRef.create(fdHolder)
+    SSLSetConnection(sslCtx, stableRef.asCPointer())
+    SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
+    SSLSetPeerDomainName(sslCtx, host, host.length.convert())
+
+    // No breakOnServerAuth: SecureTransport performs default system trust evaluation during the
+    // handshake, which is exactly what we want for a public CA-signed certificate.
+    val status = SSLHandshake(sslCtx)
+    check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
+
+    return sslCtx to stableRef
+}
+
+actual suspend fun openDefaultTlsSocket(
+    selectorManager: SelectorManager,
+    host: String,
+    port: Int,
+    coroutineContext: CoroutineContext,
+): TLSSocketConnection {
+    val (fd, sslCtx, stableRef) =
+        kotlinx.coroutines.withContext(Dispatchers.IO) {
+            val fd = createAndConnectSocket(host, port)
+            val (ctx, ref) = setupDefaultTLS(fd, host)
+            Triple(fd, ctx, ref)
+        }
+
+    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+
+    val readChannel = ByteChannel(autoFlush = true)
+    scope.launch(Dispatchers.IO) {
+        val ubuf = UByteArray(8192)
+        val processedRef = nativeHeap.alloc<ULongVar>()
+        try {
+            while (isActive) {
+                var n = 0
+                ubuf.usePinned { pinned ->
+                    processedRef.value = 0u
+                    val status = SSLRead(sslCtx, pinned.addressOf(0), 8192u, processedRef.ptr)
+                    n =
+                        if (status == errSecSuccess || status == errSSLWouldBlock) {
+                            processedRef.value.toInt()
+                        } else {
+                            -1
+                        }
+                }
+                if (n <= 0) break
+                readChannel.writeFully(ByteArray(n) { ubuf[it].toByte() })
+            }
+        } finally {
+            nativeHeap.free(processedRef.rawPtr)
+            readChannel.close()
+        }
+    }
+
+    val writeChannel = ByteChannel(autoFlush = true)
+    scope.launch(Dispatchers.IO) {
+        val reader = writeChannel as ByteReadChannel
+        val buf = ByteArray(8192)
+        val processedRef = nativeHeap.alloc<ULongVar>()
+        try {
+            while (isActive && !reader.isClosedForRead) {
+                val n = reader.readAvailable(buf)
+                if (n <= 0) continue
+                val ubuf2 = UByteArray(n) { buf[it].toUByte() }
+                ubuf2.usePinned { pinned ->
+                    processedRef.value = 0u
+                    SSLWrite(sslCtx, pinned.addressOf(0), n.convert(), processedRef.ptr)
+                }
+            }
+        } catch (_: Exception) {
+        } finally {
+            nativeHeap.free(processedRef.rawPtr)
+        }
+    }
+
+    var closed = false
+    return TLSSocketConnection(
+        readChannel = readChannel,
+        writeChannel = writeChannel,
+        close = {
+            if (!closed) {
+                closed = true
+                scope.cancel()
+                SSLClose(sslCtx)
+                close(fd)
+                stableRef.dispose()
+            }
+        },
+    )
+}
+
 actual suspend fun openTLSSocket(
     selectorManager: SelectorManager,
     host: String,

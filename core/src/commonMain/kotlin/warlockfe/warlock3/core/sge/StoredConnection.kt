@@ -8,4 +8,8 @@ data class StoredConnection(
     val character: String,
     val code: String,
     val proxySettings: ConnectionProxySettings,
+    // When true, this connection is played through MUD Mobile's hosted Lich rather than directly
+    // to play.net. [characterCode] is the EAccess character code (known for MUD Mobile profiles).
+    val mudMobile: Boolean = false,
+    val characterCode: String? = null,
 )
