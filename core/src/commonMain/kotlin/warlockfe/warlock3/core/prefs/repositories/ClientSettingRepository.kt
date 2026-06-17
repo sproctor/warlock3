@@ -95,6 +95,16 @@ class ClientSettingRepository(
 
     fun observeMarkLinks(): Flow<Boolean> = clientConfigStore.observeClient().map { it.markLinks }
 
+    // --- MUD Mobile device token ---
+
+    fun observeMudMobileToken(): Flow<String?> = clientConfigStore.observeClient().map { it.mudMobileToken }
+
+    fun getMudMobileToken(): String? = clientConfigStore.currentClient().mudMobileToken
+
+    suspend fun putMudMobileToken(value: String?) {
+        clientConfigStore.mutateClient { it.copy(mudMobileToken = value?.ifBlank { null }) }
+    }
+
     fun observeShowImages(): Flow<Boolean> = clientConfigStore.observeClient().map { it.showImages }
 
     suspend fun putLoggingPath(value: String) {

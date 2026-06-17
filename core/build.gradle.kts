@@ -109,6 +109,10 @@ kotlin {
                 // Networking libs
                 api(libs.uri)
                 api(libs.ktor.utils)
+                // MUD Mobile integration: REST client over HTTPS
+                api(libs.ktor.client.core)
+                api(libs.ktor.client.cio)
+                api(libs.kotlinx.serialization.json)
 
                 implementation(libs.antlr.kotlin.runtime)
             }

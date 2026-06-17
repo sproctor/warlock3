@@ -4,6 +4,8 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import co.touchlab.kermit.Logger
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,7 @@ import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
+import warlockfe.warlock3.core.mudmobile.MudMobileApi
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MySQLiteDriver
@@ -248,12 +251,39 @@ abstract class AppContainer(
         )
     }
 
+    val mudMobileHttpClient: HttpClient by lazy { HttpClient(CIO) }
+
+    val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
+
+    val mudMobileConnectUseCase by lazy {
+        MudMobileConnectUseCase(
+            api = mudMobileApi,
+            sgeClientFactory = sgeClientFactory,
+            warlockClientFactory = warlockClientFactory,
+            windowRegistryFactory = windowRegistryFactory,
+            gameViewModelFactory = gameViewModelFactory,
+            ioDispatcher = ioDispatcher,
+        )
+    }
+
+    val mudMobileDiscoverUseCase by lazy {
+        MudMobileDiscoverUseCase(
+            api = mudMobileApi,
+            sgeClientFactory = sgeClientFactory,
+        )
+    }
+
     val dashboardViewModelFactory by lazy {
         DashboardViewModelFactory(
             connectionRepository = connectionRepository,
             connectionSettingsRepository = connectionSettingsRepository,
             sgeClientFactory = sgeClientFactory,
             connectToGameUseCase = connectToGameUseCase,
+            clientSettingRepository = clientSettings,
+            accountRepository = accountRepository,
+            mudMobileApi = mudMobileApi,
+            mudMobileConnectUseCase = mudMobileConnectUseCase,
+            mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
         )
     }
 

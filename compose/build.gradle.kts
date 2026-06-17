@@ -98,6 +98,7 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
+            implementation(libs.reorderable)
         }
         getByName(if (skipIos) "androidMain" else "mobileMain") {
             dependencies {

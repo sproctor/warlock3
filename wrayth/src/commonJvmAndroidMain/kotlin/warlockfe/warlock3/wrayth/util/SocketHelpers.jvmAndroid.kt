@@ -28,6 +28,28 @@ actual suspend fun openPlainSocket(
     )
 }
 
+actual suspend fun openDefaultTlsSocket(
+    selectorManager: SelectorManager,
+    host: String,
+    port: Int,
+    coroutineContext: CoroutineContext,
+): TLSSocketConnection {
+    val socket =
+        aSocket(selectorManager)
+            .tcp()
+            .connect(host, port)
+            // No trustManager override: ktor falls back to the platform default X509TrustManager,
+            // which validates the router's public CA-signed certificate. SNI defaults to the host.
+            .tls(coroutineContext = coroutineContext) {
+                serverName = host
+            }
+    return TLSSocketConnection(
+        readChannel = socket.openReadChannel(),
+        writeChannel = socket.openWriteChannel(autoFlush = true),
+        close = { socket.close() },
+    )
+}
+
 actual suspend fun openTLSSocket(
     selectorManager: SelectorManager,
     host: String,

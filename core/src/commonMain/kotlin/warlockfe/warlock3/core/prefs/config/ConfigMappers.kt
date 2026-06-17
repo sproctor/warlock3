@@ -227,4 +227,6 @@ internal fun ConnectionConfig.toStoredConnection(password: String?): StoredConne
                 host = proxyHost,
                 port = proxyPort,
             ),
+        mudMobile = mudMobile,
+        characterCode = characterCode,
     )

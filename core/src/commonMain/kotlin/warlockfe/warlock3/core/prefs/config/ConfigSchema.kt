@@ -251,6 +251,8 @@ data class ClientConfig(
     val minCommandLength: Int? = null,
     @TomlComment("Maximum number of commands kept in the command history. Not exposed in the UI.")
     val historySize: Int? = null,
+    @TomlComment("MUD Mobile device token (wlk_…). Treat like a password; it can start billable sessions.")
+    val mudMobileToken: String? = null,
 )
 
 /**
@@ -282,4 +284,7 @@ data class ConnectionConfig(
     val proxyLaunchCommand: String? = null,
     val proxyHost: String? = null,
     val proxyPort: String? = null,
+    @TomlComment("Played through MUD Mobile's hosted Lich rather than directly to play.net.")
+    val mudMobile: Boolean = false,
+    val characterCode: String? = null,
 )
