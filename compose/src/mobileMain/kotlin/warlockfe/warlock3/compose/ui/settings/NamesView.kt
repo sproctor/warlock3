@@ -225,11 +225,6 @@ fun EditNameDialog(
                             Text("First letter of name is lowercase")
                         }
                     },
-//                    leadingIcon = {
-//                        if (hasLowercase) {
-//
-//                        }
-//                    }
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ColorTextField(

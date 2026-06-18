@@ -187,87 +187,87 @@ class SgeClientImpl(
 
     private fun parseServerResponse(line: String): SgeResponse =
         when (line[0]) {
-            'A' -> {
-                // response from login attempt
-                logger.d { "A line ($line)" }
-                logger.d {
-                    val bytes =
-                        line
-                            .toByteArray()
-                            .map { it.toInt().toString(radix = 16).padStart(2, '0') }
-                    "as bytes: $bytes"
-                }
-                val tokens = line.split('\t')
-                when {
-                    tokens.size < 3 -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
-                    tokens[2] == "PASSWORD" -> SgeResponse.SgeErrorResponse(SgeError.INVALID_PASSWORD)
-                    tokens[2] == "REJECT" -> SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_REJECTED)
-                    tokens[2] == "NORECORD" -> SgeResponse.SgeErrorResponse(SgeError.INVALID_ACCOUNT)
-                    tokens[1].equals(username, true) -> SgeResponse.SgeLoginSucceededResponse
-                    else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
-                }
-            }
+            'A' -> parseLoginResponse(line)
 
-            // response for request for games
-            'M' -> {
-                val games = ArrayList<SgeGame>()
-                // tab delineated list of games, dropping the M
-                val tokens = line.split("\t").drop(1)
-                for (i in 1 until tokens.size step 2) {
-                    val gameCode = tokens[i - 1]
-                    val gameName = tokens[i]
-                    games.add(SgeGame(gameName, gameCode, null))
-                }
-                SgeResponse.SgeGameListResponse(games)
-            }
+            'M' -> parseGameList(line)
 
             // We're ignoring the details. Some might be interesting if your account is deactivated
-            'G' -> {
-                SgeResponse.SgeGameDetailsResponse
-            }
+            'G' -> SgeResponse.SgeGameDetailsResponse
 
-            'C' -> {
-                val characters = ArrayList<SgeCharacter>()
-                val tokens = line.split("\t").drop(5)
-                for (i in 1 until tokens.size step 2) {
-                    characters.add(SgeCharacter(tokens[i], tokens[i - 1]))
-                }
-                SgeResponse.SgeCharacterListResponse(characters)
-            }
+            'C' -> parseCharacterList(line)
 
-            'L' -> {
-                // status\tproperties
-                val tokens = line.split("\t")
-                when (tokens[1]) {
-                    "OK" -> {
-                        val properties = mutableMapOf<String, String>()
-                        for (element in tokens.drop(2)) {
-                            val property = element.split("=")
-                            properties[property[0]] = property[1]
-                        }
-                        SgeResponse.SgeReadyToPlayResponse(properties)
-                    }
-
-                    "PROBLEM" -> {
-                        SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_EXPIRED)
-                    }
-
-                    else -> {
-                        SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
-                    }
-                }
-            }
+            'L' -> parseReadyToPlay(line)
 
             // The server replies with a bare "?" when it cannot parse the command we sent
             // (e.g. a malformed login). Surface it as an error instead of waiting for a timeout.
-            '?' -> {
-                SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+            '?' -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+
+            else -> SgeResponse.SgeUnrecognizedResponse
+        }
+
+    private fun parseLoginResponse(line: String): SgeResponse {
+        logger.d { "A line ($line)" }
+        logger.d {
+            val bytes =
+                line
+                    .toByteArray()
+                    .map { it.toInt().toString(radix = 16).padStart(2, '0') }
+            "as bytes: $bytes"
+        }
+        val tokens = line.split('\t')
+        return when {
+            tokens.size < 3 -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+            tokens[2] == "PASSWORD" -> SgeResponse.SgeErrorResponse(SgeError.INVALID_PASSWORD)
+            tokens[2] == "REJECT" -> SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_REJECTED)
+            tokens[2] == "NORECORD" -> SgeResponse.SgeErrorResponse(SgeError.INVALID_ACCOUNT)
+            tokens[1].equals(username, true) -> SgeResponse.SgeLoginSucceededResponse
+            else -> SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
+        }
+    }
+
+    private fun parseGameList(line: String): SgeResponse {
+        val games = ArrayList<SgeGame>()
+        // tab delineated list of games, dropping the M
+        val tokens = line.split("\t").drop(1)
+        for (i in 1 until tokens.size step 2) {
+            val gameCode = tokens[i - 1]
+            val gameName = tokens[i]
+            games.add(SgeGame(gameName, gameCode, null))
+        }
+        return SgeResponse.SgeGameListResponse(games)
+    }
+
+    private fun parseCharacterList(line: String): SgeResponse {
+        val characters = ArrayList<SgeCharacter>()
+        val tokens = line.split("\t").drop(5)
+        for (i in 1 until tokens.size step 2) {
+            characters.add(SgeCharacter(tokens[i], tokens[i - 1]))
+        }
+        return SgeResponse.SgeCharacterListResponse(characters)
+    }
+
+    private fun parseReadyToPlay(line: String): SgeResponse {
+        // status\tproperties
+        val tokens = line.split("\t")
+        return when (tokens[1]) {
+            "OK" -> {
+                val properties = mutableMapOf<String, String>()
+                for (element in tokens.drop(2)) {
+                    val property = element.split("=")
+                    properties[property[0]] = property[1]
+                }
+                SgeResponse.SgeReadyToPlayResponse(properties)
+            }
+
+            "PROBLEM" -> {
+                SgeResponse.SgeErrorResponse(SgeError.ACCOUNT_EXPIRED)
             }
 
             else -> {
-                SgeResponse.SgeUnrecognizedResponse
+                SgeResponse.SgeErrorResponse(SgeError.UNKNOWN_ERROR)
             }
         }
+    }
 
     private suspend fun readline(): String? {
         // TODO: should we implement readline for this?

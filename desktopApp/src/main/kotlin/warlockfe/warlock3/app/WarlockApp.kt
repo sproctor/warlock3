@@ -44,6 +44,23 @@ fun DecoratedWindowScope.WarlockApp(
     val characters by appContainer.characterRepository.observeAllCharacters().collectAsState(emptyList())
     val transfer = appContainer.settingsTransferUseCase
     val scope = rememberCoroutineScope()
+
+    // Run a settings export/import in the background, reporting its result message (the block returns
+    // the success/info message; any exception becomes "$errorPrefix: <message>").
+    fun runTransfer(
+        errorPrefix: String,
+        block: suspend () -> String,
+    ) {
+        scope.launch {
+            transferMessage =
+                try {
+                    block()
+                } catch (e: Exception) {
+                    "$errorPrefix: ${e.message}"
+                }
+        }
+    }
+
     var showAboutDialog by remember { mutableStateOf(false) }
     var sideBarVisible by remember { mutableStateOf(false) }
     val wraythFileLauncher =
@@ -80,30 +97,16 @@ fun DecoratedWindowScope.WarlockApp(
         showUpdateDialog = showUpdateDialog,
         showAboutDialog = { showAboutDialog = !showAboutDialog },
         exportSettings = { file ->
-            scope.launch {
-                transferMessage =
-                    try {
-                        file.writeText(transfer.exportAll())
-                        "Settings exported successfully"
-                    } catch (e: Exception) {
-                        "Failed to export settings: ${e.message}"
-                    }
+            runTransfer("Failed to export settings") {
+                file.writeText(transfer.exportAll())
+                "Settings exported successfully"
             }
         },
         exportCharacterSettings = { file ->
-            scope.launch {
-                val character = currentCharacter
-                transferMessage =
-                    if (character == null) {
-                        "No character selected to export"
-                    } else {
-                        try {
-                            file.writeText(transfer.exportCharacter(character.id))
-                            "Character exported successfully"
-                        } catch (e: Exception) {
-                            "Failed to export character: ${e.message}"
-                        }
-                    }
+            runTransfer("Failed to export character") {
+                val character = currentCharacter ?: return@runTransfer "No character selected to export"
+                file.writeText(transfer.exportCharacter(character.id))
+                "Character exported successfully"
             }
         },
         importSettings = { file ->
@@ -145,14 +148,9 @@ fun DecoratedWindowScope.WarlockApp(
                 onCancel = { pendingImport = null },
                 onImport = { targetCharacterId, mode ->
                     pendingImport = null
-                    scope.launch {
-                        transferMessage =
-                            try {
-                                transfer.importCharacter(import.character, targetCharacterId, mode)
-                                "Character imported successfully"
-                            } catch (e: Exception) {
-                                "Failed to import character: ${e.message}"
-                            }
+                    runTransfer("Failed to import character") {
+                        transfer.importCharacter(import.character, targetCharacterId, mode)
+                        "Character imported successfully"
                     }
                 },
             )
@@ -165,14 +163,9 @@ fun DecoratedWindowScope.WarlockApp(
                 onCancel = { pendingImport = null },
                 onImport = { resolutions ->
                     pendingImport = null
-                    scope.launch {
-                        transferMessage =
-                            try {
-                                transfer.importFull(import.export, resolutions)
-                                "Settings imported successfully"
-                            } catch (e: Exception) {
-                                "Failed to import settings: ${e.message}"
-                            }
+                    runTransfer("Failed to import settings") {
+                        transfer.importFull(import.export, resolutions)
+                        "Settings imported successfully"
                     }
                 },
             )

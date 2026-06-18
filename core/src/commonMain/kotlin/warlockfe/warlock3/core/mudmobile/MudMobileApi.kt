@@ -2,6 +2,7 @@ package warlockfe.warlock3.core.mudmobile
 
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -30,10 +31,10 @@ class MudMobileApi(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun getCharacters(token: String): CharactersResult =
-        runCatching {
+        request("getCharacters", networkError = { CharactersResult.Error(it) }) {
             val response =
                 httpClient.get("$baseUrl/api/characters") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                 }
             when (response.status.value) {
                 in 200..299 -> {
@@ -49,9 +50,6 @@ class MudMobileApi(
                     CharactersResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.e(e) { "getCharacters failed" }
-            CharactersResult.Error(e.message ?: "Network error")
         }
 
     /**
@@ -66,21 +64,21 @@ class MudMobileApi(
         characterCode: String,
         characterName: String,
     ): CreateCharacterResult =
-        runCatching {
-            val requestBody =
-                json.encodeToString(
-                    CreateCharacterRequest(
-                        account = account,
-                        game = game,
-                        characterCode = characterCode,
-                        characterName = characterName,
-                    ),
-                )
+        request("createCharacter", networkError = { CreateCharacterResult.Error(it) }) {
             val response =
                 httpClient.post("$baseUrl/api/characters") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                     contentType(ContentType.Application.Json)
-                    setBody(requestBody)
+                    setBody(
+                        json.encodeToString(
+                            CreateCharacterRequest(
+                                account = account,
+                                game = game,
+                                characterCode = characterCode,
+                                characterName = characterName,
+                            ),
+                        ),
+                    )
                 }
             when (response.status.value) {
                 in 200..299 -> {
@@ -96,9 +94,6 @@ class MudMobileApi(
                     CreateCharacterResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.e(e) { "createCharacter failed" }
-            CreateCharacterResult.Error(e.message ?: "Network error")
         }
 
     /** Remove a saved character. Returns true on a 2xx (or 404, already gone). */
@@ -106,15 +101,10 @@ class MudMobileApi(
         token: String,
         id: String,
     ): Boolean =
-        runCatching {
-            val response =
-                httpClient.delete("$baseUrl/api/characters/$id") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                }
-            response.status.value in 200..299 || response.status.value == 404
-        }.getOrElse { e ->
-            logger.d(e) { "deleteCharacter failed" }
-            false
+        request("deleteCharacter", logAtError = false, networkError = { false }) {
+            httpClient
+                .delete("$baseUrl/api/characters/$id") { bearer(token) }
+                .isSuccessOrGone()
         }
 
     suspend fun createSession(
@@ -125,22 +115,22 @@ class MudMobileApi(
         gameport: Int,
         keyHash: String,
     ): CreateSessionResult =
-        runCatching {
-            val requestBody =
-                json.encodeToString(
-                    CreateSessionRequest(
-                        game = game,
-                        character = character,
-                        gamehost = gamehost,
-                        gameport = gameport,
-                        keyHash = keyHash,
-                    ),
-                )
+        request("createSession", networkError = { CreateSessionResult.Error(it) }) {
             val response =
                 httpClient.post("$baseUrl/api/sessions") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                     contentType(ContentType.Application.Json)
-                    setBody(requestBody)
+                    setBody(
+                        json.encodeToString(
+                            CreateSessionRequest(
+                                game = game,
+                                character = character,
+                                gamehost = gamehost,
+                                gameport = gameport,
+                                keyHash = keyHash,
+                            ),
+                        ),
+                    )
                 }
             when (response.status.value) {
                 in 200..299 -> {
@@ -165,9 +155,6 @@ class MudMobileApi(
                     CreateSessionResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.e(e) { "createSession failed" }
-            CreateSessionResult.Error(e.message ?: "Network error")
         }
 
     /** Poll a session's status (informational; used to wait for readiness). */
@@ -175,10 +162,10 @@ class MudMobileApi(
         token: String,
         sessionId: String,
     ): SessionStatusResult =
-        runCatching {
+        request("getSession", logAtError = false, networkError = { SessionStatusResult.Error(it) }) {
             val response =
                 httpClient.get("$baseUrl/api/sessions/$sessionId") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                 }
             when (response.status.value) {
                 in 200..299 -> {
@@ -198,9 +185,6 @@ class MudMobileApi(
                     SessionStatusResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.d(e) { "getSession failed" }
-            SessionStatusResult.Error(e.message ?: "Network error")
         }
 
     /** Best-effort cleanup. Returns true on a 2xx. A 404 (already gone) is treated as success. */
@@ -208,25 +192,20 @@ class MudMobileApi(
         token: String,
         sessionId: String,
     ): Boolean =
-        runCatching {
-            val response =
-                httpClient.delete("$baseUrl/api/sessions/$sessionId") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
-                }
-            response.status.value in 200..299 || response.status.value == 404
-        }.getOrElse { e ->
-            logger.d(e) { "deleteSession failed" }
-            false
+        request("deleteSession", logAtError = false, networkError = { false }) {
+            httpClient
+                .delete("$baseUrl/api/sessions/$sessionId") { bearer(token) }
+                .isSuccessOrGone()
         }
 
     // --- Warlock settings sync (`/api/warlock/files`) -------------------------------------------
 
     /** List the user's stored settings files (path + content hash + modified time). */
     override suspend fun listWarlockFiles(token: String): ListWarlockFilesResult =
-        runCatching {
+        request("listWarlockFiles", networkError = { ListWarlockFilesResult.Error(it) }) {
             val response =
                 httpClient.get("$baseUrl/api/warlock/files") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                 }
             when (response.status.value) {
                 in 200..299 -> {
@@ -242,9 +221,6 @@ class MudMobileApi(
                     ListWarlockFilesResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.e(e) { "listWarlockFiles failed" }
-            ListWarlockFilesResult.Error(e.message ?: "Network error")
         }
 
     /** Read one settings file's content + hash. */
@@ -252,10 +228,10 @@ class MudMobileApi(
         token: String,
         path: String,
     ): ReadWarlockFileResult =
-        runCatching {
+        request("readWarlockFile", networkError = { ReadWarlockFileResult.Error(it) }) {
             val response =
                 httpClient.get("$baseUrl/api/warlock/files/file") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                     parameter("path", path)
                 }
             when (response.status.value) {
@@ -276,9 +252,6 @@ class MudMobileApi(
                     ReadWarlockFileResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.e(e) { "readWarlockFile failed" }
-            ReadWarlockFileResult.Error(e.message ?: "Network error")
         }
 
     /**
@@ -293,21 +266,21 @@ class MudMobileApi(
         baseHash: String?,
         overwrite: Boolean,
     ): WriteWarlockFileResult =
-        runCatching {
-            val requestBody =
-                json.encodeToString(
-                    WriteWarlockFileRequest(
-                        path = path,
-                        content = content,
-                        baseHash = baseHash,
-                        overwrite = overwrite,
-                    ),
-                )
+        request("writeWarlockFile", networkError = { WriteWarlockFileResult.Error(it) }) {
             val response =
                 httpClient.post("$baseUrl/api/warlock/files") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+                    bearer(token)
                     contentType(ContentType.Application.Json)
-                    setBody(requestBody)
+                    setBody(
+                        json.encodeToString(
+                            WriteWarlockFileRequest(
+                                path = path,
+                                content = content,
+                                baseHash = baseHash,
+                                overwrite = overwrite,
+                            ),
+                        ),
+                    )
                 }
             when (response.status.value) {
                 in 200..299 -> {
@@ -334,9 +307,6 @@ class MudMobileApi(
                     WriteWarlockFileResult.Error(errorMessage(response))
                 }
             }
-        }.getOrElse { e ->
-            logger.e(e) { "writeWarlockFile failed" }
-            WriteWarlockFileResult.Error(e.message ?: "Network error")
         }
 
     /** Delete one settings file. Returns true on a 2xx (or 404, already gone). */
@@ -344,17 +314,39 @@ class MudMobileApi(
         token: String,
         path: String,
     ): Boolean =
-        runCatching {
-            val response =
-                httpClient.delete("$baseUrl/api/warlock/files/file") {
-                    header(HttpHeaders.Authorization, "Bearer $token")
+        request("deleteWarlockFile", logAtError = false, networkError = { false }) {
+            httpClient
+                .delete("$baseUrl/api/warlock/files/file") {
+                    bearer(token)
                     parameter("path", path)
-                }
-            response.status.value in 200..299 || response.status.value == 404
-        }.getOrElse { e ->
-            logger.d(e) { "deleteWarlockFile failed" }
-            false
+                }.isSuccessOrGone()
         }
+
+    /**
+     * Run an API call, mapping any thrown exception to a network-error result of type [T]. Inline so
+     * the suspending [block] runs in the caller's coroutine. [logAtError] picks the log level (the
+     * informational best-effort calls log at debug).
+     */
+    private inline fun <T> request(
+        logLabel: String,
+        logAtError: Boolean = true,
+        networkError: (message: String) -> T,
+        block: () -> T,
+    ): T =
+        runCatching { block() }.getOrElse { e ->
+            if (logAtError) {
+                logger.e(e) { "$logLabel failed" }
+            } else {
+                logger.d(e) { "$logLabel failed" }
+            }
+            networkError(e.message ?: "Network error")
+        }
+
+    private fun HttpRequestBuilder.bearer(token: String) {
+        header(HttpHeaders.Authorization, "Bearer $token")
+    }
+
+    private fun HttpResponse.isSuccessOrGone(): Boolean = status.value in 200..299 || status.value == 404
 
     private suspend fun parseError(response: HttpResponse): MudMobileErrorBody? =
         runCatching { json.decodeFromString<MudMobileErrorBody>(response.bodyAsText()) }.getOrNull()

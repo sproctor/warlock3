@@ -275,20 +275,14 @@ class WslContext(
     }
 
     suspend fun goto(label: String) {
-        var index =
-            lines.indexOfFirst { line ->
-                line.labels.any { it.equals(other = label, ignoreCase = true) }
-            }
-        if (index == -1) {
-            index =
-                lines.indexOfFirst { line ->
-                    line.labels.any { it.equals(other = "labelError", ignoreCase = true) }
-                }
+        var index = findLabel(label)
+        if (index != -1) {
+            log(ScriptLoggingLevel.DEBUG, "goto \"$label\" line $index")
+        } else {
+            index = findLabel("labelError")
             if (index != -1) {
                 log(ScriptLoggingLevel.DEBUG, "goto \"labelError\" line $index")
             }
-        } else {
-            log(ScriptLoggingLevel.DEBUG, "goto \"$label\" line $index")
         }
         if (index == -1) {
             throw WslRuntimeException("Could not find label \"$label\".")
@@ -296,14 +290,16 @@ class WslContext(
         currentFrame.goto(index)
     }
 
+    private fun findLabel(label: String): Int =
+        lines.indexOfFirst { line ->
+            line.labels.any { it.equals(other = label, ignoreCase = true) }
+        }
+
     fun gosub(
         label: String,
         args: String,
     ) {
-        val lineIndex =
-            lines.indexOfFirst { line ->
-                line.labels.any { it.equals(other = label, ignoreCase = true) }
-            }
+        val lineIndex = findLabel(label)
         if (lineIndex == -1) {
             throw WslRuntimeException("Could not find label \"$label\".")
         }
