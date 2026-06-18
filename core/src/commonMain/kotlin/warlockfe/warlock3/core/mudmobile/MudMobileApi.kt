@@ -5,6 +5,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
@@ -24,7 +25,7 @@ import kotlinx.serialization.json.Json
 class MudMobileApi(
     private val httpClient: HttpClient,
     private val baseUrl: String = DEFAULT_BASE_URL,
-) {
+) : WarlockFilesApi {
     private val logger = Logger.withTag("MudMobileApi")
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -215,6 +216,143 @@ class MudMobileApi(
             response.status.value in 200..299 || response.status.value == 404
         }.getOrElse { e ->
             logger.d(e) { "deleteSession failed" }
+            false
+        }
+
+    // --- Warlock settings sync (`/api/warlock/files`) -------------------------------------------
+
+    /** List the user's stored settings files (path + content hash + modified time). */
+    override suspend fun listWarlockFiles(token: String): ListWarlockFilesResult =
+        runCatching {
+            val response =
+                httpClient.get("$baseUrl/api/warlock/files") {
+                    header(HttpHeaders.Authorization, "Bearer $token")
+                }
+            when (response.status.value) {
+                in 200..299 -> {
+                    val body = json.decodeFromString<WarlockFilesResponse>(response.bodyAsText())
+                    ListWarlockFilesResult.Success(body.files)
+                }
+
+                401 -> {
+                    ListWarlockFilesResult.Unauthorized
+                }
+
+                else -> {
+                    ListWarlockFilesResult.Error(errorMessage(response))
+                }
+            }
+        }.getOrElse { e ->
+            logger.e(e) { "listWarlockFiles failed" }
+            ListWarlockFilesResult.Error(e.message ?: "Network error")
+        }
+
+    /** Read one settings file's content + hash. */
+    override suspend fun readWarlockFile(
+        token: String,
+        path: String,
+    ): ReadWarlockFileResult =
+        runCatching {
+            val response =
+                httpClient.get("$baseUrl/api/warlock/files/file") {
+                    header(HttpHeaders.Authorization, "Bearer $token")
+                    parameter("path", path)
+                }
+            when (response.status.value) {
+                in 200..299 -> {
+                    val body = json.decodeFromString<WarlockFileBody>(response.bodyAsText())
+                    ReadWarlockFileResult.Success(body.content, body.hash, body.modified)
+                }
+
+                401 -> {
+                    ReadWarlockFileResult.Unauthorized
+                }
+
+                404 -> {
+                    ReadWarlockFileResult.NotFound
+                }
+
+                else -> {
+                    ReadWarlockFileResult.Error(errorMessage(response))
+                }
+            }
+        }.getOrElse { e ->
+            logger.e(e) { "readWarlockFile failed" }
+            ReadWarlockFileResult.Error(e.message ?: "Network error")
+        }
+
+    /**
+     * Compare-and-swap write of one settings file. [baseHash] = the hash you last saw (null =
+     * create-only). [overwrite] = force, ignoring [baseHash]. A `409` returns [WriteWarlockFileResult.Conflict]
+     * with the current remote hash so the caller can diff/resolve.
+     */
+    override suspend fun writeWarlockFile(
+        token: String,
+        path: String,
+        content: String,
+        baseHash: String?,
+        overwrite: Boolean,
+    ): WriteWarlockFileResult =
+        runCatching {
+            val requestBody =
+                json.encodeToString(
+                    WriteWarlockFileRequest(
+                        path = path,
+                        content = content,
+                        baseHash = baseHash,
+                        overwrite = overwrite,
+                    ),
+                )
+            val response =
+                httpClient.post("$baseUrl/api/warlock/files") {
+                    header(HttpHeaders.Authorization, "Bearer $token")
+                    contentType(ContentType.Application.Json)
+                    setBody(requestBody)
+                }
+            when (response.status.value) {
+                in 200..299 -> {
+                    val body = json.decodeFromString<WriteWarlockFileResponse>(response.bodyAsText())
+                    val hash = body.hash
+                    if (hash != null) {
+                        WriteWarlockFileResult.Success(hash, body.modified)
+                    } else {
+                        WriteWarlockFileResult.Error("Write succeeded but no hash was returned")
+                    }
+                }
+
+                401 -> {
+                    WriteWarlockFileResult.Unauthorized
+                }
+
+                409 -> {
+                    val body =
+                        runCatching { json.decodeFromString<WarlockFileConflictBody>(response.bodyAsText()) }.getOrNull()
+                    WriteWarlockFileResult.Conflict(body?.currentHash, body?.modified)
+                }
+
+                else -> {
+                    WriteWarlockFileResult.Error(errorMessage(response))
+                }
+            }
+        }.getOrElse { e ->
+            logger.e(e) { "writeWarlockFile failed" }
+            WriteWarlockFileResult.Error(e.message ?: "Network error")
+        }
+
+    /** Delete one settings file. Returns true on a 2xx (or 404, already gone). */
+    override suspend fun deleteWarlockFile(
+        token: String,
+        path: String,
+    ): Boolean =
+        runCatching {
+            val response =
+                httpClient.delete("$baseUrl/api/warlock/files/file") {
+                    header(HttpHeaders.Authorization, "Bearer $token")
+                    parameter("path", path)
+                }
+            response.status.value in 200..299 || response.status.value == 404
+        }.getOrElse { e ->
+            logger.d(e) { "deleteWarlockFile failed" }
             false
         }
 

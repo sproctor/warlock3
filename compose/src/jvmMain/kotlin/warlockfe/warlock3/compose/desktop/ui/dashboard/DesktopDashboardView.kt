@@ -58,6 +58,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopConfirmationDialog
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModel
+import warlockfe.warlock3.core.mudmobile.SyncStatus
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.StoredConnection
 
@@ -219,6 +220,14 @@ private fun MudMobileRailBlock(
                 enabled = !viewModel.mudMobileBusy,
                 modifier = Modifier.fillMaxWidth(),
             )
+            val syncState by viewModel.syncState.collectAsState()
+            WarlockOutlinedButton(
+                onClick = { viewModel.syncSettings() },
+                text = if (syncState.status == SyncStatus.Syncing) "Syncing settings…" else "Sync settings",
+                enabled = syncState.status != SyncStatus.Syncing,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            syncState.message?.let { Text(it) }
             WarlockOutlinedButton(
                 onClick = { viewModel.disconnectMudMobile() },
                 text = "Disconnect MUD Mobile",
@@ -258,6 +267,10 @@ private fun MudMobileMenu(
                 dismiss()
                 viewModel.refreshMudMobileCharacters()
             }) { Text("Refresh") }
+            selectableItem(selected = false, onClick = {
+                dismiss()
+                viewModel.syncSettings()
+            }) { Text("Sync settings") }
             selectableItem(selected = false, onClick = {
                 dismiss()
                 viewModel.disconnectMudMobile()
@@ -517,6 +530,15 @@ private fun DashboardDialogs(
     viewModel: DashboardViewModel,
     ui: DashboardUiState,
 ) {
+    val syncState by viewModel.syncState.collectAsState()
+    if (syncState.conflicts.isNotEmpty()) {
+        DesktopSettingsSyncConflictDialog(
+            conflicts = syncState.conflicts,
+            onResolve = { path, resolution -> viewModel.resolveSyncConflict(path, resolution) },
+            onDismiss = { viewModel.deferSyncConflicts() },
+        )
+    }
+
     if (ui.showTokenDialog) {
         MudMobileTokenDialog(
             viewModel = viewModel,
