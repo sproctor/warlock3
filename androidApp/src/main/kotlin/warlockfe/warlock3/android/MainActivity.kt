@@ -11,13 +11,11 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.platformLogWriter
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.init
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import warlockfe.warlock3.compose.WarlockApp
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.compose.util.SkinLoader
 import warlockfe.warlock3.core.sge.SgeSettings
 import java.io.File
 
@@ -36,22 +34,9 @@ class MainActivity : ComponentActivity() {
         val warlockApplication = application as WarlockApplication
         val appContainer = warlockApplication.appContainer
 
-        appContainer.clientSettings
-            .observeSkinFile()
-            .onEach { skinFile ->
-                val bytes =
-                    skinFile
-                        ?.let { File(it) }
-                        ?.takeIf { it.exists() }
-                        ?.readBytes()
-                        ?: Res.readBytes("files/skin.zip")
-                try {
-                    appContainer.skin.value = SkinLoader.parse(bytes)
-                } catch (e: Exception) {
-                    // TODO: notify user of error
-                    logger.e(e) { "Failed to load skin file" }
-                }
-            }.launchIn(appContainer.externalScope)
+        appContainer.observeSkin(logger) { path ->
+            File(path).takeIf { it.exists() }?.readBytes()
+        }
 
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 

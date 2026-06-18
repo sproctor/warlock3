@@ -2,13 +2,8 @@ package warlockfe.warlock3.compose.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -17,10 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
@@ -114,22 +107,11 @@ fun WindowSettingsDialog(
                     Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
                 }
                 if (nameFilterOption) {
-                    Row(
-                        modifier =
-                            Modifier.toggleable(
-                                value = nameFilter,
-                                onValueChange = { saveNameFilter(it) },
-                                role = Role.Checkbox,
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = nameFilter,
-                            onCheckedChange = null,
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Text(text = "Only show lines with names in list")
-                    }
+                    CheckboxRow(
+                        checked = nameFilter,
+                        onCheckedChange = { saveNameFilter(it) },
+                        text = "Only show lines with names in list",
+                    )
                 }
                 Button(onClick = {
                     saveStyle(StyleDefinition())

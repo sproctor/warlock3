@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +52,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import sh.calvin.reorderable.ReorderableColumn
+import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -388,49 +387,22 @@ fun EditHighlightDialog(
                 }
                 if (!isRegex) {
                     val style = styles[0]
-                    Row(
-                        Modifier.toggleable(
-                            value = style.entireLine,
-                            onValueChange = { styles[0] = style.copy(entireLine = it) },
-                            role = Role.Checkbox,
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = style.entireLine,
-                            onCheckedChange = null,
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Text(text = "Highlight entire line")
-                    }
-                    Row(
-                        Modifier.toggleable(
-                            value = matchPartialWord,
-                            onValueChange = { matchPartialWord = it },
-                            role = Role.Checkbox,
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = matchPartialWord,
-                            onCheckedChange = null,
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Text(text = "Match partial words")
-                    }
+                    CheckboxRow(
+                        checked = style.entireLine,
+                        onCheckedChange = { styles[0] = style.copy(entireLine = it) },
+                        text = "Highlight entire line",
+                    )
+                    CheckboxRow(
+                        checked = matchPartialWord,
+                        onCheckedChange = { matchPartialWord = it },
+                        text = "Match partial words",
+                    )
                 }
-                Row(
-                    Modifier.toggleable(
-                        value = ignoreCase,
-                        onValueChange = { ignoreCase = it },
-                        role = Role.Checkbox,
-                    ),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked = ignoreCase, onCheckedChange = null)
-                    Spacer(Modifier.width(16.dp))
-                    Text(text = "Ignore case")
-                }
+                CheckboxRow(
+                    checked = ignoreCase,
+                    onCheckedChange = { ignoreCase = it },
+                    text = "Ignore case",
+                )
                 val soundLauncher =
                     rememberFilePickerLauncher { file ->
                         if (file != null) {
