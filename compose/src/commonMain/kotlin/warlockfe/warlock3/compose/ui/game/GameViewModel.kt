@@ -25,6 +25,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +49,7 @@ import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
+import warlockfe.warlock3.compose.ui.window.WindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
@@ -66,7 +68,6 @@ import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.macro.parseMacro
-import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -153,34 +154,24 @@ class GameViewModel(
         }
 
     val windowSettings =
-        client.characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    windowSettingsRepository.observeWindowSettings(characterId)
-                } else {
-                    flow {}
-                }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Lazily,
-                initialValue = emptyList(),
-            )
+        observePerCharacter { characterId ->
+            windowSettingsRepository.observeWindowSettings(characterId)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = emptyList(),
+        )
 
     val progressBarSettings =
-        client.characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    progressBarSettingRepository
-                        .observeByCharacter(characterId)
-                        .map { settings -> settings.associateBy { it.id } }
-                } else {
-                    flow<Map<String, ProgressBarSettingEntity>> {}
-                }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Lazily,
-                initialValue = emptyMap(),
-            )
+        observePerCharacter { characterId ->
+            progressBarSettingRepository
+                .observeByCharacter(characterId)
+                .map { settings -> settings.associateBy { it.id } }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = emptyMap(),
+        )
 
     val openWindows =
         windowSettings.map { currentWindowSettings ->
@@ -192,64 +183,23 @@ class GameViewModel(
     val windows = client.windowInfo
 
     val scriptCommandPrefix =
-        client.characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    characterSettingsRepository
-                        .observe(characterId = characterId, key = SCRIPT_COMMAND_PREFIX_KEY)
-                        .map { it ?: "." }
-                } else {
-                    flow {}
-                }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = ".",
-            )
+        observePerCharacter { characterId ->
+            characterSettingsRepository
+                .observe(characterId = characterId, key = SCRIPT_COMMAND_PREFIX_KEY)
+                .map { it ?: "." }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = ".",
+        )
 
-    val topHeight =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                characterSettingsRepository
-                    .observe(characterId = characterId, "topHeight")
-                    .map { it?.toIntOrNull() ?: 200 }
-            } else {
-                flow { }
-            }
-        }
+    val topHeight = observeCharacterInt("topHeight")
 
-    val bottomHeight =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                characterSettingsRepository
-                    .observe(characterId = characterId, "bottomHeight")
-                    .map { it?.toIntOrNull() ?: 200 }
-            } else {
-                flow { }
-            }
-        }
+    val bottomHeight = observeCharacterInt("bottomHeight")
 
-    val leftWidth =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                characterSettingsRepository
-                    .observe(characterId = characterId, "leftWidth")
-                    .map { it?.toIntOrNull() ?: 200 }
-            } else {
-                flow { }
-            }
-        }
+    val leftWidth = observeCharacterInt("leftWidth")
 
-    val rightWidth =
-        client.characterId.flatMapLatest { characterId ->
-            if (characterId != null) {
-                characterSettingsRepository
-                    .observe(characterId = characterId, "rightWidth")
-                    .map { it?.toIntOrNull() ?: 200 }
-            } else {
-                flow { }
-            }
-        }
+    val rightWidth = observeCharacterInt("rightWidth")
 
     private val macros =
         client.characterId
@@ -268,34 +218,24 @@ class GameViewModel(
             )
 
     private val variables: StateFlow<Map<String, String>> =
-        client.characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    variableRepository.observeCharacterVariables(characterId).map { list ->
-                        list.associate { it.name to it.value }
-                    }
-                } else {
-                    flow<Map<String, String>> { }
-                }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyMap(),
-            )
+        observePerCharacter { characterId ->
+            variableRepository.observeCharacterVariables(characterId).map { list ->
+                list.associate { it.name to it.value }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyMap(),
+        )
 
     private val aliases: StateFlow<List<Alias>> =
-        client.characterId
-            .flatMapLatest { characterId ->
-                if (characterId != null) {
-                    aliasRepository.observeForCharacter(characterId)
-                } else {
-                    flow { }
-                }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyList(),
-            )
+        observePerCharacter { characterId ->
+            aliasRepository.observeForCharacter(characterId)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList(),
+        )
 
     val presets = windowRegistry.presets
 
@@ -364,6 +304,35 @@ class GameViewModel(
 
     val menuData = client.menuData
 
+    /**
+     * Observe a per-character flow, switching whenever the connected character changes and emitting
+     * nothing until a character is connected. Backs the many per-character settings flows above.
+     */
+    private fun <T> observePerCharacter(block: (characterId: String) -> Flow<T>): Flow<T> =
+        client.characterId.flatMapLatest { characterId ->
+            if (characterId != null) block(characterId) else flow {}
+        }
+
+    /** Observe a per-character integer setting stored as a string, falling back to [default]. */
+    private fun observeCharacterInt(
+        key: String,
+        default: Int = 200,
+    ): Flow<Int> =
+        observePerCharacter { characterId ->
+            characterSettingsRepository.observe(characterId = characterId, key = key).map { it?.toIntOrNull() ?: default }
+        }
+
+    /** Build the [WindowData] for a window of the given [windowType], or null if it carries none. */
+    private fun createWindowData(
+        windowType: WindowType?,
+        name: String,
+    ): WindowData? =
+        when (windowType) {
+            WindowType.STREAM -> StreamWindowData(windowRegistry.getOrCreateStream(name) as ComposeTextStream)
+            WindowType.DIALOG -> DialogWindowData(windowRegistry.getOrCreateDialog(name) as ComposeDialogState)
+            else -> null
+        }
+
     init {
         clientSettingRepository
             .observeMinCommandLength()
@@ -405,22 +374,7 @@ class GameViewModel(
                                 width = entity.width,
                                 height = entity.height,
                                 nameFilter = entity.nameFilter,
-                                data =
-                                    when (window?.windowType) {
-                                        WindowType.STREAM -> {
-                                            StreamWindowData(
-                                                windowRegistry.getOrCreateStream(window.name) as ComposeTextStream,
-                                            )
-                                        }
-
-                                        WindowType.DIALOG -> {
-                                            DialogWindowData(windowRegistry.getOrCreateDialog(window.name) as ComposeDialogState)
-                                        }
-
-                                        else -> {
-                                            null
-                                        }
-                                    },
+                                data = createWindowData(window?.windowType, entity.name),
                             )
                         (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
                         when (entity.location) {
@@ -496,24 +450,7 @@ class GameViewModel(
                                                 val mutableStates = states.toMutableList()
                                                 mutableStates[index] =
                                                     uiState.copy(
-                                                        data =
-                                                            when (event.info.windowType) {
-                                                                WindowType.STREAM -> {
-                                                                    StreamWindowData(
-                                                                        windowRegistry.getOrCreateStream(
-                                                                            event.info.name,
-                                                                        ) as ComposeTextStream,
-                                                                    )
-                                                                }
-
-                                                                WindowType.DIALOG -> {
-                                                                    DialogWindowData(
-                                                                        windowRegistry.getOrCreateDialog(
-                                                                            event.info.name,
-                                                                        ) as ComposeDialogState,
-                                                                    )
-                                                                }
-                                                            },
+                                                        data = createWindowData(event.info.windowType, event.info.name),
                                                     )
                                                 (mutableStates[index].data as? StreamWindowData)
                                                     ?.stream
@@ -953,24 +890,7 @@ class GameViewModel(
                         width = null,
                         height = null,
                         nameFilter = entity?.nameFilter ?: false,
-                        data =
-                            when (windowInfo?.windowType) {
-                                WindowType.STREAM -> {
-                                    StreamWindowData(
-                                        stream = windowRegistry.getOrCreateStream(name) as ComposeTextStream,
-                                    )
-                                }
-
-                                WindowType.DIALOG -> {
-                                    DialogWindowData(
-                                        dialogData = windowRegistry.getOrCreateDialog(name) as ComposeDialogState,
-                                    )
-                                }
-
-                                else -> {
-                                    null
-                                }
-                            },
+                        data = createWindowData(windowInfo?.windowType, name),
                     )
                 states + newState
             }

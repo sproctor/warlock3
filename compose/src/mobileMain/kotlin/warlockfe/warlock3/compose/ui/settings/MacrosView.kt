@@ -55,16 +55,13 @@ fun MacrosView(
     var confirmReset by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier) {
-        SettingsCharacterSelector(
-            selectedCharacter = currentCharacter,
-            characters = characters,
-            onSelect = { currentCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(text = "Macros", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Macros",
+        selectedCharacter = currentCharacter,
+        characters = characters,
+        onSelectCharacter = { currentCharacter = it },
+        modifier = modifier,
+    ) {
         ScrollableColumn(
             Modifier
                 .fillMaxWidth()

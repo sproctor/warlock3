@@ -62,15 +62,14 @@ fun VariablesView(
         .observeCharacterVariables(characterId)
         .collectAsState(emptyList())
 
-    Column(modifier.fillMaxSize()) {
-        SettingsCharacterSelector(
-            selectedCharacter = currentCharacter,
-            characters = characters,
-            onSelect = { currentCharacterState.value = it },
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(text = "Variables", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Variables",
+        selectedCharacter = currentCharacter,
+        characters = characters,
+        onSelectCharacter = { currentCharacterState.value = it },
+        modifier = modifier.fillMaxSize(),
+        allowGlobal = false,
+    ) {
         ScrollableColumn(Modifier.weight(1f)) {
             variables.forEach { variable ->
                 ListItem(

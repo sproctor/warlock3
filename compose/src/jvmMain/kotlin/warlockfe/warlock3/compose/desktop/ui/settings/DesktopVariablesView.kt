@@ -53,15 +53,14 @@ fun DesktopVariablesView(
         .observeCharacterVariables(characterId)
         .collectAsState(emptyList())
 
-    Column(modifier.fillMaxSize()) {
-        DesktopSettingsCharacterSelector(
-            selectedCharacter = currentCharacter,
-            characters = characters,
-            onSelect = { currentCharacterState.value = it },
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Variables")
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Variables",
+        selectedCharacter = currentCharacter,
+        characters = characters,
+        onSelectCharacter = { currentCharacterState.value = it },
+        modifier = modifier.fillMaxSize(),
+        allowGlobal = false,
+    ) {
         WarlockScrollableColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
             variables.forEach { variable ->
                 WarlockListItem(

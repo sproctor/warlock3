@@ -91,16 +91,13 @@ fun HighlightsView(
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        SettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(text = "Highlights", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Highlights",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         ScrollableColumn(
             Modifier.fillMaxWidth().weight(1f),
         ) {

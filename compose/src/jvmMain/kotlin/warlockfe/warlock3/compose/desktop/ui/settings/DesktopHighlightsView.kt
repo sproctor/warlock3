@@ -74,16 +74,13 @@ fun DesktopHighlightsView(
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     val scope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        DesktopSettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Highlights")
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Highlights",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             ReorderableColumn(
                 list = highlights,

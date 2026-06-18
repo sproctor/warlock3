@@ -72,16 +72,13 @@ fun NamesView(
     var editingName by remember { mutableStateOf<NameEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        SettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(text = "Names", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Names",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         ScrollableColumn(
             Modifier.fillMaxWidth().weight(1f),
         ) {
