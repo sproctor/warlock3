@@ -49,16 +49,13 @@ fun DesktopAliasView(
     var editingAlias by remember { mutableStateOf<AliasEntity?>(null) }
     val scope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        DesktopSettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Aliases")
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Aliases",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             aliases.forEach { alias ->
                 WarlockListItem(

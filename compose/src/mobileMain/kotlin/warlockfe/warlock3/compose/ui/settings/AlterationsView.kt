@@ -60,16 +60,13 @@ fun AlterationsView(
     var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        SettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(text = "Alterations", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Alterations",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         ScrollableColumn(
             Modifier.fillMaxWidth().weight(1f),
         ) {

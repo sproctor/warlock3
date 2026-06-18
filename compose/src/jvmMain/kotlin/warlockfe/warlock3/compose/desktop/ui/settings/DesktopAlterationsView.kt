@@ -50,16 +50,13 @@ fun DesktopAlterationsView(
     var editingAlteration by remember { mutableStateOf<AlterationEntity?>(null) }
     val scope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        DesktopSettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Alterations")
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Alterations",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             alterations.forEach { alteration ->
                 WarlockListItem(

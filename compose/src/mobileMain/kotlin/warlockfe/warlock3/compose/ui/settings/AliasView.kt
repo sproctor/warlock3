@@ -58,16 +58,13 @@ fun AliasView(
     var editingAlias by remember { mutableStateOf<AliasEntity?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        SettingsCharacterSelector(
-            selectedCharacter = selectedCharacter,
-            characters = allCharacters,
-            onSelect = { selectedCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(text = "Aliases", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Aliases",
+        selectedCharacter = selectedCharacter,
+        characters = allCharacters,
+        onSelectCharacter = { selectedCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         ScrollableColumn(Modifier.fillMaxWidth().weight(1f)) {
             aliases.forEach { alias ->
                 ListItem(

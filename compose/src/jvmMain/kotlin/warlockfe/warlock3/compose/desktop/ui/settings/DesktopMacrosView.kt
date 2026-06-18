@@ -46,16 +46,13 @@ fun DesktopMacrosView(
     var confirmReset by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Column(modifier.fillMaxSize()) {
-        DesktopSettingsCharacterSelector(
-            selectedCharacter = currentCharacter,
-            characters = characters,
-            onSelect = { currentCharacter = it },
-            allowGlobal = true,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Macros")
-        Spacer(Modifier.height(8.dp))
+    SettingsListScaffold(
+        title = "Macros",
+        selectedCharacter = currentCharacter,
+        characters = characters,
+        onSelectCharacter = { currentCharacter = it },
+        modifier = modifier.fillMaxSize(),
+    ) {
         WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
             macros.forEach { macro ->
                 WarlockListItem(
