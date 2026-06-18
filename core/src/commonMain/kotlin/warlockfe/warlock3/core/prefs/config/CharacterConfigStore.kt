@@ -187,6 +187,44 @@ class CharacterConfigStore(
         }
     }
 
+    /**
+     * Overwrite a single section file at [path] with [content] (raw TOML), serialized against in-app
+     * edits via the same in-memory write lock and cross-process file lock that [mutate] uses, then
+     * update the in-memory config to match. The bytes are written **verbatim** (not re-encoded), so a
+     * caller that tracks content hashes (e.g. settings sync) sees exactly what it wrote.
+     *
+     * Intended for writing a file pulled from an external source (settings sync) without racing a
+     * concurrent in-app save. [path] must be a known section file under `characters/`; returns false
+     * (writing nothing) for anything else, so the caller can fall back to its own write.
+     */
+    suspend fun writeSectionFile(
+        path: Path,
+        content: String,
+    ): Boolean {
+        val section = Section.entries.firstOrNull { it.fileName == path.name } ?: return false
+        val dir = path.parent ?: return false
+        val characterId = characterIdFromDir(dir)
+        writeMutex.withLock {
+            ensureDir(dir)
+            withFileLock(lockFileFor(characterId)) {
+                runCatching {
+                    val tmp = Path(dir, path.name + ".tmp")
+                    fileSystem.sink(tmp).buffered().use { it.writeString(content) }
+                    fileSystem.atomicMove(tmp, path)
+                    // Update in-memory state + comment template from exactly the bytes we wrote.
+                    val element = toml.parseToTomlTable(content)
+                    val current = state.value[characterId] ?: CharacterConfig(character = characterId)
+                    val updated = applySection(section, element, current).copy(character = characterId)
+                    templates.getOrPut(characterId) { mutableMapOf() }[section] = element
+                    state.value = state.value + (characterId to updated)
+                }.onFailure {
+                    Logger.e(it) { "Failed to write section file $path" }
+                }
+            }
+        }
+        return true
+    }
+
     // --- file layout ---
 
     private fun listCharacterDirs(): List<Path> {

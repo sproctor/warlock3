@@ -3,7 +3,7 @@
 **Audience:** the developer (human or Claude Code) working on the **Warlock** front-end client.
 **Goal:** let a Warlock user sign in to MUD Mobile, see the characters they've set up,
 pick one, log in with SGE, and have Warlock connect to MUD Mobile's hosted-Lich service
-instead of directly to play.net — with no manual `.sal` editing.
+instead of directly to play.net - with no manual `.sal` editing.
 
 > MUD Mobile (mudmobile.com) runs **Lich-5** on demand in the cloud. The user keeps using
 > their own client (Warlock); we boot a per-session cloud machine running Lich, bridge the
@@ -12,14 +12,14 @@ instead of directly to play.net — with no manual `.sal` editing.
 
 ---
 
-## 0. TL;DR — what Warlock has to do
+## 0. TL;DR - what Warlock has to do
 
 ```
 1. User pastes a MUD Mobile device token (wlk_…) into Warlock once.            [setup]
 2. GET  https://mudmobile.com/api/characters         (Bearer wlk_…)            → character list
 3. User picks a character; Warlock prompts for that play.net account password.
 4. Warlock runs its NORMAL SGE/EAccess login to eaccess.play.net               → {gamehost, gameport, key}
-   (locally — the password and key NEVER go to MUD Mobile).
+   (locally - the password and key NEVER go to MUD Mobile).
 5. keyHash = sha256_hex(key)
 6. POST https://mudmobile.com/api/sessions           (Bearer wlk_…)            → {sessionId, connect:{host,port,tls}}
    body: {game, character, gamehost, gameport, keyHash}
@@ -105,7 +105,7 @@ Common error envelope: `{ "error": "<code>", "detail"?: <string|object> }`.
 | 400 `invalid_body` | Request failed validation (`detail` = field errors) | Bug in Warlock; log it |
 | 502 `machine_create_failed` | Cloud boot failed | Show a transient error, allow retry |
 
-### 4.1 `GET /api/characters` — list the user's saved characters
+### 4.1 `GET /api/characters` - list the user's saved characters
 
 > **STATUS: live** at `https://mudmobile.com/api/characters`.
 
@@ -121,7 +121,7 @@ works from the browser; Warlock uses the Bearer token).
       "account": "myaccount",
       "game": "DR",
       "characterCode": "C001234567",
-      "characterName": "Tannod",
+      "characterName": "Yourcharacter",
       "lastUsedAt": "2026-06-15T18:04:11.000Z"
     }
   ]
@@ -132,13 +132,13 @@ works from the browser; Warlock uses the Bearer token).
   one account; group them in the UI and ask for the password once per account.
 - `game` is the EAccess game code (see glossary). `characterCode` is what SGE's launch step
   needs. `characterName` is for display.
-- An empty list (`{"characters": []}`) means the user hasn't set up any characters yet —
+- An empty list (`{"characters": []}`) means the user hasn't set up any characters yet -
   Warlock should point them to the **Play** tab on mudmobile.com (or let them type an account
   name + password and discover characters via SGE directly; see §5, note).
 
 **Errors:** `401`.
 
-### 4.1b `POST /api/characters` — register a newly discovered character
+### 4.1b `POST /api/characters` - register a newly discovered character
 
 > **STATUS: live** at `https://mudmobile.com/api/characters`.
 
@@ -147,17 +147,17 @@ Use this to add a character to the user's MUD Mobile picker after Warlock discov
 user with an empty `GET /api/characters` populates their list from Warlock instead of having
 to visit the dashboard. It is an **idempotent upsert** keyed on
 `(user, account, game, characterCode)`, so calling it again just refreshes the name /
-last-used time — safe to call on every successful SGE launch.
+last-used time - safe to call on every successful SGE launch.
 
 **Auth:** `Bearer wlk_…` (or dashboard cookie).
 
-**Request body** (no secrets — never send the password or game key):
+**Request body** (no secrets - never send the password or game key):
 ```json
 {
   "account": "myaccount",
   "game": "DR",
   "characterCode": "C001234567",
-  "characterName": "Tannod"
+  "characterName": "Yourcharacter"
 }
 ```
 Field rules: all four are non-empty strings (`account`/`characterCode`/`characterName` ≤ 64
@@ -172,7 +172,7 @@ EAccess character list; `game` is the game code you logged in with.
     "account": "myaccount",
     "game": "DR",
     "characterCode": "C001234567",
-    "characterName": "Tannod",
+    "characterName": "Yourcharacter",
     "lastUsedAt": "2026-06-17T18:04:11.000Z"
   }
 }
@@ -185,14 +185,14 @@ EAccess character list; `game` is the game code you logged in with.
 > `POST /api/characters`. Then the connect path (§4.2 onward) and future sessions see them in
 > `GET /api/characters`.
 
-### 4.1c `DELETE /api/characters/{id}` — remove a saved character
+### 4.1c `DELETE /api/characters/{id}` - remove a saved character
 
 **Auth:** `Bearer wlk_…` (or dashboard cookie). `{id}` is the `id` from a `GET`/`POST` result.
 
 **Response 200:** `{ "ok": true }`. **Errors:** `401`, `404 not_found` (unknown id or not the
 caller's profile).
 
-### 4.2 `POST /api/sessions` — boot a hosted Lich session
+### 4.2 `POST /api/sessions` - boot a hosted Lich session
 
 Call this **after** Warlock has done SGE and has the real `{gamehost, gameport, key}`.
 
@@ -202,20 +202,20 @@ Call this **after** Warlock has done SGE and has the real `{gamehost, gameport, 
 ```json
 {
   "game": "DR",
-  "character": "Tannod",
+  "character": "Yourcharacter",
   "gamehost": "dr.simutronics.net",
   "gameport": 11024,
   "keyHash": "3f2a…(64 lowercase hex)…"
 }
 ```
 Field rules (server-enforced):
-- `game` — non-empty string. Pass the game code from the character profile.
-- `character` — non-empty string. The character name (used for display + collision cleanup).
-- `gamehost` — **must** be a `*.play.net` or `*.simutronics.net` host (anti-SSRF allowlist).
+- `game` - non-empty string. Pass the game code from the character profile.
+- `character` - non-empty string. The character name (used for display + collision cleanup).
+- `gamehost` - **must** be a `*.play.net` or `*.simutronics.net` host (anti-SSRF allowlist).
   Use the `gamehost` value SGE returned verbatim. (GemStone → `*.play.net`,
   DragonRealms → `*.simutronics.net`.)
-- `gameport` — positive integer; the `gameport` SGE returned.
-- `keyHash` — `sha256(key)` as 64 lowercase hex chars. **Not** the key.
+- `gameport` - positive integer; the `gameport` SGE returned.
+- `keyHash` - `sha256(key)` as 64 lowercase hex chars. **Not** the key.
 
 **Response 200:**
 ```json
@@ -224,9 +224,9 @@ Field rules (server-enforced):
   "connect": { "host": "play.mudmobile.com", "port": 443, "tls": true }
 }
 ```
-- A 200 means the session row is already **active and routable** — the cloud machine has
+- A 200 means the session row is already **active and routable** - the cloud machine has
   been created (it's still cold-booting, but the router holds your connection through that;
-  see §6). **Do not poll for "ready" before connecting** — connect right away.
+  see §6). **Do not poll for "ready" before connecting** - connect right away.
 - Always use the returned `connect.host` / `connect.port` / `connect.tls`; don't hardcode
   them (they can change). They will currently be `play.mudmobile.com` / `443` / `true`.
 
@@ -236,7 +236,7 @@ Field rules (server-enforced):
 live session for that same character or key on the account. So a "reconnect" is just calling
 `POST /api/sessions` again.
 
-### 4.3 `GET /api/sessions/{sessionId}` — poll session status (optional)
+### 4.3 `GET /api/sessions/{sessionId}` - poll session status (optional)
 
 **Auth:** `Bearer wlk_…`
 
@@ -249,18 +249,18 @@ live session for that same character or key on the account. So a "reconnect" is 
   "ready": true,
   "readyAt": "2026-06-15T18:04:40.000Z",
   "game": "DR",
-  "character": "Tannod",
+  "character": "Yourcharacter",
   "createdAt": "2026-06-15T18:04:05.000Z"
 }
 ```
-- Purely informational (nice for a status spinner). **Not required** for connecting —
+- Purely informational (nice for a status spinner). **Not required** for connecting -
   routing depends only on the session being `active`, which it is by the time `POST` returns.
 - `ready`/`readyAt` reflect the runner's readiness callback and may lag or never arrive in
   some environments; don't gate connecting on it.
 
 **Errors:** `401`, `404 not_found`.
 
-### 4.4 `DELETE /api/sessions/{sessionId}` — end a session (optional but recommended)
+### 4.4 `DELETE /api/sessions/{sessionId}` - end a session (optional but recommended)
 
 **Auth:** `Bearer wlk_…`
 
@@ -268,25 +268,99 @@ live session for that same character or key on the account. So a "reconnect" is 
 
 **Errors:** `401`, `404 not_found`.
 
-The machine also self-destructs on disconnect/idle, so this is a courtesy/cleanup call —
+The machine also self-destructs on disconnect/idle, so this is a courtesy/cleanup call -
 but calling it on user-initiated disconnect frees the concurrency slot immediately (relevant
 for users at their limit who want to switch characters fast).
+
+### 4.5 Warlock settings sync - back up & sync your `.toml` settings
+
+> **STATUS: live** at `https://mudmobile.com/api/warlock/files`.
+
+Lets Warlock back up its own settings (`.toml`) to the user's MUD Mobile account and restore
+them on another machine, so a user's highlights/macros/layout/etc. follow them. These are the
+**Warlock client's** files - unrelated to the Lich scripts/config synced into the hosted machine
+(`/api/scripts`, `/api/config`); Warlock never runs on the hosted machine, so it pushes/pulls
+these itself.
+
+**Auth:** `Bearer wlk_…` device token (or dashboard cookie). All paths are under `/api/warlock`
+so future Warlock-specific endpoints can live alongside.
+
+**The hash (concurrency token).** Every file is identified by a content hash:
+`hash = sha256_hex(raw_file_bytes)` (64 lowercase hex). The server computes the same over the
+stored bytes. Writes are **compare-and-swap**: you send the hash of the version you started
+from (`baseHash`); the write only lands if it still matches the stored hash, otherwise you get
+`409` and decide. This is how two machines avoid silently clobbering each other.
+
+#### `GET /api/warlock/files` - list
+```json
+{ "files": [ { "path": "settings.toml", "size": 1820,
+              "modified": "2026-06-17T18:04:11.000Z", "hash": "3f2a…(64 hex)…" } ] }
+```
+Use `hash` + `modified` to detect what changed remotely without downloading each file.
+
+#### `GET /api/warlock/files/file?path=<path>` - read one
+```json
+{ "path": "settings.toml", "content": "…toml…",
+  "hash": "3f2a…", "modified": "2026-06-17T18:04:11.000Z" }
+```
+Store `hash` as the **base** for your next write of this file. `404` if it doesn't exist.
+
+#### `POST /api/warlock/files` - write one (compare-and-swap)
+Body (JSON):
+```json
+{ "path": "settings.toml", "content": "…toml…", "baseHash": "3f2a…", "overwrite": false }
+```
+- `baseHash` - the hash you last saw for this file. **Omit/null = create-only** (write only if
+  it doesn't exist yet).
+- `overwrite: true` - force; write regardless of the current hash (use after the user picks
+  "overwrite remote"). When true, `baseHash` is ignored.
+- `path` must end in `.toml`. Subdirectories are allowed (e.g. `profiles/main.toml`).
+
+**200** (written): `{ "ok": true, "path": "settings.toml", "hash": "<new hash>", "modified": "…" }`
+- Save the returned `hash` as your new base.
+
+**409** (conflict - remote moved on, nothing written):
+```json
+{ "error": "conflict", "currentHash": "9b1c…", "modified": "2026-06-17T18:30:00.000Z" }
+```
+- `GET` the file to fetch the remote `content` for a diff, then ask the user: **overwrite remote**
+  (re-`POST` with `overwrite: true`) or **take remote** (adopt the remote content + hash as your
+  new base).
+
+#### `DELETE /api/warlock/files/file?path=<path>` - remove one
+`{ "ok": true }`.
+
+**Errors (all):** `401`, `400 invalid_body` / `unsupported_type` (non-`.toml`).
+
+#### Suggested client sync model
+Keep, per file, the **base hash** of the last version you synced (alongside the local file).
+
+- **Push (upload local):** `POST` with `baseHash` = your stored base. `200` → store the new
+  hash. `409` → remote changed: show modified-at for both, offer a diff, let the user
+  overwrite remote (`overwrite: true`) or take remote.
+- **Pull (download remote):** before overwriting a local file, check whether it has local edits
+  (`sha256(local bytes) != stored base`). If clean, take remote and store its hash. If dirty,
+  prompt (keep local / take remote / diff) - same decision as a push conflict, other direction.
+- **Adds/deletes across machines:** diff the server's `GET /api/warlock/files` list against your
+  base snapshot - a path gone from the list was deleted remotely; a new path was added remotely.
+  (Membership reconciliation is the client's job; the server only does per-file CAS.)
+- **Every successful sync (push or pull): store the synced content's hash as the new base.**
 
 ---
 
 ## 5. SGE: done locally by Warlock
 
-Warlock already speaks SGE/EAccess — keep using your existing implementation. The only thing
+Warlock already speaks SGE/EAccess - keep using your existing implementation. The only thing
 this integration adds is *where the character/account identifiers come from* (the
 `GET /api/characters` list) and *where you connect afterward* (the router, not play.net).
 
 The SGE inputs/outputs you need:
 - **Inputs:** `account` + `password` (entered by the user) + `game` (code) + `characterCode`
-  — `account`, `game`, `characterCode` all come from the chosen `GET /api/characters` entry;
+  - `account`, `game`, `characterCode` all come from the chosen `GET /api/characters` entry;
   the user supplies only the password.
 - **Output:** `{ gamehost, gameport, key }` for the chosen character, exactly as today.
 - The launch step uses the **STORM** front-end designation (`L\t{characterCode}\tSTORM\n`),
-  which is what yields a Stormfront-protocol stream — the protocol the hosted Lich expects.
+  which is what yields a Stormfront-protocol stream - the protocol the hosted Lich expects.
 
 > **Note (no profiles yet / discovery):** If `GET /api/characters` is empty, or you want to
 > support accounts the user hasn't saved in MUD Mobile, Warlock can fall back to its native
@@ -308,10 +382,10 @@ After `POST /api/sessions` returns `connect`:
 
 1. **Open a socket** to `connect.host:connect.port`. If `connect.tls` is true (default,
    port 443), perform a standard TLS handshake first (SNI = `connect.host`; it's a normal
-   CA-valid cert, terminated at MUD Mobile's edge — verify it normally).
+   CA-valid cert, terminated at MUD Mobile's edge - verify it normally).
    - A plaintext endpoint also exists on the same host at **port 7000** if you ever need it,
      but prefer the TLS endpoint the API hands you.
-2. **Send your normal Stormfront handshake as the first thing** — i.e. the game **key** line
+2. **Send your normal Stormfront handshake as the first thing** - i.e. the game **key** line
    followed by your usual `/FE:` / version lines, exactly as Warlock sends to play.net. You
    do **not** need to change how you frame the key; the router is built to tolerate Warlock's
    framing:
@@ -322,7 +396,7 @@ After `POST /api/sessions` returns `connect`:
      it **byte-for-byte** to Lich. Nothing in the stream is rewritten.
 3. **Send the key promptly.** The router drops connections that send no first line within
    **15 seconds**.
-4. **Connect once and be patient — do NOT add a reconnect loop.** The cloud machine
+4. **Connect once and be patient - do NOT add a reconnect loop.** The cloud machine
    cold-boots in ~25–60s. The router *holds your connection* and retries dialing the machine
    internally for up to ~60–90s, so a patient client rides the boot transparently. A
    client-side reconnect loop will fight this and create duplicate/again-failing attempts.
@@ -352,7 +426,7 @@ if resp.status == 401: prompt_reconnect(); return
 chars = resp.json().characters
 choice = user_pick(chars)                # {account, game, characterCode, characterName}
 
-# 2. Local SGE (Warlock's existing engine) — password stays on this machine
+# 2. Local SGE (Warlock's existing engine) - password stays on this machine
 password = user_prompt_password(choice.account)
 sge = warlock_sge_login(account=choice.account, password=password,
                         game=choice.game, characterCode=choice.characterCode)
@@ -387,18 +461,23 @@ DELETE "https://mudmobile.com/api/sessions/" + sessionId
 
 ## 8. Work required on the MUD Mobile side (not Warlock)
 
-For completeness / coordination — the Warlock dev does not implement these, but the
+For completeness / coordination - the Warlock dev does not implement these, but the
 integration depends on them:
 
-1. ~~**Add `GET /api/characters`**~~ — **DONE / live.** Returns the authenticated user's
+1. ~~**Add `GET /api/characters`**~~ - **DONE / live.** Returns the authenticated user's
    `CharacterProfile` rows in the shape defined in §4.1, on the `wlk_` Bearer path (and the
    dashboard cookie) via the existing `authenticateUserOrToken` helper.
-2. ~~(Optional, future) An endpoint for Warlock to **create/update** a character profile~~ —
+2. ~~(Optional, future) An endpoint for Warlock to **create/update** a character profile~~ -
    **DONE / live.** `POST /api/characters` (upsert, §4.1b) and `DELETE /api/characters/{id}`
    (§4.1c) let Warlock register characters discovered via local SGE and remove stale ones.
+3. ~~A settings-sync surface so Warlock can back up / restore / sync its own `.toml` settings~~ -
+   **DONE / live.** `GET/POST /api/warlock/files` + `GET/DELETE /api/warlock/files/file` (§4.5),
+   with sha256 compare-and-swap on writes. Stored per-user under `users/{userId}/warlock/`
+   (separate from the Lich scripts/data synced into the runner) and editable in the dashboard
+   **Data → Warlock** tab.
 
-Everything else Warlock needs — device tokens, `POST/GET/DELETE /api/sessions`, the router
-wire protocol, the gamehost allowlist — already exists and is documented above as-built.
+Everything else Warlock needs - device tokens, `POST/GET/DELETE /api/sessions`, the router
+wire protocol, the gamehost allowlist - already exists and is documented above as-built.
 
 ---
 

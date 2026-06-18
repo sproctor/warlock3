@@ -33,6 +33,7 @@ import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.mudmobile.MudMobileApi
+import warlockfe.warlock3.core.mudmobile.WarlockSettingsSync
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MySQLiteDriver
@@ -255,6 +256,17 @@ abstract class AppContainer(
 
     val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
 
+    // Backs up / syncs the per-character TOML settings to the user's MUD Mobile account.
+    val warlockSettingsSync by lazy {
+        WarlockSettingsSync(
+            api = mudMobileApi,
+            configDirectory = warlockDirs.configDir,
+            fileSystem = fileSystem,
+            tokenProvider = { clientSettings.getMudMobileToken() },
+            writeThroughStore = { path, content -> characterConfigStore.writeSectionFile(path, content) },
+        )
+    }
+
     val mudMobileConnectUseCase by lazy {
         MudMobileConnectUseCase(
             api = mudMobileApi,
@@ -284,6 +296,7 @@ abstract class AppContainer(
             mudMobileApi = mudMobileApi,
             mudMobileConnectUseCase = mudMobileConnectUseCase,
             mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
+            warlockSettingsSync = warlockSettingsSync,
         )
     }
 

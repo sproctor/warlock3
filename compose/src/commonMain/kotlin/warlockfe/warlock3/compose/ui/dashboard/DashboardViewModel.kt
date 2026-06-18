@@ -19,7 +19,9 @@ import warlockfe.warlock3.compose.MudMobileDiscoverUseCase
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.mudmobile.CharactersResult
+import warlockfe.warlock3.core.mudmobile.ConflictResolution
 import warlockfe.warlock3.core.mudmobile.MudMobileApi
+import warlockfe.warlock3.core.mudmobile.WarlockSettingsSync
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -43,8 +45,12 @@ class DashboardViewModel(
     private val mudMobileApi: MudMobileApi,
     private val mudMobileConnect: MudMobileConnectUseCase,
     private val mudMobileDiscover: MudMobileDiscoverUseCase,
+    private val warlockSettingsSync: WarlockSettingsSync,
 ) : ViewModel() {
     val connections = connectionRepository.observeAllConnections()
+
+    /** Settings-sync status + any conflicts awaiting the user's decision. */
+    val syncState = warlockSettingsSync.state
 
     private val logger = Logger.withTag("DashboardViewModel")
 
@@ -91,8 +97,35 @@ class DashboardViewModel(
         viewModelScope.launch {
             if (clientSettingRepository.getMudMobileToken() != null) {
                 refreshMudMobileCharacters()
+                // Auto-sync settings whenever the dashboard appears (app start, and on return from a
+                // game after disconnect) so per-character settings follow the user between machines.
+                warlockSettingsSync.sync()
             }
         }
+    }
+
+    // --- Settings sync ---
+
+    /** Manually trigger a settings sync (the "Sync now" action). */
+    fun syncSettings() {
+        viewModelScope.launch { warlockSettingsSync.sync() }
+    }
+
+    /** Resolve one conflicting file with the user's choice (keep local / take remote). */
+    fun resolveSyncConflict(
+        path: String,
+        resolution: ConflictResolution,
+    ) {
+        viewModelScope.launch { warlockSettingsSync.resolveConflict(path, resolution) }
+    }
+
+    fun dismissSyncMessage() {
+        warlockSettingsSync.clearMessage()
+    }
+
+    /** Defer the pending conflicts ("Later"); they resurface on the next sync. */
+    fun deferSyncConflicts() {
+        warlockSettingsSync.clearConflicts()
     }
 
     private suspend fun reloadAccounts() {
@@ -165,6 +198,8 @@ class DashboardViewModel(
                 clientSettingRepository.putMudMobileToken(trimmed)
                 connectionRepository.syncMudMobileConnections(result.characters)
                 mudMobileMessage = null
+                // Pull/push settings now that the account is connected.
+                viewModelScope.launch { warlockSettingsSync.sync() }
                 null
             }
 
