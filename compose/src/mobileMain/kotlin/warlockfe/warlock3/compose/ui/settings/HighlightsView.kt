@@ -308,7 +308,7 @@ fun EditHighlightDialog(
                 val groupCount =
                     if (isRegex) {
                         try {
-                            Regex("$pattern|").find("")?.groups?.size ?: 1
+                            Regex("${pattern.text}|").find("")?.groups?.size ?: 1
                         } catch (e: Exception) {
                             error = e.message ?: "Invalid regex"
                             1
