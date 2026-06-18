@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
@@ -23,11 +22,11 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
-import warlockfe.warlock3.compose.util.getLabel
 import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
+import warlockfe.warlock3.compose.util.keyComboToKey
+import warlockfe.warlock3.compose.util.toDisplayString
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.macro.Macro
-import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
 @Composable
@@ -141,25 +140,6 @@ fun DesktopMacrosView(
 
         else -> {}
     }
-}
-
-private fun keyComboToKey(keyCombo: MacroKeyCombo): Pair<Key, Set<String>> {
-    val modifiers = mutableSetOf<String>()
-    if (keyCombo.ctrl) modifiers.add("ctrl")
-    if (keyCombo.alt) modifiers.add("alt")
-    if (keyCombo.shift) modifiers.add("shift")
-    if (keyCombo.meta) modifiers.add("meta")
-    return Key(keyCombo.keyCode) to modifiers
-}
-
-private fun MacroKeyCombo.toDisplayString(): String {
-    val keyString = StringBuilder()
-    if (ctrl) keyString.append("ctrl+")
-    if (alt) keyString.append("alt+")
-    if (shift) keyString.append("shift+")
-    if (meta) keyString.append("meta+")
-    keyString.append(Key(keyCode).getLabel())
-    return keyString.toString()
 }
 
 sealed class DesktopEditMacroState {

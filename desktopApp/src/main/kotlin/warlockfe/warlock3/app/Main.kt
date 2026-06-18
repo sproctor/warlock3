@@ -80,10 +80,10 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
-import warlockfe.warlock3.compose.util.SkinLoader
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -216,22 +216,9 @@ private class WarlockCommand : CliktCommand() {
 
         val appContainer = JvmAppContainer(database, warlockDirs, SystemFileSystem)
 
-        appContainer.clientSettings
-            .observeSkinFile()
-            .onEach { skinFile ->
-                val bytes =
-                    skinFile
-                        ?.let { File(it) }
-                        ?.takeIf { it.exists() }
-                        ?.readBytes()
-                        ?: Res.readBytes("files/skin.zip")
-                try {
-                    appContainer.skin.value = SkinLoader.parse(bytes)
-                } catch (e: Exception) {
-                    // TODO: notify user of error
-                    logger.e(e) { "Failed to load skin file" }
-                }
-            }.launchIn(appContainer.externalScope)
+        appContainer.observeSkin(logger) { path ->
+            File(path).takeIf { it.exists() }?.readBytes()
+        }
 
         // Load config files + run the DB->TOML migration + seed default macros before any startup
         // reads below (window size, release channel, auto-connect) touch the config stores.

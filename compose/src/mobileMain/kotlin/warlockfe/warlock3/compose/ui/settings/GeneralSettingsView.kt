@@ -8,10 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -24,8 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -38,9 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -54,7 +47,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.components.RadioRow
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.SwitchRow
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.error_filled
@@ -190,50 +185,22 @@ fun GeneralSettingsView(
             val markLinks by clientSettingRepository
                 .observeMarkLinks()
                 .collectAsState(initial = true)
-            Row(
-                modifier =
-                    Modifier.toggleable(
-                        value = markLinks,
-                        onValueChange = {
-                            scope.launch {
-                                clientSettingRepository.putMarkLinks(it)
-                            }
-                        },
-                        role = Role.Switch,
-                    ),
-            ) {
-                Switch(
-                    checked = markLinks,
-                    onCheckedChange = null,
-                )
-                Spacer(Modifier.width(16.dp))
-                Text("Mark links in text")
-            }
+            SwitchRow(
+                checked = markLinks,
+                onCheckedChange = { scope.launch { clientSettingRepository.putMarkLinks(it) } },
+                text = "Mark links in text",
+            )
 
             Spacer(Modifier.height(16.dp))
 
             val showImages by clientSettingRepository
                 .observeShowImages()
                 .collectAsState(initial = true)
-            Row(
-                modifier =
-                    Modifier.toggleable(
-                        value = showImages,
-                        onValueChange = {
-                            scope.launch {
-                                clientSettingRepository.putShowImages(it)
-                            }
-                        },
-                        role = Role.Switch,
-                    ),
-            ) {
-                Switch(
-                    checked = showImages,
-                    onCheckedChange = null,
-                )
-                Spacer(Modifier.width(16.dp))
-                Text("Show images in stream")
-            }
+            SwitchRow(
+                checked = showImages,
+                onCheckedChange = { scope.launch { clientSettingRepository.putShowImages(it) } },
+                text = "Show images in stream",
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -391,30 +358,11 @@ fun GeneralSettingsView(
             Text("Select theme")
             Column(Modifier.selectableGroup()) {
                 ThemeSetting.entries.forEach { entry ->
-                    Row(
-                        Modifier
-                            .height(48.dp)
-                            .selectable(
-                                selected = currentTheme == entry,
-                                onClick = {
-                                    scope.launch {
-                                        clientSettingRepository.putTheme(entry)
-                                    }
-                                },
-                                role = Role.RadioButton,
-                            ),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = currentTheme == entry,
-                            onClick = null,
-                        )
-                        Text(
-                            text = entry.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp),
-                        )
-                    }
+                    RadioRow(
+                        selected = currentTheme == entry,
+                        onClick = { scope.launch { clientSettingRepository.putTheme(entry) } },
+                        text = entry.name,
+                    )
                 }
             }
 
@@ -493,55 +441,19 @@ fun GeneralSettingsView(
                 Text("Select logging style")
                 Column(Modifier.selectableGroup()) {
                     LogType.entries.forEach { entry ->
-                        Row(
-                            modifier =
-                                Modifier
-                                    .height(48.dp)
-                                    .selectable(
-                                        selected = loggingSettings!!.type == entry,
-                                        onClick = {
-                                            scope.launch {
-                                                clientSettingRepository.putLoggingType(entry)
-                                            }
-                                        },
-                                        role = Role.RadioButton,
-                                    ),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = loggingSettings!!.type == entry,
-                                onClick = null,
-                            )
-                            Text(
-                                text = entry.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(start = 16.dp),
-                            )
-                        }
+                        RadioRow(
+                            selected = loggingSettings!!.type == entry,
+                            onClick = { scope.launch { clientSettingRepository.putLoggingType(entry) } },
+                            text = entry.name,
+                        )
                     }
                 }
 
-                Row(
-                    modifier =
-                        Modifier
-                            .toggleable(
-                                value = loggingSettings!!.logTimestamps,
-                                onValueChange = {
-                                    scope.launch {
-                                        clientSettingRepository.putLoggingTimestamps(it)
-                                    }
-                                },
-                                role = Role.Switch,
-                            ),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Switch(
-                        checked = loggingSettings!!.logTimestamps,
-                        onCheckedChange = null,
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text("Add timestamps to logs")
-                }
+                SwitchRow(
+                    checked = loggingSettings!!.logTimestamps,
+                    onCheckedChange = { scope.launch { clientSettingRepository.putLoggingTimestamps(it) } },
+                    text = "Add timestamps to logs",
+                )
             }
         }
     }
