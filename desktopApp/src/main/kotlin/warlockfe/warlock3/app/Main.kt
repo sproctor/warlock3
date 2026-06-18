@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -87,6 +88,7 @@ import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -129,92 +131,15 @@ private class WarlockCommand : CliktCommand() {
         Logger.setLogWriters(platformLogWriter())
         ComposeFoundationFlags.isNewContextMenuEnabled = true
 
-        val loginOptions = mutableSetOf<String>()
-        if (key != null) {
-            loginOptions.add("key")
-        }
-        if (stdin) {
-            loginOptions.add("stdin")
-        }
-        if (inputFile != null) {
-            loginOptions.add("inputFile")
-        }
-        if (autoConnectName != null) {
-            loginOptions.add("connection")
-        }
-        if (salFile != null) {
-            loginOptions.add("sal")
-        }
-        if (loginOptions.size > 1) {
-            println("More than one login method was specified. Please only use one of the following methods: $loginOptions")
-            exitProcess(-1)
-        }
+        validateLoginOptions()
 
-        version?.let {
-            initializeSentry(version)
-        }
-        if (debug || version == null) {
-            System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
-            Logger.setMinSeverity(Severity.Debug)
-        } else {
-            Logger.setMinSeverity(Severity.Info)
-        }
-        val logger = Logger.withTag("Main")
+        val logger = configureLogging()
 
         FileKit.init("warlock")
 
-        val credentials =
-            if (salFile != null) {
-                val file = File(salFile!!)
-                if (!file.exists()) {
-                    println("SAL file does not exist: $salFile")
-                    exitProcess(-1)
-                }
-                try {
-                    parseSalCredentials(file.readText()).also {
-                        logger.d { "Connecting to ${it.host}:${it.port} from .sal file" }
-                    }
-                } catch (e: Exception) {
-                    println("Failed to parse .sal file: ${e.message}")
-                    exitProcess(-1)
-                }
-            } else if (port != null && host != null && key != null) {
-                logger.d { "Connecting to $host:$port with $key" }
-                SimuGameCredentials(host = host!!, port = port!!, key = key!!)
-            } else if (port != null || host != null || key != null) {
-                println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
-                exitProcess(-1)
-            } else {
-                null
-            }
+        val credentials = parseCredentials(logger)
 
-        val appDirs =
-            AppDirs {
-                appName = "warlock"
-                appAuthor = "WarlockFE"
-            }
-        val configDir = appDirs.getUserConfigDir()
-        File(configDir).mkdirs()
-        val databaseDirectory = kotlinx.io.files.Path(configDir)
-        migrateLegacyWindowsPrefsDb(configDir, logger)
-
-        val warlockDirs =
-            WarlockDirs(
-                homeDir = System.getProperty("user.home"),
-                configDir = appDirs.getUserConfigDir(),
-                dataDir = appDirs.getUserDataDir(),
-                logDir = appDirs.getUserLogDir(),
-            )
-
-        println("Loading preferences from $configDir")
-        val database =
-            openPrefsDatabase(
-                directory = databaseDirectory,
-                fileSystem = SystemFileSystem,
-                builderFactory = ::getPrefsDatabaseBuilder,
-            )
-
-        val appContainer = JvmAppContainer(database, warlockDirs, SystemFileSystem)
+        val appContainer = buildAppContainer(logger)
 
         appContainer.observeSkin(logger) { path ->
             File(path).takeIf { it.exists() }?.readBytes()
@@ -247,115 +172,12 @@ private class WarlockCommand : CliktCommand() {
 
         val games =
             mutableStateListOf(
-                GameState().apply {
-                    if (credentials != null || stdin || inputFile != null) {
-                        val windowRegistry = appContainer.windowRegistryFactory.create()
-                        // TODO: move this somewhere we can control it
-                        runBlocking {
-                            try {
-                                val socket =
-                                    if (stdin) {
-                                        WarlockStreamSocket(System.`in`)
-                                    } else if (inputFile != null) {
-                                        val file = File(inputFile!!)
-                                        if (!file.exists()) {
-                                            logger.e { "Input file does not exist: $inputFile" }
-                                            exitProcess(1)
-                                        }
-                                        WarlockStreamSocket(file.inputStream())
-                                    } else {
-                                        NetworkSocket(Dispatchers.IO)
-                                            .also { socket ->
-                                                socket.connect(credentials!!.host, credentials.port)
-                                            }
-                                    }
-                                val client =
-                                    appContainer.warlockClientFactory.createClient(
-                                        windowRegistry = windowRegistry,
-                                        socket = socket,
-                                    )
-                                client.connect(credentials?.key ?: "")
-                                val viewModel =
-                                    appContainer.gameViewModelFactory.create(client, windowRegistry)
-                                setScreen(
-                                    GameScreen.ConnectedGameState(viewModel),
-                                )
-                            } catch (e: IOException) {
-                                logger.e(e) { "Failed to connect to Warlock" }
-                            }
-                        }
-                    } else if (autoConnectName != null) {
-                        runBlocking {
-                            val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
-                            if (connection == null) {
-                                println("Invalid connection name: $autoConnectName")
-                                exitProcess(-1)
-                            }
-                            val sgeClient = appContainer.sgeClientFactory.create()
-                            val result = sgeClient.autoConnect(sgeSettings, connection)
-                            sgeClient.close()
-                            when (result) {
-                                is AutoConnectResult.Failure -> {
-                                    println(result.reason)
-                                    exitProcess(-1)
-                                }
-
-                                is AutoConnectResult.Success -> {
-                                    // TODO: merge with the above, and probably below
-                                    try {
-                                        appContainer.connectToGameUseCase(
-                                            credentials = result.credentials,
-                                            proxySettings = connection.proxySettings,
-                                            gameState = this@apply,
-                                        )
-                                    } catch (e: Exception) {
-                                        ensureActive()
-                                        println("Error connecting to server: ${e.message}")
-                                        exitProcess(-1)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
+                createInitialGameState(appContainer, credentials, sgeSettings, logger),
             )
 
-        // Workaround for https://issuetracker.google.com/issues/399134381
-        val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            val cause = throwable.cause ?: throwable
-            val isKnownComposeBug =
-                cause is NoSuchElementException &&
-                    cause.message?.contains("Cannot find value for key") == true
+        installUncaughtExceptionWorkaround()
 
-            if (isKnownComposeBug) {
-                // Swallow silently — known upstream bug, see https://issuetracker.google.com/issues/399134381
-            } else {
-                existingHandler?.uncaughtException(thread, throwable)
-            }
-        }
-
-        val resolvedVersion = version ?: "0.0.0"
-        val versionChannel =
-            when {
-                resolvedVersion.contains("beta") -> "beta"
-                resolvedVersion.contains("alpha") -> "alpha"
-                else -> "latest"
-            }
-        val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
-        val selectedChannel =
-            when (channelSetting) {
-                ReleaseChannelSetting.CURRENT -> versionChannel
-                ReleaseChannelSetting.STABLE -> "latest"
-                ReleaseChannelSetting.BETA -> "beta"
-                ReleaseChannelSetting.ALPHA -> "alpha"
-            }
-        val updater =
-            NucleusUpdater {
-                provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
-                channel = selectedChannel
-                currentVersion = resolvedVersion
-            }
+        val updater = buildUpdater(clientSettings)
         val updateSupported = updater.isUpdateSupported()
 
         application {
@@ -371,8 +193,6 @@ private class WarlockCommand : CliktCommand() {
             WarlockDesktopTheme(isDark = darkMode) {
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
-                var downloadProgress: Double? by remember { mutableStateOf(null) }
-                var downloadedFile: File? by remember { mutableStateOf(null) }
                 val scope = rememberCoroutineScope()
 
                 suspend fun checkUpdate() {
@@ -401,92 +221,14 @@ private class WarlockCommand : CliktCommand() {
                 }
 
                 if (showUpdateDialog) {
-                    DialogWindow(
-                        onCloseRequest = { showUpdateDialog = false },
-                        title = "Warlock update available",
-                        state = rememberDialogState(width = 400.dp, height = 300.dp),
-                    ) {
-                        Column(
-                            Modifier
-                                .fillMaxSize()
-                                .background(JewelTheme.globalColors.panelBackground)
-                                .padding(8.dp),
-                        ) {
-                            Text("Current version: ${updater.currentVersion}")
-                            if (updateSupported) {
-                                Text("Update version: ${availableUpdate?.version ?: "No update available"}")
-                            } else {
-                                Text("Automated updates are not supported for your installation")
-                            }
-                            downloadProgress?.let { percent ->
-                                Spacer(Modifier.padding(top = 8.dp))
-                                Text("Downloading: ${percent.toInt()}%")
-                                HorizontalProgressBar(
-                                    progress = (percent / 100.0).toFloat(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                            Spacer(Modifier.weight(1f))
-                            Row(Modifier.fillMaxWidth()) {
-                                Spacer(Modifier.weight(1f))
-                                val ignoreUpdates by clientSettings
-                                    .observeIgnoreUpdates()
-                                    .collectAsState(false)
-                                if (!ignoreUpdates) {
-                                    WarlockOutlinedButton(
-                                        onClick = {
-                                            scope.launch {
-                                                clientSettings.putIgnoreUpdates(true)
-                                                showUpdateDialog = false
-                                            }
-                                        },
-                                        text = "Ignore updates",
-                                    )
-                                } else {
-                                    WarlockOutlinedButton(
-                                        onClick = {
-                                            scope.launch {
-                                                clientSettings.putIgnoreUpdates(false)
-                                            }
-                                        },
-                                        text = "Stop ignoring updates",
-                                    )
-                                }
-                                Spacer(Modifier.padding(horizontal = 4.dp))
-                                WarlockOutlinedButton(
-                                    onClick = { showUpdateDialog = false },
-                                    text = "Close",
-                                )
-                                Spacer(Modifier.padding(horizontal = 4.dp))
-                                WarlockButton(
-                                    onClick = {
-                                        val info = availableUpdate ?: return@WarlockButton
-                                        val file = downloadedFile
-                                        if (file != null) {
-                                            updater.installAndRestart(file)
-                                            return@WarlockButton
-                                        }
-                                        scope.launch {
-                                            clientSettings.putIgnoreUpdates(false)
-                                            try {
-                                                updater.downloadUpdate(info).collect { progress ->
-                                                    downloadProgress = progress.percent
-                                                    progress.file?.let { downloadedFile = it }
-                                                }
-                                                downloadedFile?.let { updater.installAndRestart(it) }
-                                            } catch (e: Exception) {
-                                                ensureActive()
-                                                logger.e(e) { "Update download failed" }
-                                                downloadProgress = null
-                                            }
-                                        }
-                                    },
-                                    enabled = availableUpdate != null && updateSupported && downloadProgress == null,
-                                    text = if (downloadedFile != null) "Install & restart" else "Update",
-                                )
-                            }
-                        }
-                    }
+                    UpdateDialog(
+                        updater = updater,
+                        updateSupported = updateSupported,
+                        availableUpdate = availableUpdate,
+                        clientSettings = clientSettings,
+                        logger = logger,
+                        onDismiss = { showUpdateDialog = false },
+                    )
                 }
 
                 games.forEachIndexed { index, gameState ->
@@ -590,10 +332,322 @@ private class WarlockCommand : CliktCommand() {
             }
         }
     }
+
+    /** Fail fast if more than one mutually-exclusive login method was supplied on the command line. */
+    private fun validateLoginOptions() {
+        val loginOptions = mutableSetOf<String>()
+        if (key != null) {
+            loginOptions.add("key")
+        }
+        if (stdin) {
+            loginOptions.add("stdin")
+        }
+        if (inputFile != null) {
+            loginOptions.add("inputFile")
+        }
+        if (autoConnectName != null) {
+            loginOptions.add("connection")
+        }
+        if (salFile != null) {
+            loginOptions.add("sal")
+        }
+        if (loginOptions.size > 1) {
+            println("More than one login method was specified. Please only use one of the following methods: $loginOptions")
+            exitProcess(-1)
+        }
+    }
+
+    private fun configureLogging(): Logger {
+        version?.let {
+            initializeSentry(version)
+        }
+        if (debug || version == null) {
+            System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
+            Logger.setMinSeverity(Severity.Debug)
+        } else {
+            Logger.setMinSeverity(Severity.Info)
+        }
+        return Logger.withTag("Main")
+    }
+
+    private fun parseCredentials(logger: Logger): SimuGameCredentials? =
+        if (salFile != null) {
+            val file = File(salFile!!)
+            if (!file.exists()) {
+                println("SAL file does not exist: $salFile")
+                exitProcess(-1)
+            }
+            try {
+                parseSalCredentials(file.readText()).also {
+                    logger.d { "Connecting to ${it.host}:${it.port} from .sal file" }
+                }
+            } catch (e: Exception) {
+                println("Failed to parse .sal file: ${e.message}")
+                exitProcess(-1)
+            }
+        } else if (port != null && host != null && key != null) {
+            logger.d { "Connecting to $host:$port with $key" }
+            SimuGameCredentials(host = host!!, port = port!!, key = key!!)
+        } else if (port != null || host != null || key != null) {
+            println("If one of \"host\", \"port\", or \"key\" is specified, the other must be as well.")
+            exitProcess(-1)
+        } else {
+            null
+        }
+
+    private fun buildAppContainer(logger: Logger): JvmAppContainer {
+        val appDirs =
+            AppDirs {
+                appName = "warlock"
+                appAuthor = "WarlockFE"
+            }
+        val configDir = appDirs.getUserConfigDir()
+        File(configDir).mkdirs()
+        val databaseDirectory = kotlinx.io.files.Path(configDir)
+        migrateLegacyWindowsPrefsDb(configDir, logger)
+
+        val warlockDirs =
+            WarlockDirs(
+                homeDir = System.getProperty("user.home"),
+                configDir = appDirs.getUserConfigDir(),
+                dataDir = appDirs.getUserDataDir(),
+                logDir = appDirs.getUserLogDir(),
+            )
+
+        println("Loading preferences from $configDir")
+        val database =
+            openPrefsDatabase(
+                directory = databaseDirectory,
+                fileSystem = SystemFileSystem,
+                builderFactory = ::getPrefsDatabaseBuilder,
+            )
+
+        return JvmAppContainer(database, warlockDirs, SystemFileSystem)
+    }
+
+    /** Build the initial window's [GameState], performing the blocking initial connection if one was requested. */
+    private fun createInitialGameState(
+        appContainer: JvmAppContainer,
+        credentials: SimuGameCredentials?,
+        sgeSettings: SgeSettings,
+        logger: Logger,
+    ): GameState =
+        GameState().apply {
+            if (credentials != null || stdin || inputFile != null) {
+                val windowRegistry = appContainer.windowRegistryFactory.create()
+                // TODO: move this somewhere we can control it
+                runBlocking {
+                    try {
+                        val socket =
+                            if (stdin) {
+                                WarlockStreamSocket(System.`in`)
+                            } else if (inputFile != null) {
+                                val file = File(inputFile!!)
+                                if (!file.exists()) {
+                                    logger.e { "Input file does not exist: $inputFile" }
+                                    exitProcess(1)
+                                }
+                                WarlockStreamSocket(file.inputStream())
+                            } else {
+                                NetworkSocket(Dispatchers.IO)
+                                    .also { socket ->
+                                        socket.connect(credentials!!.host, credentials.port)
+                                    }
+                            }
+                        val client =
+                            appContainer.warlockClientFactory.createClient(
+                                windowRegistry = windowRegistry,
+                                socket = socket,
+                            )
+                        client.connect(credentials?.key ?: "")
+                        val viewModel =
+                            appContainer.gameViewModelFactory.create(client, windowRegistry)
+                        setScreen(
+                            GameScreen.ConnectedGameState(viewModel),
+                        )
+                    } catch (e: IOException) {
+                        logger.e(e) { "Failed to connect to Warlock" }
+                    }
+                }
+            } else if (autoConnectName != null) {
+                runBlocking {
+                    val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
+                    if (connection == null) {
+                        println("Invalid connection name: $autoConnectName")
+                        exitProcess(-1)
+                    }
+                    val sgeClient = appContainer.sgeClientFactory.create()
+                    val result = sgeClient.autoConnect(sgeSettings, connection)
+                    sgeClient.close()
+                    when (result) {
+                        is AutoConnectResult.Failure -> {
+                            println(result.reason)
+                            exitProcess(-1)
+                        }
+
+                        is AutoConnectResult.Success -> {
+                            // TODO: merge with the above, and probably below
+                            try {
+                                appContainer.connectToGameUseCase(
+                                    credentials = result.credentials,
+                                    proxySettings = connection.proxySettings,
+                                    gameState = this@apply,
+                                )
+                            } catch (e: Exception) {
+                                ensureActive()
+                                println("Error connecting to server: ${e.message}")
+                                exitProcess(-1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    private fun buildUpdater(clientSettings: ClientSettingRepository): NucleusUpdater {
+        val resolvedVersion = version ?: "0.0.0"
+        val versionChannel =
+            when {
+                resolvedVersion.contains("beta") -> "beta"
+                resolvedVersion.contains("alpha") -> "alpha"
+                else -> "latest"
+            }
+        val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
+        val selectedChannel =
+            when (channelSetting) {
+                ReleaseChannelSetting.CURRENT -> versionChannel
+                ReleaseChannelSetting.STABLE -> "latest"
+                ReleaseChannelSetting.BETA -> "beta"
+                ReleaseChannelSetting.ALPHA -> "alpha"
+            }
+        return NucleusUpdater {
+            provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
+            channel = selectedChannel
+            currentVersion = resolvedVersion
+        }
+    }
+
+    // Workaround for https://issuetracker.google.com/issues/399134381
+    private fun installUncaughtExceptionWorkaround() {
+        val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val cause = throwable.cause ?: throwable
+            val isKnownComposeBug =
+                cause is NoSuchElementException &&
+                    cause.message?.contains("Cannot find value for key") == true
+
+            if (isKnownComposeBug) {
+                // Swallow silently — known upstream bug, see https://issuetracker.google.com/issues/399134381
+            } else {
+                existingHandler?.uncaughtException(thread, throwable)
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalResourceApi::class)
 fun main(args: Array<String>) = WarlockCommand().versionOption(version ?: "Development").main(args)
+
+@Composable
+private fun UpdateDialog(
+    updater: NucleusUpdater,
+    updateSupported: Boolean,
+    availableUpdate: UpdateInfo?,
+    clientSettings: ClientSettingRepository,
+    logger: Logger,
+    onDismiss: () -> Unit,
+) {
+    var downloadProgress: Double? by remember { mutableStateOf(null) }
+    var downloadedFile: File? by remember { mutableStateOf(null) }
+    val scope = rememberCoroutineScope()
+
+    DialogWindow(
+        onCloseRequest = onDismiss,
+        title = "Warlock update available",
+        state = rememberDialogState(width = 400.dp, height = 300.dp),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(8.dp),
+        ) {
+            Text("Current version: ${updater.currentVersion}")
+            if (updateSupported) {
+                Text("Update version: ${availableUpdate?.version ?: "No update available"}")
+            } else {
+                Text("Automated updates are not supported for your installation")
+            }
+            downloadProgress?.let { percent ->
+                Spacer(Modifier.padding(top = 8.dp))
+                Text("Downloading: ${percent.toInt()}%")
+                HorizontalProgressBar(
+                    progress = (percent / 100.0).toFloat(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth()) {
+                Spacer(Modifier.weight(1f))
+                val ignoreUpdates by clientSettings
+                    .observeIgnoreUpdates()
+                    .collectAsState(false)
+                if (!ignoreUpdates) {
+                    WarlockOutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                clientSettings.putIgnoreUpdates(true)
+                                onDismiss()
+                            }
+                        },
+                        text = "Ignore updates",
+                    )
+                } else {
+                    WarlockOutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                clientSettings.putIgnoreUpdates(false)
+                            }
+                        },
+                        text = "Stop ignoring updates",
+                    )
+                }
+                Spacer(Modifier.padding(horizontal = 4.dp))
+                WarlockOutlinedButton(
+                    onClick = onDismiss,
+                    text = "Close",
+                )
+                Spacer(Modifier.padding(horizontal = 4.dp))
+                WarlockButton(
+                    onClick = {
+                        val info = availableUpdate ?: return@WarlockButton
+                        val file = downloadedFile
+                        if (file != null) {
+                            updater.installAndRestart(file)
+                            return@WarlockButton
+                        }
+                        scope.launch {
+                            clientSettings.putIgnoreUpdates(false)
+                            try {
+                                updater.downloadUpdate(info).collect { progress ->
+                                    downloadProgress = progress.percent
+                                    progress.file?.let { downloadedFile = it }
+                                }
+                                downloadedFile?.let { updater.installAndRestart(it) }
+                            } catch (e: Exception) {
+                                ensureActive()
+                                logger.e(e) { "Update download failed" }
+                                downloadProgress = null
+                            }
+                        }
+                    },
+                    enabled = availableUpdate != null && updateSupported && downloadProgress == null,
+                    text = if (downloadedFile != null) "Install & restart" else "Update",
+                )
+            }
+        }
+    }
+}
 
 private fun GameState.getTitle(): Flow<String> =
     when (val screen = this.screen) {

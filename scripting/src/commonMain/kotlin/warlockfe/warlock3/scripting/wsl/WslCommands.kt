@@ -16,115 +16,28 @@ import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
+// The command table. Trivial one-liners stay inline; anything with real logic lives in a named
+// `private suspend fun` below so each command is navigable and the table stays readable.
 val wslCommands =
     CaseInsensitiveMap<suspend (WslContext, String) -> Unit>()
         .apply {
             putAll(
                 mapOf(
-                    "addtextlistener" to { context, argString ->
-                        val (variableName, pattern) = argString.splitFirstWord()
-                        if (variableName.isEmpty()) {
-                            throw WslRuntimeException("Not enough arguments to AddTextListener")
-                        }
-                        context.addListener(variableName) {
-                            if (pattern == null || it.contains(other = pattern, ignoreCase = true)) {
-                                context.setScriptVariable(variableName, WslString(it))
-                            }
-                        }
-                    },
-                    "addtextlistenerre" to { context, argString ->
-                        val (variableName, pattern) = argString.splitFirstWord()
-                        if (variableName.isEmpty() || pattern == null) {
-                            throw WslRuntimeException("Not enough arguments to AddTextListener")
-                        }
-                        val regex =
-                            parseRegex(pattern) ?: throw WslRuntimeException("Invalid regex passed to AddTextListenerRe")
-
-                        context.addListener(variableName) {
-                            val match = regex.find(it)
-                            if (match != null) {
-                                context.setScriptVariable(variableName, WslString(match.value))
-                            }
-                        }
-                    },
+                    "addtextlistener" to ::addTextListener,
+                    "addtextlistenerre" to ::addTextListenerRe,
                     "addtohighlightnames" to ::addName,
                     "addtohighlightstrings" to ::addHighlight,
-                    "cleartextlisteners" to { context, _ ->
-                        context.clearListeners()
-                    },
-                    "counter" to { context, args ->
-                        val (operator, operandString) = args.splitFirstWord()
-                        val operand =
-                            operandString?.let {
-                                it.toBigDecimalOrNull() ?: throw WslRuntimeException("Counter operand must be a number")
-                            } ?: BigDecimal.ONE
-                        val current = context.lookupVariable("c")?.toNumber() ?: BigDecimal.ZERO
-                        val result =
-                            when (operator.lowercase()) {
-                                "set" -> {
-                                    operand
-                                }
-
-                                "add" -> {
-                                    current + operand
-                                }
-
-                                "subtract" -> {
-                                    current - operand
-                                }
-
-                                "multiply" -> {
-                                    current * operand
-                                }
-
-                                "divide" -> {
-                                    if (operand.isZero()) {
-                                        throw WslRuntimeException("Cannot divide by 0")
-                                    }
-                                    current / operand
-                                }
-
-                                else -> {
-                                    throw WslRuntimeException("Unsupported counter operator")
-                                }
-                            }
-                        context.setScriptVariable("c", WslNumber(result))
-                    },
-                    "debug" to { context, args ->
-                        context.log(ScriptLoggingLevel.DEBUG, args)
-                    },
-                    "debuglevel" to { context, args ->
-                        val level = args.firstArgument()
-                        level.toIntOrNull()?.let {
-                            if (it !in 0..50) {
-                                throw WslRuntimeException("debug level must be between 0 and 50")
-                            }
-                            context.setLoggingLevel(it)
-                        } ?: ScriptLoggingLevel.fromString(level)?.let {
-                            context.setLoggingLevel(it.level)
-                        } ?: throw WslRuntimeException("Invalid logging level")
-                    },
-                    "delay" to { context, args ->
-                        val arg = args.firstArgument()
-                        val duration = arg.toDoubleOrNull() ?: 1.0
-                        delay(duration.seconds)
-                        context.scriptInstance.waitWhenSuspended()
-                    },
+                    "cleartextlisteners" to { context, _ -> context.clearListeners() },
+                    "counter" to ::counter,
+                    "debug" to { context, args -> context.log(ScriptLoggingLevel.DEBUG, args) },
+                    "debuglevel" to ::setDebugLevel,
+                    "delay" to ::delayCommand,
                     "deletefromhighlightnames" to ::deleteName,
                     "deletefromhighlightstrings" to ::deleteHighlight,
-                    "deletevariable" to { context, args ->
-                        val name = args.firstArgument()
-                        context.deleteStoredVariable(name)
-                    },
-                    "echo" to { context, args ->
-                        context.echo(args)
-                    },
-                    "error" to { context, args ->
-                        context.log(ScriptLoggingLevel.ERROR, args)
-                    },
-                    "exit" to { context, _ ->
-                        context.stop()
-                    },
+                    "deletevariable" to { context, args -> context.deleteStoredVariable(args.firstArgument()) },
+                    "echo" to { context, args -> context.echo(args) },
+                    "error" to { context, args -> context.log(ScriptLoggingLevel.ERROR, args) },
+                    "exit" to { context, _ -> context.stop() },
                     "gosub" to { context, argStr ->
                         val (label, args) = argStr.splitFirstWord()
                         if (label.isEmpty()) {
@@ -139,38 +52,16 @@ val wslCommands =
                         }
                         context.goto(label)
                     },
-                    "info" to { context, args ->
-                        context.log(ScriptLoggingLevel.INFO, args)
-                    },
+                    "info" to { context, args -> context.log(ScriptLoggingLevel.INFO, args) },
                     "local" to { context, args ->
                         val (name, value) = args.splitFirstWord()
-
                         if (name.isBlank()) {
                             throw WslRuntimeException("Invalid arguments to var")
                         }
                         context.setLocalVariable(name, WslString(value ?: ""))
                     },
-                    "log" to { context, args ->
-                        val (levelStr, rest) = args.splitFirstWord()
-                        val level =
-                            levelStr.toIntOrNull()
-                                ?: ScriptLoggingLevel.fromString(levelStr)?.level
-                                ?: throw WslRuntimeException("Invalid logging level")
-                        context.log(level, rest ?: "")
-                    },
-                    "mapadd" to { context, argString ->
-                        val (name, rest) = argString.splitFirstWord()
-                        val (key, value) =
-                            rest?.splitFirstWord()
-                                ?: throw WslRuntimeException("bad arguments passed to MapAdd")
-                        val variable =
-                            context.lookupVariable(name) ?: WslMap(emptyMap()).also { context.setScriptVariable(name, it) }
-                        if (variable.isMap()) {
-                            variable.setProperty(key, WslString(value ?: ""))
-                        } else {
-                            throw WslRuntimeException("Trying to set a property on a non-map variable")
-                        }
-                    },
+                    "log" to ::logCommand,
+                    "mapadd" to ::mapAdd,
                     "match" to { context, args ->
                         val (label, text) = args.splitFirstWord()
                         if (text?.isBlank() != false) {
@@ -194,156 +85,50 @@ val wslCommands =
                         context.putCommand(args)
                         context.waitForNav()
                     },
-                    "nextroom" to { context, _ ->
-                        context.waitForNav()
-                    },
-                    "pause" to { context, args ->
-                        val arg = args.firstArgument()
-                        val duration = arg.toDoubleOrNull() ?: 1.0
-                        context.waitForRoundTime()
-                        delay(duration.seconds)
-                        context.scriptInstance.waitWhenSuspended()
-                    },
-                    "play" to { context, args ->
-                        val name = args.firstArgument()
-                        context.playSound(name)
-                    },
+                    "nextroom" to { context, _ -> context.waitForNav() },
+                    "pause" to ::pauseCommand,
+                    "play" to { context, args -> context.playSound(args.firstArgument()) },
                     "print" to { context, args ->
                         val (stream, rest) = args.splitFirstWord()
                         rest?.let {
                             context.printToStream(stream, it)
                         }
                     },
-                    "put" to { context, args ->
-                        context.putCommand(args)
-                    },
-                    "random" to { context, args ->
-                        val argList = args.split(Regex("[ \t]+"))
-                        val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
-                        val max =
-                            argList.getOrNull(1)?.toIntOrNull()
-                                ?: throw WslRuntimeException("Invalid arguments to random")
-                        if (min >= max) {
-                            throw WslRuntimeException("Invalid arguments to random: min must be less than max")
-                        }
-                        context.setScriptVariable(
-                            name = "r",
-                            value = WslNumber(Random.nextInt(min, max).toBigDecimal()),
-                        )
-                    },
-                    "run" to { context, args ->
-                        context.runCommand(args)
-                    },
+                    "put" to { context, args -> context.putCommand(args) },
+                    "random" to ::randomCommand,
+                    "run" to { context, args -> context.runCommand(args) },
                     "removetextlistener" to { context, args ->
                         parseArguments(args).forEach { arg ->
                             context.removeListener(arg)
                         }
                     },
-                    "return" to { context, _ ->
-                        context.gosubReturn()
-                    },
-                    "save" to { context, args ->
-                        context.setScriptVariable("s", WslString(args))
-                    },
-                    "send" to { context, args ->
-                        context.sendCommand(args)
-                    },
-                    "setarray" to { context, args ->
-                        val (name, rest) = args.splitFirstWord()
-                        val variable =
-                            context.lookupVariable(name) ?: WslMap(emptyMap()).also { context.setScriptVariable(name, it) }
-                        if (!variable.isMap()) {
-                            throw WslRuntimeException("Trying to set a property on a non-map variable")
-                        }
-                        variable.setProperty("0", WslString(rest ?: ""))
-                        rest?.let { parseArguments(it) }?.forEachIndexed { index, arg ->
-                            variable.setProperty((index + 1).toString(), WslString(arg))
-                        }
-                    },
+                    "return" to { context, _ -> context.gosubReturn() },
+                    "save" to { context, args -> context.setScriptVariable("s", WslString(args)) },
+                    "send" to { context, args -> context.sendCommand(args) },
+                    "setarray" to ::setArray,
                     "setvariable" to { context, args ->
                         val (name, value) = args.splitFirstWord()
-
                         if (name.isBlank()) {
                             throw WslRuntimeException("Invalid arguments to SetVariable")
                         }
-                        // cx.scriptDebug(1, "setVariable: $name=$value")
                         context.setStoredVariable(name, value ?: "")
                     },
-                    "shift" to { context, _ ->
-                        var i = 1
-                        while (true) {
-                            val nextName = (i + 1).toString()
-                            val nextVar = context.lookupVariable(nextName)
-                            if (nextVar != null) {
-                                context.setScriptVariable(i.toString(), nextVar)
-                            } else {
-                                context.deleteScriptVariable(i.toString())
-                                break
-                            }
-                            i++
-                        }
-                        val allArgs = context.lookupVariable("0").toString()
-                        val breakIndex = findArgumentBreak(allArgs)
-                        context.setScriptVariable(
-                            name = "0",
-                            value =
-                                WslString(
-                                    if (breakIndex >= 0) {
-                                        allArgs.substring(breakIndex + 1)
-                                    } else {
-                                        ""
-                                    },
-                                ),
-                        )
-                    },
-                    "timer" to { context, args ->
-                        val command = args.firstArgument()
-                        when (command) {
-                            "start" -> {
-                                context.setScriptVariable("t", WslTimer())
-                            }
-
-                            "stop" -> {
-                                val timer = context.lookupVariable("t")
-                                if (timer is WslTimer) {
-                                    context.setScriptVariable("t", WslNumber(timer.toNumber()))
-                                } else {
-                                    // TODO warn that timer isn't running
-                                }
-                            }
-
-                            "clear" -> {
-                                context.deleteScriptVariable("t")
-                            }
-                        }
-                    },
+                    "shift" to ::shiftCommand,
+                    "timer" to ::timerCommand,
                     "typeahead" to { context, args ->
-                        val typeahead = args.firstArgument()
-                        typeahead.toIntOrNull()?.let { context.setTypeahead(it) }
+                        args.firstArgument().toIntOrNull()?.let { context.setTypeahead(it) }
                     },
-                    "unsetlocal" to { context, args ->
-                        val (name, _) = args.splitFirstWord()
-                        context.deleteLocalVariable(name)
-                    },
-                    "unsetvar" to { context, args ->
-                        val (name, _) = args.splitFirstWord()
-                        context.deleteScriptVariable(name)
-                    },
+                    "unsetlocal" to { context, args -> context.deleteLocalVariable(args.splitFirstWord().first) },
+                    "unsetvar" to { context, args -> context.deleteScriptVariable(args.splitFirstWord().first) },
                     "var" to { context, args ->
                         val (name, value) = args.splitFirstWord()
-
                         if (name.isBlank()) {
                             throw WslRuntimeException("Invalid arguments to var")
                         }
-                        // cx.scriptDebug(1, "setVariable: $name=$value")
                         context.setScriptVariable(name, WslString(value ?: ""))
                     },
-                    "wait" to { context, _ ->
-                        context.waitForPrompt()
-                    },
-                    "waitfor" to { context, args ->
-                        context.waitForText(args, ignoreCase = true)
-                    },
+                    "wait" to { context, _ -> context.waitForPrompt() },
+                    "waitfor" to { context, args -> context.waitForText(args, ignoreCase = true) },
                     "waitforre" to { context, args ->
                         context.waitForRegex(
                             parseRegex(args) ?: throw WslRuntimeException("Invalid regex in WaitForRe"),
@@ -376,6 +161,234 @@ private fun ifNCommand(n: Int): suspend (WslContext, String) -> Unit =
             context.executeCommand(args)
         }
     }
+
+private suspend fun addTextListener(
+    context: WslContext,
+    argString: String,
+) {
+    val (variableName, pattern) = argString.splitFirstWord()
+    if (variableName.isEmpty()) {
+        throw WslRuntimeException("Not enough arguments to AddTextListener")
+    }
+    context.addListener(variableName) {
+        if (pattern == null || it.contains(other = pattern, ignoreCase = true)) {
+            context.setScriptVariable(variableName, WslString(it))
+        }
+    }
+}
+
+private suspend fun addTextListenerRe(
+    context: WslContext,
+    argString: String,
+) {
+    val (variableName, pattern) = argString.splitFirstWord()
+    if (variableName.isEmpty() || pattern == null) {
+        throw WslRuntimeException("Not enough arguments to AddTextListener")
+    }
+    val regex =
+        parseRegex(pattern) ?: throw WslRuntimeException("Invalid regex passed to AddTextListenerRe")
+
+    context.addListener(variableName) {
+        val match = regex.find(it)
+        if (match != null) {
+            context.setScriptVariable(variableName, WslString(match.value))
+        }
+    }
+}
+
+private suspend fun counter(
+    context: WslContext,
+    args: String,
+) {
+    val (operator, operandString) = args.splitFirstWord()
+    val operand =
+        operandString?.let {
+            it.toBigDecimalOrNull() ?: throw WslRuntimeException("Counter operand must be a number")
+        } ?: BigDecimal.ONE
+    val current = context.lookupVariable("c")?.toNumber() ?: BigDecimal.ZERO
+    val result =
+        when (operator.lowercase()) {
+            "set" -> {
+                operand
+            }
+
+            "add" -> {
+                current + operand
+            }
+
+            "subtract" -> {
+                current - operand
+            }
+
+            "multiply" -> {
+                current * operand
+            }
+
+            "divide" -> {
+                if (operand.isZero()) {
+                    throw WslRuntimeException("Cannot divide by 0")
+                }
+                current / operand
+            }
+
+            else -> {
+                throw WslRuntimeException("Unsupported counter operator")
+            }
+        }
+    context.setScriptVariable("c", WslNumber(result))
+}
+
+private suspend fun setDebugLevel(
+    context: WslContext,
+    args: String,
+) {
+    val level = args.firstArgument()
+    level.toIntOrNull()?.let {
+        if (it !in 0..50) {
+            throw WslRuntimeException("debug level must be between 0 and 50")
+        }
+        context.setLoggingLevel(it)
+    } ?: ScriptLoggingLevel.fromString(level)?.let {
+        context.setLoggingLevel(it.level)
+    } ?: throw WslRuntimeException("Invalid logging level")
+}
+
+private suspend fun delayCommand(
+    context: WslContext,
+    args: String,
+) {
+    val duration = args.firstArgument().toDoubleOrNull() ?: 1.0
+    delay(duration.seconds)
+    context.scriptInstance.waitWhenSuspended()
+}
+
+private suspend fun pauseCommand(
+    context: WslContext,
+    args: String,
+) {
+    val duration = args.firstArgument().toDoubleOrNull() ?: 1.0
+    context.waitForRoundTime()
+    delay(duration.seconds)
+    context.scriptInstance.waitWhenSuspended()
+}
+
+private suspend fun logCommand(
+    context: WslContext,
+    args: String,
+) {
+    val (levelStr, rest) = args.splitFirstWord()
+    val level =
+        levelStr.toIntOrNull()
+            ?: ScriptLoggingLevel.fromString(levelStr)?.level
+            ?: throw WslRuntimeException("Invalid logging level")
+    context.log(level, rest ?: "")
+}
+
+private suspend fun mapAdd(
+    context: WslContext,
+    argString: String,
+) {
+    val (name, rest) = argString.splitFirstWord()
+    val (key, value) =
+        rest?.splitFirstWord()
+            ?: throw WslRuntimeException("bad arguments passed to MapAdd")
+    val variable =
+        context.lookupVariable(name) ?: WslMap(emptyMap()).also { context.setScriptVariable(name, it) }
+    if (variable.isMap()) {
+        variable.setProperty(key, WslString(value ?: ""))
+    } else {
+        throw WslRuntimeException("Trying to set a property on a non-map variable")
+    }
+}
+
+private suspend fun randomCommand(
+    context: WslContext,
+    args: String,
+) {
+    val argList = args.split(Regex("[ \t]+"))
+    val min = argList[0].toIntOrNull() ?: throw WslRuntimeException("Invalid arguments to random")
+    val max =
+        argList.getOrNull(1)?.toIntOrNull()
+            ?: throw WslRuntimeException("Invalid arguments to random")
+    if (min >= max) {
+        throw WslRuntimeException("Invalid arguments to random: min must be less than max")
+    }
+    context.setScriptVariable(
+        name = "r",
+        value = WslNumber(Random.nextInt(min, max).toBigDecimal()),
+    )
+}
+
+private suspend fun setArray(
+    context: WslContext,
+    args: String,
+) {
+    val (name, rest) = args.splitFirstWord()
+    val variable =
+        context.lookupVariable(name) ?: WslMap(emptyMap()).also { context.setScriptVariable(name, it) }
+    if (!variable.isMap()) {
+        throw WslRuntimeException("Trying to set a property on a non-map variable")
+    }
+    variable.setProperty("0", WslString(rest ?: ""))
+    rest?.let { parseArguments(it) }?.forEachIndexed { index, arg ->
+        variable.setProperty((index + 1).toString(), WslString(arg))
+    }
+}
+
+private suspend fun shiftCommand(
+    context: WslContext,
+    args: String,
+) {
+    var i = 1
+    while (true) {
+        val nextName = (i + 1).toString()
+        val nextVar = context.lookupVariable(nextName)
+        if (nextVar != null) {
+            context.setScriptVariable(i.toString(), nextVar)
+        } else {
+            context.deleteScriptVariable(i.toString())
+            break
+        }
+        i++
+    }
+    val allArgs = context.lookupVariable("0").toString()
+    val breakIndex = findArgumentBreak(allArgs)
+    context.setScriptVariable(
+        name = "0",
+        value =
+            WslString(
+                if (breakIndex >= 0) {
+                    allArgs.substring(breakIndex + 1)
+                } else {
+                    ""
+                },
+            ),
+    )
+}
+
+private suspend fun timerCommand(
+    context: WslContext,
+    args: String,
+) {
+    when (args.firstArgument()) {
+        "start" -> {
+            context.setScriptVariable("t", WslTimer())
+        }
+
+        "stop" -> {
+            val timer = context.lookupVariable("t")
+            if (timer is WslTimer) {
+                context.setScriptVariable("t", WslNumber(timer.toNumber()))
+            } else {
+                // TODO warn that timer isn't running
+            }
+        }
+
+        "clear" -> {
+            context.deleteScriptVariable("t")
+        }
+    }
+}
 
 private suspend fun addHighlight(
     context: WslContext,
