@@ -76,6 +76,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEndCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythEolEvent
+import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythHandledEvent
 import warlockfe.warlock3.wrayth.protocol.WraythIndicatorEvent
 import warlockfe.warlock3.wrayth.protocol.WraythLeftEvent
@@ -292,452 +293,7 @@ class WraythClient(
                         logComplete { line }
                         debug(line)
                         val events = protocolHandler.parseLine(line)
-                        events.forEach { event ->
-                            when (event) {
-                                WraythHandledEvent -> {}
-
-                                is WraythModeEvent -> {
-                                    if (event.id.equals("cmgr", true)) {
-                                        parseText = false
-                                    }
-                                }
-
-                                is WraythStreamEvent -> {
-                                    componentId = null
-                                    flushBuffer(true)
-                                    currentStream = getStream(event.id ?: "main")
-                                }
-
-                                is WraythClearStreamEvent -> {
-                                    getStream(event.id).clear()
-                                }
-
-                                is WraythDataReceivedEvent -> {
-                                    bufferText(StyledString(event.text))
-                                }
-
-                                is WraythEolEvent -> {
-                                    // We're working under the assumption that an end tag is always on the same line as the start tag
-                                    flushBuffer(event.ignoreWhenBlank)
-                                }
-
-                                is WraythAppEvent -> {
-                                    val game = event.game
-                                    val character = event.character
-                                    if (game != null && character != null) {
-                                        val characterId = "${event.game}:${event.character}".lowercase()
-                                        _characterId.value = characterId
-                                        logMutex.withLock {
-                                            logName = "${event.game}_${event.character}"
-                                            logBuffer.forEach { it() }
-                                            logBuffer.clear()
-                                        }
-                                        if (characterRepository.getCharacter(characterId) == null) {
-                                            characterRepository.saveCharacter(
-                                                GameCharacter(
-                                                    id = characterId,
-                                                    gameCode = game,
-                                                    name = character,
-                                                ),
-                                            )
-                                        }
-                                        _gameName.value = game
-                                        _characterName.value = character
-                                    }
-                                }
-
-                                is WraythOutputEvent -> {
-                                    outputStyle = event.style
-                                }
-
-                                is WraythStyleEvent -> {
-                                    currentStyle = event.style
-                                }
-
-                                is WraythPushStyleEvent -> {
-                                    styleStack.addLast(event.style)
-                                }
-
-                                WraythPopStyleEvent -> {
-                                    styleStack.removeLastOrNull()
-                                }
-
-                                is WraythPromptEvent -> {
-                                    currentTypeAhead.update { max(0, it - 1) }
-                                    styleStack.clear()
-                                    componentId = null
-                                    currentStyle = null
-                                    currentStream = null
-                                    if (!isPrompting) {
-                                        getMainStream().appendPartial(
-                                            StyledString(event.text, listOfNotNull(outputStyle)),
-                                            isPrompt = true,
-                                        )
-                                        isPrompting = true
-                                    }
-                                    notifyListeners(ClientPromptEvent)
-                                }
-
-                                is WraythTimeEvent -> {
-                                    val newTime = Instant.fromEpochSeconds(event.time)
-                                    val now = Clock.System.now()
-                                    val adjustedTime = now + delta
-                                    if (event.time > adjustedTime.epochSeconds) {
-                                        // We're in the previous second
-                                        delta = newTime - now
-                                    } else if (event.time < adjustedTime.epochSeconds) {
-                                        // We're in the next second
-                                        delta = newTime + 1.seconds - now
-                                    }
-                                }
-
-                                is WraythRoundTimeEvent -> {
-                                    event.time.toLongOrNull()?.let {
-                                        _roundTimeEnd.value = it
-                                    }
-                                }
-
-                                is WraythCastTimeEvent -> {
-                                    event.time.toLongOrNull()?.let {
-                                        _castTimeEnd.value = it
-                                    }
-                                }
-
-                                is WraythIndicatorEvent -> {
-                                    if (event.visible) {
-                                        _indicators.update { it + event.iconId }
-                                    } else {
-                                        _indicators.update { it - event.iconId }
-                                    }
-                                }
-
-                                is WraythSettingsInfoEvent -> {
-                                    gameCode = event.instance
-
-                                    // We don't actually handle server settings
-
-                                    // Not 100% where this belongs. connections hang until and empty command is sent
-                                    // This must be in response to either mode, playerId, or settingsInfo, so
-                                    // we put it here until someone discovers something else
-                                    sendCommandDirect("")
-                                    sendCommandDirect("_STATE CHATMODE OFF")
-                                }
-
-                                is WraythDialogDataEvent -> {
-                                    if (event.id == null) {
-                                        dialogDataId?.let { windowRegistry.getOrCreateDialog(it).updateState() }
-                                    }
-                                    dialogDataId = event.id
-                                    if (event.clear && event.id != null) {
-                                        this@WraythClient.windowRegistry.getOrCreateDialog(event.id).clear()
-                                    }
-                                }
-
-                                is WraythDialogObjectEvent -> {
-                                    // TODO: record this data somewhere
-                                    // val data = event.data
-                                    // if (data is DialogObject.ProgressBar) {
-                                    //    _properties.value = _properties.value +
-                                    // (data.id to data.value.value.toString()) +
-                                    //            ((data.id + "text") to (data.text ?: ""))
-                                    // }
-                                    dialogDataId?.let {
-                                        windowRegistry.getOrCreateDialog(it).setObject(event.data)
-                                    }
-                                }
-
-                                is WraythCompassEndEvent -> {
-                                    notifyListeners(ClientCompassEvent(directions.toPersistentHashSet()))
-                                    directions.clear()
-                                }
-
-                                is WraythDirectionEvent -> {
-                                    directions += event.direction
-                                }
-
-                                is WraythLeftEvent -> {
-                                    _leftHand.value = event.value
-                                }
-
-                                is WraythRightEvent -> {
-                                    _rightHand.value = event.value
-                                }
-
-                                is WraythSpellEvent -> {
-                                    _spellHand.value = event.value
-                                }
-
-                                is WraythComponentDefinitionEvent -> {
-                                    // Should not happen on main stream, so don't clear prompt
-                                    // TODO: Should currentStyle be used here? is it per stream?
-                                    bufferText(
-                                        text =
-                                            StyledString(
-                                                persistentListOf(
-                                                    StyledStringVariable(
-                                                        name = event.id,
-                                                        styles = styleStack.toPersistentList(),
-                                                    ),
-                                                ),
-                                            ),
-                                    )
-                                    componentId = event.id
-                                    elementBuffer = StyledString()
-                                }
-
-                                is WraythComponentStartEvent -> {
-                                    componentId = event.id
-                                    elementBuffer = StyledString()
-                                }
-
-                                WraythComponentEndEvent -> {
-                                    if (componentId != null) {
-                                        // Either replace the component in the map with the new value
-                                        //  or remove the component from the map (if we got an empty one)
-                                        componentsMutex.withLock {
-                                            components =
-                                                if (elementBuffer?.substrings.isNullOrEmpty()) {
-                                                    components.remove(componentId!!)
-                                                } else {
-                                                    components.put(componentId!!, elementBuffer!!)
-                                                }
-                                        }
-                                        val newValue = elementBuffer ?: StyledString()
-                                        windowRegistry.getStreams().forEach { stream ->
-                                            stream.updateComponent(componentId!!, newValue)
-                                        }
-                                        elementBuffer = null
-                                        componentId = null
-                                    } else {
-                                        // mismatched component tags?
-                                    }
-                                }
-
-                                WraythNavEvent -> {
-                                    notifyListeners(ClientNavEvent)
-                                }
-
-                                is WraythBackgroundEvent -> {
-                                    var updatedWindow: WindowInfo? = null
-                                    _windowInfo.update { currentWindowInfo ->
-                                        val index = currentWindowInfo.indexOfFirst { it.name == event.windowName }
-                                        if (index != -1) {
-                                            val window = currentWindowInfo[index]
-                                            val backgroundImage =
-                                                if (event.image != null) {
-                                                    ClientBackgroundImage(
-                                                        image = resolveBackgroundImage(event.image),
-                                                        mode = event.mode,
-                                                        gradientStart = event.gradientStart,
-                                                        gradientEnd = event.gradientEnd,
-                                                        opacity = event.opacity,
-                                                        horizontalAlignment = event.horizontalAlignment,
-                                                        verticalAlignment = event.verticalAlignment,
-                                                    )
-                                                } else {
-                                                    null
-                                                }
-                                            updatedWindow =
-                                                window.copy(
-                                                    backgroundImage = backgroundImage,
-                                                )
-                                            val updatedInfo = currentWindowInfo.toMutableList()
-                                            updatedInfo[index] = updatedWindow
-                                            updatedInfo
-                                        } else {
-                                            currentWindowInfo
-                                        }
-                                    }
-                                    updatedWindow?.let { notifyListeners(ClientWindowInfoEvent(it)) }
-                                }
-
-                                is WraythStreamWindowEvent -> {
-                                    val window = event.window
-                                    if (windows[event.window.name] == null && window.name != "main") {
-                                        sendCommandDirect("_swclose s${event.window.name}")
-                                    }
-                                    addWindow(window)
-                                }
-
-                                is WraythDialogWindowEvent -> {
-                                    val window = event.window
-                                    if (window.resident) {
-                                        lateinit var info: WindowInfo
-                                        _windowInfo.update { windowInfo ->
-                                            val existing = windowInfo.firstOrNull { it.name == window.id }
-                                            info =
-                                                WindowInfo(
-                                                    name = window.id,
-                                                    title = window.title,
-                                                    subtitle = null,
-                                                    windowType = WindowType.DIALOG,
-                                                    showTimestamps = false,
-                                                    backgroundImage = existing?.backgroundImage,
-                                                )
-                                            windowInfo.replaceOrAdd(info) { it.name == info.name }
-                                        }
-                                        notifyListeners(ClientWindowInfoEvent(info))
-                                    }
-                                }
-
-                                is WraythActionEvent -> {
-                                    bufferText(
-                                        StyledString(
-                                            text = event.text,
-                                            style = WarlockStyle.Link(WarlockAction.SendCommand(event.command)),
-                                        ),
-                                    )
-                                }
-
-                                is WraythOpenUrlEvent -> {
-                                    try {
-                                        val url = resolve(baseUri, Uri.parse(event.url))
-                                        notifyListeners(ClientOpenUrlEvent(url))
-                                    } catch (_: Exception) {
-                                        // Silently ignore exceptions
-                                    }
-                                }
-
-                                is WraythUpdateVerbsEvent -> {
-                                    sendCommandDirect("_menu update 1")
-                                }
-
-                                is WraythStartCmdList -> {
-                                    // ignore for now
-                                }
-
-                                is WraythEndCmdList -> {
-                                    cliCoords =
-                                        cliCoords.mutate { map ->
-                                            cliCache.forEach { cli ->
-                                                map[cli.coord] = cli
-                                            }
-                                        }
-                                    cliCache.clear()
-                                }
-
-                                is WraythCliEvent -> {
-                                    cliCache.add(event.cmd)
-                                }
-
-                                is WraythPushCmdEvent -> {
-                                    val cmd = event.cmd
-                                    if (cmd.coord != null) {
-                                        val action =
-                                            WarlockAction.SendCommandWithLookup {
-                                                val cmdDef = cliCoords[cmd.coord]
-                                                if (cmdDef != null) {
-                                                    replaceTemplateSymbols(
-                                                        text = cmdDef.command,
-                                                        cmdNoun = cmd.noun,
-                                                        cmdId = cmd.exist,
-                                                        eventNoun = null,
-                                                    )
-                                                } else {
-                                                    print(
-                                                        StyledString(
-                                                            "Could not find cli for coord: ${cmd.coord}",
-                                                            WarlockStyle.Error,
-                                                        ),
-                                                    )
-                                                    ""
-                                                }
-                                            }
-                                        styleStack.addLast(
-                                            WarlockStyle.Link(action),
-                                        )
-                                    } else if (cmd.exist != null) {
-                                        styleStack.addLast(
-                                            WarlockStyle.Link(
-                                                WarlockAction.OpenMenu {
-                                                    val menuId = menuCount++
-                                                    _menuData.value = WarlockMenuData(menuId, emptyList())
-                                                    currentCmd = cmd
-                                                    scope.launch {
-                                                        sendCommandDirect("_menu #${cmd.exist} $menuId")
-                                                    }
-                                                    menuId
-                                                },
-                                            ),
-                                        )
-                                    } else {
-                                        styleStack.addLast(WarlockStyle(""))
-                                    }
-                                }
-
-                                is WraythMenuStartEvent -> {
-                                    event.id?.let {
-                                        currentMenuId = it
-                                    }
-                                }
-
-                                is WraythMenuItemEvent -> {
-                                    cliCoords[event.coord]?.let { command ->
-                                        val cmd = currentCmd
-                                        if (cmd != null) {
-                                            cachedMenuItems.add(
-                                                WarlockMenuItem(
-                                                    label =
-                                                        replaceTemplateSymbols(
-                                                            text = command.menu,
-                                                            cmdNoun = cmd.noun,
-                                                            cmdId = cmd.exist,
-                                                            eventNoun = event.noun,
-                                                        ),
-                                                    category = command.category,
-                                                    action = {
-                                                        sendCommand(
-                                                            replaceTemplateSymbols(
-                                                                text = command.command,
-                                                                cmdNoun = cmd.noun,
-                                                                cmdId = cmd.exist,
-                                                                eventNoun = event.noun,
-                                                            ),
-                                                        )
-                                                    },
-                                                ),
-                                            )
-                                        }
-                                    }
-                                }
-
-                                is WraythMenuEndEvent -> {
-                                    _menuData.update { menu ->
-                                        if (menu.id != currentMenuId) {
-                                            menu
-                                        } else {
-                                            menu.copy(items = cachedMenuItems.toPersistentList())
-                                        }
-                                    }
-                                    cachedMenuItems.clear()
-                                }
-
-                                is WraythUnhandledTagEvent -> {
-                                    // debug("Unhandled tag: ${event.tag}")
-                                }
-
-                                is WraythParseErrorEvent -> {
-                                    getMainStream().appendLine(
-                                        StyledString(
-                                            "parse error: ${event.text}",
-                                            WarlockStyle.Error,
-                                        ),
-                                    )
-                                }
-
-                                is WraythResourceEvent -> {
-                                    flushBuffer(true)
-                                    gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
-                                        val url = "https://www.play.net/bfe/$code-art/${event.picture}.jpg"
-                                        logger.d { "Got resource: $url" }
-                                        (currentStream ?: getMainStream()).appendResource(url)
-                                        if (currentStream.isMainStream) {
-                                            isPrompting = false
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        events.forEach { handleEvent(it) }
                     } else {
                         // This is the strange mode to read books and create characters
                         val text = socket.readAvailable()
@@ -756,6 +312,465 @@ class WraythClient(
                     disconnected()
                     break
                 }
+            }
+        }
+    }
+
+    private suspend fun handleEvent(event: WraythEvent) {
+        when (event) {
+            WraythHandledEvent -> {}
+
+            is WraythModeEvent -> {
+                if (event.id.equals("cmgr", true)) {
+                    parseText = false
+                }
+            }
+
+            is WraythStreamEvent -> {
+                componentId = null
+                flushBuffer(true)
+                currentStream = getStream(event.id ?: "main")
+            }
+
+            is WraythClearStreamEvent -> {
+                getStream(event.id).clear()
+            }
+
+            is WraythDataReceivedEvent -> {
+                bufferText(StyledString(event.text))
+            }
+
+            is WraythEolEvent -> {
+                // We're working under the assumption that an end tag is always on the same line as the start tag
+                flushBuffer(event.ignoreWhenBlank)
+            }
+
+            is WraythAppEvent -> {
+                val game = event.game
+                val character = event.character
+                if (game != null && character != null) {
+                    val characterId = "${event.game}:${event.character}".lowercase()
+                    _characterId.value = characterId
+                    logMutex.withLock {
+                        logName = "${event.game}_${event.character}"
+                        logBuffer.forEach { it() }
+                        logBuffer.clear()
+                    }
+                    if (characterRepository.getCharacter(characterId) == null) {
+                        characterRepository.saveCharacter(
+                            GameCharacter(
+                                id = characterId,
+                                gameCode = game,
+                                name = character,
+                            ),
+                        )
+                    }
+                    _gameName.value = game
+                    _characterName.value = character
+                }
+            }
+
+            is WraythOutputEvent -> {
+                outputStyle = event.style
+            }
+
+            is WraythStyleEvent -> {
+                currentStyle = event.style
+            }
+
+            is WraythPushStyleEvent -> {
+                styleStack.addLast(event.style)
+            }
+
+            WraythPopStyleEvent -> {
+                styleStack.removeLastOrNull()
+            }
+
+            is WraythPromptEvent -> {
+                currentTypeAhead.update { max(0, it - 1) }
+                styleStack.clear()
+                componentId = null
+                currentStyle = null
+                currentStream = null
+                if (!isPrompting) {
+                    getMainStream().appendPartial(
+                        StyledString(event.text, listOfNotNull(outputStyle)),
+                        isPrompt = true,
+                    )
+                    isPrompting = true
+                }
+                notifyListeners(ClientPromptEvent)
+            }
+
+            is WraythTimeEvent -> {
+                val newTime = Instant.fromEpochSeconds(event.time)
+                val now = Clock.System.now()
+                val adjustedTime = now + delta
+                if (event.time > adjustedTime.epochSeconds) {
+                    // We're in the previous second
+                    delta = newTime - now
+                } else if (event.time < adjustedTime.epochSeconds) {
+                    // We're in the next second
+                    delta = newTime + 1.seconds - now
+                }
+            }
+
+            is WraythRoundTimeEvent -> {
+                event.time.toLongOrNull()?.let {
+                    _roundTimeEnd.value = it
+                }
+            }
+
+            is WraythCastTimeEvent -> {
+                event.time.toLongOrNull()?.let {
+                    _castTimeEnd.value = it
+                }
+            }
+
+            is WraythIndicatorEvent -> {
+                if (event.visible) {
+                    _indicators.update { it + event.iconId }
+                } else {
+                    _indicators.update { it - event.iconId }
+                }
+            }
+
+            is WraythSettingsInfoEvent -> {
+                gameCode = event.instance
+
+                // We don't actually handle server settings
+
+                // Not 100% where this belongs. connections hang until and empty command is sent
+                // This must be in response to either mode, playerId, or settingsInfo, so
+                // we put it here until someone discovers something else
+                sendCommandDirect("")
+                sendCommandDirect("_STATE CHATMODE OFF")
+            }
+
+            is WraythDialogDataEvent -> {
+                if (event.id == null) {
+                    dialogDataId?.let { windowRegistry.getOrCreateDialog(it).updateState() }
+                }
+                dialogDataId = event.id
+                if (event.clear && event.id != null) {
+                    this@WraythClient.windowRegistry.getOrCreateDialog(event.id).clear()
+                }
+            }
+
+            is WraythDialogObjectEvent -> {
+                // TODO: record this data somewhere
+                // val data = event.data
+                // if (data is DialogObject.ProgressBar) {
+                //    _properties.value = _properties.value +
+                // (data.id to data.value.value.toString()) +
+                //            ((data.id + "text") to (data.text ?: ""))
+                // }
+                dialogDataId?.let {
+                    windowRegistry.getOrCreateDialog(it).setObject(event.data)
+                }
+            }
+
+            is WraythCompassEndEvent -> {
+                notifyListeners(ClientCompassEvent(directions.toPersistentHashSet()))
+                directions.clear()
+            }
+
+            is WraythDirectionEvent -> {
+                directions += event.direction
+            }
+
+            is WraythLeftEvent -> {
+                _leftHand.value = event.value
+            }
+
+            is WraythRightEvent -> {
+                _rightHand.value = event.value
+            }
+
+            is WraythSpellEvent -> {
+                _spellHand.value = event.value
+            }
+
+            is WraythComponentDefinitionEvent -> {
+                // Should not happen on main stream, so don't clear prompt
+                // TODO: Should currentStyle be used here? is it per stream?
+                bufferText(
+                    text =
+                        StyledString(
+                            persistentListOf(
+                                StyledStringVariable(
+                                    name = event.id,
+                                    styles = styleStack.toPersistentList(),
+                                ),
+                            ),
+                        ),
+                )
+                componentId = event.id
+                elementBuffer = StyledString()
+            }
+
+            is WraythComponentStartEvent -> {
+                componentId = event.id
+                elementBuffer = StyledString()
+            }
+
+            WraythComponentEndEvent -> {
+                if (componentId != null) {
+                    // Either replace the component in the map with the new value
+                    //  or remove the component from the map (if we got an empty one)
+                    componentsMutex.withLock {
+                        components =
+                            if (elementBuffer?.substrings.isNullOrEmpty()) {
+                                components.remove(componentId!!)
+                            } else {
+                                components.put(componentId!!, elementBuffer!!)
+                            }
+                    }
+                    val newValue = elementBuffer ?: StyledString()
+                    windowRegistry.getStreams().forEach { stream ->
+                        stream.updateComponent(componentId!!, newValue)
+                    }
+                    elementBuffer = null
+                    componentId = null
+                } else {
+                    // mismatched component tags?
+                }
+            }
+
+            WraythNavEvent -> {
+                notifyListeners(ClientNavEvent)
+            }
+
+            is WraythBackgroundEvent -> {
+                handleBackground(event)
+            }
+
+            is WraythStreamWindowEvent -> {
+                val window = event.window
+                if (windows[event.window.name] == null && window.name != "main") {
+                    sendCommandDirect("_swclose s${event.window.name}")
+                }
+                addWindow(window)
+            }
+
+            is WraythDialogWindowEvent -> {
+                val window = event.window
+                if (window.resident) {
+                    lateinit var info: WindowInfo
+                    _windowInfo.update { windowInfo ->
+                        val existing = windowInfo.firstOrNull { it.name == window.id }
+                        info =
+                            WindowInfo(
+                                name = window.id,
+                                title = window.title,
+                                subtitle = null,
+                                windowType = WindowType.DIALOG,
+                                showTimestamps = false,
+                                backgroundImage = existing?.backgroundImage,
+                            )
+                        windowInfo.replaceOrAdd(info) { it.name == info.name }
+                    }
+                    notifyListeners(ClientWindowInfoEvent(info))
+                }
+            }
+
+            is WraythActionEvent -> {
+                bufferText(
+                    StyledString(
+                        text = event.text,
+                        style = WarlockStyle.Link(WarlockAction.SendCommand(event.command)),
+                    ),
+                )
+            }
+
+            is WraythOpenUrlEvent -> {
+                try {
+                    val url = resolve(baseUri, Uri.parse(event.url))
+                    notifyListeners(ClientOpenUrlEvent(url))
+                } catch (_: Exception) {
+                    // Silently ignore exceptions
+                }
+            }
+
+            is WraythUpdateVerbsEvent -> {
+                sendCommandDirect("_menu update 1")
+            }
+
+            is WraythStartCmdList -> {
+                // ignore for now
+            }
+
+            is WraythEndCmdList -> {
+                cliCoords =
+                    cliCoords.mutate { map ->
+                        cliCache.forEach { cli ->
+                            map[cli.coord] = cli
+                        }
+                    }
+                cliCache.clear()
+            }
+
+            is WraythCliEvent -> {
+                cliCache.add(event.cmd)
+            }
+
+            is WraythPushCmdEvent -> {
+                handlePushCmd(event)
+            }
+
+            is WraythMenuStartEvent -> {
+                event.id?.let {
+                    currentMenuId = it
+                }
+            }
+
+            is WraythMenuItemEvent -> {
+                handleMenuItem(event)
+            }
+
+            is WraythMenuEndEvent -> {
+                _menuData.update { menu ->
+                    if (menu.id != currentMenuId) {
+                        menu
+                    } else {
+                        menu.copy(items = cachedMenuItems.toPersistentList())
+                    }
+                }
+                cachedMenuItems.clear()
+            }
+
+            is WraythUnhandledTagEvent -> {
+                // debug("Unhandled tag: ${event.tag}")
+            }
+
+            is WraythParseErrorEvent -> {
+                getMainStream().appendLine(
+                    StyledString(
+                        "parse error: ${event.text}",
+                        WarlockStyle.Error,
+                    ),
+                )
+            }
+
+            is WraythResourceEvent -> {
+                flushBuffer(true)
+                gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
+                    val url = "https://www.play.net/bfe/$code-art/${event.picture}.jpg"
+                    logger.d { "Got resource: $url" }
+                    (currentStream ?: getMainStream()).appendResource(url)
+                    if (currentStream.isMainStream) {
+                        isPrompting = false
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun handleBackground(event: WraythBackgroundEvent) {
+        var updatedWindow: WindowInfo? = null
+        _windowInfo.update { currentWindowInfo ->
+            val index = currentWindowInfo.indexOfFirst { it.name == event.windowName }
+            if (index != -1) {
+                val window = currentWindowInfo[index]
+                val backgroundImage =
+                    if (event.image != null) {
+                        ClientBackgroundImage(
+                            image = resolveBackgroundImage(event.image),
+                            mode = event.mode,
+                            gradientStart = event.gradientStart,
+                            gradientEnd = event.gradientEnd,
+                            opacity = event.opacity,
+                            horizontalAlignment = event.horizontalAlignment,
+                            verticalAlignment = event.verticalAlignment,
+                        )
+                    } else {
+                        null
+                    }
+                updatedWindow =
+                    window.copy(
+                        backgroundImage = backgroundImage,
+                    )
+                val updatedInfo = currentWindowInfo.toMutableList()
+                updatedInfo[index] = updatedWindow
+                updatedInfo
+            } else {
+                currentWindowInfo
+            }
+        }
+        updatedWindow?.let { notifyListeners(ClientWindowInfoEvent(it)) }
+    }
+
+    private fun handlePushCmd(event: WraythPushCmdEvent) {
+        val cmd = event.cmd
+        if (cmd.coord != null) {
+            val action =
+                WarlockAction.SendCommandWithLookup {
+                    val cmdDef = cliCoords[cmd.coord]
+                    if (cmdDef != null) {
+                        replaceTemplateSymbols(
+                            text = cmdDef.command,
+                            cmdNoun = cmd.noun,
+                            cmdId = cmd.exist,
+                            eventNoun = null,
+                        )
+                    } else {
+                        print(
+                            StyledString(
+                                "Could not find cli for coord: ${cmd.coord}",
+                                WarlockStyle.Error,
+                            ),
+                        )
+                        ""
+                    }
+                }
+            styleStack.addLast(
+                WarlockStyle.Link(action),
+            )
+        } else if (cmd.exist != null) {
+            styleStack.addLast(
+                WarlockStyle.Link(
+                    WarlockAction.OpenMenu {
+                        val menuId = menuCount++
+                        _menuData.value = WarlockMenuData(menuId, emptyList())
+                        currentCmd = cmd
+                        scope.launch {
+                            sendCommandDirect("_menu #${cmd.exist} $menuId")
+                        }
+                        menuId
+                    },
+                ),
+            )
+        } else {
+            styleStack.addLast(WarlockStyle(""))
+        }
+    }
+
+    private fun handleMenuItem(event: WraythMenuItemEvent) {
+        cliCoords[event.coord]?.let { command ->
+            val cmd = currentCmd
+            if (cmd != null) {
+                cachedMenuItems.add(
+                    WarlockMenuItem(
+                        label =
+                            replaceTemplateSymbols(
+                                text = command.menu,
+                                cmdNoun = cmd.noun,
+                                cmdId = cmd.exist,
+                                eventNoun = event.noun,
+                            ),
+                        category = command.category,
+                        action = {
+                            sendCommand(
+                                replaceTemplateSymbols(
+                                    text = command.command,
+                                    cmdNoun = cmd.noun,
+                                    cmdId = cmd.exist,
+                                    eventNoun = event.noun,
+                                ),
+                            )
+                        },
+                    ),
+                )
             }
         }
     }
