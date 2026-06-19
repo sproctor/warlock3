@@ -76,6 +76,7 @@ import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.CommandHistoryRepository
+import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.DEFAULT_MAX_TYPE_AHEAD
 import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
@@ -118,6 +119,7 @@ class GameViewModel(
     private val progressBarSettingRepository: ProgressBarSettingRepository,
     private val clientSettingRepository: ClientSettingRepository,
     private val commandHistoryRepository: CommandHistoryRepository,
+    private val connectionRepository: ConnectionRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val reconnectAction: (suspend () -> Unit)? = null,
 ) : ViewModel(),
@@ -177,6 +179,17 @@ class GameViewModel(
                 null
             }
         }
+
+    // The connection's custom window title, or null to fall back to the character name. Reactive, so
+    // editing the connection while connected updates the title live.
+    val windowTitle: StateFlow<String?> =
+        observePerCharacter { characterId ->
+            connectionRepository.observeWindowTitle(characterId)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = null,
+        )
 
     val windowSettings =
         observePerCharacter { characterId ->

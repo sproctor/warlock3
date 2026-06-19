@@ -217,6 +217,7 @@ abstract class AppContainer(
             progressBarSettingRepository = progressBarSettingRepository,
             clientSettingRepository = clientSettings,
             commandHistoryRepository = commandHistoryRepository,
+            connectionRepository = connectionRepository,
             ioDispatcher = ioDispatcher,
         )
     }

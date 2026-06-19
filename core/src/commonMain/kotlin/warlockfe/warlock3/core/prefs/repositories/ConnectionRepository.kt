@@ -43,6 +43,30 @@ class ConnectionRepository(
         }
     }
 
+    suspend fun saveWindowTitle(
+        id: String,
+        windowTitle: String?,
+    ) {
+        store.mutateConnections { registry ->
+            registry.copy(
+                connections = registry.connections.map { if (it.id == id) it.copy(windowTitle = windowTitle) else it },
+            )
+        }
+    }
+
+    /**
+     * The custom window title for the connected character, or null if none is set (or it's blank).
+     * Matched by `game:character` rather than connection id, since that's how the runtime character id
+     * is formed (so it resolves for both direct play.net and MUD Mobile connections).
+     */
+    fun observeWindowTitle(characterId: String): Flow<String?> =
+        store.observeConnections().map { registry ->
+            registry.connections
+                .firstOrNull { "${it.gameCode}:${it.character}".lowercase() == characterId }
+                ?.windowTitle
+                ?.takeIf { it.isNotBlank() }
+        }
+
     suspend fun save(
         username: String,
         character: String,

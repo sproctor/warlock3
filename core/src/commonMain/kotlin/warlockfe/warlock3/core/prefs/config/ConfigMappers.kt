@@ -239,6 +239,7 @@ internal fun ConnectionConfig.toStoredConnection(password: String?): StoredConne
         password = password,
         character = character,
         code = gameCode,
+        windowTitle = windowTitle,
         proxySettings =
             ConnectionProxySettings(
                 enabled = proxyEnabled,

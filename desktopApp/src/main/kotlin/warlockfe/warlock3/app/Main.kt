@@ -57,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -656,7 +657,12 @@ private fun GameState.getTitle(): Flow<String> =
         }
 
         is GameScreen.ConnectedGameState -> {
-            screen.viewModel.character.map { it?.name ?: "Loading..." }
+            combine(
+                screen.viewModel.windowTitle,
+                screen.viewModel.character,
+            ) { windowTitle, character ->
+                windowTitle ?: character?.name ?: "Loading..."
+            }
         }
 
         is GameScreen.NewGameState -> {

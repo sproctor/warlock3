@@ -26,15 +26,21 @@ class ConnectionSettingsRepository(
         proxySettings: ConnectionProxySettings,
     ) {
         store.mutateConnections { registry ->
-            val existing = registry.connections.firstOrNull { it.id == connectionId } ?: ConnectionConfig(id = connectionId)
-            val updated =
-                existing.copy(
+            fun ConnectionConfig.withProxy() =
+                copy(
                     proxyEnabled = proxySettings.enabled,
                     proxyLaunchCommand = proxySettings.launchCommand,
                     proxyHost = proxySettings.host,
                     proxyPort = proxySettings.port,
                 )
-            registry.copy(connections = registry.connections.filterNot { it.id == connectionId } + updated)
+            if (registry.connections.any { it.id == connectionId }) {
+                // Update in place so the connection keeps its position in the list.
+                registry.copy(
+                    connections = registry.connections.map { if (it.id == connectionId) it.withProxy() else it },
+                )
+            } else {
+                registry.copy(connections = registry.connections + ConnectionConfig(id = connectionId).withProxy())
+            }
         }
     }
 }

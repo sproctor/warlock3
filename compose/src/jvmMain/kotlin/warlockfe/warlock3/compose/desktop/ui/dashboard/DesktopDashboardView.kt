@@ -571,8 +571,10 @@ private fun DashboardDialogs(
     ui.editConnection?.let { connection ->
         DesktopConnectionSettingsDialog(
             name = connection.name,
+            windowTitle = connection.windowTitle,
             proxySettings = connection.proxySettings,
             updateName = { viewModel.renameConnection(connection.id, it) },
+            updateWindowTitle = { viewModel.updateWindowTitle(connection.id, it) },
             updateProxySettings = { viewModel.updateProxySettings(connection.id, it) },
             closeDialog = { ui.editConnection = null },
         )
