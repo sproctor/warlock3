@@ -46,15 +46,18 @@ fun DesktopIndicatorView(
     modifier: Modifier = Modifier,
 ) {
     // Posture and affliction share the first slot; the rest follow the design's grouping (6.4).
+    // Only the first matching status in a group is shown, so affliction is listed before posture:
+    // a posture (usually "standing") is almost always present and would otherwise permanently mask
+    // the more important poisoned/diseased warning.
     val groups: List<List<Pair<String, DrawableResource>>> =
         listOf(
             listOf(
+                "poisoned" to Res.drawable.poisoned,
+                "diseased" to Res.drawable.diseased,
                 "kneeling" to Res.drawable.kneeling,
                 "prone" to Res.drawable.prone,
                 "sitting" to Res.drawable.sitting,
                 "standing" to Res.drawable.standing,
-                "poisoned" to Res.drawable.poisoned,
-                "diseased" to Res.drawable.diseased,
             ),
             listOf("joined" to Res.drawable.joined),
             listOf(
@@ -69,7 +72,7 @@ fun DesktopIndicatorView(
             listOf("stunned" to Res.drawable.stunned),
         )
 
-    val chrome = WarlockGameChrome
+    val chrome = gameChrome
     val shape = RoundedCornerShape(5.dp)
     Row(
         modifier = modifier,
@@ -107,7 +110,7 @@ private data class IndicatorAccent(
     val iconTint: Color?,
 )
 
-private fun inactiveAccent(chrome: WarlockGameChromeColors) =
+private fun inactiveAccent(chrome: GameChrome) =
     IndicatorAccent(
         border = chrome.border,
         background = chrome.panelAlt,
@@ -116,7 +119,7 @@ private fun inactiveAccent(chrome: WarlockGameChromeColors) =
 
 private fun indicatorAccent(
     key: String,
-    chrome: WarlockGameChromeColors,
+    chrome: GameChrome,
 ): IndicatorAccent =
     when (key) {
         "poisoned", "diseased" -> {

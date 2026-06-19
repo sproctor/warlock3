@@ -41,6 +41,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -85,7 +86,7 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
-import warlockfe.warlock3.compose.desktop.ui.game.WarlockGameChrome
+import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
@@ -149,10 +150,13 @@ fun DesktopWindowView(
         modifier =
             modifier
                 .padding(2.dp)
-                .background(WarlockGameChrome.panel, frameShape)
+                // Clip so a body that paints its own background (dialog panels, user styles) does not
+                // overdraw the rounded corners.
+                .clip(frameShape)
+                .background(gameChrome.panel, frameShape)
                 .border(
                     Dp.Hairline,
-                    if (isSelected) WarlockGameChrome.borderStrong else WarlockGameChrome.border,
+                    if (isSelected) gameChrome.borderStrong else gameChrome.border,
                     frameShape,
                 ).onLayoutRectChanged { bounds ->
                     viewportHeight = bounds.height
@@ -169,7 +173,7 @@ fun DesktopWindowView(
                 modifier =
                     headerModifier
                         .background(
-                            color = if (isSelected) WarlockGameChrome.accent else WarlockGameChrome.header,
+                            color = if (isSelected) gameChrome.accent else gameChrome.header,
                             shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
                         ).fillMaxWidth(),
                 title = {
@@ -177,9 +181,9 @@ fun DesktopWindowView(
                         text = title,
                         color =
                             if (isSelected) {
-                                WarlockGameChrome.accentText
+                                gameChrome.accentText
                             } else {
-                                WarlockGameChrome.textMuted
+                                gameChrome.textMuted
                             },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

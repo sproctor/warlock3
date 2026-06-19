@@ -64,7 +64,9 @@ fun DialogObjectLayout(
                 .getIgnoringCase("${data.id}Bar")
                 ?.children
                 ?.getIgnoringCase(data.id)
-                ?.let { skinObjects[data.id] = it }
+                // Colors only: these bars have no parent skin container, so a top/left in the entry
+                // would resolve against nothing and pin them to (0,0). Let the server position them.
+                ?.let { skinObjects[data.id] = it.copy(top = null, left = null) }
         }
     }
 

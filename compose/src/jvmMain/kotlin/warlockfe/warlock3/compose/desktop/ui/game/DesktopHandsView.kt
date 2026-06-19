@@ -44,36 +44,36 @@ fun DesktopHandsView(
                 Image(
                     modifier = Modifier.size(18.dp).rotate(90f).mirror(),
                     painter = painterResource(Res.drawable.front_hand),
-                    colorFilter = ColorFilter.tint(WarlockGameChrome.textFaint),
+                    colorFilter = ColorFilter.tint(gameChrome.textFaint),
                     contentDescription = "Left hand",
                 )
             },
             value = left,
-            valueColor = WarlockGameChrome.textPrimary,
+            valueColor = gameChrome.textPrimary,
         )
         DesktopHandBox(
             icon = {
                 Image(
                     modifier = Modifier.size(18.dp).rotate(-90f),
                     painter = painterResource(Res.drawable.front_hand),
-                    colorFilter = ColorFilter.tint(WarlockGameChrome.textFaint),
+                    colorFilter = ColorFilter.tint(gameChrome.textFaint),
                     contentDescription = "Right hand",
                 )
             },
             value = right,
-            valueColor = WarlockGameChrome.textPrimary,
+            valueColor = gameChrome.textPrimary,
         )
         DesktopHandBox(
             icon = {
                 Image(
                     modifier = Modifier.size(18.dp),
                     painter = painterResource(Res.drawable.star_shine),
-                    colorFilter = ColorFilter.tint(WarlockGameChrome.spellIcon),
+                    colorFilter = ColorFilter.tint(gameChrome.spellIcon),
                     contentDescription = "Spell",
                 )
             },
             value = spell,
-            valueColor = WarlockGameChrome.spellText,
+            valueColor = gameChrome.spellText,
         )
     }
 }
@@ -91,8 +91,8 @@ fun RowScope.DesktopHandBox(
         modifier =
             modifier
                 .weight(1f)
-                .background(color = WarlockGameChrome.panelAlt, shape = shape)
-                .border(width = 1.dp, color = WarlockGameChrome.border, shape = shape)
+                .background(color = gameChrome.panelAlt, shape = shape)
+                .border(width = 1.dp, color = gameChrome.border, shape = shape)
                 .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -100,7 +100,7 @@ fun RowScope.DesktopHandBox(
         Spacer(Modifier.width(8.dp))
         Text(
             text = if (isEmpty) "empty" else value,
-            color = if (isEmpty) WarlockGameChrome.caption else valueColor,
+            color = if (isEmpty) gameChrome.caption else valueColor,
             fontSize = 13.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
