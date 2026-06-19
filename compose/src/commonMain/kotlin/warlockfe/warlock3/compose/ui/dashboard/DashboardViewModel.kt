@@ -396,6 +396,15 @@ class DashboardViewModel(
         }
     }
 
+    fun updateWindowTitle(
+        id: String,
+        windowTitle: String?,
+    ) {
+        viewModelScope.launch {
+            connectionRepository.saveWindowTitle(id, windowTitle)
+        }
+    }
+
     /** Persist a new ordering of the saved-connections list (after a drag-to-reorder). */
     fun reorderConnections(orderedIds: List<String>) {
         viewModelScope.launch {

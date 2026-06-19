@@ -27,13 +27,16 @@ import warlockfe.warlock3.core.sge.ConnectionProxySettings
 @Composable
 fun ConnectionSettingsDialog(
     name: String,
+    windowTitle: String?,
     proxySettings: ConnectionProxySettings,
     updateName: (String) -> Unit,
+    updateWindowTitle: (String?) -> Unit,
     updateProxySettings: (ConnectionProxySettings) -> Unit,
     closeDialog: () -> Unit,
 ) {
     var proxyEnabled by rememberSaveable(proxySettings) { mutableStateOf(proxySettings.enabled) }
     val nameState = rememberTextFieldState(name)
+    val windowTitleState = rememberTextFieldState(windowTitle ?: "")
     val proxyCommand = rememberTextFieldState(proxySettings.launchCommand ?: "")
     val proxyHost = rememberTextFieldState(proxySettings.host ?: "")
     val proxyPort = rememberTextFieldState(proxySettings.port ?: "")
@@ -47,6 +50,11 @@ fun ConnectionSettingsDialog(
                         val newName = nameState.text.toString().trim()
                         if (newName.isNotEmpty() && newName != name) {
                             updateName(newName)
+                        }
+                        val trimmedTitle = windowTitleState.text.toString().trim()
+                        val newWindowTitle = trimmedTitle.ifBlank { null }
+                        if (newWindowTitle != windowTitle) {
+                            updateWindowTitle(newWindowTitle)
                         }
                         updateProxySettings(
                             ConnectionProxySettings(
@@ -71,6 +79,16 @@ fun ConnectionSettingsDialog(
                     state = nameState,
                     label = {
                         Text("Name")
+                    },
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                )
+                TextField(
+                    state = windowTitleState,
+                    label = {
+                        Text("Window title")
+                    },
+                    placeholder = {
+                        Text("Leave blank to use the character name")
                     },
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )

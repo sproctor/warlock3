@@ -149,9 +149,13 @@ fun ConnectionList(
     if (editingConnection != null) {
         ConnectionSettingsDialog(
             name = editingConnection.name,
+            windowTitle = editingConnection.windowTitle,
             proxySettings = editingConnection.proxySettings,
             updateName = {
                 viewModel.renameConnection(editingConnection.id, it)
+            },
+            updateWindowTitle = {
+                viewModel.updateWindowTitle(editingConnection.id, it)
             },
             updateProxySettings = {
                 viewModel.updateProxySettings(editingConnection.id, it)

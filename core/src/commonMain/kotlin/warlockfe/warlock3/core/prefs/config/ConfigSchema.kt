@@ -309,6 +309,8 @@ data class ConnectionConfig(
     val username: String = "",
     val gameCode: String = "",
     val character: String = "",
+    @TomlComment("When set, the game window shows \"Warlock - <this>\" instead of the character name.")
+    val windowTitle: String? = null,
     val proxyEnabled: Boolean = false,
     val proxyLaunchCommand: String? = null,
     val proxyHost: String? = null,

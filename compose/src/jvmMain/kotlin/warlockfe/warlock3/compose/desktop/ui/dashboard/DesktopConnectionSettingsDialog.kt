@@ -28,13 +28,16 @@ import warlockfe.warlock3.core.sge.ConnectionProxySettings
 @Composable
 fun DesktopConnectionSettingsDialog(
     name: String,
+    windowTitle: String?,
     proxySettings: ConnectionProxySettings,
     updateName: (String) -> Unit,
+    updateWindowTitle: (String?) -> Unit,
     updateProxySettings: (ConnectionProxySettings) -> Unit,
     closeDialog: () -> Unit,
 ) {
     var proxyEnabled by rememberSaveable(proxySettings) { mutableStateOf(proxySettings.enabled) }
     val nameState = rememberTextFieldState(name)
+    val windowTitleState = rememberTextFieldState(windowTitle ?: "")
     val proxyCommand = rememberTextFieldState(proxySettings.launchCommand ?: "")
     val proxyHost = rememberTextFieldState(proxySettings.host ?: "")
     val proxyPort = rememberTextFieldState(proxySettings.port ?: "")
@@ -52,6 +55,13 @@ fun DesktopConnectionSettingsDialog(
         ) {
             Text("Name")
             WarlockTextField(state = nameState, modifier = Modifier.fillMaxWidth())
+
+            Text("Window title")
+            WarlockTextField(
+                state = windowTitleState,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = "Leave blank to use the character name",
+            )
 
             Text(
                 "In the following settings, \"{host}\" and \"{port}\" are replaced by the values for the game server. " +
@@ -96,6 +106,11 @@ fun DesktopConnectionSettingsDialog(
                             val newName = nameState.text.toString().trim()
                             if (newName.isNotEmpty() && newName != name) {
                                 updateName(newName)
+                            }
+                            val trimmedTitle = windowTitleState.text.toString().trim()
+                            val newWindowTitle = trimmedTitle.ifBlank { null }
+                            if (newWindowTitle != windowTitle) {
+                                updateWindowTitle(newWindowTitle)
                             }
                             updateProxySettings(
                                 ConnectionProxySettings(
