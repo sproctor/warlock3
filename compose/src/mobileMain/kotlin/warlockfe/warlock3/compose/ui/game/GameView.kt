@@ -49,8 +49,8 @@ import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.settings_filled
+import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
-import warlockfe.warlock3.compose.generated.resources.space_dashboard_outlined
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.window.DialogContent
@@ -485,7 +485,7 @@ fun GameBottomBar(
                                     if (windowListVisible) {
                                         Res.drawable.space_dashboard_filled
                                     } else {
-                                        Res.drawable.space_dashboard_outlined
+                                        Res.drawable.space_dashboard
                                     },
                                 ),
                             contentDescription = "Toggle window list",

@@ -6,12 +6,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -34,11 +36,11 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -46,8 +48,8 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.window.LocalProgressBarColors
 import warlockfe.warlock3.compose.desktop.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.visibility_filled
-import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
+import warlockfe.warlock3.compose.generated.resources.circle
+import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
@@ -72,7 +74,7 @@ fun DesktopGameView(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(JewelTheme.globalColors.panelBackground)
+                .background(WarlockGameChrome.appBackground)
                 .onPreviewKeyEvent { event ->
                     if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
                         ignoreNextUnknownKeyEvent = false
@@ -133,10 +135,10 @@ fun DesktopGameView(
                 val scope = rememberCoroutineScope()
                 val sidebarBackground =
                     defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
-                        ?: JewelTheme.globalColors.panelBackground
+                        ?: WarlockGameChrome.panelAlt
                 val sidebarTextColor =
                     defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
-                        ?: JewelTheme.globalColors.text.normal
+                        ?: WarlockGameChrome.textPrimary
                 WarlockScrollableColumn(
                     modifier =
                         Modifier
@@ -148,9 +150,10 @@ fun DesktopGameView(
                                 shape = RoundedCornerShape(2.dp),
                             ).border(
                                 width = Dp.Hairline,
-                                color = JewelTheme.globalColors.borders.normal,
+                                color = WarlockGameChrome.border,
                                 shape = RoundedCornerShape(2.dp),
-                            ).padding(8.dp),
+                            ),
+                    contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     windows.sortedBy { it.title }.forEach { window ->
@@ -167,6 +170,7 @@ fun DesktopGameView(
                                     }
                                 }
                             },
+                            onClear = { viewModel.clearStream(window.name) },
                         )
                     }
                 }
@@ -183,9 +187,8 @@ fun DesktopGameView(
                         saveColors = viewModel::saveProgressBarColors,
                     ),
             ) {
-                // WindowView (main text pane) still M3 — fall through. Migrated in step 8.
                 DesktopGameTextWindows(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).padding(2.dp),
                     leftWindowUiStates = leftWindows,
                     rightWindowUiStates = rightWindows,
                     topWindowUiStates = topWindows,
@@ -269,27 +272,52 @@ private fun DesktopWindowListItem(
     windowInfo: WindowInfo,
     isOpen: Boolean,
     onClick: (Boolean) -> Unit,
+    onClear: () -> Unit,
 ) {
+    // Per the design: a leading status dot (filled accent when shown, hollow + dimmed when hidden)
+    // replaces the old eye icons, and a trailing "..." opens the per-window menu. Clicking the row
+    // still toggles the window open/closed.
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = { onClick(!isOpen) }),
+                .clickable(onClick = { onClick(!isOpen) })
+                .padding(vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            painter =
-                painterResource(
-                    if (isOpen) {
-                        Res.drawable.visibility_filled
-                    } else {
-                        Res.drawable.visibility_off_filled
-                    },
+            modifier = Modifier.size(12.dp),
+            painter = painterResource(if (isOpen) Res.drawable.circle_filled else Res.drawable.circle),
+            colorFilter =
+                ColorFilter.tint(
+                    if (isOpen) WarlockGameChrome.accentSubtle else WarlockGameChrome.textFaint,
                 ),
-            colorFilter = ColorFilter.tint(color),
-            contentDescription = null,
+            contentDescription = if (isOpen) "Shown" else "Hidden",
         )
-        Spacer(Modifier.width(8.dp))
-        Text(text = windowInfo.title, color = color)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            modifier = Modifier.weight(1f),
+            text = windowInfo.title,
+            color = if (isOpen) color else WarlockGameChrome.textMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        WindowMenuButton(
+            tint = WarlockGameChrome.textFaint,
+            horizontalAlignment = Alignment.End,
+        ) {
+            selectableItem(
+                selected = false,
+                onClick = { onClick(!isOpen) },
+            ) {
+                Text(if (isOpen) "Hide window" else "Show window")
+            }
+            selectableItem(
+                selected = false,
+                onClick = onClear,
+            ) {
+                Text("Clear window")
+            }
+        }
     }
 }

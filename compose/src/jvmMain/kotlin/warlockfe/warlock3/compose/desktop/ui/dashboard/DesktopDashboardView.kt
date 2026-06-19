@@ -801,4 +801,4 @@ private fun ConnectingDialog(
 
 // EAccess game codes the user can discover characters for (see spec glossary).
 private val MUD_MOBILE_GAME_CODES =
-    listOf("DR", "DRX", "DRF", "GS3", "GSX", "GSF")
+    listOf("DR", "DRX", "DRF", "DRT", "GS3", "GSX", "GSF", "GST")

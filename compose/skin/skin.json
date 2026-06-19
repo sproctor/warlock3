@@ -21,8 +21,8 @@
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
-        "bar": "#800000",
-        "background": "#888888"
+        "bar": { "light": "#D33F3C", "dark": "#E0524F" },
+        "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
       }
     }
   },
@@ -32,8 +32,8 @@
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
-        "bar": "#800000",
-        "background": "#888888"
+        "bar": { "light": "#D33F3C", "dark": "#E0524F" },
+        "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
       }
     }
   },
@@ -43,8 +43,8 @@
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
-        "bar": "#0000FF",
-        "background": "#888888"
+        "bar": { "light": "#2A6FC2", "dark": "#2D7DD2" },
+        "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
       }
     }
   },
@@ -53,9 +53,9 @@
       "stamina": {
         "top": 0,
         "left": 0,
-        "color": "#000000",
-        "bar": "#D0982F",
-        "background": "#888888"
+        "color": "#FFFFFF",
+        "bar": { "light": "#C9930F", "dark": "#F2C039" },
+        "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
       }
     }
   },
@@ -64,9 +64,18 @@
       "spirit": {
         "top": 0,
         "left": 0,
-        "color": "#000000",
-        "bar": "#CCCCCC",
-        "background": "#888888"
+        "color": "#FFFFFF",
+        "bar": { "light": "#7E54C8", "dark": "#9B72E0" },
+        "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
+      }
+    }
+  },
+  "ConcentrationBar": {
+    "children": {
+      "concentration": {
+        "color": "#FFFFFF",
+        "bar": { "light": "#109A88", "dark": "#22C7AE" },
+        "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
       }
     }
   },

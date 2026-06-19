@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.front_hand
-import warlockfe.warlock3.compose.generated.resources.wand_stars
+import warlockfe.warlock3.compose.generated.resources.star_shine
 import warlockfe.warlock3.compose.util.mirror
 
 @Composable
@@ -57,7 +57,7 @@ fun HandsView(
         HandBox(
             icon = {
                 Icon(
-                    painter = painterResource(Res.drawable.wand_stars),
+                    painter = painterResource(Res.drawable.star_shine),
                     contentDescription = "Spell",
                 )
             },

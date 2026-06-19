@@ -9,19 +9,23 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.front_hand
-import warlockfe.warlock3.compose.generated.resources.wand_stars
+import warlockfe.warlock3.compose.generated.resources.star_shine
 import warlockfe.warlock3.compose.util.mirror
 
 @Composable
@@ -33,39 +37,43 @@ fun DesktopHandsView(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         DesktopHandBox(
             icon = {
                 Image(
-                    modifier = Modifier.rotate(90f).mirror(),
+                    modifier = Modifier.size(18.dp).rotate(90f).mirror(),
                     painter = painterResource(Res.drawable.front_hand),
-                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                    colorFilter = ColorFilter.tint(WarlockGameChrome.textFaint),
                     contentDescription = "Left hand",
                 )
             },
-            value = left ?: "",
+            value = left,
+            valueColor = WarlockGameChrome.textPrimary,
         )
         DesktopHandBox(
             icon = {
                 Image(
-                    modifier = Modifier.rotate(-90f),
+                    modifier = Modifier.size(18.dp).rotate(-90f),
                     painter = painterResource(Res.drawable.front_hand),
-                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                    colorFilter = ColorFilter.tint(WarlockGameChrome.textFaint),
                     contentDescription = "Right hand",
                 )
             },
-            value = right ?: "",
+            value = right,
+            valueColor = WarlockGameChrome.textPrimary,
         )
         DesktopHandBox(
             icon = {
                 Image(
-                    painter = painterResource(Res.drawable.wand_stars),
-                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                    modifier = Modifier.size(18.dp),
+                    painter = painterResource(Res.drawable.star_shine),
+                    colorFilter = ColorFilter.tint(WarlockGameChrome.spellIcon),
                     contentDescription = "Spell",
                 )
             },
-            value = spell ?: "",
+            value = spell,
+            valueColor = WarlockGameChrome.spellText,
         )
     }
 }
@@ -73,23 +81,29 @@ fun DesktopHandsView(
 @Composable
 fun RowScope.DesktopHandBox(
     icon: @Composable () -> Unit,
-    value: String,
+    value: String?,
+    valueColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(4.dp)
+    val shape = RoundedCornerShape(6.dp)
+    val isEmpty = value.isNullOrBlank()
     Row(
         modifier =
             modifier
                 .weight(1f)
-                .background(color = JewelTheme.globalColors.panelBackground, shape = shape)
-                .border(width = 1.dp, color = JewelTheme.globalColors.borders.normal, shape = shape)
+                .background(color = WarlockGameChrome.panelAlt, shape = shape)
+                .border(width = 1.dp, color = WarlockGameChrome.border, shape = shape)
                 .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         icon()
         Spacer(Modifier.width(8.dp))
         Text(
-            text = value,
+            text = if (isEmpty) "empty" else value,
+            color = if (isEmpty) WarlockGameChrome.caption else valueColor,
+            fontSize = 13.sp,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

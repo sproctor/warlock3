@@ -3,19 +3,22 @@ package warlockfe.warlock3.compose.desktop.ui.game
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.death
 import warlockfe.warlock3.compose.generated.resources.diseased
@@ -31,141 +34,138 @@ import warlockfe.warlock3.compose.generated.resources.standing
 import warlockfe.warlock3.compose.generated.resources.stunned
 import warlockfe.warlock3.compose.generated.resources.webbed
 
+/**
+ * The five grouped status slots on the right of the control bar. Each group shows at most one active
+ * status; an active slot is tinted with an accent (amber for posture/concealment, red for health),
+ * an inactive slot is an empty bordered box.
+ */
 @Composable
 fun DesktopIndicatorView(
     indicatorSize: Dp,
     indicators: Set<String>,
-    backgroundColor: Color,
-    defaultColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val statusKeysList: Array<Map<String, @Composable (Modifier) -> Unit>> =
-        arrayOf(
-            mapOf(
-                "kneeling" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.kneeling),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "kneeling",
-                    )
-                },
-                "prone" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.prone),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "prone",
-                    )
-                },
-                "sitting" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.sitting),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "sitting",
-                    )
-                },
-                "standing" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.standing),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "standing",
-                    )
-                },
-                "poisoned" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.poisoned),
-                        contentDescription = "poisoned",
-                    )
-                },
-                "diseased" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.diseased),
-                        contentDescription = "diseased",
-                    )
-                },
+    // Posture and affliction share the first slot; the rest follow the design's grouping (6.4).
+    val groups: List<List<Pair<String, DrawableResource>>> =
+        listOf(
+            listOf(
+                "kneeling" to Res.drawable.kneeling,
+                "prone" to Res.drawable.prone,
+                "sitting" to Res.drawable.sitting,
+                "standing" to Res.drawable.standing,
+                "poisoned" to Res.drawable.poisoned,
+                "diseased" to Res.drawable.diseased,
             ),
-            mapOf(
-                "joined" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.joined),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "joined",
-                    )
-                },
+            listOf("joined" to Res.drawable.joined),
+            listOf(
+                "bleeding" to Res.drawable.local_hospital,
+                "dead" to Res.drawable.death,
             ),
-            mapOf(
-                "bleeding" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.local_hospital),
-                        colorFilter = ColorFilter.tint(Color.Red),
-                        contentDescription = "bleeding",
-                    )
-                },
-                "dead" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.death),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "dead",
-                    )
-                },
+            listOf(
+                "invisible" to Res.drawable.invisible,
+                "hidden" to Res.drawable.hidden,
+                "webbed" to Res.drawable.webbed,
             ),
-            mapOf(
-                "invisible" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.invisible),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "invisible",
-                    )
-                },
-                "hidden" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.hidden),
-                        contentDescription = "hidden",
-                    )
-                },
-                "webbed" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.webbed),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "webbed",
-                    )
-                },
-            ),
-            mapOf(
-                "stunned" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.stunned),
-                        colorFilter = ColorFilter.tint(defaultColor),
-                        contentDescription = "stunned",
-                    )
-                },
-            ),
+            listOf("stunned" to Res.drawable.stunned),
         )
 
-    Row(modifier = modifier.background(backgroundColor)) {
-        statusKeysList.forEach { statusKeys ->
+    val chrome = WarlockGameChrome
+    val shape = RoundedCornerShape(5.dp)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        groups.forEach { group ->
+            val active = group.firstOrNull { indicators.contains(it.first) }
+            val accent = active?.let { indicatorAccent(it.first, chrome) } ?: inactiveAccent(chrome)
             Box(
                 modifier =
                     Modifier
                         .size(indicatorSize)
-                        .border(width = Dp.Hairline, color = JewelTheme.globalColors.borders.normal)
-                        .padding(indicatorSize / 7.5f),
+                        .background(accent.background, shape)
+                        .border(width = Dp.Hairline, color = accent.border, shape = shape)
+                        .padding(indicatorSize / 6f),
                 contentAlignment = Alignment.Center,
             ) {
-                statusKeys.filter { indicators.contains(it.key) }.forEach { it.value(Modifier.fillMaxSize()) }
+                if (active != null) {
+                    Image(
+                        modifier = Modifier.fillMaxSize(),
+                        painter = painterResource(active.second),
+                        colorFilter = accent.iconTint?.let { ColorFilter.tint(it) },
+                        contentDescription = active.first,
+                    )
+                }
             }
         }
     }
 }
+
+private data class IndicatorAccent(
+    val border: Color,
+    val background: Color,
+    /** null leaves the icon's own colors intact (full-color status assets). */
+    val iconTint: Color?,
+)
+
+private fun inactiveAccent(chrome: WarlockGameChromeColors) =
+    IndicatorAccent(
+        border = chrome.border,
+        background = chrome.panelAlt,
+        iconTint = null,
+    )
+
+private fun indicatorAccent(
+    key: String,
+    chrome: WarlockGameChromeColors,
+): IndicatorAccent =
+    when (key) {
+        "poisoned", "diseased" -> {
+            IndicatorAccent(
+                border = chrome.dangerBorder,
+                background = chrome.dangerBackground,
+                iconTint = null,
+            )
+        }
+
+        "bleeding" -> {
+            IndicatorAccent(
+                border = chrome.dangerBorder,
+                background = chrome.dangerBackground,
+                iconTint = chrome.dangerIcon,
+            )
+        }
+
+        "dead" -> {
+            IndicatorAccent(
+                border = chrome.dangerBorder,
+                background = chrome.dangerBackground,
+                iconTint = chrome.textPrimary,
+            )
+        }
+
+        "joined" -> {
+            IndicatorAccent(
+                border = chrome.accent,
+                background = chrome.accent.copy(alpha = 0.22f),
+                iconTint = chrome.accentSubtle,
+            )
+        }
+
+        // hidden has a full-color asset; leave it untinted on the amber slot.
+        "hidden" -> {
+            IndicatorAccent(
+                border = chrome.litBorder,
+                background = chrome.litBackground,
+                iconTint = null,
+            )
+        }
+
+        // postures, invisible, webbed, stunned
+        else -> {
+            IndicatorAccent(
+                border = chrome.litBorder,
+                background = chrome.litBackground,
+                iconTint = chrome.litIcon,
+            )
+        }
+    }

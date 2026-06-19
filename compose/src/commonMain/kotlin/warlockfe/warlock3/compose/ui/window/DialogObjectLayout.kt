@@ -14,6 +14,19 @@ import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.util.getIgnoringCase
 
+/**
+ * Lays out the objects of a game "dialog" panel (progress bars, labels, links, images, ...).
+ *
+ * A dialog rarely gives absolute coordinates for everything; each object is positioned by one of a
+ * handful of rules. Vertically (highest priority first): below a sibling it `topAnchor`s to, at an
+ * explicit `top` offset inside its parent skin container, on the row of a `leftAnchor` sibling,
+ * below the previous object, or on the previous object's row. Horizontally: right of a `leftAnchor`
+ * sibling, centered/right-aligned via `align` ("n"/"ne"), to the right of the previous object, or at
+ * an explicit `left` offset inside its parent skin.
+ *
+ * Size and offsets come from the active skin where it defines them, falling back to what the server
+ * sent. [content] is invoked once per object with the skin child that styles it (if any).
+ */
 @Composable
 fun DialogObjectLayout(
     dataObjects: List<DialogObject>,
@@ -21,6 +34,10 @@ fun DialogObjectLayout(
     content: @Composable (data: DialogObject, skinObject: SkinObject?) -> Unit,
 ) {
     val skin = LocalSkin.current
+    // A `Skin` object names a skin entry and lists the ids it "controls". For each controlled id,
+    // record the skin child that styles/sizes it (skinObjects) and the id of the Skin object that
+    // contains it (parentSkins) - the container that objects with an explicit top/left offset are
+    // positioned relative to.
     val skinObjects = mutableMapOf<String, SkinObject>()
     val parentSkins = mutableMapOf<String, String>()
     dataObjects.forEach { data ->
@@ -36,15 +53,33 @@ fun DialogObjectLayout(
             }
         }
     }
+    // Some progress bars (e.g. concentration) arrive without a Skin element, so the loop above never
+    // gives them a skin child and they would fall back to default colors. The server names a bar's
+    // skin "<id>Bar" with a child keyed by the id (e.g. staminaBar -> stamina), so reconstruct that
+    // convention to let such a bar be skinned too. It has no parent skin, so its own top/left
+    // position it - the skin entry should carry colors only, not offsets.
+    dataObjects.forEach { data ->
+        if (data is DialogObject.ProgressBar && skinObjects.getIgnoringCase(data.id) == null) {
+            skin
+                .getIgnoringCase("${data.id}Bar")
+                ?.children
+                ?.getIgnoringCase(data.id)
+                ?.let { skinObjects[data.id] = it }
+        }
+    }
 
     Layout(
         modifier = modifier.clipToBounds(),
         content = {
+            // Emit each object, paired with the skin child that styles it (matched by id).
             dataObjects.forEach { data ->
                 content(data, skinObjects.getIgnoringCase(data.id))
             }
         },
     ) { measurables, constraints ->
+        // The reference size a Percent distance is resolved against: the bounded size when we have
+        // one, otherwise the minimum we are required to fill. Progress bars default to 16dp tall
+        // when no height is given.
         val widthBasis =
             if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
         val heightBasis =
@@ -56,6 +91,9 @@ fun DialogObjectLayout(
                 val skinObject = skinObjects.getIgnoringCase(data.id)
                 val imageData = (data as? DialogObject.Image)?.name?.let { skin.getIgnoringCase(it) }
 
+                // Size preference: an explicit pixel size from the image or skin entry, else the
+                // size the server sent. A null target leaves the dimension unconstrained so the
+                // child sizes itself / fills the available space (a progress bar still gets 16dp).
                 val widthSource =
                     (imageData?.width ?: skinObject?.width)?.let { DataDistance.Pixels(it) } ?: data.width
                 val heightSource =
@@ -76,6 +114,9 @@ fun DialogObjectLayout(
 
                 val placeable = measurables[index].measure(childConstraints)
 
+                // Offsets prefer the skin's pixel top/left over the server's. Both margins are
+                // measured against widthBasis; Pixels ignore the basis, so this only affects Percent
+                // offsets.
                 val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
                 val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
 
@@ -114,32 +155,41 @@ fun DialogObjectLayout(
 
         for (i in itemInfos.indices) visit(i)
 
+        // Resolve each item's top-left. Walking in placementOrder guarantees the parent skin, the
+        // anchors and the data-order predecessor read below are already in `placements`.
         val placements = HashMap<String, ItemPlacement>(itemInfos.size)
 
         for (index in placementOrder) {
             val info = itemInfos[index]
             val data = info.data
+            // The containing skin (for explicit offsets) and the previous object in data order (for
+            // the "flow after the previous object" rules).
             val parentSkinPlacement = info.parentSkinId?.let { placements[it] }
             val lastPlacement = if (index > 0) placements[itemInfos[index - 1].data.id] else null
 
             val y =
                 when {
+                    // Stacked under the bottom of the sibling we anchor to.
                     data.topAnchor != null -> {
                         (placements[data.topAnchor]?.bottom ?: 0) + info.topMargin
                     }
 
+                    // Explicit top offset, measured from the top of the parent skin container.
                     info.dataTop != null -> {
                         (parentSkinPlacement?.y ?: 0) + info.topMargin
                     }
 
+                    // Anchored horizontally only: share that sibling's row.
                     data.leftAnchor != null -> {
                         placements[data.leftAnchor]?.y ?: 0
                     }
 
+                    // A left offset but no vertical hint: drop below the previous object.
                     info.dataLeft != null -> {
                         lastPlacement?.bottom ?: 0
                     }
 
+                    // No vertical hint at all: stay on the previous object's row.
                     else -> {
                         lastPlacement?.y ?: 0
                     }
@@ -147,21 +197,26 @@ fun DialogObjectLayout(
 
             val x =
                 if (data.leftAnchor != null) {
+                    // Just past the right edge of the sibling we anchor to.
                     (placements[data.leftAnchor]?.right ?: 0) + info.leftMargin
                 } else {
                     when (data.align) {
+                        // Centered across the panel width.
                         "n" -> {
                             (widthBasis - info.placeable.width) / 2 + info.leftMargin
                         }
 
+                        // Pinned to the right edge.
                         "ne" -> {
                             widthBasis - info.placeable.width - info.leftMargin
                         }
 
                         else -> {
                             if (info.dataLeft == null) {
+                                // No left offset: flow to the right of the previous object.
                                 (lastPlacement?.right ?: 0) + info.leftMargin
                             } else {
+                                // Explicit left offset, measured from the parent skin's left edge.
                                 (parentSkinPlacement?.x ?: 0) + info.leftMargin
                             }
                         }
@@ -171,6 +226,7 @@ fun DialogObjectLayout(
             placements[data.id] = ItemPlacement(x = x, y = y, placeable = info.placeable)
         }
 
+        // When unbounded, grow to wrap the placed content; otherwise fill the given constraints.
         val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
         val contentHeight = placements.values.maxOfOrNull { it.bottom } ?: 0
         val layoutWidth =
@@ -187,6 +243,7 @@ fun DialogObjectLayout(
             }
 
         layout(layoutWidth, layoutHeight) {
+            // Place in data order (not placementOrder) so later objects draw on top of earlier ones.
             for (info in itemInfos) {
                 placements[info.data.id]?.let { it.placeable.place(it.x, it.y) }
             }
@@ -221,6 +278,10 @@ private class ItemInfo(
     }
 }
 
+/**
+ * Resolves a dialog distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
+ * [DataDistance.Pixels] is treated as a dp count (and so ignores [basis]).
+ */
 private fun DataDistance.toPx(
     basis: Int,
     density: Density,

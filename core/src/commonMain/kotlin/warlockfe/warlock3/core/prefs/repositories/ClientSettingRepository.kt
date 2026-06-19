@@ -4,6 +4,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.CompassStyle
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
@@ -57,6 +58,11 @@ class ClientSettingRepository(
     fun observeTheme(): Flow<ThemeSetting> =
         clientConfigStore.observeClient().map { config ->
             config.theme?.let { runCatching { ThemeSetting.valueOf(it) }.getOrNull() } ?: ThemeSetting.AUTO
+        }
+
+    fun observeCompassStyle(): Flow<CompassStyle> =
+        clientConfigStore.observeClient().map { config ->
+            config.compassStyle?.let { runCatching { CompassStyle.valueOf(it) }.getOrNull() } ?: CompassStyle.BUTTONS
         }
 
     suspend fun getReleaseChannel(): ReleaseChannelSetting =
@@ -121,6 +127,10 @@ class ClientSettingRepository(
 
     suspend fun putTheme(value: ThemeSetting) {
         clientConfigStore.mutateClient { it.copy(theme = value.name) }
+    }
+
+    suspend fun putCompassStyle(value: CompassStyle) {
+        clientConfigStore.mutateClient { it.copy(compassStyle = value.name) }
     }
 
     suspend fun putSkinFile(value: String?) {
