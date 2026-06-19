@@ -33,4 +33,7 @@ data class SkinImage(
     val data: String? = null,
     // Name of a file inside the skin .zip to load the image bytes from. Ignored when [data] is set.
     val file: String? = null,
+    // Name of a bundled Compose drawable resource (a `Res.allDrawableResources` key) to use as the
+    // image, for skin entries that reference a built-in asset instead of carrying their own bytes.
+    val name: String? = null,
 )

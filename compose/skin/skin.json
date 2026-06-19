@@ -271,5 +271,22 @@
       "dangerIcon": { "color": { "light": "#C0392B", "dark": "#E06B60" } },
       "compassDarkIcon": { "color": { "light": "#BCC0C7", "dark": "#3F444D" } }
     }
+  },
+  "indicator": {
+    "children": {
+      "kneeling": { "image": { "name": "kneeling" } },
+      "prone": { "image": { "name": "prone" } },
+      "sitting": { "image": { "name": "sitting" } },
+      "standing": { "image": { "name": "standing" } },
+      "poisoned": { "image": { "name": "poisoned" } },
+      "diseased": { "image": { "name": "diseased" } },
+      "joined": { "image": { "name": "joined" } },
+      "bleeding": { "image": { "name": "local_hospital" } },
+      "dead": { "image": { "name": "death" } },
+      "invisible": { "image": { "name": "invisible" } },
+      "hidden": { "image": { "name": "hidden" } },
+      "webbed": { "image": { "name": "webbed" } },
+      "stunned": { "image": { "name": "stunned" } }
+    }
   }
 }
