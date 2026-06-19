@@ -54,7 +54,7 @@ internal class TomlFileStore<T>(
         state.value = normalized
         if (changed) {
             writeMutex.withLock {
-                ensureParentDir()
+                fileSystem.ensureParentDir(path)
                 withFileLock(lockFile()) { persist(normalized) }
             }
         }
@@ -62,7 +62,7 @@ internal class TomlFileStore<T>(
 
     suspend fun mutate(transform: (T) -> T) {
         writeMutex.withLock {
-            ensureParentDir()
+            fileSystem.ensureParentDir(path)
             withFileLock(lockFile()) {
                 val onDisk = readFile()
                 if (onDisk != null) template = onDisk.first
@@ -101,27 +101,12 @@ internal class TomlFileStore<T>(
 
     private fun persist(config: T) {
         runCatching {
-            ensureParentDir()
-            val currentTemplate = template
-            val text =
-                if (currentTemplate != null) {
-                    toml.encodeToString(serializer, config, currentTemplate, elementKey)
-                } else {
-                    toml.encodeToString(serializer, config)
-                }
-            val tmp = Path(path.parent ?: path, path.name + ".tmp")
-            fileSystem.sink(tmp).buffered().use { it.writeString(text) }
-            fileSystem.atomicMove(tmp, path)
+            fileSystem.ensureParentDir(path)
+            val text = toml.encodeWithTemplate(serializer, config, template, elementKey)
+            fileSystem.writeTextAtomically(path, text)
             template = toml.parseToTomlTable(text)
         }.onFailure {
             Logger.e(it) { "Failed to write config file $path" }
-        }
-    }
-
-    private fun ensureParentDir() {
-        val parent = path.parent
-        if (parent != null && fileSystem.metadataOrNull(parent) == null) {
-            fileSystem.createDirectories(parent)
         }
     }
 

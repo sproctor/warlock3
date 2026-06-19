@@ -330,13 +330,17 @@ fun EditHighlightDialog(
                     },
                 )
 
-                if (styles.size < groupCount + 1) {
-                    for (i in styles.size..groupCount) {
+                // Ensure a style slot exists for the whole match (index 0) plus each capture group.
+                // Done in an effect rather than mutated during composition; the list only grows, which
+                // matches the previous behavior.
+                LaunchedEffect(groupCount) {
+                    while (styles.size < groupCount + 1) {
                         styles.add(StyleDefinition())
                     }
                 }
                 ScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    for (i in 0 until groupCount) {
+                    // Cap at the slots that exist; the effect above tops the list up on the next frame.
+                    for (i in 0 until minOf(groupCount, styles.size)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             val style = styles[i]
                             if (isRegex) {
@@ -383,12 +387,13 @@ fun EditHighlightDialog(
                     }
                 }
                 if (!isRegex) {
-                    val style = styles[0]
-                    CheckboxRow(
-                        checked = style.entireLine,
-                        onCheckedChange = { styles[0] = style.copy(entireLine = it) },
-                        text = "Highlight entire line",
-                    )
+                    styles.getOrNull(0)?.let { style ->
+                        CheckboxRow(
+                            checked = style.entireLine,
+                            onCheckedChange = { styles[0] = style.copy(entireLine = it) },
+                            text = "Highlight entire line",
+                        )
+                    }
                     CheckboxRow(
                         checked = matchPartialWord,
                         onCheckedChange = { matchPartialWord = it },

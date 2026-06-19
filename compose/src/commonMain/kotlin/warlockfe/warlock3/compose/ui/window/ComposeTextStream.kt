@@ -488,38 +488,61 @@ fun StyledString.toStreamLine(
         // reflects steady-state cost; the first-pass total is reported for reference.
         val retry = render()
         if (retry.total >= SLOW_LINE_THRESHOLD) {
-            val regexHighlights = highlightIndex.highlights.filterIsInstance<RegexHighlight>()
-            val literalHighlights = highlightIndex.highlights.filterIsInstance<LiteralHighlight>()
-            val wholeWordLiterals = literalHighlights.count { !it.matchPartialWord }
-            val partialWordLiterals = literalHighlights.count { it.matchPartialWord }
-            // How many of the highlights the index actually checked this line (the rest were excluded by
-            // probe token). Separates real highlight-matching cost from the total, which on word-rich lines
-            // pulls more candidates than a short line does.
-            val candidates = highlightIndex.candidateCount(wordTokensOf(rendered.line.text?.text ?: ""))
-            streamLineLogger.w {
-                val before = source.toString().take(200).replace("\n", "\\n")
-                val after =
-                    rendered.line.text
-                        ?.text
-                        ?.take(200)
-                        ?.replace("\n", "\\n") ?: "<filtered>"
-                "Slow line in '$streamName' total=${retry.total.inWholeMicroseconds}µs " +
-                    "(first=${rendered.total.inWholeMicroseconds}µs) " +
-                    "serial=$serialNumber " +
-                    "annotate=${retry.annotate.inWholeMicroseconds}µs " +
-                    "alter=${retry.alter.inWholeMicroseconds}µs " +
-                    "link=${retry.link.inWholeMicroseconds}µs " +
-                    "highlight=${retry.highlight.inWholeMicroseconds}µs " +
-                    "build=${retry.build.inWholeMicroseconds}µs " +
-                    "alterations=${alterations.size} highlights=${highlightIndex.highlights.size} " +
-                    "(regex=${regexHighlights.size} " +
-                    "literalWhole=$wholeWordLiterals literalPartial=$partialWordLiterals) " +
-                    "candidates=$candidates " +
-                    "before=\"$before\" after=\"$after\""
-            }
+            logSlowLine(
+                streamName = streamName,
+                serialNumber = serialNumber,
+                source = source,
+                first = rendered,
+                steady = retry,
+                alterations = alterations,
+                highlightIndex = highlightIndex,
+            )
         }
     }
     return rendered.line
+}
+
+// Warn about a reproducibly slow line with a per-stage timing breakdown and the inputs that drive the
+// cost. [first] is the (possibly inflated) first pass; [steady] is the re-run whose per-stage numbers
+// reflect steady-state cost.
+private fun logSlowLine(
+    streamName: String,
+    serialNumber: Long,
+    source: StyledString,
+    first: RenderedLine,
+    steady: RenderedLine,
+    alterations: List<CompiledAlteration>,
+    highlightIndex: HighlightIndex,
+) {
+    val regexHighlights = highlightIndex.highlights.filterIsInstance<RegexHighlight>()
+    val literalHighlights = highlightIndex.highlights.filterIsInstance<LiteralHighlight>()
+    val wholeWordLiterals = literalHighlights.count { !it.matchPartialWord }
+    val partialWordLiterals = literalHighlights.count { it.matchPartialWord }
+    // How many of the highlights the index actually checked this line (the rest were excluded by
+    // probe token). Separates real highlight-matching cost from the total, which on word-rich lines
+    // pulls more candidates than a short line does.
+    val candidates = highlightIndex.candidateCount(wordTokensOf(first.line.text?.text ?: ""))
+    streamLineLogger.w {
+        val before = source.toString().take(200).replace("\n", "\\n")
+        val after =
+            first.line.text
+                ?.text
+                ?.take(200)
+                ?.replace("\n", "\\n") ?: "<filtered>"
+        "Slow line in '$streamName' total=${steady.total.inWholeMicroseconds}µs " +
+            "(first=${first.total.inWholeMicroseconds}µs) " +
+            "serial=$serialNumber " +
+            "annotate=${steady.annotate.inWholeMicroseconds}µs " +
+            "alter=${steady.alter.inWholeMicroseconds}µs " +
+            "link=${steady.link.inWholeMicroseconds}µs " +
+            "highlight=${steady.highlight.inWholeMicroseconds}µs " +
+            "build=${steady.build.inWholeMicroseconds}µs " +
+            "alterations=${alterations.size} highlights=${highlightIndex.highlights.size} " +
+            "(regex=${regexHighlights.size} " +
+            "literalWhole=$wholeWordLiterals literalPartial=$partialWordLiterals) " +
+            "candidates=$candidates " +
+            "before=\"$before\" after=\"$after\""
+    }
 }
 
 // A rendered stream line plus the per-stage timing of the transform that produced it.
