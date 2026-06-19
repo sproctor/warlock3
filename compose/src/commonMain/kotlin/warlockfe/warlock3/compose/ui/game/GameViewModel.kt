@@ -108,7 +108,7 @@ class GameViewModel(
     aliasRepository: AliasRepository,
     private val windowRegistry: WindowRegistry,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
-    clientSettingRepository: ClientSettingRepository,
+    private val clientSettingRepository: ClientSettingRepository,
     private val commandHistoryRepository: CommandHistoryRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val reconnectAction: (suspend () -> Unit)? = null,
@@ -334,17 +334,34 @@ class GameViewModel(
         }
 
     init {
+        trackMinCommandLength()
+        trackHistorySize()
+        loadCommandHistoryOnConnect()
+        restoreWindowLayoutOnConnect()
+        applyWindowSettingsChanges()
+        handleClientEvents()
+        trackMaxTypeAhead()
+        publishRunningScripts()
+    }
+
+    private fun trackMinCommandLength() {
         clientSettingRepository
             .observeMinCommandLength()
             .onEach { minHistoryLen = it }
             .launchIn(viewModelScope)
+    }
+
+    private fun trackHistorySize() {
         clientSettingRepository
             .observeHistorySize()
             .onEach {
                 historySize = it
                 trimHistory()
             }.launchIn(viewModelScope)
-        // Load each character's saved command history when it connects.
+    }
+
+    // Load each character's saved command history when it connects.
+    private fun loadCommandHistoryOnConnect() {
         client.characterId
             .filterNotNull()
             .distinctUntilChanged()
@@ -358,7 +375,10 @@ class GameViewModel(
                 trimHistory()
                 historyPosition = 0
             }.launchIn(viewModelScope)
-        // Load initial
+    }
+
+    // Restore the saved window layout for a character when it connects.
+    private fun restoreWindowLayoutOnConnect() {
         client.characterId
             .onEach { characterId ->
                 if (characterId != null) {
@@ -388,6 +408,10 @@ class GameViewModel(
                     }
                 }
             }.launchIn(viewModelScope)
+    }
+
+    // Re-apply window styling and name filters whenever the saved window settings change.
+    private fun applyWindowSettingsChanges() {
         windowSettings
             .onEach { currentWindowSettings ->
                 currentWindowSettings.forEach { singleWindowSettings ->
@@ -422,10 +446,12 @@ class GameViewModel(
                     }
                 }
             }.launchIn(viewModelScope)
+    }
+
+    private fun handleClientEvents() {
         client.eventFlow
             .onEach { event ->
                 when (event) {
-
                     is ClientCompassEvent -> {
                         _compassState.value = event.directions.toSet()
                     }
@@ -468,7 +494,9 @@ class GameViewModel(
                     }
                 }
             }.launchIn(viewModelScope)
+    }
 
+    private fun trackMaxTypeAhead() {
         client.characterId
             .transformLatest {
                 if (it != null) {
@@ -477,7 +505,10 @@ class GameViewModel(
             }.onEach { maxTypeAhead ->
                 client.setMaxTypeAhead(maxTypeAhead?.toIntOrNull() ?: DEFAULT_MAX_TYPE_AHEAD)
             }.launchIn(viewModelScope)
+    }
 
+    // Render the running-scripts status lines (with pause/resume/stop links) into the scripts window.
+    private fun publishRunningScripts() {
         runningScripts
             .onEach { scripts ->
                 val scriptStream = client.getStream("warlockscripts")

@@ -104,141 +104,81 @@ internal fun DecoratedWindowScope.TitleBarView(
                     )
                 }
             }
-            if (Platform.Current == Platform.MacOS) {
-                AppMenuBar(
-                    isConnected = isConnected,
-                    openNewWindow = openNewWindow,
-                    showSettingsDialog = showSettingsDialog,
-                    disconnect = disconnect,
-                    runScript = scriptFilePickerLauncher::launch,
-                    showUpdateDialog = showUpdateDialog,
-                    showAboutDialog = showAboutDialog,
-                    exportSettings = {
-                        exportFileSaveLauncher.launch(suggestedName = "settings", defaultExtension = "json")
-                    },
-                    exportCharacterSettings =
-                        currentCharacterName?.let {
-                            {
-                                exportCharacterFileSaveLauncher.launch(suggestedName = it, defaultExtension = "json")
-                            }
-                        },
-                    importSettings = { importFilePickerLauncher.launch() },
-                    importWraythSettings = importWraythSettings,
+            val menus =
+                listOf(
+                    AppMenu(
+                        title = "File",
+                        items =
+                            listOf(
+                                AppMenuItem("New window", onClick = openNewWindow),
+                                AppMenuItem("Run script...", enabled = isConnected, onClick = { scriptFilePickerLauncher.launch() }),
+                                null,
+                                AppMenuItem(
+                                    label = "Export all settings...",
+                                    onClick = {
+                                        exportFileSaveLauncher.launch(suggestedName = "settings", defaultExtension = "json")
+                                    },
+                                ),
+                                AppMenuItem(
+                                    label = "Export current character...",
+                                    enabled = currentCharacterName != null,
+                                    onClick = {
+                                        exportCharacterFileSaveLauncher.launch(
+                                            suggestedName = currentCharacterName ?: "character",
+                                            defaultExtension = "json",
+                                        )
+                                    },
+                                ),
+                                AppMenuItem("Import settings...", onClick = { importFilePickerLauncher.launch() }),
+                                AppMenuItem("Import wrayth settings...", onClick = importWraythSettings),
+                                AppMenuItem("Settings...", onClick = showSettingsDialog),
+                                null,
+                                AppMenuItem("Disconnect", enabled = isConnected, onClick = disconnect),
+                            ),
+                    ),
+                    AppMenu(
+                        title = "Help",
+                        items =
+                            listOf(
+                                AppMenuItem("Updates", onClick = showUpdateDialog),
+                                AppMenuItem("About", onClick = showAboutDialog),
+                            ),
+                    ),
                 )
+            if (Platform.Current == Platform.MacOS) {
+                AppMenuBar(menus)
             } else {
-                var active by remember { mutableStateOf(false) }
-                var currentMenu by remember { mutableStateOf<Menus?>(null) }
-                Box {
-                    MenuTriggerButton(
-                        text = "File",
-                        onHover = { currentMenu = Menus.FILE },
-                        onClick = {
-                            active = !active
-                            currentMenu = Menus.FILE
-                        },
-                    )
-                    if (active && currentMenu == Menus.FILE) {
-                        PopupMenu(
-                            onDismissRequest = {
-                                active = false
-                                true
-                            },
-                            horizontalAlignment = Alignment.Start,
-                        ) {
-                            selectableItem(
-                                selected = false,
-                                onClick = openNewWindow,
-                            ) {
-                                Text("New window")
-                            }
-                            selectableItem(
-                                selected = false,
-                                enabled = isConnected,
-                                onClick = scriptFilePickerLauncher::launch,
-                            ) {
-                                Text("Run script...")
-                            }
-                            separator()
-                            selectableItem(
-                                selected = false,
-                                onClick = {
-                                    exportFileSaveLauncher.launch(
-                                        suggestedName = "settings",
-                                        defaultExtension = "json",
-                                    )
+                // The native MenuBar isn't shown off macOS, so render the same menus as popups.
+                var openMenu by remember { mutableStateOf<String?>(null) }
+                menus.forEach { menu ->
+                    Box {
+                        MenuTriggerButton(
+                            text = menu.title,
+                            // Hover switches menus only while one is already open (matching a menu bar).
+                            onHover = { if (openMenu != null) openMenu = menu.title },
+                            onClick = { openMenu = if (openMenu == menu.title) null else menu.title },
+                        )
+                        if (openMenu == menu.title) {
+                            PopupMenu(
+                                onDismissRequest = {
+                                    openMenu = null
+                                    true
                                 },
+                                horizontalAlignment = Alignment.Start,
                             ) {
-                                Text("Export all settings...")
-                            }
-                            selectableItem(
-                                selected = false,
-                                enabled = currentCharacterName != null,
-                                onClick = {
-                                    exportCharacterFileSaveLauncher.launch(
-                                        suggestedName = currentCharacterName ?: "character",
-                                        defaultExtension = "json",
-                                    )
-                                },
-                            ) {
-                                Text("Export current character...")
-                            }
-                            selectableItem(
-                                selected = false,
-                                onClick = { importFilePickerLauncher.launch() },
-                            ) {
-                                Text("Import settings...")
-                            }
-                            selectableItem(
-                                selected = false,
-                                onClick = importWraythSettings,
-                            ) {
-                                Text("Import wrayth settings...")
-                            }
-                            selectableItem(
-                                selected = false,
-                                onClick = showSettingsDialog,
-                            ) {
-                                Text("Settings...")
-                            }
-                            separator()
-                            selectableItem(
-                                selected = false,
-                                enabled = isConnected,
-                                onClick = disconnect,
-                            ) {
-                                Text("Disconnect")
-                            }
-                        }
-                    }
-                }
-                Box {
-                    MenuTriggerButton(
-                        text = "Help",
-                        onHover = { currentMenu = Menus.HELP },
-                        onClick = {
-                            active = !active
-                            currentMenu = Menus.HELP
-                        },
-                    )
-                    if (active && currentMenu == Menus.HELP) {
-                        PopupMenu(
-                            onDismissRequest = {
-                                active = false
-                                true
-                            },
-                            horizontalAlignment = Alignment.Start,
-                        ) {
-                            selectableItem(
-                                selected = false,
-                                onClick = showUpdateDialog,
-                            ) {
-                                Text("Updates")
-                            }
-                            selectableItem(
-                                selected = false,
-                                onClick = showAboutDialog,
-                            ) {
-                                Text("About")
+                                menu.items.forEach { item ->
+                                    if (item == null) {
+                                        separator()
+                                    } else {
+                                        selectableItem(
+                                            selected = false,
+                                            enabled = item.enabled,
+                                            onClick = item.onClick,
+                                        ) {
+                                            Text(item.label)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -250,11 +190,6 @@ internal fun DecoratedWindowScope.TitleBarView(
             text = title,
         )
     }
-}
-
-private enum class Menus {
-    FILE,
-    HELP,
 }
 
 @Composable

@@ -139,7 +139,7 @@ class CharacterConfigStore(
             val current = state.value[characterId] ?: CharacterConfig(character = characterId)
             if (fileSystem.metadataOrNull(path) == null) {
                 // Section file deleted out of band: clear that section.
-                val cleared = clearSection(section, current)
+                val cleared = section.clear(current)
                 if (cleared != current) {
                     templates[characterId]?.remove(section)
                     state.value = state.value + (characterId to cleared)
@@ -150,7 +150,7 @@ class CharacterConfigStore(
                 runCatching {
                     val text = fileSystem.source(path).buffered().use { it.readString() }
                     val element = toml.parseToTomlTable(text)
-                    element to applySection(section, element, current)
+                    element to section.decodeInto(toml, element, current)
                 }.onFailure {
                     Logger.e(it) { "Failed to reload config file $path; ignoring it" }
                 }.getOrNull() ?: return@withLock
@@ -179,7 +179,7 @@ class CharacterConfigStore(
                 val updated = transform(base).copy(character = characterId)
                 state.value = state.value + (characterId to updated)
                 for (section in Section.entries) {
-                    if (sectionValue(section, base) != sectionValue(section, updated)) {
+                    if (section.get(base) != section.get(updated)) {
                         persistSection(characterId, dir, section, updated)
                     }
                 }
@@ -208,13 +208,11 @@ class CharacterConfigStore(
             ensureDir(dir)
             withFileLock(lockFileFor(characterId)) {
                 runCatching {
-                    val tmp = Path(dir, path.name + ".tmp")
-                    fileSystem.sink(tmp).buffered().use { it.writeString(content) }
-                    fileSystem.atomicMove(tmp, path)
+                    fileSystem.writeTextAtomically(path, content)
                     // Update in-memory state + comment template from exactly the bytes we wrote.
                     val element = toml.parseToTomlTable(content)
                     val current = state.value[characterId] ?: CharacterConfig(character = characterId)
-                    val updated = applySection(section, element, current).copy(character = characterId)
+                    val updated = section.decodeInto(toml, element, current).copy(character = characterId)
                     templates.getOrPut(characterId) { mutableMapOf() }[section] = element
                     state.value = state.value + (characterId to updated)
                 }.onFailure {
@@ -300,7 +298,7 @@ class CharacterConfigStore(
                 runCatching {
                     val text = fileSystem.source(path).buffered().use { it.readString() }
                     val element = toml.parseToTomlTable(text)
-                    element to applySection(section, element, config)
+                    element to section.decodeInto(toml, element, config)
                 }.onFailure {
                     Logger.e(it) { "Failed to read config file $path; ignoring it" }
                 }.getOrNull() ?: continue
@@ -331,10 +329,8 @@ class CharacterConfigStore(
             // carried over (matched to list entries by their `id` so a comment follows an entry across
             // reorders). Brand-new files have no template and just encode fresh.
             val template = templates[characterId]?.get(section)
-            val text = encodeSection(section, config, template)
-            val tmp = Path(dir, section.fileName + ".tmp")
-            fileSystem.sink(tmp).buffered().use { it.writeString(text) }
-            fileSystem.atomicMove(tmp, target)
+            val text = section.encode(toml, config, template)
+            fileSystem.writeTextAtomically(target, text)
             // Refresh the template from what we just wrote so the next save builds on current comments.
             templates.getOrPut(characterId) { mutableMapOf() }[section] = toml.parseToTomlTable(text)
         }.onFailure {
@@ -342,121 +338,11 @@ class CharacterConfigStore(
         }
     }
 
-    private fun <T> encodeWithTemplate(
-        serializer: KSerializer<T>,
-        value: T,
-        template: TomlTable?,
-    ): String =
-        if (template != null) {
-            toml.encodeToString(serializer, value, template, CONFIG_ELEMENT_KEY)
-        } else {
-            toml.encodeToString(serializer, value)
-        }
-
-    private fun encodeSection(
-        section: Section,
-        config: CharacterConfig,
-        template: TomlTable?,
-    ): String =
-        when (section) {
-            Section.HIGHLIGHTS -> encodeWithTemplate(HighlightsFile.serializer(), HighlightsFile(config.highlights), template)
-            Section.NAMES -> encodeWithTemplate(NamesFile.serializer(), NamesFile(config.names), template)
-            Section.ALIASES -> encodeWithTemplate(AliasesFile.serializer(), AliasesFile(config.aliases), template)
-            Section.ALTERATIONS -> encodeWithTemplate(AlterationsFile.serializer(), AlterationsFile(config.alterations), template)
-            Section.VARIABLES -> encodeWithTemplate(VariablesFile.serializer(), VariablesFile(config.variables), template)
-            Section.MACROS -> encodeWithTemplate(MacrosFile.serializer(), MacrosFile(config.macros), template)
-            Section.PRESETS -> encodeWithTemplate(PresetsFile.serializer(), PresetsFile(config.presets), template)
-            Section.PROGRESS_BARS -> encodeWithTemplate(ProgressBarsFile.serializer(), ProgressBarsFile(config.progressBars), template)
-            Section.WINDOWS -> encodeWithTemplate(WindowsFile.serializer(), WindowsFile(config.windows), template)
-            Section.SETTINGS -> encodeWithTemplate(CharacterSettingsConfig.serializer(), config.settings, template)
-        }
-
-    private fun applySection(
-        section: Section,
-        element: TomlTable,
-        config: CharacterConfig,
-    ): CharacterConfig =
-        when (section) {
-            Section.HIGHLIGHTS -> {
-                config.copy(highlights = toml.decodeFromTomlElement(HighlightsFile.serializer(), element).highlights)
-            }
-
-            Section.NAMES -> {
-                config.copy(names = toml.decodeFromTomlElement(NamesFile.serializer(), element).names)
-            }
-
-            Section.ALIASES -> {
-                config.copy(aliases = toml.decodeFromTomlElement(AliasesFile.serializer(), element).aliases)
-            }
-
-            Section.ALTERATIONS -> {
-                config.copy(alterations = toml.decodeFromTomlElement(AlterationsFile.serializer(), element).alterations)
-            }
-
-            Section.VARIABLES -> {
-                config.copy(variables = toml.decodeFromTomlElement(VariablesFile.serializer(), element).variables)
-            }
-
-            Section.MACROS -> {
-                config.copy(macros = toml.decodeFromTomlElement(MacrosFile.serializer(), element).macros)
-            }
-
-            Section.PRESETS -> {
-                config.copy(presets = toml.decodeFromTomlElement(PresetsFile.serializer(), element).presets)
-            }
-
-            Section.PROGRESS_BARS -> {
-                config.copy(progressBars = toml.decodeFromTomlElement(ProgressBarsFile.serializer(), element).progressBars)
-            }
-
-            Section.WINDOWS -> {
-                config.copy(windows = toml.decodeFromTomlElement(WindowsFile.serializer(), element).windows)
-            }
-
-            Section.SETTINGS -> {
-                config.copy(settings = toml.decodeFromTomlElement(CharacterSettingsConfig.serializer(), element))
-            }
-        }
-
-    private fun clearSection(
-        section: Section,
-        config: CharacterConfig,
-    ): CharacterConfig =
-        when (section) {
-            Section.HIGHLIGHTS -> config.copy(highlights = emptyList())
-            Section.NAMES -> config.copy(names = emptyList())
-            Section.ALIASES -> config.copy(aliases = emptyList())
-            Section.ALTERATIONS -> config.copy(alterations = emptyList())
-            Section.VARIABLES -> config.copy(variables = emptyMap())
-            Section.MACROS -> config.copy(macros = emptyMap())
-            Section.PRESETS -> config.copy(presets = emptyMap())
-            Section.PROGRESS_BARS -> config.copy(progressBars = emptyMap())
-            Section.WINDOWS -> config.copy(windows = emptyMap())
-            Section.SETTINGS -> config.copy(settings = CharacterSettingsConfig())
-        }
-
-    private fun sectionValue(
-        section: Section,
-        config: CharacterConfig,
-    ): Any =
-        when (section) {
-            Section.HIGHLIGHTS -> config.highlights
-            Section.NAMES -> config.names
-            Section.ALIASES -> config.aliases
-            Section.ALTERATIONS -> config.alterations
-            Section.VARIABLES -> config.variables
-            Section.MACROS -> config.macros
-            Section.PRESETS -> config.presets
-            Section.PROGRESS_BARS -> config.progressBars
-            Section.WINDOWS -> config.windows
-            Section.SETTINGS -> config.settings
-        }
-
     private fun isSectionEmpty(
         section: Section,
         config: CharacterConfig,
     ): Boolean =
-        when (val value = sectionValue(section, config)) {
+        when (val value = section.get(config)) {
             is List<*> -> value.isEmpty()
             is Map<*, *> -> value.isEmpty()
             is CharacterSettingsConfig -> value == CharacterSettingsConfig()
@@ -466,20 +352,125 @@ class CharacterConfigStore(
 
 // The per-section file contents. The file name already names the section, but each is wrapped in a
 // single-key table so the TOML root is always a table (settings.toml uses CharacterSettingsConfig
-// directly, since its fields are already the root scalars).
+// directly, since its fields are already the root scalars). Each section carries its own
+// read/encode/clear behavior so adding one is a single edit here rather than several parallel `when`s.
 private enum class Section(
     val fileName: String,
+    val get: (config: CharacterConfig) -> Any,
+    val clear: (config: CharacterConfig) -> CharacterConfig,
+    val encode: (toml: Toml, config: CharacterConfig, template: TomlTable?) -> String,
+    val decodeInto: (toml: Toml, element: TomlTable, config: CharacterConfig) -> CharacterConfig,
 ) {
-    HIGHLIGHTS("highlights.toml"),
-    NAMES("names.toml"),
-    ALIASES("aliases.toml"),
-    ALTERATIONS("alterations.toml"),
-    VARIABLES("variables.toml"),
-    MACROS("macros.toml"),
-    PRESETS("presets.toml"),
-    PROGRESS_BARS("progressbars.toml"),
-    WINDOWS("windows.toml"),
-    SETTINGS("settings.toml"),
+    HIGHLIGHTS(
+        fileName = "highlights.toml",
+        get = { it.highlights },
+        clear = { it.copy(highlights = emptyList()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(HighlightsFile.serializer(), HighlightsFile(config.highlights), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(highlights = toml.decodeFromTomlElement(HighlightsFile.serializer(), element).highlights)
+        },
+    ),
+    NAMES(
+        fileName = "names.toml",
+        get = { it.names },
+        clear = { it.copy(names = emptyList()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(NamesFile.serializer(), NamesFile(config.names), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(names = toml.decodeFromTomlElement(NamesFile.serializer(), element).names)
+        },
+    ),
+    ALIASES(
+        fileName = "aliases.toml",
+        get = { it.aliases },
+        clear = { it.copy(aliases = emptyList()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(AliasesFile.serializer(), AliasesFile(config.aliases), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(aliases = toml.decodeFromTomlElement(AliasesFile.serializer(), element).aliases)
+        },
+    ),
+    ALTERATIONS(
+        fileName = "alterations.toml",
+        get = { it.alterations },
+        clear = { it.copy(alterations = emptyList()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(AlterationsFile.serializer(), AlterationsFile(config.alterations), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(alterations = toml.decodeFromTomlElement(AlterationsFile.serializer(), element).alterations)
+        },
+    ),
+    VARIABLES(
+        fileName = "variables.toml",
+        get = { it.variables },
+        clear = { it.copy(variables = emptyMap()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(VariablesFile.serializer(), VariablesFile(config.variables), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(variables = toml.decodeFromTomlElement(VariablesFile.serializer(), element).variables)
+        },
+    ),
+    MACROS(
+        fileName = "macros.toml",
+        get = { it.macros },
+        clear = { it.copy(macros = emptyMap()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(MacrosFile.serializer(), MacrosFile(config.macros), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(macros = toml.decodeFromTomlElement(MacrosFile.serializer(), element).macros)
+        },
+    ),
+    PRESETS(
+        fileName = "presets.toml",
+        get = { it.presets },
+        clear = { it.copy(presets = emptyMap()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(PresetsFile.serializer(), PresetsFile(config.presets), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(presets = toml.decodeFromTomlElement(PresetsFile.serializer(), element).presets)
+        },
+    ),
+    PROGRESS_BARS(
+        fileName = "progressbars.toml",
+        get = { it.progressBars },
+        clear = { it.copy(progressBars = emptyMap()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(ProgressBarsFile.serializer(), ProgressBarsFile(config.progressBars), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(progressBars = toml.decodeFromTomlElement(ProgressBarsFile.serializer(), element).progressBars)
+        },
+    ),
+    WINDOWS(
+        fileName = "windows.toml",
+        get = { it.windows },
+        clear = { it.copy(windows = emptyMap()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(WindowsFile.serializer(), WindowsFile(config.windows), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(windows = toml.decodeFromTomlElement(WindowsFile.serializer(), element).windows)
+        },
+    ),
+    SETTINGS(
+        fileName = "settings.toml",
+        get = { it.settings },
+        clear = { it.copy(settings = CharacterSettingsConfig()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(CharacterSettingsConfig.serializer(), config.settings, template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(settings = toml.decodeFromTomlElement(CharacterSettingsConfig.serializer(), element))
+        },
+    ),
 }
 
 // Sections whose entries carry an `id` that may be generated on load.
