@@ -2,8 +2,9 @@ package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -24,7 +25,6 @@ import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.generated.resources.more_vert
 import warlockfe.warlock3.core.window.WindowLocation
 
-// TODO: make a nonJvm source set and merge this with Android
 @Composable
 actual fun WindowHeader(
     title: @Composable (() -> Unit),
@@ -39,13 +39,15 @@ actual fun WindowHeader(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Spacer(Modifier.width(4.dp))
         if (location != WindowLocation.MAIN) {
             Icon(
-                modifier = Modifier.padding(start = 4.dp, end = 4.dp).size(18.dp),
+                modifier = Modifier.size(18.dp),
                 painter = painterResource(Res.drawable.drag_indicator),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 contentDescription = "Drag to re-arrange window",
             )
+            Spacer(Modifier.width(4.dp))
         }
         Box(modifier = Modifier.weight(1f)) {
             title()

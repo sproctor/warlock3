@@ -5,30 +5,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.MainScreen
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.dashboard.DesktopDashboardView
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopGameView
 import warlockfe.warlock3.compose.desktop.ui.sge.DesktopSgeWizard
-import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
-import warlockfe.warlock3.compose.util.SafeUriHandler
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.sge.SgeSettings
 
-@Suppress("ktlint:compose:vm-injection-check")
+/**
+ * Desktop entry into the shared [MainScreen] navigation host, supplying the Jewel screen UIs as
+ * content slots.
+ */
 @Composable
 fun DesktopMainScreen(
     sgeViewModelFactory: SgeViewModelFactory,
@@ -39,82 +34,46 @@ fun DesktopMainScreen(
     sideBarVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
+    MainScreen(
+        sgeViewModelFactory = sgeViewModelFactory,
+        dashboardViewModelFactory = dashboardViewModelFactory,
+        gameState = gameState,
+        updateCurrentCharacter = updateCurrentCharacter,
+        sgeSettings = sgeSettings,
+        modifier = modifier,
+        dashboardContent = { viewModel, connectToSge ->
+            DesktopDashboardView(viewModel = viewModel, connectToSGE = connectToSge)
+        },
+        wizardContent = { viewModel, onCancel ->
+            DesktopSgeWizard(viewModel = viewModel, onCancel = onCancel)
+        },
+        gameContent = { viewModel, navigateToDashboard ->
+            DesktopGameView(
+                viewModel = viewModel,
+                navigateToDashboard = navigateToDashboard,
+                sideBarVisible = sideBarVisible,
+            )
+        },
+        errorContent = { message, onDismiss ->
+            DesktopErrorScreen(message = message, onDismiss = onDismiss)
+        },
+    )
+}
 
-    CompositionLocalProvider(
-        LocalUriHandler provides SafeUriHandler(uriHandler),
+@Composable
+private fun DesktopErrorScreen(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(JewelTheme.globalColors.panelBackground),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        when (val screen = gameState.screen) {
-            GameScreen.Dashboard -> {
-                val viewModel =
-                    viewModel {
-                        dashboardViewModelFactory.create(gameState, sgeSettings)
-                    }
-                DesktopDashboardView(
-                    viewModel = viewModel,
-                    connectToSGE = {
-                        scope.launch {
-                            gameState.setScreen(GameScreen.NewGameState)
-                        }
-                    },
-                    modifier = modifier,
-                )
-            }
-
-            GameScreen.NewGameState -> {
-                val viewModel =
-                    remember {
-                        sgeViewModelFactory.create(gameState, sgeSettings)
-                    }
-                DesktopSgeWizard(
-                    viewModel = viewModel,
-                    onCancel = {
-                        scope.launch {
-                            gameState.setScreen(GameScreen.Dashboard)
-                        }
-                    },
-                    modifier = modifier,
-                )
-            }
-
-            is GameScreen.ConnectedGameState -> {
-                val character =
-                    screen.viewModel.character
-                        .collectAsState(null)
-                        .value
-                updateCurrentCharacter(character)
-                DesktopGameView(
-                    viewModel = screen.viewModel,
-                    navigateToDashboard = {
-                        scope.launch {
-                            screen.viewModel.close()
-                            gameState.setScreen(GameScreen.Dashboard)
-                        }
-                    },
-                    sideBarVisible = sideBarVisible,
-                    modifier = modifier,
-                )
-            }
-
-            is GameScreen.ErrorState -> {
-                Column(
-                    modifier =
-                        modifier
-                            .fillMaxSize()
-                            .background(JewelTheme.globalColors.panelBackground),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(text = screen.message)
-                    WarlockButton(
-                        onClick = {
-                            scope.launch { gameState.setScreen(screen.returnTo) }
-                        },
-                        text = "OK",
-                    )
-                }
-            }
-        }
+        Text(text = message)
+        WarlockButton(onClick = onDismiss, text = "OK")
     }
 }

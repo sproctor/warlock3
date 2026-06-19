@@ -97,6 +97,9 @@ import kotlin.time.Instant
 
 const val CLIENT_COMMAND_PREFIX = '/'
 
+// Per-character setting key for the tablet layout's secondary (non-main) tabbed pane location.
+const val TABLET_WINDOW_LOCATION_KEY = "tabletWindowLocation"
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
     private val windowSettingsRepository: WindowSettingsRepository,
@@ -291,6 +294,10 @@ class GameViewModel(
 
     private val windowUiStateLists
         get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
+
+    // On-demand window ui states for the mobile phone/tablet stream tabs, keyed by window name, so
+    // switching tabs reuses the same stream and scroll state instead of rebuilding each time.
+    private val tabWindowUiStates = mutableMapOf<String, WindowUiState>()
 
     private val _mainWindowUiState =
         MutableStateFlow(
@@ -976,6 +983,44 @@ class GameViewModel(
         viewModelScope.launch {
             val stream = windowRegistry.getOrCreateStream(name)
             stream.clear()
+        }
+    }
+
+    /**
+     * A [WindowUiState] for any window by [name], built on demand from the window registry and the
+     * saved per-window settings. Lets the mobile phone/tablet tab layouts render a stream without
+     * "opening" it into a dock. The main window returns its canonical, event-updated ui state.
+     */
+    fun streamWindowUiState(name: String): WindowUiState {
+        if (name == "main") return _mainWindowUiState.value
+        return tabWindowUiStates.getOrPut(name) {
+            val entity = windowSettings.value.firstOrNull { it.name == name }
+            val windowInfo = windows.value.firstOrNull { it.name == name }
+            WindowUiState(
+                name = name,
+                windowInfo = mutableStateOf(windowInfo),
+                style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                width = null,
+                height = null,
+                nameFilter = entity?.nameFilter ?: false,
+                data = createWindowData(windowInfo?.windowType, name),
+            )
+        }
+    }
+
+    /** The tablet layout's secondary (non-main) tabbed pane location; defaults to the right. */
+    fun observeTabletWindowLocation(): Flow<WindowLocation> =
+        observePerCharacter { characterId ->
+            characterSettingsRepository.observe(characterId, TABLET_WINDOW_LOCATION_KEY).map { value ->
+                value?.let { runCatching { WindowLocation.valueOf(it) }.getOrNull() } ?: WindowLocation.RIGHT
+            }
+        }
+
+    fun setTabletWindowLocation(location: WindowLocation) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                characterSettingsRepository.save(characterId, TABLET_WINDOW_LOCATION_KEY, location.name)
+            }
         }
     }
 

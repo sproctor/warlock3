@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
@@ -48,11 +49,11 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.circle
+import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
-import warlockfe.warlock3.compose.generated.resources.visibility_filled
-import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DragOverlay
@@ -60,7 +61,10 @@ import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
+import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
+import warlockfe.warlock3.compose.util.WindowWidthSizeClass
+import warlockfe.warlock3.compose.util.gameLayout
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -70,17 +74,22 @@ import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 
+/**
+ * The mobile game screen. Responsive across Material 3 width size classes: a [PhoneGameView] (all
+ * windows in tabs) at Compact/Medium widths, a [TabletGameView] (main + a tabbed pane) at Expanded,
+ * and the drag-and-drop [LargeGameView] at Large/Extra-large. The disconnected banner, macro-error
+ * dialog and key-to-focus routing are shared across all three.
+ */
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 fun GameView(
     viewModel: GameViewModel,
     navigateToDashboard: () -> Unit,
     openSettings: () -> Unit,
+    openDrawer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val disconnected by viewModel.disconnected.collectAsState()
-    var windowListVisible by remember { mutableStateOf(false) }
-
     val entryFocusRequester = remember { FocusRequester() }
     // On JVM, KeyDown is followed by an Unknown/KEY_TYPED event
     var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
@@ -93,10 +102,7 @@ fun GameView(
                 }
                 ignoreNextUnknownKeyEvent = false
                 viewModel.handleKeyPress(event).also {
-                    // on JVM, the next event will update the TextEntry, ignore it if we handled this one
-                    // on Android, the next event will be a KeyUp and we don't care
                     ignoreNextUnknownKeyEvent = it
-                    // Focus the entry on normal key presses
                     if (!it &&
                         event.type == KeyEventType.KeyDown &&
                         !event.isAltPressed &&
@@ -109,175 +115,88 @@ fun GameView(
                 }
             },
     ) {
-        Column {
-            if (disconnected) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .border(width = 8.dp, color = Color(red = 0xff, green = 0xcc, blue = 0))
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text("You have been disconnected from the server")
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        if (viewModel.canReconnect) {
-                            FilledTonalButton(onClick = viewModel::reconnect) {
-                                Text("Reconnect")
-                            }
-                        }
-                        FilledTonalButton(onClick = navigateToDashboard) {
-                            Text("Go to dashboard")
-                        }
+        BoxWithConstraints {
+            val layout = WindowWidthSizeClass.fromWidth(maxWidth).gameLayout()
+            Column(Modifier.fillMaxSize()) {
+                if (disconnected) {
+                    DisconnectedBanner(
+                        canReconnect = viewModel.canReconnect,
+                        onReconnect = viewModel::reconnect,
+                        navigateToDashboard = navigateToDashboard,
+                    )
+                }
+                when (layout) {
+                    MobileGameLayout.Phone -> {
+                        PhoneGameView(
+                            viewModel = viewModel,
+                            entryFocusRequester = entryFocusRequester,
+                            navigateToDashboard = navigateToDashboard,
+                            openSettings = openSettings,
+                            openDrawer = openDrawer,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    MobileGameLayout.Tablet -> {
+                        TabletGameView(
+                            viewModel = viewModel,
+                            entryFocusRequester = entryFocusRequester,
+                            openSettings = openSettings,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    MobileGameLayout.Large -> {
+                        LargeGameView(
+                            viewModel = viewModel,
+                            entryFocusRequester = entryFocusRequester,
+                            openSettings = openSettings,
+                            navigateToDashboard = navigateToDashboard,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
             }
-
-            val mainWindow = viewModel.mainWindowUiState.collectAsState()
-            val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
-            val presets by viewModel.presets.collectAsState(emptyMap())
-            val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
-            val openWindows by viewModel.openWindows.collectAsState(emptyList())
-
-            Row(modifier = Modifier.weight(1f)) {
-                if (windowListVisible) {
-                    val windows by viewModel.windows.collectAsState()
-                    val scope = rememberCoroutineScope()
-                    ScrollableColumn(
-                        Modifier
-                            .padding(2.dp)
-                            .fillMaxHeight()
-                            .width(240.dp)
-                            .background(
-                                color =
-                                    defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
-                                        ?: MaterialTheme.colorScheme.surface,
-                                shape = MaterialTheme.shapes.extraSmall,
-                            ).border(
-                                width = Dp.Hairline,
-                                color = MaterialTheme.colorScheme.outline,
-                                shape = MaterialTheme.shapes.extraSmall,
-                            ).padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        windows.sortedBy { it.title }.forEach { window ->
-                            WindowListItem(
-                                color =
-                                    defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
-                                        ?: MaterialTheme.colorScheme.onSurface,
-                                windowInfo = window,
-                                isOpen = openWindows.contains(window.name),
-                                onClick = { open ->
-                                    scope.launch {
-                                        if (open) {
-                                            viewModel.openWindow(window.name)
-                                        } else {
-                                            viewModel.closeWindow(window.name)
-                                        }
-                                    }
-                                },
-                            )
-                        }
-                    }
-                }
-                val leftWindows by viewModel.leftWindowUiStates.collectAsState()
-                val rightWindows by viewModel.rightWindowUiStates.collectAsState()
-                val topWindows by viewModel.topWindowUiStates.collectAsState()
-                val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
-                GameTextWindows(
-                    modifier = Modifier.weight(1f),
-                    leftWindowUiStates = leftWindows,
-                    rightWindowUiStates = rightWindows,
-                    topWindowUiStates = topWindows,
-                    bottomWindowUiStates = bottomWindows,
-                    mainWindowUiState = mainWindow.value,
-                    defaultStyle = defaultStyle,
-                    selectedWindow = viewModel.selectedWindow.collectAsState().value,
-                    openWindows = openWindows,
-                    topHeight = viewModel.topHeight.collectAsState(null).value,
-                    bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
-                    leftWidth = viewModel.leftWidth.collectAsState(null).value,
-                    rightWidth = viewModel.rightWidth.collectAsState(null).value,
-                    menuData = menuData,
-                    onActionClick = { action ->
-                        when (action) {
-                            is WarlockAction.SendCommand -> {
-                                viewModel.sendCommand(action.command)
-                                null
-                            }
-
-                            is WarlockAction.SendCommandWithLookup -> {
-                                viewModel.sendCommand(action.command)
-                                null
-                            }
-
-                            is WarlockAction.OpenMenu -> {
-                                action.onClick()
-                            }
-
-                            else -> {
-                                null
-                            }
-                        }
-                    },
-                    onWidthChange = { name, width ->
-                        viewModel.setWindowWidth(name, width)
-                    },
-                    onHeightChange = { name, height ->
-                        viewModel.setWindowHeight(name, height)
-                    },
-                    onSizeChange = viewModel::setLocationSize,
-                    onDrop = { result ->
-                        if (result.sourceLocation == result.target.location) {
-                            viewModel.changeWindowPositions(
-                                result.sourceLocation,
-                                result.sourceIndex,
-                                result.target.insertionIndex,
-                            )
-                        } else {
-                            viewModel.moveWindowToPosition(
-                                result.name,
-                                result.target.location,
-                                result.target.insertionIndex,
-                            )
-                        }
-                    },
-                    onCloseClick = viewModel::closeWindow,
-                    saveStyle = viewModel::saveWindowStyle,
-                    saveNameFilter = viewModel::saveWindowNameFilter,
-                    onWindowSelect = viewModel::selectWindow,
-                    scrollEvents = viewModel.scrollEvents.collectAsState().value,
-                    handledScrollEvent = viewModel::handledScrollEvent,
-                    clearStream = viewModel::clearStream,
-                )
-            }
-            GameBottomBar(
-                viewModel = viewModel,
-                entryFocusRequester = entryFocusRequester,
-                openSettings = openSettings,
-                windowListVisible = windowListVisible,
-                onToggleWindowList = { windowListVisible = !windowListVisible },
-            )
         }
         val macroError by viewModel.macroError.collectAsState()
         if (macroError != null) {
             AlertDialog(
-                onDismissRequest = {
-                    viewModel.handledMacroError()
-                },
+                onDismissRequest = { viewModel.handledMacroError() },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.handledMacroError()
-                        },
-                    ) {
+                    TextButton(onClick = { viewModel.handledMacroError() }) {
                         Text("Ok")
                     }
                 },
-                text = {
-                    Text(macroError!!)
-                },
+                text = { Text(macroError!!) },
             )
+        }
+    }
+}
+
+@Composable
+private fun DisconnectedBanner(
+    canReconnect: Boolean,
+    onReconnect: () -> Unit,
+    navigateToDashboard: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .border(width = 8.dp, color = Color(red = 0xff, green = 0xcc, blue = 0))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text("You have been disconnected from the server")
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (canReconnect) {
+                FilledTonalButton(onClick = onReconnect) {
+                    Text("Reconnect")
+                }
+            }
+            FilledTonalButton(onClick = navigateToDashboard) {
+                Text("Go to dashboard")
+            }
         }
     }
 }
@@ -451,10 +370,10 @@ fun GameTextWindows(
 fun GameBottomBar(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
-    openSettings: () -> Unit,
-    windowListVisible: Boolean,
-    onToggleWindowList: () -> Unit,
     modifier: Modifier = Modifier,
+    openSettings: (() -> Unit)? = null,
+    windowListVisible: Boolean = false,
+    onToggleWindowList: (() -> Unit)? = null,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
     val style = presets["default"] ?: SAFE_DEFAULT_STYLE
@@ -477,25 +396,31 @@ fun GameBottomBar(
                     viewModel = viewModel,
                     entryFocusRequester = entryFocusRequester,
                 )
-                Row {
-                    IconButton(onClick = onToggleWindowList) {
-                        Icon(
-                            painter =
-                                painterResource(
-                                    if (windowListVisible) {
-                                        Res.drawable.space_dashboard_filled
-                                    } else {
-                                        Res.drawable.space_dashboard
-                                    },
-                                ),
-                            contentDescription = "Toggle window list",
-                        )
-                    }
-                    IconButton(onClick = openSettings) {
-                        Icon(
-                            painter = painterResource(Res.drawable.settings_filled),
-                            contentDescription = "Settings",
-                        )
+                if (onToggleWindowList != null || openSettings != null) {
+                    Row {
+                        if (onToggleWindowList != null) {
+                            IconButton(onClick = onToggleWindowList) {
+                                Icon(
+                                    painter =
+                                        painterResource(
+                                            if (windowListVisible) {
+                                                Res.drawable.space_dashboard_filled
+                                            } else {
+                                                Res.drawable.space_dashboard
+                                            },
+                                        ),
+                                    contentDescription = "Toggle window list",
+                                )
+                            }
+                        }
+                        if (openSettings != null) {
+                            IconButton(onClick = openSettings) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.settings_filled),
+                                    contentDescription = "Settings",
+                                )
+                            }
+                        }
                     }
                 }
                 val vitalBars by viewModel.vitalBars.objects.collectAsState()
@@ -531,28 +456,41 @@ fun GameBottomBar(
     }
 }
 
-@Composable
-private fun WindowListItem(
-    color: Color,
-    windowInfo: WindowInfo,
-    isOpen: Boolean,
-    onClick: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = { onClick(!isOpen) }),
-    ) {
-        Icon(
-            painterResource(
-                if (isOpen) {
-                    Res.drawable.visibility_filled
-                } else {
-                    Res.drawable.visibility_off_filled
-                },
-            ),
-            tint = color,
-            contentDescription = null,
+/** Shared handling for a clickable game-text action (command link or menu). */
+internal fun GameViewModel.onWindowAction(action: WarlockAction): Int? =
+    when (action) {
+        is WarlockAction.SendCommand -> {
+            sendCommand(action.command)
+            null
+        }
+
+        is WarlockAction.SendCommandWithLookup -> {
+            sendCommand(action.command)
+            null
+        }
+
+        is WarlockAction.OpenMenu -> {
+            action.onClick()
+        }
+
+        else -> {
+            null
+        }
+    }
+
+/** Shared handling for a window drag-and-drop result (reorder within, or move across, locations). */
+internal fun GameViewModel.onWindowDrop(result: DropResult) {
+    if (result.sourceLocation == result.target.location) {
+        changeWindowPositions(
+            result.sourceLocation,
+            result.sourceIndex,
+            result.target.insertionIndex,
         )
-        Spacer(Modifier.width(8.dp))
-        Text(text = windowInfo.title, color = color)
+    } else {
+        moveWindowToPosition(
+            result.name,
+            result.target.location,
+            result.target.insertionIndex,
+        )
     }
 }
