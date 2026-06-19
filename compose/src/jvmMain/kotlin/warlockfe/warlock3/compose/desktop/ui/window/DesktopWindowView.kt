@@ -95,6 +95,7 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.desktop.ui.game.WarlockGameChrome
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
@@ -157,14 +158,17 @@ fun DesktopWindowView(
 
     val title = (window?.title ?: uiState.name) + (window?.subtitle ?: "")
     var viewportHeight by remember { mutableIntStateOf(0) }
-    val frameShape = RoundedCornerShape(2.dp)
+    val frameShape = RoundedCornerShape(4.dp)
     Box(
         modifier =
             modifier
                 .padding(2.dp)
-                .background(JewelTheme.globalColors.panelBackground, frameShape)
-                .border(Dp.Hairline, JewelTheme.globalColors.borders.normal, frameShape)
-                .onLayoutRectChanged { bounds ->
+                .background(WarlockGameChrome.panel, frameShape)
+                .border(
+                    Dp.Hairline,
+                    if (isSelected) WarlockGameChrome.borderStrong else WarlockGameChrome.border,
+                    frameShape,
+                ).onLayoutRectChanged { bounds ->
                     viewportHeight = bounds.height
                 }.onFocusChanged { focusState ->
                     if (focusState.hasFocus) {
@@ -179,16 +183,18 @@ fun DesktopWindowView(
                 modifier =
                     headerModifier
                         .background(
-                            if (isSelected) {
-                                JewelTheme.globalColors.borders.normal
-                            } else {
-                                JewelTheme.globalColors.panelBackground
-                            },
+                            color = if (isSelected) WarlockGameChrome.accent else WarlockGameChrome.header,
+                            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
                         ).fillMaxWidth(),
                 title = {
                     Text(
                         text = title,
-                        color = JewelTheme.globalColors.text.normal,
+                        color =
+                            if (isSelected) {
+                                WarlockGameChrome.accentText
+                            } else {
+                                WarlockGameChrome.textMuted
+                            },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = titleSmallStyle,
@@ -615,7 +621,7 @@ private fun ActionContextMenu(
             passiveItem {
                 NavMenuItem(
                     label = path.last().label,
-                    leading = "←",
+                    leading = "\u2190",
                     onClick = { path = path.dropLast(1) },
                 )
             }
@@ -641,7 +647,7 @@ private fun ActionContextMenu(
                     passiveItem {
                         NavMenuItem(
                             label = node.label,
-                            trailing = "›",
+                            trailing = "\u203A",
                             onClick = { path = path + node },
                         )
                     }

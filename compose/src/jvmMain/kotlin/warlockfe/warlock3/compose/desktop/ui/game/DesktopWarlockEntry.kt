@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
+import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.isSpecified
 import kotlin.math.min
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -103,15 +105,17 @@ fun DesktopWarlockEntryContent(
 ) {
     var showSettingsDialog by remember { mutableStateOf(false) }
     val usableStyle = style.mergeWith(defaultStyle)
-    val backgroundColor = usableStyle.backgroundColor.toColor()
-    val frameShape = RoundedCornerShape(2.dp)
+    val backgroundColor =
+        usableStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
+            ?: WarlockGameChrome.entryBackground
+    val frameShape = RoundedCornerShape(5.dp)
     Box(
         modifier =
             modifier
                 .background(color = backgroundColor, shape = frameShape)
                 .border(
                     width = Dp.Hairline,
-                    color = JewelTheme.globalColors.borders.normal,
+                    color = WarlockGameChrome.borderStrong,
                     shape = frameShape,
                 ),
     ) {
@@ -163,6 +167,20 @@ fun DesktopWarlockEntryContent(
                 onKeyboardAction = {
                     sendCommand()
                 },
+                decorator =
+                    TextFieldDecorator { innerTextField ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = ">",
+                                style = textStyle,
+                                color = WarlockGameChrome.textFaint,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Box(Modifier.weight(1f)) {
+                                innerTextField()
+                            }
+                        }
+                    },
             )
 
             LaunchedEffect(Unit) {
@@ -188,24 +206,16 @@ fun BoxScope.DesktopRoundTimeBar(
     modifier: Modifier = Modifier,
 ) {
     val darkMode = backgroundColor.luminance() < 0.5f
-    val rtColor =
-        if (darkMode) {
-            Color(0xff, 0x50, 0x50)
-        } else {
-            Color(0xe0, 0x3c, 0x31)
-        }
-    val ctColor =
-        if (darkMode) {
-            Color(0x60, 0x80, 0xff)
-        } else {
-            Color(0x30, 0x30, 0xff)
-        }
+    val rtBarColor = if (darkMode) WarlockGameChrome.roundtimeBar else Color(0xe0, 0x3c, 0x31)
+    val ctBarColor = if (darkMode) WarlockGameChrome.castBar else Color(0x30, 0x30, 0xff)
+    val rtTextColor = if (darkMode) WarlockGameChrome.roundtimeText else Color(0xe0, 0x3c, 0x31)
+    val ctTextColor = if (darkMode) WarlockGameChrome.castText else Color(0x30, 0x30, 0xff)
     Canvas(modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
         val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
         val segmentSpacing = 5.dp.toPx()
         for (i in 0 until min(100, roundTime)) {
             drawRect(
-                color = rtColor,
+                color = rtBarColor,
                 topLeft =
                     Offset(
                         x = i * (segmentSize.width + segmentSpacing),
@@ -216,7 +226,7 @@ fun BoxScope.DesktopRoundTimeBar(
         }
         for (i in 0 until min(100, castTime)) {
             drawRect(
-                color = ctColor,
+                color = ctBarColor,
                 topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = 0f),
                 size = segmentSize,
             )
@@ -226,7 +236,7 @@ fun BoxScope.DesktopRoundTimeBar(
         if (castTime > 0) {
             Text(
                 text = castTime.toString(),
-                color = ctColor,
+                color = ctTextColor,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -234,7 +244,7 @@ fun BoxScope.DesktopRoundTimeBar(
             Spacer(Modifier.width(12.dp))
             Text(
                 text = roundTime.toString(),
-                color = rtColor,
+                color = rtTextColor,
                 fontWeight = FontWeight.Bold,
             )
         }

@@ -68,6 +68,7 @@ import warlockfe.warlock3.core.macro.MacroKeyCombo
 import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.macro.parseMacro
+import warlockfe.warlock3.core.prefs.CompassStyle
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -126,6 +127,23 @@ class GameViewModel(
 
     private val _compassState = MutableStateFlow(emptySet<Direction>())
     val compassState = _compassState.asStateFlow()
+
+    // Compass display style (button grid vs skin rose). Persisted client-wide via client.toml so it
+    // survives restarts; the right-click compass menu reads and updates it.
+    val compassStyle =
+        clientSettingRepository
+            .observeCompassStyle()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = CompassStyle.BUTTONS,
+            )
+
+    fun setCompassStyle(style: CompassStyle) {
+        viewModelScope.launch {
+            clientSettingRepository.putCompassStyle(style)
+        }
+    }
 
     val vitalBars: ComposeDialogState = windowRegistry.getOrCreateDialog("minivitals") as ComposeDialogState
 

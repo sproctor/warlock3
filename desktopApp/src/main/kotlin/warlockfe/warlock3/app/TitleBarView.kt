@@ -1,10 +1,16 @@
 package warlockfe.warlock3.app
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,7 +19,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.nucleus.core.runtime.Platform
 import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
@@ -30,10 +39,9 @@ import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import warlockfe.warlock3.compose.desktop.shim.WarlockIconButton
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
-import warlockfe.warlock3.compose.generated.resources.space_dashboard_outlined
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import java.io.File
 
@@ -87,21 +95,38 @@ internal fun DecoratedWindowScope.TitleBarView(
             }
         }
     JewelTitleBar {
-        Row(Modifier.align(Alignment.Start)) {
+        Row(Modifier.align(Alignment.Start).padding(start = 8.dp)) {
             if (isConnected) {
-                WarlockIconButton(onClick = { showSideBar(!sideBarVisible) }) {
+                val windowsShape = RoundedCornerShape(5.dp)
+                val contentColor = LocalContentColor.current
+                Row(
+                    modifier =
+                        Modifier
+                            .clip(windowsShape)
+                            // Outlined "pill" so it reads as a button; fills when the list is open.
+                            // Border/background draw within the bounds, so the title bar height is unchanged.
+                            .background(
+                                if (sideBarVisible) contentColor.copy(alpha = 0.15f) else Color.Transparent,
+                            ).border(Dp.Hairline, contentColor.copy(alpha = 0.5f), windowsShape)
+                            .clickable { showSideBar(!sideBarVisible) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Image(
+                        modifier = Modifier.size(16.dp),
                         painter =
                             painterResource(
                                 if (sideBarVisible) {
                                     Res.drawable.space_dashboard_filled
                                 } else {
-                                    Res.drawable.space_dashboard_outlined
+                                    Res.drawable.space_dashboard
                                 },
                             ),
-                        colorFilter = ColorFilter.tint(LocalContentColor.current),
+                        colorFilter = ColorFilter.tint(contentColor),
                         contentDescription = null,
                     )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Windows")
                 }
             }
             val menus =

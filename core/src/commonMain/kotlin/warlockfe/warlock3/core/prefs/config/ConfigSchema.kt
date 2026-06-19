@@ -239,6 +239,8 @@ data class NameConfig(
 @Serializable
 data class ClientConfig(
     val theme: String? = null,
+    @TomlComment("Desktop compass display style: BUTTONS or ROSE.")
+    val compassStyle: String? = null,
     val scrollback: Int? = null,
     val markLinks: Boolean = true,
     val showImages: Boolean = true,
@@ -251,7 +253,7 @@ data class ClientConfig(
     val minCommandLength: Int? = null,
     @TomlComment("Maximum number of commands kept in the command history. Not exposed in the UI.")
     val historySize: Int? = null,
-    @TomlComment("MUD Mobile device token (wlk_…). Treat like a password; it can start billable sessions.")
+    @TomlComment("MUD Mobile device token (wlk_...). Treat like a password; it can start billable sessions.")
     val mudMobileToken: String? = null,
 )
 

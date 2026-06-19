@@ -23,7 +23,9 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.desktop.ui.game.WarlockGameChrome
+import warlockfe.warlock3.compose.desktop.ui.game.WindowMenuButton
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.core.window.WindowLocation
@@ -84,8 +86,7 @@ actual fun WindowHeader(
                     ).then(
                         if (isDraggable && isHovered && !isSelected) {
                             Modifier.background(
-                                JewelTheme.globalColors.borders.normal
-                                    .copy(alpha = 0.4f),
+                                WarlockGameChrome.border.copy(alpha = 0.5f),
                             )
                         } else {
                             Modifier
@@ -99,8 +100,11 @@ actual fun WindowHeader(
                     painter = painterResource(Res.drawable.drag_indicator),
                     colorFilter =
                         ColorFilter.tint(
-                            JewelTheme.globalColors.text.normal
-                                .copy(alpha = 0.5f),
+                            if (isSelected) {
+                                WarlockGameChrome.accentSubtle
+                            } else {
+                                WarlockGameChrome.textFaint
+                            },
                         ),
                     contentDescription = "Drag to re-arrange window",
                 )
@@ -108,6 +112,23 @@ actual fun WindowHeader(
             Spacer(Modifier.width(4.dp))
             Box(modifier = Modifier.weight(1f)) {
                 title()
+            }
+            // The same actions as the right-click context menu, surfaced as a visible "..." button.
+            WindowMenuButton(
+                tint = if (isSelected) WarlockGameChrome.accentSubtle else WarlockGameChrome.textFaint,
+                horizontalAlignment = Alignment.End,
+            ) {
+                selectableItem(selected = false, onClick = onSettingsClick) {
+                    Text("Window settings ...")
+                }
+                selectableItem(selected = false, onClick = onClearClick) {
+                    Text("Clear window")
+                }
+                if (location != WindowLocation.MAIN) {
+                    selectableItem(selected = false, onClick = onCloseClick) {
+                        Text("Hide window")
+                    }
+                }
             }
         }
     }
