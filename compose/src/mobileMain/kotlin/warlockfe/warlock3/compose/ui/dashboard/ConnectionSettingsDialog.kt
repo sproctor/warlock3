@@ -59,7 +59,10 @@ fun ConnectionSettingsDialog(
                         updateProxySettings(
                             ConnectionProxySettings(
                                 enabled = proxyEnabled,
-                                launchCommand = proxyCommand.text.toString().ifBlank { null },
+                                launchCommand =
+                                    proxyCommand.text
+                                        .toString()
+                                        .ifBlank { null },
                                 host = proxyHost.text.toString().ifBlank { null },
                                 port = proxyPort.text.toString().ifBlank { null },
                             ),

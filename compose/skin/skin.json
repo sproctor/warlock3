@@ -281,19 +281,21 @@
     }
   },
   "indicator": {
+    "width": 24,
+    "height": 24,
     "children": {
       "kneeling": { "image": { "name": "kneeling" } },
       "prone": { "image": { "name": "prone" } },
       "sitting": { "image": { "name": "sitting" } },
       "standing": { "image": { "name": "standing" } },
-      "poisoned": { "image": { "name": "poisoned" } },
-      "diseased": { "image": { "name": "diseased" } },
+      "poisoned": { "image": { "name": "poisoned" }, "top": 13, "left": 0, "width": 11, "height": 11 },
+      "diseased": { "image": { "name": "diseased" }, "top": 13, "left": 13, "width": 11, "height": 11 },
       "joined": { "image": { "name": "joined" } },
       "bleeding": { "image": { "name": "local_hospital" } },
-      "dead": { "image": { "name": "death" } },
+      "dead": { "image": { "name": "death" }, "top": 0, "left": 13, "width": 11, "height": 11 },
       "invisible": { "image": { "name": "invisible" } },
-      "hidden": { "image": { "name": "hidden" } },
-      "webbed": { "image": { "name": "webbed" } },
+      "hidden": { "image": { "name": "hidden" }, "top": 0, "left": 13, "width": 11, "height": 11 },
+      "webbed": { "image": { "name": "webbed" }, "top": 13, "left": 13, "width": 11, "height": 11 },
       "stunned": { "image": { "name": "stunned" } }
     }
   }

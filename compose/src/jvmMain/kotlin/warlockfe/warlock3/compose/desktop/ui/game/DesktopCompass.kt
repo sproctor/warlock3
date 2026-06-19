@@ -43,6 +43,8 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.components.CompassButtonColors
+import warlockfe.warlock3.compose.components.CompassButtons
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right_alt
@@ -78,10 +80,20 @@ fun DesktopCompass(
     ) {
         when (style) {
             CompassStyle.BUTTONS -> {
+                val chrome = gameChrome
                 CompassButtons(
                     height = height,
                     directions = directions,
                     onClick = onClick,
+                    colors =
+                        CompassButtonColors(
+                            litBackground = chrome.litBackground,
+                            litBorder = chrome.litBorder,
+                            litIcon = chrome.litIcon,
+                            background = chrome.panelAlt,
+                            border = chrome.border,
+                            icon = chrome.compassDarkIcon,
+                        ),
                 )
             }
 
@@ -184,139 +196,4 @@ private fun CompassStyleMenuItem(
         Spacer(Modifier.width(10.dp))
         Text(text = label, color = gameChrome.textPrimary)
     }
-}
-
-@Composable
-private fun CompassButtons(
-    height: Dp,
-    directions: Set<Direction>,
-    onClick: (Direction) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val available = remember(directions) { directions.map { it.value.lowercase() }.toSet() }
-    val gap = 3.dp
-    // Icon sizes as a fixed fraction of the cell height: the rotated direction arrows and the
-    // central "out" glyph.
-    val arrowIconSize = height / 4
-    val outIconSize = height / 5
-
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        // 3x3 grid of the eight compass points around a central "out".
-        Column(
-            modifier = Modifier.size(height),
-            verticalArrangement = Arrangement.spacedBy(gap),
-        ) {
-            // Each direction is the arrow_right_alt icon (pointing east) rotated clockwise from 0deg.
-            // "out" has no arrow - it renders the logout icon instead, see below - hence the null.
-            val rows: List<List<Pair<String, Float?>>> =
-                listOf(
-                    listOf("nw" to 225f, "n" to 270f, "ne" to 315f),
-                    listOf("w" to 180f, "out" to null, "e" to 0f),
-                    listOf("sw" to 135f, "s" to 90f, "se" to 45f),
-                )
-            rows.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(gap),
-                ) {
-                    row.forEach { (value, rotation) ->
-                        CompassCell(
-                            modifier = Modifier.fillMaxHeight().weight(1f),
-                            lit = available.contains(value),
-                            onClick = { onClick(Direction(value)) },
-                        ) { contentColor ->
-                            if (rotation == null) {
-                                // "Out" of the room reads as a door with an arrow leaving it
-                                // (Material Symbols "logout").
-                                Image(
-                                    modifier = Modifier.size(outIconSize),
-                                    painter = painterResource(Res.drawable.logout),
-                                    colorFilter = ColorFilter.tint(contentColor),
-                                    contentDescription = "out",
-                                )
-                            } else {
-                                DirectionArrow(
-                                    rotationDegrees = rotation,
-                                    size = arrowIconSize,
-                                    color = contentColor,
-                                    contentDescription = value,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // Up / down sit in their own column, as in the design.
-        Column(
-            modifier = Modifier.height(height).width(height * 0.36f),
-            verticalArrangement = Arrangement.spacedBy(gap),
-        ) {
-            CompassCell(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                lit = available.contains("up"),
-                onClick = { onClick(Direction("up")) },
-            ) { contentColor ->
-                DirectionArrow(
-                    rotationDegrees = 270f,
-                    size = arrowIconSize,
-                    color = contentColor,
-                    contentDescription = "up",
-                )
-            }
-            CompassCell(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                lit = available.contains("down"),
-                onClick = { onClick(Direction("down")) },
-            ) { contentColor ->
-                DirectionArrow(
-                    rotationDegrees = 90f,
-                    size = arrowIconSize,
-                    color = contentColor,
-                    contentDescription = "down",
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompassCell(
-    lit: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable (contentColor: Color) -> Unit,
-) {
-    val shape = RoundedCornerShape(4.dp)
-    Box(
-        modifier =
-            modifier
-                .clip(shape)
-                .background(
-                    if (lit) gameChrome.litBackground else gameChrome.panelAlt,
-                ).border(
-                    width = Dp.Hairline,
-                    color = if (lit) gameChrome.litBorder else gameChrome.border,
-                    shape = shape,
-                ).then(if (lit) Modifier.clickable(onClick = onClick) else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        content(if (lit) gameChrome.litIcon else gameChrome.compassDarkIcon)
-    }
-}
-
-/** A compass direction arrow: the east-pointing [arrow_right_alt] rotated [rotationDegrees] clockwise. */
-@Composable
-private fun DirectionArrow(
-    rotationDegrees: Float,
-    size: Dp,
-    color: Color,
-    contentDescription: String,
-) {
-    Image(
-        modifier = Modifier.size(size).rotate(rotationDegrees),
-        painter = painterResource(Res.drawable.arrow_right_alt),
-        colorFilter = ColorFilter.tint(color),
-        contentDescription = contentDescription,
-    )
 }
