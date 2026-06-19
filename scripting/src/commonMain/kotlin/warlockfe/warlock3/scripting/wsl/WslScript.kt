@@ -5,6 +5,7 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import org.antlr.v4.kotlinruntime.ANTLRErrorListener
 import org.antlr.v4.kotlinruntime.CharStream
+import org.antlr.v4.kotlinruntime.CharStreams
 import org.antlr.v4.kotlinruntime.CommonTokenStream
 import org.antlr.v4.kotlinruntime.Parser
 import org.antlr.v4.kotlinruntime.RecognitionException
@@ -18,16 +19,33 @@ import warlockfe.warlock3.scripting.util.toCharStream
 
 class WslScript(
     val name: String,
-    private val file: Path,
+    private val file: Path?,
     private val fileSystem: FileSystem,
+    // When set, the script is parsed from this in-memory string instead of [file] (e.g. an action
+    // button's inline script). Exactly one of [content]/[file] is expected to be present.
+    private val content: String? = null,
 ) {
     fun parse(): List<WslLine> {
-        val input: CharStream = file.toCharStream(fileSystem)
+        val input: CharStream =
+            when {
+                content != null -> CharStreams.fromString(content)
+                file != null -> file.toCharStream(fileSystem)
+                else -> throw WslParseException("Script \"$name\" has no source")
+            }
         val lexer = WslLexer(input)
         val parser = WslParser(CommonTokenStream(lexer))
         parser.addErrorListener(ErrorListener())
         val script = parser.script()
         return script.line().map { parseLine(it) }
+    }
+
+    companion object {
+        /** A script parsed from a raw string rather than a file on disk. */
+        fun fromString(
+            name: String,
+            content: String,
+            fileSystem: FileSystem,
+        ): WslScript = WslScript(name = name, file = null, fileSystem = fileSystem, content = content)
     }
 
     private fun parseLine(line: WslParser.LineContext): WslLine {

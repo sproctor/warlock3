@@ -67,6 +67,23 @@ class ScriptManagerImpl(
         }
     }
 
+    override suspend fun startScript(
+        client: WarlockClient,
+        name: String,
+        contents: String,
+        commandHandler: suspend (String) -> SendCommandType,
+    ) {
+        when (val result = scriptEngineRepository.getScriptFromContents(name, contents, this)) {
+            is ScriptLaunchResult.Success -> {
+                startInstance(client, result.instance, null, commandHandler)
+            }
+
+            is ScriptLaunchResult.Failure -> {
+                client.print(StyledString(result.message, style = WarlockStyle.Error))
+            }
+        }
+    }
+
     private suspend fun startInstance(
         client: WarlockClient,
         instance: ScriptInstance,

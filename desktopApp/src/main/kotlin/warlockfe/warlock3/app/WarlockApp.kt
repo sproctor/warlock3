@@ -209,6 +209,7 @@ fun DecoratedWindowScope.WarlockApp(
             nameRepository = appContainer.nameRepository,
             characterSettingsRepository = appContainer.characterSettingsRepository,
             aliasRepository = appContainer.aliasRepository,
+            actionRepository = appContainer.actionRepository,
             scriptDirRepository = appContainer.scriptDirRepository,
             alterationRepository = appContainer.alterationRepository,
             clientSettingRepository = appContainer.clientSettings,

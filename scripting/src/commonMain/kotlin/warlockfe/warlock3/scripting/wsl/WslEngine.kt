@@ -36,4 +36,24 @@ class WslEngine(
             soundPlayer = soundPlayer,
             fileSystem = fileSystem,
         )
+
+    /** Build an instance that runs an in-memory WSL [content] string (e.g. an action button script). */
+    fun createStringInstance(
+        id: Long,
+        name: String,
+        content: String,
+        scriptManager: ScriptManager,
+    ): ScriptInstance =
+        WslScriptInstance(
+            id = id,
+            name = name,
+            file = null,
+            content = content,
+            highlightRepository = highlightRepository,
+            nameRepository = nameRepository,
+            variableRepository = variableRepository,
+            scriptManager = scriptManager,
+            soundPlayer = soundPlayer,
+            fileSystem = fileSystem,
+        )
 }

@@ -496,7 +496,8 @@ class WslContext(
     }
 
     suspend fun playSound(name: String) {
-        val file = scriptInstance.file.parent?.let { Path(it, name) } ?: Path(name)
+        // String-backed scripts have no file, so resolve relative to the script dir only when there is one.
+        val file = scriptInstance.file?.parent?.let { Path(it, name) } ?: Path(name)
         val filename = if (fileSystem.exists(file)) file.toString() else name
         val error = soundPlayer.playSound(filename)
         if (error == null) {

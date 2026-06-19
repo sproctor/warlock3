@@ -20,6 +20,14 @@ interface ScriptManager {
         commandHandler: suspend (String) -> SendCommandType,
     )
 
+    /** Run a WSL script from a raw string (e.g. an action button's inline script). */
+    suspend fun startScript(
+        client: WarlockClient,
+        name: String,
+        contents: String,
+        commandHandler: suspend (String) -> SendCommandType,
+    )
+
     fun findScriptInstance(description: String): ScriptInstance?
 
     fun scriptStateChanged(instance: ScriptInstance)

@@ -43,6 +43,7 @@ import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.config.ConfigMigration
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
+import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
@@ -133,6 +134,7 @@ abstract class AppContainer(
         )
     val connectionSettingsRepository = ConnectionSettingsRepository(clientConfigStore)
     val aliasRepository = AliasRepository(characterConfigStore)
+    val actionRepository = ActionRepository(characterConfigStore)
     val alterationRepository = AlterationRepository(characterConfigStore)
     val commandHistoryRepository = CommandHistoryRepository(characterConfigStore, fileSystem, ioDispatcher)
 
@@ -209,6 +211,7 @@ abstract class AppContainer(
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
+            actionRepository = actionRepository,
             scriptManagerFactory = scriptManagerFactory,
             windowSettingsRepository = windowSettingRepository,
             progressBarSettingRepository = progressBarSettingRepository,

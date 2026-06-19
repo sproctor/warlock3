@@ -69,6 +69,9 @@ import warlockfe.warlock3.core.macro.MacroToken
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.macro.parseMacro
 import warlockfe.warlock3.core.prefs.CompassStyle
+import warlockfe.warlock3.core.prefs.models.Action
+import warlockfe.warlock3.core.prefs.models.ActionBar
+import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -110,6 +113,7 @@ class GameViewModel(
     private val scriptManager: ScriptManager,
     val characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
+    actionRepository: ActionRepository,
     private val windowRegistry: WindowRegistry,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
     private val clientSettingRepository: ClientSettingRepository,
@@ -256,6 +260,17 @@ class GameViewModel(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = emptyList(),
+        )
+
+    // The configured action buttons for the current character (merged with global): the resolved
+    // toolbar to draw plus the full pool so a group's children can be looked up by id.
+    val actionBar: StateFlow<ActionBar> =
+        observePerCharacter { characterId ->
+            actionRepository.observeForCharacter(characterId)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = ActionBar.EMPTY,
         )
 
     val presets = windowRegistry.presets
@@ -661,6 +676,14 @@ class GameViewModel(
     fun runScript(file: Path) {
         viewModelScope.launch(ioDispatcher) {
             scriptManager.startScript(client, file, ::commandHandler)
+        }
+    }
+
+    /** Run a leaf action button's inline WSL script. No-op for a group (which has no script). */
+    fun runActionScript(action: Action) {
+        val script = action.script ?: return
+        viewModelScope.launch(ioDispatcher) {
+            scriptManager.startScript(client, action.name, script, ::commandHandler)
         }
     }
 

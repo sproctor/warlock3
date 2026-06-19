@@ -89,6 +89,7 @@ fun SettingsScreen(
                     nameRepository = appContainer.nameRepository,
                     presetRepository = appContainer.presetRepository,
                     aliasRepository = appContainer.aliasRepository,
+                    actionRepository = appContainer.actionRepository,
                     alterationRepository = appContainer.alterationRepository,
                     clientSettingRepository = appContainer.clientSettings,
                     wraythImporter = appContainer.wraythImporter,

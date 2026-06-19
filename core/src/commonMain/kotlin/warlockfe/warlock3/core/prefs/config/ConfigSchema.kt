@@ -61,6 +61,10 @@ data class CharacterConfig(
     val names: List<NameConfig> = emptyList(),
     val aliases: List<AliasConfig> = emptyList(),
     val alterations: List<AlterationConfig> = emptyList(),
+    // The pool of user-defined action buttons, and the ids of the actions shown on the game-screen
+    // button bar (in order). Both live in actions.toml.
+    val toolbar: List<String> = emptyList(),
+    val actions: List<ActionConfig> = emptyList(),
     val variables: Map<String, String> = emptyMap(),
     // Keyed by key-combo string (e.g. "ctrl alt f1"); value is the macro action.
     val macros: Map<String, String> = emptyMap(),
@@ -78,6 +82,22 @@ data class AliasConfig(
     val id: String? = null,
     val pattern: String = "",
     val replacement: String = "",
+)
+
+/**
+ * One action button in the flat per-character pool. A leaf has a [script] (a WSL script run when the
+ * button is pressed) and no children; a group has [children] (ids of other actions in the pool, shown
+ * as a drill-down menu) and no script. Give an action a stable [id] when hand-editing if anything
+ * references it from `toolbar` or another action's `children`; the Settings UI assigns ids itself.
+ */
+@Serializable
+data class ActionConfig(
+    val id: String? = null,
+    val name: String = "",
+    @TomlComment("WSL script run when pressed (a leaf). Omit and set 'children' for a group.")
+    val script: String? = null,
+    @TomlComment("Ids of the child actions shown when this group is pressed. Omit for a leaf.")
+    val children: List<String> = emptyList(),
 )
 
 @Serializable
@@ -156,6 +176,13 @@ internal data class AliasesFile(
 @Serializable
 internal data class AlterationsFile(
     val alterations: List<AlterationConfig> = emptyList(),
+)
+
+@Serializable
+internal data class ActionsFile(
+    @TomlComment("Ids of the actions shown on the game-screen button bar, in order.")
+    val toolbar: List<String> = emptyList(),
+    val actions: List<ActionConfig> = emptyList(),
 )
 
 @Serializable

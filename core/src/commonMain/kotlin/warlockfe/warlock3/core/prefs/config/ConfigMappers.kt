@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.prefs.config
 
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.models.Action
 import warlockfe.warlock3.core.prefs.models.AliasEntity
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.prefs.models.Highlight
@@ -12,6 +13,24 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.uuid.Uuid
 
 private fun String?.toUuidOrRandom(): Uuid = this?.let { runCatching { Uuid.parse(it) }.getOrNull() } ?: Uuid.random()
+
+private fun String.toUuidOrNull(): Uuid? = runCatching { Uuid.parse(this) }.getOrNull()
+
+internal fun ActionConfig.toAction(): Action =
+    Action(
+        id = id.toUuidOrRandom(),
+        name = name,
+        script = script,
+        children = children.mapNotNull { it.toUuidOrNull() },
+    )
+
+internal fun Action.toConfig(): ActionConfig =
+    ActionConfig(
+        id = id.toString(),
+        name = name,
+        script = script,
+        children = children.map { it.toString() },
+    )
 
 internal fun HighlightConfig.toHighlight(): Highlight =
     Highlight(

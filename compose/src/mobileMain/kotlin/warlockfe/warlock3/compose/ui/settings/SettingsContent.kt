@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
@@ -30,6 +31,7 @@ fun SettingsContent(
     nameRepository: NameRepositoryImpl,
     presetRepository: PresetRepository,
     aliasRepository: AliasRepository,
+    actionRepository: ActionRepository,
     alterationRepository: AlterationRepository,
     clientSettingRepository: ClientSettingRepository,
     wraythImporter: WraythImporter,
@@ -101,6 +103,14 @@ fun SettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 alterationRepository = alterationRepository,
+            )
+        }
+
+        SettingsPage.Actions -> {
+            ActionsView(
+                currentCharacter = currentCharacter,
+                allCharacters = characters,
+                actionRepository = actionRepository,
             )
         }
     }

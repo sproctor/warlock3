@@ -345,6 +345,7 @@ class CharacterConfigStore(
         when (val value = section.get(config)) {
             is List<*> -> value.isEmpty()
             is Map<*, *> -> value.isEmpty()
+            is ActionsFile -> value.toolbar.isEmpty() && value.actions.isEmpty()
             is CharacterSettingsConfig -> value == CharacterSettingsConfig()
             else -> true
         }
@@ -403,6 +404,19 @@ private enum class Section(
         },
         decodeInto = { toml, element, config ->
             config.copy(alterations = toml.decodeFromTomlElement(AlterationsFile.serializer(), element).alterations)
+        },
+    ),
+    ACTIONS(
+        fileName = "actions.toml",
+        // The actions pool and the toolbar share one file, so the change-detection key covers both.
+        get = { ActionsFile(it.toolbar, it.actions) },
+        clear = { it.copy(toolbar = emptyList(), actions = emptyList()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(ActionsFile.serializer(), ActionsFile(config.toolbar, config.actions), template)
+        },
+        decodeInto = { toml, element, config ->
+            val file = toml.decodeFromTomlElement(ActionsFile.serializer(), element)
+            config.copy(toolbar = file.toolbar, actions = file.actions)
         },
     ),
     VARIABLES(
@@ -474,7 +488,7 @@ private enum class Section(
 }
 
 // Sections whose entries carry an `id` that may be generated on load.
-private val ID_SECTIONS = listOf(Section.HIGHLIGHTS, Section.NAMES, Section.ALIASES, Section.ALTERATIONS)
+private val ID_SECTIONS = listOf(Section.HIGHLIGHTS, Section.NAMES, Section.ALIASES, Section.ALTERATIONS, Section.ACTIONS)
 
 // Identity for comment carry-over: match array entries (highlights, names, ...) by their `id` so a
 // comment follows its entry when the list is reordered. Entries without an id fall back to position.
@@ -502,5 +516,6 @@ private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {
         names = names.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
         aliases = aliases.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
         alterations = alterations.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
+        actions = actions.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
     ) to changed
 }
