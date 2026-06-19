@@ -48,7 +48,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.components.CompassView
+import warlockfe.warlock3.compose.components.CompassButtonColors
+import warlockfe.warlock3.compose.components.CompassButtons
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.circle
@@ -462,12 +463,21 @@ fun GameBottomBar(
                 defaultColor = textColor,
                 indicators = indicators,
             )
-            CompassView(
+            CompassButtons(
                 height = 88.dp,
                 directions = viewModel.compassState.collectAsState().value,
                 onClick = { direction ->
                     viewModel.sendCommand(direction.value)
                 },
+                colors =
+                    CompassButtonColors(
+                        litBackground = MaterialTheme.colorScheme.secondaryContainer,
+                        litBorder = MaterialTheme.colorScheme.primary,
+                        litIcon = MaterialTheme.colorScheme.onSecondaryContainer,
+                        background = MaterialTheme.colorScheme.surfaceVariant,
+                        border = MaterialTheme.colorScheme.outlineVariant,
+                        icon = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    ),
             )
         }
     }
