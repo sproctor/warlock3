@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.takeOrElse
@@ -40,6 +41,7 @@ private val barCornerRadius = 2.dp
 fun DialogProgressBar(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
+    style: TextStyle,
     modifier: Modifier = Modifier,
     barColorOverride: WarlockColor = WarlockColor.Unspecified,
     backgroundColorOverride: WarlockColor = WarlockColor.Unspecified,
@@ -80,11 +82,7 @@ fun DialogProgressBar(
                     text = text,
                     constraints = Constraints(maxWidth = size.width.toInt()),
                     maxLines = 1,
-                    style =
-                        TextStyle(
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                        ),
+                    style = style,
                 )
             val topLeft =
                 Offset(
@@ -109,10 +107,14 @@ fun DialogProgressBar(
                         ),
                 )
             }
+            // Reuses the same measured text as the halo stroke above; the Android text paint is
+            // shared between draws and a null drawStyle is a no-op there, so pass Fill explicitly or
+            // the label would be stroked white (a white outline) instead of filled.
             drawText(
                 textLayoutResult = measuredText,
                 color = textColor,
                 topLeft = topLeft,
+                drawStyle = Fill,
             )
         }
     }

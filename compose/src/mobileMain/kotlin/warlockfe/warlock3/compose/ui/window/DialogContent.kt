@@ -7,14 +7,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +53,7 @@ fun DialogContent(
                     DialogProgressBar(
                         skinObject = skinObject,
                         data = data,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
 
@@ -98,7 +101,7 @@ fun DialogContent(
                             modifier = Modifier.align(Alignment.Center),
                             text = data.value ?: "",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                         )
                     }
@@ -119,7 +122,7 @@ private fun Label(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
     }
@@ -131,23 +134,20 @@ private fun Link(
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
 ) {
-    val colorGroup = skinObject.getColorGroup()
-    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
+    // Render a dialog link as a low-emphasis text button: no fill or border at rest, a primary-tinted
+    // state layer on hover/press, and a primary-colored label (falling back to any skin-defined color).
+    val accent = MaterialTheme.colorScheme.primary
+    val content = skinObject.getColorGroup().text.takeOrElse { accent }
+    TextButton(
+        modifier = Modifier.padding(horizontal = 6.dp),
+        onClick = { executeCommand(data.cmd ?: "") },
+    ) {
         Text(
-            modifier = Modifier.align(Alignment.Center),
-            text =
-                buildAnnotatedString {
-                    pushLink(
-                        LinkAnnotation.Clickable("action") {
-                            executeCommand(data.cmd ?: "")
-                        },
-                    )
-                    append(data.value)
-                    pop()
-                },
-            color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            text = data.value ?: "",
+            color = content,
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
+            textDecoration = TextDecoration.Underline,
         )
     }
 }

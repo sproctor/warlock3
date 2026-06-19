@@ -51,6 +51,7 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -186,6 +187,7 @@ fun DesktopGameView(
                         settings = progressBarSettings,
                         saveColors = viewModel::saveProgressBarColors,
                     ),
+                LocalStyleMap provides presets,
             ) {
                 DesktopGameTextWindows(
                     modifier = Modifier.weight(1f).padding(2.dp),
