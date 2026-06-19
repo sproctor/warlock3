@@ -40,7 +40,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -54,6 +53,7 @@ import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.timeBarColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
@@ -186,26 +186,13 @@ fun BoxScope.RoundTimeBar(
     castTime: Int,
     modifier: Modifier = Modifier,
 ) {
-    val darkMode = backgroundColor.luminance() < 0.5f
-    // TODO: get these colors from the skin
-    val rtColor =
-        if (darkMode) {
-            Color(0xff, 0x50, 0x50)
-        } else {
-            Color(0xe0, 0x3c, 0x31)
-        }
-    val ctColor =
-        if (darkMode) {
-            Color(0x60, 0x80, 0xff)
-        } else {
-            Color(0x30, 0x30, 0xff)
-        }
+    val colors = timeBarColors(backgroundColor)
     Canvas(modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
         val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
         val segmentSpacing = 5.dp.toPx()
         for (i in 0 until min(100, roundTime)) {
             drawRect(
-                color = rtColor,
+                color = colors.roundTimeBar,
                 topLeft =
                     Offset(
                         x = i * (segmentSize.width + segmentSpacing),
@@ -216,7 +203,7 @@ fun BoxScope.RoundTimeBar(
         }
         for (i in 0 until min(100, castTime)) {
             drawRect(
-                color = ctColor,
+                color = colors.castTimeBar,
                 topLeft = Offset(x = i * (segmentSize.width + segmentSpacing), y = 0f),
                 size = segmentSize,
             )
@@ -226,7 +213,7 @@ fun BoxScope.RoundTimeBar(
         if (castTime > 0) {
             Text(
                 text = castTime.toString(),
-                color = ctColor,
+                color = colors.castTimeText,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -234,7 +221,7 @@ fun BoxScope.RoundTimeBar(
             Spacer(Modifier.width(12.dp))
             Text(
                 text = roundTime.toString(),
-                color = rtColor,
+                color = colors.roundTimeText,
                 fontWeight = FontWeight.Bold,
             )
         }

@@ -79,6 +79,14 @@
       }
     }
   },
+  "roundtime": {
+    "bar": { "light": "#E03C31", "dark": "#C5483F" },
+    "color": { "light": "#E03C31", "dark": "#CF6259" }
+  },
+  "casttime": {
+    "bar": { "light": "#3030FF", "dark": "#3F7CC5" },
+    "color": { "light": "#3030FF", "dark": "#5B9BD6" }
+  },
   "InjuriesPanel": {
     "width": 80,
     "height": 150,

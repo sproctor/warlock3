@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.util.CONTRAST_CROSSOVER_LUMINANCE
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DialogObject
@@ -95,7 +96,7 @@ fun DialogProgressBar(
             // label (the vital bars and any other light-on-fill bar) needs the halo to stay legible
             // over both the fill and the empty track; dark labels read fine unaided and skip it. The
             // routine is theme-independent - only the resolved fill/track colors change between themes.
-            if (textColor.luminance() > 0.5f) {
+            if (textColor.luminance() > CONTRAST_CROSSOVER_LUMINANCE) {
                 drawText(
                     textLayoutResult = measuredText,
                     color = labelOutlineColor,

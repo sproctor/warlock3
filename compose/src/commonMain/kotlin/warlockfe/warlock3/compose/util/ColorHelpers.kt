@@ -5,6 +5,14 @@ import androidx.compose.ui.graphics.toArgb
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
 
+/**
+ * The background relative-luminance at which black and white foregrounds give equal WCAG contrast:
+ * `sqrt(1.05 * 0.05) - 0.05`. Below it a light foreground reads better; above it a dark one does.
+ * Use this (rather than a naive 0.5 midpoint) when classifying a [Color] as light or dark by its
+ * [luminance][androidx.compose.ui.graphics.luminance].
+ */
+internal const val CONTRAST_CROSSOVER_LUMINANCE = 0.17912878f
+
 fun WarlockColor?.toColor(default: Color = Color.Unspecified): Color =
     if (this == null || isUnspecified()) {
         default

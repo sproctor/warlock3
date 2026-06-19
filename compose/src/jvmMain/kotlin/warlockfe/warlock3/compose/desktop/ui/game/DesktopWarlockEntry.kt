@@ -35,7 +35,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -51,6 +50,7 @@ import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.timeBarColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.isSpecified
@@ -198,16 +198,6 @@ fun DesktopWarlockEntryContent(
     }
 }
 
-// Roundtime / cast overlay colors, chosen by the entry field's own background luminance (not the app
-// light/dark theme). Over a dark field the bar and the countdown number use distinct shades; over a
-// light field both share one saturated color.
-private val roundtimeBarOnDark = Color(0xFFC5483F)
-private val roundtimeTextOnDark = Color(0xFFCF6259)
-private val roundtimeOnLight = Color(0xFFE03C31)
-private val castBarOnDark = Color(0xFF3F7CC5)
-private val castTextOnDark = Color(0xFF5B9BD6)
-private val castOnLight = Color(0xFF3030FF)
-
 @Composable
 fun BoxScope.DesktopRoundTimeBar(
     backgroundColor: Color,
@@ -215,11 +205,11 @@ fun BoxScope.DesktopRoundTimeBar(
     castTime: Int,
     modifier: Modifier = Modifier,
 ) {
-    val darkMode = backgroundColor.luminance() < 0.5f
-    val rtBarColor = if (darkMode) roundtimeBarOnDark else roundtimeOnLight
-    val ctBarColor = if (darkMode) castBarOnDark else castOnLight
-    val rtTextColor = if (darkMode) roundtimeTextOnDark else roundtimeOnLight
-    val ctTextColor = if (darkMode) castTextOnDark else castOnLight
+    val colors = timeBarColors(backgroundColor)
+    val rtBarColor = colors.roundTimeBar
+    val ctBarColor = colors.castTimeBar
+    val rtTextColor = colors.roundTimeText
+    val ctTextColor = colors.castTimeText
     Canvas(modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
         val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
         val segmentSpacing = 5.dp.toPx()
