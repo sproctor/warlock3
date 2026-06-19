@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.game
 
 import kotlinx.coroutines.CoroutineDispatcher
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -20,6 +21,7 @@ class GameViewModelFactory(
     private val presetRepository: PresetRepository,
     private val characterSettingsRepository: CharacterSettingsRepository,
     private val aliasRepository: AliasRepository,
+    private val actionRepository: ActionRepository,
     private val scriptManagerFactory: ScriptManagerFactory,
     private val windowSettingsRepository: WindowSettingsRepository,
     private val progressBarSettingRepository: ProgressBarSettingRepository,
@@ -41,6 +43,7 @@ class GameViewModelFactory(
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             aliasRepository = aliasRepository,
+            actionRepository = actionRepository,
             windowRegistry = windowRegistry,
             progressBarSettingRepository = progressBarSettingRepository,
             clientSettingRepository = clientSettingRepository,

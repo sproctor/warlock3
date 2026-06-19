@@ -27,15 +27,17 @@ import warlockfe.warlock3.core.util.parseArguments
 class WslScriptInstance(
     override val id: Long,
     override val name: String,
-    val file: Path,
+    val file: Path?,
     private val variableRepository: VariableRepository,
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
     private val scriptManager: ScriptManager,
     private val soundPlayer: SoundPlayer,
     private val fileSystem: FileSystem,
+    // When set, the script runs from this in-memory string instead of [file].
+    private val content: String? = null,
 ) : ScriptInstance {
-    private val script: WslScript = WslScript(name, file, fileSystem)
+    private val script: WslScript = WslScript(name, file, fileSystem, content)
 
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {

@@ -8,6 +8,7 @@ import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.scripting.util.extension
 import warlockfe.warlock3.scripting.util.nameWithoutExtension
+import warlockfe.warlock3.scripting.wsl.WslEngine
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.fetchAndIncrement
 
@@ -69,6 +70,20 @@ class WarlockScriptEngineRepositoryImpl(
         } else {
             ScriptLaunchResult.Failure("Could not find a script with that name")
         }
+    }
+
+    override suspend fun getScriptFromContents(
+        name: String,
+        contents: String,
+        scriptManager: ScriptManager,
+    ): ScriptLaunchResult {
+        // Inline scripts are WSL only; the JS engine has no string-backed instance.
+        val engine =
+            engines.filterIsInstance<WslEngine>().firstOrNull()
+                ?: return ScriptLaunchResult.Failure("WSL scripting engine is unavailable")
+        return ScriptLaunchResult.Success(
+            engine.createStringInstance(nextId.fetchAndIncrement(), name, contents, scriptManager),
+        )
     }
 
     private fun getEngineForExtension(extension: String): WarlockScriptEngine? {

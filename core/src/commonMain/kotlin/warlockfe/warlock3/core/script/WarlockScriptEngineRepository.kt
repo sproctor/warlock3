@@ -14,6 +14,13 @@ interface WarlockScriptEngineRepository {
         scriptManager: ScriptManager,
     ): ScriptLaunchResult
 
+    /** Build a script instance from a raw WSL string (e.g. an action button's inline script). */
+    suspend fun getScriptFromContents(
+        name: String,
+        contents: String,
+        scriptManager: ScriptManager,
+    ): ScriptLaunchResult
+
     fun supportsExtension(extension: String): Boolean
 }
 

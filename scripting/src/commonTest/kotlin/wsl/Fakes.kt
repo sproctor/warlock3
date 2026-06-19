@@ -35,6 +35,13 @@ class FakeScriptManager : ScriptManager {
         commandHandler: suspend (String) -> SendCommandType,
     ) = Unit
 
+    override suspend fun startScript(
+        client: WarlockClient,
+        name: String,
+        contents: String,
+        commandHandler: suspend (String) -> SendCommandType,
+    ) = Unit
+
     override fun findScriptInstance(description: String): ScriptInstance? = null
 
     override fun scriptStateChanged(instance: ScriptInstance) {

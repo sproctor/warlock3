@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.ui.game
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -392,6 +394,21 @@ fun GameBottomBar(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                val actionBar by viewModel.actionBar.collectAsState()
+                if (actionBar.toolbar.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        actionBar.toolbar.forEach { action ->
+                            ActionChip(
+                                action = action,
+                                pool = actionBar.actions,
+                                onRunLeaf = viewModel::runActionScript,
+                            )
+                        }
+                    }
+                }
                 WarlockEntry(
                     viewModel = viewModel,
                     entryFocusRequester = entryFocusRequester,

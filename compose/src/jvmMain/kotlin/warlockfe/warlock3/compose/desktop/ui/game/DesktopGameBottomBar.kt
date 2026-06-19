@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.desktop.ui.game
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,6 +64,21 @@ fun DesktopGameBottomBar(
                             .onSizeChanged { contentHeight = with(density) { it.height.toDp() } },
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    val actionBar by viewModel.actionBar.collectAsState()
+                    if (actionBar.toolbar.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            actionBar.toolbar.forEach { action ->
+                                DesktopActionButton(
+                                    action = action,
+                                    pool = actionBar.actions,
+                                    onRunLeaf = viewModel::runActionScript,
+                                )
+                            }
+                        }
+                    }
                     DesktopWarlockEntry(
                         viewModel = viewModel,
                         entryFocusRequester = entryFocusRequester,

@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -112,10 +110,6 @@ fun PhoneGameView(
     }
 }
 
-// Hardcoded placeholder macros for the assist-chip row; a future change can back these with the
-// user's configured macros/aliases.
-private val assistCommands = listOf("look", "attack", "search", "stance")
-
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 private fun PhoneCommandBar(
@@ -124,16 +118,20 @@ private fun PhoneCommandBar(
     onMovement: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val actionBar by viewModel.actionBar.collectAsState()
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            assistCommands.forEach { command ->
-                AssistChip(
-                    onClick = { viewModel.sendCommand(command) },
-                    label = { Text(command) },
-                )
+        if (actionBar.toolbar.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                actionBar.toolbar.forEach { action ->
+                    ActionChip(
+                        action = action,
+                        pool = actionBar.actions,
+                        onRunLeaf = viewModel::runActionScript,
+                    )
+                }
             }
         }
         Row(

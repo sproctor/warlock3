@@ -3,6 +3,7 @@ package warlockfe.warlock3.app
 import androidx.compose.runtime.Composable
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopSettingsDialog
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
@@ -27,6 +28,7 @@ fun SettingsDialog(
     alterationRepository: AlterationRepository,
     characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
+    actionRepository: ActionRepository,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
     closeDialog: () -> Unit,
@@ -42,6 +44,7 @@ fun SettingsDialog(
         alterationRepository = alterationRepository,
         characterSettingsRepository = characterSettingsRepository,
         aliasRepository = aliasRepository,
+        actionRepository = actionRepository,
         scriptDirRepository = scriptDirRepository,
         clientSettingRepository = clientSettingRepository,
         closeDialog = closeDialog,
