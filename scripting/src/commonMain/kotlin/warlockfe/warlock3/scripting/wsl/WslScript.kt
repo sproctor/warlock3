@@ -53,9 +53,9 @@ class WslScript(
     private fun parseIfExpression(ifExpression: WslParser.IfExpressionContext): WslStatement.ConditionalStatement =
         WslStatement.ConditionalStatement(
             parseExpression(ifExpression.expression()),
-            parseCommand(ifExpression.command(0) ?: throw WslParseException("Invalid if expression")),
+            parseCommand(ifExpression.command(0).orParseError("Invalid if expression")),
             ifExpression.ELSE()?.let {
-                parseCommand(ifExpression.command(1) ?: throw WslParseException("Else expression missing command"))
+                parseCommand(ifExpression.command(1).orParseError("Else expression missing command"))
             },
         )
 
@@ -87,7 +87,7 @@ class WslScript(
 
     private fun parseEquality(equality: WslParser.EqualityContext): WslEquality =
         WslEquality(
-            comparison = parseComparison(equality.comparison(0) ?: throw WslParseException("Invalid equality expression")),
+            comparison = parseComparison(equality.comparison(0).orParseError("Invalid equality expression")),
             otherComparisons =
                 equality.equalityOperator().mapIndexed { index, context ->
                     val operator =
@@ -98,14 +98,14 @@ class WslScript(
                         }
                     Pair(
                         operator,
-                        parseComparison(equality.comparison(index + 1) ?: throw WslParseException("Invalid equality expression")),
+                        parseComparison(equality.comparison(index + 1).orParseError("Invalid equality expression")),
                     )
                 },
         )
 
     private fun parseComparison(comparison: WslParser.ComparisonContext): WslComparison =
         WslComparison(
-            infixExpression = parseInfixExpression(comparison.infixExpression(0) ?: throw WslParseException("Invalid infix expression")),
+            infixExpression = parseInfixExpression(comparison.infixExpression(0).orParseError("Invalid infix expression")),
             otherInfixExpressions =
                 comparison.comparisonOperator().mapIndexed { index, context ->
                     val operator =
@@ -118,7 +118,7 @@ class WslScript(
                         }
                     Pair(
                         operator,
-                        parseInfixExpression(comparison.infixExpression(index + 1) ?: throw WslParseException("Invalid infix expression")),
+                        parseInfixExpression(comparison.infixExpression(index + 1).orParseError("Invalid infix expression")),
                     )
                 },
         )
@@ -127,7 +127,7 @@ class WslScript(
         WslInfixExpression(
             additiveExpression =
                 parseAdditiveExpression(
-                    infixExpression.additiveExpression(0) ?: throw WslParseException("Invalid additive expression"),
+                    infixExpression.additiveExpression(0).orParseError("Invalid additive expression"),
                 ),
             otherAdditiveExpressions =
                 infixExpression.infixOperator().mapIndexed { index, context ->
@@ -140,7 +140,7 @@ class WslScript(
                     Pair(
                         operator,
                         parseAdditiveExpression(
-                            infixExpression.additiveExpression(index + 1) ?: throw WslParseException("Invalid additive expression"),
+                            infixExpression.additiveExpression(index + 1).orParseError("Invalid additive expression"),
                         ),
                     )
                 },
@@ -150,7 +150,7 @@ class WslScript(
         WslAdditiveExpression(
             multiplicativeExpression =
                 parseMultiplicativeExpression(
-                    additiveExpression.multiplicativeExpression(0) ?: throw WslParseException("Invalid multiplicative expression"),
+                    additiveExpression.multiplicativeExpression(0).orParseError("Invalid multiplicative expression"),
                 ),
             otherMultiplicativeExpressions =
                 additiveExpression.additiveOperator().mapIndexed { index, opContext ->
@@ -163,8 +163,9 @@ class WslScript(
                     Pair(
                         operator,
                         parseMultiplicativeExpression(
-                            additiveExpression.multiplicativeExpression(index + 1)
-                                ?: throw WslParseException("Invalid multiplicative expression"),
+                            additiveExpression
+                                .multiplicativeExpression(index + 1)
+                                .orParseError("Invalid multiplicative expression"),
                         ),
                     )
                 },
@@ -176,7 +177,7 @@ class WslScript(
         WslMultiplicativeExpression(
             prefixUnaryExpression =
                 parsePrefixUnaryExpression(
-                    multiplicativeExpression.prefixUnaryExpression(0) ?: throw WslParseException("Invalid multiplicative expression"),
+                    multiplicativeExpression.prefixUnaryExpression(0).orParseError("Invalid multiplicative expression"),
                 ),
             otherUnaryExpressions =
                 multiplicativeExpression.multiplicativeOperator().mapIndexed { index, opContext ->
@@ -189,8 +190,9 @@ class WslScript(
                     Pair(
                         operator,
                         parsePrefixUnaryExpression(
-                            multiplicativeExpression.prefixUnaryExpression(index + 1)
-                                ?: throw WslParseException("Invalid multiplicative expression"),
+                            multiplicativeExpression
+                                .prefixUnaryExpression(index + 1)
+                                .orParseError("Invalid multiplicative expression"),
                         ),
                     )
                 },
@@ -265,7 +267,7 @@ class WslScript(
 
                 numberLiteral != null -> {
                     WslNumber(
-                        numberLiteral.text.toBigDecimalOrNull() ?: throw WslParseException("Could not parse number"),
+                        numberLiteral.text.toBigDecimalOrNull().orParseError("Could not parse number"),
                     )
                 }
 
@@ -709,3 +711,5 @@ private class ErrorListener : ANTLRErrorListener {
         e: RecognitionException?,
     ): Unit = throw WslParseException("Syntax error: line $line:$charPositionInLine $msg")
 }
+
+private fun <T : Any> T?.orParseError(message: String): T = this ?: throw WslParseException(message)

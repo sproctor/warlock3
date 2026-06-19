@@ -32,17 +32,6 @@ class ConnectionRepository(
         }
     }
 
-    suspend fun rename(
-        oldName: String,
-        newName: String,
-    ) {
-        store.mutateConnections { registry ->
-            registry.copy(
-                connections = registry.connections.map { if (it.name == oldName) it.copy(name = newName) else it },
-            )
-        }
-    }
-
     suspend fun renameById(
         id: String,
         newName: String,

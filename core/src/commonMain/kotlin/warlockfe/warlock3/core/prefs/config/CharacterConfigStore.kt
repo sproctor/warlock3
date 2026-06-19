@@ -493,41 +493,23 @@ internal val CONFIG_ELEMENT_KEY: (TomlElement) -> Any? = { element ->
 
 private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {
     var changed = false
-    val highlights =
-        highlights.map { highlight ->
-            if (highlight.id.isNullOrBlank()) {
+
+    fun <T> List<T>.fillMissingIds(
+        getId: (T) -> String?,
+        withId: (T, String) -> T,
+    ): List<T> =
+        map { item ->
+            if (getId(item).isNullOrBlank()) {
                 changed = true
-                highlight.copy(id = Uuid.random().toString())
+                withId(item, Uuid.random().toString())
             } else {
-                highlight
+                item
             }
         }
-    val names =
-        names.map { name ->
-            if (name.id.isNullOrBlank()) {
-                changed = true
-                name.copy(id = Uuid.random().toString())
-            } else {
-                name
-            }
-        }
-    val aliases =
-        aliases.map { alias ->
-            if (alias.id.isNullOrBlank()) {
-                changed = true
-                alias.copy(id = Uuid.random().toString())
-            } else {
-                alias
-            }
-        }
-    val alterations =
-        alterations.map { alteration ->
-            if (alteration.id.isNullOrBlank()) {
-                changed = true
-                alteration.copy(id = Uuid.random().toString())
-            } else {
-                alteration
-            }
-        }
-    return copy(highlights = highlights, names = names, aliases = aliases, alterations = alterations) to changed
+    return copy(
+        highlights = highlights.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
+        names = names.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
+        aliases = aliases.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
+        alterations = alterations.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
+    ) to changed
 }

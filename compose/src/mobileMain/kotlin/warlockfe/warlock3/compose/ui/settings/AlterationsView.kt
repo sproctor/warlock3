@@ -153,7 +153,6 @@ fun EditAlterationDialog(
     val pattern = rememberTextFieldState(alteration.pattern)
     val sourceStream = rememberTextFieldState(alteration.sourceStream ?: "")
     val replacement = rememberTextFieldState(alteration.result ?: "")
-    var keepOriginal by remember { mutableStateOf(alteration.keepOriginal) }
     var ignoreCase by remember { mutableStateOf(alteration.ignoreCase) }
     var patternError by remember { mutableStateOf<String?>(null) }
 
@@ -172,7 +171,7 @@ fun EditAlterationDialog(
                             destinationStream = null,
                             result = replacement.text.toString().ifBlank { null },
                             ignoreCase = ignoreCase,
-                            keepOriginal = keepOriginal,
+                            keepOriginal = alteration.keepOriginal,
                         ),
                     )
                 },
@@ -222,16 +221,6 @@ fun EditAlterationDialog(
                     label = { Text("Apply alteration to stream (leave blank for any)") },
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
-//                TextField(
-//                    value = destinationStream,
-//                    label = { Text("Destination stream (leave blank to leave text on the source stream)") },
-//                    onValueChange = {
-//                        destinationStream = it
-//                        if (it.isBlank()) {
-//                            keepOriginal = false
-//                        }
-//                    }
-//                )
                 Row {
                     Checkbox(checked = ignoreCase, onCheckedChange = { ignoreCase = it })
                     Text(
@@ -239,15 +228,6 @@ fun EditAlterationDialog(
                         modifier = Modifier.align(Alignment.CenterVertically),
                     )
                 }
-//                if (destinationStream.isNotBlank()) {
-//                    Row {
-//                        Checkbox(checked = keepOriginal, onCheckedChange = { keepOriginal = it })
-//                        Text(
-//                            text = "Keep original text",
-//                            modifier = Modifier.align(Alignment.CenterVertically)
-//                        )
-//                    }
-//                }
             }
         },
     )

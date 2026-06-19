@@ -11,11 +11,4 @@ fun <T : Any> Map<String, T>.toCaseInsensitiveMap(): CaseInsensitiveMap<T> =
         putAll(this@toCaseInsensitiveMap)
     }
 
-fun <T> Map<String, T>.getIgnoringCase(key: String): T? {
-    entries.forEach { entry ->
-        if (entry.key.equals(key, true)) {
-            return entry.value
-        }
-    }
-    return null
-}
+fun <T> Map<String, T>.getIgnoringCase(key: String): T? = entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
