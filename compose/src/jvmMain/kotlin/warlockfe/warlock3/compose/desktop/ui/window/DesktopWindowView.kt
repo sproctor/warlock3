@@ -16,14 +16,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
-import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -46,19 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.layout.positionInParent
@@ -100,7 +90,6 @@ import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialo
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
 import warlockfe.warlock3.compose.ui.window.StreamImageLine
-import warlockfe.warlock3.compose.ui.window.StreamLine
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowBackgroundImage
@@ -120,9 +109,6 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
-import warlockfe.warlock3.core.window.BackgroundImageMode
-import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.WindowLocation
 

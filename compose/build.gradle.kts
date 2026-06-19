@@ -89,6 +89,10 @@ kotlin {
             api(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.compose.ui.tooling.preview)
 
+            // Navigation 3 (multiplatform: shared between desktop and mobile)
+            implementation(libs.navigation3.ui)
+            implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
             // Third party UI
             implementation(libs.colorpicker)
             implementation(libs.filekit.dialogs)

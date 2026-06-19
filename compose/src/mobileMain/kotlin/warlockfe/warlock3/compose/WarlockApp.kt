@@ -1,8 +1,12 @@
 package warlockfe.warlock3.compose
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -11,6 +15,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
@@ -22,8 +27,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -31,8 +38,10 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.model.GameScreen
-import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.ui.dashboard.DashboardView
+import warlockfe.warlock3.compose.ui.game.GameView
 import warlockfe.warlock3.compose.ui.settings.SettingsScreen
+import warlockfe.warlock3.compose.ui.sge.SgeWizard
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -54,7 +63,9 @@ fun WarlockApp(
         }
     LaunchedEffect(darkMode) { appContainer.darkMode.value = darkMode }
     AppTheme(useDarkTheme = darkMode) {
-        val gameState = remember { GameState() }
+        // Held in a retained ViewModel so the navigation state and live connection survive
+        // configuration changes (e.g. rotation).
+        val gameState = viewModel { AppViewModel() }.gameState
         var showSettings by remember { mutableStateOf(false) }
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
 
@@ -97,7 +108,23 @@ fun WarlockApp(
                             gameState = gameState,
                             updateCurrentCharacter = { currentCharacter = it },
                             sgeSettings = sgeSettings,
-                            openSettings = { showSettings = true },
+                            dashboardContent = { viewModel, connectToSge ->
+                                DashboardView(viewModel = viewModel, connectToSGE = connectToSge)
+                            },
+                            wizardContent = { viewModel, onCancel ->
+                                SgeWizard(viewModel = viewModel, onCancel = onCancel)
+                            },
+                            gameContent = { viewModel, navigateToDashboard ->
+                                GameView(
+                                    viewModel = viewModel,
+                                    navigateToDashboard = navigateToDashboard,
+                                    openSettings = { showSettings = true },
+                                    openDrawer = { scope.launch { drawerState.open() } },
+                                )
+                            },
+                            errorContent = { message, onDismiss ->
+                                ErrorScreen(message = message, onDismiss = onDismiss)
+                            },
                         )
                     }
                 }
@@ -141,4 +168,23 @@ private fun WarlockTopBar(openDrawer: () -> Unit) {
             }
         },
     )
+}
+
+@Composable
+private fun ErrorScreen(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(text = message)
+            Button(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    }
 }
