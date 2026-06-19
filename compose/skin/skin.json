@@ -243,5 +243,50 @@
       "up": { "sprite": "upDown", "left": 0, "top": 0, "width": 120, "height": 147 },
       "down": { "sprite": "upDown", "left": 156, "top": 0, "width": 87, "height": 147 }
     }
+  },
+  "gameChrome": {
+    "children": {
+      "appBackground": { "color": { "light": "#F2F3F5", "dark": "#14161A" } },
+      "controlBar": { "color": { "light": "#E6E8EB", "dark": "#0E1013" } },
+      "panel": { "color": { "light": "#FCFCFD", "dark": "#1B1E24" } },
+      "panelAlt": { "color": { "light": "#EDEFF2", "dark": "#16181D" } },
+      "header": { "color": { "light": "#E3E5E9", "dark": "#20242B" } },
+      "border": { "color": { "light": "#D3D6DC", "dark": "#2A2F38" } },
+      "borderStrong": { "color": { "light": "#B8BCC4", "dark": "#3A3F49" } },
+      "accent": { "color": "#6F4FB5" },
+      "accentText": { "color": "#F5F0FF" },
+      "accentSubtle": { "color": { "light": "#6A4DB0", "dark": "#CDBCF2" } },
+      "textPrimary": { "color": { "light": "#1F2229", "dark": "#D8D2C4" } },
+      "textMuted": { "color": { "light": "#5A616B", "dark": "#9AA0AA" } },
+      "textFaint": { "color": { "light": "#6E757F", "dark": "#7E8590" } },
+      "caption": { "color": { "light": "#7C828C", "dark": "#6B7280" } },
+      "entryBackground": { "color": { "light": "#FFFFFF", "dark": "#0A0C0F" } },
+      "spellText": { "color": { "light": "#7A3FA8", "dark": "#C9A8E0" } },
+      "spellIcon": { "color": { "light": "#9466C4", "dark": "#A98FC9" } },
+      "litBackground": { "color": { "light": "#FBF1DA", "dark": "#221B0C" } },
+      "litBorder": { "color": { "light": "#BE9A52", "dark": "#C9A25E" } },
+      "litIcon": { "color": { "light": "#8A6A1F", "dark": "#D8B878" } },
+      "dangerBackground": { "color": { "light": "#FBE3E0", "dark": "#2A1513" } },
+      "dangerBorder": { "color": "#B23B30" },
+      "dangerIcon": { "color": { "light": "#C0392B", "dark": "#E06B60" } },
+      "compassDarkIcon": { "color": { "light": "#BCC0C7", "dark": "#3F444D" } }
+    }
+  },
+  "indicator": {
+    "children": {
+      "kneeling": { "image": { "name": "kneeling" } },
+      "prone": { "image": { "name": "prone" } },
+      "sitting": { "image": { "name": "sitting" } },
+      "standing": { "image": { "name": "standing" } },
+      "poisoned": { "image": { "name": "poisoned" } },
+      "diseased": { "image": { "name": "diseased" } },
+      "joined": { "image": { "name": "joined" } },
+      "bleeding": { "image": { "name": "local_hospital" } },
+      "dead": { "image": { "name": "death" } },
+      "invisible": { "image": { "name": "invisible" } },
+      "hidden": { "image": { "name": "hidden" } },
+      "webbed": { "image": { "name": "webbed" } },
+      "stunned": { "image": { "name": "stunned" } }
+    }
   }
 }

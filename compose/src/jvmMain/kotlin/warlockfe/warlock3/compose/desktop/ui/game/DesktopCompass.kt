@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.PointerButton
@@ -37,7 +38,6 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -45,6 +45,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.CompassView
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.arrow_right_alt
 import warlockfe.warlock3.compose.generated.resources.check
 import warlockfe.warlock3.compose.generated.resources.logout
 import warlockfe.warlock3.core.compass.Direction
@@ -140,8 +141,8 @@ private fun CompassStyleMenu(
             modifier =
                 Modifier
                     .width(190.dp)
-                    .background(WarlockGameChrome.panel, shape)
-                    .border(Dp.Hairline, WarlockGameChrome.border, shape)
+                    .background(gameChrome.panel, shape)
+                    .border(Dp.Hairline, gameChrome.border, shape)
                     .padding(4.dp),
         ) {
             CompassStyleMenuItem("Compass buttons", style == CompassStyle.BUTTONS) {
@@ -175,13 +176,13 @@ private fun CompassStyleMenuItem(
                 Image(
                     modifier = Modifier.fillMaxSize(),
                     painter = painterResource(Res.drawable.check),
-                    colorFilter = ColorFilter.tint(WarlockGameChrome.accentSubtle),
+                    colorFilter = ColorFilter.tint(gameChrome.accentSubtle),
                     contentDescription = "selected",
                 )
             }
         }
         Spacer(Modifier.width(10.dp))
-        Text(text = label, color = WarlockGameChrome.textPrimary)
+        Text(text = label, color = gameChrome.textPrimary)
     }
 }
 
@@ -194,7 +195,9 @@ private fun CompassButtons(
 ) {
     val available = remember(directions) { directions.map { it.value.lowercase() }.toSet() }
     val gap = 3.dp
-    val arrowSize = (height.value * 0.17f).sp
+    // Icon sizes as a fixed fraction of the cell height: the rotated direction arrows and the
+    // central "out" glyph.
+    val arrowIconSize = height / 4
     val outIconSize = height / 5
 
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -203,25 +206,26 @@ private fun CompassButtons(
             modifier = Modifier.size(height),
             verticalArrangement = Arrangement.spacedBy(gap),
         ) {
-            // The "out" cell's glyph is unused; it renders the logout icon instead (see below).
-            val rows =
+            // Each direction is the arrow_right_alt icon (pointing east) rotated clockwise from 0deg.
+            // "out" has no arrow - it renders the logout icon instead, see below - hence the null.
+            val rows: List<List<Pair<String, Float?>>> =
                 listOf(
-                    listOf("nw" to "\u2196", "n" to "\u2191", "ne" to "\u2197"),
-                    listOf("w" to "\u2190", "out" to "", "e" to "\u2192"),
-                    listOf("sw" to "\u2199", "s" to "\u2193", "se" to "\u2198"),
+                    listOf("nw" to 225f, "n" to 270f, "ne" to 315f),
+                    listOf("w" to 180f, "out" to null, "e" to 0f),
+                    listOf("sw" to 135f, "s" to 90f, "se" to 45f),
                 )
             rows.forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(gap),
                 ) {
-                    row.forEach { (value, glyph) ->
+                    row.forEach { (value, rotation) ->
                         CompassCell(
                             modifier = Modifier.fillMaxHeight().weight(1f),
                             lit = available.contains(value),
                             onClick = { onClick(Direction(value)) },
                         ) { contentColor ->
-                            if (value == "out") {
+                            if (rotation == null) {
                                 // "Out" of the room reads as a door with an arrow leaving it
                                 // (Material Symbols "logout").
                                 Image(
@@ -231,7 +235,12 @@ private fun CompassButtons(
                                     contentDescription = "out",
                                 )
                             } else {
-                                Text(text = glyph, color = contentColor, fontSize = arrowSize)
+                                DirectionArrow(
+                                    rotationDegrees = rotation,
+                                    size = arrowIconSize,
+                                    color = contentColor,
+                                    contentDescription = value,
+                                )
                             }
                         }
                     }
@@ -248,14 +257,24 @@ private fun CompassButtons(
                 lit = available.contains("up"),
                 onClick = { onClick(Direction("up")) },
             ) { contentColor ->
-                Text(text = "\u25B2", color = contentColor, fontSize = arrowSize)
+                DirectionArrow(
+                    rotationDegrees = 270f,
+                    size = arrowIconSize,
+                    color = contentColor,
+                    contentDescription = "up",
+                )
             }
             CompassCell(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 lit = available.contains("down"),
                 onClick = { onClick(Direction("down")) },
             ) { contentColor ->
-                Text(text = "\u25BC", color = contentColor, fontSize = arrowSize)
+                DirectionArrow(
+                    rotationDegrees = 90f,
+                    size = arrowIconSize,
+                    color = contentColor,
+                    contentDescription = "down",
+                )
             }
         }
     }
@@ -274,14 +293,30 @@ private fun CompassCell(
             modifier
                 .clip(shape)
                 .background(
-                    if (lit) WarlockGameChrome.litBackground else WarlockGameChrome.panelAlt,
+                    if (lit) gameChrome.litBackground else gameChrome.panelAlt,
                 ).border(
                     width = Dp.Hairline,
-                    color = if (lit) WarlockGameChrome.litBorder else WarlockGameChrome.border,
+                    color = if (lit) gameChrome.litBorder else gameChrome.border,
                     shape = shape,
                 ).then(if (lit) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        content(if (lit) WarlockGameChrome.litIcon else WarlockGameChrome.compassDarkIcon)
+        content(if (lit) gameChrome.litIcon else gameChrome.compassDarkIcon)
     }
+}
+
+/** A compass direction arrow: the east-pointing [arrow_right_alt] rotated [rotationDegrees] clockwise. */
+@Composable
+private fun DirectionArrow(
+    rotationDegrees: Float,
+    size: Dp,
+    color: Color,
+    contentDescription: String,
+) {
+    Image(
+        modifier = Modifier.size(size).rotate(rotationDegrees),
+        painter = painterResource(Res.drawable.arrow_right_alt),
+        colorFilter = ColorFilter.tint(color),
+        contentDescription = contentDescription,
+    )
 }

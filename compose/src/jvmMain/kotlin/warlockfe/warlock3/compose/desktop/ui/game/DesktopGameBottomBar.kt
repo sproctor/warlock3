@@ -39,10 +39,10 @@ fun DesktopGameBottomBar(
     Column(
         modifier
             .fillMaxWidth()
-            .background(WarlockGameChrome.controlBar),
+            .background(gameChrome.controlBar),
     ) {
         // Hairline separating the control bar from the work area above it.
-        Box(Modifier.fillMaxWidth().height(1.dp).background(WarlockGameChrome.border))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(gameChrome.border))
         BoxWithConstraints {
             val density = LocalDensity.current
             // The compass fills the height the rest of the control-bar content (the left column)

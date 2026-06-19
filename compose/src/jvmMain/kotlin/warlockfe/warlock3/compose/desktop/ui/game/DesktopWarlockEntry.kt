@@ -107,7 +107,7 @@ fun DesktopWarlockEntryContent(
     val usableStyle = style.mergeWith(defaultStyle)
     val backgroundColor =
         usableStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
-            ?: WarlockGameChrome.entryBackground
+            ?: gameChrome.entryBackground
     val frameShape = RoundedCornerShape(5.dp)
     Box(
         modifier =
@@ -115,7 +115,7 @@ fun DesktopWarlockEntryContent(
                 .background(color = backgroundColor, shape = frameShape)
                 .border(
                     width = Dp.Hairline,
-                    color = WarlockGameChrome.borderStrong,
+                    color = gameChrome.borderStrong,
                     shape = frameShape,
                 ),
     ) {
@@ -173,7 +173,7 @@ fun DesktopWarlockEntryContent(
                             Text(
                                 text = ">",
                                 style = textStyle,
-                                color = WarlockGameChrome.textFaint,
+                                color = gameChrome.textFaint,
                             )
                             Spacer(Modifier.width(6.dp))
                             Box(Modifier.weight(1f)) {
@@ -198,6 +198,16 @@ fun DesktopWarlockEntryContent(
     }
 }
 
+// Roundtime / cast overlay colors, chosen by the entry field's own background luminance (not the app
+// light/dark theme). Over a dark field the bar and the countdown number use distinct shades; over a
+// light field both share one saturated color.
+private val roundtimeBarOnDark = Color(0xFFC5483F)
+private val roundtimeTextOnDark = Color(0xFFCF6259)
+private val roundtimeOnLight = Color(0xFFE03C31)
+private val castBarOnDark = Color(0xFF3F7CC5)
+private val castTextOnDark = Color(0xFF5B9BD6)
+private val castOnLight = Color(0xFF3030FF)
+
 @Composable
 fun BoxScope.DesktopRoundTimeBar(
     backgroundColor: Color,
@@ -206,10 +216,10 @@ fun BoxScope.DesktopRoundTimeBar(
     modifier: Modifier = Modifier,
 ) {
     val darkMode = backgroundColor.luminance() < 0.5f
-    val rtBarColor = if (darkMode) WarlockGameChrome.roundtimeBar else Color(0xe0, 0x3c, 0x31)
-    val ctBarColor = if (darkMode) WarlockGameChrome.castBar else Color(0x30, 0x30, 0xff)
-    val rtTextColor = if (darkMode) WarlockGameChrome.roundtimeText else Color(0xe0, 0x3c, 0x31)
-    val ctTextColor = if (darkMode) WarlockGameChrome.castText else Color(0x30, 0x30, 0xff)
+    val rtBarColor = if (darkMode) roundtimeBarOnDark else roundtimeOnLight
+    val ctBarColor = if (darkMode) castBarOnDark else castOnLight
+    val rtTextColor = if (darkMode) roundtimeTextOnDark else roundtimeOnLight
+    val ctTextColor = if (darkMode) castTextOnDark else castOnLight
     Canvas(modifier.matchParentSize().padding(horizontal = 5.dp).clipToBounds()) {
         val segmentSize = Size(width = 15.dp.toPx(), height = 4.dp.toPx())
         val segmentSpacing = 5.dp.toPx()

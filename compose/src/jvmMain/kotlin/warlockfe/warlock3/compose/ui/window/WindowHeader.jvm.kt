@@ -24,8 +24,8 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.ui.game.WarlockGameChrome
 import warlockfe.warlock3.compose.desktop.ui.game.WindowMenuButton
+import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.core.window.WindowLocation
@@ -86,7 +86,7 @@ actual fun WindowHeader(
                     ).then(
                         if (isDraggable && isHovered && !isSelected) {
                             Modifier.background(
-                                WarlockGameChrome.border.copy(alpha = 0.5f),
+                                gameChrome.border.copy(alpha = 0.5f),
                             )
                         } else {
                             Modifier
@@ -100,10 +100,12 @@ actual fun WindowHeader(
                     painter = painterResource(Res.drawable.drag_indicator),
                     colorFilter =
                         ColorFilter.tint(
+                            // On the accent-filled selected header use the on-accent text color;
+                            // accentSubtle is near-invisible on the accent in light theme.
                             if (isSelected) {
-                                WarlockGameChrome.accentSubtle
+                                gameChrome.accentText
                             } else {
-                                WarlockGameChrome.textFaint
+                                gameChrome.textFaint
                             },
                         ),
                     contentDescription = "Drag to re-arrange window",
@@ -115,17 +117,35 @@ actual fun WindowHeader(
             }
             // The same actions as the right-click context menu, surfaced as a visible "..." button.
             WindowMenuButton(
-                tint = if (isSelected) WarlockGameChrome.accentSubtle else WarlockGameChrome.textFaint,
+                tint = if (isSelected) gameChrome.accentText else gameChrome.textFaint,
                 horizontalAlignment = Alignment.End,
-            ) {
-                selectableItem(selected = false, onClick = onSettingsClick) {
+            ) { dismiss ->
+                selectableItem(
+                    selected = false,
+                    onClick = {
+                        dismiss()
+                        onSettingsClick()
+                    },
+                ) {
                     Text("Window settings ...")
                 }
-                selectableItem(selected = false, onClick = onClearClick) {
+                selectableItem(
+                    selected = false,
+                    onClick = {
+                        dismiss()
+                        onClearClick()
+                    },
+                ) {
                     Text("Clear window")
                 }
                 if (location != WindowLocation.MAIN) {
-                    selectableItem(selected = false, onClick = onCloseClick) {
+                    selectableItem(
+                        selected = false,
+                        onClick = {
+                            dismiss()
+                            onCloseClick()
+                        },
+                    ) {
                         Text("Hide window")
                     }
                 }

@@ -50,7 +50,18 @@ enum class ImportMode {
 // Client-setting keys that now live in client.toml; everything else in the export's `settings` map
 // (window size, last username, ...) stays in SQLite.
 private val CLIENT_CONFIG_KEYS =
-    setOf("theme", "scrollback", "markLinks", "showImages", "logPath", "logType", "logTimestamps", "skinFile", "releaseChannel")
+    setOf(
+        "theme",
+        "compassStyle",
+        "scrollback",
+        "markLinks",
+        "showImages",
+        "logPath",
+        "logType",
+        "logTimestamps",
+        "skinFile",
+        "releaseChannel",
+    )
 
 class ExportRepository(
     private val accountDao: AccountDao,
@@ -223,6 +234,7 @@ class ExportRepository(
         return buildMap {
             // Authoritative values from client.toml.
             client.theme?.let { put("theme", it) }
+            client.compassStyle?.let { put("compassStyle", it) }
             client.scrollback?.let { put("scrollback", it.toString()) }
             put("markLinks", client.markLinks.toString())
             put("showImages", client.showImages.toString())
@@ -297,6 +309,7 @@ class ExportRepository(
         clientConfigStore.mutateClient { current ->
             current.copy(
                 theme = settings["theme"] ?: current.theme,
+                compassStyle = settings["compassStyle"] ?: current.compassStyle,
                 scrollback = settings["scrollback"]?.toIntOrNull() ?: current.scrollback,
                 markLinks = settings["markLinks"]?.toBooleanStrictOrNull() ?: current.markLinks,
                 showImages = settings["showImages"]?.toBooleanStrictOrNull() ?: current.showImages,

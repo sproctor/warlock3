@@ -74,7 +74,7 @@ fun DesktopGameView(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(WarlockGameChrome.appBackground)
+                .background(gameChrome.appBackground)
                 .onPreviewKeyEvent { event ->
                     if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
                         ignoreNextUnknownKeyEvent = false
@@ -135,10 +135,10 @@ fun DesktopGameView(
                 val scope = rememberCoroutineScope()
                 val sidebarBackground =
                     defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
-                        ?: WarlockGameChrome.panelAlt
+                        ?: gameChrome.panelAlt
                 val sidebarTextColor =
                     defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
-                        ?: WarlockGameChrome.textPrimary
+                        ?: gameChrome.textPrimary
                 WarlockScrollableColumn(
                     modifier =
                         Modifier
@@ -150,7 +150,7 @@ fun DesktopGameView(
                                 shape = RoundedCornerShape(2.dp),
                             ).border(
                                 width = Dp.Hairline,
-                                color = WarlockGameChrome.border,
+                                color = gameChrome.border,
                                 shape = RoundedCornerShape(2.dp),
                             ),
                     contentPadding = PaddingValues(8.dp),
@@ -290,7 +290,7 @@ private fun DesktopWindowListItem(
             painter = painterResource(if (isOpen) Res.drawable.circle_filled else Res.drawable.circle),
             colorFilter =
                 ColorFilter.tint(
-                    if (isOpen) WarlockGameChrome.accentSubtle else WarlockGameChrome.textFaint,
+                    if (isOpen) gameChrome.accentSubtle else gameChrome.textFaint,
                 ),
             contentDescription = if (isOpen) "Shown" else "Hidden",
         )
@@ -298,23 +298,29 @@ private fun DesktopWindowListItem(
         Text(
             modifier = Modifier.weight(1f),
             text = windowInfo.title,
-            color = if (isOpen) color else WarlockGameChrome.textMuted,
+            color = if (isOpen) color else gameChrome.textMuted,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         WindowMenuButton(
-            tint = WarlockGameChrome.textFaint,
+            tint = gameChrome.textFaint,
             horizontalAlignment = Alignment.End,
-        ) {
+        ) { dismiss ->
             selectableItem(
                 selected = false,
-                onClick = { onClick(!isOpen) },
+                onClick = {
+                    dismiss()
+                    onClick(!isOpen)
+                },
             ) {
                 Text(if (isOpen) "Hide window" else "Show window")
             }
             selectableItem(
                 selected = false,
-                onClick = onClear,
+                onClick = {
+                    dismiss()
+                    onClear()
+                },
             ) {
                 Text("Clear window")
             }

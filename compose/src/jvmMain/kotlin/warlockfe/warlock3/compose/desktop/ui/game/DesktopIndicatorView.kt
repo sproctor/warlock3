@@ -20,19 +20,10 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.death
-import warlockfe.warlock3.compose.generated.resources.diseased
-import warlockfe.warlock3.compose.generated.resources.hidden
-import warlockfe.warlock3.compose.generated.resources.invisible
-import warlockfe.warlock3.compose.generated.resources.joined
-import warlockfe.warlock3.compose.generated.resources.kneeling
-import warlockfe.warlock3.compose.generated.resources.local_hospital
-import warlockfe.warlock3.compose.generated.resources.poisoned
-import warlockfe.warlock3.compose.generated.resources.prone
-import warlockfe.warlock3.compose.generated.resources.sitting
-import warlockfe.warlock3.compose.generated.resources.standing
-import warlockfe.warlock3.compose.generated.resources.stunned
-import warlockfe.warlock3.compose.generated.resources.webbed
+import warlockfe.warlock3.compose.generated.resources.allDrawableResources
+import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.core.util.getIgnoringCase
 
 /**
  * The five grouped status slots on the right of the control bar. Each group shows at most one active
@@ -45,39 +36,30 @@ fun DesktopIndicatorView(
     indicators: Set<String>,
     modifier: Modifier = Modifier,
 ) {
-    // Posture and affliction share the first slot; the rest follow the design's grouping (6.4).
-    val groups: List<List<Pair<String, DrawableResource>>> =
+    // Grouping and priority stay in code; the image used for each status is looked up from the skin's
+    // "indicator" section (status name -> SkinImage referencing a drawable). Posture and affliction
+    // share the first slot and only the first matching status in a group is shown, so affliction is
+    // listed before posture: a posture (usually "standing") is almost always present and would
+    // otherwise permanently mask the more important poisoned/diseased warning.
+    val groups: List<List<String>> =
         listOf(
-            listOf(
-                "kneeling" to Res.drawable.kneeling,
-                "prone" to Res.drawable.prone,
-                "sitting" to Res.drawable.sitting,
-                "standing" to Res.drawable.standing,
-                "poisoned" to Res.drawable.poisoned,
-                "diseased" to Res.drawable.diseased,
-            ),
-            listOf("joined" to Res.drawable.joined),
-            listOf(
-                "bleeding" to Res.drawable.local_hospital,
-                "dead" to Res.drawable.death,
-            ),
-            listOf(
-                "invisible" to Res.drawable.invisible,
-                "hidden" to Res.drawable.hidden,
-                "webbed" to Res.drawable.webbed,
-            ),
-            listOf("stunned" to Res.drawable.stunned),
+            listOf("poisoned", "diseased", "kneeling", "prone", "sitting", "standing"),
+            listOf("joined"),
+            listOf("bleeding", "dead"),
+            listOf("invisible", "hidden", "webbed"),
+            listOf("stunned"),
         )
 
-    val chrome = WarlockGameChrome
+    val chrome = gameChrome
+    val indicatorImages = LocalSkin.current.getIgnoringCase("indicator")?.children
     val shape = RoundedCornerShape(5.dp)
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         groups.forEach { group ->
-            val active = group.firstOrNull { indicators.contains(it.first) }
-            val accent = active?.let { indicatorAccent(it.first, chrome) } ?: inactiveAccent(chrome)
+            val activeKey = group.firstOrNull { indicators.contains(it) }
+            val accent = activeKey?.let { indicatorAccent(it, chrome) } ?: inactiveAccent(chrome)
             Box(
                 modifier =
                     Modifier
@@ -87,18 +69,23 @@ fun DesktopIndicatorView(
                         .padding(indicatorSize / 6f),
                 contentAlignment = Alignment.Center,
             ) {
-                if (active != null) {
+                val drawable = activeKey?.let { indicatorImages?.indicatorDrawable(it) }
+                if (activeKey != null && drawable != null) {
                     Image(
                         modifier = Modifier.fillMaxSize(),
-                        painter = painterResource(active.second),
+                        painter = painterResource(drawable),
                         colorFilter = accent.iconTint?.let { ColorFilter.tint(it) },
-                        contentDescription = active.first,
+                        contentDescription = activeKey,
                     )
                 }
             }
         }
     }
 }
+
+/** Resolves a status key to its drawable via the skin's "indicator" section (the image `name`). */
+private fun Map<String, SkinObject>.indicatorDrawable(status: String): DrawableResource? =
+    getIgnoringCase(status)?.image?.name?.let { Res.allDrawableResources[it] }
 
 private data class IndicatorAccent(
     val border: Color,
@@ -107,7 +94,7 @@ private data class IndicatorAccent(
     val iconTint: Color?,
 )
 
-private fun inactiveAccent(chrome: WarlockGameChromeColors) =
+private fun inactiveAccent(chrome: GameChrome) =
     IndicatorAccent(
         border = chrome.border,
         background = chrome.panelAlt,
@@ -116,7 +103,7 @@ private fun inactiveAccent(chrome: WarlockGameChromeColors) =
 
 private fun indicatorAccent(
     key: String,
-    chrome: WarlockGameChromeColors,
+    chrome: GameChrome,
 ): IndicatorAccent =
     when (key) {
         "poisoned", "diseased" -> {
