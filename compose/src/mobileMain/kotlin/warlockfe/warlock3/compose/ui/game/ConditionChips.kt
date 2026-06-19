@@ -18,49 +18,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.death
-import warlockfe.warlock3.compose.generated.resources.diseased
-import warlockfe.warlock3.compose.generated.resources.hidden
-import warlockfe.warlock3.compose.generated.resources.invisible
-import warlockfe.warlock3.compose.generated.resources.joined
-import warlockfe.warlock3.compose.generated.resources.kneeling
-import warlockfe.warlock3.compose.generated.resources.local_hospital
-import warlockfe.warlock3.compose.generated.resources.poisoned
-import warlockfe.warlock3.compose.generated.resources.prone
-import warlockfe.warlock3.compose.generated.resources.sitting
-import warlockfe.warlock3.compose.generated.resources.standing
-import warlockfe.warlock3.compose.generated.resources.stunned
-import warlockfe.warlock3.compose.generated.resources.webbed
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.indicatorDrawable
 
-private enum class ConditionSeverity { Posture, Danger, Warn, Info }
+// Enum order is the chip display order (chips are grouped by severity, calm to dangerous).
+private enum class ConditionSeverity { Posture, Info, Warn, Danger }
 
-private data class ConditionInfo(
-    val label: String,
-    val icon: DrawableResource,
-    val severity: ConditionSeverity,
-)
-
-// Known status indicators -> chip label, icon (reusing the existing indicator drawables) and a
-// tonal severity. Iteration order here is the chip display order.
-private val conditionInfo: Map<String, ConditionInfo> =
-    mapOf(
-        "standing" to ConditionInfo("standing", Res.drawable.standing, ConditionSeverity.Posture),
-        "kneeling" to ConditionInfo("kneeling", Res.drawable.kneeling, ConditionSeverity.Posture),
-        "prone" to ConditionInfo("prone", Res.drawable.prone, ConditionSeverity.Posture),
-        "sitting" to ConditionInfo("sitting", Res.drawable.sitting, ConditionSeverity.Posture),
-        "joined" to ConditionInfo("joined", Res.drawable.joined, ConditionSeverity.Info),
-        "hidden" to ConditionInfo("hidden", Res.drawable.hidden, ConditionSeverity.Info),
-        "invisible" to ConditionInfo("invisible", Res.drawable.invisible, ConditionSeverity.Info),
-        "webbed" to ConditionInfo("webbed", Res.drawable.webbed, ConditionSeverity.Warn),
-        "stunned" to ConditionInfo("stunned", Res.drawable.stunned, ConditionSeverity.Warn),
-        "poisoned" to ConditionInfo("poisoned", Res.drawable.poisoned, ConditionSeverity.Danger),
-        "diseased" to ConditionInfo("diseased", Res.drawable.diseased, ConditionSeverity.Danger),
-        "bleeding" to ConditionInfo("bleeding", Res.drawable.local_hospital, ConditionSeverity.Danger),
-        "dead" to ConditionInfo("dead", Res.drawable.death, ConditionSeverity.Danger),
-    )
+// Maps a known status indicator to its chip severity (tone); unknown indicators get no chip. The
+// chip label is the status name and the icon comes from the skin's "indicator" section.
+private fun conditionSeverity(status: String): ConditionSeverity? =
+    when (status) {
+        "standing", "kneeling", "prone", "sitting" -> ConditionSeverity.Posture
+        "joined", "hidden", "invisible" -> ConditionSeverity.Info
+        "webbed", "stunned" -> ConditionSeverity.Warn
+        "poisoned", "diseased", "bleeding", "dead" -> ConditionSeverity.Danger
+        else -> null
+    }
 
 /**
  * The active status indicators rendered as M3 tonal chips (icon + label), used by the phone status
@@ -72,20 +46,27 @@ fun ConditionChips(
     indicators: Set<String>,
     modifier: Modifier = Modifier,
 ) {
-    val active = conditionInfo.filterKeys { indicators.contains(it) }.values.toList()
+    val active =
+        indicators
+            .mapNotNull { status -> conditionSeverity(status)?.let { status to it } }
+            .sortedBy { it.second.ordinal }
     if (active.isEmpty()) return
     FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        active.forEach { info -> ConditionChip(info) }
+        active.forEach { (status, severity) -> ConditionChip(status, severity) }
     }
 }
 
 @Composable
-private fun ConditionChip(info: ConditionInfo) {
-    val (container, content) = severityColors(info.severity)
+private fun ConditionChip(
+    status: String,
+    severity: ConditionSeverity,
+) {
+    val (container, content) = severityColors(severity)
+    val icon = LocalSkin.current.indicatorDrawable(status)
     Row(
         modifier =
             Modifier
@@ -96,13 +77,15 @@ private fun ConditionChip(info: ConditionInfo) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(
-            modifier = Modifier.size(16.dp),
-            painter = painterResource(info.icon),
-            contentDescription = null,
-            tint = content,
-        )
-        Text(text = info.label, color = content, style = MaterialTheme.typography.labelMedium)
+        if (icon != null) {
+            Icon(
+                modifier = Modifier.size(16.dp),
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = content,
+            )
+        }
+        Text(text = status, color = content, style = MaterialTheme.typography.labelMedium)
     }
 }
 

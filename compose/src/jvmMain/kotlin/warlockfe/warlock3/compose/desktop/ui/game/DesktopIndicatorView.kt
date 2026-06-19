@@ -6,29 +6,28 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.allDrawableResources
-import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.core.util.getIgnoringCase
+import warlockfe.warlock3.compose.util.indicatorDrawable
+import warlockfe.warlock3.compose.util.indicatorEntry
+import warlockfe.warlock3.compose.util.indicatorIconModifier
+import warlockfe.warlock3.compose.util.indicatorReference
 
 /**
- * The five grouped status slots on the right of the control bar. Each group shows at most one active
- * status; an active slot is tinted with an accent (amber for posture/concealment, red for health),
- * an inactive slot is an empty bordered box.
+ * The five grouped status slots on the right of the control bar. Every active status in a slot is
+ * drawn at its skin-defined position, so co-active statuses (e.g. a posture plus poisoned) are all
+ * visible at once; a status with no skin offset fills the box (the single-status case). The slot's
+ * highest-priority active status colors the box (amber for posture/concealment, red for health) and
+ * each icon keeps its own accent tint; an inactive slot is an empty bordered box.
  */
 @Composable
 fun DesktopIndicatorView(
@@ -36,11 +35,9 @@ fun DesktopIndicatorView(
     indicators: Set<String>,
     modifier: Modifier = Modifier,
 ) {
-    // Grouping and priority stay in code; the image used for each status is looked up from the skin's
-    // "indicator" section (status name -> SkinImage referencing a drawable). Posture and affliction
-    // share the first slot and only the first matching status in a group is shown, so affliction is
-    // listed before posture: a posture (usually "standing") is almost always present and would
-    // otherwise permanently mask the more important poisoned/diseased warning.
+    // Grouping and priority stay in code; the per-status image and position come from the skin's
+    // "indicator" section. Affliction is listed before posture so the box takes the danger color (and
+    // poisoned/diseased are never dropped) even though a posture is almost always present too.
     val groups: List<List<String>> =
         listOf(
             listOf("poisoned", "diseased", "kneeling", "prone", "sitting", "standing"),
@@ -51,41 +48,38 @@ fun DesktopIndicatorView(
         )
 
     val chrome = gameChrome
-    val indicatorImages = LocalSkin.current.getIgnoringCase("indicator")?.children
+    val skin = LocalSkin.current
+    val reference = skin.indicatorReference()
     val shape = RoundedCornerShape(5.dp)
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         groups.forEach { group ->
-            val activeKey = group.firstOrNull { indicators.contains(it) }
-            val accent = activeKey?.let { indicatorAccent(it, chrome) } ?: inactiveAccent(chrome)
+            val active = group.filter { indicators.contains(it) }
+            val accent = active.firstOrNull()?.let { indicatorAccent(it, chrome) } ?: inactiveAccent(chrome)
             Box(
                 modifier =
                     Modifier
                         .size(indicatorSize)
+                        .clip(shape)
                         .background(accent.background, shape)
-                        .border(width = Dp.Hairline, color = accent.border, shape = shape)
-                        .padding(indicatorSize / 6f),
-                contentAlignment = Alignment.Center,
+                        .border(width = Dp.Hairline, color = accent.border, shape = shape),
             ) {
-                val drawable = activeKey?.let { indicatorImages?.indicatorDrawable(it) }
-                if (activeKey != null && drawable != null) {
+                active.forEach { status ->
+                    val entry = skin.indicatorEntry(status) ?: return@forEach
+                    val drawable = entry.indicatorDrawable() ?: return@forEach
                     Image(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = indicatorIconModifier(entry, indicatorSize, reference),
                         painter = painterResource(drawable),
-                        colorFilter = accent.iconTint?.let { ColorFilter.tint(it) },
-                        contentDescription = activeKey,
+                        colorFilter = indicatorAccent(status, chrome).iconTint?.let { ColorFilter.tint(it) },
+                        contentDescription = status,
                     )
                 }
             }
         }
     }
 }
-
-/** Resolves a status key to its drawable via the skin's "indicator" section (the image `name`). */
-private fun Map<String, SkinObject>.indicatorDrawable(status: String): DrawableResource? =
-    getIgnoringCase(status)?.image?.name?.let { Res.allDrawableResources[it] }
 
 private data class IndicatorAccent(
     val border: Color,

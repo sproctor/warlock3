@@ -5,33 +5,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.death
-import warlockfe.warlock3.compose.generated.resources.diseased
-import warlockfe.warlock3.compose.generated.resources.hidden
-import warlockfe.warlock3.compose.generated.resources.invisible
-import warlockfe.warlock3.compose.generated.resources.joined
-import warlockfe.warlock3.compose.generated.resources.kneeling
-import warlockfe.warlock3.compose.generated.resources.local_hospital
-import warlockfe.warlock3.compose.generated.resources.poisoned
-import warlockfe.warlock3.compose.generated.resources.prone
-import warlockfe.warlock3.compose.generated.resources.sitting
-import warlockfe.warlock3.compose.generated.resources.standing
-import warlockfe.warlock3.compose.generated.resources.stunned
-import warlockfe.warlock3.compose.generated.resources.webbed
+import warlockfe.warlock3.compose.model.SkinImage
+import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.indicatorDrawable
+import warlockfe.warlock3.compose.util.indicatorEntry
+import warlockfe.warlock3.compose.util.indicatorIconModifier
+import warlockfe.warlock3.compose.util.indicatorReference
 
 @Composable
 fun IndicatorView(
@@ -41,149 +32,72 @@ fun IndicatorView(
     defaultColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val statusKeysList: Array<Map<String, @Composable (Modifier) -> Unit>> =
-        arrayOf(
-            mapOf(
-                "kneeling" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.kneeling),
-                        contentDescription = "kneeling",
-                        tint = defaultColor,
-                    )
-                },
-                "prone" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.prone),
-                        contentDescription = "prone",
-                        tint = defaultColor,
-                    )
-                },
-                "sitting" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.sitting),
-                        contentDescription = "sitting",
-                        tint = defaultColor,
-                    )
-                },
-                "standing" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.standing),
-                        contentDescription = "standing",
-                        tint = defaultColor,
-                    )
-                },
-                "poisoned" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.poisoned),
-                        contentDescription = "poisoned",
-                    )
-                },
-                "diseased" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.diseased),
-                        contentDescription = "diseased",
-                    )
-                },
-            ),
-            mapOf(
-                "joined" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.joined),
-                        contentDescription = "joined",
-                        tint = defaultColor,
-                    )
-                },
-            ),
-            mapOf(
-                "bleeding" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.local_hospital),
-                        contentDescription = "bleeding",
-                        tint = Color.Red,
-                    )
-                },
-                "dead" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.death),
-                        contentDescription = "dead",
-                        tint = defaultColor,
-                    )
-                },
-            ),
-            mapOf(
-                "invisible" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.invisible),
-                        contentDescription = "invisible",
-                        tint = defaultColor,
-                    )
-                },
-                "hidden" to {
-                    Image(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.hidden),
-                        contentDescription = "hidden",
-                    )
-                },
-                "webbed" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.webbed),
-                        contentDescription = "standing",
-                        tint = defaultColor,
-                    )
-                },
-            ),
-            mapOf(
-                "stunned" to {
-                    Icon(
-                        modifier = it,
-                        painter = painterResource(Res.drawable.stunned),
-                        contentDescription = "stunned",
-                        tint = defaultColor,
-                    )
-                },
-            ),
+    // Grouping stays in code; each status's image and position come from the skin's "indicator"
+    // section, so every active status in a slot is drawn at its own spot (a status with no offset
+    // fills the box).
+    val groups: List<List<String>> =
+        listOf(
+            listOf("kneeling", "prone", "sitting", "standing", "poisoned", "diseased"),
+            listOf("joined"),
+            listOf("bleeding", "dead"),
+            listOf("invisible", "hidden", "webbed"),
+            listOf("stunned"),
         )
+    val skin = LocalSkin.current
+    val reference = skin.indicatorReference()
 
     Row(modifier = modifier.background(backgroundColor)) {
-        statusKeysList.forEach { statusKeys ->
+        groups.forEach { group ->
             Box(
                 modifier =
                     Modifier
                         .size(indicatorSize)
-                        .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline)
-                        .padding(indicatorSize / 7.5f),
-                contentAlignment = Alignment.Center,
+                        .border(width = Dp.Hairline, color = MaterialTheme.colorScheme.outline),
             ) {
-                statusKeys.filter { indicators.contains(it.key) }.forEach { it.value(Modifier.fillMaxSize()) }
+                group.filter { indicators.contains(it) }.forEach { status ->
+                    val entry = skin.indicatorEntry(status) ?: return@forEach
+                    val drawable = entry.indicatorDrawable() ?: return@forEach
+                    val tint = indicatorTint(status, defaultColor)
+                    Image(
+                        modifier = indicatorIconModifier(entry, indicatorSize, reference),
+                        painter = painterResource(drawable),
+                        colorFilter = tint?.let { ColorFilter.tint(it) },
+                        contentDescription = status,
+                    )
+                }
             }
         }
     }
 }
 
+// Full-color status assets stay untinted; bleeding is red; everything else takes the default color.
+private fun indicatorTint(
+    status: String,
+    defaultColor: Color,
+): Color? =
+    when (status) {
+        "poisoned", "diseased", "hidden" -> null
+        "bleeding" -> Color.Red
+        else -> defaultColor
+    }
+
 @Preview
 @Composable
 private fun IndicatorPreview() {
-    IndicatorView(
-        indicatorSize = 60.dp,
-        indicators =
-            setOf(
-                "standing",
-                "stunned",
-                "webbed",
-            ),
-        backgroundColor = Color.DarkGray,
-        defaultColor = Color.LightGray,
-    )
+    val previewStatuses = listOf("standing", "stunned", "webbed")
+    val skin =
+        mapOf(
+            "indicator" to
+                SkinObject(
+                    children = previewStatuses.associateWith { SkinObject(image = SkinImage(name = it)) },
+                ),
+        )
+    CompositionLocalProvider(LocalSkin provides skin) {
+        IndicatorView(
+            indicatorSize = 60.dp,
+            indicators = previewStatuses.toSet(),
+            backgroundColor = Color.DarkGray,
+            defaultColor = Color.LightGray,
+        )
+    }
 }
