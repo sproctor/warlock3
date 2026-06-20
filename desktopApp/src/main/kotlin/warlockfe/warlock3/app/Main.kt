@@ -281,6 +281,9 @@ private class WarlockCommand : CliktCommand() {
                                 sgeSettings = sgeSettings,
                             )
                             LaunchedEffect(windowState, connectedCharacter?.id) {
+                                // A window size passed on the command line should win, so don't clobber it
+                                // with the saved per-character size when a character connects.
+                                if (width != null || height != null) return@LaunchedEffect
                                 val characterId = connectedCharacter?.id ?: return@LaunchedEffect
                                 val bounds =
                                     appContainer.characterSettingsRepository
