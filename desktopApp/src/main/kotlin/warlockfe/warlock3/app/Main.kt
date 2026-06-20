@@ -273,7 +273,8 @@ private class WarlockCommand : CliktCommand() {
                                 appContainer = appContainer,
                                 gameState = gameState,
                                 openNewWindow = {
-                                    games.add(GameState())
+                                    // A manually opened window shows the dashboard; never auto-connect into it.
+                                    games.add(GameState().apply { autoConnectAttempted = true })
                                 },
                                 showUpdateDialog = { showUpdateDialog = true },
                                 sgeSettings = sgeSettings,
@@ -434,6 +435,8 @@ private class WarlockCommand : CliktCommand() {
     ): GameState =
         GameState().apply {
             if (credentials != null || stdin || inputFile != null) {
+                // Already connecting on startup; don't also auto-connect the last connection.
+                autoConnectAttempted = true
                 val windowRegistry = appContainer.windowRegistryFactory.create()
                 // TODO: move this somewhere we can control it
                 runBlocking {
@@ -470,6 +473,8 @@ private class WarlockCommand : CliktCommand() {
                     }
                 }
             } else if (autoConnectName != null) {
+                // Connecting to a named connection from the CLI; skip last-connection auto-connect.
+                autoConnectAttempted = true
                 runBlocking {
                     val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
                     if (connection == null) {

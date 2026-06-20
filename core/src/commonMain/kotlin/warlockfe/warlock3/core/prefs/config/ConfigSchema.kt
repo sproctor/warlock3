@@ -282,6 +282,8 @@ data class ClientConfig(
     val historySize: Int? = null,
     @TomlComment("MUD Mobile device token (wlk_...). Treat like a password; it can start billable sessions.")
     val mudMobileToken: String? = null,
+    @TomlComment("When true, the last launched connection is reconnected automatically on startup.")
+    val autoConnectLastConnection: Boolean = false,
 )
 
 /**

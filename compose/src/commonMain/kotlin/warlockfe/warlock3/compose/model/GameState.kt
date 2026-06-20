@@ -11,6 +11,11 @@ class GameState {
     var screen by mutableStateOf<GameScreen>(GameScreen.Dashboard)
         private set
 
+    // Guards the once-per-window "auto-connect last connection on startup" attempt. Set true once the
+    // attempt has been consumed (or pre-set true for windows that should never auto-connect, e.g. a
+    // window already connected via the command line, or a manually opened additional window).
+    var autoConnectAttempted: Boolean = false
+
     suspend fun setScreen(screen: GameScreen) {
         withContext(Dispatchers.Main.immediate) {
             this@GameState.screen = screen
