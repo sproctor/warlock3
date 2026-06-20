@@ -144,6 +144,21 @@ fun DesktopGeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
+            val autoConnectLastConnection by clientSettingRepository
+                .observeAutoConnectLastConnection()
+                .collectAsState(initial = false)
+            WarlockCheckboxRow(
+                checked = autoConnectLastConnection,
+                onCheckedChange = {
+                    scope.launch {
+                        clientSettingRepository.putAutoConnectLastConnection(it)
+                    }
+                },
+                text = "Reconnect the last connection on startup",
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             if (currentCharacterId != "global") {
                 val maxTypeAheadState = rememberTextFieldState(DEFAULT_MAX_TYPE_AHEAD.toString())
                 var maxTypeAheadError by remember { mutableStateOf<String?>(null) }

@@ -102,6 +102,7 @@ class DashboardViewModel(
                 warlockSettingsSync.sync()
             }
         }
+        maybeAutoConnectLastConnection()
     }
 
     // --- Settings sync ---
@@ -136,6 +137,23 @@ class DashboardViewModel(
     fun savedPasswordFor(username: String): String? =
         savedAccounts.firstOrNull { it.username.equals(username, ignoreCase = true) }?.password
 
+    /**
+     * On the first dashboard shown this session, reconnect the last launched connection if the user
+     * enabled auto-connect and that connection still exists. Guarded by
+     * [GameState.autoConnectAttempted] so it fires at most once per window (not again when returning
+     * to the dashboard after a disconnect).
+     */
+    private fun maybeAutoConnectLastConnection() {
+        if (gameState.autoConnectAttempted) return
+        gameState.autoConnectAttempted = true
+        viewModelScope.launch {
+            if (!clientSettingRepository.getAutoConnectLastConnection()) return@launch
+            val lastConnectionId = clientSettingRepository.getLastConnectionId() ?: return@launch
+            val connection = connectionRepository.getById(lastConnectionId) ?: return@launch
+            connect(connection)
+        }
+    }
+
     fun connect(connection: StoredConnection) {
         // MUD Mobile connections route through the hosted-Lich flow instead of a direct play.net login.
         if (connection.mudMobile) {
@@ -148,6 +166,8 @@ class DashboardViewModel(
         connectJob =
             viewModelScope.launch {
                 try {
+                    // Remember this as the last launched connection (for auto-connect-on-startup).
+                    clientSettingRepository.putLastConnectionId(connection.id)
                     message = "Connecting..."
                     val sgeClient = sgeClientFactory.create()
                     val result = sgeClient.autoConnect(sgeSettings, connection)
@@ -324,6 +344,8 @@ class DashboardViewModel(
         connectJob =
             viewModelScope.launch {
                 try {
+                    // Remember this as the last launched connection (for auto-connect-on-startup).
+                    clientSettingRepository.putLastConnectionId(connection.id)
                     val token = clientSettingRepository.getMudMobileToken()
                     if (token == null) {
                         mudMobileMessage = "Connect your MUD Mobile account first."

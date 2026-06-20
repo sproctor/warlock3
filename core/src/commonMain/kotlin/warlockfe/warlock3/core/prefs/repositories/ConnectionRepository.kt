@@ -140,6 +140,11 @@ class ConnectionRepository(
         val connection = store.currentConnections().connections.firstOrNull { it.name == name } ?: return null
         return connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
     }
+
+    suspend fun getById(id: String): StoredConnection? {
+        val connection = store.currentConnections().connections.firstOrNull { it.id == id } ?: return null
+        return connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
+    }
 }
 
 private fun MudMobileCharacter.toMudMobileConfig(): ConnectionConfig =

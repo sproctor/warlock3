@@ -37,6 +37,13 @@ class ClientSettingRepository(
 
     suspend fun getLastUsername(): String? = get("lastUsername")
 
+    /** The id of the most recently launched connection, used for auto-connect-on-startup. */
+    suspend fun getLastConnectionId(): String? = get("lastConnectionId")
+
+    suspend fun putLastConnectionId(value: String?) {
+        put("lastConnectionId", value)
+    }
+
     suspend fun putWidth(value: Int) {
         putInt("width", value)
     }
@@ -100,6 +107,14 @@ class ClientSettingRepository(
     fun observeHistorySize(): Flow<Int> = clientConfigStore.observeClient().map { it.historySize ?: DEFAULT_HISTORY_SIZE }
 
     fun observeMarkLinks(): Flow<Boolean> = clientConfigStore.observeClient().map { it.markLinks }
+
+    fun observeAutoConnectLastConnection(): Flow<Boolean> = clientConfigStore.observeClient().map { it.autoConnectLastConnection }
+
+    fun getAutoConnectLastConnection(): Boolean = clientConfigStore.currentClient().autoConnectLastConnection
+
+    suspend fun putAutoConnectLastConnection(value: Boolean) {
+        clientConfigStore.mutateClient { it.copy(autoConnectLastConnection = value) }
+    }
 
     // --- MUD Mobile device token ---
 
