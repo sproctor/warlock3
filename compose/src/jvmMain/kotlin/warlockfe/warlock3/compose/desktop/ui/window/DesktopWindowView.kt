@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -103,7 +104,7 @@ fun DesktopWindowView(
         defaultFontSize = JewelTheme.defaultTextStyle.fontSize,
         surface = { surfaceModifier, content ->
             val frameShape = RoundedCornerShape(4.dp)
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier =
                     surfaceModifier
                         // Clip so a body that paints its own background (dialog panels, user styles) does not
