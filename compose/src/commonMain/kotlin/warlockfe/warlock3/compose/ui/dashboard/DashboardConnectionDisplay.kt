@@ -1,10 +1,15 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
+import androidx.compose.ui.graphics.Color
 import warlockfe.warlock3.core.sge.StoredConnection
 
 // EAccess game codes the user can discover characters for via MUD Mobile. Shared by the desktop and
 // mobile add-character dialogs.
 internal val MUD_MOBILE_GAME_CODES = listOf("DR", "DRX", "DRF", "DRT", "GS3", "GSX", "GSF", "GST")
+
+// Accent reserved for MUD Mobile, paired with a text cue (never color alone). Shared by the desktop
+// and mobile dashboards so the marker stays identical on both.
+internal val MudMobileAccent = Color(0xFF34D399)
 
 /**
  * Secondary line for a saved connection: the game code plus context, joined by a middle dot

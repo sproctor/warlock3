@@ -1,12 +1,15 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,11 +29,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SecureTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,6 +55,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -59,9 +64,6 @@ import warlockfe.warlock3.compose.components.DropdownSelect
 import warlockfe.warlock3.compose.components.ScrollableLazyColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
-import warlockfe.warlock3.compose.generated.resources.delete
-import warlockfe.warlock3.compose.generated.resources.edit
-import warlockfe.warlock3.compose.generated.resources.login
 import warlockfe.warlock3.compose.generated.resources.more_vert
 import warlockfe.warlock3.core.mudmobile.ConflictResolution
 import warlockfe.warlock3.core.mudmobile.SyncConflict
@@ -88,50 +90,60 @@ fun DashboardView(
     var deleteConnection: StoredConnection? by remember { mutableStateOf(null) }
 
     Surface(modifier) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Button(
-                onClick = connectToSGE,
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                enabled = !viewModel.busy,
+        if (connections.isEmpty() && !mudMobileConnected) {
+            // First run: steer the user to one of two doors instead of an empty list.
+            FirstRunPanel(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                createEnabled = !viewModel.busy,
+                onCreate = connectToSGE,
+                onConnectMudMobile = { showTokenDialog = true },
+            )
+        } else {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Create a new connection")
+                Button(
+                    onClick = connectToSGE,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    enabled = !viewModel.busy,
+                ) {
+                    Icon(painter = painterResource(Res.drawable.add), contentDescription = null)
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(text = "Create a new connection")
+                }
+
+                MudMobileControls(
+                    viewModel = viewModel,
+                    connected = mudMobileConnected,
+                    syncStatus = syncState.status,
+                    onConnect = { showTokenDialog = true },
+                    onAddCharacter = { showAddCharacterDialog = true },
+                )
+
+                viewModel.message?.takeIf { !viewModel.busy }?.let { Text(it) }
+                syncState.message?.let { Text(it) }
+
+                ConnectionList(
+                    modifier = Modifier.weight(1f),
+                    connections = connections,
+                    mudMobileConnected = mudMobileConnected,
+                    onLogin = { connection ->
+                        // Prompt to set the account password when none is saved, rather than attempting
+                        // a doomed empty-password login.
+                        if (connection.password.isNullOrBlank()) {
+                            passwordPrompt = connection
+                        } else {
+                            viewModel.connect(connection)
+                        }
+                    },
+                    onEdit = { editConnection = it },
+                    onDelete = { deleteConnection = it },
+                )
             }
-
-            MudMobileControls(
-                viewModel = viewModel,
-                connected = mudMobileConnected,
-                syncStatus = syncState.status,
-                onConnect = { showTokenDialog = true },
-                onAddCharacter = { showAddCharacterDialog = true },
-            )
-
-            viewModel.message?.takeIf { !viewModel.busy }?.let { Text(it) }
-            syncState.message?.let { Text(it) }
-
-            ConnectionList(
-                modifier = Modifier.weight(1f),
-                connections = connections,
-                mudMobileConnected = mudMobileConnected,
-                onLogin = { connection ->
-                    // Prompt to set the account password when none is saved, rather than attempting
-                    // a doomed empty-password login.
-                    if (connection.password.isNullOrBlank()) {
-                        passwordPrompt = connection
-                    } else {
-                        viewModel.connect(connection)
-                    }
-                },
-                onEdit = { editConnection = it },
-                onDelete = { deleteConnection = it },
-            )
         }
     }
 
@@ -227,6 +239,56 @@ fun DashboardView(
     }
 }
 
+@Composable
+private fun FirstRunPanel(
+    createEnabled: Boolean,
+    onCreate: () -> Unit,
+    onConnectMudMobile: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text("Welcome to Warlock", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "No connections yet. Get into a game one of two ways:",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("New character", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Log in to Simutronics and pick a game.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Button(onClick = onCreate, enabled = createEnabled) {
+                    Text("Create a connection")
+                }
+            }
+        }
+        OutlinedCard(
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.dp, MudMobileAccent),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("MUD Mobile", style = MaterialTheme.typography.titleMedium, color = MudMobileAccent)
+                Text(
+                    "Already have an account? Bring your cloud characters in.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedButton(
+                    onClick = onConnectMudMobile,
+                    border = BorderStroke(1.dp, MudMobileAccent),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MudMobileAccent),
+                ) {
+                    Text("Connect to MUD Mobile")
+                }
+            }
+        }
+    }
+}
+
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
 private fun MudMobileControls(
@@ -243,6 +305,8 @@ private fun MudMobileControls(
                 onClick = onConnect,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !viewModel.mudMobileBusy,
+                border = BorderStroke(1.dp, MudMobileAccent),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MudMobileAccent),
             ) {
                 Text("Connect to MUD Mobile")
             }
@@ -254,6 +318,7 @@ private fun MudMobileControls(
                 Text(
                     text = "MUD Mobile",
                     style = MaterialTheme.typography.titleMedium,
+                    color = MudMobileAccent,
                     modifier = Modifier.weight(1f),
                 )
                 var menuExpanded by remember { mutableStateOf(false) }
@@ -314,6 +379,7 @@ private fun ConnectionList(
         modifier.semantics {
             this.contentDescription = "List of stored connections"
         },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
             Text(
@@ -321,11 +387,12 @@ private fun ConnectionList(
                 text = "Saved connections",
                 style = MaterialTheme.typography.headlineMedium,
             )
-            Spacer(Modifier.height(8.dp))
             if (connections.isEmpty()) {
+                Spacer(Modifier.height(8.dp))
                 Text(
                     if (mudMobileConnected) {
-                        "No characters yet. Use the MUD Mobile menu to add one, or visit mudmobile.com."
+                        "No characters yet. Use \"Add a character\" in the MUD Mobile menu, " +
+                            "or visit mudmobile.com to register one and it will appear here."
                     } else {
                         "There are currently no stored connections"
                     },
@@ -333,37 +400,94 @@ private fun ConnectionList(
             }
         }
         items(connections) { connection ->
-            val subline = connectionSubline(connection)
-            ListItem(
+            ConnectionRow(
+                connection = connection,
+                onLogin = { onLogin(connection) },
+                onEdit = { onEdit(connection) },
+                onDelete = { onDelete(connection) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConnectionRow(
+    connection: StoredConnection,
+    onLogin: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Accent stripe: indigo for MUD Mobile, neutral otherwise (a color-independent cue paired with
+    // the "MUD Mobile" subline text).
+    val stripeColor = if (connection.mudMobile) MudMobileAccent else MaterialTheme.colorScheme.outline
+    val subline = connectionSubline(connection)
+    OutlinedCard(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            Box(
+                Modifier
+                    .width(6.dp)
+                    .fillMaxHeight()
+                    .background(stripeColor),
+            )
+            Row(
                 modifier =
-                    Modifier.semantics {
-                        contentDescription = "Saved connection"
-                    },
-                headlineContent = { Text(connection.name) },
-                supportingContent = if (subline != null) ({ Text(subline) }) else null,
-                leadingContent = {
-                    IconButton(onClick = { onLogin(connection) }) {
-                        Icon(painter = painterResource(Res.drawable.login), contentDescription = "Login")
+                    Modifier
+                        .weight(1f)
+                        .padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilledTonalButton(onClick = onLogin) {
+                    Text("Login")
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = connection.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (subline != null) {
+                        Text(
+                            text = subline,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
-                },
-                trailingContent = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                }
+                var menuExpanded by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            painter = painterResource(Res.drawable.more_vert),
+                            contentDescription = "Connection actions",
+                        )
+                    }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                         // MUD Mobile connections are managed in the MUD Mobile dashboard, so only the
                         // play.net connections expose the proxy/name editor.
                         if (!connection.mudMobile) {
-                            IconButton(onClick = { onEdit(connection) }) {
-                                Icon(painter = painterResource(Res.drawable.edit), contentDescription = "Edit connection")
-                            }
-                        }
-                        IconButton(onClick = { onDelete(connection) }) {
-                            Icon(
-                                painter = painterResource(Res.drawable.delete),
-                                contentDescription = if (connection.mudMobile) "Remove character" else "Delete connection",
+                            DropdownMenuItem(
+                                text = { Text("Edit") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onEdit()
+                                },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text(if (connection.mudMobile) "Remove" else "Delete") },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            },
+                        )
                     }
-                },
-            )
+                }
+            }
         }
     }
 }
@@ -445,7 +569,7 @@ private fun MudMobileAddCharacterDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Log in with SGE to discover your characters and add them to MUD Mobile.")
-                Text("Your password stays on this device; it is never sent to MUD Mobile.")
+                Text("This login happens locally; your password never leaves this device.")
                 if (savedAccounts.isEmpty()) {
                     TextField(
                         state = accountState,
@@ -465,7 +589,7 @@ private fun MudMobileAddCharacterDialog(
                         label = { Text("Account") },
                     )
                 }
-                SecureTextField(state = passwordState, label = { Text("Password") })
+                RevealPasswordField(state = passwordState, label = "Password")
                 DropdownSelect(
                     items = MUD_MOBILE_GAME_CODES,
                     selected = gameCode,
@@ -506,7 +630,7 @@ private fun PasswordPromptDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(description)
-                SecureTextField(state = passwordState, label = { Text("Password") })
+                RevealPasswordField(state = passwordState, label = "Password")
             }
         },
         confirmButton = {
@@ -523,6 +647,37 @@ private fun PasswordPromptDialog(
             }
         },
     )
+}
+
+/** A password field with a Show/Hide toggle, matching the design's reveal affordance. */
+@Composable
+private fun RevealPasswordField(
+    state: androidx.compose.foundation.text.input.TextFieldState,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    var revealed by remember { mutableStateOf(false) }
+    val toggle: @Composable () -> Unit = {
+        TextButton(onClick = { revealed = !revealed }) {
+            Text(if (revealed) "Hide" else "Show")
+        }
+    }
+    if (revealed) {
+        TextField(
+            state = state,
+            modifier = modifier,
+            label = { Text(label) },
+            lineLimits = TextFieldLineLimits.SingleLine,
+            trailingIcon = toggle,
+        )
+    } else {
+        SecureTextField(
+            state = state,
+            modifier = modifier,
+            label = { Text(label) },
+            trailingIcon = toggle,
+        )
+    }
 }
 
 @Composable
