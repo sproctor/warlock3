@@ -3,6 +3,9 @@ package warlockfe.warlock3.compose.ui.window
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import co.touchlab.kermit.Logger
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +48,7 @@ class ComposeTextStream(
     private var markLinks: Boolean,
     private var showImages: Boolean,
     private var showTimestamps: Boolean,
+    private var suppressPrompts: Boolean,
     private val highlights: StateFlow<HighlightIndex>,
     private val names: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
@@ -53,9 +57,18 @@ class ComposeTextStream(
     private val workQueue: StreamWorkQueue,
     private val scope: CoroutineScope,
 ) : TextStream {
-    private val cacheLines = ArrayList<CachedLine?>(maxLines)
-    private val finishedLines = ArrayList<StreamLine>(maxLines)
+    // ArrayDeque so trimming the oldest line (removeAt(0)) once the buffer fills is O(1) rather than
+    // the O(n) front shift of an ArrayList.
+    private val cacheLines = ArrayDeque<CachedLine?>(maxLines)
+    private val finishedLines = ArrayDeque<StreamLine>(maxLines)
     val lines = MutableStateFlow<List<StreamLine>>(emptyList())
+
+    // The displayed lines are an append-only persistent list plus a logical start index. Once the
+    // buffer fills, evicting the oldest displayed line (which happens on every newline) is then an
+    // O(1) start bump rather than an O(n) front removal, while appends stay O(log n). The backing is
+    // compacted once the dropped prefix grows large, amortizing that to O(1) per line.
+    private var displayBacking: PersistentList<StreamLine> = persistentListOf()
+    private var displayStart: Int = 0
     private val components = mutableMapOf<String, StyledString>()
 
     private var nextSerialNumber = 0L
@@ -125,8 +138,9 @@ class ComposeTextStream(
                     isPrompt = isPrompt,
                 )
             cacheLines[cacheLines.lastIndex] = cachedLine
-            finishedLines[finishedLines.lastIndex] = cachedLineToStreamLine(cachedLine, serialNumber)
-            linesUpdated()
+            val newLine = cachedLineToStreamLine(cachedLine, serialNumber)
+            finishedLines[finishedLines.lastIndex] = newLine
+            replaceLineInView(serialNumber, newLine)
         }
     }
 
@@ -175,7 +189,7 @@ class ComposeTextStream(
         val line = cachedLineToStreamLine(cachedLine, serialNumber)
         finishedLines.add(line)
         line.text?.let { playSound(it.text) }
-        linesUpdated()
+        appendLineToView(line)
     }
 
     private fun addComponentLocations(
@@ -249,12 +263,109 @@ class ComposeTextStream(
     }
 
     private fun updateLine(lineNumber: Int) {
-        val cachedLine = cacheLines[lineNumber]
-        if (cachedLine != null) {
-            val serialNumber = finishedLines[lineNumber].serialNumber
-            finishedLines[lineNumber] = cachedLineToStreamLine(cachedLine, serialNumber)
-            linesUpdated()
+        val cachedLine = cacheLines[lineNumber] ?: return
+        val serialNumber = finishedLines[lineNumber].serialNumber
+        val newLine = cachedLineToStreamLine(cachedLine, serialNumber)
+        finishedLines[lineNumber] = newLine
+        replaceLineInView(serialNumber, newLine)
+    }
+
+    // Append a single line to the displayed list instead of rebuilding and re-filtering all of it.
+    private fun appendLineToView(line: StreamLine) {
+        var changed = false
+        // removeLines() evicted the oldest lines from the buffer; being the smallest serial numbers
+        // they sit at the front of the serial-ordered view (when shown). Advancing the logical start
+        // drops them in O(1) each instead of an O(n) front removal.
+        val oldestSerial = finishedLines.firstOrNull()?.serialNumber
+        if (oldestSerial != null) {
+            while (displayStart < displayBacking.size &&
+                displayBacking[displayStart].serialNumber < oldestSerial
+            ) {
+                displayStart++
+                changed = true
+            }
         }
+        if (linePassesFilter(line)) {
+            displayBacking = displayBacking.add(line)
+            changed = true
+        }
+        if (changed) {
+            compactBacking()
+            publishLines()
+        }
+    }
+
+    // Replace a single already-displayed line. Updates almost always target the most recent line, so
+    // check the tail before binary searching the live window; PersistentList.set shares structure,
+    // avoiding a full copy. A line's prompt flag is fixed, but its name-filter match can change, so
+    // handle it appearing/disappearing.
+    private fun replaceLineInView(
+        serialNumber: Long,
+        newLine: StreamLine,
+    ) {
+        val backingIndex =
+            if (displayBacking.lastOrNull()?.serialNumber == serialNumber) {
+                displayBacking.lastIndex
+            } else {
+                displayBacking.binarySearch(displayStart, displayBacking.size) {
+                    it.serialNumber.compareTo(serialNumber)
+                }
+            }
+        val shouldShow = linePassesFilter(newLine)
+        when {
+            backingIndex >= displayStart && shouldShow -> {
+                displayBacking = displayBacking.set(backingIndex, newLine)
+                publishLines()
+            }
+
+            backingIndex >= displayStart -> {
+                // Was visible, now filtered out.
+                displayBacking = displayBacking.removeAt(backingIndex)
+                publishLines()
+            }
+
+            shouldShow -> {
+                // Was filtered out, now visible: rebuild so it lands in serial order.
+                linesUpdated()
+            }
+
+            // else: filtered out before and after - nothing to update.
+        }
+    }
+
+    // Drop the evicted prefix once it is as large as the live portion. The rebuild is O(n) but runs
+    // about once per n evictions, so it amortizes to O(1) per newline while keeping the backing from
+    // growing without bound.
+    private fun compactBacking() {
+        if (displayStart > 0 && displayStart >= displayBacking.size - displayStart) {
+            displayBacking = displayBacking.subList(displayStart, displayBacking.size).toPersistentList()
+            displayStart = 0
+        }
+    }
+
+    private fun publishLines() {
+        lines.value = OffsetList(displayBacking, displayStart)
+    }
+
+    // An O(1), immutable view over [backing] starting at [start], so the displayed window can be
+    // published without copying while the backing still carries an evicted prefix.
+    //
+    // Equality is referential, not a List's usual content equality: publishLines() emits a fresh
+    // instance only when the displayed lines actually changed, so identity inequality already means
+    // "changed". That lets StateFlow's de-dup and Compose's snapshot state skip an O(n) content
+    // comparison on every update - which otherwise dominates same-window updates such as a streaming
+    // partial line or a component refresh.
+    private class OffsetList(
+        private val backing: List<StreamLine>,
+        private val start: Int,
+    ) : AbstractList<StreamLine>() {
+        override val size: Int get() = backing.size - start
+
+        override fun get(index: Int): StreamLine = backing[start + index]
+
+        override fun equals(other: Any?): Boolean = this === other
+
+        override fun hashCode(): Int = size
     }
 
     private fun cachedLineToStreamLine(
@@ -303,14 +414,25 @@ class ComposeTextStream(
         this.showImages = showImages
     }
 
-    private fun linesUpdated() {
-        lines.value =
-            if (nameFilter) {
-                finishedLines.filter { lineMatchesName(it) }
-            } else {
-                finishedLines.toList()
+    fun setSuppressPrompts(suppressPrompts: Boolean) {
+        if (this.suppressPrompts == suppressPrompts) return
+        this.suppressPrompts = suppressPrompts
+        scope.launch {
+            workQueue.submit {
+                mutex.withLock { linesUpdated() }
             }
+        }
     }
+
+    private fun linesUpdated() {
+        displayBacking = finishedLines.filter { linePassesFilter(it) }.toPersistentList()
+        displayStart = 0
+        publishLines()
+    }
+
+    private fun linePassesFilter(line: StreamLine): Boolean =
+        (!nameFilter || lineMatchesName(line)) &&
+            (!suppressPrompts || (line as? StreamTextLine)?.isPrompt != true)
 
     private fun lineMatchesName(line: StreamLine): Boolean {
         val text = (line as? StreamTextLine)?.text?.text ?: return false

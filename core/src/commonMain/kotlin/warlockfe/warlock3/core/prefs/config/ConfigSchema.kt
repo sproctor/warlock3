@@ -271,6 +271,8 @@ data class ClientConfig(
     val scrollback: Int? = null,
     val markLinks: Boolean = true,
     val showImages: Boolean = true,
+    @TomlComment("When true, prompt lines are hidden from the game windows.")
+    val suppressPrompts: Boolean = false,
     val logPath: String? = null,
     val logType: String? = null,
     val logTimestamps: Boolean = true,

@@ -204,6 +204,17 @@ fun GeneralSettingsView(
 
             Spacer(Modifier.height(16.dp))
 
+            val suppressPrompts by clientSettingRepository
+                .observeSuppressPrompts()
+                .collectAsState(initial = false)
+            SwitchRow(
+                checked = suppressPrompts,
+                onCheckedChange = { scope.launch { clientSettingRepository.putSuppressPrompts(it) } },
+                text = "Hide prompts",
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             val autoConnectLastConnection by clientSettingRepository
                 .observeAutoConnectLastConnection()
                 .collectAsState(initial = false)

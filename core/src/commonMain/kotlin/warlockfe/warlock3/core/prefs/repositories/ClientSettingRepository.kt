@@ -128,6 +128,8 @@ class ClientSettingRepository(
 
     fun observeShowImages(): Flow<Boolean> = clientConfigStore.observeClient().map { it.showImages }
 
+    fun observeSuppressPrompts(): Flow<Boolean> = clientConfigStore.observeClient().map { it.suppressPrompts }
+
     suspend fun putLoggingPath(value: String) {
         clientConfigStore.mutateClient { it.copy(logPath = value) }
     }
@@ -170,6 +172,10 @@ class ClientSettingRepository(
 
     suspend fun putShowImages(value: Boolean) {
         clientConfigStore.mutateClient { it.copy(showImages = value) }
+    }
+
+    suspend fun putSuppressPrompts(value: Boolean) {
+        clientConfigStore.mutateClient { it.copy(suppressPrompts = value) }
     }
 
     // --- SQLite helpers ---
