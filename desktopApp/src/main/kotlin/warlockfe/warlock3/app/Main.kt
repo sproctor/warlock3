@@ -101,6 +101,7 @@ import java.awt.Dimension
 import java.io.File
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 private val version = System.getProperty("warlock.release.version")?.takeIf { it.isNotBlank() }
 
@@ -126,9 +127,14 @@ private class WarlockCommand : CliktCommand() {
     ).int()
     val positionX: Int? by option("-x", "--position-x", help = "Position to place the window on the X-axis").int()
     val positionY: Int? by option("-y", "--position-y", help = "Position to place the window on the Y-axis").int()
+    val exitOnDisconnect: Boolean by option(
+        "--exit-on-disconnect",
+        help = "Exit the client when the game connection disconnects",
+    ).flag()
 
     @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
     override fun run() {
+        val started = TimeSource.Monotonic.markNow()
         Logger.setLogWriters(platformLogWriter())
         ComposeFoundationFlags.isNewContextMenuEnabled = true
 
@@ -215,9 +221,13 @@ private class WarlockCommand : CliktCommand() {
                     }
                 }
 
-                LaunchedEffect(Unit) {
-                    withContext(Dispatchers.IO) {
-                        checkUpdate()
+                // Dev builds (no baked-in release version) have nothing to update to, so skip the
+                // network update check.
+                if (version != null) {
+                    LaunchedEffect(Unit) {
+                        withContext(Dispatchers.IO) {
+                            checkUpdate()
+                        }
                     }
                 }
 
@@ -246,6 +256,18 @@ private class WarlockCommand : CliktCommand() {
                     val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
                     val characterFlow = connectedScreen?.viewModel?.character ?: flowOf(null)
                     val connectedCharacter by characterFlow.collectAsState(null)
+                    if (exitOnDisconnect) {
+                        // Tear the app down as soon as the connection drops (e.g. an input file
+                        // replayed to EOF) instead of showing the reconnect banner.
+                        val disconnectedFlow = connectedScreen?.viewModel?.disconnected ?: flowOf(false)
+                        val disconnected by disconnectedFlow.collectAsState(false)
+                        LaunchedEffect(disconnected) {
+                            if (disconnected) {
+                                println("App ran for ${started.elapsedNow()}")
+                                exitApplication()
+                            }
+                        }
+                    }
                     JewelDecoratedWindow(
                         title = title,
                         state = windowState,
