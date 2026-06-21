@@ -89,9 +89,9 @@ class ComposeTextStreamTest {
         component: String,
     ): StyledString =
         StyledString(
-            persistentListOf<StyledStringLeaf>(
-                StyledStringSubstring(prefix, emptyList()),
-                StyledStringVariable(component, emptyList()),
+            persistentListOf(
+                StyledStringSubstring(prefix, persistentListOf()),
+                StyledStringVariable(component, persistentListOf()),
             ),
         )
 

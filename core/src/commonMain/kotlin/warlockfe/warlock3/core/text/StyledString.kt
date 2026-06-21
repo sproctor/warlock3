@@ -1,53 +1,65 @@
 package warlockfe.warlock3.core.text
 
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toPersistentList
+import kotlinx.collections.immutable.toImmutableList
 
 data class StyledString(
     val substrings: PersistentList<StyledStringLeaf> = persistentListOf(),
 ) {
     constructor(text: String, styles: List<WarlockStyle> = emptyList()) :
-        this(persistentListOf<StyledStringSubstring>(StyledStringSubstring(text, styles)))
+        this(persistentListOf(StyledStringSubstring(text, styles.toImmutableList())))
 
     constructor(text: String, style: WarlockStyle) : this(text, listOf(style))
 
-    // addAll on a persistent list appends in O(elements added) with structural sharing, so folding
+    // addingAll on a persistent list appends in O(elements added) with structural sharing, so folding
     // many fragments into one line (e.g. a room description) is O(total) rather than the O(n²) of
     // repeated (a + b) whole-list copies.
-    operator fun plus(string: StyledString): StyledString = copy(substrings = substrings.addAll(string.substrings))
+    operator fun plus(string: StyledString): StyledString = copy(substrings = substrings.addingAll(string.substrings))
 
-    fun applyStyle(style: WarlockStyle): StyledString = copy(substrings = substrings.map { it.applyStyle(style) }.toPersistentList())
+    fun applyStyle(style: WarlockStyle): StyledString =
+        copy(
+            substrings =
+                substrings.mutate { leaves ->
+                    for (i in leaves.indices) {
+                        leaves[i] = leaves[i].applyStyle(style)
+                    }
+                },
+        )
 
-    override fun toString(): String {
+    /** The plain text, with unresolved component/variable references rendered as %name%; e.g. for logging or matching. */
+    fun toText(): String {
         val builder = StringBuilder()
         substrings.forEach { substring ->
-            if (substring is StyledStringSubstring) {
-                builder.append(substring.text)
+            when (substring) {
+                is StyledStringSubstring -> builder.append(substring.text)
+                is StyledStringVariable -> builder.append("%${substring.name}%")
             }
         }
         return builder.toString()
     }
 }
 
-sealed class StyledStringLeaf(
-    val styles: List<WarlockStyle>,
-)
+sealed interface StyledStringLeaf {
+    val styles: ImmutableList<WarlockStyle>
+}
 
-class StyledStringSubstring(
+data class StyledStringSubstring(
     val text: String,
-    styles: List<WarlockStyle>,
-) : StyledStringLeaf(styles)
+    override val styles: ImmutableList<WarlockStyle>,
+) : StyledStringLeaf
 
-class StyledStringVariable(
+data class StyledStringVariable(
     val name: String,
-    styles: List<WarlockStyle>,
-) : StyledStringLeaf(styles)
+    override val styles: ImmutableList<WarlockStyle>,
+) : StyledStringLeaf
 
 fun StyledStringLeaf.applyStyle(style: WarlockStyle): StyledStringLeaf =
     when (this) {
-        is StyledStringSubstring -> StyledStringSubstring(text = text, styles = styles + style)
-        is StyledStringVariable -> StyledStringVariable(name = name, styles = styles + style)
+        is StyledStringSubstring -> copy(styles = (styles + style).toImmutableList())
+        is StyledStringVariable -> copy(styles = (styles + style).toImmutableList())
     }
 
 fun StyledString.isBlank(): Boolean = substrings.all { it.isBlank() }

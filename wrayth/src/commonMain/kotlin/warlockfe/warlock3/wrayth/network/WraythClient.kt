@@ -521,9 +521,9 @@ class WraythClient(
                     componentsMutex.withLock {
                         components =
                             if (elementBuffer?.substrings.isNullOrEmpty()) {
-                                components.remove(componentId!!)
+                                components.removing(componentId!!)
                             } else {
-                                components.put(componentId!!, elementBuffer!!)
+                                components.putting(componentId!!, elementBuffer!!)
                             }
                     }
                     val newValue = elementBuffer ?: StyledString()
@@ -794,7 +794,7 @@ class WraythClient(
     ) {
         doAppendToStream(styledText, stream, ignoreWhenBlank)
         if (stream.isMainStream || windows[stream.id]?.ifClosed == "main") {
-            val text = styledText.toString()
+            val text = styledText.toText()
             if (text.isNotBlank()) {
                 logSimple { text }
                 notifyListeners(ClientTextEvent(text))
