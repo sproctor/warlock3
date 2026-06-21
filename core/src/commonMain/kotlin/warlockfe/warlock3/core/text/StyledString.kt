@@ -1,18 +1,21 @@
 package warlockfe.warlock3.core.text
 
-import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 
 data class StyledString(
-    val substrings: ImmutableList<StyledStringLeaf> = persistentListOf(),
+    val substrings: PersistentList<StyledStringLeaf> = persistentListOf(),
 ) {
     constructor(text: String, styles: List<WarlockStyle> = emptyList()) :
         this(persistentListOf<StyledStringSubstring>(StyledStringSubstring(text, styles)))
 
     constructor(text: String, style: WarlockStyle) : this(text, listOf(style))
 
-    operator fun plus(string: StyledString): StyledString = StyledString((substrings + string.substrings).toPersistentList())
+    // addAll on a persistent list appends in O(elements added) with structural sharing, so folding
+    // many fragments into one line (e.g. a room description) is O(total) rather than the O(n²) of
+    // repeated (a + b) whole-list copies.
+    operator fun plus(string: StyledString): StyledString = copy(substrings = substrings.addAll(string.substrings))
 
     fun applyStyle(style: WarlockStyle): StyledString = copy(substrings = substrings.map { it.applyStyle(style) }.toPersistentList())
 
