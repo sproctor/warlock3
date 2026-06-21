@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalUriHandler
@@ -58,12 +57,12 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopConfirmationDialog
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModel
+import warlockfe.warlock3.compose.ui.dashboard.MUD_MOBILE_GAME_CODES
+import warlockfe.warlock3.compose.ui.dashboard.MudMobileAccent
+import warlockfe.warlock3.compose.ui.dashboard.connectionSubline
 import warlockfe.warlock3.core.mudmobile.SyncStatus
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.StoredConnection
-
-// Accent reserved for MUD Mobile, per the design (color is always paired with a text cue).
-private val MudMobileAccent = Color(0xFF34D399)
 
 // Below this window width the action rail collapses into a toolbar + MUD Mobile menu (design D).
 private val RAIL_BREAKPOINT = 720.dp
@@ -423,18 +422,6 @@ private fun ConnectionRow(
             }
         }
     }
-}
-
-/** Secondary line: game code plus context, e.g. "DR · MUD Mobile" or "DR · Lich proxy". */
-private fun connectionSubline(connection: StoredConnection): String? {
-    val context =
-        when {
-            connection.mudMobile -> "MUD Mobile"
-            connection.proxySettings.enabled -> "Lich proxy"
-            else -> null
-        }
-    val parts = listOfNotNull(connection.code.ifBlank { null }, context)
-    return parts.joinToString(" · ").ifBlank { null }
 }
 
 @Composable
@@ -827,7 +814,3 @@ private fun ConnectingDialog(
         }
     }
 }
-
-// EAccess game codes the user can discover characters for (see spec glossary).
-private val MUD_MOBILE_GAME_CODES =
-    listOf("DR", "DRX", "DRF", "DRT", "GS3", "GSX", "GSF", "GST")
