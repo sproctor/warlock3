@@ -61,7 +61,11 @@ class ComposeTextStream(
     // the O(n) front shift of an ArrayList.
     private val cacheLines = ArrayDeque<CachedLine?>(maxLines)
     private val finishedLines = ArrayDeque<StreamLine>(maxLines)
-    val lines = MutableStateFlow<List<StreamLine>>(emptyList())
+
+    // Seeded with an (empty) OffsetList rather than emptyList() so every value this flow ever holds
+    // shares OffsetList's referential equality. emptyList() compares by content, which would make the
+    // first published OffsetList equal to it (both empty) and let StateFlow swallow that emission.
+    val lines = MutableStateFlow<List<StreamLine>>(OffsetList(persistentListOf(), 0))
 
     // The displayed lines are an append-only persistent list plus a logical start index. Once the
     // buffer fills, evicting the oldest displayed line (which happens on every newline) is then an
@@ -140,7 +144,7 @@ class ComposeTextStream(
             cacheLines[cacheLines.lastIndex] = cachedLine
             val newLine = cachedLineToStreamLine(cachedLine, serialNumber)
             finishedLines[finishedLines.lastIndex] = newLine
-            replaceLineInView(serialNumber, newLine)
+            applyViewChange(replaceLineInView(serialNumber, newLine))
         }
     }
 
@@ -181,13 +185,13 @@ class ComposeTextStream(
         showWhenClosed: String?,
         isPrompt: Boolean,
     ) {
-        removeLines()
         val serialNumber = nextSerialNumber++
         addComponentLocations(text, serialNumber)
         val cachedLine = styledStringToCachedLine(text, ignoreWhenBlank, showWhenClosed, isPrompt)
         cacheLines.add(cachedLine)
         val line = cachedLineToStreamLine(cachedLine, serialNumber)
         finishedLines.add(line)
+        removeLines()
         line.text?.let { playSound(it.text) }
         appendLineToView(line)
     }
@@ -216,8 +220,10 @@ class ComposeTextStream(
             isPrompt = isPrompt,
         )
 
+    // Trim the buffer down to the cap. Callers append first, then trim, so this evicts the oldest
+    // lines until at most maxLines remain (maxLines <= 0 means unbounded).
     private fun removeLines() {
-        while (maxLines > 0 && finishedLines.size >= maxLines) {
+        while (maxLines > 0 && finishedLines.size > maxLines) {
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
@@ -233,13 +239,14 @@ class ComposeTextStream(
                 partialLine = null
                 if (!showImages) return@withLock
                 cacheLines.add(null)
-                finishedLines.add(
+                val line =
                     StreamImageLine(
                         url = url,
                         serialNumber = nextSerialNumber++,
-                    ),
-                )
-                linesUpdated()
+                    )
+                finishedLines.add(line)
+                removeLines()
+                appendLineToView(line)
             }
         }
     }
@@ -251,23 +258,28 @@ class ComposeTextStream(
         workQueue.submit {
             mutex.withLock {
                 components[name] = value
+                // A component can appear on many lines; re-render them all, then publish once instead
+                // of emitting a fresh snapshot per affected line.
+                var change = ViewChange.NONE
                 componentLocations[name]?.forEach { serialNumber ->
                     val lineNumber = (serialNumber - removedLines).toInt()
                     // If the component has scrolled back past the buffer, ignore it
                     if (lineNumber >= 0) {
-                        updateLine(lineNumber)
+                        change = change.coalesce(updateLine(lineNumber))
                     }
                 }
+                applyViewChange(change)
             }
         }
     }
 
-    private fun updateLine(lineNumber: Int) {
-        val cachedLine = cacheLines[lineNumber] ?: return
+    // Re-render a single buffered line in place and stage (without publishing) the resulting change.
+    private fun updateLine(lineNumber: Int): ViewChange {
+        val cachedLine = cacheLines[lineNumber] ?: return ViewChange.NONE
         val serialNumber = finishedLines[lineNumber].serialNumber
         val newLine = cachedLineToStreamLine(cachedLine, serialNumber)
         finishedLines[lineNumber] = newLine
-        replaceLineInView(serialNumber, newLine)
+        return replaceLineInView(serialNumber, newLine)
     }
 
     // Append a single line to the displayed list instead of rebuilding and re-filtering all of it.
@@ -295,42 +307,84 @@ class ComposeTextStream(
         }
     }
 
-    // Replace a single already-displayed line. Updates almost always target the most recent line, so
-    // check the tail before binary searching the live window; PersistentList.set shares structure,
-    // avoiding a full copy. A line's prompt flag is fixed, but its name-filter match can change, so
-    // handle it appearing/disappearing.
+    // Replace a single already-displayed line, returning the view change to apply (the caller
+    // publishes, so a batch of replacements can emit one snapshot). Updates almost always target the
+    // most recent line, so check the tail before binary searching the live window; PersistentList.set
+    // shares structure, avoiding a full copy. A line's prompt flag is fixed, but its name-filter match
+    // can change, so handle it appearing/disappearing.
     private fun replaceLineInView(
         serialNumber: Long,
         newLine: StreamLine,
-    ) {
+    ): ViewChange {
+        val lastSerial = displayBacking.lastOrNull()?.serialNumber
         val backingIndex =
-            if (displayBacking.lastOrNull()?.serialNumber == serialNumber) {
-                displayBacking.lastIndex
-            } else {
-                displayBacking.binarySearch(displayStart, displayBacking.size) {
-                    it.serialNumber.compareTo(serialNumber)
+            when {
+                lastSerial == serialNumber -> {
+                    displayBacking.lastIndex
+                }
+
+                // A serial newer than the last displayed line cannot be in the live window (e.g. a
+                // suppressed/filtered partial line being streamed), so skip the binary search.
+                lastSerial == null || serialNumber > lastSerial -> {
+                    -1
+                }
+
+                else -> {
+                    displayBacking.binarySearch(displayStart, displayBacking.size) {
+                        it.serialNumber.compareTo(serialNumber)
+                    }
                 }
             }
         val shouldShow = linePassesFilter(newLine)
-        when {
+        return when {
             backingIndex >= displayStart && shouldShow -> {
                 displayBacking = displayBacking.set(backingIndex, newLine)
-                publishLines()
+                ViewChange.PUBLISH
             }
 
             backingIndex >= displayStart -> {
                 // Was visible, now filtered out.
                 displayBacking = displayBacking.removeAt(backingIndex)
-                publishLines()
+                compactBacking()
+                ViewChange.PUBLISH
             }
 
             shouldShow -> {
                 // Was filtered out, now visible: rebuild so it lands in serial order.
+                ViewChange.REBUILD
+            }
+
+            // Filtered out before and after - nothing to update.
+            else -> {
+                ViewChange.NONE
+            }
+        }
+    }
+
+    private fun applyViewChange(change: ViewChange) {
+        when (change) {
+            ViewChange.PUBLISH -> {
+                publishLines()
+            }
+
+            ViewChange.REBUILD -> {
                 linesUpdated()
             }
 
-            // else: filtered out before and after - nothing to update.
+            ViewChange.NONE -> {}
         }
+    }
+
+    // The net effect of staging one or more line replacements. REBUILD subsumes PUBLISH subsumes
+    // NONE, so a batch escalates to the strongest change any one line produced (a rebuild reads the
+    // already-updated finishedLines, so it covers the set/remove mutations too).
+    private enum class ViewChange {
+        NONE,
+        PUBLISH,
+        REBUILD,
+        ;
+
+        fun coalesce(other: ViewChange): ViewChange = if (other.ordinal > ordinal) other else this
     }
 
     // Drop the evicted prefix once it is as large as the live portion. The rebuild is O(n) but runs
@@ -365,6 +419,9 @@ class ComposeTextStream(
 
         override fun equals(other: Any?): Boolean = this === other
 
+        // Kept O(1) and consistent with the identity equals above (equal instances are the same
+        // instance, so they trivially share a hash) rather than AbstractList's O(n) content hash. This
+        // list is never used as a hash key; the override only exists to avoid that content hash.
         override fun hashCode(): Int = size
     }
 
@@ -417,6 +474,11 @@ class ComposeTextStream(
     fun setSuppressPrompts(suppressPrompts: Boolean) {
         if (this.suppressPrompts == suppressPrompts) return
         this.suppressPrompts = suppressPrompts
+        scheduleRelayout()
+    }
+
+    // Re-run the filter and rebuild the displayed list on the work queue. Callable from any thread.
+    private fun scheduleRelayout() {
         scope.launch {
             workQueue.submit {
                 mutex.withLock { linesUpdated() }
@@ -451,11 +513,7 @@ class ComposeTextStream(
     override fun setNameFilter(value: Boolean) {
         if (nameFilter == value) return
         nameFilter = value
-        scope.launch {
-            workQueue.submit {
-                mutex.withLock { linesUpdated() }
-            }
-        }
+        scheduleRelayout()
     }
 }
 
