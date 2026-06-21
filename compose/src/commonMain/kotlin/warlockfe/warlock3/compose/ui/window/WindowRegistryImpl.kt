@@ -88,6 +88,19 @@ class WindowRegistryImpl(
                 initialValue = true,
             )
 
+    private val suppressPrompts =
+        settingRepository
+            .observeSuppressPrompts()
+            .onEach {
+                streams.load().values.forEach { stream ->
+                    stream.setSuppressPrompts(it)
+                }
+            }.stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = false,
+            )
+
     private val characterId = MutableStateFlow("global")
 
     private val names: StateFlow<List<ViewHighlight>> =
@@ -203,6 +216,7 @@ class WindowRegistryImpl(
                 markLinks = markLinks.value,
                 showImages = showImages.value,
                 showTimestamps = false,
+                suppressPrompts = suppressPrompts.value,
                 workQueue = workQueue,
                 scope = scope,
             )
