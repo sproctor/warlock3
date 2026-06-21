@@ -185,13 +185,13 @@ class ComposeTextStream(
         showWhenClosed: String?,
         isPrompt: Boolean,
     ) {
-        removeLines()
         val serialNumber = nextSerialNumber++
         addComponentLocations(text, serialNumber)
         val cachedLine = styledStringToCachedLine(text, ignoreWhenBlank, showWhenClosed, isPrompt)
         cacheLines.add(cachedLine)
         val line = cachedLineToStreamLine(cachedLine, serialNumber)
         finishedLines.add(line)
+        removeLines()
         line.text?.let { playSound(it.text) }
         appendLineToView(line)
     }
@@ -220,8 +220,10 @@ class ComposeTextStream(
             isPrompt = isPrompt,
         )
 
+    // Trim the buffer down to the cap. Callers append first, then trim, so this evicts the oldest
+    // lines until at most maxLines remain (maxLines <= 0 means unbounded).
     private fun removeLines() {
-        while (maxLines > 0 && finishedLines.size >= maxLines) {
+        while (maxLines > 0 && finishedLines.size > maxLines) {
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
@@ -236,7 +238,6 @@ class ComposeTextStream(
                 // Images must be on their own line
                 partialLine = null
                 if (!showImages) return@withLock
-                removeLines()
                 cacheLines.add(null)
                 val line =
                     StreamImageLine(
@@ -244,6 +245,7 @@ class ComposeTextStream(
                         serialNumber = nextSerialNumber++,
                     )
                 finishedLines.add(line)
+                removeLines()
                 appendLineToView(line)
             }
         }
