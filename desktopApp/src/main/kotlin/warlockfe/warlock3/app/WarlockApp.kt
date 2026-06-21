@@ -12,6 +12,7 @@ import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
@@ -74,11 +75,26 @@ fun DecoratedWindowScope.WarlockApp(
                 }
             }
         }
+    val gameViewModel = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel
+    val disconnectedFlow = remember(gameViewModel) { gameViewModel?.disconnected ?: MutableStateFlow(false) }
+    val disconnected by disconnectedFlow.collectAsState()
     TitleBarView(
         title = title,
         sideBarVisible = sideBarVisible,
         showSideBar = { sideBarVisible = it },
         isConnected = gameState.screen is GameScreen.ConnectedGameState,
+        disconnected = disconnected,
+        canReconnect = gameViewModel?.canReconnect == true,
+        reconnect = { (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.reconnect() },
+        goToDashboard = {
+            val screen = gameState.screen
+            if (screen is GameScreen.ConnectedGameState) {
+                scope.launch {
+                    screen.viewModel.close()
+                    gameState.setScreen(GameScreen.Dashboard)
+                }
+            }
+        },
         openNewWindow = openNewWindow,
         showSettingsDialog = { showSettings = true },
         disconnect = {

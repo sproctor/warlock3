@@ -4,12 +4,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,6 +54,10 @@ internal fun DecoratedWindowScope.TitleBarView(
     sideBarVisible: Boolean,
     showSideBar: (Boolean) -> Unit,
     isConnected: Boolean,
+    disconnected: Boolean,
+    canReconnect: Boolean,
+    reconnect: () -> Unit,
+    goToDashboard: () -> Unit,
     openNewWindow: () -> Unit,
     showSettingsDialog: () -> Unit,
     disconnect: () -> Unit,
@@ -158,7 +164,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                                 AppMenuItem("Import wrayth settings...", onClick = importWraythSettings),
                                 AppMenuItem("Settings...", onClick = showSettingsDialog),
                                 null,
-                                AppMenuItem("Disconnect", enabled = isConnected, onClick = disconnect),
+                                AppMenuItem("Disconnect", enabled = isConnected && !disconnected, onClick = disconnect),
                             ),
                     ),
                     AppMenu(
@@ -214,6 +220,59 @@ internal fun DecoratedWindowScope.TitleBarView(
             modifier = Modifier.align(Alignment.CenterHorizontally),
             text = title,
         )
+        if (isConnected) {
+            Row(
+                modifier = Modifier.align(Alignment.End).padding(end = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                when {
+                    !disconnected -> TitleBarPill(text = "Connected", dotColor = ConnectedColor)
+
+                    // Disconnected: the status indicator becomes a reconnect action when possible.
+                    canReconnect -> TitleBarPill(text = "Reconnect", onClick = reconnect)
+
+                    else -> TitleBarPill(text = "Disconnected", dotColor = DisconnectedColor)
+                }
+                if (disconnected) {
+                    TitleBarPill(text = "Dashboard", onClick = goToDashboard)
+                }
+            }
+        }
+    }
+}
+
+private val ConnectedColor = Color(0xFF86D6A0)
+private val DisconnectedColor = Color(0xFFE5484D)
+
+/**
+ * A compact title-bar pill matching the "Windows" toggle: a hairline-outlined rounded row that draws
+ * within the title-bar bounds (so the bar height is unchanged). Shows an optional status [dotColor]
+ * and becomes clickable when [onClick] is supplied.
+ */
+@Composable
+private fun TitleBarPill(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    dotColor: Color? = null,
+) {
+    val shape = RoundedCornerShape(5.dp)
+    val contentColor = LocalContentColor.current
+    Row(
+        modifier =
+            modifier
+                .clip(shape)
+                .border(Dp.Hairline, contentColor.copy(alpha = 0.5f), shape)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dotColor != null) {
+            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(dotColor))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(text)
     }
 }
 
