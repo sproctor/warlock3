@@ -9,14 +9,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SecureTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -90,6 +94,7 @@ fun ConnectionList(
 ) {
     var showConnectionSettings: StoredConnection? by remember { mutableStateOf(null) }
     var showConnectionDelete: StoredConnection? by remember { mutableStateOf(null) }
+    var passwordPrompt: StoredConnection? by remember { mutableStateOf(null) }
     val connections by viewModel.connections.collectAsState(emptyList())
     ScrollableLazyColumn(
         modifier.semantics {
@@ -118,7 +123,13 @@ fun ConnectionList(
                 leadingContent = {
                     IconButton(
                         onClick = {
-                            viewModel.connect(connection)
+                            // Prompt to set the account password when none is saved, rather than
+                            // attempting a doomed empty-password login.
+                            if (connection.password.isNullOrBlank()) {
+                                passwordPrompt = connection
+                            } else {
+                                viewModel.connect(connection)
+                            }
                         },
                     ) {
                         Icon(painter = painterResource(Res.drawable.login), contentDescription = "Login")
@@ -174,4 +185,49 @@ fun ConnectionList(
             },
         )
     }
+    passwordPrompt?.let { connection ->
+        PasswordPromptDialog(
+            connection = connection,
+            onConnect = { password ->
+                viewModel.updatePasswordAndConnect(connection, password)
+                passwordPrompt = null
+            },
+            onDismiss = { passwordPrompt = null },
+        )
+    }
+}
+
+@Composable
+private fun PasswordPromptDialog(
+    connection: StoredConnection,
+    onConnect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val passwordState = rememberTextFieldState(connection.password ?: "")
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Password required") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("No password is saved for account \"${connection.username}\". Enter it to log in.")
+                SecureTextField(
+                    state = passwordState,
+                    label = { Text("Password") },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = passwordState.text.isNotBlank(),
+                onClick = { onConnect(passwordState.text.toString()) },
+            ) {
+                Text("Login")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }

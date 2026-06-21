@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import warlockfe.warlock3.core.prefs.models.AccountEntity
 
 @Composable
 fun SgeWizard(
@@ -20,16 +21,20 @@ fun SgeWizard(
         val state = viewModel.state
         when (val currentState = state.value) {
             SgeViewState.SgeAccountSelector -> {
-                val account by viewModel.lastAccount.collectAsState(null)
-                AccountsView(
-                    initialUsername = account?.username,
-                    initialPassword = account?.password,
-                    onAccountSelect = { newAccount ->
-                        viewModel.saveAccount(newAccount)
-                        viewModel.accountSelected(newAccount)
-                    },
-                    onCancel = onCancel,
-                )
+                val accounts: List<AccountEntity>? by viewModel.accounts.collectAsState(initial = null)
+                accounts?.let { loaded ->
+                    SgeAccountSelectorView(
+                        accounts = loaded,
+                        onAccountSelect = { account ->
+                            viewModel.accountSelected(account)
+                        },
+                        onSaveAccount = { account ->
+                            viewModel.saveAccount(account)
+                            viewModel.accountSelected(account)
+                        },
+                        onCancel = onCancel,
+                    )
+                } ?: SgeLoadingView("Loading accounts")
             }
 
             SgeViewState.SgeLoadingGameList -> {

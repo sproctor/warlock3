@@ -120,10 +120,6 @@ class DashboardViewModel(
         viewModelScope.launch { warlockSettingsSync.resolveConflict(path, resolution) }
     }
 
-    fun dismissSyncMessage() {
-        warlockSettingsSync.clearMessage()
-    }
-
     /** Defer the pending conflicts ("Later"); they resurface on the next sync. */
     fun deferSyncConflicts() {
         warlockSettingsSync.clearConflicts()
@@ -132,10 +128,6 @@ class DashboardViewModel(
     private suspend fun reloadAccounts() {
         savedAccounts = accountRepository.getAll()
     }
-
-    /** The saved password for a play.net account, if Warlock has one. */
-    fun savedPasswordFor(username: String): String? =
-        savedAccounts.firstOrNull { it.username.equals(username, ignoreCase = true) }?.password
 
     /**
      * On the first dashboard shown this session, reconnect the last launched connection if the user
@@ -201,6 +193,23 @@ class DashboardViewModel(
         connectJob?.cancel()
         connectJob = null
         message = null
+    }
+
+    /**
+     * Save a freshly-entered password onto the connection's play.net account, then connect. Used when
+     * a saved connection has no stored password (the account's password was never saved or was
+     * cleared), so the doomed empty-password login is replaced by a prompt that also fixes the account.
+     */
+    fun updatePasswordAndConnect(
+        connection: StoredConnection,
+        password: String,
+    ) {
+        if (password.isEmpty()) return
+        viewModelScope.launch {
+            accountRepository.save(AccountEntity(connection.username, password))
+            reloadAccounts()
+            connect(connection.copy(password = password))
+        }
     }
 
     // --- MUD Mobile actions ---

@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.prefs.repositories
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.core.mudmobile.MudMobileCharacter
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
@@ -19,9 +20,13 @@ class ConnectionRepository(
     private val accountDao: AccountDao,
 ) {
     fun observeAllConnections(): Flow<List<StoredConnection>> =
-        store.observeConnections().map { registry ->
+        combine(store.observeConnections(), accountDao.observeAll()) { registry, accounts ->
+            // Re-resolve passwords whenever either the connection registry or the saved accounts
+            // change. A password edited in settings only touches the account table, so mapping over
+            // the registry flow alone would leave the cached connection on its old password.
+            val passwordsByUsername = accounts.associateBy({ it.username }, { it.password })
             registry.connections.map { connection ->
-                connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
+                connection.toStoredConnection(passwordsByUsername[connection.username])
             }
         }
 

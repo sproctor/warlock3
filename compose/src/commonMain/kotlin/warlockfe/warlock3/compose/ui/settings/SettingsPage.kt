@@ -12,4 +12,6 @@ enum class SettingsPage(
     Aliases("Aliases"),
     Alterations("Alterations"),
     Actions("Actions"),
+    Accounts("Accounts"),
+    Characters("Characters"),
 }

@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockSecureTextField
+import warlockfe.warlock3.compose.desktop.shim.WarlockPasswordField
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 
@@ -50,7 +50,7 @@ fun DesktopAccountsView(
                 Spacer(Modifier.height(8.dp))
                 Text("Password")
                 Spacer(Modifier.height(4.dp))
-                WarlockSecureTextField(
+                WarlockPasswordField(
                     modifier = Modifier.padding(8.dp).width(280.dp),
                     state = password,
                 )

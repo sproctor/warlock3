@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -34,6 +35,7 @@ fun DesktopSettingsContent(
     actionRepository: ActionRepository,
     alterationRepository: AlterationRepository,
     clientSettingRepository: ClientSettingRepository,
+    accountRepository: AccountRepository,
 ) {
     val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
@@ -109,6 +111,19 @@ fun DesktopSettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 actionRepository = actionRepository,
+            )
+        }
+
+        SettingsPage.Accounts -> {
+            DesktopAccountsView(
+                accountRepository = accountRepository,
+            )
+        }
+
+        SettingsPage.Characters -> {
+            DesktopCharactersView(
+                allCharacters = characters,
+                characterRepository = characterRepository,
             )
         }
     }

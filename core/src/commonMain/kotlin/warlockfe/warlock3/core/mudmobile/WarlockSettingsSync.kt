@@ -121,11 +121,6 @@ class WarlockSettingsSync(
         }
     }
 
-    /** Clear a finished/failed status message without touching pending conflicts. */
-    fun clearMessage() {
-        _state.value = _state.value.copy(message = null)
-    }
-
     /**
      * Defer all pending conflicts (the "Later" action): drops them from view without resolving. They
      * resurface on the next [sync] because the base hashes are unchanged.
