@@ -1,22 +1,15 @@
 package warlockfe.warlock3.compose.ui.game
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
@@ -32,12 +25,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -45,16 +36,11 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CompassButtonColors
 import warlockfe.warlock3.compose.components.CompassButtons
-import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.circle
-import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
@@ -76,8 +62,6 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.isSpecified
-import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 
 /**
@@ -95,7 +79,6 @@ fun GameView(
     openDrawer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val disconnected by viewModel.disconnected.collectAsState()
     val entryFocusRequester = remember { FocusRequester() }
     // On JVM, KeyDown is followed by an Unknown/KEY_TYPED event
     var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
@@ -124,13 +107,6 @@ fun GameView(
         BoxWithConstraints {
             val layout = WindowWidthSizeClass.fromWidth(maxWidth).gameLayout()
             Column(Modifier.fillMaxSize()) {
-                if (disconnected) {
-                    DisconnectedBanner(
-                        canReconnect = viewModel.canReconnect,
-                        onReconnect = viewModel::reconnect,
-                        navigateToDashboard = navigateToDashboard,
-                    )
-                }
                 val progressBarSettings by viewModel.progressBarSettings.collectAsState()
                 CompositionLocalProvider(
                     LocalProgressBarColors provides
@@ -156,6 +132,7 @@ fun GameView(
                                 viewModel = viewModel,
                                 entryFocusRequester = entryFocusRequester,
                                 openSettings = openSettings,
+                                navigateToDashboard = navigateToDashboard,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -184,34 +161,6 @@ fun GameView(
                 },
                 text = { Text(macroError!!) },
             )
-        }
-    }
-}
-
-@Composable
-private fun DisconnectedBanner(
-    canReconnect: Boolean,
-    onReconnect: () -> Unit,
-    navigateToDashboard: () -> Unit,
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .border(width = 8.dp, color = Color(red = 0xff, green = 0xcc, blue = 0))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text("You have been disconnected from the server")
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (canReconnect) {
-                FilledTonalButton(onClick = onReconnect) {
-                    Text("Reconnect")
-                }
-            }
-            FilledTonalButton(onClick = navigateToDashboard) {
-                Text("Go to dashboard")
-            }
         }
     }
 }
@@ -389,6 +338,10 @@ fun GameBottomBar(
     openSettings: (() -> Unit)? = null,
     windowListVisible: Boolean = false,
     onToggleWindowList: (() -> Unit)? = null,
+    disconnected: Boolean = false,
+    canReconnect: Boolean = false,
+    onReconnect: (() -> Unit)? = null,
+    onDashboard: (() -> Unit)? = null,
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
     val style = presets["default"] ?: SAFE_DEFAULT_STYLE
@@ -407,6 +360,17 @@ fun GameBottomBar(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                // Disconnect actions for layouts without a top bar (tablet): the old banner is gone.
+                if (disconnected && (onDashboard != null || (canReconnect && onReconnect != null))) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (canReconnect && onReconnect != null) {
+                            FilledTonalButton(onClick = onReconnect) { Text("Reconnect") }
+                        }
+                        if (onDashboard != null) {
+                            FilledTonalButton(onClick = onDashboard) { Text("Dashboard") }
+                        }
+                    }
+                }
                 val actionBar by viewModel.actionBar.collectAsState()
                 if (actionBar.toolbar.isNotEmpty()) {
                     Row(

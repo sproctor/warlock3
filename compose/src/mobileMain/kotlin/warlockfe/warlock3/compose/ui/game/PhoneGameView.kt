@@ -50,6 +50,7 @@ fun PhoneGameView(
     val openWindows by viewModel.openWindows.collectAsState(emptyList())
     val menuData by viewModel.menuData.collectAsState()
     val selectedWindow by viewModel.selectedWindow.collectAsState()
+    val disconnected by viewModel.disconnected.collectAsState()
     var movementOpen by remember { mutableStateOf(false) }
     var selectedTab by rememberSaveable { mutableStateOf("main") }
     val currentTab = if (windows.any { it.name == selectedTab }) selectedTab else "main"
@@ -61,6 +62,9 @@ fun PhoneGameView(
             onMenu = openDrawer,
             onSettings = openSettings,
             onDashboard = navigateToDashboard,
+            disconnected = disconnected,
+            canReconnect = viewModel.canReconnect,
+            onReconnect = viewModel::reconnect,
         )
         GameStatusCard(
             viewModel = viewModel,

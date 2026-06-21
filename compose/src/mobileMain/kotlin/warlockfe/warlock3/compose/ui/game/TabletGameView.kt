@@ -43,11 +43,13 @@ fun TabletGameView(
     viewModel: GameViewModel,
     entryFocusRequester: FocusRequester,
     openSettings: () -> Unit,
+    navigateToDashboard: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val location by viewModel.observeTabletWindowLocation().collectAsState(WindowLocation.RIGHT)
     val windows by viewModel.windows.collectAsState()
     val hasSecondary = windows.any { it.name != "main" }
+    val disconnected by viewModel.disconnected.collectAsState()
 
     Column(modifier) {
         Box(modifier = Modifier.weight(1f)) {
@@ -113,6 +115,10 @@ fun TabletGameView(
             viewModel = viewModel,
             entryFocusRequester = entryFocusRequester,
             openSettings = openSettings,
+            disconnected = disconnected,
+            canReconnect = viewModel.canReconnect,
+            onReconnect = viewModel::reconnect,
+            onDashboard = navigateToDashboard,
         )
     }
 }

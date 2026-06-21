@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,9 @@ fun GameTopBar(
     onSettings: () -> Unit,
     onDashboard: () -> Unit,
     modifier: Modifier = Modifier,
+    disconnected: Boolean = false,
+    canReconnect: Boolean = false,
+    onReconnect: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     TopAppBar(
@@ -64,6 +68,13 @@ fun GameTopBar(
             }
         },
         actions = {
+            // Surface reconnect in the bar when disconnected (the old disconnected banner is gone);
+            // "Go to dashboard" remains in the overflow menu below.
+            if (disconnected && canReconnect) {
+                FilledTonalButton(onClick = onReconnect) {
+                    Text("Reconnect")
+                }
+            }
             Box {
                 IconButton(onClick = { menuOpen = true }) {
                     Icon(painter = painterResource(Res.drawable.more_vert), contentDescription = "More")

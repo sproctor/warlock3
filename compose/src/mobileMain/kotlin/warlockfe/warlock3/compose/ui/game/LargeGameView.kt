@@ -73,6 +73,8 @@ fun LargeGameView(
                         ?.takeIf { it.isNotBlank() },
                 ).joinToString(separator = " - ").ifBlank { null },
             connected = !disconnected,
+            canReconnect = viewModel.canReconnect,
+            onReconnect = viewModel::reconnect,
             onMenu = { windowListVisible = !windowListVisible },
             onSettings = openSettings,
             onDashboard = navigateToDashboard,

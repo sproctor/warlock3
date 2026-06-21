@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +49,8 @@ fun LargeGameTopBar(
     title: String,
     subtitle: String?,
     connected: Boolean,
+    canReconnect: Boolean,
+    onReconnect: () -> Unit,
     onMenu: () -> Unit,
     onSettings: () -> Unit,
     onDashboard: () -> Unit,
@@ -81,7 +84,14 @@ fun LargeGameTopBar(
             }
         },
         actions = {
-            ConnectionPill(connected = connected)
+            // When disconnected with a reconnect available, the status indicator becomes an action.
+            if (!connected && canReconnect) {
+                FilledTonalButton(onClick = onReconnect) {
+                    Text("Reconnect")
+                }
+            } else {
+                ConnectionPill(connected = connected)
+            }
             Spacer(Modifier.width(4.dp))
             IconButton(onClick = onSettings) {
                 Icon(painter = painterResource(Res.drawable.settings_filled), contentDescription = "Settings")

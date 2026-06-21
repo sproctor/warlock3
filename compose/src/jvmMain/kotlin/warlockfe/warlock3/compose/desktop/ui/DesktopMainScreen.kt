@@ -47,10 +47,11 @@ fun DesktopMainScreen(
         wizardContent = { viewModel, onCancel ->
             DesktopSgeWizard(viewModel = viewModel, onCancel = onCancel)
         },
-        gameContent = { viewModel, navigateToDashboard ->
+        gameContent = { viewModel, _ ->
+            // Dashboard navigation lives in the desktop title bar (see TitleBarView), so the game
+            // view no longer needs the navigate-to-dashboard callback.
             DesktopGameView(
                 viewModel = viewModel,
-                navigateToDashboard = navigateToDashboard,
                 sideBarVisible = sideBarVisible,
             )
         },

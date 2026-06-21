@@ -62,11 +62,9 @@ import warlockfe.warlock3.core.window.WindowInfo
 @Composable
 fun DesktopGameView(
     viewModel: GameViewModel,
-    navigateToDashboard: () -> Unit,
     sideBarVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val disconnected by viewModel.disconnected.collectAsState()
     val entryFocusRequester = remember { FocusRequester() }
     var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
 
@@ -95,34 +93,6 @@ fun DesktopGameView(
                     }
                 },
     ) {
-        if (disconnected) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .border(
-                            width = 8.dp,
-                            color = Color(red = 0xff, green = 0xcc, blue = 0),
-                        ).padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text("You have been disconnected from the server")
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    if (viewModel.canReconnect) {
-                        WarlockButton(
-                            onClick = viewModel::reconnect,
-                            text = "Reconnect",
-                        )
-                    }
-                    WarlockButton(
-                        onClick = navigateToDashboard,
-                        text = "Go to dashboard",
-                    )
-                }
-            }
-        }
-
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
         val presets by viewModel.presets.collectAsState(emptyMap())
