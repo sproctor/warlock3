@@ -1,24 +1,34 @@
 package warlockfe.warlock3.compose.ui.window
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.model.SkinColor
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -28,6 +38,7 @@ import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
@@ -48,7 +59,7 @@ fun DialogContent(
                 }
 
                 is DialogObject.ProgressBar -> {
-                    DialogProgressBar(
+                    ProgressBarWithColorMenu(
                         skinObject = skinObject,
                         data = data,
                     )
@@ -105,6 +116,108 @@ fun DialogContent(
                 }
             }
         }
+    }
+}
+
+private enum class ProgressBarColorTarget {
+    Bar,
+    Background,
+    Text,
+}
+
+/**
+ * A vital/progress bar that applies the current character's saved color overrides and, on long
+ * press, offers a menu to recolor (or reset) the bar/background/text - the touch equivalent of the
+ * desktop right-click color menu. Reads and persists through [LocalProgressBarColors].
+ */
+@Composable
+private fun ProgressBarWithColorMenu(
+    skinObject: SkinObject?,
+    data: DialogObject.ProgressBar,
+) {
+    val colorState = LocalProgressBarColors.current
+    val setting = colorState.settings[data.id]
+    val barColor = setting?.barColor ?: WarlockColor.Unspecified
+    val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
+    val textColor = setting?.textColor ?: WarlockColor.Unspecified
+
+    var menuOpen by remember { mutableStateOf(false) }
+    var editingTarget by remember { mutableStateOf<ProgressBarColorTarget?>(null) }
+
+    Box {
+        DialogProgressBar(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(data.id) {
+                        detectTapGestures(onLongPress = { menuOpen = true })
+                    },
+            skinObject = skinObject,
+            data = data,
+            barColorOverride = barColor,
+            backgroundColorOverride = backgroundColor,
+            textColorOverride = textColor,
+        )
+        DropdownMenu(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Change bar color") },
+                onClick = {
+                    menuOpen = false
+                    editingTarget = ProgressBarColorTarget.Bar
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Change background color") },
+                onClick = {
+                    menuOpen = false
+                    editingTarget = ProgressBarColorTarget.Background
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Change text color") },
+                onClick = {
+                    menuOpen = false
+                    editingTarget = ProgressBarColorTarget.Text
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Reset colors") },
+                onClick = {
+                    menuOpen = false
+                    colorState.saveColors(
+                        data.id,
+                        WarlockColor.Unspecified,
+                        WarlockColor.Unspecified,
+                        WarlockColor.Unspecified,
+                    )
+                },
+            )
+        }
+    }
+
+    editingTarget?.let { target ->
+        val current =
+            when (target) {
+                ProgressBarColorTarget.Bar -> barColor
+                ProgressBarColorTarget.Background -> backgroundColor
+                ProgressBarColorTarget.Text -> textColor
+            }
+        ColorPickerDialog(
+            initialColor = current.toColor().takeIf { it.isSpecified },
+            onCloseRequest = { editingTarget = null },
+            onColorSelect = { chosen ->
+                colorState.saveColors(
+                    data.id,
+                    if (target == ProgressBarColorTarget.Bar) chosen else barColor,
+                    if (target == ProgressBarColorTarget.Background) chosen else backgroundColor,
+                    if (target == ProgressBarColorTarget.Text) chosen else textColor,
+                )
+                editingTarget = null
+            },
+        )
     }
 }
 

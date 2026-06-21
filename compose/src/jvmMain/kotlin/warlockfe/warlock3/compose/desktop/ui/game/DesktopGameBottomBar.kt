@@ -84,6 +84,8 @@ fun DesktopGameBottomBar(
                         entryFocusRequester = entryFocusRequester,
                     )
                     val vitalBars by viewModel.vitalBars.objects.collectAsState()
+                    // Color overrides come from LocalProgressBarColors, provided by DesktopGameView
+                    // around both this control bar and the text windows.
                     DesktopDialogContent(
                         dataObjects = vitalBars,
                         modifier = Modifier.fillMaxWidth().height(16.dp),

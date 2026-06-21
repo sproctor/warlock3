@@ -45,12 +45,12 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
-import warlockfe.warlock3.compose.desktop.ui.window.LocalProgressBarColors
-import warlockfe.warlock3.compose.desktop.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -128,65 +128,65 @@ fun DesktopGameView(
         val presets by viewModel.presets.collectAsState(emptyMap())
         val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
+        val progressBarSettings by viewModel.progressBarSettings.collectAsState()
 
-        Row(modifier = Modifier.weight(1f)) {
-            if (sideBarVisible) {
-                val windows by viewModel.windows.collectAsState()
-                val scope = rememberCoroutineScope()
-                val sidebarBackground =
-                    defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
-                        ?: gameChrome.panelAlt
-                val sidebarTextColor =
-                    defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
-                        ?: gameChrome.textPrimary
-                WarlockScrollableColumn(
-                    modifier =
-                        Modifier
-                            .padding(2.dp)
-                            .fillMaxHeight()
-                            .width(240.dp)
-                            .background(
-                                color = sidebarBackground,
-                                shape = RoundedCornerShape(2.dp),
-                            ).border(
-                                width = Dp.Hairline,
-                                color = gameChrome.border,
-                                shape = RoundedCornerShape(2.dp),
-                            ),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    windows.sortedBy { it.title }.forEach { window ->
-                        DesktopWindowListItem(
-                            color = sidebarTextColor,
-                            windowInfo = window,
-                            isOpen = openWindows.contains(window.name),
-                            onClick = { open ->
-                                scope.launch {
-                                    if (open) {
-                                        viewModel.openWindow(window.name)
-                                    } else {
-                                        viewModel.closeWindow(window.name)
+        CompositionLocalProvider(
+            LocalProgressBarColors provides
+                ProgressBarColorState(
+                    settings = progressBarSettings,
+                    saveColors = viewModel::saveProgressBarColors,
+                ),
+        ) {
+            Row(modifier = Modifier.weight(1f)) {
+                if (sideBarVisible) {
+                    val windows by viewModel.windows.collectAsState()
+                    val scope = rememberCoroutineScope()
+                    val sidebarBackground =
+                        defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
+                            ?: gameChrome.panelAlt
+                    val sidebarTextColor =
+                        defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
+                            ?: gameChrome.textPrimary
+                    WarlockScrollableColumn(
+                        modifier =
+                            Modifier
+                                .padding(2.dp)
+                                .fillMaxHeight()
+                                .width(240.dp)
+                                .background(
+                                    color = sidebarBackground,
+                                    shape = RoundedCornerShape(2.dp),
+                                ).border(
+                                    width = Dp.Hairline,
+                                    color = gameChrome.border,
+                                    shape = RoundedCornerShape(2.dp),
+                                ),
+                        contentPadding = PaddingValues(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        windows.sortedBy { it.title }.forEach { window ->
+                            DesktopWindowListItem(
+                                color = sidebarTextColor,
+                                windowInfo = window,
+                                isOpen = openWindows.contains(window.name),
+                                onClick = { open ->
+                                    scope.launch {
+                                        if (open) {
+                                            viewModel.openWindow(window.name)
+                                        } else {
+                                            viewModel.closeWindow(window.name)
+                                        }
                                     }
-                                }
-                            },
-                            onClear = { viewModel.clearStream(window.name) },
-                        )
+                                },
+                                onClear = { viewModel.clearStream(window.name) },
+                            )
+                        }
                     }
                 }
-            }
-            val leftWindows by viewModel.leftWindowUiStates.collectAsState()
-            val rightWindows by viewModel.rightWindowUiStates.collectAsState()
-            val topWindows by viewModel.topWindowUiStates.collectAsState()
-            val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
-            val progressBarSettings by viewModel.progressBarSettings.collectAsState()
-            CompositionLocalProvider(
-                LocalProgressBarColors provides
-                    ProgressBarColorState(
-                        settings = progressBarSettings,
-                        saveColors = viewModel::saveProgressBarColors,
-                    ),
-            ) {
+                val leftWindows by viewModel.leftWindowUiStates.collectAsState()
+                val rightWindows by viewModel.rightWindowUiStates.collectAsState()
+                val topWindows by viewModel.topWindowUiStates.collectAsState()
+                val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
                 DesktopGameTextWindows(
                     modifier = Modifier.weight(1f).padding(2.dp),
                     leftWindowUiStates = leftWindows,
@@ -250,8 +250,8 @@ fun DesktopGameView(
                     clearStream = viewModel::clearStream,
                 )
             }
+            DesktopGameBottomBar(viewModel, entryFocusRequester)
         }
-        DesktopGameBottomBar(viewModel, entryFocusRequester)
     }
     val macroError by viewModel.macroError.collectAsState()
     if (macroError != null) {

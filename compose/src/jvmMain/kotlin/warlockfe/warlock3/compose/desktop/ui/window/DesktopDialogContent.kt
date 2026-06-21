@@ -31,6 +31,7 @@ import warlockfe.warlock3.compose.ui.window.DialogButton
 import warlockfe.warlock3.compose.ui.window.DialogImage
 import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
 import warlockfe.warlock3.compose.ui.window.DialogProgressBar
+import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor

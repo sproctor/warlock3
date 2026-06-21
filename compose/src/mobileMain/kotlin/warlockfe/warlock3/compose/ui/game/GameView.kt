@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +62,8 @@ import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DragOverlay
 import warlockfe.warlock3.compose.ui.window.DropResult
+import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
@@ -128,35 +131,44 @@ fun GameView(
                         navigateToDashboard = navigateToDashboard,
                     )
                 }
-                when (layout) {
-                    MobileGameLayout.Phone -> {
-                        PhoneGameView(
-                            viewModel = viewModel,
-                            entryFocusRequester = entryFocusRequester,
-                            navigateToDashboard = navigateToDashboard,
-                            openSettings = openSettings,
-                            openDrawer = openDrawer,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                val progressBarSettings by viewModel.progressBarSettings.collectAsState()
+                CompositionLocalProvider(
+                    LocalProgressBarColors provides
+                        ProgressBarColorState(
+                            settings = progressBarSettings,
+                            saveColors = viewModel::saveProgressBarColors,
+                        ),
+                ) {
+                    when (layout) {
+                        MobileGameLayout.Phone -> {
+                            PhoneGameView(
+                                viewModel = viewModel,
+                                entryFocusRequester = entryFocusRequester,
+                                navigateToDashboard = navigateToDashboard,
+                                openSettings = openSettings,
+                                openDrawer = openDrawer,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
 
-                    MobileGameLayout.Tablet -> {
-                        TabletGameView(
-                            viewModel = viewModel,
-                            entryFocusRequester = entryFocusRequester,
-                            openSettings = openSettings,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                        MobileGameLayout.Tablet -> {
+                            TabletGameView(
+                                viewModel = viewModel,
+                                entryFocusRequester = entryFocusRequester,
+                                openSettings = openSettings,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
 
-                    MobileGameLayout.Large -> {
-                        LargeGameView(
-                            viewModel = viewModel,
-                            entryFocusRequester = entryFocusRequester,
-                            openSettings = openSettings,
-                            navigateToDashboard = navigateToDashboard,
-                            modifier = Modifier.weight(1f),
-                        )
+                        MobileGameLayout.Large -> {
+                            LargeGameView(
+                                viewModel = viewModel,
+                                entryFocusRequester = entryFocusRequester,
+                                openSettings = openSettings,
+                                navigateToDashboard = navigateToDashboard,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
