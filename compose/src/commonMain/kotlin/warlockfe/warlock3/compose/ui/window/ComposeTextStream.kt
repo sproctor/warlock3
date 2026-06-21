@@ -703,7 +703,7 @@ private fun logSlowLine(
     // pulls more candidates than a short line does.
     val candidates = highlightIndex.candidateCount(wordTokensOf(first.line.text?.text ?: ""))
     streamLineLogger.w {
-        val before = source.toString().take(200).replace("\n", "\\n")
+        val before = source.toText().take(200).replace("\n", "\\n")
         val after =
             first.line.text
                 ?.text

@@ -312,7 +312,7 @@ class WslCommandsTest {
             val client = FakeWarlockClient()
             val ctx = buildTestContext(backgroundScope, client = client)
             ctx.command("echo", "hello world")
-            assertEquals("hello world", client.printed.single().toString())
+            assertEquals("hello world", client.printed.single().toText())
         }
 
     @Test
@@ -344,7 +344,7 @@ class WslCommandsTest {
             assertTrue(
                 client.printed
                     .single()
-                    .toString()
+                    .toText()
                     .contains("alert.wav"),
             )
         }
