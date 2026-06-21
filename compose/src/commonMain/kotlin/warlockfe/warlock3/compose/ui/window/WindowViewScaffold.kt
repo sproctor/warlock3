@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -110,6 +111,7 @@ internal fun WindowViewScaffold(
 
     val title = (window?.title ?: uiState.name) + (window?.subtitle ?: "")
     var viewportHeight by remember { mutableIntStateOf(0) }
+    val currentOnSelect by rememberUpdatedState(onSelect)
 
     surface(
         modifier
@@ -119,6 +121,19 @@ internal fun WindowViewScaffold(
             }.onFocusChanged { focusState ->
                 if (focusState.hasFocus) {
                     onSelect()
+                }
+            }.pointerInput(Unit) {
+                // Select this window on any press inside it, not only when the text grabs focus
+                // (via the selection container) and bubbles up to onFocusChanged. Observe in the
+                // Initial pass without consuming so text selection, links, and header buttons still
+                // receive the event.
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.type == PointerEventType.Press) {
+                            currentOnSelect()
+                        }
+                    }
                 }
             }.semantics {
                 paneTitle = title
