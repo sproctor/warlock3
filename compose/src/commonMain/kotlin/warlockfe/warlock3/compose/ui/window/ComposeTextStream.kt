@@ -4,6 +4,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -53,8 +55,8 @@ class ComposeTextStream(
     private val workQueue: StreamWorkQueue,
     private val scope: CoroutineScope,
 ) : TextStream {
-    private val cacheLines = ArrayList<CachedLine?>(maxLines)
-    private val finishedLines = ArrayList<StreamLine>(maxLines)
+    private val cacheLines = ArrayDeque<CachedLine?>(maxLines)
+    private val finishedLines = ArrayDeque<StreamLine>(maxLines)
     val lines = MutableStateFlow<List<StreamLine>>(emptyList())
     private val components = mutableMapOf<String, StyledString>()
 
@@ -74,7 +76,20 @@ class ComposeTextStream(
 
     val mutex = Mutex()
 
+    // Coalesces buffer mutations into at most one snapshot publish per burst. During a flood (e.g.
+    // ;go2) lines arrive back-to-back; without this, each line republished an O(n) copy of the whole
+    // scrollback, so the work-queue coroutine fell behind and the UI froze until the burst finished
+    // ("dumped all at once"). A CONFLATED channel collapses pending publishes into a single one.
+    private val publishSignal = Channel<Unit>(Channel.CONFLATED)
+
     init {
+        // Drain coalesced publish requests: a burst of appends yields a handful of snapshots instead
+        // of one per line.
+        scope.launch(Dispatchers.Default) {
+            for (signal in publishSignal) {
+                mutex.withLock { publishSnapshot() }
+            }
+        }
         // Re-filter displayed lines whenever the names list changes
         names
             .onEach {
@@ -204,8 +219,8 @@ class ComposeTextStream(
 
     private fun removeLines() {
         while (maxLines > 0 && finishedLines.size >= maxLines) {
-            finishedLines.removeAt(0)
-            cacheLines.removeAt(0)
+            finishedLines.removeFirst()
+            cacheLines.removeFirst()
             removedLines++
             // Intentionally leak components here. They don't exist in the main window,
             // and no other windows get long enough
@@ -303,7 +318,13 @@ class ComposeTextStream(
         this.showImages = showImages
     }
 
+    // Request a publish. Coalesced via [publishSignal]; the snapshot itself runs in [publishSnapshot].
     private fun linesUpdated() {
+        publishSignal.trySend(Unit)
+    }
+
+    // Snapshots the buffer into [lines]. Runs on the publish coroutine, once per coalesced burst.
+    private fun publishSnapshot() {
         lines.value =
             if (nameFilter) {
                 finishedLines.filter { lineMatchesName(it) }
