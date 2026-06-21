@@ -26,6 +26,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -55,6 +56,7 @@ fun DesktopSettingsDialog(
     actionRepository: ActionRepository,
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
+    accountRepository: AccountRepository,
     closeDialog: () -> Unit,
 ) {
     DialogWindow(
@@ -108,6 +110,7 @@ fun DesktopSettingsDialog(
                         actionRepository = actionRepository,
                         alterationRepository = alterationRepository,
                         clientSettingRepository = clientSettingRepository,
+                        accountRepository = accountRepository,
                     )
                 }
             }

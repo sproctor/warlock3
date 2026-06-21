@@ -12,6 +12,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.ui.sge.SgeViewModel
 import warlockfe.warlock3.compose.ui.sge.SgeViewState
+import warlockfe.warlock3.core.prefs.models.AccountEntity
 
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -28,16 +29,20 @@ fun DesktopSgeWizard(
     ) {
         when (val currentState = viewModel.state.value) {
             SgeViewState.SgeAccountSelector -> {
-                val account by viewModel.lastAccount.collectAsState(null)
-                DesktopAccountsView(
-                    initialUsername = account?.username,
-                    initialPassword = account?.password,
-                    onAccountSelect = { newAccount ->
-                        viewModel.saveAccount(newAccount)
-                        viewModel.accountSelected(newAccount)
-                    },
-                    onCancel = onCancel,
-                )
+                val accounts: List<AccountEntity>? by viewModel.accounts.collectAsState(initial = null)
+                accounts?.let { loaded ->
+                    DesktopSgeAccountSelectorView(
+                        accounts = loaded,
+                        onAccountSelect = { account ->
+                            viewModel.accountSelected(account)
+                        },
+                        onSaveAccount = { account ->
+                            viewModel.saveAccount(account)
+                            viewModel.accountSelected(account)
+                        },
+                        onCancel = onCancel,
+                    )
+                } ?: DesktopSgeLoadingView("Loading accounts")
             }
 
             SgeViewState.SgeLoadingGameList -> {

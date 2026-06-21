@@ -10,7 +10,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.compose.model.GameScreen
@@ -57,14 +56,9 @@ class SgeViewModel(
     private var characterName: String? = null
     private var gameCode: String? = null
 
-    val lastAccount: Flow<AccountEntity?> =
-        flow {
-            emit(
-                clientSettingRepository.getLastUsername()?.let { username ->
-                    accountRepository.getByUsername(username)
-                },
-            )
-        }
+    // The saved accounts shown on the first step of the wizard, so the user can pick one (logging in
+    // with its saved password) instead of re-typing it. Re-queried live so a delete in settings shows.
+    val accounts: Flow<List<AccountEntity>> = accountRepository.observeAll()
 
     init {
         job =

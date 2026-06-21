@@ -213,6 +213,7 @@ fun DecoratedWindowScope.WarlockApp(
             scriptDirRepository = appContainer.scriptDirRepository,
             alterationRepository = appContainer.alterationRepository,
             clientSettingRepository = appContainer.clientSettings,
+            accountRepository = appContainer.accountRepository,
         )
     }
 }

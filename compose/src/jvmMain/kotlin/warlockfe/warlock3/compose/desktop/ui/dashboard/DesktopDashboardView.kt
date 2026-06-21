@@ -383,8 +383,9 @@ private fun ConnectionRow(
     val stripeColor = if (connection.mudMobile) MudMobileAccent else JewelTheme.globalColors.borders.normal
 
     fun login() {
-        // MUD Mobile connections need a password; prompt only if we don't already have one.
-        if (connection.mudMobile && connection.password.isNullOrBlank()) {
+        // A connection logs in with its account's saved password; prompt to set one when it's
+        // missing (both MUD Mobile and play.net logins need it) instead of attempting a doomed login.
+        if (connection.password.isNullOrBlank()) {
             ui.passwordPrompt = connection
         } else {
             viewModel.connect(connection)
@@ -558,14 +559,31 @@ private fun DashboardDialogs(
     }
 
     ui.passwordPrompt?.let { connection ->
-        MudMobilePasswordDialog(
-            connection = connection,
-            onConnect = { password ->
-                viewModel.connectMudMobile(connection, password)
-                ui.passwordPrompt = null
-            },
-            onDismiss = { ui.passwordPrompt = null },
-        )
+        if (connection.mudMobile) {
+            ConnectionPasswordDialog(
+                connection = connection,
+                description = "Enter the play.net password for account \"${connection.username}\".",
+                note = "Your password stays on this machine; it is never sent to MUD Mobile.",
+                confirmText = "Play",
+                onConnect = { password ->
+                    viewModel.connectMudMobile(connection, password)
+                    ui.passwordPrompt = null
+                },
+                onDismiss = { ui.passwordPrompt = null },
+            )
+        } else {
+            ConnectionPasswordDialog(
+                connection = connection,
+                description = "No password is saved for account \"${connection.username}\". Enter it to log in.",
+                note = "Your password is saved on this machine for next time.",
+                confirmText = "Login",
+                onConnect = { password ->
+                    viewModel.updatePasswordAndConnect(connection, password)
+                    ui.passwordPrompt = null
+                },
+                onDismiss = { ui.passwordPrompt = null },
+            )
+        }
     }
 
     ui.editConnection?.let { connection ->
@@ -746,10 +764,13 @@ private fun MudMobileAddCharacterDialog(
 }
 
 @Composable
-private fun MudMobilePasswordDialog(
+private fun ConnectionPasswordDialog(
     connection: StoredConnection,
+    description: String,
+    confirmText: String,
     onConnect: (String) -> Unit,
     onDismiss: () -> Unit,
+    note: String? = null,
 ) {
     val passwordState = rememberTextFieldState(connection.password ?: "")
 
@@ -763,15 +784,21 @@ private fun MudMobilePasswordDialog(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Enter the play.net password for account \"${connection.username}\".")
-            Text("Your password stays on this machine; it is never sent to MUD Mobile.")
+            Text(description)
+            if (note != null) {
+                Text(note)
+            }
             WarlockPasswordField(state = passwordState, modifier = Modifier.fillMaxWidth())
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 WarlockOutlinedButton(onClick = onDismiss, text = "Cancel")
-                WarlockButton(onClick = { onConnect(passwordState.text.toString()) }, text = "Play")
+                WarlockButton(
+                    onClick = { onConnect(passwordState.text.toString()) },
+                    text = confirmText,
+                    enabled = passwordState.text.isNotBlank(),
+                )
             }
         }
     }
