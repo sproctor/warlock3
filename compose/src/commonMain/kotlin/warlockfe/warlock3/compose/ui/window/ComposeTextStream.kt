@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
@@ -89,15 +87,13 @@ class ComposeTextStream(
 
     var actionHandler: ((WarlockAction) -> Unit)? = null
 
-    val mutex = Mutex()
-
     init {
         // Re-filter displayed lines whenever the names list changes
         names
             .onEach {
                 if (nameFilter) {
                     workQueue.submit {
-                        mutex.withLock { linesUpdated() }
+                        linesUpdated()
                     }
                 }
             }.launchIn(scope)
@@ -108,18 +104,14 @@ class ComposeTextStream(
         isPrompt: Boolean,
     ) {
         workQueue.submit {
-            mutex.withLock {
-                doAppendPartial(text, isPrompt)
-            }
+            doAppendPartial(text, isPrompt)
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
         workQueue.submit {
-            mutex.withLock {
-                doAppendPartial(text, isPrompt = false)
-                partialLine = null
-            }
+            doAppendPartial(text, isPrompt = false)
+            partialLine = null
         }
     }
 
@@ -150,16 +142,14 @@ class ComposeTextStream(
 
     override suspend fun clear() {
         workQueue.submit {
-            mutex.withLock {
-                finishedLines.clear()
-                partialLine = null
-                componentLocations.clear()
-                components.clear()
-                nextSerialNumber = 0L
-                removedLines = 0L
-                cacheLines.clear()
-                linesUpdated()
-            }
+            finishedLines.clear()
+            partialLine = null
+            componentLocations.clear()
+            components.clear()
+            nextSerialNumber = 0L
+            removedLines = 0L
+            cacheLines.clear()
+            linesUpdated()
         }
     }
 
@@ -169,12 +159,10 @@ class ComposeTextStream(
         showWhenClosed: String?,
     ) {
         workQueue.submit {
-            mutex.withLock {
-                // It's possible a component is added that is set prior
-                // I don't think this happens in DR, so it's probably OK that we don't handle that case.
-                partialLine = null
-                doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
-            }
+            // It's possible a component is added that is set prior
+            // I don't think this happens in DR, so it's probably OK that we don't handle that case.
+            partialLine = null
+            doAppendLine(text, ignoreWhenBlank, showWhenClosed, isPrompt = false)
         }
     }
 
@@ -234,20 +222,18 @@ class ComposeTextStream(
 
     override suspend fun appendResource(url: String) {
         workQueue.submit {
-            mutex.withLock {
-                // Images must be on their own line
-                partialLine = null
-                if (!showImages) return@withLock
-                cacheLines.add(null)
-                val line =
-                    StreamImageLine(
-                        url = url,
-                        serialNumber = nextSerialNumber++,
-                    )
-                finishedLines.add(line)
-                removeLines()
-                appendLineToView(line)
-            }
+            // Images must be on their own line
+            partialLine = null
+            if (!showImages) return@submit
+            cacheLines.add(null)
+            val line =
+                StreamImageLine(
+                    url = url,
+                    serialNumber = nextSerialNumber++,
+                )
+            finishedLines.add(line)
+            removeLines()
+            appendLineToView(line)
         }
     }
 
@@ -256,20 +242,18 @@ class ComposeTextStream(
         value: StyledString,
     ) {
         workQueue.submit {
-            mutex.withLock {
-                components[name] = value
-                // A component can appear on many lines; re-render them all, then publish once instead
-                // of emitting a fresh snapshot per affected line.
-                var change = ViewChange.NONE
-                componentLocations[name]?.forEach { serialNumber ->
-                    val lineNumber = (serialNumber - removedLines).toInt()
-                    // If the component has scrolled back past the buffer, ignore it
-                    if (lineNumber >= 0) {
-                        change = change.coalesce(updateLine(lineNumber))
-                    }
+            components[name] = value
+            // A component can appear on many lines; re-render them all, then publish once instead
+            // of emitting a fresh snapshot per affected line.
+            var change = ViewChange.NONE
+            componentLocations[name]?.forEach { serialNumber ->
+                val lineNumber = (serialNumber - removedLines).toInt()
+                // If the component has scrolled back past the buffer, ignore it
+                if (lineNumber >= 0) {
+                    change = change.coalesce(updateLine(lineNumber))
                 }
-                applyViewChange(change)
             }
+            applyViewChange(change)
         }
     }
 
@@ -298,7 +282,7 @@ class ComposeTextStream(
             }
         }
         if (linePassesFilter(line)) {
-            displayBacking = displayBacking.add(line)
+            displayBacking = displayBacking.adding(line)
             changed = true
         }
         if (changed) {
@@ -338,13 +322,13 @@ class ComposeTextStream(
         val shouldShow = linePassesFilter(newLine)
         return when {
             backingIndex >= displayStart && shouldShow -> {
-                displayBacking = displayBacking.set(backingIndex, newLine)
+                displayBacking = displayBacking.replacingAt(backingIndex, newLine)
                 ViewChange.PUBLISH
             }
 
             backingIndex >= displayStart -> {
                 // Was visible, now filtered out.
-                displayBacking = displayBacking.removeAt(backingIndex)
+                displayBacking = displayBacking.removingAt(backingIndex)
                 compactBacking()
                 ViewChange.PUBLISH
             }
@@ -456,7 +440,7 @@ class ComposeTextStream(
     }
 
     suspend fun setMaxLines(maxLines: Int) {
-        mutex.withLock {
+        workQueue.submit {
             this@ComposeTextStream.maxLines = maxLines
             removeLines()
             linesUpdated()
@@ -481,7 +465,7 @@ class ComposeTextStream(
     private fun scheduleRelayout() {
         scope.launch {
             workQueue.submit {
-                mutex.withLock { linesUpdated() }
+                linesUpdated()
             }
         }
     }
@@ -801,14 +785,13 @@ private fun buildReplacement(
     val sb = StringBuilder(replacement.length)
     var i = 0
     while (i < replacement.length) {
-        val c = replacement[i]
-        when {
-            c == '\\' && i + 1 < replacement.length -> {
+        when (val c = replacement[i]) {
+            '\\' if i + 1 < replacement.length -> {
                 sb.append(replacement[i + 1])
                 i += 2
             }
 
-            c == '$' && i + 1 < replacement.length -> {
+            '$' if i + 1 < replacement.length -> {
                 val next = replacement[i + 1]
                 if (next.isDigit()) {
                     val n = next.digitToInt()

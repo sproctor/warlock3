@@ -223,7 +223,7 @@ class WindowRegistryImpl(
         while (true) {
             val current = streams.load()
             current[name]?.let { return it }
-            if (streams.compareAndSet(current, current.put(name, candidate))) {
+            if (streams.compareAndSet(current, current.putting(name, candidate))) {
                 return candidate
             }
         }
@@ -237,7 +237,7 @@ class WindowRegistryImpl(
         while (true) {
             val current = dialogs.load()
             current[name]?.let { return it }
-            if (dialogs.compareAndSet(current, current.put(name, candidate))) {
+            if (dialogs.compareAndSet(current, current.putting(name, candidate))) {
                 return candidate
             }
         }

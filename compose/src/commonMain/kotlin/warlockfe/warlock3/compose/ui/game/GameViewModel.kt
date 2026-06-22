@@ -1106,12 +1106,12 @@ class GameViewModel(
     }
 
     override fun scroll(event: ScrollEvent) {
-        _scrollEvents.update { it.add(event) }
+        _scrollEvents.update { it.adding(event) }
     }
 
     fun handledScrollEvent(event: ScrollEvent) {
         _scrollEvents.update { oldList ->
-            oldList.remove(event)
+            oldList.removing(event)
         }
     }
 
