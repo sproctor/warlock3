@@ -28,6 +28,8 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right_alt
 import warlockfe.warlock3.compose.generated.resources.logout
+import warlockfe.warlock3.compose.generated.resources.stairs_down
+import warlockfe.warlock3.compose.generated.resources.stairs_up
 import warlockfe.warlock3.core.compass.Direction
 
 /** Colors for [CompassButtons]: a "lit" available direction versus a dim unavailable one. */
@@ -119,10 +121,11 @@ fun CompassButtons(
                 colors = colors,
                 onClick = { onClick(Direction("up")) },
             ) { contentColor ->
-                DirectionArrow(
-                    rotationDegrees = 270f,
-                    size = arrowIconSize,
-                    color = contentColor,
+                // Up reads as an arrow climbing a staircase (left to right), not a plain arrow.
+                Image(
+                    modifier = Modifier.size(arrowIconSize),
+                    painter = painterResource(Res.drawable.stairs_up),
+                    colorFilter = ColorFilter.tint(contentColor),
                     contentDescription = "up",
                 )
             }
@@ -132,10 +135,11 @@ fun CompassButtons(
                 colors = colors,
                 onClick = { onClick(Direction("down")) },
             ) { contentColor ->
-                DirectionArrow(
-                    rotationDegrees = 90f,
-                    size = arrowIconSize,
-                    color = contentColor,
+                // Down reads as an arrow descending a staircase (left to right), not a plain arrow.
+                Image(
+                    modifier = Modifier.size(arrowIconSize),
+                    painter = painterResource(Res.drawable.stairs_down),
+                    colorFilter = ColorFilter.tint(contentColor),
                     contentDescription = "down",
                 )
             }
