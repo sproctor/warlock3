@@ -9,14 +9,17 @@ import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
+import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
 import warlockfe.warlock3.core.mudmobile.CreateSessionResult
 import warlockfe.warlock3.core.mudmobile.MudMobileApi
+import warlockfe.warlock3.core.mudmobile.SessionConnectInfo
 import warlockfe.warlock3.core.mudmobile.SessionStatusResult
 import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeSettings
+import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.sha256Hex
 import warlockfe.warlock3.wrayth.network.NetworkSocket
@@ -130,10 +133,32 @@ class MudMobileConnectUseCase(
             is ReadinessResult.Failed -> return MudMobileConnectResult.Failure(readiness.reason)
         }
 
-        // 4. Connect to the router and play. One attempt, generous timeout, no reconnect loop —
-        // the router holds the connection through the cloud machine's cold boot (~25-60s).
+        // 4. Connect to the router and play. The hosted session is already routable here, so this is
+        // one attempt with a generous timeout (the router holds the connection through the cloud
+        // machine's cold boot, ~25-60s).
         onStatus("Connecting to the game...")
-        return withContext(ioDispatcher) {
+        return connectToRouter(connect, credentials, gameState)
+    }
+
+    /**
+     * Open the game socket to the router and hand off to a [GameScreen.ConnectedGameState]. Used for
+     * both the initial connect and reconnects.
+     *
+     * A reconnect re-dials this same router endpoint with the same game key - no SGE login and no new
+     * session. The hosted session persists across a client disconnect, and the router still bridges
+     * any connection whose sha256(key) matches what [invoke] registered, so re-dialing simply
+     * re-attaches to the live session.
+     */
+    private suspend fun connectToRouter(
+        connect: SessionConnectInfo,
+        credentials: SimuGameCredentials,
+        gameState: GameState,
+    ): MudMobileConnectResult =
+        withContext(ioDispatcher) {
+            // Tracks the client until it's handed off to the GameViewModel. If we're cancelled (the
+            // user returned to the dashboard mid-reconnect) or fail before that handoff, the finally
+            // closes it so we don't leak the socket and the hosted session it holds open.
+            var createdClient: WarlockClient? = null
             try {
                 val streamRegistry = windowRegistryFactory.create()
                 val socket = NetworkSocket(ioDispatcher, secure = connect.tls)
@@ -143,16 +168,16 @@ class MudMobileConnectUseCase(
                         windowRegistry = streamRegistry,
                         socket = socket,
                     )
+                createdClient = client
                 // Same handshake bytes Warlock sends to play.net; the router matches sha256(key).
                 client.connect(credentials.key)
                 val gameViewModel =
                     gameViewModelFactory.create(
                         client = client,
                         windowRegistry = streamRegistry,
-                        // A "reconnect" is just registering the session again with a fresh key.
+                        // Reconnect re-dials the same router with the same key; no SGE, no new session.
                         reconnect = {
-                            val result =
-                                invoke(token, sgeSettings, connection, password, gameState)
+                            val result = connectToRouter(connect, credentials, gameState)
                             if (result is MudMobileConnectResult.Failure) {
                                 gameState.setScreen(
                                     GameScreen.ErrorState(result.message, returnTo = GameScreen.Dashboard),
@@ -161,14 +186,17 @@ class MudMobileConnectUseCase(
                         },
                     )
                 gameState.setScreen(GameScreen.ConnectedGameState(gameViewModel))
+                // Ownership has passed to the GameViewModel; don't tear it down in finally.
+                createdClient = null
                 MudMobileConnectResult.Success
             } catch (e: Exception) {
                 ensureActive()
                 logger.e(e) { "Failed to connect to MUD Mobile router" }
                 MudMobileConnectResult.Failure("Error connecting to ${connect.host}:${connect.port}: ${e.message}")
+            } finally {
+                createdClient?.close()
             }
         }
-    }
 
     /**
      * Polls `GET /api/sessions/{id}`, surfacing each status update via [onStatus]. Returns as soon
