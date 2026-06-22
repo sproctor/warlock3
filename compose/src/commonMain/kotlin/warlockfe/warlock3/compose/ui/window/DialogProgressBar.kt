@@ -15,11 +15,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.CONTRAST_CROSSOVER_LUMINANCE
 import warlockfe.warlock3.compose.util.getColorGroup
@@ -35,12 +33,13 @@ private val labelOutlineColor = Color(0xFF101216)
 private val barHorizontalPadding = 2.dp
 
 // Corner radius of the track/fill, matching the design's rounded vital bars.
-private val barCornerRadius = 2.dp
+private val barCornerRadius = 4.dp
 
 @Composable
 fun DialogProgressBar(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
+    style: TextStyle,
     modifier: Modifier = Modifier,
     barColorOverride: WarlockColor = WarlockColor.Unspecified,
     backgroundColorOverride: WarlockColor = WarlockColor.Unspecified,
@@ -81,11 +80,7 @@ fun DialogProgressBar(
                     text = text,
                     constraints = Constraints(maxWidth = size.width.toInt()),
                     maxLines = 1,
-                    style =
-                        TextStyle(
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                        ),
+                    style = style,
                 )
             val topLeft =
                 Offset(
