@@ -9,7 +9,10 @@ import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.LiteralHighlight
@@ -97,6 +100,22 @@ class ComposeTextStream(
                     }
                 }
             }.launchIn(scope)
+
+        // Re-render the buffer whenever a styling input (presets/fonts, highlights, or alterations)
+        // changes. The cached lines bake all three into their AnnotatedStrings at append time, so
+        // without this they keep the old styling until each line is otherwise rebuilt. These change
+        // rarely (the user edits settings), so a full re-render of the buffer is acceptable. drop(1)
+        // skips each flow's replayed current value (nothing has been appended yet at construction, so
+        // re-rendering then would be a no-op).
+        merge(
+            presets.drop(1).map { },
+            highlights.drop(1).map { },
+            alterations.drop(1).map { },
+        ).onEach {
+            workQueue.submit {
+                rerenderAllLines()
+            }
+        }.launchIn(scope)
     }
 
     override suspend fun appendPartial(
@@ -255,6 +274,20 @@ class ComposeTextStream(
             }
             applyViewChange(change)
         }
+    }
+
+    // Re-render every buffered line from its cached source against the current presets, highlights,
+    // and alterations, then rebuild the displayed list. Called when one of those styling inputs
+    // changes so already displayed lines pick up the new fonts/styles/replacements. Image lines have
+    // no cached source (null) and are kept as-is. cacheLines and finishedLines are index-parallel, so
+    // a serial-preserving in-place rebuild is enough.
+    private fun rerenderAllLines() {
+        for (i in finishedLines.indices) {
+            val cachedLine = cacheLines[i] ?: continue
+            val serialNumber = finishedLines[i].serialNumber
+            finishedLines[i] = cachedLineToStreamLine(cachedLine, serialNumber)
+        }
+        linesUpdated()
     }
 
     // Re-render a single buffered line in place and stage (without publishing) the resulting change.
