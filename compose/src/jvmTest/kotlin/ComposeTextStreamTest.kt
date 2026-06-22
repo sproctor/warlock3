@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -16,16 +17,20 @@ import warlockfe.warlock3.compose.ui.window.StreamLine
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
 import warlockfe.warlock3.compose.util.HighlightIndex
+import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
+import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Tests for [ComposeTextStream]'s displayed-line buffer: ordering, eviction at capacity, the
@@ -47,6 +52,9 @@ class ComposeTextStreamTest {
         suppressPrompts: Boolean = false,
         showImages: Boolean = true,
         names: List<ViewHighlight> = emptyList(),
+        presets: StateFlow<Map<String, StyleDefinition>> = MutableStateFlow(emptyMap()),
+        highlights: StateFlow<HighlightIndex> = MutableStateFlow(HighlightIndex(emptyList())),
+        alterations: StateFlow<List<CompiledAlteration>> = MutableStateFlow(emptyList()),
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         private val workQueue = StreamWorkQueue(scope)
@@ -59,10 +67,10 @@ class ComposeTextStreamTest {
                 showImages = showImages,
                 showTimestamps = false,
                 suppressPrompts = suppressPrompts,
-                highlights = MutableStateFlow(HighlightIndex(emptyList())),
+                highlights = highlights,
                 names = MutableStateFlow(names),
-                alterations = MutableStateFlow(emptyList<CompiledAlteration>()),
-                presets = MutableStateFlow(emptyMap<String, StyleDefinition>()),
+                alterations = alterations,
+                presets = presets,
                 soundPlayer = SilentSoundPlayer,
                 workQueue = workQueue,
                 scope = scope,
@@ -95,6 +103,41 @@ class ComposeTextStreamTest {
             ),
         )
 
+    // Text tagged with a named style, so a change to that style in the presets is observable.
+    private fun styledWithStyle(
+        value: String,
+        styleName: String,
+    ): StyledString = StyledString(persistentListOf(StyledStringSubstring(value, persistentListOf(WarlockStyle(styleName)))))
+
+    // A whole-word literal highlight that styles the entire line, so applying it is observable via
+    // entireLineStyle.
+    private fun entireLineHighlight(literal: String): LiteralHighlight =
+        LiteralHighlight(
+            literal = literal,
+            matchPartialWord = false,
+            ignoreCase = true,
+            style = StyleDefinition(entireLine = true, bold = true),
+            sound = null,
+        )
+
+    @OptIn(ExperimentalUuidApi::class)
+    private fun replaceAlteration(
+        pattern: String,
+        result: String,
+    ): CompiledAlteration =
+        CompiledAlteration(
+            AlterationEntity(
+                id = Uuid.random(),
+                characterId = "",
+                pattern = pattern,
+                sourceStream = null,
+                destinationStream = null,
+                result = result,
+                ignoreCase = false,
+                keepOriginal = false,
+            ),
+        )
+
     private fun List<StreamLine>.texts(): List<String?> = map { (it as StreamTextLine).text?.text }
 
     private fun List<StreamLine>.serials(): List<Long> = map { it.serialNumber }
@@ -104,9 +147,12 @@ class ComposeTextStreamTest {
         suppressPrompts: Boolean = false,
         showImages: Boolean = true,
         names: List<ViewHighlight> = emptyList(),
+        presets: StateFlow<Map<String, StyleDefinition>> = MutableStateFlow(emptyMap()),
+        highlights: StateFlow<HighlightIndex> = MutableStateFlow(HighlightIndex(emptyList())),
+        alterations: StateFlow<List<CompiledAlteration>> = MutableStateFlow(emptyList()),
         block: (Fixture) -> Unit,
     ) {
-        val fixture = Fixture(maxLines, suppressPrompts, showImages, names)
+        val fixture = Fixture(maxLines, suppressPrompts, showImages, names, presets, highlights, alterations)
         try {
             block(fixture)
         } finally {
@@ -334,6 +380,87 @@ class ComposeTextStreamTest {
                     listOf("row0 100", "row1 100", "row2 100"),
                     f.stream.lines.value
                         .texts(),
+                )
+            }
+        }
+
+    // Changing the presets must re-render lines that are already in the buffer, so a font/style change
+    // is reflected without waiting for each line to be otherwise rebuilt. A style swap leaves the text
+    // content unchanged, so this asserts on entireLineStyle (also derived from the presets at render
+    // time) as a proxy for the baked-in styling that was previously stale.
+    @Test
+    fun presetChangeRerendersExistingLines() =
+        runBlocking {
+            val presets = MutableStateFlow(emptyMap<String, StyleDefinition>())
+            withFixture(presets = presets) { f ->
+                f.stream.appendLine(styledWithStyle("a room", "roomName"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+                assertEquals(
+                    null,
+                    (
+                        f.stream.lines.value
+                            .single() as StreamTextLine
+                    ).entireLineStyle,
+                )
+
+                presets.value = mapOf("roomName" to StyleDefinition(entireLine = true, bold = true))
+                val line =
+                    f
+                        .awaitLines { lines ->
+                            (lines.singleOrNull() as? StreamTextLine)?.entireLineStyle != null
+                        }.single() as StreamTextLine
+                assertTrue(line.entireLineStyle!!.entireLine)
+                assertEquals("a room", line.text?.text)
+            }
+        }
+
+    // Changing the highlights must re-render lines already in the buffer (same staleness as presets).
+    // An entire-line highlight is observable via entireLineStyle.
+    @Test
+    fun highlightChangeRerendersExistingLines() =
+        runBlocking {
+            val highlights = MutableStateFlow(HighlightIndex(emptyList()))
+            withFixture(highlights = highlights) { f ->
+                f.stream.appendLine(text("an orc appears"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+                assertEquals(
+                    null,
+                    (
+                        f.stream.lines.value
+                            .single() as StreamTextLine
+                    ).entireLineStyle,
+                )
+
+                highlights.value = HighlightIndex(listOf(entireLineHighlight("orc")))
+                val line =
+                    f
+                        .awaitLines { lines ->
+                            (lines.singleOrNull() as? StreamTextLine)?.entireLineStyle != null
+                        }.single() as StreamTextLine
+                assertTrue(line.entireLineStyle!!.entireLine)
+                assertEquals("an orc appears", line.text?.text)
+            }
+        }
+
+    // Changing the alterations must re-render lines already in the buffer (same staleness as presets).
+    // A replacement alteration is observable via the line's text.
+    @Test
+    fun alterationChangeRerendersExistingLines() =
+        runBlocking {
+            val alterations = MutableStateFlow(emptyList<CompiledAlteration>())
+            withFixture(alterations = alterations) { f ->
+                f.stream.appendLine(text("hello world"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+                assertEquals(
+                    listOf("hello world"),
+                    f.stream.lines.value
+                        .texts(),
+                )
+
+                alterations.value = listOf(replaceAlteration(pattern = "world", result = "kotlin"))
+                assertEquals(
+                    listOf("hello kotlin"),
+                    f.awaitLines { it.texts() == listOf("hello kotlin") }.texts(),
                 )
             }
         }
