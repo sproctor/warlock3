@@ -78,15 +78,17 @@ class DefaultMacroMigrationTest {
         }
 
     @Test
-    fun existingPreMarkerUser_addsNewDefaults_andDoesNotResurrectDeleted() =
+    fun existingPreMarkerUser_backfillsAllMissingDefaults() =
         runBlocking {
             val characterStore = CharacterConfigStore(configDir, fs).also { it.load() }
             val clientStore = ClientConfigStore(configDir, fs).also { it.load() }
             val repo = newMacroRepo(characterStore)
             val settings = newClientSettings(clientStore)
 
-            // Existing user with some v1 macros (so the store is non-empty) but missing the new v2
-            // Ctrl+R pair, and with the v1 NumPad5 default deliberately absent (deleted). No marker.
+            // Existing user with only a couple of macros and no version marker (predates the marker).
+            // Defaults were added in waves without a migration, so the first run backfills the entire
+            // current default set for anything not already bound -- including a NumPad5 default they
+            // never had (or had deleted): we'd rather re-add it than leave them without it.
             repo.put("global", MacroKeyCombo(Key.DirectionUp.keyCode), "{HistoryPrev}")
             repo.put("global", MacroKeyCombo(Key.NumPad2.keyCode), "\\xs\\r\\?")
             assertNull(settings.getMacroDefaultsVersion())
@@ -99,9 +101,7 @@ class DefaultMacroMigrationTest {
                     .first()
                     .map { it.keyCombo }
                     .toSet()
-            assertTrue(ctrlR in combos, "new default added")
-            assertTrue(ctrlShiftR in combos, "new default added")
-            assertFalse(MacroKeyCombo(Key.NumPad5.keyCode) in combos, "deleted v1 default must not be resurrected")
+            assertTrue(defaultGlobalMacros.all { it.keyCombo in combos }, "every default is backfilled")
             assertEquals(MACRO_DEFAULTS_VERSION, settings.getMacroDefaultsVersion())
         }
 

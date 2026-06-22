@@ -9,10 +9,6 @@ import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 // added, so existing users get them on upgrade (see [seedAndMigrateDefaultMacros]).
 const val MACRO_DEFAULTS_VERSION = 3
 
-// Baseline assumed for users who already have macros but predate the version marker: they were
-// seeded with the version-1 set on first run, so we never re-add (or resurrect a deleted) v1 default.
-const val PRE_MARKER_BASELINE_VERSION = 1
-
 data class DefaultMacro(
     val keyCombo: MacroKeyCombo,
     val action: String,
@@ -62,16 +58,15 @@ suspend fun MacroRepository.insertDefaultMacrosIfNeeded() {
 
 /**
  * Seeds defaults on a fresh install and merges newly introduced defaults into existing installs on
- * upgrade. Only defaults newer than the recorded version whose key combo isn't already bound are
- * added, so user-rebound keys and deliberately deleted older defaults are left alone. Run once at
- * startup.
+ * upgrade. Only defaults whose key combo isn't already bound are added, so user-rebound keys are
+ * preserved. Users without a recorded version (a fresh install, or anyone from before this marker
+ * existed) get the full default set: defaults were added in waves without a migration, so some
+ * existing users are missing macros they should have. We'd rather re-add a default the user deleted
+ * (they can delete it again) than leave them without one. Once the marker is recorded, later runs add
+ * only defaults newer than it. Run once at startup.
  */
 suspend fun MacroRepository.seedAndMigrateDefaultMacros(clientSettings: ClientSettingRepository) {
-    val baseline =
-        when {
-            getGlobalCount() == 0 -> 0
-            else -> clientSettings.getMacroDefaultsVersion() ?: PRE_MARKER_BASELINE_VERSION
-        }
+    val baseline = clientSettings.getMacroDefaultsVersion() ?: 0
     addMissingGlobalMacros(
         defaultGlobalMacros.filter { it.sinceVersion > baseline }.map { it.keyCombo to it.action },
     )
