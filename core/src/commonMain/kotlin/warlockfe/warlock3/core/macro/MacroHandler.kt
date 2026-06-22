@@ -15,6 +15,10 @@ interface MacroHandler {
 
     fun historyPrev()
 
+    fun historySearch()
+
+    fun historySearchExit()
+
     fun entrySetCursorPosition(pos: Int)
 
     suspend fun pauseScripts()

@@ -116,6 +116,13 @@ class ClientSettingRepository(
         clientConfigStore.mutateClient { it.copy(autoConnectLastConnection = value) }
     }
 
+    /** How far the global default-macro set has been merged in; null on configs written before this existed. */
+    suspend fun getMacroDefaultsVersion(): Int? = clientConfigStore.currentClient().macroDefaultsVersion
+
+    suspend fun putMacroDefaultsVersion(value: Int) {
+        clientConfigStore.mutateClient { it.copy(macroDefaultsVersion = value) }
+    }
+
     // --- MUD Mobile device token ---
 
     fun observeMudMobileToken(): Flow<String?> = clientConfigStore.observeClient().map { it.mudMobileToken }

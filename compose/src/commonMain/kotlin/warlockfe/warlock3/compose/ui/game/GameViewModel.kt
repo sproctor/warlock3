@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -308,6 +309,15 @@ class GameViewModel(
     private var historyPosition = 0
     private val sendHistory = mutableListOf("")
 
+    // Reverse history search (readline-style ctrl+r, via the {HistorySearch} macro). Non-null while
+    // the entry is in "searching" mode; it holds the live query (which mirrors the entry text the
+    // user types) and the history command currently matched. historySearchIndex selects which match,
+    // counting back from the most recent (0). The entry prompt renders `searching "<query>": <match>`
+    // while this is set.
+    private val _historySearch = MutableStateFlow<HistorySearchState?>(null)
+    val historySearch: StateFlow<HistorySearchState?> = _historySearch.asStateFlow()
+    private var historySearchIndex = 0
+
     private val _leftWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
     val leftWindowUiStates: StateFlow<List<WindowUiState>> = _leftWindowUiStates.asStateFlow()
 
@@ -395,6 +405,20 @@ class GameViewModel(
         handleClientEvents()
         trackMaxTypeAhead()
         publishRunningScripts()
+        trackHistorySearchQuery()
+    }
+
+    private fun trackHistorySearchQuery() {
+        viewModelScope.launch {
+            // While searching, the entry text is the live query; whenever it changes, re-run the
+            // search from the most recent match. Ignored when not in search mode.
+            snapshotFlow { entryTextState.text.toString() }
+                .collect {
+                    if (_historySearch.value != null) {
+                        updateHistorySearch(resetIndex = true)
+                    }
+                }
+        }
     }
 
     private fun trackMinCommandLength() {
@@ -598,6 +622,20 @@ class GameViewModel(
     }
 
     override fun submit() {
+        val search = _historySearch.value
+        if (search != null) {
+            // Accept the current match: leave search mode and run it (if anything matched).
+            _historySearch.value = null
+            historySearchIndex = 0
+            val match = search.match
+            entryTextState.clearText()
+            if (match != null) {
+                updateHistory(match)
+                historyPosition = 0
+                sendCommand(match)
+            }
+            return
+        }
         val line = entryTextState.text.toString()
         entryTextState.clearText()
         updateHistory(line)
@@ -849,6 +887,44 @@ class GameViewModel(
             historyPosition--
             entryTextState.setTextAndPlaceCursorAtEnd(sendHistory[historyPosition])
         }
+    }
+
+    override fun historySearch() {
+        if (_historySearch.value == null) {
+            // Enter search mode with a fresh, empty query (the entry text becomes the query).
+            historySearchIndex = 0
+            historyPosition = 0
+            entryTextState.clearText()
+            updateHistorySearch(resetIndex = true)
+        } else {
+            // Already searching: step further back to the next older match.
+            historySearchIndex++
+            updateHistorySearch(resetIndex = false)
+        }
+    }
+
+    override fun historySearchExit() {
+        val current = _historySearch.value ?: return
+        // Leave search mode, keeping the matched command in the entry for editing or sending.
+        _historySearch.value = null
+        historySearchIndex = 0
+        entryTextState.setTextAndPlaceCursorAtEnd(current.match ?: "")
+    }
+
+    // Recompute the current match for the active history search from the live query (the entry text).
+    // sendHistory is newest-first, with index 0 reserved for the in-progress buffer.
+    private fun updateHistorySearch(resetIndex: Boolean) {
+        if (resetIndex) {
+            historySearchIndex = 0
+        }
+        val query = entryTextState.text.toString()
+        val matches = sendHistory.drop(1).filter { it.isNotEmpty() && it.contains(query, ignoreCase = true) }
+        historySearchIndex = historySearchIndex.coerceIn(0, maxOf(0, matches.size - 1))
+        _historySearch.value =
+            HistorySearchState(
+                query = query,
+                match = matches.getOrNull(historySearchIndex),
+            )
     }
 
     // TODO: convert this into a simpler representation
@@ -1263,3 +1339,13 @@ class GameViewModel(
         entrySetSelection(TextRange(pos))
     }
 }
+
+/**
+ * UI state for readline-style reverse history search. [query] is what the user has typed so far and
+ * [match] is the history command currently matched (or null if nothing matches). While this is
+ * non-null the entry prompt shows `searching "<query>": <match>`.
+ */
+data class HistorySearchState(
+    val query: String,
+    val match: String?,
+)

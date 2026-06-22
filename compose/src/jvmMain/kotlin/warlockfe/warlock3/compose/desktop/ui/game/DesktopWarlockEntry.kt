@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -46,6 +47,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.game.HistorySearchState
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
@@ -78,6 +80,7 @@ fun DesktopWarlockEntry(
     val presets by viewModel.presets.collectAsState(emptyMap())
     val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
     val style = presets["entry"] ?: StyleDefinition()
+    val historySearch by viewModel.historySearch.collectAsState()
     DesktopWarlockEntryContent(
         style = style,
         defaultStyle = defaultStyle,
@@ -87,6 +90,7 @@ fun DesktopWarlockEntry(
         castTime = castTime,
         sendCommand = viewModel::submit,
         saveStyle = viewModel::saveEntryStyle,
+        historySearch = historySearch,
         modifier = modifier,
     )
 }
@@ -102,6 +106,7 @@ fun DesktopWarlockEntryContent(
     castTime: Int,
     saveStyle: (StyleDefinition) -> Unit,
     modifier: Modifier = Modifier,
+    historySearch: HistorySearchState? = null,
 ) {
     var showSettingsDialog by remember { mutableStateOf(false) }
     val usableStyle = style.mergeWith(defaultStyle)
@@ -170,14 +175,34 @@ fun DesktopWarlockEntryContent(
                 decorator =
                     TextFieldDecorator { innerTextField ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = ">",
-                                style = textStyle,
-                                color = gameChrome.textFaint,
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Box(Modifier.weight(1f)) {
-                                innerTextField()
+                            if (historySearch != null) {
+                                Text(
+                                    text = "searching \"${historySearch.query}\": ",
+                                    style = textStyle,
+                                    color = gameChrome.textFaint,
+                                )
+                                Text(
+                                    text = historySearch.match ?: "",
+                                    style = textStyle,
+                                    color = usableStyle.textColor.toColor(),
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                // Keep the (hidden) field attached so it retains focus and keeps
+                                // receiving the typed query; the query is shown in the label above.
+                                Box(Modifier.size(0.dp)) {
+                                    innerTextField()
+                                }
+                            } else {
+                                Text(
+                                    text = ">",
+                                    style = textStyle,
+                                    color = gameChrome.textFaint,
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Box(Modifier.weight(1f)) {
+                                    innerTextField()
+                                }
                             }
                         }
                     },
