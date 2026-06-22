@@ -152,6 +152,7 @@ internal fun WindowViewScaffold(
                                 onClearClick = clearStream,
                                 onCloseClick = onCloseClick,
                             ),
+                        windowName = uiState.name,
                         stream = data.stream,
                         scrollState = scrollState,
                         style = uiState.style.mergeWith(defaultStyle),
@@ -218,6 +219,7 @@ internal fun WindowViewScaffold(
 
 @Composable
 private fun WindowViewContent(
+    windowName: String,
     stream: ComposeTextStream,
     scrollState: LazyListState,
     style: StyleDefinition,
@@ -238,6 +240,10 @@ private fun WindowViewContent(
 
     val lines = stream.lines.collectAsState(emptyList()).value
 
+    val findController = LocalWindowFindController.current
+    val findUiState by findController.state.collectAsState()
+    val activeFind = findUiState?.takeIf { it.windowName == windowName }
+
     var clickOffset by remember { mutableStateOf<Offset?>(null) }
     var openMenuId by remember { mutableStateOf<Int?>(null) }
 
@@ -252,128 +258,149 @@ private fun WindowViewContent(
         }
     }
 
-    SelectionContainer(modifier = modifier) {
-        BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .clipToBounds()
-                .background(backgroundColor),
-        ) {
-            backgroundImage?.takeIf { it.image.isNotBlank() }?.let { image ->
-                WindowBackgroundImage(
-                    backgroundImage = image,
-                    width = maxWidth,
-                    height = maxHeight,
-                    modifier = Modifier.align(image.backgroundAlignment()),
-                )
-            }
-            listContainer(scrollState) {
-                LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(vertical = 4.dp)
-                            .semantics {
-                                isTraversalGroup = true
-                                liveRegion = LiveRegionMode.Polite
-                            },
-                    state = scrollState,
-                ) {
-                    items(
-                        count = lines.size,
-                        key = { index -> lines[index].serialNumber },
-                    ) { index ->
-                        when (val line = lines[index]) {
-                            is StreamTextLine -> {
-                                if (line.text != null &&
-                                    line.isShowing(openWindows) &&
-                                    (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))
-                                ) {
-                                    var positionInParent by remember { mutableStateOf(Offset.Zero) }
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .onGloballyPositioned {
-                                                    positionInParent = it.positionInParent()
-                                                }.background(
-                                                    line.entireLineStyle?.backgroundColor?.toColor()
-                                                        ?: Color.Unspecified,
-                                                ).padding(start = 4.dp, end = 8.dp),
+    Box(modifier.fillMaxSize()) {
+        SelectionContainer {
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxSize()
+                    .clipToBounds()
+                    .background(backgroundColor),
+            ) {
+                backgroundImage?.takeIf { it.image.isNotBlank() }?.let { image ->
+                    WindowBackgroundImage(
+                        backgroundImage = image,
+                        width = maxWidth,
+                        height = maxHeight,
+                        modifier = Modifier.align(image.backgroundAlignment()),
+                    )
+                }
+                listContainer(scrollState) {
+                    LazyColumn(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(vertical = 4.dp)
+                                .semantics {
+                                    isTraversalGroup = true
+                                    liveRegion = LiveRegionMode.Polite
+                                },
+                        state = scrollState,
+                    ) {
+                        items(
+                            count = lines.size,
+                            key = { index -> lines[index].serialNumber },
+                        ) { index ->
+                            when (val line = lines[index]) {
+                                is StreamTextLine -> {
+                                    if (line.text != null &&
+                                        line.isShowing(openWindows) &&
+                                        (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))
                                     ) {
-                                        BasicText(
+                                        var positionInParent by remember { mutableStateOf(Offset.Zero) }
+                                        Box(
                                             modifier =
                                                 Modifier
-                                                    .pointerInput(Unit) {
-                                                        awaitPointerEventScope {
-                                                            while (true) {
-                                                                val event = awaitPointerEvent()
-                                                                if (event.type == PointerEventType.Press) {
-                                                                    Logger.d { "Click: $event" }
-                                                                    clickOffset =
-                                                                        event.changes
-                                                                            .firstOrNull()
-                                                                            ?.position
-                                                                            ?.let { it + positionInParent }
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                            text = line.text,
-                                            style =
-                                                TextStyle(
-                                                    color = textColor,
-                                                    fontFamily = fontFamily,
-                                                    fontSize = fontSize,
-                                                    fontWeight = fontWeight,
-                                                ),
-                                        )
-                                    }
-                                }
-                            }
-
-                            is StreamImageLine -> {
-                                val defaultHeight = 80.dp
-                                Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
-                                    val painter =
-                                        rememberAsyncImagePainter(
-                                            ImageRequest
-                                                .Builder(LocalPlatformContext.current)
-                                                .data(line.url)
-                                                .size(Size.ORIGINAL)
-                                                .build(),
-                                        )
-                                    val painterState by painter.state.collectAsState()
-                                    when (val state = painterState) {
-                                        is AsyncImagePainter.State.Success -> {
-                                            val interactionSource = remember { MutableInteractionSource() }
-                                            val hovered by interactionSource.collectIsHoveredAsState()
-                                            Logger.d { "Hovered: $hovered" }
-                                            val height =
-                                                if (hovered) {
-                                                    with(LocalDensity.current) {
-                                                        max(
-                                                            state.result.image.height
-                                                                .toDp(),
-                                                            defaultHeight,
-                                                        )
-                                                    }
-                                                } else {
-                                                    defaultHeight
-                                                }
-                                            Image(
+                                                    .fillMaxWidth()
+                                                    .onGloballyPositioned {
+                                                        positionInParent = it.positionInParent()
+                                                    }.background(
+                                                        line.entireLineStyle?.backgroundColor?.toColor()
+                                                            ?: Color.Unspecified,
+                                                    ).padding(start = 4.dp, end = 8.dp),
+                                        ) {
+                                            BasicText(
                                                 modifier =
                                                     Modifier
-                                                        .hoverable(interactionSource)
-                                                        .wrapContentSize(unbounded = true, align = Alignment.TopStart)
-                                                        .animateContentSize()
-                                                        .height(height),
-                                                painter = painter,
-                                                contentDescription = null,
+                                                        .pointerInput(Unit) {
+                                                            awaitPointerEventScope {
+                                                                while (true) {
+                                                                    val event = awaitPointerEvent()
+                                                                    if (event.type == PointerEventType.Press) {
+                                                                        Logger.d { "Click: $event" }
+                                                                        clickOffset =
+                                                                            event.changes
+                                                                                .firstOrNull()
+                                                                                ?.position
+                                                                                ?.let { it + positionInParent }
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                text =
+                                                    if (activeFind != null) {
+                                                        val ranges =
+                                                            activeFind.matchRangesBySerial[line.serialNumber]
+                                                        if (ranges != null) {
+                                                            line.text.withFindHighlight(
+                                                                ranges = ranges,
+                                                                currentRange =
+                                                                    if (line.serialNumber == activeFind.currentSerial) {
+                                                                        activeFind.currentRange
+                                                                    } else {
+                                                                        null
+                                                                    },
+                                                            )
+                                                        } else {
+                                                            line.text
+                                                        }
+                                                    } else {
+                                                        line.text
+                                                    },
+                                                style =
+                                                    TextStyle(
+                                                        color = textColor,
+                                                        fontFamily = fontFamily,
+                                                        fontSize = fontSize,
+                                                        fontWeight = fontWeight,
+                                                    ),
                                             )
                                         }
+                                    }
+                                }
 
-                                        else -> {}
+                                is StreamImageLine -> {
+                                    val defaultHeight = 80.dp
+                                    Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
+                                        val painter =
+                                            rememberAsyncImagePainter(
+                                                ImageRequest
+                                                    .Builder(LocalPlatformContext.current)
+                                                    .data(line.url)
+                                                    .size(Size.ORIGINAL)
+                                                    .build(),
+                                            )
+                                        val painterState by painter.state.collectAsState()
+                                        when (val state = painterState) {
+                                            is AsyncImagePainter.State.Success -> {
+                                                val interactionSource = remember { MutableInteractionSource() }
+                                                val hovered by interactionSource.collectIsHoveredAsState()
+                                                Logger.d { "Hovered: $hovered" }
+                                                val height =
+                                                    if (hovered) {
+                                                        with(LocalDensity.current) {
+                                                            max(
+                                                                state.result.image.height
+                                                                    .toDp(),
+                                                                defaultHeight,
+                                                            )
+                                                        }
+                                                    } else {
+                                                        defaultHeight
+                                                    }
+                                                Image(
+                                                    modifier =
+                                                        Modifier
+                                                            .hoverable(interactionSource)
+                                                            .wrapContentSize(unbounded = true, align = Alignment.TopStart)
+                                                            .animateContentSize()
+                                                            .height(height),
+                                                    painter = painter,
+                                                    contentDescription = null,
+                                                )
+                                            }
+
+                                            else -> {}
+                                        }
                                     }
                                 }
                             }
@@ -382,16 +409,39 @@ private fun WindowViewContent(
                 }
             }
         }
+        if (activeFind != null) {
+            FindOverlay(
+                state = activeFind,
+                onQueryChange = findController::setQuery,
+                onNext = findController::next,
+                onPrevious = findController::previous,
+                onClose = findController::close,
+                onFocusChanged = findController::setFocused,
+                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+            )
+        }
     }
 
     if (menuData != null && menuData.id == openMenuId) {
         actionContextMenu(clickOffset, menuData) { openMenuId = null }
     }
 
+    // Jump the current find match into view. While find is active, suppress the sticky auto-scroll
+    // below so newly-arriving lines don't yank the view away from the match.
+    LaunchedEffect(activeFind?.currentSerial) {
+        val serial = activeFind?.currentSerial
+        if (serial != null) {
+            val index = lines.indexOfFirst { it.serialNumber == serial }
+            if (index >= 0) {
+                scrollState.scrollToItem(index)
+            }
+        }
+    }
+
     var sticky by remember { mutableStateOf(true) }
     val lastSerial = lines.lastOrNull()?.serialNumber
     LaunchedEffect(lastSerial) {
-        if (lastSerial != null && sticky) {
+        if (lastSerial != null && sticky && activeFind == null) {
             lines.lastIndex.takeIf { it > -1 }?.let { index ->
                 scrollState.scrollToItem(index)
             }

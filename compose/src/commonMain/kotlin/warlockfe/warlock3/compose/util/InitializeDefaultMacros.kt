@@ -7,7 +7,7 @@ import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
 // Bump this and tag new entries in [defaultGlobalMacros] with the new number whenever defaults are
 // added, so existing users get them on upgrade (see [seedAndMigrateDefaultMacros]).
-const val MACRO_DEFAULTS_VERSION = 2
+const val MACRO_DEFAULTS_VERSION = 3
 
 // Baseline assumed for users who already have macros but predate the version marker: they were
 // seeded with the version-1 set on first run, so we never re-add (or resurrect a deleted) v1 default.
@@ -49,6 +49,8 @@ val defaultGlobalMacros: List<DefaultMacro> =
         DefaultMacro(MacroKeyCombo(Key.K.keyCode, ctrl = true), "{ClearToEnd}", 1),
         DefaultMacro(MacroKeyCombo(Key.R.keyCode, ctrl = true), "{HistorySearch}", 2),
         DefaultMacro(MacroKeyCombo(Key.R.keyCode, ctrl = true, shift = true), "{HistorySearchExit}", 2),
+        DefaultMacro(MacroKeyCombo(Key.F.keyCode, ctrl = true), "{FindNext}", 3),
+        DefaultMacro(MacroKeyCombo(Key.F.keyCode, ctrl = true, shift = true), "{FindPrev}", 3),
     )
 
 /** Seeds the full current default set, but only when no global macros exist (used by reset-to-defaults). */
