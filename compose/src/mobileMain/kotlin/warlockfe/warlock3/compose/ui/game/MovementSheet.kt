@@ -30,8 +30,6 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.east
-import warlockfe.warlock3.compose.generated.resources.keyboard_double_arrow_down
-import warlockfe.warlock3.compose.generated.resources.keyboard_double_arrow_up
 import warlockfe.warlock3.compose.generated.resources.logout
 import warlockfe.warlock3.compose.generated.resources.north
 import warlockfe.warlock3.compose.generated.resources.north_east
@@ -39,6 +37,8 @@ import warlockfe.warlock3.compose.generated.resources.north_west
 import warlockfe.warlock3.compose.generated.resources.south
 import warlockfe.warlock3.compose.generated.resources.south_east
 import warlockfe.warlock3.compose.generated.resources.south_west
+import warlockfe.warlock3.compose.generated.resources.stairs_down
+import warlockfe.warlock3.compose.generated.resources.stairs_up
 import warlockfe.warlock3.compose.generated.resources.west
 import warlockfe.warlock3.core.compass.Direction
 
@@ -104,13 +104,13 @@ private fun DirectionGrid(
         ) {
             DirectionPill(
                 label = "up",
-                icon = Res.drawable.keyboard_double_arrow_up,
+                icon = Res.drawable.stairs_up,
                 lit = available.contains("up"),
                 onClick = { onMove("up") },
             )
             DirectionPill(
                 label = "down",
-                icon = Res.drawable.keyboard_double_arrow_down,
+                icon = Res.drawable.stairs_down,
                 lit = available.contains("down"),
                 onClick = { onMove("down") },
             )
