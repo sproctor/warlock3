@@ -56,6 +56,10 @@ class SgeViewModel(
     private var characterName: String? = null
     private var gameCode: String? = null
 
+    // Set once the game screen is opening, after which the SGE client is shut down and its events
+    // (e.g. the connection-closed error from tearing down the SGE socket) must not navigate anymore.
+    private var gameLaunched = false
+
     // The saved accounts shown on the first step of the wizard, so the user can pick one (logging in
     // with its saved password) instead of re-typing it. Re-queried live so a delete in settings shows.
     val accounts: Flow<List<AccountEntity>> = accountRepository.observeAll()
@@ -71,6 +75,9 @@ class SgeViewModel(
                 navigate(SgeViewState.SgeAccountSelector)
                 client.eventFlow.collect { event ->
                     logger.d { "Got event: $event" }
+                    // Once the game is launching the SGE client is being torn down; ignore any of its
+                    // remaining events so a late error can't navigate us off the game screen.
+                    if (gameLaunched) return@collect
                     when (event) {
                         SgeEvent.SgeLoginSucceededEvent -> {
                             client.requestGameList()
@@ -125,7 +132,16 @@ class SgeViewModel(
                                 }
                             }
 
+                            // The SGE login is finished and the game is about to open. Shut the SGE
+                            // client down first: closing the connection makes its read loop emit a
+                            // late error event, and this collector is still active, so that event
+                            // would otherwise navigate us off the game screen to an error notice.
+                            // close() cancels the read loop feeding eventFlow, and gameLaunched stops
+                            // this collector from acting on anything already in flight.
+                            gameLaunched = true
+                            client.close()
                             connectToGame(credentials)
+                            return@collect
                         }
                     }
                 }

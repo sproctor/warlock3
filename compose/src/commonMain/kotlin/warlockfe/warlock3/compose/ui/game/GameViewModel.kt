@@ -24,6 +24,8 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -354,6 +356,14 @@ class GameViewModel(
     val disconnected = client.disconnected
 
     val canReconnect: Boolean = reconnectAction != null
+
+    // True while a reconnect is in flight, so the UI can show a progress dialog/indicator. A reconnect
+    // re-dials the existing host/port/key (no SGE login), but the connection can still take a moment -
+    // for a hosted session the router may hold the dial through a cold boot - so the user needs feedback.
+    private val _reconnecting = MutableStateFlow(false)
+    val reconnecting: StateFlow<Boolean> = _reconnecting.asStateFlow()
+
+    private var reconnectJob: Job? = null
 
     val menuData = client.menuData
 
@@ -1116,6 +1126,18 @@ class GameViewModel(
     }
 
     suspend fun close() {
+        // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
+        // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
+        // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.
+        reconnectJob?.let { job ->
+            reconnectJob = null
+            job.cancelAndJoin()
+        }
+        closeClient()
+    }
+
+    /** Tear down this game's client and window registry without touching any reconnect in flight. */
+    private suspend fun closeClient() {
         if (!client.disconnected.value) {
             client.sendCommandDirect("quit")
         }
@@ -1126,14 +1148,23 @@ class GameViewModel(
     /**
      * Reconnect using the same credentials. This spins up a fresh client, window registry, and
      * GameViewModel (replacing this screen), so all prior game state is cleared. The old client and
-     * window registry are then released. No-op if reconnecting isn't supported for this session.
+     * window registry are then released. No-op if reconnecting isn't supported for this session, or
+     * if a reconnect is already running.
      */
     fun reconnect() {
         val action = reconnectAction ?: return
-        viewModelScope.launch {
-            action()
-            close()
-        }
+        if (_reconnecting.value) return
+        _reconnecting.value = true
+        reconnectJob =
+            viewModelScope.launch {
+                try {
+                    action()
+                    // The reconnect installed a fresh game screen; release this (old) client.
+                    closeClient()
+                } finally {
+                    _reconnecting.value = false
+                }
+            }
     }
 
     fun getCurrentTime(): Instant = client.getCurrentTime()

@@ -18,6 +18,7 @@ import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.ui.DesktopMainScreen
+import warlockfe.warlock3.compose.desktop.ui.game.DesktopReconnectingDialog
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
@@ -78,6 +79,19 @@ fun DecoratedWindowScope.WarlockApp(
     val gameViewModel = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel
     val disconnectedFlow = remember(gameViewModel) { gameViewModel?.disconnected ?: MutableStateFlow(false) }
     val disconnected by disconnectedFlow.collectAsState()
+    val reconnectingFlow = remember(gameViewModel) { gameViewModel?.reconnecting ?: MutableStateFlow(false) }
+    val reconnecting by reconnectingFlow.collectAsState()
+    // Leaving the game for the dashboard: close the game client and cancel any in-flight reconnect
+    // (which also closes the SGE client it opened). Shared by the title bar and the reconnect dialog.
+    val goToDashboard: () -> Unit = {
+        val screen = gameState.screen
+        if (screen is GameScreen.ConnectedGameState) {
+            scope.launch {
+                screen.viewModel.close()
+                gameState.setScreen(GameScreen.Dashboard)
+            }
+        }
+    }
     TitleBarView(
         title = title,
         sideBarVisible = sideBarVisible,
@@ -86,15 +100,7 @@ fun DecoratedWindowScope.WarlockApp(
         disconnected = disconnected,
         canReconnect = gameViewModel?.canReconnect == true,
         reconnect = { (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.reconnect() },
-        goToDashboard = {
-            val screen = gameState.screen
-            if (screen is GameScreen.ConnectedGameState) {
-                scope.launch {
-                    screen.viewModel.close()
-                    gameState.setScreen(GameScreen.Dashboard)
-                }
-            }
-        },
+        goToDashboard = goToDashboard,
         openNewWindow = openNewWindow,
         showSettingsDialog = { showSettings = true },
         disconnect = {
@@ -202,6 +208,9 @@ fun DecoratedWindowScope.WarlockApp(
     }
     if (showAboutDialog) {
         AboutDialog(warlockVersion) { showAboutDialog = false }
+    }
+    if (reconnecting) {
+        DesktopReconnectingDialog(onGoToDashboard = goToDashboard)
     }
 
     DesktopMainScreen(
