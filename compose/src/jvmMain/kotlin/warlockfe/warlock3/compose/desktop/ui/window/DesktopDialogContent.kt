@@ -174,6 +174,7 @@ private fun ProgressBarWithColorMenu(
             barColorOverride = barColor,
             backgroundColorOverride = backgroundColor,
             textColorOverride = textColor,
+            style = labelStyle,
         )
     }
 
