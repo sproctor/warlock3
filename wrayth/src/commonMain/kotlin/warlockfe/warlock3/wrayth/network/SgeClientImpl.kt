@@ -16,6 +16,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -353,46 +355,55 @@ class SgeClientImpl(
             logger.e { "Unable to connect to server" }
             return AutoConnectResult.Failure("Could not connect to SGE")
         }
-        login(username = connection.username, password = password)
 
+        // Drive the login as one continuous collection rather than re-subscribing per step. eventFlow
+        // has no replay or buffer, so a response that arrived in the gap between two eventFlow.first()
+        // subscriptions was dropped, and the next step then waited out the whole timeout. A single
+        // uninterrupted collector always has a subscriber present (the read loop's emits rendezvous
+        // with it instead of being dropped), and sending the login from onSubscription guarantees we
+        // are subscribed before the first response can come back. Each step returns null to keep
+        // collecting; the first non-null result completes the flow.
         return withTimeoutOrNull(30.seconds) {
-            while (true) {
-                when (val event = eventFlow.first()) {
-                    is SgeEvent.SgeLoginSucceededEvent -> {
-                        selectGame(connection.code)
-                    }
+            eventFlow
+                .onSubscription {
+                    login(username = connection.username, password = password)
+                }.mapNotNull { event ->
+                    when (event) {
+                        is SgeEvent.SgeLoginSucceededEvent -> {
+                            selectGame(connection.code)
+                            null
+                        }
 
-                    is SgeEvent.SgeGameSelectedEvent -> {
-                        requestCharacterList()
-                    }
+                        is SgeEvent.SgeGameSelectedEvent -> {
+                            requestCharacterList()
+                            null
+                        }
 
-                    is SgeEvent.SgeCharactersReadyEvent -> {
-                        val characters = event.characters
-                        val sgeCharacter = characters.firstOrNull { it.name.equals(connection.character, true) }
-                        if (sgeCharacter == null) {
-                            return@withTimeoutOrNull AutoConnectResult.Failure(
-                                "Could not find character: ${connection.character}",
-                            )
-                        } else {
-                            selectCharacter(sgeCharacter.code)
+                        is SgeEvent.SgeCharactersReadyEvent -> {
+                            val sgeCharacter =
+                                event.characters.firstOrNull { it.name.equals(connection.character, true) }
+                            if (sgeCharacter == null) {
+                                AutoConnectResult.Failure("Could not find character: ${connection.character}")
+                            } else {
+                                selectCharacter(sgeCharacter.code)
+                                null
+                            }
+                        }
+
+                        is SgeEvent.SgeReadyToPlayEvent -> {
+                            AutoConnectResult.Success(event.credentials)
+                        }
+
+                        is SgeEvent.SgeErrorEvent -> {
+                            AutoConnectResult.Failure("Error code (${event.errorCode})")
+                        }
+
+                        else -> {
+                            logger.i { "Unrecognized event: $event" }
+                            null
                         }
                     }
-
-                    is SgeEvent.SgeReadyToPlayEvent -> {
-                        return@withTimeoutOrNull AutoConnectResult.Success(event.credentials)
-                    }
-
-                    is SgeEvent.SgeErrorEvent -> {
-                        return@withTimeoutOrNull AutoConnectResult.Failure("Error code (${event.errorCode})")
-                    }
-
-                    else -> {
-                        logger.i { "Unrecognized event: $event" }
-                    }
-                }
-            }
-            @Suppress("UNREACHABLE_CODE")
-            null
+                }.first()
         } ?: AutoConnectResult.Failure("Timed out waiting for SGE response")
     }
 }
