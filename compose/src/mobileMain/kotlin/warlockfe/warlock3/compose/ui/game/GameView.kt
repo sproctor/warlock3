@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -160,6 +161,29 @@ fun GameView(
                     }
                 },
                 text = { Text(macroError!!) },
+            )
+        }
+        val reconnecting by viewModel.reconnecting.collectAsState()
+        if (reconnecting) {
+            AlertDialog(
+                // Not dismissible: a reconnect is in flight; the only out is going to the dashboard,
+                // which tears the connection down (see navigateToDashboard -> GameViewModel.close).
+                onDismissRequest = {},
+                title = { Text("Reconnecting") },
+                text = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CircularProgressIndicator()
+                        Text("Reconnecting to the game...")
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = navigateToDashboard) {
+                        Text("Go to dashboard")
+                    }
+                },
             )
         }
     }
