@@ -18,7 +18,7 @@ class MacroRepository(
     private val keyMap: Map<String, Long>,
     private val reverseKeyMap: Map<Long, String>,
 ) {
-    suspend fun getGlobalCount(): Int = store.current(GLOBAL_CHARACTER_ID).macros.size
+    fun getGlobalCount(): Int = store.current(GLOBAL_CHARACTER_ID).macros.size
 
     fun observeGlobalMacros(): Flow<List<Macro>> = store.observe(GLOBAL_CHARACTER_ID).map { it.macros.toMacros() }
 
@@ -58,6 +58,17 @@ class MacroRepository(
     suspend fun deleteAllGlobals() {
         store.mutate(GLOBAL_CHARACTER_ID) { current ->
             current.copy(macros = emptyMap())
+        }
+    }
+
+    /** Adds each default whose key combo isn't already bound globally; existing bindings are left as-is. */
+    suspend fun addMissingGlobalMacros(defaults: List<Pair<MacroKeyCombo, String>>) {
+        store.mutate(GLOBAL_CHARACTER_ID) { current ->
+            val additions =
+                defaults
+                    .associate { (combo, action) -> combo.toKeyString(reverseKeyMap) to action }
+                    .filterKeys { it !in current.macros }
+            if (additions.isEmpty()) current else current.copy(macros = current.macros + additions)
         }
     }
 

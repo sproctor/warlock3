@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -50,8 +51,11 @@ import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.DialogWindowData
+import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowData
+import warlockfe.warlock3.compose.ui.window.WindowFindController
+import warlockfe.warlock3.compose.ui.window.WindowFindUiState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
@@ -165,6 +169,35 @@ class GameViewModel(
 
     private val _macroError = MutableStateFlow<String?>(null)
     val macroError = _macroError.asStateFlow()
+
+    // Find-in-window ("Ctrl+F") state. Non-null while the find overlay is open. findMatches is ordered
+    // newest-first (the bottom-most occurrence is index 0), so stepping "next" moves further up the
+    // buffer. findWindowName is the window captured when find opened; the overlay renders only there.
+    private val findStateFlow = MutableStateFlow<WindowFindUiState?>(null)
+    private val findFocusedFlow = MutableStateFlow(false)
+    private var findMatches: List<FindMatch> = emptyList()
+    private var findIndex = 0
+    private var findQueryText = ""
+    private var findWindowName = "main"
+
+    val windowFindController: WindowFindController =
+        object : WindowFindController {
+            override val state: StateFlow<WindowFindUiState?> = findStateFlow.asStateFlow()
+
+            override val focused: StateFlow<Boolean> = findFocusedFlow.asStateFlow()
+
+            override fun setQuery(query: String) = updateFindQuery(query)
+
+            override fun next() = findStep(1)
+
+            override fun previous() = findStep(-1)
+
+            override fun close() = closeFind()
+
+            override fun setFocused(focused: Boolean) {
+                findFocusedFlow.value = focused
+            }
+        }
 
     // Saved by macros
     private var storedText: String = ""
@@ -310,6 +343,15 @@ class GameViewModel(
     private var historyPosition = 0
     private val sendHistory = mutableListOf("")
 
+    // Reverse history search (readline-style ctrl+r, via the {HistorySearch} macro). Non-null while
+    // the entry is in "searching" mode; it holds the live query (which mirrors the entry text the
+    // user types) and the history command currently matched. historySearchIndex selects which match,
+    // counting back from the most recent (0). The entry prompt renders `searching "<query>": <match>`
+    // while this is set.
+    private val _historySearch = MutableStateFlow<HistorySearchState?>(null)
+    val historySearch: StateFlow<HistorySearchState?> = _historySearch.asStateFlow()
+    private var historySearchIndex = 0
+
     private val _leftWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
     val leftWindowUiStates: StateFlow<List<WindowUiState>> = _leftWindowUiStates.asStateFlow()
 
@@ -405,6 +447,20 @@ class GameViewModel(
         handleClientEvents()
         trackMaxTypeAhead()
         publishRunningScripts()
+        trackHistorySearchQuery()
+    }
+
+    private fun trackHistorySearchQuery() {
+        viewModelScope.launch {
+            // While searching, the entry text is the live query; whenever it changes, re-run the
+            // search from the most recent match. Ignored when not in search mode.
+            snapshotFlow { entryTextState.text.toString() }
+                .collect {
+                    if (_historySearch.value != null) {
+                        updateHistorySearch(resetIndex = true)
+                    }
+                }
+        }
     }
 
     private fun trackMinCommandLength() {
@@ -608,6 +664,20 @@ class GameViewModel(
     }
 
     override fun submit() {
+        val search = _historySearch.value
+        if (search != null) {
+            // Accept the current match: leave search mode and run it (if anything matched).
+            _historySearch.value = null
+            historySearchIndex = 0
+            val match = search.match
+            entryTextState.clearText()
+            if (match != null) {
+                updateHistory(match)
+                historyPosition = 0
+                sendCommand(match)
+            }
+            return
+        }
         val line = entryTextState.text.toString()
         entryTextState.clearText()
         updateHistory(line)
@@ -859,6 +929,141 @@ class GameViewModel(
             historyPosition--
             entryTextState.setTextAndPlaceCursorAtEnd(sendHistory[historyPosition])
         }
+    }
+
+    override fun historySearch() {
+        if (_historySearch.value == null) {
+            // Enter search mode with a fresh, empty query (the entry text becomes the query).
+            historySearchIndex = 0
+            historyPosition = 0
+            entryTextState.clearText()
+            updateHistorySearch(resetIndex = true)
+        } else {
+            // Already searching: step further back to the next older match.
+            historySearchIndex++
+            updateHistorySearch(resetIndex = false)
+        }
+    }
+
+    override fun historySearchExit() {
+        val current = _historySearch.value ?: return
+        // Leave search mode, keeping the matched command in the entry for editing or sending.
+        _historySearch.value = null
+        historySearchIndex = 0
+        entryTextState.setTextAndPlaceCursorAtEnd(current.match ?: "")
+    }
+
+    // Recompute the current match for the active history search from the live query (the entry text).
+    // A blank query matches nothing; a blank or otherwise non-matching query keeps the previously
+    // matched entry selected rather than clearing it. sendHistory is newest-first, with index 0
+    // reserved for the in-progress buffer.
+    private fun updateHistorySearch(resetIndex: Boolean) {
+        val query = entryTextState.text.toString()
+        val matches =
+            if (query.isBlank()) {
+                emptyList()
+            } else {
+                sendHistory.drop(1).filter { it.isNotEmpty() && it.contains(query, ignoreCase = true) }
+            }
+        val match =
+            if (matches.isEmpty()) {
+                // Keep the previously matched entry selected.
+                _historySearch.value?.match
+            } else {
+                if (resetIndex) {
+                    historySearchIndex = 0
+                }
+                historySearchIndex = historySearchIndex.coerceIn(0, matches.size - 1)
+                matches[historySearchIndex]
+            }
+        _historySearch.value =
+            HistorySearchState(
+                query = query,
+                match = match,
+            )
+    }
+
+    override fun findNext() {
+        if (findStateFlow.value == null) openFind() else findStep(1)
+    }
+
+    override fun findPrev() {
+        if (findStateFlow.value == null) openFind() else findStep(-1)
+    }
+
+    // Open the find overlay over the currently selected window. No-op if that window has no text
+    // stream (e.g. a dialog window). Starts with an empty query, so nothing matches until the user
+    // types.
+    private fun openFind() {
+        val target = selectedWindow.value
+        if ((streamWindowUiState(target).data as? StreamWindowData)?.stream == null) return
+        findWindowName = target
+        findQueryText = ""
+        findIndex = 0
+        recomputeFindMatches()
+    }
+
+    private fun updateFindQuery(query: String) {
+        if (findStateFlow.value == null) return
+        findQueryText = query
+        findIndex = 0
+        recomputeFindMatches()
+    }
+
+    // Step to another match, wrapping around. +1 is "next" (further up/older), -1 is "previous".
+    private fun findStep(delta: Int) {
+        if (findStateFlow.value == null) return
+        val size = findMatches.size
+        if (size == 0) return
+        findIndex = ((findIndex + delta) % size + size) % size
+        publishFindState()
+    }
+
+    private fun closeFind() {
+        findStateFlow.value = null
+        findFocusedFlow.value = false
+        findMatches = emptyList()
+        findIndex = 0
+        findQueryText = ""
+    }
+
+    // Re-scan the target window's lines for the current query, ordering matches newest-first so the
+    // bottom-most occurrence is selected first.
+    private fun recomputeFindMatches() {
+        val stream = (streamWindowUiState(findWindowName).data as? StreamWindowData)?.stream
+        val docOrder = mutableListOf<FindMatch>()
+        if (findQueryText.isNotEmpty() && stream != null) {
+            stream.lines.value.forEach { line ->
+                val text = (line as? StreamTextLine)?.text?.text
+                if (text != null) {
+                    var i = text.indexOf(findQueryText, ignoreCase = true)
+                    while (i >= 0) {
+                        docOrder.add(FindMatch(line.serialNumber, i until (i + findQueryText.length)))
+                        i = text.indexOf(findQueryText, startIndex = i + findQueryText.length, ignoreCase = true)
+                    }
+                }
+            }
+        }
+        findMatches = docOrder.asReversed()
+        findIndex = findIndex.coerceIn(0, maxOf(0, findMatches.size - 1))
+        publishFindState()
+    }
+
+    private fun publishFindState() {
+        val current = findMatches.getOrNull(findIndex)
+        findStateFlow.value =
+            WindowFindUiState(
+                windowName = findWindowName,
+                query = findQueryText,
+                totalMatches = findMatches.size,
+                currentNumber = if (findMatches.isEmpty()) 0 else findIndex + 1,
+                matchRangesBySerial =
+                    findMatches
+                        .groupBy { it.serialNumber }
+                        .mapValues { (_, matches) -> matches.map { it.range }.sortedBy { it.first } },
+                currentSerial = current?.serialNumber,
+                currentRange = current?.range,
+            )
     }
 
     // TODO: convert this into a simpler representation
@@ -1294,3 +1499,19 @@ class GameViewModel(
         entrySetSelection(TextRange(pos))
     }
 }
+
+/**
+ * UI state for readline-style reverse history search. [query] is what the user has typed so far and
+ * [match] is the history command currently matched (or null if nothing matches). While this is
+ * non-null the entry prompt shows `searching "<query>": <match>`.
+ */
+data class HistorySearchState(
+    val query: String,
+    val match: String?,
+)
+
+/** A single find-in-window match: the line's serial number and the matched character range in it. */
+private data class FindMatch(
+    val serialNumber: Long,
+    val range: IntRange,
+)

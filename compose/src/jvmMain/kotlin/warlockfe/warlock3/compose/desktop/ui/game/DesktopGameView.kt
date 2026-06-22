@@ -50,6 +50,7 @@ import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
@@ -79,14 +80,17 @@ fun DesktopGameView(
                         return@onPreviewKeyEvent true
                     }
                     ignoreNextUnknownKeyEvent = false
+                    // The find bar handles its own keys while it's focused; step aside so it can.
+                    if (viewModel.windowFindController.focused.value) {
+                        return@onPreviewKeyEvent false
+                    }
                     viewModel.handleKeyPress(event).also {
                         ignoreNextUnknownKeyEvent = it
                         if (!it &&
                             event.type == KeyEventType.KeyDown &&
                             !event.isAltPressed &&
                             !event.isCtrlPressed &&
-                            !event.isMetaPressed &&
-                            !event.isShiftPressed
+                            !event.isMetaPressed
                         ) {
                             entryFocusRequester.requestFocus()
                         }
@@ -106,6 +110,7 @@ fun DesktopGameView(
                     settings = progressBarSettings,
                     saveColors = viewModel::saveProgressBarColors,
                 ),
+            LocalWindowFindController provides viewModel.windowFindController,
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {

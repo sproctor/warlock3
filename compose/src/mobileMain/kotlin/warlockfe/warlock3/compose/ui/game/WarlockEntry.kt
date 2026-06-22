@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
+import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -79,6 +81,7 @@ fun WarlockEntry(
     val presets by viewModel.presets.collectAsState(emptyMap())
     val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
     val style = presets["entry"] ?: StyleDefinition()
+    val historySearch by viewModel.historySearch.collectAsState()
     WarlockEntryContent(
         style = style,
         defaultStyle = defaultStyle,
@@ -88,6 +91,7 @@ fun WarlockEntry(
         castTime = castTime,
         sendCommand = viewModel::submit,
         saveStyle = viewModel::saveEntryStyle,
+        historySearch = historySearch,
         modifier = modifier,
     )
 }
@@ -104,6 +108,7 @@ fun WarlockEntryContent(
     castTime: Int,
     saveStyle: (StyleDefinition) -> Unit,
     modifier: Modifier = Modifier,
+    historySearch: HistorySearchState? = null,
 ) {
     var showSettingsDialog by remember { mutableStateOf(false) }
     val usableStyle = style.mergeWith(defaultStyle)
@@ -162,6 +167,32 @@ fun WarlockEntryContent(
                 onKeyboardAction = {
                     sendCommand()
                 },
+                decorator =
+                    if (historySearch != null) {
+                        TextFieldDecorator { innerTextField ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "searching \"${historySearch.query}\": ",
+                                    style = textStyle,
+                                    color = usableStyle.textColor.toColor().copy(alpha = 0.6f),
+                                )
+                                Text(
+                                    text = historySearch.match ?: "",
+                                    style = textStyle,
+                                    color = usableStyle.textColor.toColor(),
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                // Keep the (hidden) field attached so it retains focus and keeps
+                                // receiving the typed query; the query is shown in the label above.
+                                Box(Modifier.size(0.dp)) {
+                                    innerTextField()
+                                }
+                            }
+                        }
+                    } else {
+                        null
+                    },
             )
 
             LaunchedEffect(Unit) {

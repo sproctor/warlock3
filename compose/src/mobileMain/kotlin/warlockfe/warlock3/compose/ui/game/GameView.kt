@@ -51,6 +51,7 @@ import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DragOverlay
 import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
@@ -91,14 +92,17 @@ fun GameView(
                     return@onPreviewKeyEvent true
                 }
                 ignoreNextUnknownKeyEvent = false
+                // The find bar handles its own keys while it's focused; step aside so it can.
+                if (viewModel.windowFindController.focused.value) {
+                    return@onPreviewKeyEvent false
+                }
                 viewModel.handleKeyPress(event).also {
                     ignoreNextUnknownKeyEvent = it
                     if (!it &&
                         event.type == KeyEventType.KeyDown &&
                         !event.isAltPressed &&
                         !event.isCtrlPressed &&
-                        !event.isMetaPressed &&
-                        !event.isShiftPressed
+                        !event.isMetaPressed
                     ) {
                         entryFocusRequester.requestFocus()
                     }
@@ -115,6 +119,7 @@ fun GameView(
                             settings = progressBarSettings,
                             saveColors = viewModel::saveProgressBarColors,
                         ),
+                    LocalWindowFindController provides viewModel.windowFindController,
                 ) {
                     when (layout) {
                         MobileGameLayout.Phone -> {

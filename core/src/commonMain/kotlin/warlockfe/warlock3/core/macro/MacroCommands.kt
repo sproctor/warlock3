@@ -24,6 +24,18 @@ object MacroCommands {
             MacroCommand("historyprev", listOf("prevhistory")) {
                 it.historyPrev()
             },
+            MacroCommand("historysearch") {
+                it.historySearch()
+            },
+            MacroCommand("historysearchexit") {
+                it.historySearchExit()
+            },
+            MacroCommand("findnext") {
+                it.findNext()
+            },
+            MacroCommand("findprev") {
+                it.findPrev()
+            },
             MacroCommand("linedown") {
                 it.scroll(ScrollEvent.LINE_DOWN)
             },

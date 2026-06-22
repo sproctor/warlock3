@@ -286,6 +286,8 @@ data class ClientConfig(
     val mudMobileToken: String? = null,
     @TomlComment("When true, the last launched connection is reconnected automatically on startup.")
     val autoConnectLastConnection: Boolean = false,
+    @TomlComment("How far the global default-macro set has been merged in. Managed automatically; do not edit.")
+    val macroDefaultsVersion: Int? = null,
 )
 
 /**

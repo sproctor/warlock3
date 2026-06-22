@@ -26,7 +26,7 @@ import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.sge.SgeViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
-import warlockfe.warlock3.compose.util.insertDefaultMacrosIfNeeded
+import warlockfe.warlock3.compose.util.seedAndMigrateDefaultMacros
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockClientFactory
@@ -179,8 +179,9 @@ abstract class AppContainer(
                     fileSystem = fileSystem,
                     configDirectory = warlockDirs.configDir,
                 ).migrateIfNeeded()
-                // Seed default global macros on first run, after migration so any migrated macros win.
-                macroRepository.insertDefaultMacrosIfNeeded()
+                // Seed default global macros on first run and merge in newly added defaults on
+                // upgrade, after migration so any migrated macros win.
+                macroRepository.seedAndMigrateDefaultMacros(clientSettings)
             }.onFailure {
                 Logger.e(it) { "Failed to initialize config stores" }
             }
