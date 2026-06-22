@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -57,7 +58,6 @@ import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.WindowWidthSizeClass
 import warlockfe.warlock3.compose.util.gameLayout
-import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
@@ -345,117 +345,129 @@ fun GameBottomBar(
 ) {
     val presets by viewModel.presets.collectAsState(emptyMap())
     val style = presets["default"] ?: SAFE_DEFAULT_STYLE
-    val backgroundColor = style.backgroundColor.toColor()
-    val textColor = style.textColor.toColor()
-    BoxWithConstraints(modifier) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(start = 2.dp, end = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                // Disconnect actions for layouts without a top bar (tablet): the old banner is gone.
-                if (disconnected && (onDashboard != null || (canReconnect && onReconnect != null))) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (canReconnect && onReconnect != null) {
-                            FilledTonalButton(onClick = onReconnect) { Text("Reconnect") }
-                        }
-                        if (onDashboard != null) {
-                            FilledTonalButton(onClick = onDashboard) { Text("Dashboard") }
-                        }
+            // Disconnect actions for layouts without a top bar (tablet): the old banner is gone.
+            if (disconnected && (onDashboard != null || (canReconnect && onReconnect != null))) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canReconnect && onReconnect != null) {
+                        FilledTonalButton(onClick = onReconnect) { Text("Reconnect") }
+                    }
+                    if (onDashboard != null) {
+                        FilledTonalButton(onClick = onDashboard) { Text("Dashboard") }
                     }
                 }
-                val actionBar by viewModel.actionBar.collectAsState()
-                if (actionBar.toolbar.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        actionBar.toolbar.forEach { action ->
-                            ActionChip(
-                                action = action,
-                                pool = actionBar.actions,
-                                onRunLeaf = viewModel::runActionScript,
+            }
+            val actionBar by viewModel.actionBar.collectAsState()
+            if (actionBar.toolbar.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    actionBar.toolbar.forEach { action ->
+                        ActionChip(
+                            action = action,
+                            pool = actionBar.actions,
+                            onRunLeaf = viewModel::runActionScript,
+                        )
+                    }
+                }
+            }
+            WarlockEntry(
+                viewModel = viewModel,
+                entryFocusRequester = entryFocusRequester,
+            )
+            if (onToggleWindowList != null || openSettings != null) {
+                Row {
+                    if (onToggleWindowList != null) {
+                        IconButton(onClick = onToggleWindowList) {
+                            Icon(
+                                painter =
+                                    painterResource(
+                                        if (windowListVisible) {
+                                            Res.drawable.space_dashboard_filled
+                                        } else {
+                                            Res.drawable.space_dashboard
+                                        },
+                                    ),
+                                contentDescription = "Toggle window list",
+                            )
+                        }
+                    }
+                    if (openSettings != null) {
+                        IconButton(onClick = openSettings) {
+                            Icon(
+                                painter = painterResource(Res.drawable.settings_filled),
+                                contentDescription = "Settings",
                             )
                         }
                     }
                 }
-                WarlockEntry(
-                    viewModel = viewModel,
-                    entryFocusRequester = entryFocusRequester,
-                )
-                if (onToggleWindowList != null || openSettings != null) {
-                    Row {
-                        if (onToggleWindowList != null) {
-                            IconButton(onClick = onToggleWindowList) {
-                                Icon(
-                                    painter =
-                                        painterResource(
-                                            if (windowListVisible) {
-                                                Res.drawable.space_dashboard_filled
-                                            } else {
-                                                Res.drawable.space_dashboard
-                                            },
-                                        ),
-                                    contentDescription = "Toggle window list",
-                                )
-                            }
-                        }
-                        if (openSettings != null) {
-                            IconButton(onClick = openSettings) {
-                                Icon(
-                                    painter = painterResource(Res.drawable.settings_filled),
-                                    contentDescription = "Settings",
-                                )
-                            }
-                        }
-                    }
-                }
-                val vitalBars by viewModel.vitalBars.objects.collectAsState()
-                DialogContent(
-                    dataObjects = vitalBars,
-                    modifier = Modifier.fillMaxWidth().height(16.dp),
-                    executeCommand = {
-                        // Cannot execute commands from vitals bar
-                    },
-                    style = style,
-                )
-                HandsView(
-                    left = viewModel.leftHand.collectAsState(null).value,
-                    right = viewModel.rightHand.collectAsState(null).value,
-                    spell = viewModel.spellHand.collectAsState(null).value,
-                )
             }
-            val indicators by viewModel.indicators.collectAsState(emptySet())
-            IndicatorView(
-                indicatorSize = (this@BoxWithConstraints.maxWidth / 20).coerceIn(24.dp, 60.dp),
-                backgroundColor = backgroundColor,
-                defaultColor = textColor,
-                indicators = indicators,
-            )
-            CompassButtons(
-                height = 88.dp,
-                directions = viewModel.compassState.collectAsState().value,
-                onClick = { direction ->
-                    viewModel.sendCommand(direction.value)
+            val vitalBars by viewModel.vitalBars.objects.collectAsState()
+            DialogContent(
+                dataObjects = vitalBars,
+                modifier = Modifier.fillMaxWidth().height(16.dp),
+                executeCommand = {
+                    // Cannot execute commands from vitals bar
                 },
-                colors =
-                    CompassButtonColors(
-                        litBackground = MaterialTheme.colorScheme.secondaryContainer,
-                        litBorder = MaterialTheme.colorScheme.primary,
-                        litIcon = MaterialTheme.colorScheme.onSecondaryContainer,
-                        background = MaterialTheme.colorScheme.surfaceVariant,
-                        border = MaterialTheme.colorScheme.outlineVariant,
-                        icon = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                    ),
+                style = style,
+            )
+            HandsView(
+                left = viewModel.leftHand.collectAsState(null).value,
+                right = viewModel.rightHand.collectAsState(null).value,
+                spell = viewModel.spellHand.collectAsState(null).value,
             )
         }
+        val indicators by viewModel.indicators.collectAsState(emptySet())
+        // The indicators and compass share the control row's height.
+        val controlHeight = 88.dp
+        IndicatorView(
+            indicators = indicators,
+            shape = MaterialTheme.shapes.small,
+            palette =
+                IndicatorPalette(
+                    inactiveBackground = MaterialTheme.colorScheme.surfaceVariant,
+                    inactiveBorder = MaterialTheme.colorScheme.outlineVariant,
+                    litBackground = MaterialTheme.colorScheme.secondaryContainer,
+                    litBorder = MaterialTheme.colorScheme.primary,
+                    litIcon = MaterialTheme.colorScheme.onSecondaryContainer,
+                    dangerBackground = MaterialTheme.colorScheme.errorContainer,
+                    dangerBorder = MaterialTheme.colorScheme.error,
+                    dangerIcon = MaterialTheme.colorScheme.error,
+                    deadIcon = MaterialTheme.colorScheme.onErrorContainer,
+                    joinedBackground = MaterialTheme.colorScheme.primaryContainer,
+                    joinedBorder = MaterialTheme.colorScheme.primary,
+                    joinedIcon = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            modifier = Modifier.height(controlHeight),
+        )
+        CompassButtons(
+            height = controlHeight,
+            directions = viewModel.compassState.collectAsState().value,
+            onClick = { direction ->
+                viewModel.sendCommand(direction.value)
+            },
+            colors =
+                CompassButtonColors(
+                    litBackground = MaterialTheme.colorScheme.secondaryContainer,
+                    litBorder = MaterialTheme.colorScheme.primary,
+                    litIcon = MaterialTheme.colorScheme.onSecondaryContainer,
+                    background = MaterialTheme.colorScheme.surfaceVariant,
+                    border = MaterialTheme.colorScheme.outlineVariant,
+                    icon = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                ),
+        )
     }
 }
 

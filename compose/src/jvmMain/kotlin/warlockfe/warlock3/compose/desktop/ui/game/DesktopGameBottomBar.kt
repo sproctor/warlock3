@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,6 +26,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopDialogContent
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.game.IndicatorPalette
+import warlockfe.warlock3.compose.ui.game.IndicatorView
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 
 @Suppress("ktlint:compose:vm-forwarding-check")
@@ -43,17 +46,33 @@ fun DesktopGameBottomBar(
     ) {
         // Hairline separating the control bar from the work area above it.
         Box(Modifier.fillMaxWidth().height(1.dp).background(gameChrome.border))
-        BoxWithConstraints {
-            val density = LocalDensity.current
-            // The compass fills the height the rest of the control-bar content (the left column)
-            // establishes and scales its width to match, instead of forcing a fixed height onto the
-            // bar. We measure that column and feed its height to the compass.
-            var contentHeight by remember { mutableStateOf(0.dp) }
+        // BoxWithConstraints {
+        val density = LocalDensity.current
+        // The compass fills the height the rest of the control-bar content (the left column)
+        // establishes and scales its width to match, instead of forcing a fixed height onto the
+        // bar. We measure that column and feed its height to the compass.
+        var contentHeight by remember { mutableStateOf(0.dp) }
+        Column(
+            modifier = Modifier.padding(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            val actionBar by viewModel.actionBar.collectAsState()
+            if (actionBar.toolbar.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    actionBar.toolbar.forEach { action ->
+                        DesktopActionButton(
+                            action = action,
+                            pool = actionBar.actions,
+                            onRunLeaf = viewModel::runActionScript,
+                        )
+                    }
+                }
+            }
             Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -62,23 +81,8 @@ fun DesktopGameBottomBar(
                         Modifier
                             .weight(1f)
                             .onSizeChanged { contentHeight = with(density) { it.height.toDp() } },
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    val actionBar by viewModel.actionBar.collectAsState()
-                    if (actionBar.toolbar.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            actionBar.toolbar.forEach { action ->
-                                DesktopActionButton(
-                                    action = action,
-                                    pool = actionBar.actions,
-                                    onRunLeaf = viewModel::runActionScript,
-                                )
-                            }
-                        }
-                    }
                     DesktopWarlockEntry(
                         viewModel = viewModel,
                         entryFocusRequester = entryFocusRequester,
@@ -101,9 +105,26 @@ fun DesktopGameBottomBar(
                     )
                 }
                 val indicators by viewModel.indicators.collectAsState(emptySet())
-                DesktopIndicatorView(
-                    indicatorSize = (this@BoxWithConstraints.maxWidth / 20).coerceIn(24.dp, 60.dp),
+                val chrome = gameChrome
+                IndicatorView(
                     indicators = indicators,
+                    shape = RoundedCornerShape(4.dp),
+                    palette =
+                        IndicatorPalette(
+                            inactiveBackground = chrome.panelAlt,
+                            inactiveBorder = chrome.border,
+                            litBackground = chrome.litBackground,
+                            litBorder = chrome.litBorder,
+                            litIcon = chrome.litIcon,
+                            dangerBackground = chrome.dangerBackground,
+                            dangerBorder = chrome.dangerBorder,
+                            dangerIcon = chrome.dangerIcon,
+                            deadIcon = chrome.textPrimary,
+                            joinedBackground = chrome.accent.copy(alpha = 0.22f),
+                            joinedBorder = chrome.accent,
+                            joinedIcon = chrome.accentSubtle,
+                        ),
+                    modifier = Modifier.height(contentHeight),
                 )
                 if (contentHeight > 0.dp) {
                     DesktopCompass(
