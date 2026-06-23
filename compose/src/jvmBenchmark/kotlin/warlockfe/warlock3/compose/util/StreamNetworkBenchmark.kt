@@ -431,7 +431,11 @@ private fun syntheticLines(
                 }
 
                 1 -> {
-                    "<pushBold/>You attack the <a exist=\"$i\" noun=\"orc\">orc</a> and <preset id=\"speech\">$name staggers back</preset>!"
+                    // Bold is opened and closed on the same line, as the real protocol does: an
+                    // unbalanced push would pile up on WraythClient's style stack and be re-applied to
+                    // every later line (a quadratic blowup that is a malformed-input artifact).
+                    "<pushBold/>You attack the <a exist=\"$i\" noun=\"orc\">orc</a> and " +
+                        "<preset id=\"speech\">$name staggers back</preset>!<popBold/>"
                 }
 
                 2 -> {
@@ -451,6 +455,9 @@ private fun syntheticLines(
                 }
             },
         )
+        // A prompt every few lines, as the server sends after each push. Besides being realistic, a
+        // prompt clears the style stack, so transient styling can't leak across the whole session.
+        if (i % 8 == 7) out.add("<prompt>&gt;</prompt>")
     }
     return out
 }
