@@ -629,7 +629,14 @@ private class WarlockCommand : CliktCommand() {
 }
 
 @OptIn(ExperimentalResourceApi::class)
-fun main(args: Array<String>) = WarlockCommand().versionOption(version ?: "Development").main(args)
+fun main(args: Array<String>) =
+    WarlockCommand()
+        .versionOption(version ?: "Development")
+        // Nucleus packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
+        // when the kernel blocks unprivileged user namespaces (Ubuntu 24.04+ default), assuming an
+        // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than
+        // abort startup on an unknown option.
+        .main(args.filterNot { it == "--no-sandbox" })
 
 @Composable
 private fun UpdateDialog(
