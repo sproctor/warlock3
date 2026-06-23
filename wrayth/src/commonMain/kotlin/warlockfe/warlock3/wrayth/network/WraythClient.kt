@@ -527,9 +527,7 @@ class WraythClient(
                             }
                     }
                     val newValue = elementBuffer ?: StyledString()
-                    windowRegistry.getStreams().forEach { stream ->
-                        stream.updateComponent(componentId!!, newValue)
-                    }
+                    windowRegistry.updateComponent(componentId!!, newValue)
                     elementBuffer = null
                     componentId = null
                 } else {

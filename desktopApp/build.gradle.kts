@@ -88,6 +88,23 @@ nucleus.application {
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
+    // Opt-in GC + safepoint logging for diagnosing stream-render stalls:
+    //   ./gradlew :desktopApp:run -PgcLog
+    // Writes per-pid logs (so multiple connections/processes don't collide) under the build dir with
+    // wall-clock timestamps, to correlate against StreamWorkQueue "STALL" lines. Diagnostic only.
+    if (project.hasProperty("gcLog")) {
+        val gcLogPath =
+            project.layout.buildDirectory
+                .get()
+                .asFile
+                .resolve("gc-%p.log")
+        jvmArgs += "-Xlog:gc*,safepoint:file=$gcLogPath:time,uptime,level,tags:filecount=5,filesize=20M"
+    }
+    // Confirmation experiment: ./gradlew :desktopApp:run -Pzgc swaps in the low-pause collector. If the
+    // lag/STALL lines vanish under ZGC, the stalls were GC pauses; if they persist, it is pool/scheduling.
+    if (project.hasProperty("zgc")) {
+        jvmArgs += "-XX:+UseZGC"
+    }
     // Only inject a version for real releases; leaving it unset in dev lets the app
     // detect dev mode (version == null) and enable debug logging.
     if (resolvedReleaseVersion != null) {
