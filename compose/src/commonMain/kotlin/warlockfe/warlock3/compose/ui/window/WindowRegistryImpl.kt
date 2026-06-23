@@ -23,6 +23,7 @@ import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.TextStream
@@ -231,6 +232,19 @@ class WindowRegistryImpl(
 
     override fun getStreams(): Collection<TextStream> = streams.load().values
 
+    // A server component update affects every window that displays that component. Batch it into one
+    // work-queue op that touches each stream, instead of each stream enqueuing its own op: with many
+    // windows open the per-stream broadcast multiplied queue traffic by the window count for every
+    // component change. Streams that don't display the component fall through cheaply.
+    override suspend fun updateComponent(
+        name: String,
+        value: StyledString,
+    ) {
+        workQueue.submit("component") {
+            streams.load().values.forEach { it.updateComponentSync(name, value) }
+        }
+    }
+
     override fun getOrCreateDialog(name: String): DialogState {
         dialogs.load()[name]?.let { return it }
         val candidate = ComposeDialogState(id = name)
@@ -245,6 +259,7 @@ class WindowRegistryImpl(
 
     override fun setCharacterId(characterId: String) {
         this.characterId.value = characterId
+        workQueue.tag = characterId
     }
 
     override fun close() {

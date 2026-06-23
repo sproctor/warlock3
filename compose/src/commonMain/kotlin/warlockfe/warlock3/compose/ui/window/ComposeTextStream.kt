@@ -57,7 +57,8 @@ class ComposeTextStream(
     private val soundPlayer: SoundPlayer,
     private val workQueue: StreamWorkQueue,
     private val scope: CoroutineScope,
-) : TextStream {
+) : TextStream,
+    StreamWorkQueue.Flushable {
     // ArrayDeque so trimming the oldest line (removeAt(0)) once the buffer fills is O(1) rather than
     // the O(n) front shift of an ArrayList.
     private val cacheLines = ArrayDeque<CachedLine?>(maxLines)
@@ -79,6 +80,10 @@ class ComposeTextStream(
     private var nextSerialNumber = 0L
     private var removedLines = 0L
 
+    // Set when the displayed lines changed but the new snapshot has not been emitted yet; the work
+    // queue coalesces this into a single publish per drain batch (see publishLines/flush).
+    private var pendingPublish = false
+
     private var applyStyling: Boolean = true
 
     // When true, only lines that match a name in the names list are shown
@@ -95,7 +100,7 @@ class ComposeTextStream(
         names
             .onEach {
                 if (nameFilter) {
-                    workQueue.submit {
+                    workQueue.submit("namefilter") {
                         linesUpdated()
                     }
                 }
@@ -112,7 +117,7 @@ class ComposeTextStream(
             highlights.drop(1).map { },
             alterations.drop(1).map { },
         ).onEach {
-            workQueue.submit {
+            workQueue.submit("rerender") {
                 rerenderAllLines()
             }
         }.launchIn(scope)
@@ -122,13 +127,13 @@ class ComposeTextStream(
         text: StyledString,
         isPrompt: Boolean,
     ) {
-        workQueue.submit {
+        workQueue.submit("partial") {
             doAppendPartial(text, isPrompt)
         }
     }
 
     override suspend fun appendPartialAndEol(text: StyledString) {
-        workQueue.submit {
+        workQueue.submit("partial") {
             doAppendPartial(text, isPrompt = false)
             partialLine = null
         }
@@ -160,7 +165,7 @@ class ComposeTextStream(
     }
 
     override suspend fun clear() {
-        workQueue.submit {
+        workQueue.submit("clear") {
             finishedLines.clear()
             partialLine = null
             componentLocations.clear()
@@ -177,7 +182,7 @@ class ComposeTextStream(
         ignoreWhenBlank: Boolean,
         showWhenClosed: String?,
     ) {
-        workQueue.submit {
+        workQueue.submit("append") {
             // It's possible a component is added that is set prior
             // I don't think this happens in DR, so it's probably OK that we don't handle that case.
             partialLine = null
@@ -240,7 +245,7 @@ class ComposeTextStream(
     }
 
     override suspend fun appendResource(url: String) {
-        workQueue.submit {
+        workQueue.submit("resource") {
             // Images must be on their own line
             partialLine = null
             if (!showImages) return@submit
@@ -260,20 +265,31 @@ class ComposeTextStream(
         name: String,
         value: StyledString,
     ) {
-        workQueue.submit {
-            components[name] = value
-            // A component can appear on many lines; re-render them all, then publish once instead
-            // of emitting a fresh snapshot per affected line.
-            var change = ViewChange.NONE
-            componentLocations[name]?.forEach { serialNumber ->
-                val lineNumber = (serialNumber - removedLines).toInt()
-                // If the component has scrolled back past the buffer, ignore it
-                if (lineNumber >= 0) {
-                    change = change.coalesce(updateLine(lineNumber))
-                }
-            }
-            applyViewChange(change)
+        workQueue.submit("component") {
+            updateComponentSync(name, value)
         }
+    }
+
+    // The body of a component update, runnable directly on the work-queue consumer. WindowRegistry
+    // batches one server component update into a single queue op that calls this on every stream,
+    // instead of each stream enqueuing its own op (which multiplied queue traffic by the open-window
+    // count for every component change). Must only be called from the work queue.
+    fun updateComponentSync(
+        name: String,
+        value: StyledString,
+    ) {
+        components[name] = value
+        // A component can appear on many lines; re-render them all, then publish once instead
+        // of emitting a fresh snapshot per affected line.
+        var change = ViewChange.NONE
+        componentLocations[name]?.forEach { serialNumber ->
+            val lineNumber = (serialNumber - removedLines).toInt()
+            // If the component has scrolled back past the buffer, ignore it
+            if (lineNumber >= 0) {
+                change = change.coalesce(updateLine(lineNumber))
+            }
+        }
+        applyViewChange(change)
     }
 
     // Re-render every buffered line from its cached source against the current presets, highlights,
@@ -415,6 +431,16 @@ class ComposeTextStream(
     }
 
     private fun publishLines() {
+        // Coalesce: mark the displayed lines dirty and let the work queue publish once the current
+        // drain batch finishes, instead of emitting a fresh snapshot (and waking the UI) per op.
+        pendingPublish = true
+        workQueue.scheduleFlush(this)
+    }
+
+    // Emit the latest displayed lines. Run by the work queue after a drain batch, on the consumer.
+    override fun flush() {
+        if (!pendingPublish) return
+        pendingPublish = false
         lines.value = OffsetList(displayBacking, displayStart)
     }
 
@@ -473,7 +499,7 @@ class ComposeTextStream(
     }
 
     suspend fun setMaxLines(maxLines: Int) {
-        workQueue.submit {
+        workQueue.submit("maxlines") {
             this@ComposeTextStream.maxLines = maxLines
             removeLines()
             linesUpdated()
@@ -497,7 +523,7 @@ class ComposeTextStream(
     // Re-run the filter and rebuild the displayed list on the work queue. Callable from any thread.
     private fun scheduleRelayout() {
         scope.launch {
-            workQueue.submit {
+            workQueue.submit("relayout") {
                 linesUpdated()
             }
         }

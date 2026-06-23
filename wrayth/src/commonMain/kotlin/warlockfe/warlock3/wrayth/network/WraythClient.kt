@@ -139,7 +139,11 @@ class WraythClient(
 
     private var gameCode: String? = null
 
-    private val _eventFlow = MutableSharedFlow<ClientEvent>()
+    // A buffer (vs the default rendezvous) so the parse loop can run ahead of a momentarily-busy
+    // subscriber (notably the UI-thread GameViewModel collector during a recomposition burst) instead
+    // of blocking on it per text event. No replay; SUSPEND overflow keeps every event (scripts rely on
+    // seeing them all) once the buffer fills.
+    private val _eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 256)
     override val eventFlow: SharedFlow<ClientEvent> = _eventFlow.asSharedFlow()
 
     private val _characterId = MutableStateFlow<String?>(null)
@@ -527,9 +531,7 @@ class WraythClient(
                             }
                     }
                     val newValue = elementBuffer ?: StyledString()
-                    windowRegistry.getStreams().forEach { stream ->
-                        stream.updateComponent(componentId!!, newValue)
-                    }
+                    windowRegistry.updateComponent(componentId!!, newValue)
                     elementBuffer = null
                     componentId = null
                 } else {

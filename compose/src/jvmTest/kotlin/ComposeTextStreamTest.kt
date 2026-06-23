@@ -1,5 +1,4 @@
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -76,11 +75,11 @@ class ComposeTextStreamTest {
                 scope = scope,
             )
 
-        // FIFO barrier: a no-op op queued after the prior direct submits; awaiting it means they ran.
+        // FIFO barrier: awaits a marker queued after the prior direct submits, and (since publishing
+        // is coalesced per drain batch) only returns once their output has been published, so reading
+        // stream.lines.value afterward sees the result.
         suspend fun drain() {
-            val done = CompletableDeferred<Unit>()
-            workQueue.submit { done.complete(Unit) }
-            done.await()
+            workQueue.awaitFlushed()
         }
 
         suspend fun awaitLines(predicate: (List<StreamLine>) -> Boolean): List<StreamLine> =
