@@ -118,7 +118,9 @@ fun WindowView(
                 onCloseClick = onCloseClick,
             )
         },
-        listContainer = { scrollState, content ->
+        listContainer = { scrollState, _, content ->
+            // The measured-height scroll model (third slot arg) is desktop-only for now; mobile keeps
+            // the stock lazy-list adapter.
             Box(Modifier.fillMaxSize()) {
                 content()
                 VerticalScrollbar(

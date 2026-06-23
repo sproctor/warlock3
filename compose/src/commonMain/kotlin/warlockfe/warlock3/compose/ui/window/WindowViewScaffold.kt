@@ -27,10 +27,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -99,7 +101,11 @@ internal fun WindowViewScaffold(
     defaultFontSize: TextUnit,
     surface: @Composable (modifier: Modifier, content: @Composable () -> Unit) -> Unit,
     header: @Composable (title: String, onSettingsClick: () -> Unit) -> Unit,
-    listContainer: @Composable (scrollState: LazyListState, content: @Composable () -> Unit) -> Unit,
+    listContainer: @Composable (
+        scrollState: LazyListState,
+        heightModel: LazyListMeasuredScrollModel,
+        content: @Composable () -> Unit,
+    ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
     settingsDialog: @Composable (onCloseRequest: () -> Unit) -> Unit,
     dialogContent: @Composable (data: DialogWindowData, style: StyleDefinition) -> Unit,
@@ -228,7 +234,11 @@ private fun WindowViewContent(
     menuData: WarlockMenuData?,
     onActionClick: (WarlockAction) -> Int?,
     defaultFontSize: TextUnit,
-    listContainer: @Composable (scrollState: LazyListState, content: @Composable () -> Unit) -> Unit,
+    listContainer: @Composable (
+        scrollState: LazyListState,
+        heightModel: LazyListMeasuredScrollModel,
+        content: @Composable () -> Unit,
+    ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -274,7 +284,42 @@ private fun WindowViewContent(
                         modifier = Modifier.align(image.backgroundAlignment()),
                     )
                 }
-                listContainer(scrollState) {
+                // Cache each line's measured height so the scrollbar can size its thumb from the
+                // real content height instead of extrapolating from the visible items' average,
+                // which makes the thumb jump when lines wrap to different heights. Recreate the cache
+                // whenever the wrap width or text style changes, since both invalidate every height.
+                val measuredHeights =
+                    remember(constraints.maxWidth, style, defaultFontSize) {
+                        mutableStateMapOf<Long, Int>()
+                    }
+                val currentLines = rememberUpdatedState(lines)
+                val currentOpenWindows = rememberUpdatedState(openWindows)
+                val heightModel =
+                    remember(measuredHeights) {
+                        LazyListMeasuredScrollModel(
+                            state = scrollState,
+                            itemCount = { currentLines.value.size },
+                            keyAt = { index -> currentLines.value.getOrNull(index)?.serialNumber },
+                            isRendered = { index ->
+                                val list = currentLines.value
+                                index in list.indices &&
+                                    list.rendersContent(index, currentOpenWindows.value)
+                            },
+                            measuredHeights = measuredHeights,
+                        )
+                    }
+                LaunchedEffect(measuredHeights) {
+                    snapshotFlow { scrollState.layoutInfo.visibleItemsInfo.map { it.key to it.size } }
+                        .collect { visibleItems ->
+                            visibleItems.forEach { (key, size) ->
+                                val serial = key as? Long ?: return@forEach
+                                if (size > 0 && measuredHeights[serial] != size) {
+                                    measuredHeights[serial] = size
+                                }
+                            }
+                        }
+                }
+                listContainer(scrollState, heightModel) {
                     LazyColumn(
                         modifier =
                             Modifier

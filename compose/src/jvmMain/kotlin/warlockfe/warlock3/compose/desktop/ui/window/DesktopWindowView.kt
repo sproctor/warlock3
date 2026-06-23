@@ -1,8 +1,10 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -10,6 +12,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,7 +46,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
@@ -149,12 +151,32 @@ fun DesktopWindowView(
                 onCloseClick = onCloseClick,
             )
         },
-        listContainer = { scrollState, content ->
-            VerticallyScrollableContainer(
-                scrollState = scrollState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
+        listContainer = { _, heightModel, content ->
+            // The stock lazy-list scrollbar (Jewel's VerticallyScrollableContainer) extrapolates the
+            // content size from the average height of the visible lines, so its thumb jumps when
+            // lines wrap to different heights. Drive a native scrollbar from a custom adapter backed
+            // by per-line measured heights instead; the LazyColumn still handles wheel scrolling.
+            Box(Modifier.fillMaxSize()) {
                 content()
+                val adapter = remember(heightModel) { MeasuredScrollbarAdapter(heightModel) }
+                VerticalScrollbar(
+                    adapter = adapter,
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .background(gameChrome.border.copy(alpha = 0.5f))
+                            .padding(top = 2.dp, bottom = 4.dp),
+                    style =
+                        defaultScrollbarStyle().copy(
+                            minimalHeight = 24.dp,
+                            // gameChrome.border is a hairline barely distinct from the panel, so it
+                            // reads as invisible on the thumb. textFaint/textMuted are the theme's
+                            // visible-but-subtle element colors and contrast in both light and dark.
+                            unhoverColor = gameChrome.textFaint,
+                            hoverColor = gameChrome.textMuted,
+                        ),
+                )
             }
         },
         actionContextMenu = { offset, menu, onDismiss ->

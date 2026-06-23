@@ -199,6 +199,29 @@ internal fun StreamTextLine.isShowing(openWindows: List<String>): Boolean =
             it == this.showWhenClosed
         }
 
+/**
+ * Whether the line at [index] actually paints a row in the stream. Text lines with no text, lines
+ * hidden because their window is open, and prompts collapsed into the previous prompt all occupy a
+ * zero-height slot in the [androidx.compose.foundation.lazy.LazyColumn]. This MUST stay in lockstep
+ * with the render branch in WindowViewContent so the scroll model counts the same heights the list
+ * lays out.
+ */
+internal fun List<StreamLine>.rendersContent(
+    index: Int,
+    openWindows: List<String>,
+): Boolean =
+    when (val line = this[index]) {
+        is StreamTextLine -> {
+            line.text != null &&
+                line.isShowing(openWindows) &&
+                (!line.isPrompt || !isPreviousPrompt(index, openWindows))
+        }
+
+        is StreamImageLine -> {
+            true
+        }
+    }
+
 internal fun List<StreamLine>.isPreviousPrompt(
     index: Int,
     openWindows: List<String>,
