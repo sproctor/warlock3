@@ -11,6 +11,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
@@ -114,7 +115,10 @@ fun main() {
 
 private suspend fun runBenchmark(config: BenchConfig) {
     // Lines a single connection streams: a real capture (replayed to every connection) or synthetic.
-    val realLog: List<String>? = config.logPath?.let { File(it).readLines() }
+    // Read latin-1 (byte-preserving) so the exact on-disk bytes reach NetworkSocket, which decodes
+    // them as Windows-1252 like the live game connection; the default UTF-8 read would mangle any
+    // 0x80-0xFF byte before it ever hit the real decoder.
+    val realLog: List<String>? = config.logPath?.let { File(it).readLines(Charsets.ISO_8859_1) }
 
     // One shared highlight index, sized to the real-world profile, the way the app shares one index
     // across a character's windows. Built once here rather than per line on the render path.
@@ -166,7 +170,7 @@ private suspend fun runBenchmark(config: BenchConfig) {
             .map { index ->
                 val lines = realLog ?: syntheticLines(config.lines, config.windows, index)
                 totalLines += lines.size
-                server.enqueue(lines)
+                server.enqueue(index, lines)
                 appScope.async {
                     runConnection(
                         index = index,
@@ -189,7 +193,10 @@ private suspend fun runBenchmark(config: BenchConfig) {
 
     println("----- stream-network-benchmark results -----")
     results.sortedBy { it.index }.forEach { r ->
-        println("conn ${r.index} [${r.tag}]: ${r.lines} lines, ${r.textEvents} text events to subscribers, finished in ${r.elapsed}")
+        println(
+            "conn ${r.index} [${r.tag}]: ${r.lines} lines, ${r.textEvents} text events, " +
+                "${r.recompositions} recompositions, finished in ${r.elapsed}",
+        )
     }
     val seconds = elapsed.inWholeMicroseconds / 1_000_000.0
     val rate = if (seconds > 0) (totalLines / seconds).toLong() else 0
@@ -204,6 +211,7 @@ private data class ConnectionResult(
     val tag: String,
     val lines: Int,
     val textEvents: Long,
+    val recompositions: Long,
     val elapsed: kotlin.time.Duration,
 )
 
@@ -227,6 +235,8 @@ private suspend fun runConnection(
             workQueue = workQueue,
             highlights = highlightIndex,
             presets = presets,
+            uiDispatcher = uiDispatcher,
+            uiCostMicros = uiCostMicros,
         )
     val socket = NetworkSocket(ioDispatcher)
     socket.connect("127.0.0.1", port)
@@ -239,11 +249,13 @@ private suspend fun runConnection(
             socket = socket,
         )
 
-    // Representative eventFlow subscribers, the per-line cost the parse loop rendezvous-blocks on that
-    // the bare harness omitted. One always-on GameViewModel-style collector that ignores text, plus
-    // `scripts` script-style collectors that run a trigger set against every ClientTextEvent
-    // synchronously inside the collector, as WslContext does. onSubscription gates the connect so all
-    // are registered before the first event, otherwise the rendezvous cost wouldn't apply from line 1.
+    // Representative eventFlow subscribers. The always-on GameViewModel-style collector runs on the
+    // shared UI thread and (like the real one) does no work for text events, but still has to RECEIVE
+    // each one there; that handoff is what couples the parse loop to the UI thread's availability. The
+    // UI thread's actual busyness is modelled on the publish/recomposition path (see BenchWindow
+    // Registry), so when recomposition is heavy this collector is starved and the parser stalls. The
+    // `scripts` collectors run a trigger set against every ClientTextEvent, as WslContext does.
+    // onSubscription gates connect so all are registered before the first event.
     val textEvents =
         java.util.concurrent.atomic
             .AtomicLong()
@@ -252,18 +264,7 @@ private suspend fun runConnection(
     subscribed.add(gameViewReady)
     scope.launch(uiDispatcher) {
         client.eventFlow.onSubscription { gameViewReady.complete(Unit) }.collect { event ->
-            // GameViewModel ignores text events, but receiving each one still occupies the shared UI
-            // thread; uiCostMicros models the time that thread is otherwise busy (recomposition).
-            if (event is ClientTextEvent) {
-                textEvents.incrementAndGet()
-                // Busy-spin, not parkNanos/sleep: this thread is a coroutine dispatcher thread, where
-                // park is unreliable (the dispatcher holds permits), and recomposition is CPU-bound
-                // work anyway, so a spin is the faithful model of the UI thread being busy.
-                if (uiCostMicros > 0) {
-                    val deadline = System.nanoTime() + uiCostMicros * 1_000
-                    while (System.nanoTime() < deadline) { /* busy */ }
-                }
-            }
+            if (event is ClientTextEvent) textEvents.incrementAndGet()
         }
     }
     repeat(scripts) {
@@ -291,8 +292,16 @@ private suspend fun runConnection(
 
     val lineCount = registry.getStreams().sumOf { (it as ComposeTextStream).lines.value.size }
     val tag = "dr:bench$index"
+    val recompositions = registry.recompositionCount()
     registry.close()
-    return ConnectionResult(index = index, tag = tag, lines = lineCount, textEvents = textEvents.get(), elapsed = elapsed)
+    return ConnectionResult(
+        index = index,
+        tag = tag,
+        lines = lineCount,
+        textEvents = textEvents.get(),
+        recompositions = recompositions,
+        elapsed = elapsed,
+    )
 }
 
 /**
@@ -306,29 +315,53 @@ private class BenchWindowRegistry(
     private val workQueue: StreamWorkQueue,
     private val highlights: StateFlow<HighlightIndex>,
     override val presets: StateFlow<Map<String, StyleDefinition>>,
+    private val uiDispatcher: CoroutineDispatcher,
+    private val uiCostMicros: Long,
 ) : WindowRegistry {
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())
     private val streams = ConcurrentHashMap<String, ComposeTextStream>()
     private val dialogs = ConcurrentHashMap<String, ComposeDialogState>()
+    private val recompositions =
+        java.util.concurrent.atomic
+            .AtomicLong()
 
+    // Observed lines-snapshot changes across all windows = recompositions the shared UI thread did.
+    // It is a conflated count (a StateFlow collector only sees the latest value), so it already reflects
+    // the UI coalescing that StateFlow/Compose do on top of the work queue's per-batch publish coalescing.
+    fun recompositionCount(): Long = recompositions.get()
+
+    // computeIfAbsent (not Kotlin's getOrPut) so the builder runs at most once per name even under
+    // concurrent calls; a duplicate ComposeTextStream would leak the flow collectors its init launches.
     override fun getOrCreateStream(name: String): TextStream =
-        streams.getOrPut(name) {
-            ComposeTextStream(
-                id = name,
-                maxLines = ClientSettingRepository.DEFAULT_MAX_SCROLL_LINES,
-                markLinks = false,
-                showImages = true,
-                showTimestamps = false,
-                suppressPrompts = false,
-                highlights = highlights,
-                names = names,
-                alterations = alterations,
-                presets = presets,
-                soundPlayer = SilentSoundPlayer,
-                workQueue = workQueue,
-                scope = scope,
-            )
+        streams.computeIfAbsent(name) {
+            val stream =
+                ComposeTextStream(
+                    id = name,
+                    maxLines = ClientSettingRepository.DEFAULT_MAX_SCROLL_LINES,
+                    markLinks = false,
+                    showImages = true,
+                    showTimestamps = false,
+                    suppressPrompts = false,
+                    highlights = highlights,
+                    names = names,
+                    alterations = alterations,
+                    presets = presets,
+                    soundPlayer = SilentSoundPlayer,
+                    workQueue = workQueue,
+                    scope = scope,
+                )
+            // Model the window's UI: each observed lines snapshot is one recomposition on the single
+            // shared UI thread, costing uiCostMicros. All windows of all connections share that thread,
+            // so this is where UI-thread load (and the parser stalls it induces via the eventFlow
+            // rendezvous) actually comes from.
+            scope.launch(uiDispatcher) {
+                stream.lines.drop(1).collect {
+                    recompositions.incrementAndGet()
+                    if (uiCostMicros > 0) busySpinMicros(uiCostMicros)
+                }
+            }
+            stream
         }
 
     override fun getStreams(): Collection<TextStream> = streams.values
@@ -342,7 +375,7 @@ private class BenchWindowRegistry(
         }
     }
 
-    override fun getOrCreateDialog(name: String): DialogState = dialogs.getOrPut(name) { ComposeDialogState(name) }
+    override fun getOrCreateDialog(name: String): DialogState = dialogs.computeIfAbsent(name) { ComposeDialogState(name) }
 
     override fun setCharacterId(characterId: String) {
         workQueue.tag = characterId
@@ -390,15 +423,18 @@ private class ReplayServer(
     private val linesPerSec: Int,
 ) {
     private val serverSocket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
-    private val pending = java.util.concurrent.LinkedBlockingQueue<List<String>>()
+    private val byIndex = ConcurrentHashMap<Int, List<String>>()
     private val workers = Executors.newCachedThreadPool { r -> Thread(r, "replay-worker").apply { isDaemon = true } }
     private val acceptThread = Thread({ acceptLoop() }, "replay-accept").apply { isDaemon = true }
     private val live = CopyOnWriteArrayList<java.net.Socket>()
 
     val port: Int get() = serverSocket.localPort
 
-    fun enqueue(lines: List<String>) {
-        pending.add(lines)
+    fun enqueue(
+        index: Int,
+        lines: List<String>,
+    ) {
+        byIndex[index] = lines
     }
 
     fun start() {
@@ -410,24 +446,24 @@ private class ReplayServer(
             while (!serverSocket.isClosed) {
                 val socket = serverSocket.accept()
                 live.add(socket)
-                val lines = pending.take()
-                workers.submit { serve(socket, lines) }
+                workers.submit { serve(socket) }
             }
         } catch (_: Exception) {
             // Socket closed during stop(); exit the loop.
         }
     }
 
-    private fun serve(
-        socket: java.net.Socket,
-        lines: List<String>,
-    ) {
+    private fun serve(socket: java.net.Socket) {
         try {
             socket.tcpNoDelay = true
             val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.ISO_8859_1))
-            // Consume the client's handshake: the key line and the "/FE:WRAYTH ..." line.
+            // The client's first handshake line is its key, "benchmark-key-<index>". Pair the socket
+            // with that connection's line list by index, not by accept order (which is racy). The
+            // second line is the "/FE:WRAYTH ..." info.
+            val keyLine = reader.readLine()
             reader.readLine()
-            reader.readLine()
+            val index = keyLine?.substringAfterLast('-')?.toIntOrNull()
+            val lines = index?.let { byIndex[it] } ?: return
             val out = socket.getOutputStream()
             val delayNanos = if (linesPerSec > 0) 1_000_000_000L / linesPerSec else 0L
             for (line in lines) {
@@ -455,6 +491,14 @@ private class ReplayServer(
     private companion object {
         val CRLF = byteArrayOf('\r'.code.toByte(), '\n'.code.toByte())
     }
+}
+
+// Burn CPU for [micros] microseconds. Models the UI thread being busy with recomposition; a busy-spin
+// rather than park/sleep because these run on coroutine dispatcher threads (where park is unreliable)
+// and recomposition is CPU-bound work anyway.
+private fun busySpinMicros(micros: Long) {
+    val deadline = System.nanoTime() + micros * 1_000
+    while (System.nanoTime() < deadline) { /* busy */ }
 }
 
 // A representative script trigger set: the patterns a running script matches against every line of

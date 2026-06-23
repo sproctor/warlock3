@@ -191,7 +191,7 @@ tasks.register<JavaExec>("streamNetworkBenchmark") {
         streamBenchmarkCompilation.runtimeDependencyFiles,
     )
     mainClass.set("warlockfe.warlock3.compose.util.StreamNetworkBenchmarkKt")
-    for (knob in listOf("connections", "windows", "lines", "highlights", "linesPerSec", "log")) {
+    for (knob in listOf("connections", "windows", "lines", "highlights", "linesPerSec", "scripts", "uiCostMicros", "log")) {
         (project.findProperty(knob) as? String)?.let { systemProperty(knob, it) }
     }
     if (project.hasProperty("gcLog")) {

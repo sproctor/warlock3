@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.decrementAndFetch
@@ -29,8 +30,10 @@ class StreamWorkQueue(
 ) {
     private val logger = Logger.withTag("StreamWorkQueue")
 
-    // Identifies which connection/character this queue belongs to in profiling output. Set once the
-    // character id is known; only read from the consumer coroutine for logging, so a plain var is fine.
+    // Identifies which connection/character this queue belongs to in profiling output. Written from
+    // the registry's setCharacterId on a different coroutine than the consumer that reads it, so it is
+    // @Volatile for safe publication; it only labels diagnostic output.
+    @Volatile
     var tag: String = "?"
 
     // Something with coalesced output to publish once a drain batch finishes (a ComposeTextStream).
@@ -38,19 +41,15 @@ class StreamWorkQueue(
         fun flush()
     }
 
-    private class Job(
-        val label: String,
-        val op: suspend () -> Unit,
-        val submittedAt: TimeSource.Monotonic.ValueTimeMark,
-    )
-
     private val channel =
-        Channel<Job>(
+        Channel<suspend () -> Unit>(
             capacity = capacity,
             onBufferOverflow = BufferOverflow.SUSPEND,
         )
 
-    // Submitted-but-not-yet-started ops. Written by producers (submit) and the consumer, so atomic.
+    // Submitted-but-not-yet-started op count, maintained only while profiling is enabled (it feeds the
+    // queue-depth metric). It is an upper bound during backpressure: a producer increments before its
+    // channel.send() may suspend, so a blocked producer is counted before its op is actually enqueued.
     private val pending = AtomicInt(0)
 
     // Streams that produced output during the current drain batch and barriers waiting for it to be
@@ -62,46 +61,40 @@ class StreamWorkQueue(
     private val stats = ProfileStats()
 
     init {
-        scope.launch(Dispatchers.Default) {
-            for (firstJob in channel) {
-                runJob(firstJob)
-                // Greedily run whatever else is already queued without publishing between ops, so a
-                // burst's many line updates collapse into a single published snapshot per stream.
-                var sinceFlush = 1
-                while (true) {
-                    val next = channel.tryReceive().getOrNull() ?: break
-                    runJob(next)
-                    if (++sinceFlush >= MAX_OPS_BETWEEN_FLUSHES) {
-                        flushAll()
-                        sinceFlush = 0
+        val consumer =
+            scope.launch(Dispatchers.Default) {
+                for (firstOp in channel) {
+                    runOp(firstOp)
+                    // Greedily run whatever else is already queued without publishing between ops, so a
+                    // burst's many line updates collapse into a single published snapshot per stream.
+                    var sinceFlush = 1
+                    while (true) {
+                        val next = channel.tryReceive().getOrNull() ?: break
+                        runOp(next)
+                        if (++sinceFlush >= MAX_OPS_BETWEEN_FLUSHES) {
+                            flushAll()
+                            sinceFlush = 0
+                        }
                     }
+                    // Channel drained: publish the coalesced output, then release anyone awaiting it.
+                    flushAll()
+                    completeBarriers()
                 }
-                // Channel drained: publish the coalesced output, then release anyone awaiting it.
-                flushAll()
-                completeBarriers()
+            }
+        // If the consumer stops (its scope is cancelled) while barriers are still pending, fail their
+        // awaiters instead of leaving awaitFlushed() suspended forever.
+        consumer.invokeOnCompletion { cause ->
+            while (pendingBarriers.isNotEmpty()) {
+                pendingBarriers.removeFirst().completeExceptionally(
+                    cause ?: CancellationException("StreamWorkQueue stopped"),
+                )
             }
         }
     }
 
-    private suspend fun runJob(job: Job) {
-        val depth = pending.decrementAndFetch()
+    private suspend fun runOp(op: suspend () -> Unit) {
         try {
-            if (StreamProfiling.enabled) {
-                val waited = job.submittedAt.elapsedNow()
-                if (waited >= StreamProfiling.stallThreshold) {
-                    // The stall happened in roughly [now - waited, now]; match that window
-                    // against a GC/safepoint pause in the JVM log.
-                    logger.w {
-                        "[$tag] STALL: '${job.label}' waited $waited (queueDepth=$depth) ending ${Clock.System.now()}"
-                    }
-                }
-                val execMark = TimeSource.Monotonic.markNow()
-                job.op()
-                stats.record(label = job.label, waited = waited, exec = execMark.elapsedNow(), depth = depth)
-                stats.maybeReport(logger, tag)
-            } else {
-                job.op()
-            }
+            op()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -137,8 +130,30 @@ class StreamWorkQueue(
         label: String = "?",
         op: suspend () -> Unit,
     ) {
+        // Default path (profiling disabled): enqueue the op directly. No clock read, no atomic, and no
+        // wrapper allocation, so the work queue adds nothing measurable to the per-op hot path.
+        if (!StreamProfiling.enabled) {
+            channel.send(op)
+            return
+        }
+        // Profiling enabled: wrap the op so the consumer records its queue-wait, exec time, and depth.
+        val submittedAt = TimeSource.Monotonic.markNow()
         pending.incrementAndFetch()
-        channel.send(Job(label = label, op = op, submittedAt = TimeSource.Monotonic.markNow()))
+        channel.send {
+            val depth = pending.decrementAndFetch()
+            val waited = submittedAt.elapsedNow()
+            if (waited >= StreamProfiling.stallThreshold) {
+                // The stall happened in roughly [now - waited, now]; match that window against a
+                // GC/safepoint pause in the JVM log.
+                logger.w {
+                    "[$tag] STALL: '$label' waited $waited (queueDepth=$depth) ending ${Clock.System.now()}"
+                }
+            }
+            val execMark = TimeSource.Monotonic.markNow()
+            op()
+            stats.record(label = label, waited = waited, exec = execMark.elapsedNow(), depth = depth)
+            stats.maybeReport(logger, tag)
+        }
     }
 
     // Suspend until everything submitted so far has run and its coalesced output has been published.
