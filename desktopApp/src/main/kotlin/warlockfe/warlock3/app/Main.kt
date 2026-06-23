@@ -15,6 +15,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,7 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
@@ -62,7 +64,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -79,13 +80,13 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
+import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -111,7 +112,11 @@ private class WarlockCommand : CliktCommand() {
     val key: String? by option("-k", "--key", help = "Character key to connect with")
     val debug: Boolean by option("-d", "--debug", help = "Enable debug output").flag()
     val stdin: Boolean by option("--stdin", help = "Read input from stdin").flag()
-    val inputFile: String? by option("-i", "--input", help = "Read input from file")
+    val inputFiles: List<String> by option(
+        "-i",
+        "--input",
+        help = "Read input from file; repeat to open each file in its own window",
+    ).multiple()
     val autoConnectName: String? by option("-c", "--connection", help = "Auto-connect to the named connection")
     val salFile: String? by argument("SAL_FILE", help = "Path to a .sal launch file to connect with").optional()
     val sgeHost: String by option("--sge-host", help = "Credentials/SGE host").default("eaccess.play.net")
@@ -178,9 +183,9 @@ private class WarlockCommand : CliktCommand() {
             )
 
         val games =
-            mutableStateListOf(
-                createInitialGameState(appContainer, credentials, sgeSettings, logger),
-            )
+            mutableStateListOf<GameState>().apply {
+                addAll(createInitialGameStates(appContainer, credentials, sgeSettings, logger))
+            }
 
         installUncaughtExceptionWorkaround()
 
@@ -242,116 +247,120 @@ private class WarlockCommand : CliktCommand() {
                     )
                 }
 
-                games.forEachIndexed { index, gameState ->
-                    val windowState =
-                        remember {
-                            WindowState(
-                                width = initialWidth.dp,
-                                height = initialHeight.dp,
-                                position = position,
-                            )
-                        }
-                    val subtitle by gameState.getTitle().collectAsState("loading")
-                    val title = "Warlock - $subtitle"
-                    val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
-                    val characterFlow = connectedScreen?.viewModel?.character ?: flowOf(null)
-                    val connectedCharacter by characterFlow.collectAsState(null)
-                    if (exitOnDisconnect) {
-                        // Tear the app down as soon as the connection drops (e.g. an input file
-                        // replayed to EOF) instead of showing the reconnect banner.
-                        val disconnectedFlow = connectedScreen?.viewModel?.disconnected ?: flowOf(false)
-                        val disconnected by disconnectedFlow.collectAsState(false)
-                        LaunchedEffect(disconnected) {
-                            if (disconnected) {
-                                println("App ran for ${started.elapsedNow()}")
-                                exitApplication()
+                games.forEach { gameState ->
+                    key(gameState) {
+                        val windowState =
+                            remember {
+                                WindowState(
+                                    width = initialWidth.dp,
+                                    height = initialHeight.dp,
+                                    position = position,
+                                )
                             }
-                        }
-                    }
-                    JewelDecoratedWindow(
-                        title = title,
-                        state = windowState,
-                        onCloseRequest = {
+                        val subtitle by gameState.getTitle().collectAsState("loading")
+                        val title = "Warlock - $subtitle"
+                        val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
+                        val characterFlow = connectedScreen?.viewModel?.character ?: flowOf(null)
+                        val connectedCharacter by characterFlow.collectAsState(null)
+
+                        // Close just this window; tear the whole app down only once the last one is gone.
+                        fun closeGame() {
                             scope.launch {
-                                val game = games[index]
-                                val screen = game.screen
+                                val screen = gameState.screen
                                 if (screen is GameScreen.ConnectedGameState) {
                                     screen.viewModel.close()
                                 }
-                                games.removeAt(index)
+                                games.remove(gameState)
                                 if (games.isEmpty()) {
                                     exitApplication()
                                 }
                             }
-                        },
-                    ) {
-                        window.minimumSize = Dimension(240, 240)
-                        CompositionLocalProvider(
-                            LocalWindowComponent provides window,
-                            LocalSkin provides skin,
-                        ) {
-                            WarlockApp(
-                                title = title,
-                                warlockVersion = version ?: "Development",
-                                appContainer = appContainer,
-                                gameState = gameState,
-                                openNewWindow = {
-                                    // A manually opened window shows the dashboard; never auto-connect into it.
-                                    games.add(GameState().apply { autoConnectAttempted = true })
-                                },
-                                showUpdateDialog = { showUpdateDialog = true },
-                                sgeSettings = sgeSettings,
-                            )
-                            LaunchedEffect(windowState, connectedCharacter?.id) {
-                                // A window size passed on the command line should win, so don't clobber it
-                                // with the saved per-character size when a character connects.
-                                if (width != null || height != null) return@LaunchedEffect
-                                val characterId = connectedCharacter?.id ?: return@LaunchedEffect
-                                val bounds =
-                                    appContainer.characterSettingsRepository
-                                        .getMainWindowBounds(characterId)
-                                        ?: return@LaunchedEffect
-                                if (bounds.width >= 240 && bounds.height >= 240) {
-                                    windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
-                                    windowState.position = WindowPosition(bounds.x.dp, bounds.y.dp)
+                        }
+                        if (exitOnDisconnect) {
+                            // Close the window as soon as its connection drops (e.g. an input file
+                            // replayed to EOF) instead of showing the reconnect banner.
+                            val disconnectedFlow = connectedScreen?.viewModel?.disconnected ?: flowOf(false)
+                            val disconnected by disconnectedFlow.collectAsState(false)
+                            LaunchedEffect(disconnected) {
+                                if (disconnected) {
+                                    println("App ran for ${started.elapsedNow()}")
+                                    closeGame()
                                 }
                             }
-                            LaunchedEffect(windowState) {
-                                snapshotFlow { windowState.size }
-                                    .debounce(2.seconds)
-                                    .onEach { size ->
-                                        val width = size.width.value.toInt()
-                                        if (width >= 240) {
-                                            clientSettings.putWidth(width)
-                                        }
-                                        val height = size.height.value.toInt()
-                                        if (height >= 240) {
-                                            clientSettings.putHeight(height)
-                                        }
-                                    }.launchIn(this)
-
-                                snapshotFlow {
-                                    val characterId = connectedCharacter?.id
-                                    val position = windowState.position
-                                    val size = windowState.size
-                                    if (characterId != null) {
-                                        characterId to
-                                            MainWindowBounds(
-                                                x = position.x.value.toInt(),
-                                                y = position.y.value.toInt(),
-                                                width = size.width.value.toInt(),
-                                                height = size.height.value.toInt(),
-                                            )
-                                    } else {
-                                        null
+                        }
+                        JewelDecoratedWindow(
+                            title = title,
+                            state = windowState,
+                            onCloseRequest = { closeGame() },
+                        ) {
+                            window.minimumSize = Dimension(240, 240)
+                            CompositionLocalProvider(
+                                LocalWindowComponent provides window,
+                                LocalSkin provides skin,
+                            ) {
+                                WarlockApp(
+                                    title = title,
+                                    warlockVersion = version ?: "Development",
+                                    appContainer = appContainer,
+                                    gameState = gameState,
+                                    openNewWindow = {
+                                        // A manually opened window shows the dashboard; never auto-connect into it.
+                                        games.add(GameState().apply { autoConnectAttempted = true })
+                                    },
+                                    showUpdateDialog = { showUpdateDialog = true },
+                                    sgeSettings = sgeSettings,
+                                )
+                                LaunchedEffect(windowState, connectedCharacter?.id) {
+                                    // A window size passed on the command line should win, so don't clobber it
+                                    // with the saved per-character size when a character connects.
+                                    if (width != null || height != null) return@LaunchedEffect
+                                    val characterId = connectedCharacter?.id ?: return@LaunchedEffect
+                                    val bounds =
+                                        appContainer.characterSettingsRepository
+                                            .getMainWindowBounds(characterId)
+                                            ?: return@LaunchedEffect
+                                    if (bounds.width >= 240 && bounds.height >= 240) {
+                                        windowState.size = DpSize(bounds.width.dp, bounds.height.dp)
+                                        windowState.position = WindowPosition(bounds.x.dp, bounds.y.dp)
                                     }
-                                }.debounce(2.seconds)
-                                    .onEach { characterBounds ->
-                                        val (characterId, bounds) = characterBounds ?: return@onEach
-                                        if (bounds.width >= 240 && bounds.height >= 240) {
-                                            appContainer.characterSettingsRepository.saveMainWindowBounds(characterId, bounds)
+                                }
+                                LaunchedEffect(windowState) {
+                                    snapshotFlow { windowState.size }
+                                        .debounce(2.seconds)
+                                        .onEach { size ->
+                                            val width = size.width.value.toInt()
+                                            if (width >= 240) {
+                                                clientSettings.putWidth(width)
+                                            }
+                                            val height = size.height.value.toInt()
+                                            if (height >= 240) {
+                                                clientSettings.putHeight(height)
+                                            }
+                                        }.launchIn(this)
+
+                                    snapshotFlow {
+                                        val characterId = connectedCharacter?.id
+                                        val position = windowState.position
+                                        val size = windowState.size
+                                        if (characterId != null) {
+                                            characterId to
+                                                MainWindowBounds(
+                                                    x = position.x.value.toInt(),
+                                                    y = position.y.value.toInt(),
+                                                    width = size.width.value.toInt(),
+                                                    height = size.height.value.toInt(),
+                                                )
+                                        } else {
+                                            null
                                         }
-                                    }.launchIn(this)
+                                    }.debounce(2.seconds)
+                                        .onEach { characterBounds ->
+                                            val (characterId, bounds) = characterBounds ?: return@onEach
+                                            if (bounds.width >= 240 && bounds.height >= 240) {
+                                                appContainer.characterSettingsRepository.saveMainWindowBounds(characterId, bounds)
+                                            }
+                                        }.launchIn(this)
+                                }
                             }
                         }
                     }
@@ -369,8 +378,8 @@ private class WarlockCommand : CliktCommand() {
         if (stdin) {
             loginOptions.add("stdin")
         }
-        if (inputFile != null) {
-            loginOptions.add("inputFile")
+        if (inputFiles.isNotEmpty()) {
+            loginOptions.add("inputFiles")
         }
         if (autoConnectName != null) {
             loginOptions.add("connection")
@@ -452,83 +461,126 @@ private class WarlockCommand : CliktCommand() {
         return JvmAppContainer(database, warlockDirs, SystemFileSystem)
     }
 
-    /** Build the initial window's [GameState], performing the blocking initial connection if one was requested. */
-    private fun createInitialGameState(
+    /**
+     * Build the [GameState]s to open on startup, performing any blocking initial connection up front.
+     *
+     * Each `--input` file gets its own window/[GameState]; every other launch mode produces a single window.
+     */
+    private fun createInitialGameStates(
         appContainer: JvmAppContainer,
         credentials: SimuGameCredentials?,
         sgeSettings: SgeSettings,
         logger: Logger,
-    ): GameState =
-        GameState().apply {
-            if (credentials != null || stdin || inputFile != null) {
-                // Already connecting on startup; don't also auto-connect the last connection.
-                autoConnectAttempted = true
-                val windowRegistry = appContainer.windowRegistryFactory.create()
-                // TODO: move this somewhere we can control it
-                runBlocking {
-                    try {
-                        val socket =
-                            if (stdin) {
-                                WarlockStreamSocket(System.`in`)
-                            } else if (inputFile != null) {
-                                val file = File(inputFile!!)
-                                if (!file.exists()) {
-                                    logger.e { "Input file does not exist: $inputFile" }
-                                    exitProcess(1)
-                                }
-                                WarlockStreamSocket(file.inputStream())
-                            } else {
-                                NetworkSocket(Dispatchers.IO)
-                                    .also { socket ->
-                                        socket.connect(credentials!!.host, credentials.port)
-                                    }
-                            }
-                        val client =
-                            appContainer.warlockClientFactory.createClient(
-                                windowRegistry = windowRegistry,
-                                socket = socket,
-                            )
-                        client.connect(credentials?.key ?: "")
-                        val viewModel =
-                            appContainer.gameViewModelFactory.create(client, windowRegistry)
-                        setScreen(
-                            GameScreen.ConnectedGameState(viewModel),
-                        )
-                    } catch (e: IOException) {
-                        logger.e(e) { "Failed to connect to Warlock" }
+    ): List<GameState> =
+        when {
+            inputFiles.isNotEmpty() -> {
+                inputFiles.map { path ->
+                    val file = File(path)
+                    if (!file.exists()) {
+                        logger.e { "Input file does not exist: $path" }
+                        exitProcess(1)
+                    }
+                    connectSocketGameState(appContainer, key = "", logger) {
+                        WarlockStreamSocket(file.inputStream())
                     }
                 }
-            } else if (autoConnectName != null) {
-                // Connecting to a named connection from the CLI; skip last-connection auto-connect.
-                autoConnectAttempted = true
-                runBlocking {
-                    val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
-                    if (connection == null) {
-                        println("Invalid connection name: $autoConnectName")
+            }
+
+            stdin -> {
+                listOf(
+                    connectSocketGameState(appContainer, key = "", logger) {
+                        WarlockStreamSocket(System.`in`)
+                    },
+                )
+            }
+
+            credentials != null -> {
+                listOf(
+                    connectSocketGameState(appContainer, key = credentials.key, logger) {
+                        NetworkSocket(Dispatchers.IO)
+                            .also { socket ->
+                                socket.connect(credentials.host, credentials.port)
+                            }
+                    },
+                )
+            }
+
+            autoConnectName != null -> {
+                listOf(createAutoConnectGameState(appContainer, sgeSettings))
+            }
+
+            else -> {
+                listOf(GameState())
+            }
+        }
+
+    /** Build a [GameState] connected to a freshly created socket, blocking until the connection is established. */
+    private fun connectSocketGameState(
+        appContainer: JvmAppContainer,
+        key: String,
+        logger: Logger,
+        createSocket: suspend () -> WarlockSocket,
+    ): GameState =
+        GameState().apply {
+            // Already connecting on startup; don't also auto-connect the last connection.
+            autoConnectAttempted = true
+            val windowRegistry = appContainer.windowRegistryFactory.create()
+            // TODO: move this somewhere we can control it
+            runBlocking {
+                try {
+                    val socket = createSocket()
+                    val client =
+                        appContainer.warlockClientFactory.createClient(
+                            windowRegistry = windowRegistry,
+                            socket = socket,
+                        )
+                    client.connect(key)
+                    val viewModel =
+                        appContainer.gameViewModelFactory.create(client, windowRegistry)
+                    setScreen(
+                        GameScreen.ConnectedGameState(viewModel),
+                    )
+                } catch (e: IOException) {
+                    logger.e(e) { "Failed to connect to Warlock" }
+                }
+            }
+        }
+
+    /** Build a [GameState] auto-connected to the named CLI connection via SGE. */
+    private fun createAutoConnectGameState(
+        appContainer: JvmAppContainer,
+        sgeSettings: SgeSettings,
+    ): GameState =
+        GameState().apply {
+            // Connecting to a named connection from the CLI; skip last-connection auto-connect.
+            autoConnectAttempted = true
+            runBlocking {
+                val connection = appContainer.connectionRepository.getByName(autoConnectName!!)
+                if (connection == null) {
+                    println("Invalid connection name: $autoConnectName")
+                    exitProcess(-1)
+                }
+                val sgeClient = appContainer.sgeClientFactory.create()
+                val result = sgeClient.autoConnect(sgeSettings, connection)
+                sgeClient.close()
+                when (result) {
+                    is AutoConnectResult.Failure -> {
+                        println(result.reason)
                         exitProcess(-1)
                     }
-                    val sgeClient = appContainer.sgeClientFactory.create()
-                    val result = sgeClient.autoConnect(sgeSettings, connection)
-                    sgeClient.close()
-                    when (result) {
-                        is AutoConnectResult.Failure -> {
-                            println(result.reason)
-                            exitProcess(-1)
-                        }
 
-                        is AutoConnectResult.Success -> {
-                            // TODO: merge with the above, and probably below
-                            try {
-                                appContainer.connectToGameUseCase(
-                                    credentials = result.credentials,
-                                    proxySettings = connection.proxySettings,
-                                    gameState = this@apply,
-                                )
-                            } catch (e: Exception) {
-                                ensureActive()
-                                println("Error connecting to server: ${e.message}")
-                                exitProcess(-1)
-                            }
+                    is AutoConnectResult.Success -> {
+                        // TODO: merge with the above, and probably below
+                        try {
+                            appContainer.connectToGameUseCase(
+                                credentials = result.credentials,
+                                proxySettings = connection.proxySettings,
+                                gameState = this@apply,
+                            )
+                        } catch (e: Exception) {
+                            ensureActive()
+                            println("Error connecting to server: ${e.message}")
+                            exitProcess(-1)
                         }
                     }
                 }
