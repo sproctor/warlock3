@@ -1,14 +1,19 @@
 package warlockfe.warlock3.compose.util
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.model.LiteralHighlight
@@ -17,6 +22,7 @@ import warlockfe.warlock3.compose.ui.window.ComposeDialogState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.StreamProfiling
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
+import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -64,6 +70,9 @@ import kotlin.time.TimeSource
  *   lines        synthetic protocol lines streamed per connection                (40000)
  *   highlights   size of the shared highlight index (the real profile is ~975)   (975)
  *   linesPerSec  server send pacing per connection; 0/absent = max-speed firehose (0)
+ *   scripts      script-style eventFlow subscribers per conn (regex per text line) (0)
+ *   uiCostMicros per-text-event CPU cost on a shared single UI thread, modelling   (0)
+ *                a busy Main thread the GameViewModel collector contends for
  *   log          replay this real capture instead of synthetic lines (per conn)  (none)
  *
  * [StreamProfiling] is enabled, so its per-connection queue summaries (queue-wait, exec, peak depth,
@@ -77,6 +86,8 @@ private data class BenchConfig(
     val lines: Int,
     val highlights: Int,
     val linesPerSec: Int,
+    val scripts: Int,
+    val uiCostMicros: Long,
     val logPath: String?,
 )
 
@@ -93,6 +104,8 @@ fun main() {
             lines = intProp("lines", 40_000),
             highlights = intProp("highlights", 975),
             linesPerSec = intProp("linesPerSec", 0),
+            scripts = intProp("scripts", 0),
+            uiCostMicros = System.getProperty("uiCostMicros")?.trim()?.toLongOrNull() ?: 0L,
             logPath = System.getProperty("log")?.takeIf { it.isNotBlank() },
         )
     StreamProfiling.enabled = true
@@ -123,6 +136,15 @@ private suspend fun runBenchmark(config: BenchConfig) {
     val loggingRepository = LoggingRepository(clientSettings, appScope)
     val characterRepository = CharacterRepository(clientConfigStore)
 
+    // A single shared thread modelling the desktop UI thread: every connection's GameViewModel-style
+    // eventFlow collector runs here, so the parse loops contend for it exactly as they do for the real
+    // Main thread. uiCostMicros makes that collector burn CPU per text event (modelling recomposition).
+    // Measured finding: even a deliberately slow shared UI collector does NOT throttle the parsers, so
+    // the zero-buffer eventFlow is not the per-line rendezvous bottleneck it looks like on paper; emit
+    // does not gate the parse loop on its subscribers.
+    val uiExecutor = Executors.newSingleThreadExecutor { Thread(it, "bench-ui").apply { isDaemon = true } }
+    val uiDispatcher = uiExecutor.asCoroutineDispatcher()
+
     // Loopback replay server: one accepted socket per connection, each streaming a private copy of the
     // line list (after consuming the client's two-line handshake), optionally paced.
     val server = ReplayServer(linesPerSec = config.linesPerSec)
@@ -133,7 +155,7 @@ private suspend fun runBenchmark(config: BenchConfig) {
             "highlights=${config.highlights} " +
             (if (realLog != null) "log=${config.logPath} (${realLog.size} lines)" else "lines=${config.lines} (synthetic)") +
             " pacing=" + (if (config.linesPerSec > 0) "${config.linesPerSec}/s" else "firehose") +
-            " port=${server.port}",
+            " scripts=${config.scripts} uiCostMicros=${config.uiCostMicros} port=${server.port}",
     )
 
     val started = TimeSource.Monotonic.markNow()
@@ -153,6 +175,9 @@ private suspend fun runBenchmark(config: BenchConfig) {
                         presets = presets,
                         characterRepository = characterRepository,
                         loggingRepository = loggingRepository,
+                        scripts = config.scripts,
+                        uiDispatcher = uiDispatcher,
+                        uiCostMicros = config.uiCostMicros,
                     )
                 }
             }.awaitAll()
@@ -160,10 +185,11 @@ private suspend fun runBenchmark(config: BenchConfig) {
     val elapsed = started.elapsedNow()
     server.stop()
     appScope.cancel()
+    uiExecutor.shutdownNow()
 
     println("----- stream-network-benchmark results -----")
     results.sortedBy { it.index }.forEach { r ->
-        println("conn ${r.index} [${r.tag}]: ${r.lines} lines, finished in ${r.elapsed}")
+        println("conn ${r.index} [${r.tag}]: ${r.lines} lines, ${r.textEvents} text events to subscribers, finished in ${r.elapsed}")
     }
     val seconds = elapsed.inWholeMicroseconds / 1_000_000.0
     val rate = if (seconds > 0) (totalLines / seconds).toLong() else 0
@@ -177,6 +203,7 @@ private data class ConnectionResult(
     val index: Int,
     val tag: String,
     val lines: Int,
+    val textEvents: Long,
     val elapsed: kotlin.time.Duration,
 )
 
@@ -187,6 +214,9 @@ private suspend fun runConnection(
     presets: StateFlow<Map<String, StyleDefinition>>,
     characterRepository: CharacterRepository,
     loggingRepository: LoggingRepository,
+    scripts: Int,
+    uiDispatcher: CoroutineDispatcher,
+    uiCostMicros: Long,
 ): ConnectionResult {
     val ioDispatcher = Dispatchers.IO
     val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
@@ -209,6 +239,46 @@ private suspend fun runConnection(
             socket = socket,
         )
 
+    // Representative eventFlow subscribers, the per-line cost the parse loop rendezvous-blocks on that
+    // the bare harness omitted. One always-on GameViewModel-style collector that ignores text, plus
+    // `scripts` script-style collectors that run a trigger set against every ClientTextEvent
+    // synchronously inside the collector, as WslContext does. onSubscription gates the connect so all
+    // are registered before the first event, otherwise the rendezvous cost wouldn't apply from line 1.
+    val textEvents =
+        java.util.concurrent.atomic
+            .AtomicLong()
+    val subscribed = mutableListOf<CompletableDeferred<Unit>>()
+    val gameViewReady = CompletableDeferred<Unit>()
+    subscribed.add(gameViewReady)
+    scope.launch(uiDispatcher) {
+        client.eventFlow.onSubscription { gameViewReady.complete(Unit) }.collect { event ->
+            // GameViewModel ignores text events, but receiving each one still occupies the shared UI
+            // thread; uiCostMicros models the time that thread is otherwise busy (recomposition).
+            if (event is ClientTextEvent) {
+                textEvents.incrementAndGet()
+                // Busy-spin, not parkNanos/sleep: this thread is a coroutine dispatcher thread, where
+                // park is unreliable (the dispatcher holds permits), and recomposition is CPU-bound
+                // work anyway, so a spin is the faithful model of the UI thread being busy.
+                if (uiCostMicros > 0) {
+                    val deadline = System.nanoTime() + uiCostMicros * 1_000
+                    while (System.nanoTime() < deadline) { /* busy */ }
+                }
+            }
+        }
+    }
+    repeat(scripts) {
+        val ready = CompletableDeferred<Unit>()
+        subscribed.add(ready)
+        scope.launch {
+            client.eventFlow.onSubscription { ready.complete(Unit) }.collect { event ->
+                if (event is ClientTextEvent) {
+                    for (trigger in SCRIPT_TRIGGERS) trigger.containsMatchIn(event.text)
+                }
+            }
+        }
+    }
+    subscribed.forEach { it.await() }
+
     val started = TimeSource.Monotonic.markNow()
     client.connect("benchmark-key-$index")
 
@@ -222,7 +292,7 @@ private suspend fun runConnection(
     val lineCount = registry.getStreams().sumOf { (it as ComposeTextStream).lines.value.size }
     val tag = "dr:bench$index"
     registry.close()
-    return ConnectionResult(index = index, tag = tag, lines = lineCount, elapsed = elapsed)
+    return ConnectionResult(index = index, tag = tag, lines = lineCount, textEvents = textEvents.get(), elapsed = elapsed)
 }
 
 /**
@@ -386,6 +456,33 @@ private class ReplayServer(
         val CRLF = byteArrayOf('\r'.code.toByte(), '\n'.code.toByte())
     }
 }
+
+// A representative script trigger set: the patterns a running script matches against every line of
+// game text. Modeled on common hunting/utility scripts (combat outcomes, room cues, social text).
+// Each script-style eventFlow subscriber runs all of these against every ClientTextEvent.
+private val SCRIPT_TRIGGERS: List<Regex> =
+    listOf(
+        "You attack",
+        "staggers",
+        "Obvious exits",
+        "Also here",
+        "You see",
+        "Roundtime",
+        "swings? at you",
+        "falls to the ground",
+        "is dead",
+        "You hit",
+        "misses? you",
+        "You feel fully",
+        "loses? its footing",
+        "stands? back up",
+        "begins? to",
+        "glances? at you",
+        "nods?",
+        "smiles?",
+        "whispers?",
+        "shouts?",
+    ).map { Regex(it, RegexOption.IGNORE_CASE) }
 
 // A pool of Capitalized proper names so the case-sensitive name-highlight match path does real work
 // per line (lowercasing a Capitalized needle is the per-line cost the highlight index has to handle).
