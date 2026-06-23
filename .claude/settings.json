@@ -21,7 +21,8 @@
       "Bash(rm:*)",
       "Bash(touch:*)",
       "Bash(java:*)",
-      "Bash(jar:*)"
+      "Bash(jar:*)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "additionalDirectories": ["..", "/tmp", "~/.gradle/caches"]
