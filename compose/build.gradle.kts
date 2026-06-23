@@ -176,6 +176,37 @@ benchmark {
     }
 }
 
+// End-to-end multi-connection stream lag harness (StreamNetworkBenchmark.kt). Not a JMH benchmark:
+// it stands up a loopback replay server and drives real WraythClients through the full parse+render
+// pipeline, so it runs as a plain main() on the jvmBenchmark compilation's classpath. Knobs are passed
+// as -P properties; -PgcLog/-Pzgc mirror the desktop app's diagnostic flags.
+//   ./gradlew :compose:streamNetworkBenchmark -Pconnections=4 -Pwindows=6 -PlinesPerSec=4000 -PgcLog
+val streamBenchmarkCompilation = kotlin.jvm().compilations.getByName("benchmark")
+tasks.register<JavaExec>("streamNetworkBenchmark") {
+    group = "benchmark"
+    description = "Run the end-to-end multi-connection stream lag harness over a loopback socket."
+    dependsOn(streamBenchmarkCompilation.compileTaskProvider)
+    classpath(
+        streamBenchmarkCompilation.output.allOutputs,
+        streamBenchmarkCompilation.runtimeDependencyFiles,
+    )
+    mainClass.set("warlockfe.warlock3.compose.util.StreamNetworkBenchmarkKt")
+    for (knob in listOf("connections", "windows", "lines", "highlights", "linesPerSec", "log")) {
+        (project.findProperty(knob) as? String)?.let { systemProperty(knob, it) }
+    }
+    if (project.hasProperty("gcLog")) {
+        val gcLogPath =
+            layout.buildDirectory
+                .get()
+                .asFile
+                .resolve("gc-bench-%p.log")
+        jvmArgs("-Xlog:gc*,safepoint:file=$gcLogPath:time,uptime,level,tags:filecount=5,filesize=20M")
+    }
+    if (project.hasProperty("zgc")) {
+        jvmArgs("-XX:+UseZGC")
+    }
+}
+
 // The default skin is authored as a directory (skin.json + referenced images) under skin/ and
 // packaged into a zip at build time, instead of committing a binary zip. Reproducible so it doesn't
 // churn between builds. The zip readers on every platform (java.util.zip on JVM/Android, kompress on
