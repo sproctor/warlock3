@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
+import io.github.oikvpqya.compose.fastscroller.ThumbStyle
+import io.github.oikvpqya.compose.fastscroller.TrackStyle
 import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -129,9 +132,25 @@ fun WindowView(
             Box(Modifier.fillMaxSize()) {
                 content()
                 val adapter = remember(heightModel) { MeasuredScrollbarAdapter(heightModel) }
+                val scrollbar = scrollbarSkinColors
                 VerticalScrollbar(
                     adapter = adapter,
-                    style = defaultScrollbarStyle(),
+                    // Same skin colors the desktop scrollbar uses (gutter track + thumb).
+                    style =
+                        defaultScrollbarStyle(
+                            thumbStyle =
+                                ThumbStyle(
+                                    shape = RoundedCornerShape(4.dp),
+                                    unhoverColor = scrollbar.thumb,
+                                    hoverColor = scrollbar.thumb,
+                                ),
+                            trackStyle =
+                                TrackStyle(
+                                    shape = RoundedCornerShape(4.dp),
+                                    unhoverColor = scrollbar.gutter,
+                                    hoverColor = scrollbar.gutter,
+                                ),
+                        ),
                     modifier =
                         Modifier
                             .align(Alignment.CenterEnd)

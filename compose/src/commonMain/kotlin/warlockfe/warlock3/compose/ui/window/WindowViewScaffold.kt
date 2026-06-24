@@ -44,6 +44,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -53,6 +54,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -64,6 +66,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
+import kotlinx.coroutines.yield
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
@@ -76,6 +79,10 @@ import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.WindowLocation
+
+// Off-screen lines are measured in batches of this many between yield()s, so a full-buffer pass never
+// blocks a frame.
+private const val OFFSCREEN_MEASURE_CHUNK = 64
 
 /**
  * Platform-agnostic window view. Holds the structure shared by the desktop and mobile clients (the
@@ -247,8 +254,22 @@ private fun WindowViewContent(
     val fontFamily = style.fontFamily?.let { createFontFamily(it) }
     val fontSize = style.fontSize?.sp ?: defaultFontSize
     val fontWeight = style.fontWeight?.let { FontWeight(it) }
+    // The text style shared by the rendered row and the off-screen height measurer, so a measured
+    // height matches what the row lays out. (Color does not affect height; the measurer ignores it.)
+    val rowTextStyle =
+        remember(textColor, fontFamily, fontSize, fontWeight) {
+            TextStyle(
+                color = textColor,
+                fontFamily = fontFamily,
+                fontSize = fontSize,
+                fontWeight = fontWeight,
+            )
+        }
 
     val lines = stream.lines.collectAsState(emptyList()).value
+    // Bumped when the buffer is cleared (serial numbers restart from 0); keys the measured-height
+    // cache below so it is discarded on clear instead of feeding stale heights to reused serials.
+    val generation by stream.generation.collectAsState()
 
     val findController = LocalWindowFindController.current
     val findUiState by findController.state.collectAsState()
@@ -289,7 +310,7 @@ private fun WindowViewContent(
                 // which makes the thumb jump when lines wrap to different heights. Recreate the cache
                 // whenever the wrap width or text style changes, since both invalidate every height.
                 val measuredHeights =
-                    remember(constraints.maxWidth, style, defaultFontSize) {
+                    remember(constraints.maxWidth, style, defaultFontSize, generation) {
                         mutableStateMapOf<Long, Int>()
                     }
                 val currentLines = rememberUpdatedState(lines)
@@ -308,13 +329,47 @@ private fun WindowViewContent(
                             measuredHeights = measuredHeights,
                         )
                     }
-                LaunchedEffect(measuredHeights) {
-                    snapshotFlow { scrollState.layoutInfo.visibleItemsInfo.map { it.key to it.size } }
-                        .collect { visibleItems ->
-                            visibleItems.forEach { (key, size) ->
-                                val serial = key as? Long ?: return@forEach
-                                if (size > 0 && measuredHeights[serial] != size) {
-                                    measuredHeights[serial] = size
+                val density = LocalDensity.current
+                val textMeasurer = rememberTextMeasurer()
+                val horizontalPaddingPx =
+                    with(density) { (streamRowStartPadding + streamRowEndPadding).roundToPx() }
+                val textWidthPx = (constraints.maxWidth - horizontalPaddingPx).coerceAtLeast(0)
+                val imageHeightPx = with(density) { streamImageRowHeight.roundToPx() }
+                // Measure the lines the LazyColumn never lays out (off-screen scrollback) so the scroll
+                // model has an exact height for every line instead of the running-average estimate that
+                // made the thumb drift when scrolling into unseen regions. Runs on the composition's
+                // dispatcher, chunked with yield() so it never blocks a frame, and skips serials already
+                // measured (visible items are measured for real by the effect above).
+                LaunchedEffect(measuredHeights, textMeasurer, rowTextStyle, textWidthPx, imageHeightPx) {
+                    snapshotFlow { currentLines.value }
+                        .collect { snapshot ->
+                            // Evict heights for lines trimmed off the front of the scrollback: their
+                            // serials sit below the oldest live line and would otherwise accumulate in
+                            // the cache (and skew the average) for the lifetime of the window.
+                            val oldestSerial = snapshot.firstOrNull()?.serialNumber
+                            if (oldestSerial != null) {
+                                measuredHeights.keys
+                                    .filter { it < oldestSerial }
+                                    .forEach { measuredHeights.remove(it) }
+                            }
+                            var sinceYield = 0
+                            snapshot.forEach { line ->
+                                if (!measuredHeights.containsKey(line.serialNumber)) {
+                                    val height =
+                                        line.renderedHeight(
+                                            textMeasurer = textMeasurer,
+                                            textStyle = rowTextStyle,
+                                            textWidthPx = textWidthPx,
+                                            imageHeightPx = imageHeightPx,
+                                        )
+                                    if (height > 0) {
+                                        measuredHeights[line.serialNumber] = height
+                                    }
+                                    sinceYield++
+                                    if (sinceYield >= OFFSCREEN_MEASURE_CHUNK) {
+                                        sinceYield = 0
+                                        yield()
+                                    }
                                 }
                             }
                         }
@@ -337,21 +392,33 @@ private fun WindowViewContent(
                         ) { index ->
                             when (val line = lines[index]) {
                                 is StreamTextLine -> {
-                                    if (line.text != null &&
-                                        line.isShowing(openWindows) &&
-                                        (!line.isPrompt || !lines.isPreviousPrompt(index, openWindows))
-                                    ) {
+                                    // rendersContent is the single source of truth for whether a line
+                                    // paints a row; the scroll model keys its heights off the same
+                                    // predicate, so the two cannot drift. It guarantees non-null text
+                                    // for a shown text line (hence the unreachable elvis below).
+                                    if (lines.rendersContent(index, openWindows)) {
+                                        val lineText = line.text ?: return@items
                                         var positionInParent by remember { mutableStateOf(Offset.Zero) }
                                         Box(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    .onGloballyPositioned {
+                                                    // Record this visible row's real laid-out height,
+                                                    // correcting the off-screen estimate. Fires only on
+                                                    // a size change, so there is no per-frame work.
+                                                    .onSizeChanged { size ->
+                                                        val height = size.height
+                                                        if (height > 0 &&
+                                                            measuredHeights[line.serialNumber] != height
+                                                        ) {
+                                                            measuredHeights[line.serialNumber] = height
+                                                        }
+                                                    }.onGloballyPositioned {
                                                         positionInParent = it.positionInParent()
                                                     }.background(
                                                         line.entireLineStyle?.backgroundColor?.toColor()
                                                             ?: Color.Unspecified,
-                                                    ).padding(start = 4.dp, end = 8.dp),
+                                                    ).padding(start = streamRowStartPadding, end = streamRowEndPadding),
                                         ) {
                                             BasicText(
                                                 modifier =
@@ -376,7 +443,7 @@ private fun WindowViewContent(
                                                         val ranges =
                                                             activeFind.matchRangesBySerial[line.serialNumber]
                                                         if (ranges != null) {
-                                                            line.text.withFindHighlight(
+                                                            lineText.withFindHighlight(
                                                                 ranges = ranges,
                                                                 currentRange =
                                                                     if (line.serialNumber == activeFind.currentSerial) {
@@ -386,25 +453,19 @@ private fun WindowViewContent(
                                                                     },
                                                             )
                                                         } else {
-                                                            line.text
+                                                            lineText
                                                         }
                                                     } else {
-                                                        line.text
+                                                        lineText
                                                     },
-                                                style =
-                                                    TextStyle(
-                                                        color = textColor,
-                                                        fontFamily = fontFamily,
-                                                        fontSize = fontSize,
-                                                        fontWeight = fontWeight,
-                                                    ),
+                                                style = rowTextStyle,
                                             )
                                         }
                                     }
                                 }
 
                                 is StreamImageLine -> {
-                                    val defaultHeight = 80.dp
+                                    val defaultHeight = streamImageRowHeight
                                     Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
                                         val painter =
                                             rememberAsyncImagePainter(

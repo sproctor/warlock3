@@ -280,6 +280,12 @@
       "compassDarkIcon": { "color": { "light": "#BCC0C7", "dark": "#3F444D" } }
     }
   },
+  "scrollbar": {
+    "children": {
+      "gutter": { "color": "#808080" },
+      "thumb": { "color": { "light": "#E6000000", "dark": "#E6D8D2C4" } }
+    }
+  },
   "indicator": {
     "width": 24,
     "height": 24,

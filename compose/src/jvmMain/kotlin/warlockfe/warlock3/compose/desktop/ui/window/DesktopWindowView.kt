@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +56,7 @@ import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialo
 import warlockfe.warlock3.compose.ui.window.WindowHeader
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowViewScaffold
+import warlockfe.warlock3.compose.ui.window.scrollbarSkinColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -159,22 +162,34 @@ fun DesktopWindowView(
             Box(Modifier.fillMaxSize()) {
                 content()
                 val adapter = remember(heightModel) { MeasuredScrollbarAdapter(heightModel) }
+                val scrollbar = scrollbarSkinColors
+                // Share an interaction source with the scrollbar so the track gutter follows the
+                // thumb's own state: VerticalScrollbar drives its highlight from this same source
+                // (hoverable + DragInteraction), so the gutter fades in (to its skin alpha) exactly
+                // when the thumb does and stays hidden while idle. canScroll keeps the lane clear when
+                // content fits.
+                val interactionSource = remember { MutableInteractionSource() }
+                val hovered by interactionSource.collectIsHoveredAsState()
+                val dragged by interactionSource.collectIsDraggedAsState()
+                val canScroll = heightModel.contentSize > heightModel.viewportSize
+                val gutterAlpha by animateFloatAsState(
+                    targetValue = if (canScroll && (hovered || dragged)) 0.1f else 0f,
+                    label = "scrollbarGutter",
+                )
                 VerticalScrollbar(
                     adapter = adapter,
+                    interactionSource = interactionSource,
                     modifier =
                         Modifier
                             .align(Alignment.CenterEnd)
                             .fillMaxHeight()
-                            .background(gameChrome.border.copy(alpha = 0.5f))
+                            .background(scrollbar.gutter.copy(alpha = gutterAlpha))
                             .padding(top = 2.dp, bottom = 4.dp),
                     style =
                         defaultScrollbarStyle().copy(
                             minimalHeight = 24.dp,
-                            // gameChrome.border is a hairline barely distinct from the panel, so it
-                            // reads as invisible on the thumb. textFaint/textMuted are the theme's
-                            // visible-but-subtle element colors and contrast in both light and dark.
-                            unhoverColor = gameChrome.textFaint,
-                            hoverColor = gameChrome.textMuted,
+                            unhoverColor = scrollbar.thumb,
+                            hoverColor = scrollbar.thumb,
                         ),
                 )
             }
