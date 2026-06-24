@@ -11,7 +11,8 @@ import warlockfe.warlock3.core.prefs.repositories.VariableRepository
  * Backs the JS `variables` object. Reads and writes go straight to [variableRepository] (the config
  * store, our source of truth) rather than a cached snapshot, so a variable read right as the script
  * starts can't race an out-of-date copy. Rhino invokes these accessors synchronously on the script
- * thread, so the suspend repository calls are bridged with [runBlocking].
+ * thread; reads hit the in-memory store directly (no blocking), while the suspend writes are bridged
+ * with [runBlocking].
  */
 class JsStateMap(
     private val variableRepository: VariableRepository,
@@ -21,8 +22,7 @@ class JsStateMap(
 
     override fun getClassName(): String = "VariablesMap"
 
-    private fun variables(): Map<String, String> =
-        characterId()?.let { id -> runBlocking { variableRepository.getVariables(id) } } ?: emptyMap()
+    private fun variables(): Map<String, String> = characterId()?.let { id -> variableRepository.getVariables(id) } ?: emptyMap()
 
     override fun get(
         name: String?,
@@ -30,7 +30,7 @@ class JsStateMap(
     ): String? {
         logger.d { "getting $name" }
         val id = characterId() ?: return null
-        return name?.let { runBlocking { variableRepository.getVariable(id, it) } }
+        return name?.let { variableRepository.getVariable(id, it) }
     }
 
     override fun get(

@@ -130,7 +130,7 @@ class WslContext(
 
     // Reads a stored variable from the source of truth (the config store, via the repository) rather
     // than a cached snapshot, so a lookup right as the script starts can't race a stale copy.
-    private suspend fun lookupStoredVariable(name: String): String? {
+    private fun lookupStoredVariable(name: String): String? {
         val characterId = client.characterId.value?.lowercase() ?: return null
         return variableRepository.getVariable(characterId, name)
     }

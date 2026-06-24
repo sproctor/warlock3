@@ -828,7 +828,7 @@ class GameViewModel(
                     }
 
                     is MacroToken.Variable -> {
-                        client.characterId.value?.let { characterId ->
+                        client.characterId.value?.lowercase()?.let { characterId ->
                             variableRepository.getVariable(characterId, token.name)?.let { value ->
                                 entryInsert(value)
                             }
