@@ -1,15 +1,20 @@
 package warlockfe.warlock3.compose.desktop.ui.window
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -43,7 +48,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
@@ -52,6 +56,7 @@ import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialo
 import warlockfe.warlock3.compose.ui.window.WindowHeader
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowViewScaffold
+import warlockfe.warlock3.compose.ui.window.scrollbarSkinColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -149,12 +154,44 @@ fun DesktopWindowView(
                 onCloseClick = onCloseClick,
             )
         },
-        listContainer = { scrollState, content ->
-            VerticallyScrollableContainer(
-                scrollState = scrollState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
+        listContainer = { _, heightModel, content ->
+            // The stock lazy-list scrollbar (Jewel's VerticallyScrollableContainer) extrapolates the
+            // content size from the average height of the visible lines, so its thumb jumps when
+            // lines wrap to different heights. Drive a native scrollbar from a custom adapter backed
+            // by per-line measured heights instead; the LazyColumn still handles wheel scrolling.
+            Box(Modifier.fillMaxSize()) {
                 content()
+                val adapter = remember(heightModel) { MeasuredScrollbarAdapter(heightModel) }
+                val scrollbar = scrollbarSkinColors
+                // Share an interaction source with the scrollbar so the track gutter follows the
+                // thumb's own state: VerticalScrollbar drives its highlight from this same source
+                // (hoverable + DragInteraction), so the gutter fades in (to its skin alpha) exactly
+                // when the thumb does and stays hidden while idle. canScroll keeps the lane clear when
+                // content fits.
+                val interactionSource = remember { MutableInteractionSource() }
+                val hovered by interactionSource.collectIsHoveredAsState()
+                val dragged by interactionSource.collectIsDraggedAsState()
+                val canScroll = heightModel.contentSize > heightModel.viewportSize
+                val gutterAlpha by animateFloatAsState(
+                    targetValue = if (canScroll && (hovered || dragged)) 0.1f else 0f,
+                    label = "scrollbarGutter",
+                )
+                VerticalScrollbar(
+                    adapter = adapter,
+                    interactionSource = interactionSource,
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .fillMaxHeight()
+                            .background(scrollbar.gutter.copy(alpha = gutterAlpha))
+                            .padding(top = 2.dp, bottom = 4.dp),
+                    style =
+                        defaultScrollbarStyle().copy(
+                            minimalHeight = 24.dp,
+                            unhoverColor = scrollbar.thumb,
+                            hoverColor = scrollbar.thumb,
+                        ),
+                )
             }
         },
         actionContextMenu = { offset, menu, onDismiss ->

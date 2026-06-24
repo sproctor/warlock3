@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -30,8 +31,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
+import io.github.oikvpqya.compose.fastscroller.ThumbStyle
+import io.github.oikvpqya.compose.fastscroller.TrackStyle
 import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
-import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -118,12 +120,37 @@ fun WindowView(
                 onCloseClick = onCloseClick,
             )
         },
-        listContainer = { scrollState, content ->
+        listContainer = { _, heightModel, content ->
+            // Drive the fastscroller scrollbar from the measured-height scroll model (the same height
+            // logic the desktop scrollbar uses) so the drag handle's length stays stable instead of
+            // jumping when lines wrap to different heights, which is what the stock lazy-list adapter's
+            // visible-average estimate causes.
+            // TODO: migrate to Modifier.scrollIndicator once foundation ships ScrollIndicatorFactory +
+            // the scrollIndicator modifier (absent in foundation 1.11.2; only the read-only
+            // ScrollIndicatorState exists). It would need a custom ScrollIndicatorState wrapping this
+            // model (Double -> Int) and is draw-only, so keep fastscroller for the drag-to-scroll thumb.
             Box(Modifier.fillMaxSize()) {
                 content()
+                val adapter = remember(heightModel) { MeasuredScrollbarAdapter(heightModel) }
+                val scrollbar = scrollbarSkinColors
                 VerticalScrollbar(
-                    adapter = rememberScrollbarAdapter(scrollState),
-                    style = defaultScrollbarStyle(),
+                    adapter = adapter,
+                    // Same skin colors the desktop scrollbar uses (gutter track + thumb).
+                    style =
+                        defaultScrollbarStyle(
+                            thumbStyle =
+                                ThumbStyle(
+                                    shape = RoundedCornerShape(4.dp),
+                                    unhoverColor = scrollbar.thumb,
+                                    hoverColor = scrollbar.thumb,
+                                ),
+                            trackStyle =
+                                TrackStyle(
+                                    shape = RoundedCornerShape(4.dp),
+                                    unhoverColor = scrollbar.gutter,
+                                    hoverColor = scrollbar.gutter,
+                                ),
+                        ),
                     modifier =
                         Modifier
                             .align(Alignment.CenterEnd)

@@ -21,7 +21,11 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
@@ -199,6 +203,29 @@ internal fun StreamTextLine.isShowing(openWindows: List<String>): Boolean =
             it == this.showWhenClosed
         }
 
+/**
+ * Whether the line at [index] actually paints a row in the stream. Text lines with no text, lines
+ * hidden because their window is open, and prompts collapsed into the previous prompt all occupy a
+ * zero-height slot in the [androidx.compose.foundation.lazy.LazyColumn]. This MUST stay in lockstep
+ * with the render branch in WindowViewContent so the scroll model counts the same heights the list
+ * lays out.
+ */
+internal fun List<StreamLine>.rendersContent(
+    index: Int,
+    openWindows: List<String>,
+): Boolean =
+    when (val line = this[index]) {
+        is StreamTextLine -> {
+            line.text != null &&
+                line.isShowing(openWindows) &&
+                (!line.isPrompt || !isPreviousPrompt(index, openWindows))
+        }
+
+        is StreamImageLine -> {
+            true
+        }
+    }
+
 internal fun List<StreamLine>.isPreviousPrompt(
     index: Int,
     openWindows: List<String>,
@@ -213,3 +240,41 @@ internal fun List<StreamLine>.isPreviousPrompt(
     }
     return false
 }
+
+// Layout constants shared by the stream row in WindowViewContent and the off-screen height measurer
+// ([renderedHeight]), so a computed height matches what the row actually lays out. The row and the
+// measurer MUST reference these same values rather than inline literals, or the two can drift.
+internal val streamRowStartPadding = 4.dp
+internal val streamRowEndPadding = 8.dp
+internal val streamImageRowHeight = 80.dp
+
+/**
+ * Intrinsic pixel height of [this] line when it renders content, computed the way WindowViewContent
+ * lays the row out (the same [textStyle], with the row's horizontal padding already removed from
+ * [textWidthPx]) so the scroll model's estimate of an off-screen line matches its real laid-out
+ * height. Visibility / prompt-collapse gating is applied separately by the scroll model via
+ * [rendersContent]; a text line with no text contributes 0.
+ */
+internal fun StreamLine.renderedHeight(
+    textMeasurer: TextMeasurer,
+    textStyle: TextStyle,
+    textWidthPx: Int,
+    imageHeightPx: Int,
+): Int =
+    when (this) {
+        is StreamTextLine -> {
+            val content = text ?: return 0
+            val layout =
+                textMeasurer.measure(
+                    text = content,
+                    style = textStyle,
+                    softWrap = true,
+                    constraints = Constraints(maxWidth = textWidthPx.coerceAtLeast(0)),
+                )
+            layout.size.height
+        }
+
+        is StreamImageLine -> {
+            imageHeightPx
+        }
+    }

@@ -80,6 +80,12 @@ class ComposeTextStream(
     private var nextSerialNumber = 0L
     private var removedLines = 0L
 
+    // Bumped on clear(), where nextSerialNumber restarts from 0. Anything keyed by serial number (the
+    // scrollbar's measured-height cache) observes this to drop state that would otherwise collide with
+    // the reused low serial numbers.
+    private val _generation = MutableStateFlow(0)
+    val generation: StateFlow<Int> = _generation
+
     // Set when the displayed lines changed but the new snapshot has not been emitted yet; the work
     // queue coalesces this into a single publish per drain batch (see publishLines/flush).
     private var pendingPublish = false
@@ -172,6 +178,7 @@ class ComposeTextStream(
             components.clear()
             nextSerialNumber = 0L
             removedLines = 0L
+            _generation.value += 1
             cacheLines.clear()
             linesUpdated()
         }
