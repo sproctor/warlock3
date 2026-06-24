@@ -1,6 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -37,16 +36,15 @@ class WslMatchTest {
     }
 
     @Test
-    fun regexMatch_populatesMatchMapWithGroups() =
-        runTest {
-            val match = RegexMatch(label = "found", regex = Regex("([0-9]+) (\\w+)"))
-            val frame = WslFrame(0)
-            match.match("you have 42 silver", frame)
-            val matchMap = frame.lookupVariable("match")
-            assertEquals("42 silver", matchMap?.getProperty("0")?.toString())
-            assertEquals("42", matchMap?.getProperty("1")?.toString())
-            assertEquals("silver", matchMap?.getProperty("2")?.toString())
-        }
+    fun regexMatch_populatesMatchMapWithGroups() {
+        val match = RegexMatch(label = "found", regex = Regex("([0-9]+) (\\w+)"))
+        val frame = WslFrame(0)
+        match.match("you have 42 silver", frame)
+        val matchMap = frame.lookupVariable("match")
+        assertEquals("42 silver", matchMap?.getProperty("0")?.toString())
+        assertEquals("42", matchMap?.getProperty("1")?.toString())
+        assertEquals("silver", matchMap?.getProperty("2")?.toString())
+    }
 
     @Test
     fun regexMatch_doesNotSetMatchMapWhenNoMatch() {

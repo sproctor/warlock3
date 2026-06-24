@@ -1,6 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -53,21 +52,19 @@ class WslVariableTest {
     }
 
     @Test
-    fun mapProperty() =
-        runTest {
-            val v = WslVariable { mapOf("count" to 5) }
-            assertTrue(v.isMap())
-            // getProperty wraps the value in another WslVariable, so inspect it numerically
-            assertEquals("5", v.getProperty("count").toNumber().toPlainString())
-            assertTrue(v.getProperty("missing").isNull())
-        }
+    fun mapProperty() {
+        val v = WslVariable { mapOf("count" to 5) }
+        assertTrue(v.isMap())
+        // getProperty wraps the value in another WslVariable, so inspect it numerically
+        assertEquals("5", v.getProperty("count").toNumber().toPlainString())
+        assertTrue(v.getProperty("missing").isNull())
+    }
 
     @Test
-    fun nonMapPropertyIsNull() =
-        runTest {
-            val v = WslVariable { 42 }
-            assertTrue(v.getProperty("anything").isNull())
-        }
+    fun nonMapPropertyIsNull() {
+        val v = WslVariable { 42 }
+        assertTrue(v.getProperty("anything").isNull())
+    }
 
     @Test
     fun getterIsEvaluatedLazily() {

@@ -1,7 +1,6 @@
 package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
-import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -77,14 +76,13 @@ class WslValueTest {
     }
 
     @Test
-    fun string_indexProperty() =
-        runTest {
-            val s = WslString("abc")
-            assertEquals("a", s.getProperty("0").toString())
-            assertEquals("c", s.getProperty("2").toString())
-            assertTrue(s.getProperty("5").isNull())
-            assertTrue(s.getProperty("notanindex").isNull())
-        }
+    fun string_indexProperty() {
+        val s = WslString("abc")
+        assertEquals("a", s.getProperty("0").toString())
+        assertEquals("c", s.getProperty("2").toString())
+        assertTrue(s.getProperty("5").isNull())
+        assertTrue(s.getProperty("notanindex").isNull())
+    }
 
     @Test
     fun string_equality_caseInsensitive() {
@@ -153,24 +151,22 @@ class WslValueTest {
     }
 
     @Test
-    fun null_getProperty_isNull() =
-        runTest {
-            assertTrue(WslNull.getProperty("anything").isNull())
-        }
+    fun null_getProperty_isNull() {
+        assertTrue(WslNull.getProperty("anything").isNull())
+    }
 
     // --- WslMap ---
 
     @Test
-    fun map_getAndSet() =
-        runTest {
-            val map = WslMap(mapOf("a" to WslString("1")))
-            assertTrue(map.isMap())
-            assertEquals("1", map.getProperty("a").toString())
-            assertTrue(map.getProperty("missing").isNull())
+    fun map_getAndSet() {
+        val map = WslMap(mapOf("a" to WslString("1")))
+        assertTrue(map.isMap())
+        assertEquals("1", map.getProperty("a").toString())
+        assertTrue(map.getProperty("missing").isNull())
 
-            map.setProperty("b", WslString("2"))
-            assertEquals("2", map.getProperty("b").toString())
-        }
+        map.setProperty("b", WslString("2"))
+        assertEquals("2", map.getProperty("b").toString())
+    }
 
     @Test
     fun map_notNumericNotBoolean() {

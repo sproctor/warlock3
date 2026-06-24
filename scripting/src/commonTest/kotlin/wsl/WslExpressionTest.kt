@@ -33,7 +33,7 @@ class WslExpressionTest {
         }
     }
 
-    private suspend fun CoroutineScope.eval(
+    private fun CoroutineScope.eval(
         content: String,
         configure: WslContext.() -> Unit = {},
     ): WslValue {

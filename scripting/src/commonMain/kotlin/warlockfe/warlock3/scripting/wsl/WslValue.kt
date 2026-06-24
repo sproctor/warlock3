@@ -12,7 +12,7 @@ interface WslValue {
 
     fun isBoolean(): Boolean
 
-    suspend fun getProperty(key: String): WslValue
+    fun getProperty(key: String): WslValue
 
     fun setProperty(
         key: String,
@@ -43,7 +43,7 @@ class WslBoolean(
 
     override fun toNumber(): BigDecimal = throw WslRuntimeException("Boolean cannot be used as a number")
 
-    override suspend fun getProperty(key: String): WslValue = WslNull
+    override fun getProperty(key: String): WslValue = WslNull
 
     override fun setProperty(
         key: String,
@@ -85,7 +85,7 @@ class WslString(
 
     override fun toString(): String = value
 
-    override suspend fun getProperty(key: String): WslValue {
+    override fun getProperty(key: String): WslValue {
         val index = key.toIntOrNull()
         return if (index != null) {
             value.getOrNull(index)?.let { WslString(it.toString()) } ?: WslNull
@@ -135,7 +135,7 @@ object WslNull : WslValue {
 
     override fun toNumber(): BigDecimal = throw WslRuntimeException("Cannot convert null to number")
 
-    override suspend fun getProperty(key: String): WslValue = WslNull
+    override fun getProperty(key: String): WslValue = WslNull
 
     override fun setProperty(
         key: String,
@@ -164,7 +164,7 @@ class WslMap(
 
     override fun isBoolean(): Boolean = false
 
-    override suspend fun getProperty(key: String): WslValue = values[key] ?: WslNull
+    override fun getProperty(key: String): WslValue = values[key] ?: WslNull
 
     override fun setProperty(
         key: String,

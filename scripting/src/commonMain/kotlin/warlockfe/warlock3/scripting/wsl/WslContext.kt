@@ -121,7 +121,7 @@ class WslContext(
         command(this, args ?: "")
     }
 
-    suspend fun lookupVariable(name: String): WslValue? {
+    fun lookupVariable(name: String): WslValue? {
         currentFrame.lookupVariable(name)?.let { return it }
         scriptVariables[name]?.let { return it }
         lookupStoredVariable(name)?.let { return WslString(it) }
