@@ -679,6 +679,10 @@ class GameViewModel(
             return
         }
         val line = entryTextState.text.toString()
+        if (line.isEmpty()) {
+            // Pressing Enter on an empty entry should do nothing, not send a blank command.
+            return
+        }
         entryTextState.clearText()
         updateHistory(line)
         historyPosition = 0
@@ -785,8 +789,8 @@ class GameViewModel(
             return false
         }
 
-        val keyString = translateKeyPress(event)
-        val macroString = macros.value[keyString]
+        val keyCombo = translateKeyPress(event)
+        val macroString = macros.value[keyCombo]
 
         if (macroString != null) {
             val tokens = parseMacro(macroString)
