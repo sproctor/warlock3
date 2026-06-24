@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import io.github.oikvpqya.compose.fastscroller.VerticalScrollbar
-import io.github.oikvpqya.compose.fastscroller.rememberScrollbarAdapter
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -118,13 +117,20 @@ fun WindowView(
                 onCloseClick = onCloseClick,
             )
         },
-        listContainer = { scrollState, _, content ->
-            // The measured-height scroll model (third slot arg) is desktop-only for now; mobile keeps
-            // the stock lazy-list adapter.
+        listContainer = { _, heightModel, content ->
+            // Drive the fastscroller scrollbar from the measured-height scroll model (the same height
+            // logic the desktop scrollbar uses) so the drag handle's length stays stable instead of
+            // jumping when lines wrap to different heights, which is what the stock lazy-list adapter's
+            // visible-average estimate causes.
+            // TODO: migrate to Modifier.scrollIndicator once foundation ships ScrollIndicatorFactory +
+            // the scrollIndicator modifier (absent in foundation 1.11.2; only the read-only
+            // ScrollIndicatorState exists). It would need a custom ScrollIndicatorState wrapping this
+            // model (Double -> Int) and is draw-only, so keep fastscroller for the drag-to-scroll thumb.
             Box(Modifier.fillMaxSize()) {
                 content()
+                val adapter = remember(heightModel) { MeasuredScrollbarAdapter(heightModel) }
                 VerticalScrollbar(
-                    adapter = rememberScrollbarAdapter(scrollState),
+                    adapter = adapter,
                     style = defaultScrollbarStyle(),
                     modifier =
                         Modifier
