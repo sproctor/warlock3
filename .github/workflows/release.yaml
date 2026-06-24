@@ -71,6 +71,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
+          retention-days: 3
           path: |
             desktopApp/build/compose/binaries/**/*.dmg
             desktopApp/build/compose/binaries/**/*.pkg
