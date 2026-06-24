@@ -197,6 +197,28 @@ class CharacterConfigStoreTest {
         }
 
     @Test
+    fun variables_areCaseInsensitive() =
+        runBlocking {
+            val store = newStore()
+            store.load()
+            val repo = VariableRepository(store)
+
+            // Reads resolve regardless of case.
+            repo.put("gs4:tholan", "Health", "100")
+            assertEquals("100", repo.getVariable("gs4:tholan", "health"))
+            assertEquals("100", repo.getVariable("gs4:tholan", "HEALTH"))
+
+            // A case-variant write replaces the existing entry instead of adding a duplicate.
+            repo.put("gs4:tholan", "health", "75")
+            assertEquals(mapOf("health" to "75"), repo.getVariables("gs4:tholan"))
+
+            // Delete matches the same entry a read would resolve, regardless of case.
+            repo.delete("gs4:tholan", "HEALTH")
+            assertNull(repo.getVariable("gs4:tholan", "health"))
+            assertTrue(repo.getVariables("gs4:tholan").isEmpty())
+        }
+
+    @Test
     fun handAuthoredEntryWithoutId_getsStableIdOnLoad() =
         runBlocking {
             // Simulate a user hand-writing a highlights file with no id field.

@@ -1,15 +1,8 @@
 package warlockfe.warlock3.scripting.js
 
-import co.touchlab.kermit.Logger
-import io.ktor.util.CaseInsensitiveMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import org.mozilla.javascript.Context
@@ -38,8 +31,6 @@ class JsInstance(
     private val variableRepository: VariableRepository,
     private val scriptManager: ScriptManager,
 ) : ScriptInstance {
-    private val logger = Logger.withTag("JsInstance")
-
     override var status: ScriptStatus = ScriptStatus.NotStarted
         private set(newStatus) {
             field = newStatus
@@ -56,7 +47,6 @@ class JsInstance(
     var client: WarlockClient? = null
         private set
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     override fun start(
         client: WarlockClient,
         argumentString: String,
@@ -82,66 +72,34 @@ class JsInstance(
                             instance = this,
                         ),
                     )
-                    runBlocking {
-                        val globalVariables =
-                            client.characterId
-                                .flatMapLatest { id ->
-                                    if (id != null) {
-                                        variableRepository.observeCharacterVariables(id).map {
-                                            logger.d { "reloading variables $it" }
-                                            it
-                                                .associate { variable -> Pair(variable.name, variable.value) }
-                                                .let { entries ->
-                                                    CaseInsensitiveMap<String>()
-                                                        .apply { putAll(entries) }
-                                                }
-                                        }
-                                    } else {
-                                        flow<MutableMap<String, String>> {
-                                            emit(mutableMapOf())
-                                        }
-                                    }
-                                }.stateIn(scope = scope)
-                        jsScope.put(
-                            "variables",
-                            jsScope,
-                            JsStateMap(
-                                map = globalVariables,
-                                onPut = { name: String, value: String ->
-                                    client.characterId.value?.let { characterId ->
-                                        runBlocking {
-                                            variableRepository.put(characterId, name, value)
-                                        }
-                                    }
-                                },
-                                onDelete = { name ->
-                                    client.characterId.value?.let { characterId ->
-                                        runBlocking {
-                                            variableRepository.delete(characterId, name)
-                                        }
-                                    }
-                                },
-                            ),
-                        )
-                        jsScope.put(
+                    // Reads/writes go straight to the config store (source of truth) so a variable
+                    // read at script start can't race a not-yet-populated cached snapshot.
+                    jsScope.put(
+                        "variables",
+                        jsScope,
+                        JsStateMap(
+                            variableRepository = variableRepository,
+                            characterId = { client.characterId.value?.lowercase() },
+                        ),
+                    )
+                    jsScope.put(
+                        "pause",
+                        jsScope,
+                        FunctionObject(
                             "pause",
+                            JavascriptFunctions::pause.javaMethod,
                             jsScope,
-                            FunctionObject(
-                                "pause",
-                                JavascriptFunctions::pause.javaMethod,
-                                jsScope,
-                            ),
-                        )
-                        jsScope.put(
+                        ),
+                    )
+                    jsScope.put(
+                        "exit",
+                        jsScope,
+                        FunctionObject(
                             "exit",
+                            JavascriptFunctions::exit.javaMethod,
                             jsScope,
-                            FunctionObject(
-                                "exit",
-                                JavascriptFunctions::exit.javaMethod,
-                                jsScope,
-                            ),
-                        )
-                    }
+                        ),
+                    )
                     ScriptableObject.defineClass(jsScope, MatchList::class.java)
                     context.evaluateReader(jsScope, reader, file.name, 1, null)
                 } catch (_: StopException) {

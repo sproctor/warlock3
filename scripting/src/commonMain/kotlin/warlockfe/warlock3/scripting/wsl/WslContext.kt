@@ -1,20 +1,13 @@
 package warlockfe.warlock3.scripting.wsl
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
-import kotlinx.coroutines.withTimeout
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.ClientNavEvent
@@ -37,7 +30,6 @@ import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
-import warlockfe.warlock3.core.util.toCaseInsensitiveMap
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.incrementAndFetch
@@ -94,27 +86,6 @@ class WslContext(
     private val navChannel = Channel<Unit>(0)
     private val promptChannel = Channel<Unit>(0)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val globalVariables =
-        client.characterId
-            .flatMapLatest { id ->
-                if (id != null) {
-                    variableRepository.observeCharacterVariables(id).map { variables ->
-                        variables
-                            .associate { it.name to it.value }
-                            .toCaseInsensitiveMap()
-                    }
-                } else {
-                    flow {
-                        emit(CaseInsensitiveMap())
-                    }
-                }
-            }.stateIn(
-                started = SharingStarted.Eagerly,
-                scope = scope,
-                initialValue = CaseInsensitiveMap(),
-            )
-
     init {
         client.eventFlow
             .onEach { event ->
@@ -153,8 +124,15 @@ class WslContext(
     fun lookupVariable(name: String): WslValue? {
         currentFrame.lookupVariable(name)?.let { return it }
         scriptVariables[name]?.let { return it }
-        globalVariables.value[name]?.let { return WslString(it) }
+        lookupStoredVariable(name)?.let { return WslString(it) }
         return null
+    }
+
+    // Reads a stored variable from the source of truth (the config store, via the repository) rather
+    // than a cached snapshot, so a lookup right as the script starts can't race a stale copy.
+    private fun lookupStoredVariable(name: String): String? {
+        val characterId = client.characterId.value?.lowercase() ?: return null
+        return variableRepository.getVariable(characterId, name)
     }
 
     fun hasScriptVariable(name: String): Boolean = scriptVariables.containsKey(name)
@@ -165,9 +143,6 @@ class WslContext(
     ) {
         client.characterId.value?.let { variableRepository.put(it.lowercase(), name, value) }
         log(ScriptLoggingLevel.INFO, "SetVariable: $name=$value")
-        withTimeout(1.seconds) {
-            globalVariables.first { it[name] == value }
-        }
     }
 
     suspend fun deleteStoredVariable(name: String) {

@@ -9,7 +9,6 @@ import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -115,13 +114,14 @@ class ComposeTextStream(
         // Re-render the buffer whenever a styling input (presets/fonts, highlights, or alterations)
         // changes. The cached lines bake all three into their AnnotatedStrings at append time, so
         // without this they keep the old styling until each line is otherwise rebuilt. These change
-        // rarely (the user edits settings), so a full re-render of the buffer is acceptable. drop(1)
-        // skips each flow's replayed current value (nothing has been appended yet at construction, so
-        // re-rendering then would be a no-op).
+        // rarely (the user edits settings), so a full re-render of the buffer is acceptable. We also
+        // re-render on each flow's replayed current value: at construction the buffer is empty so that
+        // is a no-op, and rendering it (rather than dropping it) means a change that lands before this
+        // collector subscribes is still applied instead of being swallowed as the replayed value.
         merge(
-            presets.drop(1).map { },
-            highlights.drop(1).map { },
-            alterations.drop(1).map { },
+            presets.map { },
+            highlights.map { },
+            alterations.map { },
         ).onEach {
             workQueue.submit("rerender") {
                 rerenderAllLines()

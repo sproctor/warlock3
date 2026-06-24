@@ -141,6 +141,16 @@ class ComposeTextStreamTest {
 
     private fun List<StreamLine>.serials(): List<Long> = map { it.serialNumber }
 
+    // The stream re-renders on changes to its styling inputs (presets/highlights/alterations) via
+    // merge(flow.drop(1), ...), which skips each flow's replayed current value. If a test publishes a
+    // change before the stream's collector has subscribed, that change *is* the replayed value and gets
+    // dropped, so no re-render ever happens and awaitLines hangs to its timeout. The stream's collector
+    // runs on Dispatchers.Default, whose scheduling can lag under CI load, so wait for the subscription
+    // before mutating the flow to make the change deterministic.
+    private suspend fun MutableStateFlow<*>.awaitSubscriber() {
+        subscriptionCount.first { it > 0 }
+    }
+
     private inline fun withFixture(
         maxLines: Int = 1000,
         suppressPrompts: Boolean = false,
@@ -402,6 +412,7 @@ class ComposeTextStreamTest {
                     ).entireLineStyle,
                 )
 
+                presets.awaitSubscriber()
                 presets.value = mapOf("roomName" to StyleDefinition(entireLine = true, bold = true))
                 val line =
                     f
@@ -430,6 +441,7 @@ class ComposeTextStreamTest {
                     ).entireLineStyle,
                 )
 
+                highlights.awaitSubscriber()
                 highlights.value = HighlightIndex(listOf(entireLineHighlight("orc")))
                 val line =
                     f
@@ -456,6 +468,7 @@ class ComposeTextStreamTest {
                         .texts(),
                 )
 
+                alterations.awaitSubscriber()
                 alterations.value = listOf(replaceAlteration(pattern = "world", result = "kotlin"))
                 assertEquals(
                     listOf("hello kotlin"),
