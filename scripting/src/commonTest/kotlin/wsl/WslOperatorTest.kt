@@ -1,6 +1,7 @@
 package warlockfe.warlock3.scripting.wsl
 
 import com.ionspin.kotlin.bignum.decimal.toBigDecimal
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -82,25 +83,28 @@ class WslOperatorTest {
     // --- WslInfixOperator ---
 
     @Test
-    fun contains_substring() {
-        val yes = WslInfixOperator.CONTAINS.getValue(WslString("hello world"), WslString("world"))
-        assertTrue(yes.toBoolean())
-        val no = WslInfixOperator.CONTAINS.getValue(WslString("hello world"), WslString("xyz"))
-        assertFalse(no.toBoolean())
-    }
+    fun contains_substring() =
+        runTest {
+            val yes = WslInfixOperator.CONTAINS.getValue(WslString("hello world"), WslString("world"))
+            assertTrue(yes.toBoolean())
+            val no = WslInfixOperator.CONTAINS.getValue(WslString("hello world"), WslString("xyz"))
+            assertFalse(no.toBoolean())
+        }
 
     @Test
-    fun contains_mapChecksKeyPresence() {
-        val map = WslMap(mapOf("key" to WslString("value")))
-        assertTrue(WslInfixOperator.CONTAINS.getValue(map, WslString("key")).toBoolean())
-        assertFalse(WslInfixOperator.CONTAINS.getValue(map, WslString("absent")).toBoolean())
-    }
+    fun contains_mapChecksKeyPresence() =
+        runTest {
+            val map = WslMap(mapOf("key" to WslString("value")))
+            assertTrue(WslInfixOperator.CONTAINS.getValue(map, WslString("key")).toBoolean())
+            assertFalse(WslInfixOperator.CONTAINS.getValue(map, WslString("absent")).toBoolean())
+        }
 
     @Test
-    fun containsRegex_matches() {
-        val yes = WslInfixOperator.CONTAINSRE.getValue(WslString("order 66"), WslString("[0-9]+"))
-        assertTrue(yes.toBoolean())
-        val no = WslInfixOperator.CONTAINSRE.getValue(WslString("no digits"), WslString("[0-9]+"))
-        assertFalse(no.toBoolean())
-    }
+    fun containsRegex_matches() =
+        runTest {
+            val yes = WslInfixOperator.CONTAINSRE.getValue(WslString("order 66"), WslString("[0-9]+"))
+            assertTrue(yes.toBoolean())
+            val no = WslInfixOperator.CONTAINSRE.getValue(WslString("no digits"), WslString("[0-9]+"))
+            assertFalse(no.toBoolean())
+        }
 }

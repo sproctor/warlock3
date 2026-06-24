@@ -126,7 +126,22 @@ class WslContextTest {
             store.mutate("testchar") { it.copy(variables = it.variables + ("foo" to "bar")) }
             val client = FakeWarlockClient(characterId = "testchar")
             val (file, lines) = script("global", "echo hi")
-            // Unconfined dispatcher so the globalVariables stateIn collector runs eagerly.
+            // lookupVariable reads the stored variable straight from the config store (source of truth).
+            val ctx = makeContext(backgroundScope, file, lines, client = client, configStore = store)
+            assertEquals(WslString("bar"), ctx.lookupVariable("foo"))
+        }
+
+    @Test
+    fun storedVariableIsReadableTheInstantScriptStarts() =
+        // No UnconfinedTestDispatcher here: the context's background coroutines stay parked, exactly
+        // like a freshly started script that reads a variable on its very first line before anything
+        // on the context scope has run. The read must still see the value, because it suspends and
+        // reads the config store (source of truth) rather than a cached projection that races to fill.
+        runTest {
+            val store = newTestConfigStore()
+            store.mutate("testchar") { it.copy(variables = it.variables + ("foo" to "bar")) }
+            val client = FakeWarlockClient(characterId = "testchar")
+            val (file, lines) = script("racestart", "echo hi")
             val ctx = makeContext(backgroundScope, file, lines, client = client, configStore = store)
             assertEquals(WslString("bar"), ctx.lookupVariable("foo"))
         }

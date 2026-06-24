@@ -290,17 +290,6 @@ class GameViewModel(
                 initialValue = emptyMap(),
             )
 
-    private val variables: StateFlow<Map<String, String>> =
-        observePerCharacter { characterId ->
-            variableRepository.observeCharacterVariables(characterId).map { list ->
-                list.associate { it.name to it.value }
-            }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyMap(),
-        )
-
     private val aliases: StateFlow<List<Alias>> =
         observePerCharacter { characterId ->
             aliasRepository.observeForCharacter(characterId)
@@ -839,8 +828,10 @@ class GameViewModel(
                     }
 
                     is MacroToken.Variable -> {
-                        variables.value[token.name]?.let {
-                            entryInsert(it)
+                        client.characterId.value?.let { characterId ->
+                            variableRepository.getVariable(characterId, token.name)?.let { value ->
+                                entryInsert(value)
+                            }
                         }
                     }
 

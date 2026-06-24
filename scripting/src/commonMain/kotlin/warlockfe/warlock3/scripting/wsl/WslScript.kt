@@ -359,34 +359,34 @@ sealed class WslCommandContent {
     data class Text(
         val text: String,
     ) : WslCommandContent() {
-        override fun getValue(context: WslContext): String = text
+        override suspend fun getValue(context: WslContext): String = text
     }
 
     data class Variable(
         val name: String,
     ) : WslCommandContent() {
-        override fun getValue(context: WslContext): String = context.lookupVariable(name)?.toString() ?: ""
+        override suspend fun getValue(context: WslContext): String = context.lookupVariable(name)?.toString() ?: ""
     }
 
     data class Expression(
         val expression: WslExpression,
     ) : WslCommandContent() {
-        override fun getValue(context: WslContext): String = expression.getValue(context).toString()
+        override suspend fun getValue(context: WslContext): String = expression.getValue(context).toString()
     }
 
-    abstract fun getValue(context: WslContext): String
+    abstract suspend fun getValue(context: WslContext): String
 }
 
 data class WslExpression(
     val disjunction: WslDisjunction,
 ) {
-    fun getValue(context: WslContext): WslValue = disjunction.getValue(context)
+    suspend fun getValue(context: WslContext): WslValue = disjunction.getValue(context)
 }
 
 data class WslDisjunction(
     val conjunctions: List<WslConjunction>,
 ) {
-    fun getValue(context: WslContext): WslValue =
+    suspend fun getValue(context: WslContext): WslValue =
         conjunctions
             .map { it.getValue(context) }
             .reduce { acc, next -> WslBoolean(acc.toBoolean() || next.toBoolean()) }
@@ -395,7 +395,7 @@ data class WslDisjunction(
 data class WslConjunction(
     val equalities: List<WslEquality>,
 ) {
-    fun getValue(context: WslContext): WslValue =
+    suspend fun getValue(context: WslContext): WslValue =
         equalities
             .map { it.getValue(context) }
             .reduce { acc, unit -> WslBoolean(acc.toBoolean() && unit.toBoolean()) }
@@ -405,7 +405,7 @@ data class WslEquality(
     val comparison: WslComparison,
     val otherComparisons: List<Pair<WslEqualityOperator, WslComparison>>,
 ) {
-    fun getValue(context: WslContext): WslValue {
+    suspend fun getValue(context: WslContext): WslValue {
         var acc = comparison.getValue(context)
         otherComparisons.forEach {
             val operator = it.first
@@ -429,7 +429,7 @@ data class WslComparison(
     val infixExpression: WslInfixExpression,
     val otherInfixExpressions: List<Pair<WslComparisonOperator, WslInfixExpression>>,
 ) {
-    fun getValue(context: WslContext): WslValue {
+    suspend fun getValue(context: WslContext): WslValue {
         var acc = infixExpression.getValue(context)
         otherInfixExpressions.forEach {
             val op = it.first
@@ -451,7 +451,7 @@ data class WslInfixExpression(
     val additiveExpression: WslAdditiveExpression,
     val otherAdditiveExpressions: List<Pair<WslInfixOperator, WslAdditiveExpression>>,
 ) {
-    fun getValue(context: WslContext): WslValue {
+    suspend fun getValue(context: WslContext): WslValue {
         var acc = additiveExpression.getValue(context)
         otherAdditiveExpressions.forEach { (op, expression) ->
             acc = op.getValue(acc, expression.getValue(context))
@@ -462,7 +462,7 @@ data class WslInfixExpression(
 
 enum class WslInfixOperator {
     CONTAINS {
-        override fun getValue(
+        override suspend fun getValue(
             value1: WslValue,
             value2: WslValue,
         ): WslValue {
@@ -474,13 +474,13 @@ enum class WslInfixOperator {
         }
     },
     CONTAINSRE {
-        override fun getValue(
+        override suspend fun getValue(
             value1: WslValue,
             value2: WslValue,
         ): WslValue = WslBoolean(value1.toString().contains(value2.toString().toRegex()))
     }, ;
 
-    abstract fun getValue(
+    abstract suspend fun getValue(
         value1: WslValue,
         value2: WslValue,
     ): WslValue
@@ -490,7 +490,7 @@ data class WslAdditiveExpression(
     val multiplicativeExpression: WslMultiplicativeExpression,
     val otherMultiplicativeExpressions: List<Pair<WslAdditiveOperator, WslMultiplicativeExpression>>,
 ) {
-    fun getValue(context: WslContext): WslValue {
+    suspend fun getValue(context: WslContext): WslValue {
         var acc = multiplicativeExpression.getValue(context)
         otherMultiplicativeExpressions.forEach { (op, exp) ->
             acc = op.getValue(acc, exp.getValue(context))
@@ -528,7 +528,7 @@ data class WslMultiplicativeExpression(
     val prefixUnaryExpression: WslPrefixUnaryExpression,
     val otherUnaryExpressions: List<Pair<WslMultiplicativeOperator, WslPrefixUnaryExpression>>,
 ) {
-    fun getValue(context: WslContext): WslValue {
+    suspend fun getValue(context: WslContext): WslValue {
         var acc = prefixUnaryExpression.getValue(context)
         otherUnaryExpressions.forEach { (op, exp) ->
             acc = op.getValue(acc, exp.getValue(context))
@@ -576,7 +576,7 @@ data class WslPrefixUnaryExpression(
     val operators: List<WslPrefixUnaryOperator>,
     val postfixUnaryExpression: WslPostfixUnaryExpression,
 ) {
-    fun getValue(context: WslContext): WslValue =
+    suspend fun getValue(context: WslContext): WslValue =
         operators.foldRight(
             initial = postfixUnaryExpression.getValue(context),
             operation = { v, acc ->
@@ -609,7 +609,7 @@ data class WslPostfixUnaryExpression(
     val primaryExpression: WslPrimaryExpression,
     val indexingSuffixes: List<WslExpression>,
 ) {
-    fun getValue(context: WslContext): WslValue {
+    suspend fun getValue(context: WslContext): WslValue {
         var acc = primaryExpression.getValue(context)
         indexingSuffixes.forEach {
             val key = it.getValue(context).toString()
@@ -623,29 +623,29 @@ sealed class WslPrimaryExpression {
     data class WithParens(
         val disjunction: WslDisjunction,
     ) : WslPrimaryExpression() {
-        override fun getValue(context: WslContext): WslValue = disjunction.getValue(context)
+        override suspend fun getValue(context: WslContext): WslValue = disjunction.getValue(context)
     }
 
     data class WithValue(
         val valueExpression: WslValueExpression,
     ) : WslPrimaryExpression() {
-        override fun getValue(context: WslContext): WslValue = valueExpression.getValue(context)
+        override suspend fun getValue(context: WslContext): WslValue = valueExpression.getValue(context)
     }
 
-    abstract fun getValue(context: WslContext): WslValue
+    abstract suspend fun getValue(context: WslContext): WslValue
 }
 
 sealed class WslValueExpression {
     data class WslVariableExpression(
         val name: String,
     ) : WslValueExpression() {
-        override fun getValue(context: WslContext): WslValue = context.lookupVariable(name) ?: WslNull
+        override suspend fun getValue(context: WslContext): WslValue = context.lookupVariable(name) ?: WslNull
     }
 
     data class WslStringExpression(
         val content: List<WslStringContent>,
     ) : WslValueExpression() {
-        override fun getValue(context: WslContext): WslValue {
+        override suspend fun getValue(context: WslContext): WslValue {
             val value =
                 content
                     .map { it.getValue(context) }
@@ -657,32 +657,32 @@ sealed class WslValueExpression {
     data class WslLiteralExpression(
         val value: WslValue,
     ) : WslValueExpression() {
-        override fun getValue(context: WslContext): WslValue = value
+        override suspend fun getValue(context: WslContext): WslValue = value
     }
 
-    abstract fun getValue(context: WslContext): WslValue
+    abstract suspend fun getValue(context: WslContext): WslValue
 }
 
 sealed class WslStringContent {
     data class Text(
         val text: String,
     ) : WslStringContent() {
-        override fun getValue(context: WslContext): String = text
+        override suspend fun getValue(context: WslContext): String = text
     }
 
     data class EscapedChar(
         val char: String,
     ) : WslStringContent() {
-        override fun getValue(context: WslContext): String = char
+        override suspend fun getValue(context: WslContext): String = char
     }
 
     data class Variable(
         val name: String,
     ) : WslStringContent() {
-        override fun getValue(context: WslContext): String = context.lookupVariable(name).toString()
+        override suspend fun getValue(context: WslContext): String = context.lookupVariable(name).toString()
     }
 
-    abstract fun getValue(context: WslContext): String
+    abstract suspend fun getValue(context: WslContext): String
 }
 
 private class ErrorListener : ANTLRErrorListener {

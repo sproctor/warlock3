@@ -16,7 +16,7 @@ class WslComponents(
 
     override fun isBoolean(): Boolean = false
 
-    override fun getProperty(key: String): WslValue = client.getComponent(key)?.let { WslString(it.toString()) } ?: WslNull
+    override suspend fun getProperty(key: String): WslValue = client.getComponent(key)?.let { WslString(it.toString()) } ?: WslNull
 
     override fun setProperty(
         key: String,

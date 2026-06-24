@@ -3,7 +3,7 @@ package warlockfe.warlock3.scripting.wsl
 abstract class WslNumeric : WslValue {
     override fun toBoolean(): Boolean = throw WslRuntimeException("Attempted to use number as a boolean")
 
-    override fun getProperty(key: String): WslValue = WslNull
+    override suspend fun getProperty(key: String): WslValue = WslNull
 
     override fun setProperty(
         key: String,

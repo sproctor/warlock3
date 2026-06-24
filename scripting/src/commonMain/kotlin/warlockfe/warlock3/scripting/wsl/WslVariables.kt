@@ -15,7 +15,7 @@ class WslVariables(
 
     override fun isBoolean(): Boolean = false
 
-    override fun getProperty(key: String): WslValue = context.lookupVariable(key) ?: WslNull
+    override suspend fun getProperty(key: String): WslValue = context.lookupVariable(key) ?: WslNull
 
     override fun setProperty(
         key: String,

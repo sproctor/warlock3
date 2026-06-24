@@ -26,7 +26,7 @@ class WslVariable(
 
     override fun isBoolean(): Boolean = getter() is Boolean
 
-    override fun getProperty(key: String): WslValue {
+    override suspend fun getProperty(key: String): WslValue {
         val value = getter()
         if (value is Map<*, *>) {
             return WslVariable { value[key] }

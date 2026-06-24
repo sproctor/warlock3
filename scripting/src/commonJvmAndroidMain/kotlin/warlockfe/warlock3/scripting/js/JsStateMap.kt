@@ -1,26 +1,36 @@
 package warlockfe.warlock3.scripting.js
 
 import co.touchlab.kermit.Logger
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
 import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript.ScriptableObject
 import org.mozilla.javascript.Symbol
+import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 
+/**
+ * Backs the JS `variables` object. Reads and writes go straight to [variableRepository] (the config
+ * store, our source of truth) rather than a cached snapshot, so a variable read right as the script
+ * starts can't race an out-of-date copy. Rhino invokes these accessors synchronously on the script
+ * thread, so the suspend repository calls are bridged with [runBlocking].
+ */
 class JsStateMap(
-    private val map: StateFlow<MutableMap<String, String>>,
-    private val onPut: (name: String, value: String) -> Unit,
-    private val onDelete: (name: String) -> Unit,
+    private val variableRepository: VariableRepository,
+    private val characterId: () -> String?,
 ) : ScriptableObject() {
     private val logger = Logger.withTag("JsStateMap")
 
     override fun getClassName(): String = "VariablesMap"
+
+    private fun variables(): Map<String, String> =
+        characterId()?.let { id -> runBlocking { variableRepository.getVariables(id) } } ?: emptyMap()
 
     override fun get(
         name: String?,
         start: Scriptable?,
     ): String? {
         logger.d { "getting $name" }
-        return name?.let { map.value[it] }
+        val id = characterId() ?: return null
+        return name?.let { runBlocking { variableRepository.getVariable(id, it) } }
     }
 
     override fun get(
@@ -38,7 +48,7 @@ class JsStateMap(
     override fun has(
         name: String?,
         start: Scriptable?,
-    ): Boolean = name?.let { map.value.containsKey(it) } ?: false
+    ): Boolean = name?.let { get(it, start) != null } ?: false
 
     override fun has(
         index: Int,
@@ -55,12 +65,10 @@ class JsStateMap(
         start: Scriptable?,
         value: Any?,
     ) {
-        if (name != null) {
+        if (name != null && value is String) {
             logger.d { "saving $name = $value" }
-            if (value is String) {
-                map.value[name] = value
-                onPut(name, value)
-            }
+            val id = characterId() ?: return
+            runBlocking { variableRepository.put(id, name, value) }
         }
     }
 
@@ -82,8 +90,8 @@ class JsStateMap(
 
     override fun delete(name: String?) {
         if (name != null) {
-            map.value.remove(name)
-            onDelete(name)
+            val id = characterId() ?: return
+            runBlocking { variableRepository.delete(id, name) }
         }
     }
 
@@ -95,7 +103,7 @@ class JsStateMap(
         delete(key?.toString())
     }
 
-    override fun size(): Int = map.value.size
+    override fun size(): Int = variables().size
 
-    override fun isEmpty(): Boolean = map.value.isEmpty()
+    override fun isEmpty(): Boolean = variables().isEmpty()
 }
