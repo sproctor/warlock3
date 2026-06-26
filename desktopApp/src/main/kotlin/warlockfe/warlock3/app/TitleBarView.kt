@@ -26,9 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.nucleus.core.runtime.Platform
-import io.github.kdroidfilter.nucleus.window.DecoratedWindowScope
-import io.github.kdroidfilter.nucleus.window.jewel.JewelTitleBar
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -41,6 +38,9 @@ import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
+import org.jetbrains.jewel.window.DecoratedWindowScope
+import org.jetbrains.jewel.window.TitleBar
+import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
@@ -100,7 +100,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                 importSettings(file.file)
             }
         }
-    JewelTitleBar {
+    TitleBar {
         Row(Modifier.align(Alignment.Start).padding(start = 8.dp)) {
             if (isConnected) {
                 val windowsShape = RoundedCornerShape(5.dp)
@@ -176,7 +176,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                             ),
                     ),
                 )
-            if (Platform.Current == Platform.MacOS) {
+            if (DesktopPlatform.Current == DesktopPlatform.MacOS) {
                 AppMenuBar(menus)
             } else {
                 // The native MenuBar isn't shown off macOS, so render the same menus as popups.

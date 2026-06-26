@@ -18,21 +18,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+      - name: Set up JBR
+        uses: actions/setup-java@v5
         with:
-          packaging-tools: 'false'
-          setup-gradle: 'true'
-          setup-node: 'false'
+          distribution: 'jetbrains'
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Checks
         run: ./gradlew check -PiosSkip=true -PlintSkip=true --stacktrace
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           retention-days: 3

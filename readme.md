@@ -80,7 +80,7 @@ Open the project in Android Studio and run the `androidApp` configuration, or fr
 
 ## Building packages locally
 
-The desktop packaging tasks produce installers for the current OS using `jpackage` via the [Nucleus](https://github.com/kdroidfilter/nucleus) Gradle plugin.
+The desktop packaging tasks produce installers for the current OS via the [Potassium](https://github.com/sproctor/potassium-packager) Gradle plugin (which packages through electron-builder).
 
 ### Native installer for your current OS
 

@@ -38,7 +38,7 @@ jobs:
       RELEASE_VERSION: ${{ github.ref_name }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -50,12 +50,25 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+      # JBR 25 (via actions/setup-java jetbrains), Linux packaging tools + Xvfb, Node, and Gradle.
+      - name: Set up build environment
+        uses: sproctor/potassium/.github/actions/setup-potassium@v0.3.0
         with:
+          java-version: '25'
           packaging-tools: 'true'
           setup-gradle: 'true'
           setup-node: 'true'
+
+      # Import the Developer ID Application cert into a temporary keychain so Potassium can
+      # codesign + notarize at package time. Its path reaches the macOS signing config via the
+      # MAC_KEYCHAIN_PATH env on the build step below.
+      - name: Set up macOS signing
+        id: signing
+        if: runner.os == 'macOS'
+        uses: sproctor/potassium/.github/actions/setup-macos-signing@v0.3.0
+        with:
+          certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
+          certificate-password: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
 
       - name: Build packages
         shell: bash
@@ -66,31 +79,39 @@ jobs:
           AZURE_TENANT_ID: 'dfe2ba9a-411b-4907-b6b0-59fe59aefc2d'
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # macOS signing: keychain holding the Developer ID cert (empty off macOS) + the
+          # app-specific notarization password. Both are only read by the macOS package task.
+          MAC_KEYCHAIN_PATH: ${{ steps.signing.outputs.keychain-path }}
+          NOTARY_PWD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
           retention-days: 3
           path: |
-            desktopApp/build/compose/binaries/**/*.dmg
-            desktopApp/build/compose/binaries/**/*.pkg
-            desktopApp/build/compose/binaries/**/*.exe
-            desktopApp/build/compose/binaries/**/*.msi
-            desktopApp/build/compose/binaries/**/*.appx
-            desktopApp/build/compose/binaries/**/*.deb
-            desktopApp/build/compose/binaries/**/*.rpm
-            desktopApp/build/compose/binaries/**/*.AppImage
-            desktopApp/build/compose/binaries/**/*.snap
-            desktopApp/build/compose/binaries/**/*.flatpak
-            desktopApp/build/compose/binaries/**/*.zip
-            desktopApp/build/compose/binaries/**/*.tar
-            desktopApp/build/compose/binaries/**/*.7z
-            desktopApp/build/compose/binaries/**/*.blockmap
-            desktopApp/build/compose/binaries/**/signing-metadata.json
-            desktopApp/build/compose/binaries/**/packaging-metadata.json
-            !desktopApp/build/compose/binaries/**/app/**
-            !desktopApp/build/compose/binaries/**/runtime/**
+            desktopApp/build/potassium/binaries/**/*.dmg
+            desktopApp/build/potassium/binaries/**/*.pkg
+            desktopApp/build/potassium/binaries/**/*.exe
+            desktopApp/build/potassium/binaries/**/*.msi
+            desktopApp/build/potassium/binaries/**/*.appx
+            desktopApp/build/potassium/binaries/**/*.deb
+            desktopApp/build/potassium/binaries/**/*.rpm
+            desktopApp/build/potassium/binaries/**/*.AppImage
+            desktopApp/build/potassium/binaries/**/*.snap
+            desktopApp/build/potassium/binaries/**/*.flatpak
+            desktopApp/build/potassium/binaries/**/*.zip
+            desktopApp/build/potassium/binaries/**/*.tar
+            desktopApp/build/potassium/binaries/**/*.7z
+            desktopApp/build/potassium/binaries/**/*.blockmap
+            desktopApp/build/potassium/binaries/**/signing-metadata.json
+            desktopApp/build/potassium/binaries/**/packaging-metadata.json
+            # electron-builder update manifests, uploaded to the release as-is.
+            desktopApp/build/potassium/binaries/**/latest*.yml
+            desktopApp/build/potassium/binaries/**/beta*.yml
+            desktopApp/build/potassium/binaries/**/alpha*.yml
+            !desktopApp/build/potassium/binaries/**/app/**
+            !desktopApp/build/potassium/binaries/**/runtime/**
           if-no-files-found: error
 
   android:
@@ -105,7 +126,7 @@ jobs:
       RELEASE_VERSION: ${{ github.ref_name }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -117,14 +138,14 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Decode upload keystore
         shell: bash
@@ -162,42 +183,29 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: release-assets-*
 
-      - name: Determine version and channel
+      - name: Determine release type
         shell: bash
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
-          if [[ "$VERSION" == *"-alpha"* ]]; then
-            echo "CHANNEL=alpha" >> "$GITHUB_ENV"
-            echo "RELEASE_TYPE=prerelease" >> "$GITHUB_ENV"
-          elif [[ "$VERSION" == *"-beta"* ]]; then
-            echo "CHANNEL=beta" >> "$GITHUB_ENV"
+          if [[ "$TAG" == *-alpha* || "$TAG" == *-beta* ]]; then
             echo "RELEASE_TYPE=prerelease" >> "$GITHUB_ENV"
           else
-            echo "CHANNEL=latest" >> "$GITHUB_ENV"
             echo "RELEASE_TYPE=release" >> "$GITHUB_ENV"
           fi
 
-      - name: Generate update YML files
-        uses: kdroidFilter/Nucleus/.github/actions/generate-update-yml@main
-        with:
-          artifacts-path: artifacts
-          version: ${{ env.VERSION }}
-          channel: ${{ env.CHANNEL }}
-
+      # Uploads installers + electron-builder's latest-*.yml, unioning the shared-name
+      # macOS/Windows manifests across arches (Linux manifests are already per-arch).
       - name: Publish release
-        uses: kdroidFilter/Nucleus/.github/actions/publish-release@main
+        uses: sproctor/potassium/.github/actions/publish-github-release@v0.3.0
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}

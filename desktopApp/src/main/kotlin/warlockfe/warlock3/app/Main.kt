@@ -48,11 +48,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
-import io.github.kdroidfilter.nucleus.updater.NucleusUpdater
-import io.github.kdroidfilter.nucleus.updater.UpdateInfo
-import io.github.kdroidfilter.nucleus.updater.UpdateResult
-import io.github.kdroidfilter.nucleus.updater.provider.GitHubProvider
-import io.github.kdroidfilter.nucleus.window.jewel.JewelDecoratedWindow
+import com.seanproctor.potassium.updater.PotassiumUpdater
+import com.seanproctor.potassium.updater.UpdateInfo
+import com.seanproctor.potassium.updater.UpdateResult
+import com.seanproctor.potassium.updater.provider.GitHubProvider
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +73,9 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.window.DecoratedWindow
+import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
+import org.jetbrains.jewel.window.utils.DesktopPlatform
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -104,7 +106,11 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private val version = System.getProperty("warlock.release.version")?.takeIf { it.isNotBlank() }
+private val version = System.getProperty("app.version")?.takeIf { it.isNotBlank() }
+
+// Potassium always bakes in -Dapp.version, including for `./gradlew run`, where it defaults to
+// "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real release behind it.
+private val isDev = version?.startsWith("0.0.0") ?: true
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
@@ -226,9 +232,9 @@ private class WarlockCommand : CliktCommand() {
                     }
                 }
 
-                // Dev builds (no baked-in release version) have nothing to update to, so skip the
-                // network update check.
-                if (version != null) {
+                // Dev builds (version "0.0.0-dev", injected by Potassium for `./gradlew run`) have no
+                // real release to update to, so skip the network update check.
+                if (!isDev) {
                     LaunchedEffect(Unit) {
                         withContext(Dispatchers.IO) {
                             checkUpdate()
@@ -288,15 +294,24 @@ private class WarlockCommand : CliktCommand() {
                                 }
                             }
                         }
-                        JewelDecoratedWindow(
+                        DecoratedWindow(
                             title = title,
                             state = windowState,
                             onCloseRequest = { closeGame() },
                         ) {
                             window.minimumSize = Dimension(240, 240)
+                            // On Linux, Jewel draws its own (Windows-style) window buttons; round them
+                            // into GNOME-style controls, dimmed while the window is in the background.
+                            val titleBarStyle =
+                                if (DesktopPlatform.Current == DesktopPlatform.Linux) {
+                                    LocalTitleBarStyle.current.withRoundedPaneButtons(active = state.isActive)
+                                } else {
+                                    LocalTitleBarStyle.current
+                                }
                             CompositionLocalProvider(
                                 LocalWindowComponent provides window,
                                 LocalSkin provides skin,
+                                LocalTitleBarStyle provides titleBarStyle,
                             ) {
                                 WarlockApp(
                                     title = title,
@@ -394,10 +409,10 @@ private class WarlockCommand : CliktCommand() {
     }
 
     private fun configureLogging(): Logger {
-        version?.let {
-            initializeSentry(version)
+        if (!isDev) {
+            version?.let { initializeSentry(it) }
         }
-        if (debug || version == null) {
+        if (debug || isDev) {
             System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
             Logger.setMinSeverity(Severity.Debug)
         } else {
@@ -587,7 +602,7 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
-    private fun buildUpdater(clientSettings: ClientSettingRepository): NucleusUpdater {
+    private fun buildUpdater(clientSettings: ClientSettingRepository): PotassiumUpdater {
         val resolvedVersion = version ?: "0.0.0"
         val versionChannel =
             when {
@@ -603,7 +618,7 @@ private class WarlockCommand : CliktCommand() {
                 ReleaseChannelSetting.BETA -> "beta"
                 ReleaseChannelSetting.ALPHA -> "alpha"
             }
-        return NucleusUpdater {
+        return PotassiumUpdater {
             provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
             channel = selectedChannel
             currentVersion = resolvedVersion
@@ -663,7 +678,7 @@ private class WarlockCommand : CliktCommand() {
 fun main(args: Array<String>) =
     WarlockCommand()
         .versionOption(version ?: "Development")
-        // Nucleus packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
+        // Potassium packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
         // when the kernel blocks unprivileged user namespaces (Ubuntu 24.04+ default), assuming an
         // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than
         // abort startup on an unknown option.
@@ -671,7 +686,7 @@ fun main(args: Array<String>) =
 
 @Composable
 private fun UpdateDialog(
-    updater: NucleusUpdater,
+    updater: PotassiumUpdater,
     updateSupported: Boolean,
     availableUpdate: UpdateInfo?,
     clientSettings: ClientSettingRepository,
