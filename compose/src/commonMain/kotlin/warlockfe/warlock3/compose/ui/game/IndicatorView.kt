@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -28,9 +30,6 @@ import warlockfe.warlock3.compose.model.SkinImage
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.indicatorDrawable
-import warlockfe.warlock3.compose.util.indicatorEntry
-import warlockfe.warlock3.compose.util.indicatorIconModifier
-import warlockfe.warlock3.compose.util.indicatorReference
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
@@ -65,8 +64,8 @@ private val DEFAULT_SLOT_SIZE = 40.dp
 
 /**
  * The grouped status slots of the control bar, laid out as a 3-column, 2-row grid (the six status
- * groups). A lone active status fills its box (or sits at its skin-defined position); when several
- * statuses are co-active in one slot they are shrunk and offset into a packed grid so all are visible
+ * groups). A lone active status fills its box, centered at full size; when several statuses are
+ * co-active in one slot they are shrunk and offset into a packed grid so all are visible
  * instead of stacking on top of each other. The slot's highest-priority active status colors the box
  * (a "lit" accent for posture/concealment, a danger accent for health) and each icon keeps its own
  * accent tint; an inactive slot is an empty bordered box. Colors come from [palette].
@@ -92,7 +91,6 @@ fun IndicatorView(
         )
 
     val skin = LocalSkin.current
-    val reference = skin.indicatorReference()
     val spacing = 4.dp
     val columns = 3
     val rows = groups.chunked(columns)
@@ -114,7 +112,6 @@ fun IndicatorView(
                             indicators = indicators,
                             palette = palette,
                             skin = skin,
-                            reference = reference,
                             indicatorSize = slotSize,
                             shape = shape,
                         )
@@ -132,7 +129,6 @@ private fun IndicatorSlot(
     indicators: Set<String>,
     palette: IndicatorPalette,
     skin: Map<String, SkinObject>,
-    reference: Int,
     indicatorSize: Dp,
     shape: Shape,
     modifier: Modifier = Modifier,
@@ -150,16 +146,15 @@ private fun IndicatorSlot(
         // Pre-resolve to the statuses that actually have an icon so the packed grid has no gaps.
         val icons =
             active.mapNotNull { status ->
-                val entry = skin.indicatorEntry(status) ?: return@mapNotNull null
-                val drawable = entry.indicatorDrawable() ?: return@mapNotNull null
-                Triple(status, entry, drawable)
+                val drawable = skin.indicatorDrawable(status) ?: return@mapNotNull null
+                status to drawable
             }
-        icons.forEachIndexed { index, (status, entry, drawable) ->
+        icons.forEachIndexed { index, (status, drawable) ->
             Image(
                 modifier =
                     if (icons.size == 1) {
-                        // A lone status keeps its skin placement (fills the box, or its skin offset).
-                        indicatorIconModifier(entry, indicatorSize, reference)
+                        // A lone status is centered at full size, filling the slot.
+                        Modifier.fillMaxSize().padding(indicatorSize / 6f)
                     } else {
                         // Co-active statuses are shrunk and offset into a grid so none is hidden.
                         packedIconModifier(index, icons.size, indicatorSize)
@@ -268,8 +263,44 @@ private fun indicatorAccent(
 
 @Preview
 @Composable
-private fun IndicatorPreview() {
+private fun IndicatorPreviewFull() {
     val previewStatuses = listOf("standing", "joined", "bleeding", "webbed", "stunned", "hidden", "diseased", "poisoned")
+    val skin =
+        mapOf(
+            "indicator" to
+                SkinObject(
+                    children = previewStatuses.associateWith { SkinObject(image = SkinImage(name = it)) },
+                ),
+        )
+    val palette =
+        IndicatorPalette(
+            inactiveBackground = Color(0xFF2B2B30),
+            inactiveBorder = Color(0xFF3C3C42),
+            litBackground = Color(0xFF4A3B12),
+            litBorder = Color(0xFFB58A2E),
+            litIcon = Color(0xFFF0C24B),
+            dangerBackground = Color(0xFF4A1416),
+            dangerBorder = Color(0xFFB5403F),
+            dangerIcon = Color(0xFFF26461),
+            deadIcon = Color(0xFFECECEC),
+            joinedBackground = Color(0x383B5BCC),
+            joinedBorder = Color(0xFF5B6BCC),
+            joinedIcon = Color(0xFFAAB4F0),
+        )
+    CompositionLocalProvider(LocalSkin provides skin) {
+        IndicatorView(
+            indicators = previewStatuses.toSet(),
+            palette = palette,
+            shape = RoundedCornerShape(5.dp),
+            modifier = Modifier.height(88.dp),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun IndicatorPreview() {
+    val previewStatuses = listOf("standing", "bleeding", "hidden", "diseased", "poisoned")
     val skin =
         mapOf(
             "indicator" to
