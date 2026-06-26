@@ -142,6 +142,10 @@ jobs:
             desktopApp/build/potassium/binaries/**/*.blockmap
             desktopApp/build/potassium/binaries/**/signing-metadata.json
             desktopApp/build/potassium/binaries/**/packaging-metadata.json
+            # Per-arch electron-builder update manifests; merged across arches in the publish job.
+            desktopApp/build/potassium/binaries/**/latest*.yml
+            desktopApp/build/potassium/binaries/**/beta*.yml
+            desktopApp/build/potassium/binaries/**/alpha*.yml
             !desktopApp/build/potassium/binaries/**/app/**
             !desktopApp/build/potassium/binaries/**/runtime/**
           if-no-files-found: error
@@ -242,12 +246,20 @@ jobs:
             echo "RELEASE_TYPE=release" >> "$GITHUB_ENV"
           fi
 
-      # Potassium's own publish scripts (vendored under .github/scripts), so the release
-      # pipeline no longer depends on the Nucleus composite actions for packaging output.
-      - name: Generate update YML files
-        shell: bash
-        run: .github/scripts/generate-update-yml.sh artifacts "$VERSION" "$CHANNEL"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
 
+      # Potassium/electron-builder writes a latest-<os>.yml on each runner; merge the per-arch
+      # manifests into one per platform (the auto-updater fetches a single latest-<os>.yml).
+      - name: Merge update manifests
+        shell: bash
+        run: |
+          python -m pip install --quiet --disable-pip-version-check pyyaml
+          python .github/scripts/merge-update-yml.py artifacts
+
+      # Vendored Potassium publish script, so publishing no longer depends on a Nucleus action.
       - name: Publish release
         shell: bash
         run: .github/scripts/publish-release.sh artifacts "$TAG" "$RELEASE_TYPE"
