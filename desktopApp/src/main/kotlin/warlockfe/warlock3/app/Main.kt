@@ -610,22 +610,53 @@ private class WarlockCommand : CliktCommand() {
         }
     }
 
-    // Workaround for https://issuetracker.google.com/issues/399134381
+    // Swallow known, unrecoverable upstream Compose Desktop accessibility crashes that surface as
+    // uncaught exceptions on the AWT event thread. Both originate entirely inside Compose's a11y
+    // tree-sync code, so there is nothing for us to fix and nothing the user can do; killing the
+    // whole app over them is worse than carrying on with (at worst) degraded screen-reader support.
+    //   1. NoSuchElementException "Cannot find value for key": https://issuetracker.google.com/issues/399134381
+    //   2. NullPointerException in ComposeSceneAccessibility.defaultAccessibilityFocusTarget: while
+    //      retargeting accessibility focus after a node is removed it walks the Accessible tree into
+    //      an ArrayDeque, but getAccessibleChild() can return null and ArrayDeque rejects nulls.
+    //      Still unguarded in compose-multiplatform 1.11.x.
+    // Matching on frame names is reliable because the desktop release build is -dontobfuscate (rules.pro).
     private fun installUncaughtExceptionWorkaround() {
         val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            val cause = throwable.cause ?: throwable
-            val isKnownComposeBug =
-                cause is NoSuchElementException &&
-                    cause.message?.contains("Cannot find value for key") == true
-
-            if (isKnownComposeBug) {
-                // Swallow silently — known upstream bug, see https://issuetracker.google.com/issues/399134381
+            if (throwable.isKnownComposeBug()) {
+                // Swallow silently; see installUncaughtExceptionWorkaround.
             } else {
                 existingHandler?.uncaughtException(thread, throwable)
             }
         }
     }
+
+    /** Whether this throwable (or anything in its cause chain) is one of the known Compose crashes. */
+    private fun Throwable.isKnownComposeBug(): Boolean =
+        // The real exception is often wrapped (e.g. coroutines' DiagnosticCoroutineContextException),
+        // so walk the cause chain; take(20) bounds against pathological cause cycles.
+        generateSequence(this) { it.cause }
+            .take(20)
+            .any { cause ->
+                when (cause) {
+                    // Workaround: https://issuetracker.google.com/issues/399134381
+                    is NoSuchElementException -> {
+                        cause.message?.contains("Cannot find value for key") == true
+                    }
+
+                    // Workaround https://youtrack.jetbrains.com/issue/CMP-10170/Crash-in-A11Y-subsystem
+                    is NullPointerException -> {
+                        cause.stackTrace.any {
+                            it.className.endsWith("ComposeSceneAccessibility") &&
+                                it.methodName == "defaultAccessibilityFocusTarget"
+                        }
+                    }
+
+                    else -> {
+                        false
+                    }
+                }
+            }
 }
 
 @OptIn(ExperimentalResourceApi::class)
