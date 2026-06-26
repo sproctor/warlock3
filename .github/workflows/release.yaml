@@ -50,12 +50,41 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      - name: Setup Nucleus
+      # Generic JBR 25 + Node + packaging-tools + Gradle setup. Potassium ships no setup
+      # action of its own, so this Nucleus-hosted action is reused purely for environment setup.
+      - name: Set up build environment
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
         with:
           packaging-tools: 'true'
           setup-gradle: 'true'
           setup-node: 'true'
+
+      # Import the Developer ID Application cert into a temporary keychain so Potassium can
+      # codesign + notarize each per-arch build at package time. Exports MAC_KEYCHAIN_PATH,
+      # which desktopApp/build.gradle.kts feeds to the macOS signing config.
+      - name: Import macOS signing certificate
+        if: runner.os == 'macOS'
+        env:
+          MAC_CERTIFICATES_P12: ${{ secrets.MAC_CERTIFICATES_P12 }}
+          MAC_CERTIFICATES_PASSWORD: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          KC_PASSWORD="$(uuidgen)"
+          KC_PATH="$RUNNER_TEMP/build.keychain-db"
+          P12="$RUNNER_TEMP/cert.p12"
+          echo "$MAC_CERTIFICATES_P12" | base64 -d > "$P12"
+          security create-keychain -p "$KC_PASSWORD" "$KC_PATH"
+          security default-keychain -s "$KC_PATH"
+          security unlock-keychain -p "$KC_PASSWORD" "$KC_PATH"
+          security set-keychain-settings -lut 21600 "$KC_PATH"
+          security import "$P12" -k "$KC_PATH" -P "$MAC_CERTIFICATES_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASSWORD" "$KC_PATH"
+          security list-keychains -d user -s "$KC_PATH" $(security list-keychains -d user | tr -d '"')
+          rm -f "$P12"
+          security find-identity -v "$KC_PATH" || true
+          echo "MAC_KEYCHAIN_PATH=$KC_PATH" >> "$GITHUB_ENV"
 
       - name: Build packages
         shell: bash
@@ -66,6 +95,9 @@ jobs:
           AZURE_TENANT_ID: 'dfe2ba9a-411b-4907-b6b0-59fe59aefc2d'
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # App-specific password for macOS notarization (consumed only by the macOS package task;
+          # MAC_KEYCHAIN_PATH is exported by the import step above when signing is configured).
+          NOTARY_PWD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon
 
       - uses: actions/upload-artifact@v4
@@ -73,24 +105,24 @@ jobs:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
           retention-days: 3
           path: |
-            desktopApp/build/compose/binaries/**/*.dmg
-            desktopApp/build/compose/binaries/**/*.pkg
-            desktopApp/build/compose/binaries/**/*.exe
-            desktopApp/build/compose/binaries/**/*.msi
-            desktopApp/build/compose/binaries/**/*.appx
-            desktopApp/build/compose/binaries/**/*.deb
-            desktopApp/build/compose/binaries/**/*.rpm
-            desktopApp/build/compose/binaries/**/*.AppImage
-            desktopApp/build/compose/binaries/**/*.snap
-            desktopApp/build/compose/binaries/**/*.flatpak
-            desktopApp/build/compose/binaries/**/*.zip
-            desktopApp/build/compose/binaries/**/*.tar
-            desktopApp/build/compose/binaries/**/*.7z
-            desktopApp/build/compose/binaries/**/*.blockmap
-            desktopApp/build/compose/binaries/**/signing-metadata.json
-            desktopApp/build/compose/binaries/**/packaging-metadata.json
-            !desktopApp/build/compose/binaries/**/app/**
-            !desktopApp/build/compose/binaries/**/runtime/**
+            desktopApp/build/potassium/binaries/**/*.dmg
+            desktopApp/build/potassium/binaries/**/*.pkg
+            desktopApp/build/potassium/binaries/**/*.exe
+            desktopApp/build/potassium/binaries/**/*.msi
+            desktopApp/build/potassium/binaries/**/*.appx
+            desktopApp/build/potassium/binaries/**/*.deb
+            desktopApp/build/potassium/binaries/**/*.rpm
+            desktopApp/build/potassium/binaries/**/*.AppImage
+            desktopApp/build/potassium/binaries/**/*.snap
+            desktopApp/build/potassium/binaries/**/*.flatpak
+            desktopApp/build/potassium/binaries/**/*.zip
+            desktopApp/build/potassium/binaries/**/*.tar
+            desktopApp/build/potassium/binaries/**/*.7z
+            desktopApp/build/potassium/binaries/**/*.blockmap
+            desktopApp/build/potassium/binaries/**/signing-metadata.json
+            desktopApp/build/potassium/binaries/**/packaging-metadata.json
+            !desktopApp/build/potassium/binaries/**/app/**
+            !desktopApp/build/potassium/binaries/**/runtime/**
           if-no-files-found: error
 
   android:
@@ -189,16 +221,12 @@ jobs:
             echo "RELEASE_TYPE=release" >> "$GITHUB_ENV"
           fi
 
+      # Potassium's own publish scripts (vendored under .github/scripts), so the release
+      # pipeline no longer depends on the Nucleus composite actions for packaging output.
       - name: Generate update YML files
-        uses: kdroidFilter/Nucleus/.github/actions/generate-update-yml@main
-        with:
-          artifacts-path: artifacts
-          version: ${{ env.VERSION }}
-          channel: ${{ env.CHANNEL }}
+        shell: bash
+        run: .github/scripts/generate-update-yml.sh artifacts "$VERSION" "$CHANNEL"
 
       - name: Publish release
-        uses: kdroidFilter/Nucleus/.github/actions/publish-release@main
-        with:
-          artifacts-path: artifacts
-          tag: ${{ env.TAG }}
-          release-type: ${{ env.RELEASE_TYPE }}
+        shell: bash
+        run: .github/scripts/publish-release.sh artifacts "$TAG" "$RELEASE_TYPE"

@@ -174,18 +174,20 @@ potassium {
 
         iconFile.set(project.file("../icons/icon.icns"))
         bundleID = "warlockfe.warlock3"
-        // CI signs macOS post-lipo via the build-macos-universal action; only
-        // configure package-time signing for local dev builds.
-        if (System.getenv("CI") != "true") {
-            signing {
-                sign.set(true)
-                identity.set("Developer Application ID: Sean Proctor (DBNJ4AR55X")
-            }
-            notarization {
-                appleID.set("sproctor@gmail.com")
-                password.set(providers.environmentVariable("NOTARY_PWD"))
-                teamID.set("DBNJ4AR55X")
-            }
+        // Sign + notarize each per-arch build at package time (no universal/lipo step anymore).
+        // In CI the Developer ID Application cert is imported into a temporary keychain whose path
+        // arrives via MAC_KEYCHAIN_PATH; locally the identity resolves from the login keychain.
+        // Only the macOS packaging tasks consume this, so it is inert on Linux/Windows runners.
+        signing {
+            sign.set(true)
+            identity.set("Developer ID Application: Sean Proctor (DBNJ4AR55X)")
+            System.getenv("MAC_KEYCHAIN_PATH")?.takeIf { it.isNotBlank() }?.let { keychain.set(it) }
+        }
+        notarization {
+            appleID.set("sproctor@gmail.com")
+            // App-specific password for notarytool; absent locally means notarization is skipped.
+            password.set(providers.environmentVariable("NOTARY_PWD"))
+            teamID.set("DBNJ4AR55X")
         }
     }
     linux {
