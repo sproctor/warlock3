@@ -50,62 +50,25 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      # Generic JBR 25 + Node + packaging-tools + Gradle setup (Potassium ships no setup action
-      # of its own, so this replaces the Nucleus setup-nucleus action with equivalent steps).
-      - name: Set up JBR
-        uses: actions/setup-java@v5
+      # JBR 25 (via actions/setup-java jetbrains), Linux packaging tools + Xvfb, Node, and Gradle.
+      - name: Set up build environment
+        uses: sproctor/potassium/.github/actions/setup-potassium@v0.3.0
         with:
-          distribution: 'jetbrains'
           java-version: '25'
-
-      # Native packaging deps for the Linux installers (deb/AppImage/tar), plus a virtual
-      # display since packaging can launch the app. Copied from the setup-nucleus action.
-      - name: Install Linux packaging tools
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y xvfb rpm fakeroot libdbus-1-dev libglib2.0-dev libx11-dev patchelf
-          if ! pgrep -x Xvfb >/dev/null 2>&1; then
-            Xvfb :99 -screen 0 1280x1024x24 >/tmp/xvfb.log 2>&1 &
-          fi
-          echo "DISPLAY=:99" >> "$GITHUB_ENV"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+          packaging-tools: 'true'
+          setup-gradle: 'true'
+          setup-node: 'true'
 
       # Import the Developer ID Application cert into a temporary keychain so Potassium can
-      # codesign + notarize each per-arch build at package time. Exports MAC_KEYCHAIN_PATH,
-      # which desktopApp/build.gradle.kts feeds to the macOS signing config.
-      - name: Import macOS signing certificate
+      # codesign + notarize at package time. Its path reaches the macOS signing config via the
+      # MAC_KEYCHAIN_PATH env on the build step below.
+      - name: Set up macOS signing
+        id: signing
         if: runner.os == 'macOS'
-        env:
-          MAC_CERTIFICATES_P12: ${{ secrets.MAC_CERTIFICATES_P12 }}
-          MAC_CERTIFICATES_PASSWORD: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          KC_PASSWORD="$(uuidgen)"
-          KC_PATH="$RUNNER_TEMP/build.keychain-db"
-          P12="$RUNNER_TEMP/cert.p12"
-          echo "$MAC_CERTIFICATES_P12" | base64 -d > "$P12"
-          security create-keychain -p "$KC_PASSWORD" "$KC_PATH"
-          security default-keychain -s "$KC_PATH"
-          security unlock-keychain -p "$KC_PASSWORD" "$KC_PATH"
-          security set-keychain-settings -lut 21600 "$KC_PATH"
-          security import "$P12" -k "$KC_PATH" -P "$MAC_CERTIFICATES_PASSWORD" \
-            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASSWORD" "$KC_PATH"
-          security list-keychains -d user -s "$KC_PATH" $(security list-keychains -d user | tr -d '"')
-          rm -f "$P12"
-          security find-identity -v "$KC_PATH" || true
-          echo "MAC_KEYCHAIN_PATH=$KC_PATH" >> "$GITHUB_ENV"
+        uses: sproctor/potassium/.github/actions/setup-macos-signing@v0.3.0
+        with:
+          certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
+          certificate-password: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
 
       - name: Build packages
         shell: bash
@@ -116,8 +79,9 @@ jobs:
           AZURE_TENANT_ID: 'dfe2ba9a-411b-4907-b6b0-59fe59aefc2d'
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          # App-specific password for macOS notarization (consumed only by the macOS package task;
-          # MAC_KEYCHAIN_PATH is exported by the import step above when signing is configured).
+          # macOS signing: keychain holding the Developer ID cert (empty off macOS) + the
+          # app-specific notarization password. Both are only read by the macOS package task.
+          MAC_KEYCHAIN_PATH: ${{ steps.signing.outputs.keychain-path }}
           NOTARY_PWD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon
 
@@ -238,8 +202,10 @@ jobs:
             echo "RELEASE_TYPE=release" >> "$GITHUB_ENV"
           fi
 
+      # Uploads installers + electron-builder's latest-*.yml, unioning the shared-name
+      # macOS/Windows manifests across arches (Linux manifests are already per-arch).
       - name: Publish release
-        uses: sproctor/potassium/.github/actions/publish-release@main
+        uses: sproctor/potassium/.github/actions/publish-github-release@v0.3.0
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}
