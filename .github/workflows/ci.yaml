@@ -20,39 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Inlined from the Nucleus setup-nucleus action (JBR install + Gradle) so CI does not
-      # depend on an external action. This job runs on ubuntu-latest only, so just the Linux
-      # JBR path is needed; packaging tools and Node.js are not used by `check`.
-      - name: Install JBR
-        shell: bash
-        run: |
-          set -euo pipefail
-          JBR_VERSION="25.0.2b329.66"
-          JBR_VARIANT="jbrsdk"
-          VERSION="${JBR_VERSION%b*}"
-          BUILD="${JBR_VERSION#*b}"
-          ARCH="$(uname -m)"
-          case "$ARCH" in
-            x86_64)  JBR_ARCH="x64" ;;
-            aarch64) JBR_ARCH="aarch64" ;;
-            *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
-          esac
-          URL="https://cache-redirector.jetbrains.com/intellij-jbr/${JBR_VARIANT}-${VERSION}-linux-${JBR_ARCH}-b${BUILD}.tar.gz"
-          echo "Downloading JBR from: $URL"
-          curl -fL -o jbr.tar.gz "$URL"
-          mkdir -p "$RUNNER_TEMP/jbr"
-          tar -xzf jbr.tar.gz -C "$RUNNER_TEMP/jbr"
-          rm -f jbr.tar.gz
-          JBR_DIR="$(find "$RUNNER_TEMP/jbr" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-          if [ ! -d "$JBR_DIR/bin" ]; then
-            echo "Could not locate bin/ in extracted JBR"; exit 1
-          fi
-          echo "JAVA_HOME=$JBR_DIR" >> "$GITHUB_ENV"
-          echo "$JBR_DIR/bin" >> "$GITHUB_PATH"
-
-      - name: Verify JDK
-        shell: bash
-        run: java -version
+      - name: Set up JBR
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'jetbrains'
+          java-version: '25'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
