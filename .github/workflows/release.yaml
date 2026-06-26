@@ -142,7 +142,7 @@ jobs:
             desktopApp/build/potassium/binaries/**/*.blockmap
             desktopApp/build/potassium/binaries/**/signing-metadata.json
             desktopApp/build/potassium/binaries/**/packaging-metadata.json
-            # Per-arch electron-builder update manifests; merged across arches in the publish job.
+            # electron-builder update manifests, uploaded to the release as-is.
             desktopApp/build/potassium/binaries/**/latest*.yml
             desktopApp/build/potassium/binaries/**/beta*.yml
             desktopApp/build/potassium/binaries/**/alpha*.yml
@@ -226,40 +226,21 @@ jobs:
           path: artifacts
           pattern: release-assets-*
 
-      - name: Determine version and channel
+      - name: Determine release type
         shell: bash
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
-          if [[ "$VERSION" == *"-alpha"* ]]; then
-            echo "CHANNEL=alpha" >> "$GITHUB_ENV"
-            echo "RELEASE_TYPE=prerelease" >> "$GITHUB_ENV"
-          elif [[ "$VERSION" == *"-beta"* ]]; then
-            echo "CHANNEL=beta" >> "$GITHUB_ENV"
+          if [[ "$TAG" == *-alpha* || "$TAG" == *-beta* ]]; then
             echo "RELEASE_TYPE=prerelease" >> "$GITHUB_ENV"
           else
-            echo "CHANNEL=latest" >> "$GITHUB_ENV"
             echo "RELEASE_TYPE=release" >> "$GITHUB_ENV"
           fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
-
-      # Potassium/electron-builder writes a latest-<os>.yml on each runner; merge the per-arch
-      # manifests into one per platform (the auto-updater fetches a single latest-<os>.yml).
-      - name: Merge update manifests
-        shell: bash
-        run: |
-          python -m pip install --quiet --disable-pip-version-check pyyaml
-          python .github/scripts/merge-update-yml.py artifacts
-
-      # Vendored Potassium publish script, so publishing no longer depends on a Nucleus action.
       - name: Publish release
-        shell: bash
-        run: .github/scripts/publish-release.sh artifacts "$TAG" "$RELEASE_TYPE"
+        uses: sproctor/potassium/.github/actions/publish-release@main
+        with:
+          artifacts-path: artifacts
+          tag: ${{ env.TAG }}
+          release-type: ${{ env.RELEASE_TYPE }}
