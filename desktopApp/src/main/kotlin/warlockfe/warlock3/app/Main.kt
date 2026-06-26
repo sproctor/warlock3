@@ -106,7 +106,11 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private val version = System.getProperty("warlock.release.version")?.takeIf { it.isNotBlank() }
+private val version = System.getProperty("app.version")?.takeIf { it.isNotBlank() }
+
+// Potassium always bakes in -Dapp.version, including for `./gradlew run`, where it defaults to
+// "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real release behind it.
+private val isDev = version?.startsWith("0.0.0") ?: true
 
 private class WarlockCommand : CliktCommand() {
     val port: Int? by option("-p", "--port", help = "Port to connect to").int()
@@ -228,9 +232,9 @@ private class WarlockCommand : CliktCommand() {
                     }
                 }
 
-                // Dev builds (no baked-in release version) have nothing to update to, so skip the
-                // network update check.
-                if (version != null) {
+                // Dev builds (version "0.0.0-dev", injected by Potassium for `./gradlew run`) have no
+                // real release to update to, so skip the network update check.
+                if (!isDev) {
                     LaunchedEffect(Unit) {
                         withContext(Dispatchers.IO) {
                             checkUpdate()
@@ -405,10 +409,10 @@ private class WarlockCommand : CliktCommand() {
     }
 
     private fun configureLogging(): Logger {
-        version?.let {
-            initializeSentry(version)
+        if (!isDev) {
+            version?.let { initializeSentry(it) }
         }
-        if (debug || version == null) {
+        if (debug || isDev) {
             System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
             Logger.setMinSeverity(Severity.Debug)
         } else {
