@@ -50,14 +50,35 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      # Generic JBR 25 + Node + packaging-tools + Gradle setup. Potassium ships no setup
-      # action of its own, so this Nucleus-hosted action is reused purely for environment setup.
-      - name: Set up build environment
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@main
+      # Generic JBR 25 + Node + packaging-tools + Gradle setup (Potassium ships no setup action
+      # of its own, so this replaces the Nucleus setup-nucleus action with equivalent steps).
+      - name: Set up JBR
+        uses: actions/setup-java@v4
         with:
-          packaging-tools: 'true'
-          setup-gradle: 'true'
-          setup-node: 'true'
+          distribution: 'jetbrains'
+          java-version: '25'
+
+      # Native packaging deps for the Linux installers (deb/AppImage/tar), plus a virtual
+      # display since packaging can launch the app. Copied from the setup-nucleus action.
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb rpm fakeroot libdbus-1-dev libglib2.0-dev libx11-dev patchelf
+          if ! pgrep -x Xvfb >/dev/null 2>&1; then
+            Xvfb :99 -screen 0 1280x1024x24 >/tmp/xvfb.log 2>&1 &
+          fi
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
 
       # Import the Developer ID Application cert into a temporary keychain so Potassium can
       # codesign + notarize each per-arch build at package time. Exports MAC_KEYCHAIN_PATH,
