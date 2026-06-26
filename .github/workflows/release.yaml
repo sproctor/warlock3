@@ -38,7 +38,7 @@ jobs:
       RELEASE_VERSION: ${{ github.ref_name }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -53,7 +53,7 @@ jobs:
       # Generic JBR 25 + Node + packaging-tools + Gradle setup (Potassium ships no setup action
       # of its own, so this replaces the Nucleus setup-nucleus action with equivalent steps).
       - name: Set up JBR
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'jetbrains'
           java-version: '25'
@@ -78,7 +78,7 @@ jobs:
           node-version: '24'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       # Import the Developer ID Application cert into a temporary keychain so Potassium can
       # codesign + notarize each per-arch build at package time. Exports MAC_KEYCHAIN_PATH,
@@ -121,7 +121,7 @@ jobs:
           NOTARY_PWD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
         run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ runner.os }}-${{ matrix.arch }}
           retention-days: 3
@@ -158,7 +158,7 @@ jobs:
       RELEASE_VERSION: ${{ github.ref_name }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -170,14 +170,14 @@ jobs:
           tag="$(git describe --tags --abbrev=0)"
           echo "RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Decode upload keystore
         shell: bash
@@ -215,9 +215,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: release-assets-*
