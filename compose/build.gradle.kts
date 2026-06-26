@@ -129,6 +129,8 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.jewel.standalone)
+            // Title-bar + decorated-window styling for WarlockDesktopTheme (Jewel's DecoratedWindow).
+            implementation(libs.jewel.decorated.window)
             // Jewel references AllIconsKeys (e.g. ComboBox chevron) but its standalone POM
             // does not pull the platform icons jar, so the SVG resources have to be added
             // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.

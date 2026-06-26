@@ -14,7 +14,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "kotlinx-benchmark" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
-nucleus = { id = "io.github.kdroidfilter.nucleus", version.ref = "nucleus" }
+potassium = { id = "com.seanproctor.potassium", version.ref = "potassium" }
 room-schema = { id = "androidx.room", version.ref = "room"  }
 
 [versions]
@@ -66,8 +66,8 @@ tomlkt = "0.7.0"
 ksp = "2.3.9"
 ktlint-gradle = "14.2.0"
 ktlint-compose-rules = "0.6.2"
-ktor = "3.5.0"
-nucleus = "1.15.7"
+ktor = "3.5.1"
+potassium = "0.2.1"
 rhino = "1.9.1"
 room = "2.8.4"
 sentryKotlin = "0.27.0"
@@ -123,10 +123,9 @@ ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
-nucleus-decorated-window-jbr = { module = "io.github.kdroidfilter:nucleus.decorated-window-jbr", version.ref = "nucleus" }
-nucleus-decorated-window-jewel = { module = "io.github.kdroidfilter:nucleus.decorated-window-jewel", version.ref = "nucleus" }
+jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
-nucleus-updater-runtime = { module = "io.github.kdroidfilter:nucleus.updater-runtime", version.ref = "nucleus" }
+potassium-updater = { module = "com.seanproctor:potassium-updater", version.ref = "potassium" }
 rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

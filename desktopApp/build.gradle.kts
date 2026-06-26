@@ -1,13 +1,14 @@
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseChannel
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.ReleaseType
-import io.github.kdroidfilter.nucleus.desktop.application.dsl.TargetFormat
-import org.gradle.internal.os.OperatingSystem
+import com.seanproctor.potassium.dsl.LinuxTargetFormat
+import com.seanproctor.potassium.dsl.MacOSTargetFormat
+import com.seanproctor.potassium.dsl.ReleaseChannel
+import com.seanproctor.potassium.dsl.ReleaseType
+import com.seanproctor.potassium.dsl.WindowsTargetFormat
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.nucleus)
+    alias(libs.plugins.potassium)
 }
 
 dependencies {
@@ -18,8 +19,7 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
 
-    implementation(libs.nucleus.decorated.window.jewel)
-    implementation(libs.nucleus.decorated.window.jbr)
+    implementation(libs.jewel.decorated.window)
 
     implementation(libs.jewel.standalone)
 
@@ -40,7 +40,7 @@ dependencies {
     implementation(libs.sentry.kotlin)
 
     // In-app updates
-    implementation(libs.nucleus.updater.runtime)
+    implementation(libs.potassium.updater)
 }
 
 kotlin {
@@ -54,7 +54,7 @@ kotlin {
     }
 }
 
-// TODO: verify version fits nucleus tag pattern
+// TODO: verify version fits potassium tag pattern
 val resolvedReleaseVersion: String? =
     System
         .getenv("RELEASE_VERSION")
@@ -62,21 +62,18 @@ val resolvedReleaseVersion: String? =
         ?.takeIf { it.isNotBlank() }
         ?: project.version.toString().takeIf { it != "unspecified" }
 
-val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0"
+val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0-dev"
 
-// Dmg/Msi accept only MAJOR.MINOR.PATCH; strip any "-beta3"-style suffix.
-val numericPackageVersion: String = releaseVersion.substringBefore('-')
-
-// JBR 25 is what gets bundled into installers (via Nucleus/jpackage) and
+// JBR 25 is what gets bundled into installers (via Potassium) and
 // what `:desktopApp:run` launches under for local dev. Compilation happens
-// under the project toolchain (Temurin) — JBR is only used at runtime.
+// under the project toolchain (Temurin) - JBR is only used at runtime.
 val jbrRuntime =
     javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
         vendor = JvmVendorSpec.JETBRAINS
     }
 
-nucleus.application {
+potassium {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
     // Run + package under JBR 25 even though the rest of the build uses
@@ -105,121 +102,97 @@ nucleus.application {
     if (project.hasProperty("zgc")) {
         jvmArgs += "-XX:+UseZGC"
     }
-    // Only inject a version for real releases; leaving it unset in dev lets the app
-    // detect dev mode (version == null) and enable debug logging.
-    if (resolvedReleaseVersion != null) {
-        jvmArgs += "-Dwarlock.release.version=$releaseVersion"
+
+    appName = "Warlock"
+    packageName = "warlock"
+    packageVersion = releaseVersion
+    description = "Warlock Front-end"
+    vendor = "Warlock Project"
+    copyright = "Copyright 2026 Sean Proctor"
+    homepage = "https://warlockfe.github.io/"
+    licenseFile.set(project.file("../LICENSE"))
+
+    modules(
+        "jdk.accessibility",
+        "java.instrument",
+        "java.management",
+        "jdk.dynalink",
+        "jdk.security.auth",
+        "jdk.unsupported",
+    )
+
+    cleanupNativeLibs = true
+    artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
+
+    publish {
+        github {
+            enabled = true
+            owner = "sproctor"
+            repo = "warlock3"
+            channel =
+                when {
+                    releaseVersion.contains("beta") -> ReleaseChannel.Beta
+                    releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
+                    else -> ReleaseChannel.Latest
+                }
+            releaseType =
+                when (channel) {
+                    ReleaseChannel.Latest -> ReleaseType.Release
+                    else -> ReleaseType.Prerelease
+                }
+        }
     }
 
-    nativeDistributions {
-        val currentOs = OperatingSystem.current()
-        targetFormats(
-            *listOfNotNull(
-                TargetFormat.Dmg.takeIf { currentOs.isMacOsX },
-                // Zip is required alongside Dmg for macOS auto-update, and is the only
-                // non-installer artifact on Windows. Linux uses Tar instead.
-                TargetFormat.Zip.takeIf { !currentOs.isLinux },
-                TargetFormat.Nsis.takeIf { currentOs.isWindows },
-                TargetFormat.Deb.takeIf { currentOs.isLinux },
-                TargetFormat.AppImage.takeIf { currentOs.isLinux },
-                TargetFormat.Tar.takeIf { currentOs.isLinux },
-            ).toTypedArray(),
-        )
+    windows {
+        // NSIS installer
+        targetFormats(WindowsTargetFormat.Nsis)
 
-        appName = "Warlock"
-        packageName = "warlock"
-        packageVersion = releaseVersion
-        description = "Warlock Front-end"
-        vendor = "Warlock Project"
-        copyright = "Copyright 2026 Sean Proctor"
-        homepage = "https://warlockfe.github.io/"
-        licenseFile.set(project.file("../LICENSE"))
+        iconFile.set(project.file("../icons/icon.ico"))
+        menu = true
+        // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
+        upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
 
-        modules(
-            "jdk.accessibility",
-            "java.instrument",
-            "java.management",
-            "jdk.dynalink",
-            "jdk.security.auth",
-            "jdk.unsupported",
-        )
-
-        cleanupNativeLibs = true
-        artifactName = "\${name}-\${version}-\${os}-\${arch}.\${ext}"
-
-        publish {
-            github {
-                enabled = true
-                owner = "sproctor"
-                repo = "warlock3"
-                channel =
-                    when {
-                        releaseVersion.contains("beta") -> ReleaseChannel.Beta
-                        releaseVersion.contains("alpha") -> ReleaseChannel.Alpha
-                        else -> ReleaseChannel.Latest
-                    }
-                releaseType =
-                    when (channel) {
-                        ReleaseChannel.Latest -> ReleaseType.Release
-                        else -> ReleaseType.Prerelease
-                    }
-            }
+        // Azure Trusted Signing — Auth comes from the standard Azure
+        // service-principal env vars (AZURE_CLIENT_ID /
+        // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
+        // or from an interactive `az login` session.
+        // Signing is gated on the az CLI being able to obtain a token for
+        // the code-signing resource, so local builds without Azure access
+        // still produce unsigned binaries.
+        signing {
+            enabled = true
+            azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
+            azureEndpoint = "https://eus.codesigning.azure.net"
+            azureCodeSigningAccountName = "scrapgolem"
+            azureCertificateProfileName = "signing"
+            timestampServer = "http://timestamp.digicert.com"
         }
+    }
+    macOS {
+        // Zip alongside Dmg so the macOS auto-updater has a non-installer artifact to pull.
+        targetFormats(MacOSTargetFormat.Dmg, MacOSTargetFormat.Zip)
 
-        windows {
-            // Windows .exe VERSIONINFO requires numeric-only version, so use the
-            // stripped version for both the app-image executable and installers.
-            packageVersion = numericPackageVersion
-            msiPackageVersion = numericPackageVersion
-            exePackageVersion = numericPackageVersion
-
-            iconFile.set(project.file("../icons/icon.ico"))
-            menu = true
-            // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
-            upgradeUuid = "939087B2-4E18-49D1-A55C-1F0BFB116664"
-
-            // Azure Trusted Signing — Auth comes from the standard Azure
-            // service-principal env vars (AZURE_CLIENT_ID /
-            // AZURE_CLIENT_SECRET) consumed by electron-builder's signing tool,
-            // or from an interactive `az login` session.
-            // Signing is gated on the az CLI being able to obtain a token for
-            // the code-signing resource, so local builds without Azure access
-            // still produce unsigned binaries.
+        iconFile.set(project.file("../icons/icon.icns"))
+        bundleID = "warlockfe.warlock3"
+        // CI signs macOS post-lipo via the build-macos-universal action; only
+        // configure package-time signing for local dev builds.
+        if (System.getenv("CI") != "true") {
             signing {
-                enabled = true
-                azureTenantId = "dfe2ba9a-411b-4907-b6b0-59fe59aefc2d"
-                azureEndpoint = "https://eus.codesigning.azure.net"
-                azureCodeSigningAccountName = "scrapgolem"
-                azureCertificateProfileName = "signing"
-                timestampServer = "http://timestamp.digicert.com"
+                sign.set(true)
+                identity.set("Developer Application ID: Sean Proctor (DBNJ4AR55X")
+            }
+            notarization {
+                appleID.set("sproctor@gmail.com")
+                password.set(providers.environmentVariable("NOTARY_PWD"))
+                teamID.set("DBNJ4AR55X")
             }
         }
-        macOS {
-            // CFBundleVersion (used by the .app bundle, not just the DMG) must be
-            // dotted integers, so apply the numeric version at the OS level too.
-            packageVersion = numericPackageVersion
-            dmgPackageVersion = numericPackageVersion
+    }
+    linux {
+        targetFormats(LinuxTargetFormat.Deb, LinuxTargetFormat.AppImage, LinuxTargetFormat.Tar)
 
-            iconFile.set(project.file("../icons/icon.icns"))
-            bundleID = "warlockfe.warlock3"
-            // CI signs macOS post-lipo via the build-macos-universal action; only
-            // configure jpackage-time signing for local dev builds.
-            if (System.getenv("CI") != "true") {
-                signing {
-                    sign.set(true)
-                    identity.set("Developer Application ID: Sean Proctor (DBNJ4AR55X")
-                }
-                notarization {
-                    appleID.set("sproctor@gmail.com")
-                    password.set(providers.environmentVariable("NOTARY_PWD"))
-                    teamID.set("DBNJ4AR55X")
-                }
-            }
-        }
-        linux {
-            iconFile.set(project.file("../icons/icon-512.png"))
-            debMaintainer = "Sean Proctor <sproctor@gmail.com>"
-        }
+        iconFile.set(project.file("../icons/icon-512.png"))
+        debMaintainer = "Sean Proctor <sproctor@gmail.com>"
     }
 
     buildTypes.release.proguard {
