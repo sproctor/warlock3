@@ -14,17 +14,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
+import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.styling.LinkColors
+import org.jetbrains.jewel.ui.component.styling.LinkStyle
+import org.jetbrains.jewel.ui.component.styling.LinkUnderlineBehavior
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
+import org.jetbrains.jewel.ui.theme.linkStyle
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.model.SkinObject
@@ -34,6 +37,7 @@ import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
 import warlockfe.warlock3.compose.ui.window.DialogProgressBar
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
@@ -43,11 +47,13 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
-private val labelStyle =
-    TextStyle(
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
-    )
+private val labelStyle
+    @Composable
+    get() =
+        JewelTheme.defaultTextStyle.copy(
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+        )
 
 @Composable
 fun DesktopDialogContent(
@@ -251,25 +257,35 @@ private fun Link(
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
 ) {
-    val colorGroup = skinObject.getColorGroup()
-    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
-        Text(
-            modifier = Modifier.align(Alignment.Center),
-            text =
-                buildAnnotatedString {
-                    pushLink(
-                        LinkAnnotation.Clickable("action") {
-                            executeCommand(data.cmd ?: "")
-                        },
-                    )
-                    append(data.value)
-                    pop()
-                },
-            color = colorGroup.text,
-            style = labelStyle,
-            maxLines = 1,
+    // A dialog link uses its skin-defined text color, falling back to the user-configurable "link"
+    // preset (the same one that styles links in the text stream), then to Jewel's themed link color.
+    // It keeps that color across the interactive states (the always-on underline is the affordance),
+    // dims a little while pressed, and fades further when disabled.
+    val linkPreset = LocalStyleMap.current.getIgnoringCase("link")
+    val presetColor = linkPreset?.textColor.toColor().takeOrElse { JewelTheme.linkStyle.colors.content }
+    val linkColor = skinObject.getColorGroup().text.takeOrElse { presetColor }
+    val colors =
+        LinkColors(
+            content = linkColor,
+            contentHovered = linkColor,
+            contentFocused = linkColor,
+            contentPressed = linkColor.copy(alpha = 0.7f),
+            contentVisited = linkColor,
+            contentDisabled = linkColor.copy(alpha = 0.4f),
         )
-    }
+    Link(
+        modifier = Modifier.padding(horizontal = 6.dp),
+        text = data.value ?: "",
+        onClick = { executeCommand(data.cmd ?: "") },
+        textStyle = labelStyle,
+        style =
+            LinkStyle(
+                colors = colors,
+                metrics = JewelTheme.linkStyle.metrics,
+                icons = JewelTheme.linkStyle.icons,
+                underlineBehavior = LinkUnderlineBehavior.ShowAlways,
+            ),
+    )
 }
 
 @Composable

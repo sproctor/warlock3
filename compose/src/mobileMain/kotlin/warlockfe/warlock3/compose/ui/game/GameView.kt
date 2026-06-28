@@ -56,6 +56,7 @@ import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.WindowWidthSizeClass
@@ -113,6 +114,7 @@ fun GameView(
             val layout = WindowWidthSizeClass.fromWidth(maxWidth).gameLayout()
             Column(Modifier.fillMaxSize()) {
                 val progressBarSettings by viewModel.progressBarSettings.collectAsState()
+                val presets by viewModel.presets.collectAsState(emptyMap())
                 CompositionLocalProvider(
                     LocalProgressBarSettings provides
                         ProgressBarSettingsState(
@@ -121,6 +123,7 @@ fun GameView(
                             saveFont = viewModel::saveProgressBarFont,
                         ),
                     LocalWindowFindController provides viewModel.windowFindController,
+                    LocalStyleMap provides presets,
                 ) {
                     when (layout) {
                         MobileGameLayout.Phone -> {
@@ -373,7 +376,7 @@ fun GameBottomBar(
     onReconnect: (() -> Unit)? = null,
     onDashboard: (() -> Unit)? = null,
 ) {
-    val presets by viewModel.presets.collectAsState(emptyMap())
+    val presets = LocalStyleMap.current
     val style = presets["default"] ?: SAFE_DEFAULT_STYLE
     Row(
         modifier =
