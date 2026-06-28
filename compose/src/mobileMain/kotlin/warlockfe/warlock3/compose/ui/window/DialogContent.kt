@@ -9,6 +9,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -20,15 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DialogObject
@@ -104,7 +105,7 @@ fun DialogContent(
                             modifier = Modifier.align(Alignment.Center),
                             text = data.value ?: "",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                         )
                     }
@@ -228,7 +229,7 @@ private fun Label(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
     }
@@ -240,23 +241,22 @@ private fun Link(
     data: DialogObject.Link,
     executeCommand: (String) -> Unit,
 ) {
-    val colorGroup = skinObject.getColorGroup()
-    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
+    // Render a dialog link as a low-emphasis text button. The label uses its skin-defined color,
+    // falling back to the user-configurable "link" preset (the same one that styles stream-text
+    // links), then to the Material primary color.
+    val linkPreset = LocalStyleMap.current.getIgnoringCase("link")
+    val presetColor = linkPreset?.textColor.toColor().takeOrElse { MaterialTheme.colorScheme.primary }
+    val content = skinObject.getColorGroup().text.takeOrElse { presetColor }
+    TextButton(
+        modifier = Modifier.padding(horizontal = 6.dp),
+        onClick = { executeCommand(data.cmd ?: "") },
+    ) {
         Text(
-            modifier = Modifier.align(Alignment.Center),
-            text =
-                buildAnnotatedString {
-                    pushLink(
-                        LinkAnnotation.Clickable("action") {
-                            executeCommand(data.cmd ?: "")
-                        },
-                    )
-                    append(data.value)
-                    pop()
-                },
-            color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            text = data.value ?: "",
+            color = content,
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
+            textDecoration = TextDecoration.Underline,
         )
     }
 }

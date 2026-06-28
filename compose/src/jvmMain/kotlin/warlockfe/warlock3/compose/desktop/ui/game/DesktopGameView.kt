@@ -52,6 +52,7 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -111,6 +112,7 @@ fun DesktopGameView(
                     saveColors = viewModel::saveProgressBarColors,
                 ),
             LocalWindowFindController provides viewModel.windowFindController,
+            LocalStyleMap provides presets,
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {

@@ -48,6 +48,7 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.HistorySearchState
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
@@ -77,7 +78,7 @@ fun DesktopWarlockEntry(
             endTime = viewModel.castTimeEnd.collectAsState().value,
             getCurrentTime = viewModel::getCurrentTime,
         )
-    val presets by viewModel.presets.collectAsState(emptyMap())
+    val presets = LocalStyleMap.current
     val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
     val style = presets["entry"] ?: StyleDefinition()
     val historySearch by viewModel.historySearch.collectAsState()

@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.ui.window.DialogContent
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 
 /**
@@ -25,7 +26,7 @@ fun GameStatusCard(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val presets by viewModel.presets.collectAsState(emptyMap())
+    val presets = LocalStyleMap.current
     val style = presets["default"] ?: SAFE_DEFAULT_STYLE
     Card(
         modifier = modifier,

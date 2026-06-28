@@ -24,6 +24,7 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.explore
 import warlockfe.warlock3.compose.ui.window.WindowView
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -45,7 +46,7 @@ fun PhoneGameView(
     val character by viewModel.character.collectAsState(null)
     val mainWindow by viewModel.mainWindowUiState.collectAsState()
     val windows by viewModel.windows.collectAsState()
-    val presets by viewModel.presets.collectAsState(emptyMap())
+    val presets = LocalStyleMap.current
     val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
     val openWindows by viewModel.openWindows.collectAsState(emptyList())
     val menuData by viewModel.menuData.collectAsState()
