@@ -49,9 +49,9 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
-import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
-import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
+import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
@@ -105,8 +105,8 @@ fun DesktopGameView(
         val progressBarSettings by viewModel.progressBarSettings.collectAsState()
 
         CompositionLocalProvider(
-            LocalProgressBarColors provides
-                ProgressBarColorState(
+            LocalProgressBarSettings provides
+                ProgressBarSettingsState(
                     settings = progressBarSettings,
                     saveColors = viewModel::saveProgressBarColors,
                     saveFont = viewModel::saveProgressBarFont,

@@ -10,7 +10,7 @@ import warlockfe.warlock3.core.text.WarlockColor
  * in the game view so the deeply-nested dialog content can read/write per-id settings without
  * threading callbacks through every layer.
  */
-data class ProgressBarColorState(
+data class ProgressBarSettingsState(
     val settings: Map<String, ProgressBarSetting>,
     val saveColors: (
         id: String,
@@ -26,9 +26,9 @@ data class ProgressBarColorState(
     ) -> Unit,
 )
 
-val LocalProgressBarColors =
+val LocalProgressBarSettings =
     compositionLocalOf {
-        ProgressBarColorState(
+        ProgressBarSettingsState(
             settings = emptyMap(),
             saveColors = { _, _, _, _ -> },
             saveFont = { _, _, _, _ -> },

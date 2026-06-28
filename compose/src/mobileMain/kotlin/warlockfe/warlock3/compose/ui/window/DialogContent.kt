@@ -126,15 +126,15 @@ private enum class ProgressBarColorTarget {
 /**
  * A vital/progress bar that applies the current character's saved color overrides and, on long
  * press, offers a menu to recolor (or reset) the bar/background/text - the touch equivalent of the
- * desktop right-click color menu. Reads and persists through [LocalProgressBarColors].
+ * desktop right-click color menu. Reads and persists through [LocalProgressBarSettings].
  */
 @Composable
 private fun ProgressBarWithColorMenu(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
 ) {
-    val colorState = LocalProgressBarColors.current
-    val setting = colorState.settings[data.id]
+    val settingsState = LocalProgressBarSettings.current
+    val setting = settingsState.settings[data.id]
     val barColor = setting?.barColor ?: WarlockColor.Unspecified
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
@@ -202,7 +202,7 @@ private fun ProgressBarWithColorMenu(
                 text = { Text("Reset colors") },
                 onClick = {
                     menuOpen = false
-                    colorState.saveColors(
+                    settingsState.saveColors(
                         data.id,
                         WarlockColor.Unspecified,
                         WarlockColor.Unspecified,
@@ -224,7 +224,7 @@ private fun ProgressBarWithColorMenu(
             initialColor = current.toColor().takeIf { it.isSpecified },
             onCloseRequest = { editingTarget = null },
             onColorSelect = { chosen ->
-                colorState.saveColors(
+                settingsState.saveColors(
                     data.id,
                     if (target == ProgressBarColorTarget.Bar) chosen else barColor,
                     if (target == ProgressBarColorTarget.Background) chosen else backgroundColor,
@@ -245,7 +245,7 @@ private fun ProgressBarWithColorMenu(
                 ),
             onCloseRequest = { editingFont = false },
             onSaveClick = { fontUpdate ->
-                colorState.saveFont(data.id, fontUpdate.fontFamily, fontUpdate.size, fontUpdate.weight)
+                settingsState.saveFont(data.id, fontUpdate.fontFamily, fontUpdate.size, fontUpdate.weight)
                 editingFont = false
             },
         )

@@ -32,7 +32,7 @@ import warlockfe.warlock3.compose.ui.window.DialogButton
 import warlockfe.warlock3.compose.ui.window.DialogImage
 import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
 import warlockfe.warlock3.compose.ui.window.DialogProgressBar
-import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
@@ -144,8 +144,8 @@ private fun ProgressBarWithColorMenu(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
 ) {
-    val colorState = LocalProgressBarColors.current
-    val setting = colorState.settings[data.id]
+    val settingsState = LocalProgressBarSettings.current
+    val setting = settingsState.settings[data.id]
     val barColor = setting?.barColor ?: WarlockColor.Unspecified
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
@@ -168,7 +168,7 @@ private fun ProgressBarWithColorMenu(
                 ContextMenuItem("Change text color ...") { editingTarget = ProgressBarColorTarget.Text },
                 ContextMenuItem("Change font ...") { editingFont = true },
                 ContextMenuItem("Reset colors") {
-                    colorState.saveColors(
+                    settingsState.saveColors(
                         data.id,
                         WarlockColor.Unspecified,
                         WarlockColor.Unspecified,
@@ -200,7 +200,7 @@ private fun ProgressBarWithColorMenu(
             initialColor = current.toColor(),
             onCloseRequest = { editingTarget = null },
             onColorSelect = { chosen ->
-                colorState.saveColors(
+                settingsState.saveColors(
                     data.id,
                     if (target == ProgressBarColorTarget.Bar) chosen else barColor,
                     if (target == ProgressBarColorTarget.Background) chosen else backgroundColor,
@@ -221,7 +221,7 @@ private fun ProgressBarWithColorMenu(
                 ),
             onCloseRequest = { editingFont = false },
             onSaveClick = { fontUpdate ->
-                colorState.saveFont(data.id, fontUpdate.fontFamily, fontUpdate.size, fontUpdate.weight)
+                settingsState.saveFont(data.id, fontUpdate.fontFamily, fontUpdate.size, fontUpdate.weight)
                 editingFont = false
             },
         )
