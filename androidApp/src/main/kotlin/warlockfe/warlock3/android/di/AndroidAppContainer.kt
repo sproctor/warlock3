@@ -2,7 +2,7 @@ package warlockfe.warlock3.android.di
 
 import kotlinx.io.files.FileSystem
 import warlockfe.warlock3.compose.AppContainer
-import warlockfe.warlock3.core.client.AndroidProxy
+import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.script.ScriptManagerFactory
@@ -44,6 +44,6 @@ class AndroidAppContainer(
 
     override val warlockProxyFactory: WarlockProxy.Factory =
         object : WarlockProxy.Factory {
-            override fun create(command: String): WarlockProxy = AndroidProxy(command)
+            override fun create(command: String): WarlockProxy = JavaProxy(command)
         }
 }

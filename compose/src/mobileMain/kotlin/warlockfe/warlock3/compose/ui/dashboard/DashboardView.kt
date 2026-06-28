@@ -189,10 +189,8 @@ fun DashboardView(
         ConnectionSettingsDialog(
             name = connection.name,
             windowTitle = connection.windowTitle,
-            proxySettings = connection.proxySettings,
             updateName = { viewModel.renameConnection(connection.id, it) },
             updateWindowTitle = { viewModel.updateWindowTitle(connection.id, it) },
-            updateProxySettings = { viewModel.updateProxySettings(connection.id, it) },
             closeDialog = { editConnection = null },
         )
     }
@@ -468,7 +466,7 @@ private fun ConnectionRow(
                     }
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                         // MUD Mobile connections are managed in the MUD Mobile dashboard, so only the
-                        // play.net connections expose the proxy/name editor.
+                        // play.net connections expose the settings editor.
                         if (!connection.mudMobile) {
                             DropdownMenuItem(
                                 text = { Text("Edit") },

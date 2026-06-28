@@ -5,4 +5,8 @@ data class ConnectionProxySettings(
     val launchCommand: String?,
     val host: String?,
     val port: String?,
-)
+) {
+    /** True when any proxy connection detail (launch command, host, or port) has been provided. */
+    val hasDetails: Boolean
+        get() = !launchCommand.isNullOrBlank() || !host.isNullOrBlank() || !port.isNullOrBlank()
+}
