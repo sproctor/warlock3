@@ -1311,6 +1311,25 @@ class GameViewModel(
         }
     }
 
+    fun saveProgressBarFont(
+        id: String,
+        fontFamily: String?,
+        fontSize: Float?,
+        fontWeight: Int?,
+    ) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                progressBarSettingRepository.setFont(
+                    characterId = characterId,
+                    id = id,
+                    fontFamily = fontFamily,
+                    fontSize = fontSize,
+                    fontWeight = fontWeight,
+                )
+            }
+        }
+    }
+
     fun selectWindow(window: String) {
         _selectedWindow.value = window
     }

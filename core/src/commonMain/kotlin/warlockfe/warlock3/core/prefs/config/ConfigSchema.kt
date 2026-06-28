@@ -134,6 +134,9 @@ data class ProgressBarConfig(
     val backgroundColor: WarlockColor = WarlockColor.Unspecified,
     @Serializable(WarlockColorAsHexSerializer::class)
     val textColor: WarlockColor = WarlockColor.Unspecified,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
+    val fontWeight: Int? = null,
 )
 
 @Serializable

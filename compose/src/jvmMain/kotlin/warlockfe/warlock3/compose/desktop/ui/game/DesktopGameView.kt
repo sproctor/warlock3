@@ -109,6 +109,7 @@ fun DesktopGameView(
                 ProgressBarColorState(
                     settings = progressBarSettings,
                     saveColors = viewModel::saveProgressBarColors,
+                    saveFont = viewModel::saveProgressBarFont,
                 ),
             LocalWindowFindController provides viewModel.windowFindController,
         ) {
