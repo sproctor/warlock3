@@ -844,12 +844,19 @@ private fun migrateLegacyWindowsPrefsDb(
     val localAppData =
         System.getenv("LOCALAPPDATA")
             ?: File(System.getProperty("user.home"), "AppData/Local").absolutePath
-    val legacyDir =
-        File(localAppData, "Packages/Warlock_ysy1438y9wgam/LocalCache/Local/WarlockFE")
-    val legacyDb = File(legacyDir, "prefs.db")
-    if (!legacyDb.exists()) {
-        return
-    }
+    // Conveyor shipped Warlock as an MSIX package, so the app ran sandboxed and its writes to
+    // %LOCALAPPDATA%\WarlockFE\warlock were virtualized into the package's per-user LocalCache mirror at
+    // %LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\WarlockFE\warlock. The publisher-hash
+    // suffix of the family name depends on the signing identity, so match any Warlock_* package directory;
+    // if several exist (e.g. re-signed under a new identity), migrate the most recently written database.
+    val legacyDb =
+        File(localAppData, "Packages")
+            .listFiles { file -> file.isDirectory && file.name.startsWith("Warlock_", ignoreCase = true) }
+            ?.map { File(it, "LocalCache/Local/WarlockFE/warlock/prefs.db") }
+            ?.filter { it.exists() }
+            ?.maxByOrNull { it.lastModified() }
+            ?: return
+    val legacyDir = legacyDb.parentFile
     logger.i { "Migrating legacy prefs database from ${legacyDb.absolutePath} to ${configDbFile.absolutePath}" }
     try {
         legacyDb.copyTo(configDbFile, overwrite = false)
