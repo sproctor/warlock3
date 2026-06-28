@@ -34,6 +34,7 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
+import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -57,7 +58,7 @@ fun LargeGameView(
     Column(modifier) {
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
-        val presets by viewModel.presets.collectAsState(emptyMap())
+        val presets = LocalStyleMap.current
         val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val character by viewModel.character.collectAsState(null)
