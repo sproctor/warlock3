@@ -197,18 +197,6 @@ internal fun StyleDefinition.toWindowStyleConfig(nameFilter: Boolean): WindowSty
         nameFilter = nameFilter,
     )
 
-internal fun ProgressBarConfig.toEntity(
-    characterId: String,
-    id: String,
-): ProgressBarSettingEntity =
-    ProgressBarSettingEntity(
-        characterId = characterId,
-        id = id,
-        barColor = barColor,
-        backgroundColor = backgroundColor,
-        textColor = textColor,
-    )
-
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =
     ProgressBarConfig(
         barColor = barColor,

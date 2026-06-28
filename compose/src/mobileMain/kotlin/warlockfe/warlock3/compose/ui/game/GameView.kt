@@ -50,9 +50,9 @@ import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DragOverlay
 import warlockfe.warlock3.compose.ui.window.DropResult
-import warlockfe.warlock3.compose.ui.window.LocalProgressBarColors
+import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
-import warlockfe.warlock3.compose.ui.window.ProgressBarColorState
+import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
@@ -116,10 +116,11 @@ fun GameView(
                 val progressBarSettings by viewModel.progressBarSettings.collectAsState()
                 val presets by viewModel.presets.collectAsState(emptyMap())
                 CompositionLocalProvider(
-                    LocalProgressBarColors provides
-                        ProgressBarColorState(
+                    LocalProgressBarSettings provides
+                        ProgressBarSettingsState(
                             settings = progressBarSettings,
                             saveColors = viewModel::saveProgressBarColors,
+                            saveFont = viewModel::saveProgressBarFont,
                         ),
                     LocalWindowFindController provides viewModel.windowFindController,
                     LocalStyleMap provides presets,

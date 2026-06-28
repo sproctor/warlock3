@@ -23,13 +23,17 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
+import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DialogObject
@@ -124,21 +128,30 @@ private enum class ProgressBarColorTarget {
 /**
  * A vital/progress bar that applies the current character's saved color overrides and, on long
  * press, offers a menu to recolor (or reset) the bar/background/text - the touch equivalent of the
- * desktop right-click color menu. Reads and persists through [LocalProgressBarColors].
+ * desktop right-click color menu. Reads and persists through [LocalProgressBarSettings].
  */
 @Composable
 private fun ProgressBarWithColorMenu(
     skinObject: SkinObject?,
     data: DialogObject.ProgressBar,
 ) {
-    val colorState = LocalProgressBarColors.current
-    val setting = colorState.settings[data.id]
+    val settingsState = LocalProgressBarSettings.current
+    val setting = settingsState.settings[data.id]
     val barColor = setting?.barColor ?: WarlockColor.Unspecified
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
+    // Merge the saved font override (if any) onto the base label style.
+    val baseStyle = MaterialTheme.typography.labelSmall
+    val style =
+        baseStyle.copy(
+            fontFamily = setting?.fontFamily?.let { createFontFamily(it) } ?: baseStyle.fontFamily,
+            fontSize = setting?.fontSize?.sp ?: baseStyle.fontSize,
+            fontWeight = setting?.fontWeight?.let { FontWeight(it) } ?: baseStyle.fontWeight,
+        )
 
     var menuOpen by remember { mutableStateOf(false) }
     var editingTarget by remember { mutableStateOf<ProgressBarColorTarget?>(null) }
+    var editingFont by remember { mutableStateOf(false) }
 
     Box {
         DialogProgressBar(
@@ -153,7 +166,7 @@ private fun ProgressBarWithColorMenu(
             barColorOverride = barColor,
             backgroundColorOverride = backgroundColor,
             textColorOverride = textColor,
-            style = MaterialTheme.typography.labelSmall,
+            style = style,
         )
         DropdownMenu(
             expanded = menuOpen,
@@ -181,10 +194,17 @@ private fun ProgressBarWithColorMenu(
                 },
             )
             DropdownMenuItem(
+                text = { Text("Change font") },
+                onClick = {
+                    menuOpen = false
+                    editingFont = true
+                },
+            )
+            DropdownMenuItem(
                 text = { Text("Reset colors") },
                 onClick = {
                     menuOpen = false
-                    colorState.saveColors(
+                    settingsState.saveColors(
                         data.id,
                         WarlockColor.Unspecified,
                         WarlockColor.Unspecified,
@@ -206,13 +226,29 @@ private fun ProgressBarWithColorMenu(
             initialColor = current.toColor().takeIf { it.isSpecified },
             onCloseRequest = { editingTarget = null },
             onColorSelect = { chosen ->
-                colorState.saveColors(
+                settingsState.saveColors(
                     data.id,
                     if (target == ProgressBarColorTarget.Bar) chosen else barColor,
                     if (target == ProgressBarColorTarget.Background) chosen else backgroundColor,
                     if (target == ProgressBarColorTarget.Text) chosen else textColor,
                 )
                 editingTarget = null
+            },
+        )
+    }
+
+    if (editingFont) {
+        FontPickerDialog(
+            currentStyle =
+                StyleDefinition(
+                    fontFamily = setting?.fontFamily,
+                    fontSize = setting?.fontSize,
+                    fontWeight = setting?.fontWeight,
+                ),
+            onCloseRequest = { editingFont = false },
+            onSaveClick = { fontUpdate ->
+                settingsState.saveFont(data.id, fontUpdate.fontFamily, fontUpdate.size, fontUpdate.weight)
+                editingFont = false
             },
         )
     }
