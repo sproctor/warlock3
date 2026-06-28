@@ -7,15 +7,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
@@ -36,12 +39,44 @@ fun DesktopConnectionSettingsDialog(
     closeDialog: () -> Unit,
 ) {
     var proxyEnabled by rememberSaveable(proxySettings) { mutableStateOf(proxySettings.enabled) }
+    var proxyEdited by rememberSaveable(proxySettings) { mutableStateOf(false) }
     val nameState = rememberTextFieldState(name)
     val windowTitleState = rememberTextFieldState(windowTitle ?: "")
     val proxyCommand = rememberTextFieldState(proxySettings.launchCommand ?: "")
     val proxyHost = rememberTextFieldState(proxySettings.host ?: "")
     val proxyPort = rememberTextFieldState(proxySettings.port ?: "")
     val scope = rememberCoroutineScope()
+
+    // Adding proxy details to an empty proxy enables it by default. Editing the details while the
+    // proxy is disabled instead flags them as edited so we can warn that they will not take effect.
+    LaunchedEffect(proxySettings) {
+        var hadDetails = proxySettings.hasDetails
+        var first = true
+        snapshotFlow {
+            Triple(proxyCommand.text.toString(), proxyHost.text.toString(), proxyPort.text.toString())
+        }.collect { (command, host, port) ->
+            val hasDetails = command.isNotBlank() || host.isNotBlank() || port.isNotBlank()
+            when {
+                first -> {
+                    first = false
+                }
+
+                proxyEnabled -> {
+                    proxyEdited = false
+                }
+
+                !hadDetails && hasDetails -> {
+                    proxyEnabled = true
+                    proxyEdited = false
+                }
+
+                else -> {
+                    proxyEdited = hasDetails
+                }
+            }
+            hadDetails = hasDetails
+        }
+    }
 
     WarlockDialog(
         title = "Connection settings",
@@ -73,6 +108,13 @@ fun DesktopConnectionSettingsDialog(
                 onCheckedChange = { proxyEnabled = it },
                 text = "Enable proxy",
             )
+
+            if (proxyEdited && !proxyEnabled) {
+                Text(
+                    "Proxy settings edited, but the proxy is not enabled and will not be used.",
+                    color = JewelTheme.globalColors.text.warning,
+                )
+            }
 
             Text("Lich/proxy launch command")
             WarlockTextField(
