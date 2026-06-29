@@ -1,6 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -8,7 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class WslOperatorTest {
-    private fun num(value: Int) = WslNumber(value.toBigDecimal())
+    private fun num(value: Int) = WslNumber(value.toDouble())
 
     // --- WslAdditiveOperator ---
 

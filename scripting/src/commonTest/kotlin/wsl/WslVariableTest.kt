@@ -11,14 +11,14 @@ class WslVariableTest {
         val v = WslVariable { 42 }
         assertTrue(v.isNumeric())
         assertFalse(v.isBoolean())
-        assertEquals("42", v.toNumber().toPlainString())
+        assertEquals(42.0, v.toNumber())
     }
 
     @Test
     fun wrapsDouble() {
         val v = WslVariable { 3.5 }
         assertTrue(v.isNumeric())
-        assertEquals("3.5", v.toNumber().toPlainString())
+        assertEquals(3.5, v.toNumber())
     }
 
     @Test
@@ -39,7 +39,7 @@ class WslVariableTest {
     @Test
     fun nonNumericStringNumberDefaultsToZero() {
         val v = WslVariable { "hello" }
-        assertEquals("0", v.toNumber().toPlainString())
+        assertEquals(0.0, v.toNumber())
     }
 
     @Test
@@ -56,7 +56,7 @@ class WslVariableTest {
         val v = WslVariable { mapOf("count" to 5) }
         assertTrue(v.isMap())
         // getProperty wraps the value in another WslVariable, so inspect it numerically
-        assertEquals("5", v.getProperty("count").toNumber().toPlainString())
+        assertEquals(5.0, v.getProperty("count").toNumber())
         assertTrue(v.getProperty("missing").isNull())
     }
 
@@ -70,9 +70,9 @@ class WslVariableTest {
     fun getterIsEvaluatedLazily() {
         var backing = 1
         val v = WslVariable { backing }
-        assertEquals("1", v.toNumber().toPlainString())
+        assertEquals(1.0, v.toNumber())
         backing = 99
-        assertEquals("99", v.toNumber().toPlainString())
+        assertEquals(99.0, v.toNumber())
     }
 
     @Test

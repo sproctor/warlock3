@@ -1,6 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -52,14 +51,14 @@ class WslValueTest {
 
     @Test
     fun string_toNumber() {
-        assertEquals("42", WslString("42").toNumber().toPlainString())
-        assertEquals("3.5", WslString("3.5").toNumber().toPlainString())
+        assertEquals(42.0, WslString("42").toNumber())
+        assertEquals(3.5, WslString("3.5").toNumber())
     }
 
     @Test
     fun string_blankIsZero() {
-        assertEquals("0", WslString("   ").toNumber().toPlainString())
-        assertEquals("0", WslString("").toNumber().toPlainString())
+        assertEquals(0.0, WslString("   ").toNumber())
+        assertEquals(0.0, WslString("").toNumber())
     }
 
     @Test
@@ -91,7 +90,7 @@ class WslValueTest {
 
     @Test
     fun string_equality_coercesToNumber() {
-        assertTrue(WslString("5") == WslNumber(5.toBigDecimal()))
+        assertTrue(WslString("5") == WslNumber(5.0))
     }
 
     @Test
@@ -108,23 +107,23 @@ class WslValueTest {
 
     @Test
     fun number_basics() {
-        val n = WslNumber(7.toBigDecimal())
+        val n = WslNumber(7.0)
         assertTrue(n.isNumeric())
         assertFalse(n.isBoolean())
         assertFalse(n.isMap())
         assertEquals("7", n.toString())
-        assertEquals("7", n.toNumber().toPlainString())
+        assertEquals(7.0, n.toNumber())
     }
 
     @Test
     fun number_toBoolean_throws() {
-        assertFailsWith<WslRuntimeException> { WslNumber(1.toBigDecimal()).toBoolean() }
+        assertFailsWith<WslRuntimeException> { WslNumber(1.0).toBoolean() }
     }
 
     @Test
     fun number_equality() {
-        assertEquals(WslNumber(5.toBigDecimal()), WslNumber(5.toBigDecimal()))
-        assertTrue(WslNumber(5.toBigDecimal()) == WslString("5"))
+        assertEquals(WslNumber(5.0), WslNumber(5.0))
+        assertTrue(WslNumber(5.0) == WslString("5"))
     }
 
     // --- WslNull ---
@@ -174,19 +173,19 @@ class WslValueTest {
         assertFalse(map.isNumeric())
         assertFalse(map.isBoolean())
         assertFalse(map.toBoolean())
-        assertEquals("0", map.toNumber().toPlainString())
+        assertEquals(0.0, map.toNumber())
     }
 
     // --- compareWith ---
 
     @Test
     fun compareWith_numeric() {
-        val five = WslNumber(5.toBigDecimal())
-        val three = WslNumber(3.toBigDecimal())
+        val five = WslNumber(5.0)
+        val three = WslNumber(3.0)
         assertTrue(five.compareWith(WslComparisonOperator.GT, three))
         assertFalse(five.compareWith(WslComparisonOperator.LT, three))
-        assertTrue(five.compareWith(WslComparisonOperator.GTE, WslNumber(5.toBigDecimal())))
-        assertTrue(five.compareWith(WslComparisonOperator.LTE, WslNumber(5.toBigDecimal())))
+        assertTrue(five.compareWith(WslComparisonOperator.GTE, WslNumber(5.0)))
+        assertTrue(five.compareWith(WslComparisonOperator.LTE, WslNumber(5.0)))
     }
 
     @Test

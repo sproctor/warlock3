@@ -239,10 +239,7 @@ class WslExpressionTest {
                 backgroundScope.eval("x + 1") {
                     setScriptVariableRaw(
                         "x",
-                        WslNumber(
-                            com.ionspin.kotlin.bignum.decimal.BigDecimal
-                                .fromInt(5),
-                        ),
+                        WslNumber(5.0),
                     )
                 }
             assertEquals("6", result.toString())

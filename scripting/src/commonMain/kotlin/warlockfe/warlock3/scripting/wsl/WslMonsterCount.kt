@@ -1,15 +1,13 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
-import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.text.StyledStringSubstring
 
 class WslMonsterCount(
     private val client: WarlockClient,
 ) : WslNumeric() {
-    override fun toNumber(): BigDecimal {
-        val roomObjs = client.getComponent("room objs") ?: return BigDecimal.ZERO
+    override fun toNumber(): Double {
+        val roomObjs = client.getComponent("room objs") ?: return 0.0
         var sum = 0
         roomObjs.substrings.forEach { substring ->
             if (substring is StyledStringSubstring) {
@@ -18,6 +16,6 @@ class WslMonsterCount(
                 }
             }
         }
-        return sum.toBigDecimal()
+        return sum.toDouble()
     }
 }

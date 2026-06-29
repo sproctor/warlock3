@@ -42,8 +42,7 @@ val generateKotlinGrammarSource =
 val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
-
-    androidLibrary {
+    android {
         namespace = "warlockfe.warlock3.scripting"
         compileSdk =
             libs.versions.compileSdk
@@ -93,9 +92,6 @@ kotlin {
 
                 // Needed for JS scripting implementation
                 implementation(libs.kotlin.reflect)
-
-                // BigDecimal
-                implementation(libs.bignum)
             }
         }
 

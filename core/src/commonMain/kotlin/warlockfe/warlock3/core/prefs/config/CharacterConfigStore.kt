@@ -5,12 +5,10 @@ import dev.eav.tomlkt.Toml
 import dev.eav.tomlkt.TomlElement
 import dev.eav.tomlkt.TomlLiteral
 import dev.eav.tomlkt.TomlTable
-import dev.eav.tomlkt.encodeToString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -20,8 +18,6 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.readString
-import kotlinx.io.writeString
-import kotlinx.serialization.KSerializer
 import kotlin.uuid.Uuid
 
 const val GLOBAL_CHARACTER_ID = "global"

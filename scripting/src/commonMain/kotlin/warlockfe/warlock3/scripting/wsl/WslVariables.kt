@@ -1,7 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
-
 class WslVariables(
     private val context: WslContext,
 ) : WslValue {
@@ -9,7 +7,7 @@ class WslVariables(
 
     override fun toBoolean(): Boolean = false
 
-    override fun toNumber(): BigDecimal = BigDecimal.ZERO
+    override fun toNumber(): Double = 0.0
 
     override fun isNumeric(): Boolean = false
 

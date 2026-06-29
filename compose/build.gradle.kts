@@ -32,7 +32,7 @@ kotlin {
             associateWith(main)
         }
     }
-    androidLibrary {
+    android {
         namespace = "warlockfe.warlock3.compose"
         compileSdk =
             libs.versions.compileSdk

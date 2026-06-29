@@ -1,12 +1,9 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
-import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
-
 interface WslValue {
     fun toBoolean(): Boolean
 
-    fun toNumber(): BigDecimal
+    fun toNumber(): Double
 
     fun isNumeric(): Boolean
 
@@ -41,7 +38,7 @@ class WslBoolean(
 
     override fun toBoolean(): Boolean = value
 
-    override fun toNumber(): BigDecimal = throw WslRuntimeException("Boolean cannot be used as a number")
+    override fun toNumber(): Double = throw WslRuntimeException("Boolean cannot be used as a number")
 
     override fun getProperty(key: String): WslValue = WslNull
 
@@ -77,9 +74,9 @@ class WslString(
             else -> throw WslRuntimeException("String that is not \"true\" or \"false\" cannot be used as a boolean")
         }
 
-    override fun toNumber(): BigDecimal {
-        if (value.isBlank()) return BigDecimal.ZERO
-        return value.toBigDecimalOrNull()
+    override fun toNumber(): Double {
+        if (value.isBlank()) return 0.0
+        return value.toDoubleOrNull()
             ?: throw WslRuntimeException("String \"$value\" cannot be converted to a number.")
     }
 
@@ -113,15 +110,15 @@ class WslString(
 
     override fun hashCode(): Int = value.hashCode()
 
-    override fun isNumeric(): Boolean = value.toBigDecimalOrNull() != null
+    override fun isNumeric(): Boolean = value.toDoubleOrNull() != null
 
     override fun isMap(): Boolean = false
 }
 
 class WslNumber(
-    private val value: BigDecimal,
+    private val value: Double,
 ) : WslNumeric() {
-    override fun toNumber(): BigDecimal = value
+    override fun toNumber(): Double = value
 }
 
 object WslNull : WslValue {
@@ -133,7 +130,7 @@ object WslNull : WslValue {
 
     override fun toBoolean(): Boolean = false
 
-    override fun toNumber(): BigDecimal = throw WslRuntimeException("Cannot convert null to number")
+    override fun toNumber(): Double = throw WslRuntimeException("Cannot convert null to number")
 
     override fun getProperty(key: String): WslValue = WslNull
 
@@ -158,7 +155,7 @@ class WslMap(
 
     override fun toBoolean(): Boolean = false
 
-    override fun toNumber(): BigDecimal = BigDecimal.ZERO
+    override fun toNumber(): Double = 0.0
 
     override fun isNumeric(): Boolean = false
 

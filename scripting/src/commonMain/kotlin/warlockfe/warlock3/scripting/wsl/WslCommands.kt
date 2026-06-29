@@ -1,7 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
-import com.ionspin.kotlin.bignum.decimal.toBigDecimal
 import io.ktor.util.CaseInsensitiveMap
 import kotlinx.coroutines.delay
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -12,7 +10,6 @@ import warlockfe.warlock3.core.util.parseArguments
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.util.toWarlockColor
 import warlockfe.warlock3.scripting.util.ScriptLoggingLevel
-import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -203,9 +200,9 @@ private suspend fun counter(
     val (operator, operandString) = args.splitFirstWord()
     val operand =
         operandString?.let {
-            it.toBigDecimalOrNull() ?: throw WslRuntimeException("Counter operand must be a number")
-        } ?: BigDecimal.ONE
-    val current = context.lookupVariable("c")?.toNumber() ?: BigDecimal.ZERO
+            it.toDoubleOrNull() ?: throw WslRuntimeException("Counter operand must be a number")
+        } ?: 1.0
+    val current = context.lookupVariable("c")?.toNumber() ?: 0.0
     val result =
         when (operator.lowercase()) {
             "set" -> {
@@ -225,7 +222,7 @@ private suspend fun counter(
             }
 
             "divide" -> {
-                if (operand.isZero()) {
+                if (operand == 0.0) {
                     throw WslRuntimeException("Cannot divide by 0")
                 }
                 current / operand
@@ -315,7 +312,7 @@ private suspend fun randomCommand(
     }
     context.setScriptVariable(
         name = "r",
-        value = WslNumber(Random.nextInt(min, max).toBigDecimal()),
+        value = WslNumber(Random.nextInt(min, max).toDouble()),
     )
 }
 

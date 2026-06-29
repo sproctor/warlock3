@@ -10,7 +10,14 @@ abstract class WslNumeric : WslValue {
         value: WslValue,
     ) {}
 
-    override fun toString(): String = toNumber().toPlainString()
+    override fun toString(): String {
+        val n = toNumber()
+        return if (n == kotlin.math.floor(n) && !n.isInfinite()) {
+            n.toLong().toString()
+        } else {
+            n.toString()
+        }
+    }
 
     override fun equals(other: Any?): Boolean =
         when {

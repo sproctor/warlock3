@@ -14,7 +14,6 @@ import org.antlr.v4.kotlinruntime.atn.ATNConfigSet
 import org.antlr.v4.kotlinruntime.dfa.DFA
 import warlockfe.warlock3.scripting.parsers.generated.WslLexer
 import warlockfe.warlock3.scripting.parsers.generated.WslParser
-import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
 import warlockfe.warlock3.scripting.util.toCharStream
 
 class WslScript(
@@ -285,7 +284,7 @@ class WslScript(
 
                 numberLiteral != null -> {
                     WslNumber(
-                        numberLiteral.text.toBigDecimalOrNull().orParseError("Could not parse number"),
+                        numberLiteral.text.toDoubleOrNull().orParseError("Could not parse number"),
                     )
                 }
 
@@ -549,7 +548,7 @@ enum class WslMultiplicativeOperator {
             return if (value1.isNumeric()) {
                 WslNumber(value1.toNumber() * value2.toNumber())
             } else {
-                WslString(value1.toString().repeat(value2.toNumber().intValue(false)))
+                WslString(value1.toString().repeat(value2.toNumber().toInt()))
             }
         }
     },
@@ -559,7 +558,7 @@ enum class WslMultiplicativeOperator {
             value2: WslValue,
         ): WslValue {
             val divisor = value2.toNumber()
-            if (divisor.isZero()) {
+            if (divisor == 0.0) {
                 throw WslRuntimeException("Cannot divide by 0")
             }
             return WslNumber(value1.toNumber() / divisor)
