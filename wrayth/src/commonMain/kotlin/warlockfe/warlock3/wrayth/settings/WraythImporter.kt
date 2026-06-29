@@ -175,8 +175,8 @@ class WraythImporter(
 
     internal fun importString(text: String): WraythSettings {
         val parser =
-            XML {
-                defaultPolicy {
+            XML.v1 {
+                policy {
                     pedantic = false
                     ignoreUnknownChildren()
                 }

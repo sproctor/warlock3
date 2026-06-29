@@ -74,7 +74,7 @@ sentryKotlin = "0.27.0"
 slf4j = "2.0.18"
 slf4jAndroid = "2.0.17-0"
 uri = "0.0.21"
-xmlutil = "1.0.0-rc3"
+xmlutil = "1.0.0"
 
 compileSdk = "36"
 minSdk = "26"

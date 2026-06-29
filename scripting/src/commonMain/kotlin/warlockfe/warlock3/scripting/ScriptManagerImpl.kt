@@ -102,7 +102,7 @@ class ScriptManagerImpl(
             argumentString = argString ?: "",
             onStop = {
                 externalScope.launch {
-                    _runningScripts.update { it.remove(instance.id) }
+                    _runningScripts.update { it.removing(instance.id) }
                     client.print(StyledString("Script has finished: ${instance.name}", style = WarlockStyle.Echo))
                 }
             },
