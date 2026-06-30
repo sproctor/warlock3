@@ -348,7 +348,7 @@ private suspend fun shiftCommand(
         }
         i++
     }
-    val allArgs = context.lookupVariable("0").toString()
+    val allArgs = context.lookupVariable("0")?.toText() ?: ""
     val breakIndex = findArgumentBreak(allArgs)
     context.setScriptVariable(
         name = "0",

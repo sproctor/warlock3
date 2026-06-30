@@ -14,8 +14,12 @@ class WslVariable(
             is Int -> value.toDouble()
             is Long -> value.toDouble()
             is Float -> value.toDouble()
-            else -> toString().toDoubleOrNull() ?: 0.0
+            else -> value?.toString()?.toDoubleOrNull() ?: 0.0
         }
+
+    override fun toText(): String = getter()?.toString() ?: ""
+
+    override fun toString(): String = toText()
 
     override fun isNumeric(): Boolean = getter() is Number
 
@@ -38,7 +42,7 @@ class WslVariable(
         val map =
             getter()
                 ?.takeIf { it is MutableMap<*, *> } as? MutableMap<String, String>
-        map?.set(key, value.toString())
+        map?.set(key, value.toText())
     }
 
     override fun isMap(): Boolean = getter() is Map<*, *>

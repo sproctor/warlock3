@@ -364,13 +364,13 @@ sealed class WslCommandContent {
     data class Variable(
         val name: String,
     ) : WslCommandContent() {
-        override fun getValue(context: WslContext): String = context.lookupVariable(name)?.toString() ?: ""
+        override fun getValue(context: WslContext): String = context.lookupVariable(name)?.toText() ?: ""
     }
 
     data class Expression(
         val expression: WslExpression,
     ) : WslCommandContent() {
-        override fun getValue(context: WslContext): String = expression.getValue(context).toString()
+        override fun getValue(context: WslContext): String = expression.getValue(context).toText()
     }
 
     abstract fun getValue(context: WslContext): String
@@ -466,17 +466,17 @@ enum class WslInfixOperator {
             value2: WslValue,
         ): WslValue {
             if (value1.isMap()) {
-                val property = value1.getProperty(value2.toString())
+                val property = value1.getProperty(value2.toText())
                 return WslBoolean(!property.isNull())
             }
-            return WslBoolean(value1.toString().contains(value2.toString()))
+            return WslBoolean(value1.toText().contains(value2.toText()))
         }
     },
     CONTAINSRE {
         override fun getValue(
             value1: WslValue,
             value2: WslValue,
-        ): WslValue = WslBoolean(value1.toString().contains(value2.toString().toRegex()))
+        ): WslValue = WslBoolean(value1.toText().contains(value2.toText().toRegex()))
     }, ;
 
     abstract fun getValue(
@@ -507,7 +507,7 @@ enum class WslAdditiveOperator {
             if (value1.isNumeric() && value2.isNumeric()) {
                 WslNumber(value1.toNumber() + value2.toNumber())
             } else {
-                WslString(value1.toString() + value2.toString())
+                WslString(value1.toText() + value2.toText())
             }
     },
     SUB {
@@ -548,7 +548,7 @@ enum class WslMultiplicativeOperator {
             return if (value1.isNumeric()) {
                 WslNumber(value1.toNumber() * value2.toNumber())
             } else {
-                WslString(value1.toString().repeat(value2.toNumber().toInt()))
+                WslString(value1.toText().repeat(value2.toNumber().toInt()))
             }
         }
     },
@@ -611,7 +611,7 @@ data class WslPostfixUnaryExpression(
     fun getValue(context: WslContext): WslValue {
         var acc = primaryExpression.getValue(context)
         indexingSuffixes.forEach {
-            val key = it.getValue(context).toString()
+            val key = it.getValue(context).toText()
             acc = acc.getProperty(key)
         }
         return acc
@@ -678,7 +678,7 @@ sealed class WslStringContent {
     data class Variable(
         val name: String,
     ) : WslStringContent() {
-        override fun getValue(context: WslContext): String = context.lookupVariable(name).toString()
+        override fun getValue(context: WslContext): String = context.lookupVariable(name)?.toText() ?: ""
     }
 
     abstract fun getValue(context: WslContext): String

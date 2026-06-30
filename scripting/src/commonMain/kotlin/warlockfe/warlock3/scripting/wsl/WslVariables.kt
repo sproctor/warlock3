@@ -3,6 +3,8 @@ package warlockfe.warlock3.scripting.wsl
 class WslVariables(
     private val context: WslContext,
 ) : WslValue {
+    override fun toText(): String = ""
+
     override fun toString(): String = ""
 
     override fun toBoolean(): Boolean = false
