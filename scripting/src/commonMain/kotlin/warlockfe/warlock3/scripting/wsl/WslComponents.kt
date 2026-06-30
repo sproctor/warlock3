@@ -5,6 +5,8 @@ import warlockfe.warlock3.core.client.WarlockClient
 class WslComponents(
     private val client: WarlockClient,
 ) : WslValue {
+    override fun toText(): String = client.getComponents().toString()
+
     override fun toString(): String = client.getComponents().toString()
 
     override fun toBoolean(): Boolean = false

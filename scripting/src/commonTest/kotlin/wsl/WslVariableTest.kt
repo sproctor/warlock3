@@ -15,6 +15,19 @@ class WslVariableTest {
     }
 
     @Test
+    fun toTextReturnsWrappedValue() {
+        assertEquals("Excalibur", WslVariable { "Excalibur" }.toText())
+        assertEquals("42", WslVariable { 42 }.toText())
+        assertEquals("", WslVariable { null }.toText())
+    }
+
+    @Test
+    fun numericStringBackedVariableConvertsToNumber() {
+        assertEquals(5.0, WslVariable { "5" }.toNumber())
+        assertEquals(0.0, WslVariable { "notanumber" }.toNumber())
+    }
+
+    @Test
     fun wrapsDouble() {
         val v = WslVariable { 3.5 }
         assertTrue(v.isNumeric())

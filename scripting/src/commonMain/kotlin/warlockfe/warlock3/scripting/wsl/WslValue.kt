@@ -5,6 +5,13 @@ interface WslValue {
 
     fun toNumber(): Double
 
+    /**
+     * The script-facing string representation of this value. Use this (not [toString]) wherever a
+     * script observes a value as text - variable substitution, concatenation, comparison, etc.
+     * [toString] is reserved for debugging/logging.
+     */
+    fun toText(): String
+
     fun isNumeric(): Boolean
 
     fun isBoolean(): Boolean
@@ -27,7 +34,7 @@ interface WslValue {
         if (isNumeric() && other.isNumeric()) {
             return compare(operator, toNumber(), other.toNumber())
         }
-        return compare(operator, toString(), other.toString())
+        return compare(operator, toText(), other.toText())
     }
 }
 
@@ -47,7 +54,9 @@ class WslBoolean(
         value: WslValue,
     ) { }
 
-    override fun toString(): String = if (value) "true" else "false"
+    override fun toText(): String = if (value) "true" else "false"
+
+    override fun toString(): String = toText()
 
     override fun equals(other: Any?): Boolean =
         when (other) {
@@ -80,6 +89,8 @@ class WslString(
             ?: throw WslRuntimeException("String \"$value\" cannot be converted to a number.")
     }
 
+    override fun toText(): String = value
+
     override fun toString(): String = value
 
     override fun getProperty(key: String): WslValue {
@@ -102,7 +113,7 @@ class WslString(
                 other !is WslValue -> false
                 other.isBoolean() -> toBoolean() == other.toBoolean()
                 other.isNumeric() -> toNumber() == other.toNumber()
-                else -> value.equals(other = other.toString(), ignoreCase = true)
+                else -> value.equals(other = other.toText(), ignoreCase = true)
             }
         } catch (_: WslRuntimeException) {
             false
@@ -125,6 +136,8 @@ object WslNull : WslValue {
     override fun equals(other: Any?): Boolean = other === WslNull
 
     override fun hashCode(): Int = 0
+
+    override fun toText(): String = ""
 
     override fun toString(): String = ""
 
@@ -169,6 +182,8 @@ class WslMap(
     ) {
         values[key] = value
     }
+
+    override fun toText(): String = values.toString()
 
     override fun toString(): String = values.toString()
 
