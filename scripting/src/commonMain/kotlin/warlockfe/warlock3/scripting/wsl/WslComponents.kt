@@ -1,16 +1,17 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import warlockfe.warlock3.core.client.WarlockClient
 
 class WslComponents(
     private val client: WarlockClient,
 ) : WslValue {
+    override fun toText(): String = client.getComponents().toString()
+
     override fun toString(): String = client.getComponents().toString()
 
     override fun toBoolean(): Boolean = false
 
-    override fun toNumber(): BigDecimal = BigDecimal.ZERO
+    override fun toNumber(): Double = 0.0
 
     override fun isNumeric(): Boolean = false
 

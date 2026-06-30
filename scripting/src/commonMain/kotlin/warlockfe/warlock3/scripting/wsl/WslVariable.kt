@@ -1,9 +1,5 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
-import com.ionspin.kotlin.bignum.decimal.toBigDecimal
-import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
-
 class WslVariable(
     private val getter: () -> Any?,
 ) : WslValue {
@@ -12,15 +8,18 @@ class WslVariable(
         return value as? Boolean ?: value.toString().toBoolean()
     }
 
-    override fun toNumber(): BigDecimal =
+    override fun toNumber(): Double =
         when (val value = getter()) {
-            is BigDecimal -> value
-            is Int -> value.toBigDecimal()
-            is Long -> value.toBigDecimal()
-            is Float -> value.toBigDecimal()
-            is Double -> value.toBigDecimal()
-            else -> toString().toBigDecimalOrNull() ?: BigDecimal.ZERO
+            is Double -> value
+            is Int -> value.toDouble()
+            is Long -> value.toDouble()
+            is Float -> value.toDouble()
+            else -> value?.toString()?.toDoubleOrNull() ?: 0.0
         }
+
+    override fun toText(): String = getter()?.toString() ?: ""
+
+    override fun toString(): String = toText()
 
     override fun isNumeric(): Boolean = getter() is Number
 
@@ -43,7 +42,7 @@ class WslVariable(
         val map =
             getter()
                 ?.takeIf { it is MutableMap<*, *> } as? MutableMap<String, String>
-        map?.set(key, value.toString())
+        map?.set(key, value.toText())
     }
 
     override fun isMap(): Boolean = getter() is Map<*, *>

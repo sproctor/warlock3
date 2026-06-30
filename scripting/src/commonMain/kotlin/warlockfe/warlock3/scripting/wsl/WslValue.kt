@@ -1,12 +1,16 @@
 package warlockfe.warlock3.scripting.wsl
 
-import com.ionspin.kotlin.bignum.decimal.BigDecimal
-import warlockfe.warlock3.scripting.util.toBigDecimalOrNull
-
 interface WslValue {
     fun toBoolean(): Boolean
 
-    fun toNumber(): BigDecimal
+    fun toNumber(): Double
+
+    /**
+     * The script-facing string representation of this value. Use this (not [toString]) wherever a
+     * script observes a value as text - variable substitution, concatenation, comparison, etc.
+     * [toString] is reserved for debugging/logging.
+     */
+    fun toText(): String
 
     fun isNumeric(): Boolean
 
@@ -30,7 +34,7 @@ interface WslValue {
         if (isNumeric() && other.isNumeric()) {
             return compare(operator, toNumber(), other.toNumber())
         }
-        return compare(operator, toString(), other.toString())
+        return compare(operator, toText(), other.toText())
     }
 }
 
@@ -41,7 +45,7 @@ class WslBoolean(
 
     override fun toBoolean(): Boolean = value
 
-    override fun toNumber(): BigDecimal = throw WslRuntimeException("Boolean cannot be used as a number")
+    override fun toNumber(): Double = throw WslRuntimeException("Boolean cannot be used as a number")
 
     override fun getProperty(key: String): WslValue = WslNull
 
@@ -50,7 +54,9 @@ class WslBoolean(
         value: WslValue,
     ) { }
 
-    override fun toString(): String = if (value) "true" else "false"
+    override fun toText(): String = if (value) "true" else "false"
+
+    override fun toString(): String = toText()
 
     override fun equals(other: Any?): Boolean =
         when (other) {
@@ -77,11 +83,13 @@ class WslString(
             else -> throw WslRuntimeException("String that is not \"true\" or \"false\" cannot be used as a boolean")
         }
 
-    override fun toNumber(): BigDecimal {
-        if (value.isBlank()) return BigDecimal.ZERO
-        return value.toBigDecimalOrNull()
+    override fun toNumber(): Double {
+        if (value.isBlank()) return 0.0
+        return value.toDoubleOrNull()
             ?: throw WslRuntimeException("String \"$value\" cannot be converted to a number.")
     }
+
+    override fun toText(): String = value
 
     override fun toString(): String = value
 
@@ -105,7 +113,7 @@ class WslString(
                 other !is WslValue -> false
                 other.isBoolean() -> toBoolean() == other.toBoolean()
                 other.isNumeric() -> toNumber() == other.toNumber()
-                else -> value.equals(other = other.toString(), ignoreCase = true)
+                else -> value.equals(other = other.toText(), ignoreCase = true)
             }
         } catch (_: WslRuntimeException) {
             false
@@ -113,15 +121,15 @@ class WslString(
 
     override fun hashCode(): Int = value.hashCode()
 
-    override fun isNumeric(): Boolean = value.toBigDecimalOrNull() != null
+    override fun isNumeric(): Boolean = value.toDoubleOrNull() != null
 
     override fun isMap(): Boolean = false
 }
 
 class WslNumber(
-    private val value: BigDecimal,
+    private val value: Double,
 ) : WslNumeric() {
-    override fun toNumber(): BigDecimal = value
+    override fun toNumber(): Double = value
 }
 
 object WslNull : WslValue {
@@ -129,11 +137,13 @@ object WslNull : WslValue {
 
     override fun hashCode(): Int = 0
 
+    override fun toText(): String = ""
+
     override fun toString(): String = ""
 
     override fun toBoolean(): Boolean = false
 
-    override fun toNumber(): BigDecimal = throw WslRuntimeException("Cannot convert null to number")
+    override fun toNumber(): Double = throw WslRuntimeException("Cannot convert null to number")
 
     override fun getProperty(key: String): WslValue = WslNull
 
@@ -158,7 +168,7 @@ class WslMap(
 
     override fun toBoolean(): Boolean = false
 
-    override fun toNumber(): BigDecimal = BigDecimal.ZERO
+    override fun toNumber(): Double = 0.0
 
     override fun isNumeric(): Boolean = false
 
@@ -172,6 +182,8 @@ class WslMap(
     ) {
         values[key] = value
     }
+
+    override fun toText(): String = values.toString()
 
     override fun toString(): String = values.toString()
 

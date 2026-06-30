@@ -52,7 +52,7 @@ val skipIos = (findProperty("iosSkip") as? String)?.toBoolean() == true
 
 kotlin {
     jvm()
-    androidLibrary {
+    android {
         namespace = "warlockfe.warlock3.core"
         compileSdk =
             libs.versions.compileSdk

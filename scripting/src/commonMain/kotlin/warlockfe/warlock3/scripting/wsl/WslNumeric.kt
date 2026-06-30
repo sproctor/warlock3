@@ -1,5 +1,7 @@
 package warlockfe.warlock3.scripting.wsl
 
+import kotlin.math.floor
+
 abstract class WslNumeric : WslValue {
     override fun toBoolean(): Boolean = throw WslRuntimeException("Attempted to use number as a boolean")
 
@@ -10,14 +12,23 @@ abstract class WslNumeric : WslValue {
         value: WslValue,
     ) {}
 
-    override fun toString(): String = toNumber().toPlainString()
+    override fun toText(): String {
+        val n = toNumber()
+        return if (n == floor(n) && !n.isInfinite()) {
+            n.toLong().toString()
+        } else {
+            n.toString()
+        }
+    }
+
+    override fun toString(): String = toText()
 
     override fun equals(other: Any?): Boolean =
         when {
             other !is WslValue -> false
             other.isBoolean() -> toBoolean() == other.toBoolean()
             other.isNumeric() -> toNumber() == other.toNumber()
-            else -> toString().equals(other = other.toString(), ignoreCase = true)
+            else -> toText().equals(other = other.toText(), ignoreCase = true)
         }
 
     override fun hashCode(): Int = toNumber().hashCode()

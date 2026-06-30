@@ -59,7 +59,7 @@ kotlin {
             associateWith(main)
         }
     }
-    androidLibrary {
+    android {
         namespace = "warlockfe.warlock3.wrayth"
         compileSdk =
             libs.versions.compileSdk
