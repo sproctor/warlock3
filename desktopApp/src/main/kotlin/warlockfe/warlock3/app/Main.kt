@@ -640,8 +640,15 @@ private class WarlockCommand : CliktCommand() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             if (throwable.isKnownComposeBug()) {
                 // Swallow silently; see installUncaughtExceptionWorkaround.
+            } else if (existingHandler != null) {
+                existingHandler.uncaughtException(thread, throwable)
             } else {
-                existingHandler?.uncaughtException(thread, throwable)
+                // There was no prior default handler, so installing ours suppressed the JVM's
+                // built-in fallback (ThreadGroup.uncaughtException). Without this branch every real
+                // crash would be swallowed silently. Replicate that fallback so the stacktrace still
+                // reaches the command line.
+                System.err.print("Exception in thread \"${thread.name}\" ")
+                throwable.printStackTrace(System.err)
             }
         }
     }
