@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose
 
-import androidx.room.RoomDatabase
+import androidx.room3.RoomDatabase
+import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import co.touchlab.kermit.Logger
@@ -36,7 +37,6 @@ import warlockfe.warlock3.core.mudmobile.MudMobileApi
 import warlockfe.warlock3.core.mudmobile.WarlockSettingsSync
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
-import warlockfe.warlock3.core.prefs.MySQLiteDriver
 import warlockfe.warlock3.core.prefs.PREFS_DATABASE_VERSION
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
@@ -356,20 +356,22 @@ fun openPrefsDatabase(
     directory: Path,
     fileSystem: FileSystem,
     builderFactory: (databaseFilePath: String) -> RoomDatabase.Builder<PrefsDatabase>,
-): PrefsDatabase =
-    openVersionedDatabase(
+): PrefsDatabase {
+    val sqlDriver = BundledSQLiteDriver()
+    return openVersionedDatabase(
         directory = directory,
         fileSystem = fileSystem,
         currentVersion = PREFS_DATABASE_VERSION,
         legacyFileName = "prefs.db",
         buildDatabase = { dbPath ->
             builderFactory(dbPath.toString())
-                .setDriver(MySQLiteDriver(BundledSQLiteDriver()))
+                .setDriver(sqlDriver)
                 .addMigrations(MIGRATION_10_11, MIGRATION_14_16)
                 .build()
         },
-        checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem) },
+        checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem, sqlDriver) },
     )
+}
 
 private val snapshotLogger = Logger.withTag("DatabaseSnapshot")
 
@@ -382,14 +384,12 @@ private val snapshotLogger = Logger.withTag("DatabaseSnapshot")
 private fun checkpointDatabase(
     path: Path,
     fileSystem: FileSystem,
+    sqlDriver: SQLiteDriver,
 ) {
     if (!fileSystem.exists(path)) return
     runCatching {
-        val connection = MySQLiteDriver(BundledSQLiteDriver()).open(path.toString())
-        try {
+        sqlDriver.open(path.toString()).use { connection ->
             connection.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
-        } finally {
-            connection.close()
         }
     }.onFailure { snapshotLogger.w(it) { "Failed to checkpoint ${path.name} before seeding snapshot" } }
 }

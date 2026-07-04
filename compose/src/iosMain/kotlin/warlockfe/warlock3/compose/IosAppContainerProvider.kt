@@ -1,6 +1,6 @@
 package warlockfe.warlock3.compose
 
-import androidx.room.Room
+import androidx.room3.Room
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow

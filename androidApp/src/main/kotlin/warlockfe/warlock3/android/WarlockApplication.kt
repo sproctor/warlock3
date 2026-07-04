@@ -1,8 +1,8 @@
 package warlockfe.warlock3.android
 
 import android.app.Application
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.android.di.AndroidAppContainer

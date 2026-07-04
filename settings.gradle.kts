@@ -14,7 +14,7 @@ pluginManagement {
         gradlePluginPortal()
         google()
         mavenCentral()
-        mavenLocal()
+        // mavenLocal()
     }
 }
 
@@ -23,7 +23,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://www.jetbrains.com/intellij-repository/releases")
-        mavenLocal()
+        // mavenLocal()
     }
 }
 

@@ -1,18 +1,18 @@
 package warlockfe.warlock3.core.prefs.adapters
 
-import androidx.room.TypeConverter
+import androidx.room3.ColumnTypeConverter
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.uuid.Uuid
 
 class DatabaseConverters {
-    @TypeConverter
+    @ColumnTypeConverter
     fun toWindowLocation(databaseValue: String): WindowLocation = WindowLocation.entries.first { it.value == databaseValue }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromWindowLocation(value: WindowLocation): String = value.value
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toUuid(databaseValue: ByteArray): Uuid =
         // New rows store the UUID as 16 raw bytes. Legacy rows (written by old app versions and
         // carried forward unconverted by MIGRATION_14_16's INSERT..SELECT) hold the 36-char string
@@ -24,12 +24,12 @@ class DatabaseConverters {
             Uuid.parse(databaseValue.decodeToString())
         }
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromUUID(value: Uuid): ByteArray = value.toByteArray()
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun toWarlockColor(databaseValue: Long): WarlockColor = WarlockColor(databaseValue)
 
-    @TypeConverter
+    @ColumnTypeConverter
     fun fromWarlockColor(value: WarlockColor): Long = value.argb
 }
