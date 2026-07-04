@@ -1,12 +1,12 @@
 package warlockfe.warlock3.core.prefs
 
-import androidx.room.migration.Migration
+import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
 val MIGRATION_10_11 =
     object : Migration(10, 11) {
-        override fun migrate(connection: SQLiteConnection) {
+        override suspend fun migrate(connection: SQLiteConnection) {
             connection.execSQL("DROP TABLE Alteration")
             connection.execSQL(
                 """
@@ -27,7 +27,7 @@ val MIGRATION_10_11 =
 
 val MIGRATION_14_16 =
     object : Migration(14, 16) {
-        public override fun migrate(connection: SQLiteConnection) {
+        public override suspend fun migrate(connection: SQLiteConnection) {
             connection.execSQL("delete from Highlight where rowid not in (select min(rowid) from Highlight group by characterId, pattern)")
             connection.execSQL(
                 "CREATE TABLE IF NOT EXISTS `_new_Highlight` (`id` BLOB NOT NULL, `characterId` TEXT NOT NULL, `pattern` TEXT NOT NULL, `isRegex` INTEGER NOT NULL, `matchPartialWord` INTEGER NOT NULL, `ignoreCase` INTEGER NOT NULL, PRIMARY KEY(`id`))",

@@ -31,8 +31,8 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity

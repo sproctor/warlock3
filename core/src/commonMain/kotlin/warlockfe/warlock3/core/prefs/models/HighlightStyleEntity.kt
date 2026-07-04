@@ -1,7 +1,7 @@
 package warlockfe.warlock3.core.prefs.models
 
-import androidx.room.Entity
-import androidx.room.ForeignKey
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
 import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.uuid.Uuid
 

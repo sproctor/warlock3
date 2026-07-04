@@ -1,10 +1,10 @@
 package warlockfe.warlock3.core.prefs.models
 
-import androidx.room.Embedded
-import androidx.room.Relation
+import androidx.room3.Embedded
+import androidx.room3.Relation
 
 data class PopulatedHighlight(
     @Embedded val highlight: HighlightEntity,
-    @Relation(parentColumn = "id", entityColumn = "highlightId")
+    @Relation(parentColumns = ["id"], entityColumns = ["highlightId"])
     val styles: List<HighlightStyleEntity>,
 )

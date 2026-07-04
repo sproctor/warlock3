@@ -1,13 +1,13 @@
 package warlockfe.warlock3.core.prefs
 
-import androidx.room.AutoMigration
-import androidx.room.ConstructedBy
-import androidx.room.Database
-import androidx.room.DeleteColumn
-import androidx.room.RoomDatabase
-import androidx.room.RoomDatabaseConstructor
-import androidx.room.TypeConverters
-import androidx.room.migration.AutoMigrationSpec
+import androidx.room3.AutoMigration
+import androidx.room3.ColumnTypeConverters
+import androidx.room3.ConstructedBy
+import androidx.room3.Database
+import androidx.room3.DeleteColumn
+import androidx.room3.RoomDatabase
+import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.migration.AutoMigrationSpec
 import warlockfe.warlock3.core.prefs.adapters.DatabaseConverters
 import warlockfe.warlock3.core.prefs.dao.AccountDao
 import warlockfe.warlock3.core.prefs.dao.AliasDao
@@ -81,7 +81,7 @@ const val PREFS_DATABASE_VERSION = 20
         AutoMigration(from = 19, to = 20),
     ],
 )
-@TypeConverters(DatabaseConverters::class)
+@ColumnTypeConverters(DatabaseConverters::class)
 @ConstructedBy(PrefsDatabaseConstructor::class)
 abstract class PrefsDatabase : RoomDatabase() {
     @DeleteColumn(tableName = "character", columnName = "accountId")

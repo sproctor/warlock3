@@ -1,6 +1,6 @@
 package warlockfe.warlock3.core.prefs.models
 
-import androidx.room.Entity
+import androidx.room3.Entity
 
 @Entity(
     tableName = "charactersetting",
