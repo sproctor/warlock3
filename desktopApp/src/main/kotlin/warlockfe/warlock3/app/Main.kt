@@ -634,7 +634,8 @@ private class WarlockCommand : CliktCommand() {
     //      retargeting accessibility focus after a node is removed it walks the Accessible tree into
     //      an ArrayDeque, but getAccessibleChild() can return null and ArrayDeque rejects nulls.
     //      Still unguarded in compose-multiplatform 1.11.x.
-    // Matching on frame names is reliable because the desktop release build is -dontobfuscate (rules.pro).
+    // Matching on frame names is reliable because the desktop build never runs ProGuard
+    // (it is disabled in build.gradle.kts), so class/method names are never obfuscated.
     private fun installUncaughtExceptionWorkaround() {
         val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->

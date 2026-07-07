@@ -197,8 +197,14 @@ potassium {
         debMaintainer = "Sean Proctor <sproctor@gmail.com>"
     }
 
+    // The shipped app is built via packageDistributionForCurrentOS (the default
+    // build type, which never runs ProGuard). Potassium enables ProGuard on the
+    // release build type by default; disable it explicitly so no *Release*
+    // packaging task can minify. (ProGuard here only shrank ~13%, with
+    // obfuscation and optimization already off, so it wasn't worth the keep-rule
+    // maintenance and the JDK-version lag it introduced.)
     buildTypes.release.proguard {
-        configurationFiles.from("rules.pro")
+        isEnabled.set(false)
     }
 }
 
