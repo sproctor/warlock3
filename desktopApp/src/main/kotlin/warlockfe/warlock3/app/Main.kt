@@ -193,6 +193,7 @@ private class WarlockCommand : CliktCommand() {
                 addAll(createInitialGameStates(appContainer, credentials, sgeSettings, logger))
             }
 
+        disableMacAccessibilityWorkaround()
         installUncaughtExceptionWorkaround()
 
         val updater = buildUpdater(clientSettings)
@@ -625,6 +626,24 @@ private class WarlockCommand : CliktCommand() {
         }
     }
 
+    // Turn off Compose Desktop's accessibility bridge on macOS. Bug 2 below (the
+    // ComposeSceneAccessibility.defaultAccessibilityFocusTarget NPE) fires in practice only on
+    // macOS, whose a11y system aggressively queries AccessibleContext and so keeps driving the
+    // crashing node-sync/focus-retarget path. installUncaughtExceptionWorkaround can swallow the
+    // resulting uncaught exception, but only after the sync is interrupted mid-way, leaving the a11y
+    // tree inconsistent so it re-throws on the next focus change. Disabling the bridge stops that
+    // path from ever running. The trade-off is no screen-reader support on macOS until the upstream
+    // fix lands, which beats a crash loop. Compose reads this system property lazily when it builds
+    // the first ComposeSceneAccessibility, so this must run before the first window opens; we leave
+    // an explicit -Dcompose.accessibility.enable=... on the command line untouched as an escape hatch.
+    private fun disableMacAccessibilityWorkaround() {
+        if (DesktopPlatform.Current == DesktopPlatform.MacOS &&
+            System.getProperty("compose.accessibility.enable") == null
+        ) {
+            System.setProperty("compose.accessibility.enable", "false")
+        }
+    }
+
     // Swallow known, unrecoverable upstream Compose Desktop accessibility crashes that surface as
     // uncaught exceptions on the AWT event thread. Both originate entirely inside Compose's a11y
     // tree-sync code, so there is nothing for us to fix and nothing the user can do; killing the
@@ -633,7 +652,8 @@ private class WarlockCommand : CliktCommand() {
     //   2. NullPointerException in ComposeSceneAccessibility.defaultAccessibilityFocusTarget: while
     //      retargeting accessibility focus after a node is removed it walks the Accessible tree into
     //      an ArrayDeque, but getAccessibleChild() can return null and ArrayDeque rejects nulls.
-    //      Still unguarded in compose-multiplatform 1.11.x.
+    //      Still unguarded in compose-multiplatform 1.11.x. disableMacAccessibilityWorkaround stops
+    //      this from ever firing on macOS; this stays as the cross-platform safety net.
     // Matching on frame names is reliable because the desktop build never runs ProGuard
     // (it is disabled in build.gradle.kts), so class/method names are never obfuscated.
     private fun installUncaughtExceptionWorkaround() {
