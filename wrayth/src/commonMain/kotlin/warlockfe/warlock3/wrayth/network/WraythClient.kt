@@ -548,11 +548,7 @@ class WraythClient(
             }
 
             is WraythStreamWindowEvent -> {
-                val window = event.window
-                if (windows[event.window.name] == null && window.name != "main") {
-                    sendCommandDirect("_swclose s${event.window.name}")
-                }
-                addWindow(window)
+                addWindow(event.window)
             }
 
             is WraythDialogWindowEvent -> {
