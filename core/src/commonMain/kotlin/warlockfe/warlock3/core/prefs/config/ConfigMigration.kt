@@ -92,6 +92,7 @@ class ConfigMigration(
                         bold = entity.bold,
                         italic = entity.italic,
                         underline = entity.underline,
+                        fontSize = entity.fontSize,
                     )
             }
         val progressBars = progressBarSettingDao.getByCharacter(id).associate { it.id to it.toConfig() }

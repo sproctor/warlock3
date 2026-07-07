@@ -19,6 +19,7 @@ import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.flattenStyles
+import warlockfe.warlock3.core.text.isSpecified
 
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
@@ -37,7 +38,12 @@ fun StyledString.toAnnotatedString(
  */
 fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle =
     SpanStyle(
-        color = textColor.toColor(),
+        color =
+            when {
+                textColor.isSpecified() -> textColor.toColor()
+                monospace -> monoFont?.textColor?.toColor() ?: textColor.toColor()
+                else -> textColor.toColor()
+            },
         background = backgroundColor.toColor(),
         fontFamily = if (monospace) monoFont?.family?.let { createFontFamily(it) } ?: FontFamily.Monospace else null,
         textDecoration = if (underline) TextDecoration.Underline else null,
@@ -48,7 +54,7 @@ fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle =
                 else -> null
             },
         fontStyle = if (italic) FontStyle.Italic else null,
-        fontSize = if (monospace) monoFont?.size?.sp ?: TextUnit.Unspecified else TextUnit.Unspecified,
+        fontSize = fontSize?.sp ?: if (monospace) monoFont?.size?.sp ?: TextUnit.Unspecified else TextUnit.Unspecified,
     )
 
 fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition = (styleMap[name] ?: StyleDefinition())

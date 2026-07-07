@@ -123,6 +123,7 @@ data class PresetStyleConfig(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val monospace: Boolean = false,
+    val fontSize: Float? = null,
 )
 
 @Serializable
@@ -248,6 +249,7 @@ data class HighlightStyleConfig(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val monospace: Boolean = false,
+    val fontSize: Float? = null,
 )
 
 @Serializable

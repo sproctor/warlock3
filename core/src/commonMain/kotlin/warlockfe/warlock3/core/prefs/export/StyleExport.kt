@@ -12,4 +12,5 @@ data class StyleExport(
     val italic: Boolean,
     val underline: Boolean,
     val monospace: Boolean,
+    val fontSize: Float? = null,
 )

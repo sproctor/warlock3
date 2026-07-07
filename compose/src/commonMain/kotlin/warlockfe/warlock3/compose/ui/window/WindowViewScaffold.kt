@@ -79,6 +79,7 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -254,9 +255,14 @@ private fun WindowViewContent(
     modifier: Modifier = Modifier,
 ) {
     val backgroundColor = style.backgroundColor.toColor()
-    val textColor = style.textColor.toColor()
     // The window's base (normal) font: its per-window override if set, otherwise the character default.
     val effectiveFont = font ?: LocalDefaultFont.current
+    val textColor =
+        if (effectiveFont?.textColor?.isSpecified() == true) {
+            effectiveFont.textColor.toColor()
+        } else {
+            style.textColor.toColor()
+        }
     val fontFamily = effectiveFont?.family?.let { createFontFamily(it) }
     val fontSize = effectiveFont?.size?.sp ?: defaultFontSize
     val fontWeight = effectiveFont?.weight?.let { FontWeight(it) }

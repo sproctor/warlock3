@@ -1,6 +1,12 @@
 package warlockfe.warlock3.core.text
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import warlockfe.warlock3.core.util.toWarlockColor
 
 @Serializable
@@ -35,4 +41,25 @@ fun WarlockColor.ifUnspecified(defaultColor: WarlockColor): WarlockColor {
 fun WarlockColor.toHexString(): String? {
     if (isUnspecified()) return null
     return "#" + argb.toString(16)
+}
+
+object WarlockColorAsHexSerializer : KSerializer<WarlockColor> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("WarlockColor", PrimitiveKind.STRING)
+
+    override fun serialize(
+        encoder: Encoder,
+        value: WarlockColor,
+    ) {
+        encoder.encodeString(value.toHexString() ?: "default")
+    }
+
+    override fun deserialize(decoder: Decoder): WarlockColor {
+        val text = decoder.decodeString()
+        return if (text.isBlank() || text == "default") {
+            WarlockColor.Unspecified
+        } else {
+            text.toWarlockColor() ?: WarlockColor.Unspecified
+        }
+    }
 }

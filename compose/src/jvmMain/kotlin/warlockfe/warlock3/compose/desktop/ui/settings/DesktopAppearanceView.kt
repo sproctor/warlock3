@@ -13,18 +13,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
@@ -33,9 +38,10 @@ import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerButton
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
+import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -51,6 +57,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.isSpecified
 
 @Composable
 fun DesktopAppearanceView(
@@ -104,7 +111,12 @@ fun DesktopAppearanceView(
 
         val defaultStyle = presets["default"]
         val previewBackground = defaultStyle?.backgroundColor?.toColor() ?: Color.Unspecified
-        val previewContentColor = defaultStyle?.textColor?.toColor() ?: LocalContentColor.current
+        val previewContentColor =
+            if (defaultFont?.textColor?.isSpecified() == true) {
+                defaultFont?.textColor.toColor()
+            } else {
+                defaultStyle?.textColor?.toColor() ?: LocalContentColor.current
+            }
         CompositionLocalProvider(LocalContentColor provides previewContentColor) {
             WarlockScrollableColumn(
                 modifier =
@@ -153,6 +165,7 @@ private fun DefaultFontSettings(
 ) {
     // Which selector's picker is open, plus whether to restrict it to monospace families.
     var editFont by remember { mutableStateOf<Pair<FontConfig?, Boolean>?>(null) }
+    var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
 
     editFont?.let { (current, monospaceOnly) ->
         DesktopFontPickerDialog(
@@ -160,8 +173,19 @@ private fun DefaultFontSettings(
             monospaceOnly = monospaceOnly,
             onCloseRequest = { editFont = null },
             onSaveClick = { update ->
-                if (monospaceOnly) onSaveMonoFont(update.toFontConfig()) else onSaveDefaultFont(update.toFontConfig())
+                val fontUpdate = update.toFontConfig().withTextColorFrom(current)
+                if (monospaceOnly) onSaveMonoFont(fontUpdate) else onSaveDefaultFont(fontUpdate)
                 editFont = null
+            },
+        )
+    }
+    editColor?.let { (initialColor, onPick) ->
+        DesktopColorPickerDialog(
+            initialColor = initialColor.toColor(),
+            onCloseRequest = { editColor = null },
+            onColorSelect = { color ->
+                onPick(color)
+                editColor = null
             },
         )
     }
@@ -176,6 +200,16 @@ private fun DefaultFontSettings(
                 onClick = { editFont = defaultFont to false },
                 text = defaultFont.fontLabel(),
             )
+            DesktopColorPickerButton(
+                text = "Color",
+                color = defaultFont?.textColor.toColor(),
+                onClick = {
+                    editColor =
+                        Pair(defaultFont?.textColor ?: WarlockColor.Unspecified) { color ->
+                            onSaveDefaultFont(defaultFont.withTextColor(color))
+                        }
+                },
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
@@ -186,9 +220,30 @@ private fun DefaultFontSettings(
                 onClick = { editFont = monoFont to true },
                 text = monoFont.fontLabel(),
             )
+            DesktopColorPickerButton(
+                text = "Color",
+                color = monoFont?.textColor.toColor(),
+                onClick = {
+                    editColor =
+                        Pair(monoFont?.textColor ?: WarlockColor.Unspecified) { color ->
+                            onSaveMonoFont(monoFont.withTextColor(color))
+                        }
+                },
+            )
         }
     }
 }
+
+private fun FontConfig?.withTextColorFrom(current: FontConfig?): FontConfig? {
+    val textColor = current?.textColor ?: WarlockColor.Unspecified
+    return (this ?: FontConfig()).copy(textColor = textColor).takeUnless { it.isEmpty() }
+}
+
+private fun FontConfig?.withTextColor(color: WarlockColor): FontConfig? =
+    (this ?: FontConfig()).copy(textColor = color).takeUnless { it.isEmpty() }
+
+private const val MIN_PRESET_FONT_SIZE = 6f
+private const val MAX_PRESET_FONT_SIZE = 72f
 
 @Composable
 private fun ColumnScope.PresetSettings(
@@ -217,12 +272,13 @@ private fun ColumnScope.PresetSettings(
         WarlockStyle.presets.forEach { warlockStyle ->
             val preset = warlockStyle.name.ifBlank { "default" }
             val style = styleMap[preset] ?: StyleDefinition()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    modifier =
-                        Modifier
-                            .width(120.dp)
-                            .align(Alignment.CenterVertically),
+                    modifier = Modifier.width(120.dp),
                     text = preset.replaceFirstChar { it.uppercase() },
                 )
                 DesktopColorPickerButton(
@@ -245,28 +301,96 @@ private fun ColumnScope.PresetSettings(
                             }
                     },
                 )
-                WarlockCheckboxRow(
-                    checked = style.bold,
-                    onCheckedChange = { saveStyle(preset, style.copy(bold = it)) },
-                    text = "Bold",
-                    modifier = Modifier.align(Alignment.CenterVertically),
+                FontSizeSetting(
+                    fontSize = style.fontSize,
+                    onFontSizeChange = { saveStyle(preset, style.copy(fontSize = it)) },
                 )
-                WarlockCheckboxRow(
-                    checked = style.italic,
-                    onCheckedChange = { saveStyle(preset, style.copy(italic = it)) },
-                    text = "Italic",
-                    modifier = Modifier.align(Alignment.CenterVertically),
+                StyleToggleButton(
+                    selected = style.bold,
+                    onSelectedChange = { saveStyle(preset, style.copy(bold = it)) },
+                    label = "B",
                 )
-                WarlockCheckboxRow(
-                    checked = style.underline,
-                    onCheckedChange = { saveStyle(preset, style.copy(underline = it)) },
-                    text = "Underline",
-                    modifier = Modifier.align(Alignment.CenterVertically),
+                StyleToggleButton(
+                    selected = style.italic,
+                    onSelectedChange = { saveStyle(preset, style.copy(italic = it)) },
+                    label = "I",
+                )
+                StyleToggleButton(
+                    selected = style.underline,
+                    onSelectedChange = { saveStyle(preset, style.copy(underline = it)) },
+                    label = "U",
                 )
             }
         }
     }
 }
+
+@Composable
+private fun StyleToggleButton(
+    selected: Boolean,
+    onSelectedChange: (Boolean) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val buttonModifier = modifier.width(40.dp)
+    if (selected) {
+        WarlockButton(
+            onClick = { onSelectedChange(false) },
+            modifier = buttonModifier,
+            text = label,
+        )
+    } else {
+        WarlockOutlinedButton(
+            onClick = { onSelectedChange(true) },
+            modifier = buttonModifier,
+            text = label,
+        )
+    }
+}
+
+@Composable
+private fun FontSizeSetting(
+    fontSize: Float?,
+    onFontSizeChange: (Float?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sizeState = rememberTextFieldState(fontSize?.toFontSizeText().orEmpty())
+
+    LaunchedEffect(fontSize) {
+        val text = fontSize?.toFontSizeText().orEmpty()
+        if (sizeState.text.toString() != text) {
+            sizeState.setTextAndPlaceCursorAtEnd(text)
+        }
+    }
+    LaunchedEffect(sizeState, fontSize) {
+        snapshotFlow { sizeState.text.toString() }
+            .collectLatest { text ->
+                val next =
+                    when {
+                        text.isBlank() -> null
+                        else -> text.toFloatOrNull()?.coerceIn(MIN_PRESET_FONT_SIZE, MAX_PRESET_FONT_SIZE)
+                    }
+                if (next != null || text.isBlank()) {
+                    if (next != fontSize) onFontSizeChange(next)
+                }
+            }
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Size")
+        WarlockTextField(
+            state = sizeState,
+            modifier = Modifier.width(72.dp),
+            placeholder = "Default",
+        )
+    }
+}
+
+private fun Float.toFontSizeText(): String = if (this == toInt().toFloat()) toInt().toString() else toString().trimEnd('0').trimEnd('.')
 
 private fun buildPreviewLines(
     presets: Map<String, StyleDefinition>,

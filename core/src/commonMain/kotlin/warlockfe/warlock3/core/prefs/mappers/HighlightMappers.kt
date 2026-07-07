@@ -26,4 +26,5 @@ fun HighlightStyleEntity.toStyleDefinition(): StyleDefinition =
         bold = bold,
         italic = italic,
         underline = underline,
+        fontSize = fontSize,
     )

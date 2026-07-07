@@ -8,6 +8,7 @@ data class StyleDefinition(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val monospace: Boolean = false,
+    val fontSize: Float? = null,
 ) {
     fun mergeWith(other: StyleDefinition): StyleDefinition =
         StyleDefinition(
@@ -18,6 +19,7 @@ data class StyleDefinition(
             italic = italic || other.italic,
             underline = underline || other.underline,
             monospace = monospace || other.monospace,
+            fontSize = fontSize ?: other.fontSize,
         )
 }
 

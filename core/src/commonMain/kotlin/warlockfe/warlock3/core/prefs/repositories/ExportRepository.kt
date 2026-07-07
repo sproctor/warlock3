@@ -164,6 +164,7 @@ class ExportRepository(
                                         italic = style.italic,
                                         underline = style.underline,
                                         monospace = style.monospace,
+                                        fontSize = style.fontSize,
                                     )
                             },
                     )
@@ -199,6 +200,7 @@ class ExportRepository(
                                 underline = preset.underline,
                                 monospace = preset.monospace,
                                 entireLine = preset.entireLine,
+                                fontSize = preset.fontSize,
                             ),
                     )
                 },
@@ -403,6 +405,7 @@ class ExportRepository(
                         italic = preset.style.italic,
                         underline = preset.style.underline,
                         monospace = preset.style.monospace,
+                        fontSize = preset.style.fontSize,
                     )
             }
         val importedWindowStyles =

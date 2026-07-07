@@ -14,7 +14,9 @@ data class FontConfig(
     val family: String? = null,
     val size: Float? = null,
     val weight: Int? = null,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val textColor: WarlockColor = WarlockColor.Unspecified,
 ) {
     /** True when nothing is set, i.e. this override contributes nothing and can be dropped. */
-    fun isEmpty(): Boolean = family == null && size == null && weight == null
+    fun isEmpty(): Boolean = family == null && size == null && weight == null && textColor.isUnspecified()
 }

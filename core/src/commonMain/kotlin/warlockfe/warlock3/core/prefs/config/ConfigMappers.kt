@@ -63,6 +63,7 @@ internal fun HighlightStyleConfig.toStyleDefinition(): StyleDefinition =
         italic = italic,
         underline = underline,
         monospace = monospace,
+        fontSize = fontSize,
     )
 
 internal fun StyleDefinition.toStyleConfig(group: Int): HighlightStyleConfig =
@@ -75,6 +76,7 @@ internal fun StyleDefinition.toStyleConfig(group: Int): HighlightStyleConfig =
         italic = italic,
         underline = underline,
         monospace = monospace,
+        fontSize = fontSize,
     )
 
 internal fun NameEntity.toConfig(): NameConfig =
@@ -136,6 +138,7 @@ internal fun PresetStyleConfig.toStyleDefinition(): StyleDefinition =
         italic = italic,
         underline = underline,
         monospace = monospace,
+        fontSize = fontSize,
     )
 
 internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
@@ -147,6 +150,7 @@ internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
         italic = italic,
         underline = underline,
         monospace = monospace,
+        fontSize = fontSize,
     )
 
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =
