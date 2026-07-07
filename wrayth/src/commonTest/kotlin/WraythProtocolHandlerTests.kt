@@ -1,4 +1,6 @@
+import warlockfe.warlock3.core.client.DialogObject
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,5 +52,63 @@ class WraythProtocolHandlerTests {
 
         assertEquals(WraythActionEvent("north", "go north"), first)
         assertEquals(WraythActionEvent("into the river", "swim"), second)
+    }
+
+    private inline fun <reified T : DialogObject> parseDialogObject(line: String): T =
+        WraythProtocolHandler()
+            .parseLine(line)
+            .filterIsInstance<WraythDialogObjectEvent>()
+            .map { it.data }
+            .filterIsInstance<T>()
+            .single()
+
+    @Test
+    fun dropDownBoxParsesOptionsAndCommand() {
+        val box =
+            parseDialogObject<DialogObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='head' cmd='aim %dDBAim%' " +
+                    "content_text='random,head,neck' content_value='rnd,hd,nk'/>",
+            )
+
+        assertEquals("dDBAim", box.id)
+        assertEquals("head", box.value)
+        assertEquals("aim %dDBAim%", box.cmd)
+        assertEquals(
+            listOf(
+                DialogObject.DropDownBox.Option("random", "rnd"),
+                DialogObject.DropDownBox.Option("head", "hd"),
+                DialogObject.DropDownBox.Option("neck", "nk"),
+            ),
+            box.options,
+        )
+    }
+
+    @Test
+    fun radioParsesSelectionAndCommand() {
+        val box =
+            parseDialogObject<DialogObject.Radio>(
+                "<radio id=\"bothRad\" value=\"1\" text=\"Both\" cmd=\"_injury 2\" group=\"injureMode\"/>",
+            )
+
+        assertEquals("bothRad", box.id)
+        assertEquals(true, box.selected)
+        assertEquals("Both", box.text)
+        assertEquals("_injury 2", box.cmd)
+        assertEquals("injureMode", box.group)
+    }
+
+    @Test
+    fun unselectedRadioIsNotSelected() {
+        assertEquals(false, parseDialogObject<DialogObject.Radio>("<radio id=\"r\" value=\"0\" text=\"x\"/>").selected)
+    }
+
+    @Test
+    fun upDownEditBoxParsesBounds() {
+        val box = parseDialogObject<DialogObject.UpDownEditBox>("<upDownEditBox id='uDEQuickstrike' min='-60' max='60' value='-1'/>")
+
+        assertEquals("uDEQuickstrike", box.id)
+        assertEquals(-1, box.value)
+        assertEquals(-60, box.min)
+        assertEquals(60, box.max)
     }
 }

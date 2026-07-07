@@ -2,16 +2,21 @@ package warlockfe.warlock3.compose.desktop.ui.window
 
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.takeOrElse
@@ -30,6 +35,8 @@ import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import org.jetbrains.jewel.ui.theme.linkStyle
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
+import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
+import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.window.DialogButton
 import warlockfe.warlock3.compose.ui.window.DialogImage
@@ -63,6 +70,11 @@ fun DesktopDialogContent(
     style: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
+    // Value-bearing widgets (dropdowns, spinners) publish their current value here keyed by id; other
+    // widgets' commands reference them as %<id>% (e.g. "prep %dDBSpell0%", "quickstrike %uDEQuickstrike%").
+    // A spinner has no command of its own, so its value lives here until another widget consumes it.
+    val values = remember { mutableStateMapOf<String, String>() }
+    val execute: (String) -> Unit = { executeCommand(substitute(it, values)) }
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
     ) {
@@ -87,7 +99,7 @@ fun DesktopDialogContent(
                     Link(
                         skinObject = skinObject,
                         data = data,
-                        executeCommand = executeCommand,
+                        executeCommand = execute,
                     )
                 }
 
@@ -95,7 +107,7 @@ fun DesktopDialogContent(
                     DialogImage(
                         skinObject = skinObject,
                         data = data,
-                        executeCommand = executeCommand,
+                        executeCommand = execute,
                         contentColor = LocalContentColor.current,
                     )
                 }
@@ -103,7 +115,8 @@ fun DesktopDialogContent(
                 is DialogObject.Button -> {
                     val colors = JewelTheme.defaultButtonStyle.colors
                     DialogButton(
-                        onClick = { executeCommand(data.cmd ?: "") },
+                        onClick = { data.cmd?.let(execute) },
+                        modifier = Modifier.padding(2.dp),
                         shape = RoundedCornerShape(2.dp),
                         background = { isHovered, isPressed ->
                             when {
@@ -135,8 +148,82 @@ fun DesktopDialogContent(
                         )
                     }
                 }
+
+                is DialogObject.DropDownBox -> {
+                    // Seed/refresh the shared value from the server; local selections override until the next update.
+                    LaunchedEffect(data.id, data.value) { data.value?.let { values[data.id] = it } }
+                    if (data.options.isEmpty()) {
+                        Box {}
+                    } else {
+                        val selectedValue = values[data.id] ?: data.value
+                        val selected = data.options.firstOrNull { it.value == selectedValue } ?: data.options.first()
+                        WarlockDropdownSelect(
+                            items = data.options,
+                            selected = selected,
+                            onSelect = { option ->
+                                values[data.id] = option.value
+                                data.cmd?.let(execute)
+                            },
+                            modifier = Modifier.padding(2.dp),
+                            itemLabelBuilder = { it.text },
+                        )
+                    }
+                }
+
+                is DialogObject.Radio -> {
+                    WarlockRadioButtonRow(
+                        selected = data.selected,
+                        onClick = { data.cmd?.let(execute) },
+                        text = data.text ?: "",
+                    )
+                }
+
+                is DialogObject.UpDownEditBox -> {
+                    UpDownEditBox(data = data, values = values, executeCommand = execute)
+                }
             }
         }
+    }
+}
+
+private val commandVariableRegex = Regex("%([^%]+)%")
+
+// Replaces `%<id>%` placeholders in a command with the current values of the dialog's value-bearing
+// widgets (e.g. "prep %dDBSpell0%" -> "prep 401"). Unknown placeholders are left as-is.
+private fun substitute(
+    cmd: String,
+    values: Map<String, String>,
+): String = commandVariableRegex.replace(cmd) { match -> values[match.groupValues[1]] ?: match.value }
+
+@Composable
+private fun UpDownEditBox(
+    data: DialogObject.UpDownEditBox,
+    values: SnapshotStateMap<String, String>,
+    executeCommand: (String) -> Unit,
+) {
+    LaunchedEffect(data.id, data.value) { data.value?.let { values[data.id] = it.toString() } }
+    val current = values[data.id]?.toIntOrNull() ?: data.value ?: data.min ?: 0
+
+    fun step(delta: Int) {
+        val next = (current + delta).coerceIn(data.min ?: Int.MIN_VALUE, data.max ?: Int.MAX_VALUE)
+        if (next != current) {
+            values[data.id] = next.toString()
+            // A spinner usually has no command; its value is read by another widget (e.g. a button).
+            data.cmd?.let(executeCommand)
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "−",
+            modifier = Modifier.clickable { step(-1) }.padding(horizontal = 6.dp),
+            style = labelStyle,
+        )
+        Text(current.toString(), style = labelStyle)
+        Text(
+            "+",
+            modifier = Modifier.clickable { step(1) }.padding(horizontal = 6.dp),
+            style = labelStyle,
+        )
     }
 }
 
