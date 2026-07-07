@@ -70,6 +70,7 @@ class ComposeTextStreamTest {
                 names = MutableStateFlow(names),
                 alterations = alterations,
                 presets = presets,
+                monoFont = MutableStateFlow(null),
                 soundPlayer = SilentSoundPlayer,
                 workQueue = workQueue,
                 scope = scope,

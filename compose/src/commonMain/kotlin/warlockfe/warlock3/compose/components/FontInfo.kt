@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.components
 
 import androidx.compose.ui.text.font.FontFamily
+import warlockfe.warlock3.core.text.FontConfig
 import kotlin.math.roundToInt
 
 internal data class FontFamilyInfo(
@@ -13,6 +14,17 @@ data class FontUpdate(
     val fontFamily: String?,
     val weight: Int? = null,
 )
+
+/** The font this picker result represents, or null when nothing is set (a "reset to default"). */
+fun FontUpdate.toFontConfig(): FontConfig? = FontConfig(family = fontFamily, size = size, weight = weight).takeUnless { it.isEmpty() }
+
+/** A short human label for a font selector button, e.g. "Menlo 13", "Helvetica", or "Default". */
+fun FontConfig?.fontLabel(): String {
+    if (this == null || isEmpty()) return "Default"
+    val fam = family ?: "Default"
+    val pointSize = size
+    return if (pointSize != null) "$fam ${formatFontSize(pointSize)}" else fam
+}
 
 /** A selectable font weight; [weight] is the numeric value (100-900), or null for the family default. */
 data class FontWeightInfo(
@@ -43,6 +55,14 @@ internal val genericFontFamilies =
         FontFamilyInfo("Cursive", FontFamily.Cursive),
     )
 
+// The generic families offered when the picker is restricted to monospace fonts: only the two that
+// are (or can be) fixed-pitch.
+internal val monospaceGenericFontFamilies =
+    listOf(
+        FontFamilyInfo("Default", FontFamily.Default),
+        FontFamilyInfo("Monospace", FontFamily.Monospace),
+    )
+
 // Sample text for the font preview. ASCII only; includes digits and symbols because game text is
 // full of stat numbers.
 internal const val FONT_PICKER_SAMPLE_TEXT = "The quick brown fox 0123456789 +-/%"
@@ -66,4 +86,9 @@ internal fun formatFontSize(size: Float): String {
     return if (rounded % 1f == 0f) rounded.toInt().toString() else rounded.toString()
 }
 
-internal expect suspend fun loadSystemFonts(): List<FontFamilyInfo>
+/**
+ * Loads the installed system font families. When [monospaceOnly] is true, only fixed-pitch families
+ * are returned (used by the monospace font picker). Only Desktop enumerates system fonts; Android and
+ * iOS return an empty list and fall back to the generic families.
+ */
+internal expect suspend fun loadSystemFonts(monospaceOnly: Boolean): List<FontFamilyInfo>

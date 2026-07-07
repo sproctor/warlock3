@@ -32,12 +32,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.oikvpqya.compose.fastscroller.ThumbStyle
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
-import warlockfe.warlock3.compose.components.FontUpdate
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
+import warlockfe.warlock3.compose.components.fontLabel
+import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -46,7 +48,9 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.compose.util.toStyleDefinition
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
@@ -55,6 +59,7 @@ import warlockfe.warlock3.core.text.WarlockStyle
 @Composable
 fun AppearanceView(
     presetRepository: PresetRepository,
+    characterSettingsRepository: CharacterSettingsRepository,
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
     modifier: Modifier = Modifier,
@@ -77,13 +82,19 @@ fun AppearanceView(
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
     val presets = remember(skin, isDark, savedPresets) { skin.toPresets(isDark) + savedPresets }
+    val defaultFont by remember(currentCharacter.id) {
+        characterSettingsRepository.observeDefaultFont(currentCharacter.id)
+    }.collectAsState(null)
+    val monoFont by remember(currentCharacter.id) {
+        characterSettingsRepository.observeMonoFont(currentCharacter.id)
+    }.collectAsState(null)
     val previewLines =
-        remember(presets) {
+        remember(presets, monoFont) {
             listOf(
                 StreamTextLine(
                     text =
                         StyledString("[Riverhaven, Crescent Way]", style = WarlockStyle.RoomName)
-                            .toAnnotatedString(emptyMap(), presets, {}),
+                            .toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     entireLineStyle = WarlockStyle.RoomName.toStyleDefinition(presets),
                     serialNumber = 0L,
                     showWhenClosed = null,
@@ -94,7 +105,7 @@ fun AppearanceView(
                         StyledString(
                             "This is the room description for some room in Riverhaven. It didn't exist in our old preview, so we're putting arbitrary text here.",
                             style = WarlockStyle("roomdescription"),
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     entireLineStyle = null,
                     serialNumber = 1L,
                     showWhenClosed = null,
@@ -108,7 +119,7 @@ fun AppearanceView(
                                     "Sir Robyn",
                                     style = WarlockStyle.Bold,
                                 ) + StyledString(".")
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 2L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -117,7 +128,7 @@ fun AppearanceView(
                 StreamTextLine(
                     text =
                         StyledString("say Hello", style = WarlockStyle.Command)
-                            .toAnnotatedString(emptyMap(), presets, {}),
+                            .toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 3L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -130,7 +141,7 @@ fun AppearanceView(
                                 "You say",
                                 style = WarlockStyle.Speech,
                             ) + StyledString(", \"Hello.\"")
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 4L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -141,7 +152,7 @@ fun AppearanceView(
                         StyledString(
                             "Your mind hears Someone thinking, \"hello everyone\"",
                             style = WarlockStyle.Thought,
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 5L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -152,7 +163,7 @@ fun AppearanceView(
                         StyledString(
                             "Some text you are watching",
                             style = WarlockStyle.Watching,
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 6L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -165,7 +176,7 @@ fun AppearanceView(
                                 "Someone whispers",
                                 style = WarlockStyle.Whisper,
                             ) + StyledString(", \"Hi\"")
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 7L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -181,7 +192,7 @@ fun AppearanceView(
                                 "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
                                 "       \\/        \\/                       \\/     \\/",
                             style = WarlockStyle.Mono,
-                        ).toAnnotatedString(emptyMap(), presets, {}),
+                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 8L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -196,6 +207,13 @@ fun AppearanceView(
             selectedCharacter = currentCharacter,
             characters = characters,
             onSelect = { currentCharacterState.value = it },
+        )
+        Spacer(Modifier.height(16.dp))
+        DefaultFontSettings(
+            defaultFont = defaultFont,
+            monoFont = monoFont,
+            onSaveDefaultFont = { coroutineScope.launch { characterSettingsRepository.saveDefaultFont(currentCharacter.id, it) } },
+            onSaveMonoFont = { coroutineScope.launch { characterSettingsRepository.saveMonoFont(currentCharacter.id, it) } },
         )
         Spacer(Modifier.height(16.dp))
         val barColor = presets["default"]?.textColor?.toColor() ?: MaterialTheme.colorScheme.onSurface
@@ -246,6 +264,52 @@ fun AppearanceView(
     }
 }
 
+/** The two character-wide font selectors: the normal font and the monospace font. */
+@Composable
+private fun DefaultFontSettings(
+    defaultFont: FontConfig?,
+    monoFont: FontConfig?,
+    onSaveDefaultFont: (FontConfig?) -> Unit,
+    onSaveMonoFont: (FontConfig?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // (current font, monospaceOnly).
+    var editFont by remember { mutableStateOf<Pair<FontConfig?, Boolean>?>(null) }
+
+    editFont?.let { (current, monospaceOnly) ->
+        FontPickerDialog(
+            current = current,
+            monospaceOnly = monospaceOnly,
+            onCloseRequest = { editFont = null },
+            onSaveClick = { update ->
+                if (monospaceOnly) onSaveMonoFont(update.toFontConfig()) else onSaveDefaultFont(update.toFontConfig())
+                editFont = null
+            },
+        )
+    }
+
+    Column(modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                modifier = Modifier.width(120.dp).align(Alignment.CenterVertically),
+                text = "Font",
+            )
+            OutlinedButton(onClick = { editFont = defaultFont to false }) {
+                Text(defaultFont.fontLabel(), maxLines = 1)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                modifier = Modifier.width(120.dp).align(Alignment.CenterVertically),
+                text = "Monospace font",
+            )
+            OutlinedButton(onClick = { editFont = monoFont to true }) {
+                Text(monoFont.fontLabel(), maxLines = 1)
+            }
+        }
+    }
+}
+
 @Composable
 fun ColumnScope.PresetSettings(
     styleMap: Map<String, StyleDefinition>,
@@ -253,7 +317,6 @@ fun ColumnScope.PresetSettings(
     modifier: Modifier = Modifier,
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
-    var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
 
     if (editColor != null) {
         ColorPickerDialog(
@@ -265,21 +328,13 @@ fun ColumnScope.PresetSettings(
             },
         )
     }
-    if (editFont != null) {
-        FontPickerDialog(
-            currentStyle = editFont!!.first,
-            onCloseRequest = { editFont = null },
-            onSaveClick = { fontUpdate ->
-                editFont?.second?.invoke(fontUpdate)
-                editFont = null
-            },
-        )
-    }
     ScrollableColumn(
         modifier = modifier.weight(1f).fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 8.dp),
     ) {
         styleMap.keys.forEach { preset ->
+            // The monospace preset only flags text as monospace; its styling isn't user-editable.
+            if (preset.equals("mono", ignoreCase = true)) return@forEach
             val style = styleMap[preset]
             if (style != null) {
                 Row(
@@ -317,23 +372,24 @@ fun ColumnScope.PresetSettings(
                         },
                     )
 
-                    OutlinedButton(
-                        onClick = {
-                            editFont =
-                                Pair(style) { fontUpdate ->
-                                    saveStyle(
-                                        preset,
-                                        style.copy(
-                                            fontFamily = fontUpdate.fontFamily,
-                                            fontSize = fontUpdate.size,
-                                            fontWeight = fontUpdate.weight,
-                                        ),
-                                    )
-                                }
-                        },
-                    ) {
-                        Text("Font", maxLines = 1)
-                    }
+                    CheckboxRow(
+                        checked = style.bold,
+                        onCheckedChange = { saveStyle(preset, style.copy(bold = it)) },
+                        text = "Bold",
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                    CheckboxRow(
+                        checked = style.italic,
+                        onCheckedChange = { saveStyle(preset, style.copy(italic = it)) },
+                        text = "Italic",
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                    CheckboxRow(
+                        checked = style.underline,
+                        onCheckedChange = { saveStyle(preset, style.copy(underline = it)) },
+                        text = "Underline",
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
                 }
             }
         }

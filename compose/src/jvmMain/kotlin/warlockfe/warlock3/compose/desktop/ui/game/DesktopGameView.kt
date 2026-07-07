@@ -52,8 +52,12 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
+import warlockfe.warlock3.compose.util.LocalDefaultFont
+import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
+import warlockfe.warlock3.compose.util.LocalWindowFontSaver
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
+import warlockfe.warlock3.compose.util.WindowFontSaver
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -102,6 +106,8 @@ fun DesktopGameView(
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
         val presets by viewModel.presets.collectAsState(emptyMap())
         val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
+        val defaultFont by viewModel.defaultFont.collectAsState()
+        val monoFont by viewModel.monoFont.collectAsState()
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val progressBarSettings by viewModel.progressBarSettings.collectAsState()
 
@@ -114,6 +120,13 @@ fun DesktopGameView(
                 ),
             LocalWindowFindController provides viewModel.windowFindController,
             LocalStyleMap provides presets,
+            LocalDefaultFont provides defaultFont,
+            LocalMonoFont provides monoFont,
+            LocalWindowFontSaver provides
+                WindowFontSaver(
+                    saveFont = viewModel::saveWindowFont,
+                    saveMonoFont = viewModel::saveWindowMonoFont,
+                ),
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {

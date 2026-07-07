@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
+import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
@@ -126,16 +127,17 @@ fun WarlockEntryContent(
             RoundTimeBar(backgroundColor, roundTime, castTime)
 
             val defaultTextStyle = LocalTextStyle.current
+            val entryFont = LocalDefaultFont.current
             val textStyle =
-                remember(usableStyle) {
-                    val fontSize = (usableStyle.fontSize ?: 16f).sp
+                remember(usableStyle, entryFont) {
+                    val fontSize = (entryFont?.size ?: 16f).sp
                     defaultTextStyle.copy(
                         fontSize = fontSize,
                         fontFamily =
-                            usableStyle.fontFamily?.let { createFontFamily(it) }
+                            entryFont?.family?.let { createFontFamily(it) }
                                 ?: defaultTextStyle.fontFamily,
                         fontWeight =
-                            usableStyle.fontWeight?.let { FontWeight(it) }
+                            entryFont?.weight?.let { FontWeight(it) }
                                 ?: defaultTextStyle.fontWeight,
                         lineHeight = fontSize,
                         color = usableStyle.textColor.toColor(),
@@ -207,6 +209,7 @@ fun WarlockEntryContent(
             style = style,
             defaultStyle = defaultStyle,
             saveStyle = saveStyle,
+            showFontOptions = false,
         )
     }
 }

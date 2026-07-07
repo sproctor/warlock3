@@ -252,6 +252,8 @@ abstract class AppContainer(
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
             presetRepository = presetRepository,
+            characterSettingsRepository = characterSettingsRepository,
+            windowSettingsRepository = windowSettingRepository,
             skinPresets = skinPresets,
             alterationRepository = alterationRepository,
         )

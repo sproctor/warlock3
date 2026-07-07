@@ -40,16 +40,17 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.FontConfig
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
 fun DesktopFontPickerDialog(
-    currentStyle: StyleDefinition,
+    current: FontConfig?,
     onCloseRequest: () -> Unit,
     onSaveClick: (FontUpdate) -> Unit,
+    monospaceOnly: Boolean = false,
 ) {
-    val state = rememberFontPickerState(currentStyle, JewelTheme.defaultTextStyle.fontSize.value)
+    val state = rememberFontPickerState(current, JewelTheme.defaultTextStyle.fontSize.value, monospaceOnly)
 
     WarlockDialog(
         title = "Choose a font",

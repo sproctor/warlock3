@@ -14,7 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import warlockfe.warlock3.compose.components.FontUpdate
+import warlockfe.warlock3.compose.components.fontLabel
+import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerButton
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
@@ -23,6 +24,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.ifUnspecified
@@ -34,12 +36,18 @@ fun DesktopWindowSettingsDialog(
     style: StyleDefinition,
     defaultStyle: StyleDefinition,
     saveStyle: (StyleDefinition) -> Unit,
+    font: FontConfig? = null,
+    monoFont: FontConfig? = null,
+    saveFont: (FontConfig?) -> Unit = {},
+    saveMonoFont: (FontConfig?) -> Unit = {},
+    showFontOptions: Boolean = true,
     nameFilterOption: Boolean = false,
     nameFilter: Boolean = false,
     saveNameFilter: (Boolean) -> Unit = {},
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
-    var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
+    // (current font, monospaceOnly). On save the flag decides which override is written.
+    var editFont by remember { mutableStateOf<Pair<FontConfig?, Boolean>?>(null) }
 
     if (editColor != null) {
         DesktopColorPickerDialog(
@@ -51,12 +59,13 @@ fun DesktopWindowSettingsDialog(
             },
         )
     }
-    if (editFont != null) {
+    editFont?.let { (current, monospaceOnly) ->
         DesktopFontPickerDialog(
-            currentStyle = editFont!!.first,
+            current = current,
+            monospaceOnly = monospaceOnly,
             onCloseRequest = { editFont = null },
             onSaveClick = { fontUpdate ->
-                editFont?.second?.invoke(fontUpdate)
+                if (monospaceOnly) saveMonoFont(fontUpdate.toFontConfig()) else saveFont(fontUpdate.toFontConfig())
                 editFont = null
             },
         )
@@ -66,7 +75,7 @@ fun DesktopWindowSettingsDialog(
         title = "Window settings",
         onCloseRequest = onCloseRequest,
         width = 480.dp,
-        height = 360.dp,
+        height = 400.dp,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -94,21 +103,16 @@ fun DesktopWindowSettingsDialog(
                         }
                 },
             )
-            WarlockOutlinedButton(
-                onClick = {
-                    editFont =
-                        Pair(style) { fontUpdate ->
-                            saveStyle(
-                                style.copy(
-                                    fontFamily = fontUpdate.fontFamily,
-                                    fontSize = fontUpdate.size,
-                                    fontWeight = fontUpdate.weight,
-                                ),
-                            )
-                        }
-                },
-                text = "Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}",
-            )
+            if (showFontOptions) {
+                WarlockOutlinedButton(
+                    onClick = { editFont = font to false },
+                    text = "Font: ${font.fontLabel()}",
+                )
+                WarlockOutlinedButton(
+                    onClick = { editFont = monoFont to true },
+                    text = "Monospace font: ${monoFont.fontLabel()}",
+                )
+            }
             if (nameFilterOption) {
                 WarlockCheckboxRow(
                     checked = nameFilter,
@@ -117,7 +121,11 @@ fun DesktopWindowSettingsDialog(
                 )
             }
             WarlockButton(
-                onClick = { saveStyle(StyleDefinition()) },
+                onClick = {
+                    saveStyle(StyleDefinition())
+                    saveFont(null)
+                    saveMonoFont(null)
+                },
                 text = "Revert to defaults",
             )
             Spacer(Modifier.weight(1f))

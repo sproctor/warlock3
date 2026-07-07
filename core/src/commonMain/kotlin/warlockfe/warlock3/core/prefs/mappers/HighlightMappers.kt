@@ -7,35 +7,6 @@ import warlockfe.warlock3.core.prefs.models.PopulatedHighlight
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.uuid.Uuid
 
-fun Highlight.toEntity(characterId: String): HighlightEntity =
-    HighlightEntity(
-        id = id,
-        characterId = characterId,
-        pattern = pattern,
-        isRegex = isRegex,
-        matchPartialWord = matchPartialWord,
-        ignoreCase = ignoreCase,
-        sound = sound,
-    )
-
-fun Highlight.toStyleEntities(highlightId: Uuid): List<HighlightStyleEntity> =
-    styles.map { entry ->
-        val style = entry.value
-        HighlightStyleEntity(
-            highlightId = highlightId,
-            groupNumber = entry.key,
-            textColor = style.textColor,
-            backgroundColor = style.backgroundColor,
-            entireLine = style.entireLine,
-            bold = style.bold,
-            italic = style.italic,
-            underline = style.underline,
-            fontFamily = style.fontFamily,
-            fontSize = style.fontSize,
-            fontWeight = style.fontWeight,
-        )
-    }
-
 fun PopulatedHighlight.toHighlight(): Highlight =
     Highlight(
         id = highlight.id,
@@ -55,7 +26,4 @@ fun HighlightStyleEntity.toStyleDefinition(): StyleDefinition =
         bold = bold,
         italic = italic,
         underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
     )

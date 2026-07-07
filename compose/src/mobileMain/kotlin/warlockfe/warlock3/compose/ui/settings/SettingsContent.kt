@@ -87,6 +87,7 @@ fun SettingsContent(
         SettingsPage.Appearance -> {
             AppearanceView(
                 presetRepository = presetRepository,
+                characterSettingsRepository = characterSettingsRepository,
                 initialCharacter = currentCharacter,
                 characters = characters,
             )

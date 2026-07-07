@@ -57,6 +57,7 @@ import warlockfe.warlock3.compose.ui.window.WindowHeader
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowViewScaffold
 import warlockfe.warlock3.compose.ui.window.scrollbarSkinColors
+import warlockfe.warlock3.compose.util.LocalWindowFontSaver
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -198,11 +199,16 @@ fun DesktopWindowView(
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
         settingsDialog = { onCloseRequest ->
+            val fontSaver = LocalWindowFontSaver.current
             DesktopWindowSettingsDialog(
                 onCloseRequest = onCloseRequest,
                 style = uiState.style,
                 defaultStyle = defaultStyle,
                 saveStyle = saveStyle,
+                font = uiState.font,
+                monoFont = uiState.monoFont,
+                saveFont = { fontSaver.saveFont(uiState.name, it) },
+                saveMonoFont = { fontSaver.saveMonoFont(uiState.name, it) },
                 nameFilterOption = window?.nameFilterOption ?: false,
                 nameFilter = uiState.nameFilter,
                 saveNameFilter = saveNameFilter,

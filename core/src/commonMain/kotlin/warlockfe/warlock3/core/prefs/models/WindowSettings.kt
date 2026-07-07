@@ -1,5 +1,6 @@
 package warlockfe.warlock3.core.prefs.models
 
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -18,8 +19,7 @@ data class WindowSettings(
     val position: Int?,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,
-    val fontFamily: String?,
-    val fontSize: Float?,
-    val fontWeight: Int?,
+    val font: FontConfig?,
+    val monoFont: FontConfig?,
     val nameFilter: Boolean,
 )

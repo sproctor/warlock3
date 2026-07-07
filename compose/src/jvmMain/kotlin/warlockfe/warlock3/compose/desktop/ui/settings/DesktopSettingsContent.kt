@@ -87,6 +87,7 @@ fun DesktopSettingsContent(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 presetRepository = presetRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 

@@ -7,9 +7,9 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
 import warlockfe.warlock3.core.macro.MacroCommands
+import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.models.MacroEntity
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
@@ -44,7 +44,7 @@ class WraythImporter(
             }
             messages.add("Imported ${settings.highlights.size} highlights")
             settings.names.forEach { name ->
-                nameRepository.save(name)
+                nameRepository.save(characterId, name)
             }
             messages.add("Imported ${settings.names.size} names")
             macroRepository.importMacros(settings.macros)
@@ -99,18 +99,14 @@ class WraythImporter(
             names =
                 settings.names.mapNotNull { name ->
                     name.text?.let { text ->
-                        NameEntity(
-                            id = Uuid.random(),
-                            characterId = characterId,
+                        NameConfig(
+                            id = Uuid.random().toString(),
                             text = text,
                             textColor = name.color.toWarlockColor(colors),
                             backgroundColor = name.bgcolor.toWarlockColor(colors),
                             bold = false,
                             italic = false,
                             underline = false,
-                            fontFamily = null,
-                            fontSize = null,
-                            fontWeight = null,
                             sound = name.sound,
                         )
                     }
@@ -199,7 +195,7 @@ private fun String?.toWarlockColor(colors: Map<String, String>): WarlockColor {
 
 internal data class WarlockSettings(
     val highlights: List<Highlight>,
-    val names: List<NameEntity>,
+    val names: List<NameConfig>,
     val macros: List<MacroEntity>,
     val ignoredMacros: List<WraythMacro>,
 )

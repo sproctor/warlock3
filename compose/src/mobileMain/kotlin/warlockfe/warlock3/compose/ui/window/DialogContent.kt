@@ -37,6 +37,7 @@ import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
@@ -239,11 +240,11 @@ private fun ProgressBarWithColorMenu(
 
     if (editingFont) {
         FontPickerDialog(
-            currentStyle =
-                StyleDefinition(
-                    fontFamily = setting?.fontFamily,
-                    fontSize = setting?.fontSize,
-                    fontWeight = setting?.fontWeight,
+            current =
+                FontConfig(
+                    family = setting?.fontFamily,
+                    size = setting?.fontSize,
+                    weight = setting?.fontWeight,
                 ),
             onCloseRequest = { editingFont = false },
             onSaveClick = { fontUpdate ->

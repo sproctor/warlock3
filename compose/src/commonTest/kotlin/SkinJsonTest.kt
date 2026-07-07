@@ -83,7 +83,7 @@ class SkinJsonTest {
                         "default": { "color": "#F0F0FF", "background": { "light": "#EEEEEE", "dark": "#1E1F22" } },
                         "link": { "color": "#ADD8E6", "underline": true },
                         "roomName": { "color": "#FFFFFF", "background": "#0000FF", "entireLine": true },
-                        "mono": { "fontFamily": "Monospace" }
+                        "mono": { "monospace": true }
                     }
                 }
             }
@@ -98,7 +98,7 @@ class SkinJsonTest {
         assertEquals(WarlockColor("#1E1F22"), dark["default"]?.backgroundColor)
         assertEquals(true, light["link"]?.underline)
         assertEquals(true, light["roomName"]?.entireLine)
-        assertEquals("Monospace", light["mono"]?.fontFamily)
+        assertEquals(true, light["mono"]?.monospace)
     }
 
     @Test

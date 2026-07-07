@@ -275,6 +275,28 @@ private fun DesktopEditHighlightDialog(
                             state = backgroundColorState,
                         )
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        WarlockCheckboxRow(
+                            checked = styles[i].bold,
+                            onCheckedChange = { styles[i] = styles[i].copy(bold = it) },
+                            text = "Bold",
+                        )
+                        WarlockCheckboxRow(
+                            checked = styles[i].italic,
+                            onCheckedChange = { styles[i] = styles[i].copy(italic = it) },
+                            text = "Italic",
+                        )
+                        WarlockCheckboxRow(
+                            checked = styles[i].underline,
+                            onCheckedChange = { styles[i] = styles[i].copy(underline = it) },
+                            text = "Underline",
+                        )
+                        WarlockCheckboxRow(
+                            checked = styles[i].monospace,
+                            onCheckedChange = { styles[i] = styles[i].copy(monospace = it) },
+                            text = "Mono",
+                        )
+                    }
                 }
             }
 

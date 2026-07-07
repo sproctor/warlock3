@@ -4,12 +4,14 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.core.client.WarlockAction
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
@@ -22,20 +24,31 @@ fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
     actionHandler: (WarlockAction) -> Unit,
+    monoFont: FontConfig? = null,
 ): AnnotatedString =
     buildAnnotatedString {
-        appendStyledString(this@toAnnotatedString, variables, styleMap, actionHandler)
+        appendStyledString(this@toAnnotatedString, variables, styleMap, actionHandler, monoFont)
     }
 
-fun StyleDefinition.toSpanStyle(): SpanStyle =
+/**
+ * Converts this style to a [SpanStyle]. Only text flagged [StyleDefinition.monospace] carries a font;
+ * everything else inherits the window's base (normal) font. Monospace spans use [monoFont] (the
+ * character/window monospace font), falling back to the generic [FontFamily.Monospace].
+ */
+fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle =
     SpanStyle(
         color = textColor.toColor(),
         background = backgroundColor.toColor(),
-        fontFamily = fontFamily?.let { createFontFamily(it) },
+        fontFamily = if (monospace) monoFont?.family?.let { createFontFamily(it) } ?: FontFamily.Monospace else null,
         textDecoration = if (underline) TextDecoration.Underline else null,
-        fontWeight = fontWeight?.let { FontWeight(it) } ?: if (bold) FontWeight.Bold else null,
+        fontWeight =
+            when {
+                bold -> FontWeight.Bold
+                monospace -> monoFont?.weight?.let { FontWeight(it) }
+                else -> null
+            },
         fontStyle = if (italic) FontStyle.Italic else null,
-        fontSize = fontSize?.sp ?: TextUnit.Unspecified,
+        fontSize = if (monospace) monoFont?.size?.sp ?: TextUnit.Unspecified else TextUnit.Unspecified,
     )
 
 fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition = (styleMap[name] ?: StyleDefinition())
@@ -45,9 +58,10 @@ private fun AnnotatedString.Builder.appendStyledString(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
     actionHandler: (WarlockAction) -> Unit,
+    monoFont: FontConfig?,
 ) {
     styledString.substrings.forEach {
-        appendStyledStringLeaf(it, variables, styleMap, actionHandler)
+        appendStyledStringLeaf(it, variables, styleMap, actionHandler, monoFont)
     }
 }
 
@@ -56,10 +70,11 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
     variables: Map<String, StyledString>,
     styleMap: Map<String, StyleDefinition>,
     actionHandler: (WarlockAction) -> Unit,
+    monoFont: FontConfig?,
 ) {
     val style =
         flattenStyles(leaf.styles.map { it.toStyleDefinition(styleMap) })
-            ?.also { pushStyle(it.toSpanStyle()) }
+            ?.also { pushStyle(it.toSpanStyle(monoFont)) }
 
     var linksPushed = 0
     leaf.styles.forEach { st ->
@@ -88,7 +103,7 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
         is StyledStringVariable -> {
             // TODO: break circular references
             variables[leaf.name]?.let {
-                appendStyledString(it, variables, styleMap, actionHandler)
+                appendStyledString(it, variables, styleMap, actionHandler, monoFont)
             }
         }
     }

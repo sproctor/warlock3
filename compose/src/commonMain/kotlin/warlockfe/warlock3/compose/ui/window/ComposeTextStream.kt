@@ -27,6 +27,7 @@ import warlockfe.warlock3.compose.util.toAnnotatedString
 import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.compose.util.toTimeString
 import warlockfe.warlock3.core.client.WarlockAction
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.flattenStyles
@@ -53,6 +54,9 @@ class ComposeTextStream(
     private val names: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleDefinition>>,
+    // The effective monospace font for this window (per-window override or the character default);
+    // baked into monospace spans at render time, so a change re-renders the buffer like presets do.
+    private val monoFont: StateFlow<FontConfig?>,
     private val soundPlayer: SoundPlayer,
     private val workQueue: StreamWorkQueue,
     private val scope: CoroutineScope,
@@ -120,6 +124,7 @@ class ComposeTextStream(
         // collector subscribes is still applied instead of being swallowed as the replayed value.
         merge(
             presets.map { },
+            monoFont.map { },
             highlights.map { },
             alterations.map { },
         ).onEach {
@@ -486,6 +491,7 @@ class ComposeTextStream(
             highlightIndex = highlights.value,
             alterations = alterations.value,
             presets = presets.value,
+            monoFont = monoFont.value,
             components = components,
             actionHandler = { action ->
                 actionHandler?.invoke(action)
@@ -582,6 +588,7 @@ data class CachedLine(
         highlightIndex: HighlightIndex,
         alterations: List<CompiledAlteration>,
         presets: Map<String, StyleDefinition>,
+        monoFont: FontConfig?,
         components: Map<String, StyledString>,
         actionHandler: (WarlockAction) -> Unit,
         markLinks: Boolean,
@@ -597,6 +604,7 @@ data class CachedLine(
             highlightIndex = highlightIndex,
             alterations = alterations,
             presets = presets,
+            monoFont = monoFont,
             components = components,
             actionHandler = actionHandler,
             markLinks = markLinks,
@@ -623,6 +631,7 @@ fun StyledString.toStreamLine(
     highlightIndex: HighlightIndex,
     alterations: List<CompiledAlteration>,
     presets: Map<String, StyleDefinition>,
+    monoFont: FontConfig?,
     components: Map<String, StyledString>,
     actionHandler: (WarlockAction) -> Unit,
     markLinks: Boolean,
@@ -644,6 +653,7 @@ fun StyledString.toStreamLine(
                 variables = components,
                 styleMap = presets,
                 actionHandler = actionHandler,
+                monoFont = monoFont,
             )
         val tAnnotated = TimeSource.Monotonic.markNow()
         val textWithComponents =
@@ -670,7 +680,7 @@ fun StyledString.toStreamLine(
         val highlightedResult =
             textWithLinks?.let { content ->
                 if (applyStyling && content.text.isNotEmpty()) {
-                    content.highlight(highlightIndex)
+                    content.highlight(highlightIndex, monoFont)
                 } else {
                     AnnotatedStringHighlightResult(content, emptyList())
                 }
@@ -689,7 +699,7 @@ fun StyledString.toStreamLine(
                 text =
                     highlightedResult?.let {
                         buildAnnotatedString {
-                            lineStyle?.let { style -> pushStyle(style.toSpanStyle()) }
+                            lineStyle?.let { style -> pushStyle(style.toSpanStyle(monoFont)) }
                             append(it.text)
                             if (lineStyle != null) pop()
                         }

@@ -6,33 +6,30 @@ import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.NameConfig
-import warlockfe.warlock3.core.prefs.config.toConfig
-import warlockfe.warlock3.core.prefs.config.toEntity
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import kotlin.uuid.Uuid
 
 class NameRepositoryImpl(
     private val store: CharacterConfigStore,
 ) : NameRepository {
-    override fun observeGlobal(): Flow<List<NameEntity>> = observeByCharacter(GLOBAL_CHARACTER_ID)
+    override fun observeGlobal(): Flow<List<NameConfig>> = observeByCharacter(GLOBAL_CHARACTER_ID)
 
-    override fun observeByCharacter(characterId: String): Flow<List<NameEntity>> =
-        store.observe(characterId).map { config -> config.names.map { it.toEntity(characterId) } }
+    override fun observeByCharacter(characterId: String): Flow<List<NameConfig>> = store.observe(characterId).map { config -> config.names }
 
-    override fun observeForCharacter(characterId: String): Flow<List<NameEntity>> =
+    override fun observeForCharacter(characterId: String): Flow<List<NameConfig>> =
         if (characterId == GLOBAL_CHARACTER_ID) {
             observeByCharacter(characterId)
         } else {
             combine(store.observe(characterId), store.observe(GLOBAL_CHARACTER_ID)) { own, global ->
-                own.names.map { it.toEntity(characterId) } +
-                    global.names.map { it.toEntity(GLOBAL_CHARACTER_ID) }
+                own.names + global.names
             }
         }
 
-    override suspend fun save(name: NameEntity) {
-        val config = name.toConfig()
-        store.mutate(name.characterId) { current ->
-            current.copy(names = current.names.upsert(config))
+    override suspend fun save(
+        characterId: String,
+        name: NameConfig,
+    ) {
+        store.mutate(characterId) { current ->
+            current.copy(names = current.names.upsert(name))
         }
     }
 

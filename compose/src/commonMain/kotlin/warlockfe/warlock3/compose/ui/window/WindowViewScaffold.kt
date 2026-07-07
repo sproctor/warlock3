@@ -69,6 +69,7 @@ import coil3.size.Size
 import kotlinx.coroutines.yield
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
+import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
@@ -76,6 +77,7 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.WindowLocation
@@ -169,6 +171,7 @@ internal fun WindowViewScaffold(
                         stream = data.stream,
                         scrollState = scrollState,
                         style = uiState.style.mergeWith(defaultStyle),
+                        font = uiState.font,
                         backgroundImage = window?.backgroundImage,
                         openWindows = openWindows,
                         menuData = menuData,
@@ -236,6 +239,7 @@ private fun WindowViewContent(
     stream: ComposeTextStream,
     scrollState: LazyListState,
     style: StyleDefinition,
+    font: FontConfig?,
     backgroundImage: ClientBackgroundImage?,
     openWindows: List<String>,
     menuData: WarlockMenuData?,
@@ -251,9 +255,11 @@ private fun WindowViewContent(
 ) {
     val backgroundColor = style.backgroundColor.toColor()
     val textColor = style.textColor.toColor()
-    val fontFamily = style.fontFamily?.let { createFontFamily(it) }
-    val fontSize = style.fontSize?.sp ?: defaultFontSize
-    val fontWeight = style.fontWeight?.let { FontWeight(it) }
+    // The window's base (normal) font: its per-window override if set, otherwise the character default.
+    val effectiveFont = font ?: LocalDefaultFont.current
+    val fontFamily = effectiveFont?.family?.let { createFontFamily(it) }
+    val fontSize = effectiveFont?.size?.sp ?: defaultFontSize
+    val fontWeight = effectiveFont?.weight?.let { FontWeight(it) }
     // The text style shared by the rendered row and the off-screen height measurer, so a measured
     // height matches what the row lays out. (Color does not affect height; the measurer ignores it.)
     val rowTextStyle =

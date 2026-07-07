@@ -94,6 +94,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
@@ -312,6 +313,16 @@ class GameViewModel(
 
     val presets = windowRegistry.presets
 
+    /** The character's default (normal) font; used as the base text style for windows without an override. */
+    val defaultFont: StateFlow<FontConfig?> =
+        observePerCharacter { characterSettingsRepository.observeDefaultFont(it) }
+            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
+
+    /** The character's monospace font; used for monospace-flagged text without a per-window override. */
+    val monoFont: StateFlow<FontConfig?> =
+        observePerCharacter { characterSettingsRepository.observeMonoFont(it) }
+            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
+
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
@@ -499,6 +510,8 @@ class GameViewModel(
                                 name = entity.name,
                                 windowInfo = mutableStateOf(window),
                                 style = entity.getStyle(),
+                                font = entity.font,
+                                monoFont = entity.monoFont,
                                 width = entity.width,
                                 height = entity.height,
                                 nameFilter = entity.nameFilter,
@@ -528,6 +541,8 @@ class GameViewModel(
                             (it.data as? StreamWindowData)?.stream?.setNameFilter(singleWindowSettings.nameFilter)
                             it.copy(
                                 style = singleWindowSettings.getStyle(),
+                                font = singleWindowSettings.font,
+                                monoFont = singleWindowSettings.monoFont,
                                 nameFilter = singleWindowSettings.nameFilter,
                             )
                         }
@@ -543,6 +558,8 @@ class GameViewModel(
                                     mutableStates[index] =
                                         states[index].copy(
                                             style = singleWindowSettings.getStyle(),
+                                            font = singleWindowSettings.font,
+                                            monoFont = singleWindowSettings.monoFont,
                                             nameFilter = singleWindowSettings.nameFilter,
                                         )
                                     mutableStates
@@ -1189,6 +1206,8 @@ class GameViewModel(
                         name = name,
                         windowInfo = mutableStateOf(windowInfo),
                         style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                        font = entity?.font,
+                        monoFont = entity?.monoFont,
                         width = null,
                         height = null,
                         nameFilter = entity?.nameFilter ?: false,
@@ -1246,6 +1265,8 @@ class GameViewModel(
                 name = name,
                 windowInfo = mutableStateOf(windowInfo),
                 style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                font = entity?.font,
+                monoFont = entity?.monoFont,
                 width = null,
                 height = null,
                 nameFilter = entity?.nameFilter ?: false,
@@ -1277,6 +1298,30 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setStyle(characterId = characterId, name = name, style = style)
+            }
+        }
+    }
+
+    /** Sets the per-window normal-font override (null clears it, falling back to the character default). */
+    fun saveWindowFont(
+        name: String,
+        font: FontConfig?,
+    ) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.setFont(characterId = characterId, name = name, font = font)
+            }
+        }
+    }
+
+    /** Sets the per-window monospace-font override (null clears it, falling back to the character mono font). */
+    fun saveWindowMonoFont(
+        name: String,
+        monoFont: FontConfig?,
+    ) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.setMonoFont(characterId = characterId, name = name, monoFont = monoFont)
             }
         }
     }

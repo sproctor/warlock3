@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -18,10 +19,13 @@ import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.util.SoundPlayer
@@ -40,6 +44,8 @@ class WindowRegistryImpl(
     nameRepository: NameRepository,
     alterationRepository: AlterationRepository,
     presetRepository: PresetRepository,
+    private val characterSettingsRepository: CharacterSettingsRepository,
+    private val windowSettingsRepository: WindowSettingsRepository,
     skinPresets: StateFlow<Map<String, StyleDefinition>>,
 ) : WindowRegistry {
     private val streams = AtomicReference(persistentMapOf<String, ComposeTextStream>())
@@ -203,6 +209,20 @@ class WindowRegistryImpl(
         ) { skinDefaults, dbPresets -> skinDefaults + dbPresets }
             .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
+    // The effective monospace font for a given window: its per-window override if set, otherwise the
+    // character's default monospace font. Rebuilt per character; a change re-renders that window's buffer.
+    private fun monoFontFor(name: String): StateFlow<FontConfig?> =
+        characterId
+            .flatMapLatest { cid ->
+                combine(
+                    characterSettingsRepository.observeMonoFont(cid),
+                    windowSettingsRepository
+                        .observeWindowSettings(cid)
+                        .map { windows -> windows.firstOrNull { it.name == name }?.monoFont },
+                ) { characterMono, windowMono -> windowMono ?: characterMono }
+            }.distinctUntilChanged()
+            .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
+
     override fun getOrCreateStream(name: String): TextStream {
         streams.load()[name]?.let { return it }
         val candidate =
@@ -213,6 +233,7 @@ class WindowRegistryImpl(
                 names = names,
                 alterations = alterations,
                 presets = presets,
+                monoFont = monoFontFor(name),
                 soundPlayer = soundPlayer,
                 markLinks = markLinks.value,
                 showImages = showImages.value,
@@ -274,6 +295,8 @@ class WindowRegistryFactory(
     private val nameRepository: NameRepository,
     private val alterationRepository: AlterationRepository,
     private val presetRepository: PresetRepository,
+    private val characterSettingsRepository: CharacterSettingsRepository,
+    private val windowSettingsRepository: WindowSettingsRepository,
     private val skinPresets: StateFlow<Map<String, StyleDefinition>>,
 ) {
     fun create(): WindowRegistry =
@@ -284,6 +307,8 @@ class WindowRegistryFactory(
             nameRepository = nameRepository,
             alterationRepository = alterationRepository,
             presetRepository = presetRepository,
+            characterSettingsRepository = characterSettingsRepository,
+            windowSettingsRepository = windowSettingsRepository,
             skinPresets = skinPresets,
         )
 }

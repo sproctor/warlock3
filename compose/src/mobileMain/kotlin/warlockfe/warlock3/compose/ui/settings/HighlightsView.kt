@@ -384,6 +384,28 @@ fun EditHighlightDialog(
                                 state = backgroundColorState,
                             )
                         }
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            CheckboxRow(
+                                checked = styles[i].bold,
+                                onCheckedChange = { styles[i] = styles[i].copy(bold = it) },
+                                text = "Bold",
+                            )
+                            CheckboxRow(
+                                checked = styles[i].italic,
+                                onCheckedChange = { styles[i] = styles[i].copy(italic = it) },
+                                text = "Italic",
+                            )
+                            CheckboxRow(
+                                checked = styles[i].underline,
+                                onCheckedChange = { styles[i] = styles[i].copy(underline = it) },
+                                text = "Underline",
+                            )
+                            CheckboxRow(
+                                checked = styles[i].monospace,
+                                onCheckedChange = { styles[i] = styles[i].copy(monospace = it) },
+                                text = "Mono",
+                            )
+                        }
                     }
                 }
                 if (!isRegex) {

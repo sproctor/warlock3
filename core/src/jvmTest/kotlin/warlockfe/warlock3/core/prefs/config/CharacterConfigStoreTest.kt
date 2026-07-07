@@ -8,7 +8,6 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.prefs.models.Highlight
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
@@ -139,21 +138,17 @@ class CharacterConfigStoreTest {
             store.load()
             val repo = NameRepositoryImpl(store)
             val name =
-                NameEntity(
-                    id = Uuid.random(),
-                    characterId = "gs4:tholan",
+                NameConfig(
+                    id = Uuid.random().toString(),
                     text = "Tholan",
                     textColor = WarlockColor(red = 0, green = 128, blue = 255),
                     backgroundColor = WarlockColor.Unspecified,
                     bold = false,
                     italic = true,
                     underline = false,
-                    fontFamily = null,
-                    fontSize = null,
-                    fontWeight = null,
                     sound = null,
                 )
-            repo.save(name)
+            repo.save("gs4:tholan", name)
 
             val reloaded = newStore()
             reloaded.load()

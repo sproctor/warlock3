@@ -7,9 +7,13 @@ import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.model.isWordBoundary
 import warlockfe.warlock3.compose.model.wordTokensOf
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 
-fun AnnotatedString.highlight(index: HighlightIndex): AnnotatedStringHighlightResult {
+fun AnnotatedString.highlight(
+    index: HighlightIndex,
+    monoFont: FontConfig? = null,
+): AnnotatedStringHighlightResult {
     val sourceText = this.text
     val outerSpans = this.spanStyles
     val entireLineStyles = mutableListOf<StyleDefinition>()
@@ -20,8 +24,8 @@ fun AnnotatedString.highlight(index: HighlightIndex): AnnotatedStringHighlightRe
         with(AnnotatedString.Builder(this)) {
             index.candidatesFor(lineWords).forEach { highlight ->
                 when (highlight) {
-                    is LiteralHighlight -> applyLiteralHighlight(highlight, sourceText, lineWords, outerSpans, entireLineStyles)
-                    is RegexHighlight -> applyRegexHighlight(highlight, sourceText, outerSpans, entireLineStyles)
+                    is LiteralHighlight -> applyLiteralHighlight(highlight, sourceText, lineWords, outerSpans, entireLineStyles, monoFont)
+                    is RegexHighlight -> applyRegexHighlight(highlight, sourceText, outerSpans, entireLineStyles, monoFont)
                 }
             }
             toAnnotatedString()
@@ -105,6 +109,7 @@ private fun AnnotatedString.Builder.applyLiteralHighlight(
     lineWords: Set<String>,
     outerSpans: List<AnnotatedString.Range<SpanStyle>>,
     entireLineStyles: MutableList<StyleDefinition>,
+    monoFont: FontConfig?,
 ) {
     val style = highlight.style ?: return
     val needle = highlight.literal
@@ -119,7 +124,7 @@ private fun AnnotatedString.Builder.applyLiteralHighlight(
     while (idx >= 0) {
         val end = idx + needleLen
         if (highlight.matchPartialWord || isWordBoundary(text, idx, end)) {
-            applyStyleAtRange(style, idx, end, outerSpans, entireLineStyles)
+            applyStyleAtRange(style, idx, end, outerSpans, entireLineStyles, monoFont)
             idx = text.indexOf(needle, startIndex = end, ignoreCase = highlight.ignoreCase)
         } else {
             idx = text.indexOf(needle, startIndex = idx + 1, ignoreCase = highlight.ignoreCase)
@@ -132,6 +137,7 @@ private fun AnnotatedString.Builder.applyRegexHighlight(
     text: String,
     outerSpans: List<AnnotatedString.Range<SpanStyle>>,
     entireLineStyles: MutableList<StyleDefinition>,
+    monoFont: FontConfig?,
 ) {
     highlight.regex.findAll(text).forEach { result ->
         for ((index, group) in result.groups.withIndex()) {
@@ -139,7 +145,7 @@ private fun AnnotatedString.Builder.applyRegexHighlight(
                 highlight.styles[index]?.let { style ->
                     val matchStart = group.range_.first
                     val matchEnd = group.range_.last + 1
-                    applyStyleAtRange(style, matchStart, matchEnd, outerSpans, entireLineStyles)
+                    applyStyleAtRange(style, matchStart, matchEnd, outerSpans, entireLineStyles, monoFont)
                 }
             }
         }
@@ -152,12 +158,13 @@ private fun AnnotatedString.Builder.applyStyleAtRange(
     matchEnd: Int,
     outerSpans: List<AnnotatedString.Range<SpanStyle>>,
     entireLineStyles: MutableList<StyleDefinition>,
+    monoFont: FontConfig?,
 ) {
     if (style.entireLine) {
         entireLineStyles.add(style)
-        addStyle(style.toSpanStyle(), 0, length)
+        addStyle(style.toSpanStyle(monoFont), 0, length)
     } else {
-        val spanStyle = style.toSpanStyle()
+        val spanStyle = style.toSpanStyle(monoFont)
         addStyle(spanStyle, matchStart, matchEnd)
         // Compose's span merge picks the most recently started active
         // style, so a wider highlight that started before a span would
