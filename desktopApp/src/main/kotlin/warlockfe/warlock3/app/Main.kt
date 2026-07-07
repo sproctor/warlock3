@@ -644,16 +644,21 @@ private class WarlockCommand : CliktCommand() {
         }
     }
 
-    // Swallow known, unrecoverable upstream Compose Desktop accessibility crashes that surface as
-    // uncaught exceptions on the AWT event thread. Both originate entirely inside Compose's a11y
-    // tree-sync code, so there is nothing for us to fix and nothing the user can do; killing the
-    // whole app over them is worse than carrying on with (at worst) degraded screen-reader support.
+    // Swallow known, unrecoverable upstream Compose Desktop crashes that surface as uncaught
+    // exceptions on the AWT event thread. Each originates entirely inside Compose framework code, so
+    // there is nothing for us to fix and nothing the user can do; killing the whole app over them is
+    // worse than carrying on (at worst with degraded screen-reader support).
     //   1. NoSuchElementException "Cannot find value for key": https://issuetracker.google.com/issues/399134381
     //   2. NullPointerException in ComposeSceneAccessibility.defaultAccessibilityFocusTarget: while
     //      retargeting accessibility focus after a node is removed it walks the Accessible tree into
     //      an ArrayDeque, but getAccessibleChild() can return null and ArrayDeque rejects nulls.
     //      Still unguarded in compose-multiplatform 1.11.x. disableMacAccessibilityWorkaround stops
     //      this from ever firing on macOS; this stays as the cross-platform safety net.
+    //   3. NullPointerException from DefaultOpenContextMenu's onKeyEvent handler in
+    //      BasicContextMenuRepresentation: pressing an arrow key while the text context menu (the
+    //      right-click Copy/Paste popup) is open calls FocusManager.moveFocus to step between menu
+    //      items, and that traversal NPEs inside Compose's focus machinery. Not accessibility-related
+    //      and not macOS-specific. No upstream issue located; still present in 1.11.x.
     // Matching on frame names is reliable because the desktop build never runs ProGuard
     // (it is disabled in build.gradle.kts), so class/method names are never obfuscated.
     private fun installUncaughtExceptionWorkaround() {
@@ -687,12 +692,17 @@ private class WarlockCommand : CliktCommand() {
                         cause.message?.contains("Cannot find value for key") == true
                     }
 
-                    // Workaround https://youtrack.jetbrains.com/issue/CMP-10170/Crash-in-A11Y-subsystem
+                    // Workarounds: the a11y focus-target crash (bug 2,
+                    // https://youtrack.jetbrains.com/issue/CMP-10170/Crash-in-A11Y-subsystem) and the
+                    // context-menu arrow-key crash (bug 3, no upstream issue).
                     is NullPointerException -> {
                         cause.stackTrace.any {
                             it.className.endsWith("ComposeSceneAccessibility") &&
                                 it.methodName == "defaultAccessibilityFocusTarget"
-                        }
+                        } ||
+                            cause.stackTrace.any {
+                                it.className.contains("BasicContextMenuRepresentation")
+                            }
                     }
 
                     else -> {
