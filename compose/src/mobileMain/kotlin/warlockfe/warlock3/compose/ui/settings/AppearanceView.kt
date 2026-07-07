@@ -191,8 +191,7 @@ fun AppearanceView(
                                 " \\        /  / __ \\|  | \\/  |_(  <_> )  \\___|    < \n" +
                                 "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
                                 "       \\/        \\/                       \\/     \\/",
-                            style = WarlockStyle.Mono,
-                        ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
+                        ).applyMonospace().toAnnotatedString(emptyMap(), presets, {}, monoFont),
                     serialNumber = 8L,
                     entireLineStyle = null,
                     showWhenClosed = null,
@@ -332,65 +331,62 @@ fun ColumnScope.PresetSettings(
         modifier = modifier.weight(1f).fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 8.dp),
     ) {
-        styleMap.keys.forEach { preset ->
-            // The monospace preset only flags text as monospace; its styling isn't user-editable.
-            if (preset.equals("mono", ignoreCase = true)) return@forEach
-            val style = styleMap[preset]
-            if (style != null) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        modifier = Modifier.width(120.dp).align(Alignment.CenterVertically),
-                        text = preset.replaceFirstChar { it.uppercase() },
-                    )
-                    ColorPickerButton(
-                        text = "Content",
-                        color = style.textColor.toColor(),
-                        onClick = {
-                            editColor =
-                                Pair(style.textColor) { color ->
-                                    saveStyle(
-                                        preset,
-                                        style.copy(textColor = color),
-                                    )
-                                }
-                        },
-                    )
+        WarlockStyle.presets.forEach { warlockStyle ->
+            val preset = warlockStyle.name.ifBlank { "default" }
+            val style = styleMap[preset] ?: StyleDefinition()
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    modifier = Modifier.width(120.dp).align(Alignment.CenterVertically),
+                    text = preset.replaceFirstChar { it.uppercase() },
+                )
+                ColorPickerButton(
+                    text = "Content",
+                    color = style.textColor.toColor(),
+                    onClick = {
+                        editColor =
+                            Pair(style.textColor) { color ->
+                                saveStyle(
+                                    preset,
+                                    style.copy(textColor = color),
+                                )
+                            }
+                    },
+                )
 
-                    ColorPickerButton(
-                        text = "Background",
-                        color = style.backgroundColor.toColor(),
-                        onClick = {
-                            editColor =
-                                Pair(style.backgroundColor) { color ->
-                                    saveStyle(
-                                        preset,
-                                        style.copy(backgroundColor = color),
-                                    )
-                                }
-                        },
-                    )
+                ColorPickerButton(
+                    text = "Background",
+                    color = style.backgroundColor.toColor(),
+                    onClick = {
+                        editColor =
+                            Pair(style.backgroundColor) { color ->
+                                saveStyle(
+                                    preset,
+                                    style.copy(backgroundColor = color),
+                                )
+                            }
+                    },
+                )
 
-                    CheckboxRow(
-                        checked = style.bold,
-                        onCheckedChange = { saveStyle(preset, style.copy(bold = it)) },
-                        text = "Bold",
-                        modifier = Modifier.align(Alignment.CenterVertically),
-                    )
-                    CheckboxRow(
-                        checked = style.italic,
-                        onCheckedChange = { saveStyle(preset, style.copy(italic = it)) },
-                        text = "Italic",
-                        modifier = Modifier.align(Alignment.CenterVertically),
-                    )
-                    CheckboxRow(
-                        checked = style.underline,
-                        onCheckedChange = { saveStyle(preset, style.copy(underline = it)) },
-                        text = "Underline",
-                        modifier = Modifier.align(Alignment.CenterVertically),
-                    )
-                }
+                CheckboxRow(
+                    checked = style.bold,
+                    onCheckedChange = { saveStyle(preset, style.copy(bold = it)) },
+                    text = "Bold",
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                )
+                CheckboxRow(
+                    checked = style.italic,
+                    onCheckedChange = { saveStyle(preset, style.copy(italic = it)) },
+                    text = "Italic",
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                )
+                CheckboxRow(
+                    checked = style.underline,
+                    onCheckedChange = { saveStyle(preset, style.copy(underline = it)) },
+                    text = "Underline",
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                )
             }
         }
     }

@@ -214,10 +214,9 @@ private fun ColumnScope.PresetSettings(
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        styleMap.keys.forEach { preset ->
-            // The monospace preset only flags text as monospace; its styling isn't user-editable.
-            if (preset.equals("mono", ignoreCase = true)) return@forEach
-            val style = styleMap[preset] ?: return@forEach
+        WarlockStyle.presets.forEach { warlockStyle ->
+            val preset = warlockStyle.name.ifBlank { "default" }
+            val style = styleMap[preset] ?: StyleDefinition()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     modifier =
@@ -368,8 +367,7 @@ private fun buildPreviewLines(
                         " \\        /  / __ \\|  | \\/  |_(  <_> )  \\___|    < \n" +
                         "  \\__/\\  /  (____  /__|  |____/\\____/ \\___  >__|_ \\\n" +
                         "       \\/        \\/                       \\/     \\/",
-                    style = WarlockStyle.Mono,
-                ).toAnnotatedString(emptyMap(), presets, {}, monoFont),
+                ).applyMonospace().toAnnotatedString(emptyMap(), presets, {}, monoFont),
             entireLineStyle = null,
             serialNumber = 8L,
             showWhenClosed = null,

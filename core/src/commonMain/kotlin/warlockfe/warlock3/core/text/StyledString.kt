@@ -29,6 +29,17 @@ data class StyledString(
                 },
         )
 
+    /** Flags every substring to render in the monospace font (from a line-level `<output class="mono"/>`). */
+    fun applyMonospace(): StyledString =
+        copy(
+            substrings =
+                substrings.mutate { leaves ->
+                    for (i in leaves.indices) {
+                        leaves[i] = leaves[i].asMonospace()
+                    }
+                },
+        )
+
     /** The plain text, with unresolved component/variable references rendered as %name%; e.g. for logging or matching. */
     fun toText(): String {
         val builder = StringBuilder()
@@ -44,22 +55,34 @@ data class StyledString(
 
 sealed interface StyledStringLeaf {
     val styles: ImmutableList<WarlockStyle>
+
+    // Monospace is a line-level attribute (from `<output class="mono"/>`), not a named style, so it
+    // lives on the leaf rather than in the style list.
+    val monospace: Boolean
 }
 
 data class StyledStringSubstring(
     val text: String,
     override val styles: ImmutableList<WarlockStyle>,
+    override val monospace: Boolean = false,
 ) : StyledStringLeaf
 
 data class StyledStringVariable(
     val name: String,
     override val styles: ImmutableList<WarlockStyle>,
+    override val monospace: Boolean = false,
 ) : StyledStringLeaf
 
 fun StyledStringLeaf.applyStyle(style: WarlockStyle): StyledStringLeaf =
     when (this) {
         is StyledStringSubstring -> copy(styles = (styles + style).toImmutableList())
         is StyledStringVariable -> copy(styles = (styles + style).toImmutableList())
+    }
+
+fun StyledStringLeaf.asMonospace(): StyledStringLeaf =
+    when (this) {
+        is StyledStringSubstring -> if (monospace) this else copy(monospace = true)
+        is StyledStringVariable -> if (monospace) this else copy(monospace = true)
     }
 
 fun StyledString.isBlank(): Boolean = substrings.all { it.isBlank() }

@@ -7,7 +7,6 @@
       "echo": { "color": { "light": "#546E7A", "dark": "#B0BEC5" } },
       "error": { "color": { "light": "#C62828", "dark": "#DB5C5C" } },
       "link": { "color": { "light": "#2962FF", "dark": "#82B1FF" }, "underline": true },
-      "mono": { "monospace": true },
       "roomName": { "color": { "light": "#FFFFFF", "dark": "#1E1F22" }, "background": { "light": "#1565C0", "dark": "#82B1FF" }, "entireLine": true },
       "speech": { "color": { "light": "#1E9E40", "dark": "#6EE787" } },
       "thought": { "color": { "light": "#7E57C2", "dark": "#B39DDB" } },

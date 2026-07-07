@@ -72,9 +72,13 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig?,
 ) {
+    val flattened = flattenStyles(leaf.styles.map { it.toStyleDefinition(styleMap) })
+    // A monospace leaf carries no style of its own, so synthesize one when there are no other styles.
     val style =
-        flattenStyles(leaf.styles.map { it.toStyleDefinition(styleMap) })
-            ?.also { pushStyle(it.toSpanStyle(monoFont)) }
+        when {
+            leaf.monospace -> (flattened ?: StyleDefinition()).copy(monospace = true)
+            else -> flattened
+        }?.also { pushStyle(it.toSpanStyle(monoFont)) }
 
     var linksPushed = 0
     leaf.styles.forEach { st ->

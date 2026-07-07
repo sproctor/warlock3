@@ -214,8 +214,8 @@ class WraythClient(
     private var currentStyle: WarlockStyle? = null
     private val styleStack = ArrayDeque<WarlockStyle>()
 
-    // Output style gets applied to echoed text as well
-    private var outputStyle: WarlockStyle? = null
+    // Whether the current `<output>` block is monospace ("mono"). Line-level; applies to echoed text too.
+    private var monospace: Boolean = false
 
     private var dialogDataId: String? = null
     private val directions: HashSet<Direction> = hashSetOf()
@@ -375,7 +375,7 @@ class WraythClient(
             }
 
             is WraythOutputEvent -> {
-                outputStyle = event.style
+                monospace = event.className?.equals("mono", true) ?: false
             }
 
             is WraythStyleEvent -> {
@@ -398,7 +398,7 @@ class WraythClient(
                 currentStream = null
                 if (!isPrompting) {
                     getMainStream().appendPartial(
-                        StyledString(event.text, listOfNotNull(outputStyle)),
+                        StyledString(event.text).let { if (monospace) it.applyMonospace() else it },
                         isPrompt = true,
                     )
                     isPrompting = true
@@ -779,9 +779,9 @@ class WraythClient(
 
     private fun bufferText(text: StyledString) {
         var styledText = text
-        outputStyle?.let { styledText = styledText.applyStyle(it) }
         currentStyle?.let { styledText = styledText.applyStyle(it) }
         styleStack.forEach { styledText = styledText.applyStyle(it) }
+        if (monospace) styledText = styledText.applyMonospace()
         if (elementBuffer != null) {
             elementBuffer = elementBuffer!!.plus(styledText)
         } else {
@@ -894,23 +894,22 @@ class WraythClient(
         val lines = text.split(newLinePattern)
         val mainStream = getMainStream()
         lines.dropLast(1).forEach { fullLine ->
-            mainStream.appendPartialAndEol(StyledString(fullLine, WarlockStyle.Mono))
+            mainStream.appendPartialAndEol(StyledString(fullLine).applyMonospace())
         }
-        mainStream.appendPartial(StyledString(lines.last(), WarlockStyle.Mono), isPrompt = false)
+        mainStream.appendPartial(StyledString(lines.last()).applyMonospace(), isPrompt = false)
     }
 
     override suspend fun print(message: StyledString) {
         withContext(ioDispatcher) {
-            val style = outputStyle
-            getMainStream().appendLine(if (style != null) message.applyStyle(style) else message)
+            getMainStream().appendLine(if (monospace) message.applyMonospace() else message)
             notifyListeners(ClientTextEvent(message.toString()))
         }
     }
 
     suspend fun printCommand(command: String) {
         withContext(ioDispatcher) {
-            val styles = listOfNotNull(outputStyle, WarlockStyle.Command)
-            getMainStream().appendPartialAndEol(StyledString(command, styles))
+            val styled = StyledString(command, WarlockStyle.Command)
+            getMainStream().appendPartialAndEol(if (monospace) styled.applyMonospace() else styled)
             notifyListeners(ClientTextEvent(command))
         }
     }
