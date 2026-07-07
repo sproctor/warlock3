@@ -163,9 +163,7 @@ class ExportRepository(
                                         bold = style.bold,
                                         italic = style.italic,
                                         underline = style.underline,
-                                        fontFamily = style.fontFamily,
-                                        fontSize = style.fontSize,
-                                        fontWeight = style.fontWeight,
+                                        monospace = style.monospace,
                                     )
                             },
                     )
@@ -183,9 +181,7 @@ class ExportRepository(
                                 bold = it.bold,
                                 italic = it.italic,
                                 underline = it.underline,
-                                fontFamily = it.fontFamily,
-                                fontSize = it.fontSize,
-                                fontWeight = it.fontWeight,
+                                monospace = it.monospace,
                                 entireLine = false,
                             ),
                     )
@@ -201,9 +197,7 @@ class ExportRepository(
                                 bold = preset.bold,
                                 italic = preset.italic,
                                 underline = preset.underline,
-                                fontFamily = preset.fontFamily,
-                                fontSize = preset.fontSize,
-                                fontWeight = preset.fontWeight,
+                                monospace = preset.monospace,
                                 entireLine = preset.entireLine,
                             ),
                     )
@@ -220,9 +214,8 @@ class ExportRepository(
                         position = geometry?.position,
                         textColor = style.textColor,
                         backgroundColor = style.backgroundColor,
-                        fontFamily = style.fontFamily,
-                        fontSize = style.fontSize,
-                        fontWeight = style.fontWeight,
+                        font = style.font,
+                        monoFont = style.monoFont,
                         nameFilter = style.nameFilter,
                     )
                 },
@@ -365,9 +358,7 @@ class ExportRepository(
                                 bold = style.bold,
                                 italic = style.italic,
                                 underline = style.underline,
-                                fontFamily = style.fontFamily,
-                                fontSize = style.fontSize,
-                                fontWeight = style.fontWeight,
+                                monospace = style.monospace,
                             )
                         },
                 )
@@ -383,9 +374,7 @@ class ExportRepository(
                     bold = name.style.bold,
                     italic = name.style.italic,
                     underline = name.style.underline,
-                    fontFamily = name.style.fontFamily,
-                    fontSize = name.style.fontSize,
-                    fontWeight = name.style.fontWeight,
+                    monospace = name.style.monospace,
                 )
             }
         val importedAliases =
@@ -413,9 +402,7 @@ class ExportRepository(
                         bold = preset.style.bold,
                         italic = preset.style.italic,
                         underline = preset.style.underline,
-                        fontFamily = preset.style.fontFamily,
-                        fontSize = preset.style.fontSize,
-                        fontWeight = preset.style.fontWeight,
+                        monospace = preset.style.monospace,
                     )
             }
         val importedWindowStyles =
@@ -424,9 +411,8 @@ class ExportRepository(
                     WindowStyleConfig(
                         textColor = window.textColor,
                         backgroundColor = window.backgroundColor,
-                        fontFamily = window.fontFamily,
-                        fontSize = window.fontSize,
-                        fontWeight = window.fontWeight,
+                        font = window.font,
+                        monoFont = window.monoFont,
                         nameFilter = window.nameFilter,
                     )
             }
@@ -447,7 +433,12 @@ class ExportRepository(
                     macros = importedMacros,
                     presets = importedPresets,
                     windows = importedWindowStyles,
-                    settings = importedCharacterSettings,
+                    // Default fonts aren't part of the export payload; keep whatever the target had.
+                    settings =
+                        importedCharacterSettings.copy(
+                            defaultFont = current.settings.defaultFont,
+                            monoFont = current.settings.monoFont,
+                        ),
                 )
             } else {
                 val importedPatterns = importedHighlights.mapTo(mutableSetOf()) { it.pattern }

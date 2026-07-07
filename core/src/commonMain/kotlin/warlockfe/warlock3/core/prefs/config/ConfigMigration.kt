@@ -20,6 +20,7 @@ import warlockfe.warlock3.core.prefs.models.ConnectionWithSettings
 import warlockfe.warlock3.core.prefs.repositories.MAX_TYPE_AHEAD_KEY
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
+import warlockfe.warlock3.core.text.FontConfig
 
 /**
  * One-time migration of settings out of the SQLite database and into the human-editable TOML config
@@ -91,9 +92,6 @@ class ConfigMigration(
                         bold = entity.bold,
                         italic = entity.italic,
                         underline = entity.underline,
-                        fontFamily = entity.fontFamily,
-                        fontSize = entity.fontSize,
-                        fontWeight = entity.fontWeight,
                     )
             }
         val progressBars = progressBarSettingDao.getByCharacter(id).associate { it.id to it.toConfig() }
@@ -105,9 +103,12 @@ class ConfigMigration(
                         WindowStyleConfig(
                             textColor = entity.textColor,
                             backgroundColor = entity.backgroundColor,
-                            fontFamily = entity.fontFamily,
-                            fontSize = entity.fontSize,
-                            fontWeight = entity.fontWeight,
+                            font =
+                                FontConfig(
+                                    family = entity.fontFamily,
+                                    size = entity.fontSize,
+                                    weight = entity.fontWeight,
+                                ).takeUnless { it.isEmpty() },
                             nameFilter = entity.nameFilter,
                         )
                     // Only carry over windows that actually customized their styling.

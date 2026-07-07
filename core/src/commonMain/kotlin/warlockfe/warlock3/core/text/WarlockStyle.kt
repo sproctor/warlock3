@@ -12,12 +12,16 @@ data class WarlockStyle(
         val Echo = WarlockStyle("echo")
         val Error = WarlockStyle("error")
         val Link = { action: WarlockAction? -> WarlockStyle("link", action) }
-        val Mono = WarlockStyle("mono")
         val RoomName = WarlockStyle("roomName")
         val Speech = WarlockStyle("speech")
         val Thought = WarlockStyle("thought")
         val Watching = WarlockStyle("watching")
         val Whisper = WarlockStyle("whisper")
         val Default = WarlockStyle("")
+
+        // The customizable style presets, in display order. The appearance settings edit this fixed,
+        // known set rather than whatever presets the skin happens to define.
+        val presets: List<WarlockStyle> =
+            listOf(Default, RoomName, Bold, Speech, Whisper, Thought, Watching, Command, Echo, Error, Link(null))
     }
 }

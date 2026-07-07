@@ -26,9 +26,7 @@ fun SkinObject.toStyleDefinition(isDark: Boolean): StyleDefinition =
         bold = bold ?: false,
         italic = italic ?: false,
         underline = underline ?: false,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
+        monospace = monospace ?: false,
     )
 
 /** Resolves the skin's "presets" section into a name -> [StyleDefinition] map for the given mode. */

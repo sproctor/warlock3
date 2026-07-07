@@ -39,7 +39,7 @@ data class WraythAppEvent(
 ) : WraythEvent
 
 data class WraythOutputEvent(
-    val style: WarlockStyle?,
+    val className: String?,
 ) : WraythEvent
 
 data class WraythStyleEvent(

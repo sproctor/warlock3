@@ -62,9 +62,7 @@ internal fun HighlightStyleConfig.toStyleDefinition(): StyleDefinition =
         bold = bold,
         italic = italic,
         underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
+        monospace = monospace,
     )
 
 internal fun StyleDefinition.toStyleConfig(group: Int): HighlightStyleConfig =
@@ -76,25 +74,7 @@ internal fun StyleDefinition.toStyleConfig(group: Int): HighlightStyleConfig =
         bold = bold,
         italic = italic,
         underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-    )
-
-internal fun NameConfig.toEntity(characterId: String): NameEntity =
-    NameEntity(
-        id = id?.let { runCatching { Uuid.parse(it) }.getOrNull() } ?: Uuid.random(),
-        characterId = characterId,
-        text = text,
-        textColor = textColor,
-        backgroundColor = backgroundColor,
-        bold = bold,
-        italic = italic,
-        underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-        sound = sound,
+        monospace = monospace,
     )
 
 internal fun NameEntity.toConfig(): NameConfig =
@@ -107,9 +87,6 @@ internal fun NameEntity.toConfig(): NameConfig =
         bold = bold,
         italic = italic,
         underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
     )
 
 internal fun AliasConfig.toEntity(characterId: String): AliasEntity =
@@ -158,9 +135,7 @@ internal fun PresetStyleConfig.toStyleDefinition(): StyleDefinition =
         bold = bold,
         italic = italic,
         underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
+        monospace = monospace,
     )
 
 internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
@@ -171,30 +146,7 @@ internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
         bold = bold,
         italic = italic,
         underline = underline,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-    )
-
-// Window styling carries only the visual style fields the window settings UI edits; geometry lives
-// in SQLite and the bold/italic/underline/entireLine flags aren't part of per-window styling.
-internal fun WindowStyleConfig.toStyleDefinition(): StyleDefinition =
-    StyleDefinition(
-        textColor = textColor,
-        backgroundColor = backgroundColor,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-    )
-
-internal fun StyleDefinition.toWindowStyleConfig(nameFilter: Boolean): WindowStyleConfig =
-    WindowStyleConfig(
-        textColor = textColor,
-        backgroundColor = backgroundColor,
-        fontFamily = fontFamily,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-        nameFilter = nameFilter,
+        monospace = monospace,
     )
 
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =

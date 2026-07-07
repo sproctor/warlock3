@@ -48,6 +48,7 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.HistorySearchState
+import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
@@ -131,16 +132,17 @@ fun DesktopWarlockEntryContent(
             DesktopRoundTimeBar(backgroundColor, roundTime, castTime)
 
             val defaultTextStyle = JewelTheme.defaultTextStyle
+            val entryFont = LocalDefaultFont.current
             val textStyle =
-                remember(usableStyle) {
-                    val fontSize = (usableStyle.fontSize ?: 16f).sp
+                remember(usableStyle, entryFont) {
+                    val fontSize = (entryFont?.size ?: 16f).sp
                     defaultTextStyle.copy(
                         fontSize = fontSize,
                         fontFamily =
-                            usableStyle.fontFamily?.let { createFontFamily(it) }
+                            entryFont?.family?.let { createFontFamily(it) }
                                 ?: defaultTextStyle.fontFamily,
                         fontWeight =
-                            usableStyle.fontWeight?.let { FontWeight(it) }
+                            entryFont?.weight?.let { FontWeight(it) }
                                 ?: defaultTextStyle.fontWeight,
                         lineHeight = fontSize,
                         color = usableStyle.textColor.toColor(),
@@ -220,6 +222,7 @@ fun DesktopWarlockEntryContent(
             style = style,
             defaultStyle = defaultStyle,
             saveStyle = saveStyle,
+            showFontOptions = false,
         )
     }
 }

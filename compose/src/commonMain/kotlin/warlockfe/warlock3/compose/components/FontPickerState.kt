@@ -11,17 +11,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.font.FontFamily
 import warlockfe.warlock3.compose.util.createFontFamily
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.FontConfig
 
 /**
  * Shared state for the font picker dialogs (desktop Jewel + mobile Material3). Owns the selected
  * family/size/weight, the family-search query, and the asynchronously loaded font list, and derives
  * the filtered list plus a combined preview style. Both platform dialogs are thin views over this.
+ *
+ * When [monospaceOnly] is true the family list is restricted to fixed-pitch fonts (used for the
+ * monospace font selector).
  */
 internal class FontPickerState(
     initialFamily: String,
     private val seedSize: Float,
     initialWeight: Int?,
+    private val monospaceOnly: Boolean,
 ) {
     val sizeFieldState = TextFieldState(formatFontSize(seedSize.coerceIn(MIN_FONT_SIZE, MAX_FONT_SIZE)))
     val queryState = TextFieldState()
@@ -33,7 +37,7 @@ internal class FontPickerState(
     // Seeded with the generic families so the list is never empty during the async system-font load;
     // fontsLoaded is a real flag (not list-size derived) so the loading hint clears even on mobile,
     // where loadSystemFonts() legitimately returns an empty list.
-    var allFamilies by mutableStateOf(genericFontFamilies)
+    var allFamilies by mutableStateOf(if (monospaceOnly) monospaceGenericFontFamilies else genericFontFamilies)
     var fontsLoaded by mutableStateOf(false)
 
     /** The parsed, clamped size; invalid/empty input falls back to the seed so it is never null. */
@@ -61,19 +65,22 @@ internal class FontPickerState(
 
 @Composable
 internal fun rememberFontPickerState(
-    currentStyle: StyleDefinition,
+    current: FontConfig?,
     defaultSize: Float,
+    monospaceOnly: Boolean = false,
 ): FontPickerState {
     val state =
-        remember(currentStyle) {
+        remember(current, monospaceOnly) {
             FontPickerState(
-                initialFamily = currentStyle.fontFamily ?: "Default",
-                seedSize = currentStyle.fontSize ?: defaultSize,
-                initialWeight = currentStyle.fontWeight,
+                initialFamily = current?.family ?: "Default",
+                seedSize = current?.size ?: defaultSize,
+                initialWeight = current?.weight,
+                monospaceOnly = monospaceOnly,
             )
         }
     LaunchedEffect(state) {
-        state.allFamilies = genericFontFamilies + loadSystemFonts()
+        val generic = if (monospaceOnly) monospaceGenericFontFamilies else genericFontFamilies
+        state.allFamilies = generic + loadSystemFonts(monospaceOnly)
         state.fontsLoaded = true
     }
     return state

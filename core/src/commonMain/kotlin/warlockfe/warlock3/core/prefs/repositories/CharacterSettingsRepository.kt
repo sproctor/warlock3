@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
+import warlockfe.warlock3.core.text.FontConfig
 
 const val DEFAULT_MAX_TYPE_AHEAD = 0
 const val MAX_TYPE_AHEAD_KEY = "typeahead"
@@ -87,6 +88,28 @@ class CharacterSettingsRepository(
             SCRIPT_COMMAND_PREFIX_KEY -> store.observe(characterId).map { it.settings.scriptCommandPrefix }
             else -> characterSettingsQueries.observeByKey(characterId = characterId, key = key)
         }
+
+    // --- Default fonts: the character's TOML settings ---
+
+    /** The font used for all normal (non-monospace) game text. Null until the user picks one. */
+    fun observeDefaultFont(characterId: String): Flow<FontConfig?> = store.observe(characterId).map { it.settings.defaultFont }
+
+    /** The font used for monospace-flagged text (ASCII maps, tables, etc.). Null until the user picks one. */
+    fun observeMonoFont(characterId: String): Flow<FontConfig?> = store.observe(characterId).map { it.settings.monoFont }
+
+    suspend fun saveDefaultFont(
+        characterId: String,
+        font: FontConfig?,
+    ) {
+        store.mutate(characterId) { it.copy(settings = it.settings.copy(defaultFont = font?.takeUnless { f -> f.isEmpty() })) }
+    }
+
+    suspend fun saveMonoFont(
+        characterId: String,
+        font: FontConfig?,
+    ) {
+        store.mutate(characterId) { it.copy(settings = it.settings.copy(monoFont = font?.takeUnless { f -> f.isEmpty() })) }
+    }
 
     suspend fun saveMainWindowBounds(
         characterId: String,

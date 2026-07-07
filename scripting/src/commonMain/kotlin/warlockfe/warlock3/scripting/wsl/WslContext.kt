@@ -15,8 +15,8 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.models.Highlight
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
@@ -421,18 +421,15 @@ class WslContext(
         val characterId = if (global) "global" else client.characterId.value?.lowercase()
         characterId?.let { characterId ->
             nameRepository.save(
-                NameEntity(
-                    id = Uuid.random(),
+                characterId,
+                NameConfig(
+                    id = Uuid.random().toString(),
                     text = pattern,
                     textColor = textColor,
                     backgroundColor = backgroundColor,
-                    characterId = characterId,
                     bold = false,
                     italic = false,
                     underline = false,
-                    fontFamily = null,
-                    fontSize = null,
-                    fontWeight = null,
                     sound = sound,
                 ),
             )

@@ -19,6 +19,10 @@ data class SkinObject(
     val italic: Boolean? = null,
     val underline: Boolean? = null,
     val entireLine: Boolean? = null,
+    // When true, text using this preset is rendered in the character's monospace font. (The older
+    // per-preset fontFamily/fontSize/fontWeight fields are still accepted for skin compatibility but
+    // are no longer applied; fonts are now chosen globally in the appearance settings.)
+    val monospace: Boolean? = null,
     val fontFamily: String? = null,
     val fontSize: Float? = null,
     val fontWeight: Int? = null,

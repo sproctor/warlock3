@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
+import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.dao.VariableDao
 import warlockfe.warlock3.core.prefs.models.Highlight
-import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
@@ -122,16 +122,19 @@ class FakeHighlightRepository : HighlightRepository {
 }
 
 class FakeNameRepository : NameRepository {
-    val saved = mutableListOf<NameEntity>()
+    val saved = mutableListOf<NameConfig>()
     val deletedText = mutableListOf<Pair<String, String>>()
 
-    override fun observeGlobal(): Flow<List<NameEntity>> = flowOf(emptyList())
+    override fun observeGlobal(): Flow<List<NameConfig>> = flowOf(emptyList())
 
-    override fun observeByCharacter(characterId: String): Flow<List<NameEntity>> = flowOf(emptyList())
+    override fun observeByCharacter(characterId: String): Flow<List<NameConfig>> = flowOf(emptyList())
 
-    override fun observeForCharacter(characterId: String): Flow<List<NameEntity>> = flowOf(emptyList())
+    override fun observeForCharacter(characterId: String): Flow<List<NameConfig>> = flowOf(emptyList())
 
-    override suspend fun save(name: NameEntity) {
+    override suspend fun save(
+        characterId: String,
+        name: NameConfig,
+    ) {
         saved += name
     }
 

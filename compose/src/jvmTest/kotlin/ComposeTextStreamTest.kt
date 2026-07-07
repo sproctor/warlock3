@@ -1,3 +1,4 @@
+import androidx.compose.ui.text.font.FontFamily
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +71,7 @@ class ComposeTextStreamTest {
                 names = MutableStateFlow(names),
                 alterations = alterations,
                 presets = presets,
+                monoFont = MutableStateFlow(null),
                 soundPlayer = SilentSoundPlayer,
                 workQueue = workQueue,
                 scope = scope,
@@ -521,6 +523,35 @@ class ComposeTextStreamTest {
                     listOf("normal"),
                     f.stream.lines.value
                         .texts(),
+                )
+            }
+        }
+
+    // Monospace-flagged text (from `<output class="mono"/>`) renders in the monospace font family.
+    // With a null character mono font it falls back to the generic FontFamily.Monospace.
+    @Test
+    fun monospaceFlaggedTextRendersMonospaceFont() =
+        runBlocking {
+            withFixture { f ->
+                f.stream.appendLine(
+                    StyledString("| a | b |").applyMonospace(),
+                    ignoreWhenBlank = false,
+                    showWhenClosed = null,
+                )
+                f.stream.appendLine(text("proportional"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+
+                val lines = f.stream.lines.value
+                val mono = lines[0] as StreamTextLine
+                val plain = lines[1] as StreamTextLine
+                assertEquals("| a | b |", mono.text?.text)
+                assertTrue(
+                    mono.text!!.spanStyles.any { it.item.fontFamily == FontFamily.Monospace },
+                    "monospace line should carry a monospace span",
+                )
+                assertTrue(
+                    plain.text!!.spanStyles.none { it.item.fontFamily == FontFamily.Monospace },
+                    "plain line should not be monospace",
                 )
             }
         }

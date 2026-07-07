@@ -320,6 +320,7 @@ private class BenchWindowRegistry(
 ) : WindowRegistry {
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())
+    private val monoFont = MutableStateFlow<warlockfe.warlock3.core.text.FontConfig?>(null)
     private val streams = ConcurrentHashMap<String, ComposeTextStream>()
     private val dialogs = ConcurrentHashMap<String, ComposeDialogState>()
     private val recompositions =
@@ -347,6 +348,7 @@ private class BenchWindowRegistry(
                     names = names,
                     alterations = alterations,
                     presets = presets,
+                    monoFont = monoFont,
                     soundPlayer = SilentSoundPlayer,
                     workQueue = workQueue,
                     scope = scope,

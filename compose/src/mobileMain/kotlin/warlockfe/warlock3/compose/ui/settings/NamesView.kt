@@ -48,7 +48,7 @@ import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.models.NameEntity
+import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
@@ -69,8 +69,9 @@ fun NamesView(
     } else {
         nameRepository.observeByCharacter(currentCharacterId)
     }.collectAsState(emptyList())
-    var editingName by remember { mutableStateOf<NameEntity?>(null) }
+    var editingName by remember { mutableStateOf<NameConfig?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val editingCharacterId = currentCharacterId ?: "global"
 
     SettingsListScaffold(
         title = "Names",
@@ -122,7 +123,7 @@ fun NamesView(
                             Spacer(Modifier.width(8.dp))
                             IconButton(
                                 onClick = {
-                                    coroutineScope.launch { nameRepository.deleteById(name.id) }
+                                    coroutineScope.launch { nameRepository.deleteByText(editingCharacterId, name.text) }
                                 },
                             ) {
                                 Icon(
@@ -142,18 +143,14 @@ fun NamesView(
             ExtendedFloatingActionButton(
                 onClick = {
                     editingName =
-                        NameEntity(
-                            id = Uuid.random(),
+                        NameConfig(
+                            id = Uuid.random().toString(),
                             text = "",
-                            characterId = currentCharacterId ?: "global",
                             textColor = WarlockColor.Unspecified,
                             backgroundColor = WarlockColor.Unspecified,
                             bold = false,
                             italic = false,
                             underline = false,
-                            fontFamily = null,
-                            fontSize = null,
-                            fontWeight = null,
                             sound = null,
                         )
                 },
@@ -167,7 +164,7 @@ fun NamesView(
             name = name,
             saveName = { newName ->
                 coroutineScope.launch {
-                    nameRepository.save(newName)
+                    nameRepository.save(editingCharacterId, newName)
                     editingName = null
                 }
             },
@@ -178,8 +175,8 @@ fun NamesView(
 
 @Composable
 fun EditNameDialog(
-    name: NameEntity,
-    saveName: (NameEntity) -> Unit,
+    name: NameConfig,
+    saveName: (NameConfig) -> Unit,
     onClose: () -> Unit,
 ) {
     val text = rememberTextFieldState(name.text)

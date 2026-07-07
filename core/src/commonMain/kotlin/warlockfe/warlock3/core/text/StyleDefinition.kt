@@ -7,9 +7,7 @@ data class StyleDefinition(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
-    val fontFamily: String? = null,
-    val fontSize: Float? = null,
-    val fontWeight: Int? = null,
+    val monospace: Boolean = false,
 ) {
     fun mergeWith(other: StyleDefinition): StyleDefinition =
         StyleDefinition(
@@ -19,9 +17,7 @@ data class StyleDefinition(
             bold = bold || other.bold,
             italic = italic || other.italic,
             underline = underline || other.underline,
-            fontFamily = fontFamily ?: other.fontFamily,
-            fontSize = fontSize ?: other.fontSize,
-            fontWeight = fontWeight ?: other.fontWeight,
+            monospace = monospace || other.monospace,
         )
 }
 

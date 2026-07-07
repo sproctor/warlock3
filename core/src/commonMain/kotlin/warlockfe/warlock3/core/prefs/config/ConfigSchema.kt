@@ -9,6 +9,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.isUnspecified
 import warlockfe.warlock3.core.util.toWarlockColor
@@ -121,9 +122,7 @@ data class PresetStyleConfig(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
-    val fontFamily: String? = null,
-    val fontSize: Float? = null,
-    val fontWeight: Int? = null,
+    val monospace: Boolean = false,
 )
 
 @Serializable
@@ -145,9 +144,12 @@ data class WindowStyleConfig(
     val textColor: WarlockColor = WarlockColor.Unspecified,
     @Serializable(WarlockColorAsHexSerializer::class)
     val backgroundColor: WarlockColor = WarlockColor.Unspecified,
-    val fontFamily: String? = null,
-    val fontSize: Float? = null,
-    val fontWeight: Int? = null,
+    // Per-window font overrides. When set they replace the character's default/monospace fonts for
+    // this window only; null means "use the character default".
+    @TomlInline
+    val font: FontConfig? = null,
+    @TomlInline
+    val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
 )
 
@@ -155,6 +157,12 @@ data class WindowStyleConfig(
 data class CharacterSettingsConfig(
     val typeahead: Int? = null,
     val scriptCommandPrefix: String? = null,
+    // The character-wide default fonts: [defaultFont] styles all normal text, [monoFont] styles text
+    // flagged monospace (e.g. ASCII maps). Either window may override these per-window.
+    @TomlInline
+    val defaultFont: FontConfig? = null,
+    @TomlInline
+    val monoFont: FontConfig? = null,
 )
 
 // Per-section file wrappers. Each per-character section is stored in its own file under
@@ -239,9 +247,7 @@ data class HighlightStyleConfig(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
-    val fontFamily: String? = null,
-    val fontSize: Float? = null,
-    val fontWeight: Int? = null,
+    val monospace: Boolean = false,
 )
 
 @Serializable
@@ -256,9 +262,7 @@ data class NameConfig(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
-    val fontFamily: String? = null,
-    val fontSize: Float? = null,
-    val fontWeight: Int? = null,
+    val monospace: Boolean = false,
 )
 
 /**

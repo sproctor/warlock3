@@ -1,6 +1,7 @@
 package warlockfe.warlock3.core.prefs.export
 
 import kotlinx.serialization.Serializable
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -13,8 +14,7 @@ data class WindowSettingsExport(
     val position: Int?,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,
-    val fontFamily: String?,
-    val fontSize: Float?,
-    val fontWeight: Int? = null,
+    val font: FontConfig? = null,
+    val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
 )

@@ -34,15 +34,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.FontConfig
 
 @Composable
 fun FontPickerDialog(
-    currentStyle: StyleDefinition,
+    current: FontConfig?,
     onCloseRequest: () -> Unit,
     onSaveClick: (FontUpdate) -> Unit,
+    monospaceOnly: Boolean = false,
 ) {
-    val state = rememberFontPickerState(currentStyle, MaterialTheme.typography.bodyMedium.fontSize.value)
+    val state = rememberFontPickerState(current, MaterialTheme.typography.bodyMedium.fontSize.value, monospaceOnly)
 
     AlertDialog(
         onDismissRequest = onCloseRequest,

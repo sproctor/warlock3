@@ -14,7 +14,8 @@ actual fun AnnotatedString.Builder.markLinks(
     linkExtractor.extractLinks(text.text).forEach { link ->
         if (text.getLinkAnnotations(link.beginIndex, link.endIndex).isEmpty()) {
             addStyle(
-                style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(),
+                // Links use the "link" preset, which is never monospace, so no monospace font is needed.
+                style = WarlockStyle("link").toStyleDefinition(presets).toSpanStyle(null),
                 start = link.beginIndex,
                 end = link.endIndex,
             )

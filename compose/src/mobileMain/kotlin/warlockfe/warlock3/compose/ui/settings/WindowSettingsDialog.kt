@@ -17,8 +17,10 @@ import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ColorPickerButton
 import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
-import warlockfe.warlock3.compose.components.FontUpdate
+import warlockfe.warlock3.compose.components.fontLabel
+import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.ifUnspecified
@@ -29,12 +31,18 @@ fun WindowSettingsDialog(
     style: StyleDefinition,
     defaultStyle: StyleDefinition,
     saveStyle: (StyleDefinition) -> Unit,
+    font: FontConfig? = null,
+    monoFont: FontConfig? = null,
+    saveFont: (FontConfig?) -> Unit = {},
+    saveMonoFont: (FontConfig?) -> Unit = {},
+    showFontOptions: Boolean = true,
     nameFilterOption: Boolean = false,
     nameFilter: Boolean = false,
     saveNameFilter: (Boolean) -> Unit = {},
 ) {
     var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
-    var editFont by remember { mutableStateOf<Pair<StyleDefinition, (FontUpdate) -> Unit>?>(null) }
+    // (current font, monospaceOnly). On save the flag decides which override is written.
+    var editFont by remember { mutableStateOf<Pair<FontConfig?, Boolean>?>(null) }
 
     if (editColor != null) {
         ColorPickerDialog(
@@ -46,12 +54,13 @@ fun WindowSettingsDialog(
             },
         )
     }
-    if (editFont != null) {
+    editFont?.let { (current, monospaceOnly) ->
         FontPickerDialog(
-            currentStyle = editFont!!.first,
+            current = current,
+            monospaceOnly = monospaceOnly,
             onCloseRequest = { editFont = null },
             onSaveClick = { fontUpdate ->
-                editFont?.second?.invoke(fontUpdate)
+                if (monospaceOnly) saveMonoFont(fontUpdate.toFontConfig()) else saveFont(fontUpdate.toFontConfig())
                 editFont = null
             },
         )
@@ -90,21 +99,13 @@ fun WindowSettingsDialog(
                             }
                     },
                 )
-                OutlinedButton(
-                    onClick = {
-                        editFont =
-                            Pair(style) { fontUpdate ->
-                                saveStyle(
-                                    style.copy(
-                                        fontFamily = fontUpdate.fontFamily,
-                                        fontSize = fontUpdate.size,
-                                        fontWeight = fontUpdate.weight,
-                                    ),
-                                )
-                            }
-                    },
-                ) {
-                    Text("Font: ${style.fontFamily ?: "Default"} ${style.fontSize ?: "Default"}")
+                if (showFontOptions) {
+                    OutlinedButton(onClick = { editFont = font to false }) {
+                        Text("Font: ${font.fontLabel()}")
+                    }
+                    OutlinedButton(onClick = { editFont = monoFont to true }) {
+                        Text("Monospace font: ${monoFont.fontLabel()}")
+                    }
                 }
                 if (nameFilterOption) {
                     CheckboxRow(
@@ -115,6 +116,8 @@ fun WindowSettingsDialog(
                 }
                 Button(onClick = {
                     saveStyle(StyleDefinition())
+                    saveFont(null)
+                    saveMonoFont(null)
                 }) {
                     Text("Revert to defaults")
                 }

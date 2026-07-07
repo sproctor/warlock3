@@ -10,6 +10,7 @@ import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.WindowStyleConfig
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.models.WindowSettings
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -47,9 +48,8 @@ class WindowSettingsRepository(
                         position = geometry?.position,
                         textColor = style.textColor,
                         backgroundColor = style.backgroundColor,
-                        fontFamily = style.fontFamily,
-                        fontSize = style.fontSize,
-                        fontWeight = style.fontWeight,
+                        font = style.font,
+                        monoFont = style.monoFont,
                         nameFilter = style.nameFilter,
                     )
                 }
@@ -120,11 +120,32 @@ class WindowSettingsRepository(
                 existing.copy(
                     textColor = style.textColor,
                     backgroundColor = style.backgroundColor,
-                    fontFamily = style.fontFamily,
-                    fontSize = style.fontSize,
-                    fontWeight = style.fontWeight,
                 )
             current.copy(windows = current.windows + (name to updated))
+        }
+    }
+
+    /** Sets the per-window normal-font override (null clears it, falling back to the character default). */
+    suspend fun setFont(
+        characterId: String,
+        name: String,
+        font: FontConfig?,
+    ) {
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            current.copy(windows = current.windows + (name to existing.copy(font = font?.takeUnless { it.isEmpty() })))
+        }
+    }
+
+    /** Sets the per-window monospace-font override (null clears it, falling back to the character mono font). */
+    suspend fun setMonoFont(
+        characterId: String,
+        name: String,
+        monoFont: FontConfig?,
+    ) {
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            current.copy(windows = current.windows + (name to existing.copy(monoFont = monoFont?.takeUnless { it.isEmpty() })))
         }
     }
 
