@@ -232,6 +232,26 @@
       "file": "images/Nsys3.png"
     }
   },
+  "SwordBtn": {
+    "width": 29,
+    "height": 29,
+    "image": { "type": "image/png", "file": "images/SwordBtn.png" }
+  },
+  "NoSwordBtn": {
+    "width": 29,
+    "height": 29,
+    "image": { "type": "image/png", "file": "images/NoSwordBtn.png" }
+  },
+  "ShieldBtn": {
+    "width": 29,
+    "height": 29,
+    "image": { "type": "image/png", "file": "images/ShieldBtn.png" }
+  },
+  "NoShieldBtn": {
+    "width": 29,
+    "height": 29,
+    "image": { "type": "image/png", "file": "images/NoShieldBtn.png" }
+  },
   "compass": {
     "children": {
       "background": { "image": { "file": "images/compassAllOff.png" } },
