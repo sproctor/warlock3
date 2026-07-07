@@ -22,6 +22,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.ContainerHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DialogDataHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DirHandler
+import warlockfe.warlock3.wrayth.protocol.elements.DropDownBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DynaStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ImageHandler
 import warlockfe.warlock3.wrayth.protocol.elements.IndicatorHandler
@@ -43,6 +44,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.ProgressBarHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PromptHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PushBoldHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PushStreamHandler
+import warlockfe.warlock3.wrayth.protocol.elements.RadioHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ResourceHandler
 import warlockfe.warlock3.wrayth.protocol.elements.RightHandler
 import warlockfe.warlock3.wrayth.protocol.elements.RoundTimeHandler
@@ -52,6 +54,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.SpellHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StreamWindowHandler
 import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
+import warlockfe.warlock3.wrayth.protocol.elements.UpDownEditBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
 
 class WraythProtocolHandler {
@@ -77,6 +80,7 @@ class WraythProtocolHandler {
             "d" to DHandler(),
             "dialogdata" to DialogDataHandler(),
             "dir" to DirHandler(),
+            "dropdownbox" to DropDownBoxHandler(),
             "dynastream" to DynaStreamHandler(),
             "image" to ImageHandler(),
             "indicator" to IndicatorHandler(),
@@ -98,6 +102,7 @@ class WraythProtocolHandler {
             "prompt" to PromptHandler(),
             "pushbold" to PushBoldHandler(),
             "pushstream" to PushStreamHandler(),
+            "radio" to RadioHandler(),
             "resource" to ResourceHandler(),
             "right" to RightHandler(),
             "roundtime" to RoundTimeHandler(),
@@ -108,6 +113,7 @@ class WraythProtocolHandler {
             "streamwindow" to StreamWindowHandler(),
             "style" to StyleHandler(),
             "updateverbs" to UpdateVerbsHandler(),
+            "updowneditbox" to UpDownEditBoxHandler(),
         )
 
     // Reused across [parseLine] calls (see the note there). Error listeners are removed so malformed

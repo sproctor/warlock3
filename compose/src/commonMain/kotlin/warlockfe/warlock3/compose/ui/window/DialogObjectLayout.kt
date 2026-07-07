@@ -169,6 +169,18 @@ fun DialogObjectLayout(
             val parentSkinPlacement = info.parentSkinId?.let { placements[it] }
             val lastPlacement = if (index > 0) placements[itemInfos[index - 1].data.id] else null
 
+            // A "pure flow" object (no anchors, no explicit top/left, no centering) simply follows the
+            // previous object along its row. When such a row would overflow a bounded panel width, wrap
+            // to the next line (matching Wrayth) rather than running off the clipped edge - e.g. the
+            // row of "skin search grip activate left" links at the bottom of the combat dialog.
+            val flowsAfterPrevious =
+                data.topAnchor == null && info.dataTop == null && data.leftAnchor == null &&
+                    info.dataLeft == null && data.align != "n" && data.align != "ne"
+            val wraps =
+                flowsAfterPrevious && constraints.hasBoundedWidth && lastPlacement != null &&
+                    lastPlacement.x > 0 &&
+                    lastPlacement.right + info.leftMargin + info.placeable.width > widthBasis
+
             val y =
                 when {
                     // Stacked under the bottom of the sibling we anchor to.
@@ -189,6 +201,11 @@ fun DialogObjectLayout(
                     // A left offset but no vertical hint: drop below the previous object.
                     info.dataLeft != null -> {
                         lastPlacement?.bottom ?: 0
+                    }
+
+                    // Wrapped to a new row: drop below the row we were flowing along.
+                    wraps -> {
+                        lastPlacement!!.bottom
                     }
 
                     // No vertical hint at all: stay on the previous object's row.
@@ -214,12 +231,15 @@ fun DialogObjectLayout(
                         }
 
                         else -> {
-                            if (info.dataLeft == null) {
+                            when {
+                                // Wrapped to a new row: start again at the panel's left edge.
+                                wraps -> info.leftMargin
+
                                 // No left offset: flow to the right of the previous object.
-                                (lastPlacement?.right ?: 0) + info.leftMargin
-                            } else {
+                                info.dataLeft == null -> (lastPlacement?.right ?: 0) + info.leftMargin
+
                                 // Explicit left offset, measured from the parent skin's left edge.
-                                (parentSkinPlacement?.x ?: 0) + info.leftMargin
+                                else -> (parentSkinPlacement?.x ?: 0) + info.leftMargin
                             }
                         }
                     }
@@ -280,9 +300,14 @@ private class ItemInfo(
     }
 }
 
+// The server sizes/positions dialogs for Wrayth's compact pixel grid. Treating those pixels as dp
+// 1:1 renders everything a bit small and cramped, so scale them up for legibility (positions, sizes
+// and margins all scale together, keeping the layout proportional).
+private const val DIALOG_PIXEL_SCALE = 1.5f
+
 /**
  * Resolves a dialog distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
- * [DataDistance.Pixels] is treated as a dp count (and so ignores [basis]).
+ * [DataDistance.Pixels] is treated as a (scaled) dp count (and so ignores [basis]).
  */
 private fun DataDistance.toPx(
     basis: Int,
@@ -290,5 +315,5 @@ private fun DataDistance.toPx(
 ): Int =
     when (this) {
         is DataDistance.Percent -> basis * value.value / 100
-        is DataDistance.Pixels -> with(density) { value.dp.roundToPx() }
+        is DataDistance.Pixels -> with(density) { (value * DIALOG_PIXEL_SCALE).dp.roundToPx() }
     }

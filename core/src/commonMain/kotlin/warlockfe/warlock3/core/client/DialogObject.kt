@@ -83,9 +83,60 @@ sealed class DialogObject {
         val echo: String?,
     ) : DialogObject()
 
-    // dropdownbox
+    // dropDownBox: a selector. Picking an option runs [cmd] with `%<id>%` replaced by the option value.
+    data class DropDownBox(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val value: String?,
+        val cmd: String?,
+        val options: List<Option>,
+    ) : DialogObject() {
+        data class Option(
+            val text: String,
+            val value: String,
+        )
+    }
 
-    // radio
+    // radio: a grouped radio button. Selecting it runs [cmd].
+    data class Radio(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val text: String?,
+        val cmd: String?,
+        val group: String?,
+        val selected: Boolean,
+    ) : DialogObject()
+
+    // upDownEditBox: a numeric spinner clamped to [min, max]. Changing it runs [cmd] with `%<id>%`.
+    data class UpDownEditBox(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val value: Int?,
+        val min: Int?,
+        val max: Int?,
+        val cmd: String?,
+    ) : DialogObject()
 
     data class Image(
         override val id: String,
