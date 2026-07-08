@@ -8,6 +8,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -63,17 +65,33 @@ fun SettingsScreen(
             val selected = page
             if (selected == null) {
                 ScrollableColumn {
-                    SettingsPage.entries.forEach { entry ->
-                        ListItem(
-                            modifier = Modifier.clickable { page = entry },
-                            headlineContent = { Text(entry.title) },
-                            trailingContent = {
-                                Icon(
-                                    painter = painterResource(Res.drawable.arrow_right),
-                                    contentDescription = null,
-                                )
-                            },
-                        )
+                    SettingsGroup.entries.forEach { group ->
+                        if (group.title.isNotEmpty()) {
+                            Text(
+                                text = group.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+                            )
+                        }
+                        SettingsPage.entries.filter { it.group == group }.forEach { entry ->
+                            ListItem(
+                                modifier = Modifier.clickable { page = entry },
+                                headlineContent = { Text(entry.title) },
+                                leadingContent = {
+                                    Icon(
+                                        painter = painterResource(entry.icon),
+                                        contentDescription = null,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        painter = painterResource(Res.drawable.arrow_right),
+                                        contentDescription = null,
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
             } else {
