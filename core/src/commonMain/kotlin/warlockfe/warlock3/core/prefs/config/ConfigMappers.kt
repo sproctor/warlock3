@@ -9,6 +9,7 @@ import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.StoredConnection
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockColor
@@ -186,6 +187,30 @@ internal fun StyleLayer.toPresetStyleConfig(): PresetStyleConfig =
         weight = weight?.takeUnless { it == 700 },
         fontFamily = fontFamily,
         fontSize = fontSize,
+    )
+
+// The character/global base text style — the color + font + italic/underline that together are the
+// former "default" preset. Font family/size/weight live in [CharacterSettingsConfig.defaultFont]; the
+// colors and flags live beside it. Editing works on the whole assembled layer, so writing back
+// preserves the font when only a color changed.
+internal fun CharacterSettingsConfig.toBaseStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = defaultTextColor.specifiedOrNull(),
+        background = defaultBackgroundColor.toBackground(),
+        fontFamily = defaultFont?.family,
+        fontSize = defaultFont?.size,
+        weight = defaultFont?.weight,
+        italic = if (defaultItalic) true else null,
+        underline = if (defaultUnderline) true else null,
+    )
+
+internal fun CharacterSettingsConfig.applyBaseStyle(layer: StyleLayer): CharacterSettingsConfig =
+    copy(
+        defaultTextColor = layer.textColor ?: WarlockColor.Unspecified,
+        defaultBackgroundColor = layer.background.toWarlockColor(),
+        defaultItalic = layer.italic == true,
+        defaultUnderline = layer.underline == true,
+        defaultFont = FontConfig(family = layer.fontFamily, size = layer.fontSize, weight = layer.weight).takeUnless { it.isEmpty() },
     )
 
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =

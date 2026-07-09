@@ -52,6 +52,12 @@ class StyleConfigRoundTripTest {
                             italic = true,
                         ),
                 ),
+            settings =
+                CharacterSettingsConfig(
+                    defaultFont = FontConfig(family = "Helvetica", size = 15f, weight = 700),
+                    defaultTextColor = WarlockColor(red = 220, green = 220, blue = 220),
+                    defaultItalic = true,
+                ),
         )
 
     @Test
@@ -133,5 +139,23 @@ class StyleConfigRoundTripTest {
         val config = StyleLayer(background = Background.None).toPresetStyleConfig()
         assertEquals(WarlockColor(0L), config.backgroundColor)
         assertEquals(Background.None, config.toStyleLayer().background)
+    }
+
+    @Test
+    fun `the base style assembles from and writes back to the settings config`() {
+        // defaultFont carries the font/weight half; the colors + italic/underline are the other half.
+        val settings =
+            CharacterSettingsConfig(
+                defaultTextColor = WarlockColor(red = 10, green = 20, blue = 30),
+                defaultFont = FontConfig(family = "Serif", size = 14f, weight = 700),
+                defaultItalic = true,
+            )
+        val layer = settings.toBaseStyleLayer()
+        assertEquals(WarlockColor(red = 10, green = 20, blue = 30), layer.textColor)
+        assertEquals("Serif", layer.fontFamily)
+        assertEquals(700, layer.weight)
+        assertEquals(true, layer.italic)
+        // Writing the assembled layer back onto a blank config reproduces the base fields (font preserved).
+        assertEquals(settings, CharacterSettingsConfig().applyBaseStyle(layer))
     }
 }
