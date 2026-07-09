@@ -55,9 +55,7 @@ import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.LocalWindowFontSaver
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.WindowFontSaver
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -122,11 +120,6 @@ fun DesktopGameView(
             LocalStyleMap provides presets,
             LocalDefaultFont provides defaultFont,
             LocalMonoFont provides monoFont,
-            LocalWindowFontSaver provides
-                WindowFontSaver(
-                    saveFont = viewModel::saveWindowFont,
-                    saveMonoFont = viewModel::saveWindowMonoFont,
-                ),
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {
@@ -233,8 +226,7 @@ fun DesktopGameView(
                         }
                     },
                     onCloseClick = viewModel::closeWindow,
-                    saveStyle = viewModel::saveWindowStyle,
-                    saveNameFilter = viewModel::saveWindowNameFilter,
+                    onOpenWindowSettings = viewModel::requestEditWindowSettings,
                     onWindowSelect = viewModel::selectWindow,
                     scrollEvents = viewModel.scrollEvents.collectAsState().value,
                     handledScrollEvent = viewModel::handledScrollEvent,

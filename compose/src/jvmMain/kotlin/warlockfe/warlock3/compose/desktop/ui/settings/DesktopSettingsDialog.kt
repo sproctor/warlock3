@@ -34,6 +34,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.ui.settings.SettingsGroup
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
@@ -48,6 +49,7 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
@@ -66,14 +68,18 @@ fun DesktopSettingsDialog(
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
+    windowSettingRepository: WindowSettingsRepository,
     closeDialog: () -> Unit,
+    initialPage: SettingsPage = SettingsPage.General,
+    initialWindowTarget: String? = null,
+    windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
     DialogWindow(
         title = "Settings",
         onCloseRequest = closeDialog,
         state = rememberDialogState(width = 900.dp, height = 650.dp),
     ) {
-        var page: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
+        var page: SettingsPage by remember { mutableStateOf(initialPage) }
 
         Box(
             modifier =
@@ -131,6 +137,9 @@ fun DesktopSettingsDialog(
                         alterationRepository = alterationRepository,
                         clientSettingRepository = clientSettingRepository,
                         accountRepository = accountRepository,
+                        windowSettingRepository = windowSettingRepository,
+                        initialWindowTarget = initialWindowTarget,
+                        windowLiveContext = windowLiveContext,
                     )
                 }
             }

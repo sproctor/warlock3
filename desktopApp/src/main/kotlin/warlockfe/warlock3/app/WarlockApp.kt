@@ -1,6 +1,7 @@
 package warlockfe.warlock3.app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +22,8 @@ import warlockfe.warlock3.compose.desktop.ui.DesktopMainScreen
 import warlockfe.warlock3.compose.desktop.ui.game.DesktopReconnectingDialog
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.export.WarlockExportFile
@@ -37,6 +40,10 @@ fun DecoratedWindowScope.WarlockApp(
     sgeSettings: SgeSettings,
 ) {
     var showSettings by remember { mutableStateOf(false) }
+    // Which page the settings dialog opens to, plus the window whose editor to focus. Set by a game
+    // window's "Window settings" action; reset to the General landing when opened from the app menu.
+    var settingsInitialPage by remember { mutableStateOf(SettingsPage.General) }
+    var settingsWindowTarget by remember { mutableStateOf<String?>(null) }
     var transferMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var wraythImportMessages by remember { mutableStateOf<List<String>?>(null) }
     var showWraythCharacterSelect by remember { mutableStateOf(false) }
@@ -77,6 +84,33 @@ fun DecoratedWindowScope.WarlockApp(
             }
         }
     val gameViewModel = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel
+    val connectedCharacterId by
+        remember(gameViewModel) { gameViewModel?.connectedCharacterId ?: MutableStateFlow(null) }
+            .collectAsState()
+    // Live window state for the Appearance -> Windows section (titles + show/hide in the running
+    // layout); null when nothing is connected, so the section falls back to id-only, repo-only edits.
+    val windowLiveContext =
+        remember(gameViewModel, connectedCharacterId) {
+            val cid = connectedCharacterId
+            if (gameViewModel != null && cid != null) {
+                WindowSettingsLiveContext(
+                    connectedCharacterId = cid,
+                    windowInfo = gameViewModel.windows,
+                    openWindow = gameViewModel::openWindow,
+                    closeWindow = gameViewModel::closeWindow,
+                )
+            } else {
+                null
+            }
+        }
+    // A game window's "Window settings" action opens the settings dialog to its editor.
+    LaunchedEffect(gameViewModel) {
+        gameViewModel?.editWindowSettingsRequests?.collect { name ->
+            settingsInitialPage = SettingsPage.Windows
+            settingsWindowTarget = name
+            showSettings = true
+        }
+    }
     val disconnectedFlow = remember(gameViewModel) { gameViewModel?.disconnected ?: MutableStateFlow(false) }
     val disconnected by disconnectedFlow.collectAsState()
     val reconnectingFlow = remember(gameViewModel) { gameViewModel?.reconnecting ?: MutableStateFlow(false) }
@@ -102,7 +136,11 @@ fun DecoratedWindowScope.WarlockApp(
         reconnect = { (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel?.reconnect() },
         goToDashboard = goToDashboard,
         openNewWindow = openNewWindow,
-        showSettingsDialog = { showSettings = true },
+        showSettingsDialog = {
+            settingsInitialPage = SettingsPage.General
+            settingsWindowTarget = null
+            showSettings = true
+        },
         disconnect = {
             val screen = gameState.screen
             if (screen is GameScreen.ConnectedGameState) {
@@ -239,6 +277,10 @@ fun DecoratedWindowScope.WarlockApp(
             alterationRepository = appContainer.alterationRepository,
             clientSettingRepository = appContainer.clientSettings,
             accountRepository = appContainer.accountRepository,
+            windowSettingRepository = appContainer.windowSettingRepository,
+            initialPage = settingsInitialPage,
+            initialWindowTarget = settingsWindowTarget,
+            windowLiveContext = windowLiveContext,
         )
     }
 }

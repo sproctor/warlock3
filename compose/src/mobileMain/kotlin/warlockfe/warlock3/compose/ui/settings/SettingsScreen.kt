@@ -39,8 +39,11 @@ fun SettingsScreen(
     currentCharacter: GameCharacter?,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    initialPage: SettingsPage? = null,
+    initialWindowTarget: String? = null,
+    windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
-    var page: SettingsPage? by remember { mutableStateOf(null) }
+    var page: SettingsPage? by remember { mutableStateOf(initialPage) }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -112,6 +115,9 @@ fun SettingsScreen(
                     clientSettingRepository = appContainer.clientSettings,
                     accountRepository = appContainer.accountRepository,
                     wraythImporter = appContainer.wraythImporter,
+                    windowSettingRepository = appContainer.windowSettingRepository,
+                    initialWindowTarget = initialWindowTarget,
+                    windowLiveContext = windowLiveContext,
                 )
             }
         }

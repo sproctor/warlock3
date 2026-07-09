@@ -17,6 +17,7 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
@@ -37,6 +38,9 @@ fun SettingsContent(
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
     wraythImporter: WraythImporter,
+    windowSettingRepository: WindowSettingsRepository,
+    initialWindowTarget: String? = null,
+    windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
     val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
@@ -84,12 +88,23 @@ fun SettingsContent(
             )
         }
 
-        SettingsPage.Appearance -> {
-            AppearanceView(
+        SettingsPage.Presets -> {
+            PresetsView(
                 presetRepository = presetRepository,
                 characterSettingsRepository = characterSettingsRepository,
                 initialCharacter = currentCharacter,
                 characters = characters,
+            )
+        }
+
+        SettingsPage.Windows -> {
+            WindowsView(
+                initialCharacter = currentCharacter,
+                characters = characters,
+                presetRepository = presetRepository,
+                windowSettingRepository = windowSettingRepository,
+                windowLiveContext = windowLiveContext,
+                initialWindowTarget = initialWindowTarget,
             )
         }
 

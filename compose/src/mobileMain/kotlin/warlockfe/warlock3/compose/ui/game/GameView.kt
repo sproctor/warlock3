@@ -59,10 +59,8 @@ import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.LocalWindowFontSaver
 import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.WindowFontSaver
 import warlockfe.warlock3.compose.util.WindowWidthSizeClass
 import warlockfe.warlock3.compose.util.gameLayout
 import warlockfe.warlock3.core.client.WarlockAction
@@ -132,11 +130,6 @@ fun GameView(
                     LocalStyleMap provides presets,
                     LocalDefaultFont provides defaultFont,
                     LocalMonoFont provides monoFont,
-                    LocalWindowFontSaver provides
-                        WindowFontSaver(
-                            saveFont = viewModel::saveWindowFont,
-                            saveMonoFont = viewModel::saveWindowMonoFont,
-                        ),
                 ) {
                     when (layout) {
                         MobileGameLayout.Phone -> {
@@ -232,8 +225,7 @@ fun GameTextWindows(
     onSizeChange: (WindowLocation, Int) -> Unit,
     onDrop: (DropResult) -> Unit,
     onCloseClick: (String) -> Unit,
-    saveStyle: (String, StyleDefinition) -> Unit,
-    saveNameFilter: (String, Boolean) -> Unit,
+    onOpenWindowSettings: (String) -> Unit,
     onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -260,8 +252,7 @@ fun GameTextWindows(
                 onHeightChange = onHeightChange,
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
-                saveStyle = saveStyle,
-                saveNameFilter = saveNameFilter,
+                onOpenWindowSettings = onOpenWindowSettings,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
@@ -286,8 +277,7 @@ fun GameTextWindows(
                     onHeightChange = onHeightChange,
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
-                    saveStyle = saveStyle,
-                    saveNameFilter = saveNameFilter,
+                    onOpenWindowSettings = onOpenWindowSettings,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -307,12 +297,7 @@ fun GameTextWindows(
                         menuData = menuData,
                         onActionClick = onActionClick,
                         onCloseClick = {},
-                        saveStyle = {
-                            saveStyle(mainWindowUiState.name, it)
-                        },
-                        saveNameFilter = {
-                            saveNameFilter(mainWindowUiState.name, it)
-                        },
+                        onOpenWindowSettings = { onOpenWindowSettings(mainWindowUiState.name) },
                         onSelect = { onWindowSelect(mainWindowUiState.name) },
                         scrollEvents = scrollEvents,
                         handledScrollEvent = handledScrollEvent,
@@ -334,8 +319,7 @@ fun GameTextWindows(
                     onHeightChange = onHeightChange,
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
-                    saveStyle = saveStyle,
-                    saveNameFilter = saveNameFilter,
+                    onOpenWindowSettings = onOpenWindowSettings,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -360,8 +344,7 @@ fun GameTextWindows(
                 onHeightChange = onHeightChange,
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
-                saveStyle = saveStyle,
-                saveNameFilter = saveNameFilter,
+                onOpenWindowSettings = onOpenWindowSettings,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
