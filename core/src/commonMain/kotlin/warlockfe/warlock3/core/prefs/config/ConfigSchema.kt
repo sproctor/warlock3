@@ -167,12 +167,20 @@ data class WindowStyleConfig(
 data class CharacterSettingsConfig(
     val typeahead: Int? = null,
     val scriptCommandPrefix: String? = null,
-    // The character-wide default fonts: [defaultFont] styles all normal text, [monoFont] styles text
-    // flagged monospace (e.g. ASCII maps). Either window may override these per-window.
+    // The character-wide base text style — what un-styled game text renders as (the former "default"
+    // preset). [defaultFont] is the font/weight half (bold == weight 700); the colors and italic/
+    // underline below are the other half. [monoFont] styles monospace-flagged text (e.g. ASCII maps).
+    // Any window may override these per-window; unspecified/null/false = inherit (skin, then platform).
     @TomlInline
     val defaultFont: FontConfig? = null,
     @TomlInline
     val monoFont: FontConfig? = null,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val defaultTextColor: WarlockColor = WarlockColor.Unspecified,
+    @Serializable(WarlockColorAsHexSerializer::class)
+    val defaultBackgroundColor: WarlockColor = WarlockColor.Unspecified,
+    val defaultItalic: Boolean = false,
+    val defaultUnderline: Boolean = false,
 )
 
 // Per-section file wrappers. Each per-character section is stored in its own file under
