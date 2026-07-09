@@ -27,11 +27,15 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -255,6 +259,21 @@ class GameViewModel(
         }
 
     val windows = client.windowInfo
+
+    // The connected character's id, used by the settings dialog to decide whether its live window
+    // info (titles, hidden-window list) applies to the character being edited.
+    val connectedCharacterId: StateFlow<String?> get() = client.characterId
+
+    // One-shot request to open the settings dialog on Appearance with a given window's editor focused,
+    // fired by a window's header/context-menu "Window settings" action. A SharedFlow (not a StateFlow)
+    // because it's a navigation event that must not linger and re-fire when settings is next opened.
+    private val _editWindowSettingsRequests =
+        MutableSharedFlow<String>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val editWindowSettingsRequests: SharedFlow<String> = _editWindowSettingsRequests.asSharedFlow()
+
+    fun requestEditWindowSettings(name: String) {
+        _editWindowSettingsRequests.tryEmit(name)
+    }
 
     val scriptCommandPrefix =
         observePerCharacter { characterId ->

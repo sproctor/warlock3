@@ -40,8 +40,6 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.defaultScrollbarStyle
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
-import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
-import warlockfe.warlock3.compose.util.LocalWindowFontSaver
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -60,8 +58,7 @@ fun WindowView(
     menuData: WarlockMenuData?,
     onActionClick: (WarlockAction) -> Int?,
     onCloseClick: () -> Unit,
-    saveStyle: (StyleDefinition) -> Unit,
-    saveNameFilter: (Boolean) -> Unit,
+    onOpenWindowSettings: () -> Unit,
     onSelect: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -69,7 +66,6 @@ fun WindowView(
     headerModifier: Modifier = Modifier,
     clearStream: () -> Unit,
 ) {
-    val window by uiState.windowInfo
     WindowViewScaffold(
         uiState = uiState,
         location = location,
@@ -80,6 +76,7 @@ fun WindowView(
         onActionClick = onActionClick,
         onCloseClick = onCloseClick,
         onSelect = onSelect,
+        onOpenWindowSettings = onOpenWindowSettings,
         clearStream = clearStream,
         scrollEvents = scrollEvents,
         handledScrollEvent = handledScrollEvent,
@@ -161,22 +158,6 @@ fun WindowView(
         },
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
-        },
-        settingsDialog = { onCloseRequest ->
-            val fontSaver = LocalWindowFontSaver.current
-            WindowSettingsDialog(
-                onCloseRequest = onCloseRequest,
-                style = uiState.style,
-                defaultStyle = defaultStyle,
-                saveStyle = saveStyle,
-                font = uiState.font,
-                monoFont = uiState.monoFont,
-                saveFont = { fontSaver.saveFont(uiState.name, it) },
-                saveMonoFont = { fontSaver.saveMonoFont(uiState.name, it) },
-                nameFilterOption = window?.nameFilterOption ?: false,
-                nameFilter = uiState.nameFilter,
-                saveNameFilter = saveNameFilter,
-            )
         },
         dialogContent = { data, style ->
             ScrollableColumn(

@@ -16,15 +16,3 @@ val LocalDefaultFont = staticCompositionLocalOf<FontConfig?> { null }
  * previews and dialog windows that render outside a stream.
  */
 val LocalMonoFont = staticCompositionLocalOf<FontConfig?> { null }
-
-/**
- * Saves a window's per-window font overrides (keyed by window name), so the window settings dialog can
- * persist them without threading callbacks through the whole window hierarchy. Provided by the game
- * views; a no-op by default.
- */
-class WindowFontSaver(
-    val saveFont: (windowName: String, font: FontConfig?) -> Unit,
-    val saveMonoFont: (windowName: String, font: FontConfig?) -> Unit,
-)
-
-val LocalWindowFontSaver = staticCompositionLocalOf { WindowFontSaver({ _, _ -> }, { _, _ -> }) }

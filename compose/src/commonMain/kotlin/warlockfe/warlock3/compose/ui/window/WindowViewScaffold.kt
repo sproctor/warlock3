@@ -104,6 +104,7 @@ internal fun WindowViewScaffold(
     onActionClick: (WarlockAction) -> Int?,
     onCloseClick: () -> Unit,
     onSelect: () -> Unit,
+    onOpenWindowSettings: () -> Unit,
     clearStream: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -116,12 +117,10 @@ internal fun WindowViewScaffold(
         content: @Composable () -> Unit,
     ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
-    settingsDialog: @Composable (onCloseRequest: () -> Unit) -> Unit,
     dialogContent: @Composable (data: DialogWindowData, style: StyleDefinition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val window by uiState.windowInfo
-    var showWindowSettingsDialog by remember { mutableStateOf(false) }
     val scrollState = rememberLazyListState()
 
     val title = (window?.title ?: uiState.name) + (window?.subtitle ?: "")
@@ -155,7 +154,7 @@ internal fun WindowViewScaffold(
             },
     ) {
         Column {
-            header(title) { showWindowSettingsDialog = true }
+            header(title, onOpenWindowSettings)
 
             when (val data = uiState.data) {
                 is StreamWindowData -> {
@@ -163,7 +162,7 @@ internal fun WindowViewScaffold(
                         modifier =
                             Modifier.addTextContextMenuOptions(
                                 windowLocation = location,
-                                showSettingsDialog = { showWindowSettingsDialog = true },
+                                showSettingsDialog = onOpenWindowSettings,
                                 onClearClick = clearStream,
                                 onCloseClick = onCloseClick,
                             ),
@@ -191,10 +190,6 @@ internal fun WindowViewScaffold(
                 }
             }
         }
-    }
-
-    if (showWindowSettingsDialog) {
-        settingsDialog { showWindowSettingsDialog = false }
     }
 
     val currentHandledScrollEvent by rememberUpdatedState(handledScrollEvent)

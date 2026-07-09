@@ -11,6 +11,7 @@ import warlockfe.warlock3.compose.generated.resources.login
 import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
+import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 import warlockfe.warlock3.compose.generated.resources.star_shine
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
 
@@ -31,7 +32,8 @@ enum class SettingsPage(
     val icon: DrawableResource,
 ) {
     General("General", SettingsGroup.General, Res.drawable.settings_filled),
-    Appearance("Appearance", SettingsGroup.Appearance, Res.drawable.palette),
+    Presets("Presets", SettingsGroup.Appearance, Res.drawable.palette),
+    Windows("Windows", SettingsGroup.Appearance, Res.drawable.space_dashboard_filled),
     Highlights("Highlights", SettingsGroup.Appearance, Res.drawable.star_shine),
     Names("Names", SettingsGroup.Appearance, Res.drawable.visibility_filled),
     Alterations("Alterations", SettingsGroup.Appearance, Res.drawable.edit),

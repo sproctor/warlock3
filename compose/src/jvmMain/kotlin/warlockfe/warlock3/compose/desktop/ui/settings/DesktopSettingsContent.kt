@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
@@ -18,6 +19,7 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 
 @Composable
 fun DesktopSettingsContent(
@@ -36,6 +38,9 @@ fun DesktopSettingsContent(
     alterationRepository: AlterationRepository,
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
+    windowSettingRepository: WindowSettingsRepository,
+    initialWindowTarget: String? = null,
+    windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
     val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
@@ -82,12 +87,23 @@ fun DesktopSettingsContent(
             )
         }
 
-        SettingsPage.Appearance -> {
-            DesktopAppearanceView(
+        SettingsPage.Presets -> {
+            DesktopPresetsView(
                 initialCharacter = currentCharacter,
                 characters = characters,
                 presetRepository = presetRepository,
                 characterSettingsRepository = characterSettingsRepository,
+            )
+        }
+
+        SettingsPage.Windows -> {
+            DesktopWindowsView(
+                initialCharacter = currentCharacter,
+                characters = characters,
+                presetRepository = presetRepository,
+                windowSettingRepository = windowSettingRepository,
+                windowLiveContext = windowLiveContext,
+                initialWindowTarget = initialWindowTarget,
             )
         }
 
