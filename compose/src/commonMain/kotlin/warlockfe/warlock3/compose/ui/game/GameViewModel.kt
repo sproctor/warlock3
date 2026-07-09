@@ -332,6 +332,10 @@ class GameViewModel(
 
     val presets = windowRegistry.presets
 
+    // The resolved base ("default text") style: colors + font + weight + italic/underline, cascaded
+    // skin -> global -> character. Feeds the window base style + font and the input/status chrome.
+    val baseStyle = windowRegistry.baseStyle
+
     /** The character's default (normal) font; used as the base text style for windows without an override. */
     val defaultFont: StateFlow<FontConfig?> =
         observePerCharacter { characterSettingsRepository.observeDefaultFont(it) }

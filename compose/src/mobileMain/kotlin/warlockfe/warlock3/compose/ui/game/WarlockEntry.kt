@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsDialog
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
@@ -81,7 +82,7 @@ fun WarlockEntry(
             getCurrentTime = viewModel::getCurrentTime,
         )
     val presets = LocalStyleMap.current
-    val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
+    val defaultStyle = LocalBaseStyle.current
     val style = presets["entry"] ?: StyleDefinition()
     val historySearch by viewModel.historySearch.collectAsState()
     WarlockEntryContent(

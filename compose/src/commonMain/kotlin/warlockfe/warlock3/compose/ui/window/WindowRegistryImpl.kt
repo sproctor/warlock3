@@ -18,6 +18,7 @@ import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.HighlightIndex
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -26,8 +27,11 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
+import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.TextStream
@@ -202,13 +206,37 @@ class WindowRegistryImpl(
             )
 
     // Skin presets are the defaults, overridden by the global (all-characters) presets, overridden by
-    // the character's own presets (skin -> global -> character).
+    // the character's own presets (skin -> global -> character). "default" is dropped: the base style is
+    // not a preset (see [baseStyle]).
     override val presets: StateFlow<Map<String, StyleDefinition>> =
         combine(
             skinPresets,
             characterId.flatMapLatest { presetRepository.observeForCharacter(it) },
-        ) { skinDefaults, savedPresets -> skinDefaults + savedPresets }
+        ) { skinDefaults, savedPresets -> (skinDefaults + savedPresets) - "default" }
             .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
+    // The resolved base ("default text") style: character base over global base over the skin's default,
+    // where each scope's base is the color/font/italic/underline stored in its settings. A legacy
+    // "default" preset (from before the base moved out of the preset list) is layered in just under the
+    // new base config so older configs keep their default color until the destructive migration (P6).
+    override val baseStyle: StateFlow<ResolvedStyle> =
+        combine(
+            characterId.flatMapLatest { characterSettingsRepository.observeBaseStyle(it) },
+            characterId.flatMapLatest { presetRepository.observePresetsForCharacter(it) }.map { it["default"] },
+            characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID),
+            presetRepository.observeGlobal().map { it["default"] },
+            skinPresets,
+        ) { charBase, charLegacy, globalBase, globalLegacy, skin ->
+            resolve(
+                listOfNotNull(
+                    charBase,
+                    charLegacy?.toLayer(),
+                    globalBase,
+                    globalLegacy?.toLayer(),
+                    skin["default"]?.toLayer(),
+                ),
+            )
+        }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = ResolvedStyle())
 
     // The effective monospace font for a given window: its per-window override if set, otherwise the
     // character's default monospace font. Rebuilt per character; a change re-renders that window's buffer.

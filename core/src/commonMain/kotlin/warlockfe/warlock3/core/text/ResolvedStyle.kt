@@ -50,3 +50,9 @@ fun ResolvedStyle.toStyleDefinition(): StyleDefinition =
         underline = underline,
         monospace = monospace,
     )
+
+/** The font half of a resolved style (family/size/weight), or null when it sets none. */
+fun ResolvedStyle.toFontConfig(): FontConfig? =
+    FontConfig(family = fontFamily, size = fontSize, weight = weight).takeUnless {
+        it.isEmpty()
+    }

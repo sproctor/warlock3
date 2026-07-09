@@ -1,11 +1,17 @@
 package warlockfe.warlock3.core.window
 
 import kotlinx.coroutines.flow.StateFlow
+import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 
 interface WindowRegistry {
+    // The named style presets (no "default" — the base style is separate, see [baseStyle]).
     val presets: StateFlow<Map<String, StyleDefinition>>
+
+    // The resolved base ("default text") style — colors + font + weight + italic/underline, cascaded
+    // skin -> global -> character. What un-styled game text and the input/status chrome render as.
+    val baseStyle: StateFlow<ResolvedStyle>
 
     fun getOrCreateStream(name: String): TextStream
 
