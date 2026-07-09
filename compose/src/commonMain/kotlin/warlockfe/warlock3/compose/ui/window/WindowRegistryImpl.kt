@@ -201,12 +201,13 @@ class WindowRegistryImpl(
                 initialValue = emptyList(),
             )
 
-    // Skin presets are the defaults; the character's saved presets (from the DB) override them.
+    // Skin presets are the defaults, overridden by the global (all-characters) presets, overridden by
+    // the character's own presets (skin -> global -> character).
     override val presets: StateFlow<Map<String, StyleDefinition>> =
         combine(
             skinPresets,
-            characterId.flatMapLatest { presetRepository.observePresetsForCharacter(it) },
-        ) { skinDefaults, dbPresets -> skinDefaults + dbPresets }
+            characterId.flatMapLatest { presetRepository.observeForCharacter(it) },
+        ) { skinDefaults, savedPresets -> skinDefaults + savedPresets }
             .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     // The effective monospace font for a given window: its per-window override if set, otherwise the
