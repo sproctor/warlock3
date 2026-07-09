@@ -5,12 +5,14 @@ import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Pins the current TOML serialization of the style-bearing config sections (presets, windows, names)
- * so the appearance-model schema additions (weight/font/tri-state background) can prove they stay
- * lossless and backward compatible. Mirrors [HighlightStyleInlineTest].
+ * Pins the TOML serialization of the style-bearing config sections (presets, windows, names) as the
+ * appearance-model schema grows (per-item font + explicit weight). Verifies the additions stay lossless
+ * and backward compatible, and that a plain bold preset does not gain the new fields on disk. Mirrors
+ * [HighlightStyleInlineTest].
  */
 class StyleConfigRoundTripTest {
     private val toml =
@@ -35,6 +37,8 @@ class StyleConfigRoundTripTest {
                 mapOf(
                     "speech" to PresetStyleConfig(textColor = WarlockColor(red = 0, green = 200, blue = 255)),
                     "bold" to PresetStyleConfig(bold = true),
+                    // Exercise the new per-item font + explicit-weight fields.
+                    "heavy" to PresetStyleConfig(weight = 500, fontFamily = "Serif", fontSize = 14f),
                 ),
             windows =
                 mapOf(
@@ -43,20 +47,45 @@ class StyleConfigRoundTripTest {
                             textColor = WarlockColor(red = 200, green = 200, blue = 200),
                             font = FontConfig(family = "Menlo", size = 13f, weight = 400),
                             nameFilter = true,
+                            italic = true,
                         ),
                 ),
         )
 
     @Test
-    fun `style config round-trips`() {
+    fun `style config round-trips including the new font and weight fields`() {
         val text = toml.encodeToString(CharacterConfig.serializer(), sample)
         assertEquals(sample, toml.decodeFromString(CharacterConfig.serializer(), text))
     }
 
     @Test
-    fun `a bold preset serializes with the bold flag`() {
-        // Existing files express bold as `bold = true`. The weight-not-bold migration must keep writing
-        // this form (not a `weight = 700`) for the common case so on-disk files stay byte-stable.
+    fun `files written before the new fields still parse`() {
+        // A presets/names block from before weight/fontFamily/fontSize existed must still decode, with
+        // the new fields defaulting to inherit (null).
+        val oldForm =
+            """
+            character = "global"
+
+            [presets.bold]
+            textColor = "default"
+            backgroundColor = "default"
+            bold = true
+            italic = false
+            underline = false
+            monospace = false
+            """.trimIndent()
+        val decoded = toml.decodeFromString(CharacterConfig.serializer(), oldForm)
+        val preset = decoded.presets.getValue("bold")
+        assertEquals(true, preset.bold)
+        assertEquals(null, preset.weight)
+        assertEquals(null, preset.fontFamily)
+        assertEquals(null, preset.fontSize)
+    }
+
+    @Test
+    fun `a bold-only preset does not emit the new font fields`() {
+        // The nullable additions are dropped when unset (explicitNulls = false), so an existing bold
+        // preset stays byte-stable rather than gaining weight/font lines.
         val text =
             toml.encodeToString(
                 CharacterConfig.serializer(),
@@ -65,6 +94,15 @@ class StyleConfigRoundTripTest {
                         mapOf("bold" to PresetStyleConfig(bold = true)),
                 ),
             )
-        assertTrue("bold = true" in text, "expected the bold preset to serialize as `bold = true`")
+        assertTrue("bold = true" in text)
+        assertFalse("weight" in text, "a bold-only preset must not write a weight field")
+        assertFalse("fontFamily" in text, "a bold-only preset must not write a fontFamily field")
+    }
+
+    @Test
+    fun `an explicit heavy weight renders bold during the transition`() {
+        assertEquals(true, PresetStyleConfig(weight = 700).toStyleDefinition().bold)
+        assertEquals(true, HighlightStyleConfig(weight = 600).toStyleDefinition().bold)
+        assertEquals(false, PresetStyleConfig(weight = 400).toStyleDefinition().bold)
     }
 }

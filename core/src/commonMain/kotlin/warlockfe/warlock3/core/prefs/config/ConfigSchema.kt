@@ -123,6 +123,12 @@ data class PresetStyleConfig(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val monospace: Boolean = false,
+    // Per-item font override and explicit text weight (bold is weight 700; a non-700 weight is written
+    // here instead of `bold`). Null = inherit. Added for the appearance-model rewrite; older files omit
+    // them and default to inherit.
+    val weight: Int? = null,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
 )
 
 @Serializable
@@ -151,6 +157,10 @@ data class WindowStyleConfig(
     @TomlInline
     val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
+    // Base text-style flags for the window, edited via the shared appearance style editor.
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
 )
 
 @Serializable
@@ -248,6 +258,10 @@ data class HighlightStyleConfig(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val monospace: Boolean = false,
+    // See PresetStyleConfig: per-item font override + explicit text weight. Null = inherit.
+    val weight: Int? = null,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
 )
 
 @Serializable
@@ -263,6 +277,10 @@ data class NameConfig(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val monospace: Boolean = false,
+    // See PresetStyleConfig: per-item font override + explicit text weight. Null = inherit.
+    val weight: Int? = null,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
 )
 
 /**

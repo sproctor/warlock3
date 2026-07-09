@@ -59,7 +59,9 @@ internal fun HighlightStyleConfig.toStyleDefinition(): StyleDefinition =
         textColor = textColor,
         backgroundColor = backgroundColor,
         entireLine = entireLine,
-        bold = bold,
+        // Until the renderer consumes the new model, fold an explicit weight back into the bold flag so
+        // a hand-set `weight` still renders bold-ish. Per-item font family/size are dropped here.
+        bold = bold || (weight?.let { it >= 600 } == true),
         italic = italic,
         underline = underline,
         monospace = monospace,
@@ -132,7 +134,9 @@ internal fun PresetStyleConfig.toStyleDefinition(): StyleDefinition =
         textColor = textColor,
         backgroundColor = backgroundColor,
         entireLine = entireLine,
-        bold = bold,
+        // Until the renderer consumes the new model, fold an explicit weight back into the bold flag so
+        // a hand-set `weight` still renders bold-ish. Per-item font family/size are dropped here.
+        bold = bold || (weight?.let { it >= 600 } == true),
         italic = italic,
         underline = underline,
         monospace = monospace,
