@@ -32,7 +32,7 @@ data class StyleLayer(
 fun StyleDefinition.toLayer(): StyleLayer =
     StyleLayer(
         textColor = textColor.specifiedOrNull(),
-        background = if (backgroundColor.isSpecified()) Background.Fill(backgroundColor) else Background.Unset,
+        background = backgroundColor.toBackground(),
         weight = if (bold) 700 else null,
         italic = if (italic) true else null,
         underline = if (underline) true else null,

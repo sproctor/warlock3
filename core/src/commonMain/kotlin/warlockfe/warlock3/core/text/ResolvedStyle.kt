@@ -43,7 +43,7 @@ fun resolve(layers: List<StyleLayer>): ResolvedStyle =
 fun ResolvedStyle.toStyleDefinition(): StyleDefinition =
     StyleDefinition(
         textColor = textColor,
-        backgroundColor = (background as? Background.Fill)?.color ?: WarlockColor.Unspecified,
+        backgroundColor = background.toWarlockColor(),
         entireLine = entireLine,
         bold = (weight ?: 0) >= 600,
         italic = italic,

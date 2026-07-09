@@ -10,6 +10,11 @@ import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.specifiedOrNull
+import warlockfe.warlock3.core.text.toBackground
+import warlockfe.warlock3.core.text.toWarlockColor
 import kotlin.uuid.Uuid
 
 private fun String?.toUuidOrRandom(): Uuid = this?.let { runCatching { Uuid.parse(it) }.getOrNull() } ?: Uuid.random()
@@ -151,6 +156,36 @@ internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
         italic = italic,
         underline = underline,
         monospace = monospace,
+    )
+
+// Sparse-layer mappers used by the appearance editor and the resolve()-based renderer. The forward
+// mapper reads the effective weight (`weight ?: bold->700`); the reverse canonicalizes weight 700 back
+// to `bold` (leaving `weight` unset) so a bold preset's TOML stays byte-stable.
+internal fun PresetStyleConfig.toStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = textColor.specifiedOrNull(),
+        background = backgroundColor.toBackground(),
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        weight = weight ?: if (bold) 700 else null,
+        italic = if (italic) true else null,
+        underline = if (underline) true else null,
+        entireLine = if (entireLine) true else null,
+        monospace = if (monospace) true else null,
+    )
+
+internal fun StyleLayer.toPresetStyleConfig(): PresetStyleConfig =
+    PresetStyleConfig(
+        textColor = textColor ?: WarlockColor.Unspecified,
+        backgroundColor = background.toWarlockColor(),
+        entireLine = entireLine == true,
+        bold = weight == 700,
+        italic = italic == true,
+        underline = underline == true,
+        monospace = monospace == true,
+        weight = weight?.takeUnless { it == 700 },
+        fontFamily = fontFamily,
+        fontSize = fontSize,
     )
 
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =
