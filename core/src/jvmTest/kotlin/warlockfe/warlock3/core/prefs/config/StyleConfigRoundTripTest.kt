@@ -1,7 +1,9 @@
 package warlockfe.warlock3.core.prefs.config
 
 import dev.eav.tomlkt.Toml
+import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.FontConfig
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -104,5 +106,32 @@ class StyleConfigRoundTripTest {
         assertEquals(true, PresetStyleConfig(weight = 700).toStyleDefinition().bold)
         assertEquals(true, HighlightStyleConfig(weight = 600).toStyleDefinition().bold)
         assertEquals(false, PresetStyleConfig(weight = 400).toStyleDefinition().bold)
+    }
+
+    @Test
+    fun `preset config round-trips through StyleLayer with weight and font`() {
+        val config =
+            PresetStyleConfig(
+                textColor = WarlockColor(red = 10, green = 20, blue = 30),
+                weight = 500,
+                fontFamily = "Serif",
+                fontSize = 14f,
+                italic = true,
+            )
+        assertEquals(config, config.toStyleLayer().toPresetStyleConfig())
+    }
+
+    @Test
+    fun `a bold layer canonicalizes to the bold flag with no weight`() {
+        val config = StyleLayer(weight = 700).toPresetStyleConfig()
+        assertEquals(true, config.bold)
+        assertEquals(null, config.weight)
+    }
+
+    @Test
+    fun `a None background round-trips through the transparent sentinel`() {
+        val config = StyleLayer(background = Background.None).toPresetStyleConfig()
+        assertEquals(WarlockColor(0L), config.backgroundColor)
+        assertEquals(Background.None, config.toStyleLayer().background)
     }
 }

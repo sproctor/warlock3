@@ -80,4 +80,33 @@ class StyleResolveTest {
         assertEquals(16f, resolved.fontSize)
         assertEquals(400, resolved.weight)
     }
+
+    @Test
+    fun resolveSourcedTagsEachAttributeWithItsLayer() {
+        val stack =
+            listOf(
+                StyleScope.CHARACTER to StyleLayer(textColor = red),
+                StyleScope.GLOBAL to StyleLayer(weight = 700),
+                StyleScope.SKIN to StyleLayer(italic = true),
+            )
+        val sourced = resolveSourced(stack)
+        assertEquals(Sourced(red, StyleScope.CHARACTER), sourced.textColor)
+        assertEquals(Sourced(700, StyleScope.GLOBAL), sourced.weight)
+        assertEquals(Sourced(true, StyleScope.SKIN), sourced.italic)
+        // Nothing set underline -> no source, default value.
+        assertEquals(Sourced(false, null), sourced.underline)
+        assertEquals(Sourced(null, null), sourced.fontFamily)
+    }
+
+    @Test
+    fun resolveSourcedTracksTheTriStateBackgroundSource() {
+        val sourced =
+            resolveSourced(
+                listOf(
+                    StyleScope.CHARACTER to StyleLayer(background = Background.None),
+                    StyleScope.SKIN to StyleLayer(background = Background.Fill(red)),
+                ),
+            )
+        assertEquals(Sourced<Background>(Background.None, StyleScope.CHARACTER), sourced.background)
+    }
 }
