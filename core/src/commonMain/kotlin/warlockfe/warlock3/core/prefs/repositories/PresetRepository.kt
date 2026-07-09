@@ -7,7 +7,9 @@ import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.toPresetStyleConfig
 import warlockfe.warlock3.core.prefs.config.toStyleDefinition
+import warlockfe.warlock3.core.prefs.config.toStyleLayer
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 
 class PresetRepository(
     private val store: CharacterConfigStore,
@@ -31,6 +33,17 @@ class PresetRepository(
         } else {
             combine(store.observe(characterId), store.observe(GLOBAL_CHARACTER_ID)) { own, global ->
                 (global.presets + own.presets).mapValues { (_, style) -> style.toStyleDefinition() }
+            }
+        }
+
+    // Like [observeForCharacter] but as sparse [StyleLayer]s, so per-item fonts and the tri-state
+    // background survive to the renderer. Used by the render pipeline (and the new appearance editor).
+    fun observeLayersForCharacter(characterId: String): Flow<Map<String, StyleLayer>> =
+        if (characterId == GLOBAL_CHARACTER_ID) {
+            store.observe(characterId).map { config -> config.presets.mapValues { (_, style) -> style.toStyleLayer() } }
+        } else {
+            combine(store.observe(characterId), store.observe(GLOBAL_CHARACTER_ID)) { own, global ->
+                (global.presets + own.presets).mapValues { (_, style) -> style.toStyleLayer() }
             }
         }
 

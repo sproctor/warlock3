@@ -30,7 +30,9 @@ import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
+import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.SoundPlayer
@@ -123,7 +125,7 @@ private suspend fun runBenchmark(config: BenchConfig) {
     // One shared highlight index, sized to the real-world profile, the way the app shares one index
     // across a character's windows. Built once here rather than per line on the render path.
     val highlightIndex = MutableStateFlow(HighlightIndex(buildHighlights(config.highlights)))
-    val presets = MutableStateFlow(emptyMap<String, StyleDefinition>())
+    val presets = MutableStateFlow(emptyMap<String, StyleLayer>())
 
     // A minimal-but-real repository stack for WraythClient. Backed by a throwaway temp config dir and
     // an in-memory settings DAO; logging is forced off (LogType.NONE) so the hot path never touches
@@ -219,7 +221,7 @@ private suspend fun runConnection(
     index: Int,
     port: Int,
     highlightIndex: StateFlow<HighlightIndex>,
-    presets: StateFlow<Map<String, StyleDefinition>>,
+    presets: StateFlow<Map<String, StyleLayer>>,
     characterRepository: CharacterRepository,
     loggingRepository: LoggingRepository,
     scripts: Int,
@@ -314,10 +316,11 @@ private class BenchWindowRegistry(
     private val scope: CoroutineScope,
     private val workQueue: StreamWorkQueue,
     private val highlights: StateFlow<HighlightIndex>,
-    override val presets: StateFlow<Map<String, StyleDefinition>>,
+    override val presets: StateFlow<Map<String, StyleLayer>>,
     private val uiDispatcher: CoroutineDispatcher,
     private val uiCostMicros: Long,
 ) : WindowRegistry {
+    override val baseStyle: StateFlow<ResolvedStyle> = MutableStateFlow(ResolvedStyle())
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())
     private val monoFont = MutableStateFlow<warlockfe.warlock3.core.text.FontConfig?>(null)

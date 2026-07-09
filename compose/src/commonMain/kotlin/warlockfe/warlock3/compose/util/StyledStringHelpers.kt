@@ -24,10 +24,11 @@ import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.toLayer
+import warlockfe.warlock3.core.text.toStyleDefinition
 
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig? = null,
 ): AnnotatedString =
@@ -67,12 +68,13 @@ fun ResolvedStyle.toSpanStyle(monoFont: FontConfig?): SpanStyle =
 /** Bridges the legacy dense style onto the resolved-style span mapping (color-only, no per-item font). */
 fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle = resolve(listOf(toLayer())).toSpanStyle(monoFont)
 
-fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition = (styleMap[name] ?: StyleDefinition())
+/** The sparse [StyleLayer] for a named style, or an empty layer when the map has no such style. */
+fun WarlockStyle.toStyleLayer(styleMap: Map<String, StyleLayer>): StyleLayer = styleMap[name] ?: StyleLayer()
 
 private fun AnnotatedString.Builder.appendStyledString(
     styledString: StyledString,
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig?,
 ) {
@@ -84,7 +86,7 @@ private fun AnnotatedString.Builder.appendStyledString(
 private fun AnnotatedString.Builder.appendStyledStringLeaf(
     leaf: StyledStringLeaf,
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig?,
 ) {
@@ -92,7 +94,7 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
     // the leaf-level monospace flag. An empty stack means the leaf has no style and gets no span, exactly
     // as before.
     val layers =
-        leaf.styles.map { styleMap[it.name]?.toLayer() ?: StyleLayer() } +
+        leaf.styles.map { styleMap[it.name] ?: StyleLayer() } +
             if (leaf.monospace) listOf(StyleLayer(monospace = true)) else emptyList()
     val stylePushed = layers.isNotEmpty()
     if (stylePushed) {
@@ -138,14 +140,20 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
 
 fun StyledString.getEntireLineStyles(
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
 ): List<StyleDefinition> = substrings.flatMap { substring -> substring.getEntireLineStyles(variables, styleMap) }
 
 fun StyledStringLeaf.getEntireLineStyles(
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
 ): List<StyleDefinition> {
-    val entireLineStyles = styles.mapNotNull { styleMap[it.name] }.filter { it.entireLine }
+    // Entire-line styling still flows through the dense [StyleDefinition] path shared with highlights, so
+    // project each matching layer down (per-item fonts, which entire-line backgrounds don't use, are lost).
+    val entireLineStyles =
+        styles
+            .mapNotNull { styleMap[it.name] }
+            .filter { it.entireLine == true }
+            .map { resolve(listOf(it)).toStyleDefinition() }
     return when (this) {
         is StyledStringSubstring -> {
             entireLineStyles

@@ -29,6 +29,7 @@ import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.toLayer
@@ -208,11 +209,11 @@ class WindowRegistryImpl(
     // Skin presets are the defaults, overridden by the global (all-characters) presets, overridden by
     // the character's own presets (skin -> global -> character). "default" is dropped: the base style is
     // not a preset (see [baseStyle]).
-    override val presets: StateFlow<Map<String, StyleDefinition>> =
+    override val presets: StateFlow<Map<String, StyleLayer>> =
         combine(
             skinPresets,
-            characterId.flatMapLatest { presetRepository.observeForCharacter(it) },
-        ) { skinDefaults, savedPresets -> (skinDefaults + savedPresets) - "default" }
+            characterId.flatMapLatest { presetRepository.observeLayersForCharacter(it) },
+        ) { skinDefaults, savedPresets -> (skinDefaults.mapValues { it.value.toLayer() } + savedPresets) - "default" }
             .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     // The resolved base ("default text") style: character base over global base over the skin's default,
