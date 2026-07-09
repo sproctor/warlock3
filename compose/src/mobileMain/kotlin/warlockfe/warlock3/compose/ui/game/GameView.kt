@@ -56,6 +56,7 @@ import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
@@ -67,6 +68,8 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.toFontConfig
+import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 
 /**
@@ -117,7 +120,7 @@ fun GameView(
             Column(Modifier.fillMaxSize()) {
                 val progressBarSettings by viewModel.progressBarSettings.collectAsState()
                 val presets by viewModel.presets.collectAsState(emptyMap())
-                val defaultFont by viewModel.defaultFont.collectAsState()
+                val baseStyle by viewModel.baseStyle.collectAsState()
                 val monoFont by viewModel.monoFont.collectAsState()
                 CompositionLocalProvider(
                     LocalProgressBarSettings provides
@@ -128,7 +131,8 @@ fun GameView(
                         ),
                     LocalWindowFindController provides viewModel.windowFindController,
                     LocalStyleMap provides presets,
-                    LocalDefaultFont provides defaultFont,
+                    LocalBaseStyle provides baseStyle.toStyleDefinition(),
+                    LocalDefaultFont provides baseStyle.toFontConfig(),
                     LocalMonoFont provides monoFont,
                 ) {
                     when (layout) {
@@ -372,8 +376,7 @@ fun GameBottomBar(
     onReconnect: (() -> Unit)? = null,
     onDashboard: (() -> Unit)? = null,
 ) {
-    val presets = LocalStyleMap.current
-    val style = presets["default"] ?: SAFE_DEFAULT_STYLE
+    val style = LocalBaseStyle.current
     Row(
         modifier =
             modifier

@@ -28,8 +28,7 @@ import warlockfe.warlock3.compose.desktop.ui.window.DesktopDialogContent
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.IndicatorPalette
 import warlockfe.warlock3.compose.ui.game.IndicatorView
-import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -38,8 +37,7 @@ fun DesktopGameBottomBar(
     entryFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    val presets = LocalStyleMap.current
-    val style = presets["default"] ?: SAFE_DEFAULT_STYLE
+    val style = LocalBaseStyle.current
     Column(
         modifier
             .fillMaxWidth()
