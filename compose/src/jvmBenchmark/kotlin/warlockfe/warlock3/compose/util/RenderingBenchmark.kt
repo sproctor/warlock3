@@ -18,9 +18,11 @@ import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.toLayer
 
 /**
  * Microbenchmarks for the per-line text-rendering work the game window does for every line: building
@@ -39,14 +41,14 @@ import warlockfe.warlock3.core.text.WarlockStyle
 class RenderingBenchmark {
     private val noopAction: (WarlockAction) -> Unit = { _ -> }
 
-    private val styleMap: Map<String, StyleDefinition> =
+    private val styleMap: Map<String, StyleLayer> =
         mapOf(
             "roomName" to StyleDefinition(textColor = WarlockColor(red = 255, green = 215, blue = 0), bold = true),
             "creature" to StyleDefinition(textColor = WarlockColor(red = 255, green = 90, blue = 90)),
             "object" to StyleDefinition(textColor = WarlockColor(red = 90, green = 170, blue = 255)),
             "speech" to StyleDefinition(textColor = WarlockColor(red = 120, green = 255, blue = 120)),
             "link" to StyleDefinition(textColor = WarlockColor(red = 120, green = 180, blue = 255), underline = true),
-        )
+        ).mapValues { (_, style) -> style.toLayer() }
 
     // A representative room/combat line with several styled spans, including Capitalized proper names
     // (as real "Also here:" lines have) so the case-sensitive name-highlight match path is exercised.

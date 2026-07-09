@@ -9,6 +9,7 @@ import warlockfe.warlock3.compose.model.isWordBoundary
 import warlockfe.warlock3.compose.model.wordTokensOf
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 
 fun AnnotatedString.highlight(
     index: HighlightIndex,
@@ -187,7 +188,7 @@ data class AnnotatedStringHighlightResult(
 
 expect fun AnnotatedString.Builder.markLinks(
     text: AnnotatedString,
-    presets: Map<String, StyleDefinition>,
+    presets: Map<String, StyleLayer>,
 )
 
 expect val MatchGroup.range_: IntRange

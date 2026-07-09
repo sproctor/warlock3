@@ -28,7 +28,7 @@ import warlockfe.warlock3.compose.util.toSpanStyle
 import warlockfe.warlock3.compose.util.toTimeString
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.FontConfig
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
@@ -53,7 +53,7 @@ class ComposeTextStream(
     private val highlights: StateFlow<HighlightIndex>,
     private val names: StateFlow<List<ViewHighlight>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
-    private val presets: StateFlow<Map<String, StyleDefinition>>,
+    private val presets: StateFlow<Map<String, StyleLayer>>,
     // The effective monospace font for this window (per-window override or the character default);
     // baked into monospace spans at render time, so a change re-renders the buffer like presets do.
     private val monoFont: StateFlow<FontConfig?>,
@@ -587,7 +587,7 @@ data class CachedLine(
         serialNumber: Long,
         highlightIndex: HighlightIndex,
         alterations: List<CompiledAlteration>,
-        presets: Map<String, StyleDefinition>,
+        presets: Map<String, StyleLayer>,
         monoFont: FontConfig?,
         components: Map<String, StyledString>,
         actionHandler: (WarlockAction) -> Unit,
@@ -630,7 +630,7 @@ fun StyledString.toStreamLine(
     timestamp: Instant,
     highlightIndex: HighlightIndex,
     alterations: List<CompiledAlteration>,
-    presets: Map<String, StyleDefinition>,
+    presets: Map<String, StyleLayer>,
     monoFont: FontConfig?,
     components: Map<String, StyledString>,
     actionHandler: (WarlockAction) -> Unit,

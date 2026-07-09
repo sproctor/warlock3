@@ -19,6 +19,7 @@ import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
@@ -52,7 +53,7 @@ class ComposeTextStreamTest {
         suppressPrompts: Boolean = false,
         showImages: Boolean = true,
         names: List<ViewHighlight> = emptyList(),
-        presets: StateFlow<Map<String, StyleDefinition>> = MutableStateFlow(emptyMap()),
+        presets: StateFlow<Map<String, StyleLayer>> = MutableStateFlow(emptyMap()),
         highlights: StateFlow<HighlightIndex> = MutableStateFlow(HighlightIndex(emptyList())),
         alterations: StateFlow<List<CompiledAlteration>> = MutableStateFlow(emptyList()),
     ) {
@@ -158,7 +159,7 @@ class ComposeTextStreamTest {
         suppressPrompts: Boolean = false,
         showImages: Boolean = true,
         names: List<ViewHighlight> = emptyList(),
-        presets: StateFlow<Map<String, StyleDefinition>> = MutableStateFlow(emptyMap()),
+        presets: StateFlow<Map<String, StyleLayer>> = MutableStateFlow(emptyMap()),
         highlights: StateFlow<HighlightIndex> = MutableStateFlow(HighlightIndex(emptyList())),
         alterations: StateFlow<List<CompiledAlteration>> = MutableStateFlow(emptyList()),
         block: (Fixture) -> Unit,
@@ -402,7 +403,7 @@ class ComposeTextStreamTest {
     @Test
     fun presetChangeRerendersExistingLines() =
         runBlocking {
-            val presets = MutableStateFlow(emptyMap<String, StyleDefinition>())
+            val presets = MutableStateFlow(emptyMap<String, StyleLayer>())
             withFixture(presets = presets) { f ->
                 f.stream.appendLine(styledWithStyle("a room", "roomName"), ignoreWhenBlank = false, showWhenClosed = null)
                 f.drain()
@@ -415,7 +416,7 @@ class ComposeTextStreamTest {
                 )
 
                 presets.awaitSubscriber()
-                presets.value = mapOf("roomName" to StyleDefinition(entireLine = true, bold = true))
+                presets.value = mapOf("roomName" to StyleLayer(entireLine = true, weight = 700))
                 val line =
                     f
                         .awaitLines { lines ->

@@ -58,6 +58,7 @@ import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.resolvedStyle
 import warlockfe.warlock3.compose.util.timeBarColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -83,7 +84,7 @@ fun WarlockEntry(
         )
     val presets = LocalStyleMap.current
     val defaultStyle = LocalBaseStyle.current
-    val style = presets["entry"] ?: StyleDefinition()
+    val style = presets.resolvedStyle("entry")
     val historySearch by viewModel.historySearch.collectAsState()
     WarlockEntryContent(
         style = style,

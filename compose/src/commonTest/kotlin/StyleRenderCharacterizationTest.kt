@@ -13,6 +13,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.toLayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -95,7 +96,7 @@ class StyleRenderCharacterizationTest {
             mapOf(
                 "speech" to StyleDefinition(textColor = red),
                 "bold" to StyleDefinition(bold = true),
-            )
+            ).mapValues { (_, style) -> style.toLayer() }
         val styled = StyledString("hi").applyStyle(WarlockStyle.Speech).applyStyle(WarlockStyle.Bold)
         val annotated = styled.toAnnotatedString(emptyMap(), styleMap, {}, null)
 
