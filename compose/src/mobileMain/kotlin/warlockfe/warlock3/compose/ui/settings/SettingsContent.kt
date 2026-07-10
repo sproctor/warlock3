@@ -88,7 +88,7 @@ fun SettingsContent(
             )
         }
 
-        SettingsPage.Presets -> {
+        SettingsPage.TextStyles -> {
             PresetsView(
                 presetRepository = presetRepository,
                 characterSettingsRepository = characterSettingsRepository,

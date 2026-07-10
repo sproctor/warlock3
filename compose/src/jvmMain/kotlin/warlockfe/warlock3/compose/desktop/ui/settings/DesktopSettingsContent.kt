@@ -87,7 +87,7 @@ fun DesktopSettingsContent(
             )
         }
 
-        SettingsPage.Presets -> {
+        SettingsPage.TextStyles -> {
             DesktopPresetsView(
                 initialCharacter = currentCharacter,
                 characters = characters,
