@@ -40,6 +40,7 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.audio_file
@@ -50,9 +51,10 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.toHexString
-import warlockfe.warlock3.core.util.toWarlockColor
+import warlockfe.warlock3.core.text.resolveSourced
+import warlockfe.warlock3.core.text.sampleStyle
 import kotlin.uuid.Uuid
 
 @Composable
@@ -180,9 +182,9 @@ fun EditNameDialog(
     onClose: () -> Unit,
 ) {
     val text = rememberTextFieldState(name.text)
-    val textColor = rememberTextFieldState(name.textColor.toHexString() ?: "")
-    val backgroundColor = rememberTextFieldState(name.backgroundColor.toHexString() ?: "")
     val sound = rememberTextFieldState(name.sound ?: "")
+    var styleLayer by remember { mutableStateOf(name.toStyleLayer()) }
+    val stack = listOf(StyleScope.CHARACTER to styleLayer)
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -191,12 +193,12 @@ fun EditNameDialog(
             TextButton(
                 onClick = {
                     saveName(
-                        name.copy(
-                            text = text.text.toString(),
-                            textColor = textColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
-                            backgroundColor = backgroundColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
-                            sound = sound.text.toString().ifBlank { null },
-                        ),
+                        name
+                            .withStyle(styleLayer)
+                            .copy(
+                                text = text.text.toString(),
+                                sound = sound.text.toString().ifBlank { null },
+                            ),
                     )
                 },
             ) {
@@ -223,19 +225,14 @@ fun EditNameDialog(
                         }
                     },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ColorTextField(
-                        modifier = Modifier.weight(1f),
-                        label = "Text color",
-                        state = textColor,
-                    )
-
-                    ColorTextField(
-                        modifier = Modifier.weight(1f),
-                        label = "Background color",
-                        state = backgroundColor,
-                    )
-                }
+                TextStyleEditor(
+                    sourced = resolveSourced(stack),
+                    sample = sampleStyle(stack),
+                    editScope = StyleScope.CHARACTER,
+                    editLayer = styleLayer,
+                    onSave = { styleLayer = it },
+                    showFont = false,
+                )
                 val soundLauncher =
                     rememberFilePickerLauncher { file ->
                         if (file != null) {
