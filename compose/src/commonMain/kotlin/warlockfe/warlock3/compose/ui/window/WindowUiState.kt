@@ -31,9 +31,12 @@ data class DialogWindowData(
     val dialogData: ComposeDialogState,
 ) : WindowData
 
-/** The window's color styling. Fonts are carried separately on [WindowUiState] ([WindowSettings.font]). */
+/** The window's color + weight/italic/underline styling. Fonts are carried separately on [WindowUiState]. */
 fun WindowSettings.getStyle(): StyleDefinition =
     StyleDefinition(
         textColor = textColor,
         backgroundColor = backgroundColor,
+        bold = bold,
+        italic = italic,
+        underline = underline,
     )

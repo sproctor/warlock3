@@ -51,6 +51,9 @@ class WindowSettingsRepository(
                         font = style.font,
                         monoFont = style.monoFont,
                         nameFilter = style.nameFilter,
+                        bold = style.bold,
+                        italic = style.italic,
+                        underline = style.underline,
                     )
                 }
                 // Match the DAO's `ORDER BY position` (SQLite sorts NULLs first on ascending).
@@ -120,6 +123,9 @@ class WindowSettingsRepository(
                 existing.copy(
                     textColor = style.textColor,
                     backgroundColor = style.backgroundColor,
+                    bold = style.bold,
+                    italic = style.italic,
+                    underline = style.underline,
                 )
             current.copy(windows = current.windows + (name to updated))
         }

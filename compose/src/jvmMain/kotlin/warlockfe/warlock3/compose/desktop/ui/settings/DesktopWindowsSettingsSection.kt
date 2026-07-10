@@ -33,9 +33,8 @@ import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
-import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerButton
-import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
+import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
@@ -43,14 +42,16 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
+import warlockfe.warlock3.compose.ui.settings.toStyleDefinition
 import warlockfe.warlock3.compose.ui.window.getStyle
-import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.prefs.models.WindowSettings
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.ifUnspecified
+import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.resolveSourced
+import warlockfe.warlock3.core.text.sampleStyle
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -106,19 +107,9 @@ fun DesktopWindowsSettingsSection(
         }
     }
 
-    // One color/font picker is open at a time across every row.
-    var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
+    // One font picker is open at a time across every row (each row's shared style editor owns its own
+    // color picker).
     var editFont by remember { mutableStateOf<Triple<FontConfig?, Boolean, (FontConfig?) -> Unit>?>(null) }
-    editColor?.let { (initial, onPick) ->
-        DesktopColorPickerDialog(
-            initialColor = initial.toColor(),
-            onCloseRequest = { editColor = null },
-            onColorSelect = {
-                onPick(it)
-                editColor = null
-            },
-        )
-    }
     editFont?.let { (current, monoOnly, onSave) ->
         DesktopFontPickerDialog(
             current = current,
@@ -166,7 +157,6 @@ fun DesktopWindowsSettingsSection(
                     windowSettingRepository.setMonoFont(characterId, name, null)
                 }
             },
-            onEditColor = { current, onPick -> editColor = current to onPick },
             onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
         )
     }
@@ -272,7 +262,6 @@ private fun DesktopWindowRow(
     onSaveMonoFont: (FontConfig?) -> Unit,
     onSaveNameFilter: (Boolean) -> Unit,
     onRevert: () -> Unit,
-    onEditColor: (WarlockColor, (WarlockColor) -> Unit) -> Unit,
     onEditFont: (FontConfig?, Boolean, (FontConfig?) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -299,20 +288,21 @@ private fun DesktopWindowRow(
                 Modifier.fillMaxWidth().padding(start = 24.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                val contentColor = style.textColor.ifUnspecified(defaultStyle.textColor)
-                val backgroundColor = style.backgroundColor.ifUnspecified(defaultStyle.backgroundColor)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DesktopColorPickerButton(
-                        text = "Content",
-                        color = contentColor.toColor(),
-                        onClick = { onEditColor(contentColor) { onSaveStyle(style.copy(textColor = it)) } },
-                    )
-                    DesktopColorPickerButton(
-                        text = "Background",
-                        color = backgroundColor.toColor(),
-                        onClick = { onEditColor(backgroundColor) { onSaveStyle(style.copy(backgroundColor = it)) } },
-                    )
-                }
+                // A window has no cascade of its own; the character's default text style is the fallback.
+                // Feed it to the sample (for a realistic preview) but not to the source tags, so unset
+                // attributes read "default" rather than "from skin".
+                val windowLayer = style.toLayer()
+                DesktopTextStyleEditor(
+                    sourced = resolveSourced(listOf(StyleScope.CHARACTER to windowLayer)),
+                    sample =
+                        sampleStyle(
+                            listOf(StyleScope.CHARACTER to windowLayer, StyleScope.SKIN to defaultStyle.toLayer()),
+                        ),
+                    editScope = StyleScope.CHARACTER,
+                    editLayer = windowLayer,
+                    onSave = { onSaveStyle(it.toStyleDefinition()) },
+                    showFont = false,
+                )
                 WarlockOutlinedButton(
                     onClick = { onEditFont(settings?.font, false) { onSaveFont(it) } },
                     text = "Font: ${settings?.font.fontLabel()}",

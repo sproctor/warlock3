@@ -35,21 +35,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CheckboxRow
-import warlockfe.warlock3.compose.components.ColorPickerButton
-import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.FontPickerDialog
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.window.getStyle
-import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.prefs.models.WindowSettings
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.ifUnspecified
+import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.resolveSourced
+import warlockfe.warlock3.core.text.sampleStyle
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 
@@ -102,18 +102,8 @@ fun WindowsSettingsSection(
         }
     }
 
-    var editColor by remember { mutableStateOf<Pair<WarlockColor, (WarlockColor) -> Unit>?>(null) }
+    // Each row's shared style editor owns its own color picker; only the font picker is hoisted here.
     var editFont by remember { mutableStateOf<Triple<FontConfig?, Boolean, (FontConfig?) -> Unit>?>(null) }
-    editColor?.let { (initial, onPick) ->
-        ColorPickerDialog(
-            initialColor = initial.toColor(),
-            onCloseRequest = { editColor = null },
-            onColorSelect = {
-                onPick(it)
-                editColor = null
-            },
-        )
-    }
     editFont?.let { (current, monoOnly, onSave) ->
         FontPickerDialog(
             current = current,
@@ -161,7 +151,6 @@ fun WindowsSettingsSection(
                     windowSettingRepository.setMonoFont(characterId, name, null)
                 }
             },
-            onEditColor = { current, onPick -> editColor = current to onPick },
             onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
         )
     }
@@ -273,7 +262,6 @@ private fun WindowRow(
     onSaveMonoFont: (FontConfig?) -> Unit,
     onSaveNameFilter: (Boolean) -> Unit,
     onRevert: () -> Unit,
-    onEditColor: (WarlockColor, (WarlockColor) -> Unit) -> Unit,
     onEditFont: (FontConfig?, Boolean, (FontConfig?) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -301,20 +289,21 @@ private fun WindowRow(
                 Modifier.fillMaxWidth().padding(start = 28.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                val contentColor = style.textColor.ifUnspecified(defaultStyle.textColor)
-                val backgroundColor = style.backgroundColor.ifUnspecified(defaultStyle.backgroundColor)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ColorPickerButton(
-                        text = "Content",
-                        color = contentColor.toColor(),
-                        onClick = { onEditColor(contentColor) { onSaveStyle(style.copy(textColor = it)) } },
-                    )
-                    ColorPickerButton(
-                        text = "Background",
-                        color = backgroundColor.toColor(),
-                        onClick = { onEditColor(backgroundColor) { onSaveStyle(style.copy(backgroundColor = it)) } },
-                    )
-                }
+                // A window has no cascade of its own; the character's default text style is the fallback.
+                // Feed it to the sample (for a realistic preview) but not to the source tags, so unset
+                // attributes read "default" rather than "from skin".
+                val windowLayer = style.toLayer()
+                TextStyleEditor(
+                    sourced = resolveSourced(listOf(StyleScope.CHARACTER to windowLayer)),
+                    sample =
+                        sampleStyle(
+                            listOf(StyleScope.CHARACTER to windowLayer, StyleScope.SKIN to defaultStyle.toLayer()),
+                        ),
+                    editScope = StyleScope.CHARACTER,
+                    editLayer = windowLayer,
+                    onSave = { onSaveStyle(it.toStyleDefinition()) },
+                    showFont = false,
+                )
                 OutlinedButton(onClick = { onEditFont(settings?.font, false) { onSaveFont(it) } }) {
                     Text("Font: ${settings?.font.fontLabel()}")
                 }
