@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.AlertDialog
@@ -23,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,23 +36,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.CheckboxRow
-import warlockfe.warlock3.compose.components.ColorPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.audio_file
@@ -68,10 +63,10 @@ import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.specifiedOrNull
-import warlockfe.warlock3.core.text.toHexString
-import warlockfe.warlock3.core.util.toWarlockColor
+import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.resolveSourced
+import warlockfe.warlock3.core.text.sampleStyle
+import warlockfe.warlock3.core.text.toLayer
 import kotlin.uuid.Uuid
 
 @Composable
@@ -341,71 +336,21 @@ fun EditHighlightDialog(
                 ScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     // Cap at the slots that exist; the effect above tops the list up on the next frame.
                     for (i in 0 until minOf(groupCount, styles.size)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            val style = styles[i]
-                            if (isRegex) {
-                                Text("$i:", Modifier.align(Alignment.CenterVertically))
-                            }
-                            val textColorState =
-                                rememberTextFieldState(style.textColor.toHexString() ?: "")
-                            LaunchedEffect(textColorState) {
-                                snapshotFlow { textColorState.text.toString() }
-                                    .collectLatest {
-                                        styles[i] =
-                                            styles[i].copy(
-                                                textColor =
-                                                    it.toWarlockColor()
-                                                        ?: WarlockColor.Unspecified,
-                                            )
-                                    }
-                            }
-                            ColorTextField(
-                                modifier = Modifier.weight(1f),
-                                label = "Text color",
-                                state = textColorState,
-                            )
-
-                            val backgroundColorState =
-                                rememberTextFieldState(style.backgroundColor.toHexString() ?: "")
-                            LaunchedEffect(backgroundColorState) {
-                                snapshotFlow { backgroundColorState.text.toString() }
-                                    .collectLatest {
-                                        styles[i] =
-                                            styles[i].copy(
-                                                backgroundColor =
-                                                    it.toWarlockColor()
-                                                        ?: WarlockColor.Unspecified,
-                                            )
-                                    }
-                            }
-                            ColorTextField(
-                                modifier = Modifier.weight(1f),
-                                label = "Background color",
-                                state = backgroundColorState,
-                            )
+                        if (isRegex) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("Group $i")
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            CheckboxRow(
-                                checked = styles[i].bold,
-                                onCheckedChange = { styles[i] = styles[i].copy(bold = it) },
-                                text = "Bold",
-                            )
-                            CheckboxRow(
-                                checked = styles[i].italic,
-                                onCheckedChange = { styles[i] = styles[i].copy(italic = it) },
-                                text = "Italic",
-                            )
-                            CheckboxRow(
-                                checked = styles[i].underline,
-                                onCheckedChange = { styles[i] = styles[i].copy(underline = it) },
-                                text = "Underline",
-                            )
-                            CheckboxRow(
-                                checked = styles[i].monospace,
-                                onCheckedChange = { styles[i] = styles[i].copy(monospace = it) },
-                                text = "Mono",
-                            )
-                        }
+                        val layer = styles[i].toLayer()
+                        val stack = listOf(StyleScope.CHARACTER to layer)
+                        TextStyleEditor(
+                            sourced = resolveSourced(stack),
+                            sample = sampleStyle(stack),
+                            editScope = StyleScope.CHARACTER,
+                            editLayer = layer,
+                            onSave = { styles[i] = it.toStyleDefinition() },
+                            showFont = false,
+                            showMonospace = true,
+                        )
                     }
                 }
                 if (!isRegex) {
@@ -448,77 +393,4 @@ fun EditHighlightDialog(
             }
         },
     )
-}
-
-@Composable
-fun ColorTextField(
-    label: String,
-    state: TextFieldState,
-    modifier: Modifier = Modifier,
-) {
-    var editColor by remember { mutableStateOf<Pair<String, (WarlockColor) -> Unit>?>(null) }
-    var invalidColor by remember { mutableStateOf(false) }
-    LaunchedEffect(state) {
-        snapshotFlow { state.text.toString() }
-            .collectLatest {
-                invalidColor = it.toWarlockColor() == null && it.isNotEmpty()
-            }
-    }
-    OutlinedTextField(
-        label = {
-            Text(
-                text =
-                    if (invalidColor) {
-                        "Invalid color string"
-                    } else {
-                        label
-                    },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        modifier = modifier,
-        state = state,
-        leadingIcon = {
-            val currentColor =
-                state.text
-                    .toString()
-                    .toWarlockColor()
-                    ?.toColor()
-            if (currentColor != null && currentColor.isSpecified) {
-                Box(
-                    Modifier
-                        .size(20.dp)
-                        .border(width = 1.dp, color = MaterialTheme.colorScheme.outline)
-                        .background(currentColor),
-                )
-            }
-        },
-        trailingIcon = {
-            IconButton(
-                onClick = {
-                    editColor = state.text.toString() to {
-                        state.setTextAndPlaceCursorAtEnd(it.toHexString() ?: "")
-                    }
-                },
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.palette),
-                    contentDescription = "Color picker",
-                )
-            }
-        },
-        isError = invalidColor,
-    )
-    editColor?.let { (colorText, setColor) ->
-        val initialColor = colorText.toWarlockColor()?.specifiedOrNull()?.toColor() ?: Color.Black
-        ColorPickerDialog(
-            initialColor = initialColor,
-            onCloseRequest = { editColor = null },
-            onColorSelect = { color ->
-                setColor(color)
-                editColor = null
-            },
-        )
-    }
 }
