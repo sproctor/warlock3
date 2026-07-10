@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -144,17 +145,22 @@ fun PresetsView(
     ) {
         val current = selectedItem
         if (current == null) {
+            // Base text and the monospace font stand apart from the named presets, so they sit above the
+            // "Presets" heading rather than in the preset list.
+            PresetListRow(PresetItem.Base, modelFor(PresetItem.Base).sample) { selectedItem = PresetItem.Base }
+            MonoFontRow(
+                monoFont = monoFont,
+                onSave = { scope.launch { characterSettingsRepository.saveMonoFont(scopeId, it) } },
+            )
+            Spacer(Modifier.height(16.dp))
+            Text("Presets", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
             ScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                PresetListRow(PresetItem.Base, modelFor(PresetItem.Base).sample) { selectedItem = PresetItem.Base }
                 WarlockStyle.presets.forEach { style ->
                     val item = PresetItem.Named(style.name)
                     PresetListRow(item, modelFor(item).sample) { selectedItem = item }
                 }
             }
-            MonoFontRow(
-                monoFont = monoFont,
-                onSave = { scope.launch { characterSettingsRepository.saveMonoFont(scopeId, it) } },
-            )
         } else {
             val model = modelFor(current)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

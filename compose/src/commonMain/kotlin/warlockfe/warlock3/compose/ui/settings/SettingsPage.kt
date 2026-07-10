@@ -32,7 +32,7 @@ enum class SettingsPage(
     val icon: DrawableResource,
 ) {
     General("General", SettingsGroup.General, Res.drawable.settings_filled),
-    Presets("Presets", SettingsGroup.Appearance, Res.drawable.palette),
+    TextStyles("Text styles", SettingsGroup.Appearance, Res.drawable.palette),
     Windows("Windows", SettingsGroup.Appearance, Res.drawable.space_dashboard_filled),
     Highlights("Highlights", SettingsGroup.Appearance, Res.drawable.star_shine),
     Names("Names", SettingsGroup.Appearance, Res.drawable.visibility_filled),
