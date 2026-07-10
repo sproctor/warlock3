@@ -22,4 +22,7 @@ data class WindowSettings(
     val font: FontConfig?,
     val monoFont: FontConfig?,
     val nameFilter: Boolean,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
 )
