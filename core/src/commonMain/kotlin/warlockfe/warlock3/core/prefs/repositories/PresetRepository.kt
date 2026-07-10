@@ -47,6 +47,11 @@ class PresetRepository(
             }
         }
 
+    // Exactly one scope's own saved presets as sparse [StyleLayer]s (no merge, no skin) - what the
+    // appearance editor edits, since it writes one scope at a time.
+    fun observeScopeLayers(characterId: String): Flow<Map<String, StyleLayer>> =
+        store.observe(characterId).map { config -> config.presets.mapValues { (_, style) -> style.toStyleLayer() } }
+
     suspend fun save(
         characterId: String,
         key: String,
@@ -54,6 +59,18 @@ class PresetRepository(
     ) {
         store.mutate(characterId) { current ->
             current.copy(presets = current.presets + (key to style.toPresetStyleConfig()))
+        }
+    }
+
+    // Persist a preset as a sparse [StyleLayer], so per-item fonts and the tri-state background survive.
+    // Canonicalizes weight 700 back to bold on write (see [StyleLayer.toPresetStyleConfig]).
+    suspend fun saveLayer(
+        characterId: String,
+        key: String,
+        layer: StyleLayer,
+    ) {
+        store.mutate(characterId) { current ->
+            current.copy(presets = current.presets + (key to layer.toPresetStyleConfig()))
         }
     }
 

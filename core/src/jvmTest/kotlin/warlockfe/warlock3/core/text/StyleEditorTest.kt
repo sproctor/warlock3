@@ -67,6 +67,36 @@ class StyleEditorTest {
     }
 
     @Test
+    fun styleEditorModelForCharacterEditsTheCharacterLayer() {
+        val model =
+            styleEditorModel(
+                characterLayer = StyleLayer(textColor = red),
+                globalLayer = StyleLayer(weight = 700),
+                skinLayer = StyleLayer(italic = true),
+            )
+        assertEquals(StyleScope.CHARACTER, model.editScope)
+        assertEquals(StyleLayer(textColor = red), model.editLayer)
+        assertEquals(StyleScope.CHARACTER, model.sourced.sourceOf(StyleAttribute.TextColor))
+        assertEquals(StyleScope.GLOBAL, model.sourced.sourceOf(StyleAttribute.Weight))
+        assertEquals(StyleScope.SKIN, model.sourced.sourceOf(StyleAttribute.Italic))
+    }
+
+    @Test
+    fun styleEditorModelForGlobalExcludesCharacterLayer() {
+        // Editing the global scope must not surface a character's overrides as "inherited".
+        val model =
+            styleEditorModel(
+                characterLayer = null,
+                globalLayer = StyleLayer(textColor = blue),
+                skinLayer = StyleLayer(weight = 400),
+            )
+        assertEquals(StyleScope.GLOBAL, model.editScope)
+        assertEquals(StyleLayer(textColor = blue), model.editLayer)
+        assertEquals(StyleScope.GLOBAL, model.sourced.sourceOf(StyleAttribute.TextColor))
+        assertEquals(StyleScope.SKIN, model.sourced.sourceOf(StyleAttribute.Weight))
+    }
+
+    @Test
     fun sampleStyleResolvesTheWholeStack() {
         val stack =
             listOf(

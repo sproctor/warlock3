@@ -108,3 +108,40 @@ fun SourcedStyle.sourceOf(attribute: StyleAttribute): StyleScope? =
 
 /** The style the editor's live sample should render: the whole [stack] resolved, ignoring source tags. */
 fun sampleStyle(stack: List<Pair<StyleScope, StyleLayer>>): ResolvedStyle = resolve(stack.map { it.second })
+
+/**
+ * Everything a single-style editor needs for one item at one edit scope: the per-attribute [sourced]
+ * state (for the "set here"/"inherited" tags and reset gating), the resolved [sample] for the live
+ * preview, the [editScope] being written, and the [editLayer] to fold edits into before persisting.
+ */
+data class StyleEditorModel(
+    val sourced: SourcedStyle,
+    val sample: ResolvedStyle,
+    val editScope: StyleScope,
+    val editLayer: StyleLayer,
+)
+
+/**
+ * Assembles the [StyleEditorModel] for an item from its three cascade layers. A null [characterLayer]
+ * means the global scope is being edited: the character layer is left out of the cascade entirely (so
+ * one character's overrides don't masquerade as "inherited" while editing the all-characters defaults)
+ * and edits target the global layer. Otherwise the character layer is edited over global over skin.
+ */
+fun styleEditorModel(
+    characterLayer: StyleLayer?,
+    globalLayer: StyleLayer,
+    skinLayer: StyleLayer,
+): StyleEditorModel {
+    val stack =
+        buildList {
+            if (characterLayer != null) add(StyleScope.CHARACTER to characterLayer)
+            add(StyleScope.GLOBAL to globalLayer)
+            add(StyleScope.SKIN to skinLayer)
+        }
+    return StyleEditorModel(
+        sourced = resolveSourced(stack),
+        sample = sampleStyle(stack),
+        editScope = if (characterLayer != null) StyleScope.CHARACTER else StyleScope.GLOBAL,
+        editLayer = characterLayer ?: globalLayer,
+    )
+}
