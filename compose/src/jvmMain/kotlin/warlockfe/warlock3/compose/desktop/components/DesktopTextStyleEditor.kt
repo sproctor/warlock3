@@ -1,14 +1,12 @@
 package warlockfe.warlock3.compose.desktop.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,21 +15,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.fontWeightOptions
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toWarlockColor
 import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.ResolvedStyle
@@ -42,7 +35,10 @@ import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.applyEdit
+import warlockfe.warlock3.core.text.contrastRatio
 import warlockfe.warlock3.core.text.sourceOf
+import warlockfe.warlock3.core.text.specifiedOrNull
+import kotlin.math.roundToInt
 
 /**
  * The shared desktop (Jewel) editor for one text style at one edit scope, reused by presets, the base
@@ -63,6 +59,7 @@ fun DesktopTextStyleEditor(
     showFont: Boolean = true,
     showEntireLine: Boolean = false,
     showMonospace: Boolean = false,
+    windowBackground: Color = Color(0xFF1E1F22),
 ) {
     fun edit(vararg edits: StyleEdit) {
         onSave(edits.fold(editLayer) { layer, e -> layer.applyEdit(e) })
@@ -97,7 +94,7 @@ fun DesktopTextStyleEditor(
     }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        StylePreview(sample)
+        StylePreview(sample, windowBackground)
 
         AttributeRow("Text color", sourced.textColor.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
             DesktopColorPickerButton(
@@ -211,30 +208,29 @@ private fun AttributeRow(
 }
 
 @Composable
-private fun StylePreview(sample: ResolvedStyle) {
-    val background =
-        when (val bg = sample.background) {
-            is Background.Fill -> bg.color.toColor()
-            Background.None -> Color.Transparent
-            Background.Unset -> Color(0xFF1E1F22)
+private fun StylePreview(
+    sample: ResolvedStyle,
+    windowBackground: Color,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        StyleChip(
+            resolved = sample,
+            windowBackground = windowBackground,
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            sampleText = "You hear Lyrena say, \"Well met, friend.\"",
+        )
+        // Contrast is computed against the effective background - the fill when set, else the window
+        // background the text actually sits on. We warn, never block: dim spam channels are a valid choice.
+        val textColor = sample.textColor.specifiedOrNull()
+        if (textColor != null) {
+            val effectiveBackground = (sample.background as? Background.Fill)?.color ?: windowBackground.toWarlockColor()
+            val ratio = contrastRatio(textColor, effectiveBackground)
+            if (ratio < 3.0) {
+                val rounded = (ratio * 10).roundToInt() / 10.0
+                Text("Low contrast ($rounded:1)", color = Color(0xFFCC7A00))
+            }
         }
-    BasicText(
-        text = "The quick brown fox jumps over the lazy dog",
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(background)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-        style =
-            TextStyle(
-                color = sample.textColor.toColor(default = Color(0xFFF0F0FF)),
-                fontWeight = sample.weight?.let { FontWeight(it) },
-                fontStyle = if (sample.italic) FontStyle.Italic else null,
-                textDecoration = if (sample.underline) TextDecoration.Underline else null,
-                fontFamily = sample.fontFamily?.let { createFontFamily(it) },
-                fontSize = sample.fontSize?.sp ?: TextUnit.Unspecified,
-            ),
-    )
+    }
 }
 
 private fun sourceLabel(
