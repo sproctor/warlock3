@@ -205,7 +205,7 @@ fun DialogObjectLayout(
 
                     // Wrapped to a new row: drop below the row we were flowing along.
                     wraps -> {
-                        lastPlacement!!.bottom
+                        lastPlacement.bottom
                     }
 
                     // No vertical hint at all: stay on the previous object's row.

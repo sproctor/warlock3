@@ -1,19 +1,14 @@
 package warlockfe.warlock3.compose.ui.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -26,22 +21,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.TextStyleEditor
+import warlockfe.warlock3.compose.components.backgroundLabel
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
@@ -54,6 +46,7 @@ import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleEditorModel
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.styleEditorModel
 import warlockfe.warlock3.core.text.toLayer
 
@@ -136,6 +129,38 @@ fun PresetsView(
         }
     }
 
+    // The effective game window background (the resolved base background) that the list chips and the
+    // editor preview composite against - never the settings panel surface.
+    val baseLayers =
+        listOfNotNull(
+            charBase.takeIf { editingCharacterId != null },
+            globalBase,
+            skinBase,
+        )
+    val windowBackground =
+        when (val bg = resolve(baseLayers).background) {
+            is Background.Fill -> bg.color.toColor(default = SAFE_DEFAULT_STYLE.backgroundColor.toColor())
+            else -> SAFE_DEFAULT_STYLE.backgroundColor.toColor()
+        }
+
+    // A preset's chip shows how it renders over the base, so unset attributes inherit the base as in game.
+    fun chipStyle(item: PresetItem): ResolvedStyle =
+        when (item) {
+            PresetItem.Base -> {
+                resolve(baseLayers)
+            }
+
+            is PresetItem.Named -> {
+                resolve(
+                    listOfNotNull(
+                        (charPresets[item.name] ?: StyleLayer()).takeIf { editingCharacterId != null },
+                        globalPresets[item.name] ?: StyleLayer(),
+                        skinLayers[item.name] ?: StyleLayer(),
+                    ) + baseLayers,
+                )
+            }
+        }
+
     SettingsListScaffold(
         title = "Presets",
         selectedCharacter = selectedCharacter,
@@ -147,7 +172,7 @@ fun PresetsView(
         if (current == null) {
             // Base text and the monospace font stand apart from the named presets, so they sit above the
             // "Presets" heading rather than in the preset list.
-            PresetListRow(PresetItem.Base, modelFor(PresetItem.Base).sample) { selectedItem = PresetItem.Base }
+            PresetListRow(PresetItem.Base, chipStyle(PresetItem.Base), windowBackground) { selectedItem = PresetItem.Base }
             MonoFontRow(
                 monoFont = monoFont,
                 onSave = { scope.launch { characterSettingsRepository.saveMonoFont(scopeId, it) } },
@@ -158,7 +183,7 @@ fun PresetsView(
             ScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 WarlockStyle.presets.forEach { style ->
                     val item = PresetItem.Named(style.name)
-                    PresetListRow(item, modelFor(item).sample) { selectedItem = item }
+                    PresetListRow(item, chipStyle(item), windowBackground) { selectedItem = item }
                 }
             }
         } else {
@@ -175,17 +200,22 @@ fun PresetsView(
                     editScope = model.editScope,
                     editLayer = model.editLayer,
                     onSave = { save(current, it) },
+                    windowBackground = windowBackground,
                 )
             }
         }
     }
 }
 
-/** A master-list row: a swatch plus the item's label drawn in that item's own resolved style. */
+/**
+ * A master-list row: the honest style chip, the item's label in normal (always-legible) UI color - never
+ * its own style - and a muted trailing background label.
+ */
 @Composable
 private fun PresetListRow(
     item: PresetItem,
-    sample: ResolvedStyle,
+    resolved: ResolvedStyle,
+    windowBackground: Color,
     onClick: () -> Unit,
 ) {
     Row(
@@ -197,29 +227,9 @@ private fun PresetListRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background((sample.background as? Background.Fill)?.color.toColor(default = Color(0xFF1E1F22))),
-            contentAlignment = Alignment.Center,
-        ) {
-            BasicText(
-                text = "Aa",
-                style = TextStyle(color = sample.textColor.toColor(default = Color(0xFFF0F0FF)), fontSize = 12.sp),
-            )
-        }
-        BasicText(
-            text = item.label(),
-            style =
-                TextStyle(
-                    color = sample.textColor.toColor(default = Color(0xFFF0F0FF)),
-                    fontWeight = sample.weight?.let { FontWeight(it) },
-                    fontStyle = if (sample.italic) FontStyle.Italic else null,
-                    textDecoration = if (sample.underline) TextDecoration.Underline else null,
-                ),
-        )
+        StyleChip(resolved = resolved, windowBackground = windowBackground)
+        Text(item.label(), modifier = Modifier.weight(1f))
+        Text(backgroundLabel(resolved.background), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
