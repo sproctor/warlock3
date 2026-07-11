@@ -21,6 +21,7 @@ import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.export.AccountExport
 import warlockfe.warlock3.core.prefs.export.AliasExport
 import warlockfe.warlock3.core.prefs.export.AlterationExport
+import warlockfe.warlock3.core.prefs.export.BaseStyleExport
 import warlockfe.warlock3.core.prefs.export.CharacterExport
 import warlockfe.warlock3.core.prefs.export.ConnectionExport
 import warlockfe.warlock3.core.prefs.export.HighlightExport
@@ -36,6 +37,7 @@ import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.specifiedOrNull
 import kotlin.uuid.Uuid
 
 /** Resolution applied to a character whose settings are being imported. */
@@ -132,6 +134,15 @@ class ExportRepository(
             gameCode = gameCode,
             scriptDirectories = scriptDirDao.getByCharacter(id),
             settings = settings,
+            baseStyle =
+                BaseStyleExport(
+                    textColor = config.settings.defaultTextColor,
+                    backgroundColor = config.settings.defaultBackgroundColor,
+                    italic = config.settings.defaultItalic,
+                    underline = config.settings.defaultUnderline,
+                    font = config.settings.defaultFont,
+                    monoFont = config.settings.monoFont,
+                ),
             variables = config.variables,
             aliases = config.aliases.map { AliasExport(pattern = it.pattern, replacement = it.replacement) },
             alterations =
@@ -445,12 +456,9 @@ class ExportRepository(
                     macros = importedMacros,
                     presets = importedPresets,
                     windows = importedWindowStyles,
-                    // Default fonts aren't part of the export payload; keep whatever the target had.
-                    settings =
-                        importedCharacterSettings.copy(
-                            defaultFont = current.settings.defaultFont,
-                            monoFont = current.settings.monoFont,
-                        ),
+                    // Base style + fonts come from the export when present; an older export that omits
+                    // them leaves the target character's base style untouched.
+                    settings = importedCharacterSettings.replaceBase(data.baseStyle, current.settings),
                 )
             } else {
                 val importedPatterns = importedHighlights.mapTo(mutableSetOf()) { it.pattern }
@@ -468,11 +476,12 @@ class ExportRepository(
                     presets = current.presets + importedPresets,
                     windows = current.windows + importedWindowStyles,
                     settings =
-                        current.settings.copy(
-                            typeahead = importedCharacterSettings.typeahead ?: current.settings.typeahead,
-                            scriptCommandPrefix =
-                                importedCharacterSettings.scriptCommandPrefix ?: current.settings.scriptCommandPrefix,
-                        ),
+                        current.settings
+                            .copy(
+                                typeahead = importedCharacterSettings.typeahead ?: current.settings.typeahead,
+                                scriptCommandPrefix =
+                                    importedCharacterSettings.scriptCommandPrefix ?: current.settings.scriptCommandPrefix,
+                            ).mergeBase(data.baseStyle),
                 )
             }
         }
@@ -511,4 +520,34 @@ class ExportRepository(
     }
 
     // endregion
+}
+
+// Replace the base style + fonts with an imported [baseStyle], or keep [fallback]'s when the export
+// predates base-style export (a null [baseStyle]). A present base wins wholesale (even its unset values),
+// matching REPLACE semantics.
+private fun CharacterSettingsConfig.replaceBase(
+    baseStyle: BaseStyleExport?,
+    fallback: CharacterSettingsConfig,
+): CharacterSettingsConfig =
+    copy(
+        defaultTextColor = baseStyle?.textColor ?: fallback.defaultTextColor,
+        defaultBackgroundColor = baseStyle?.backgroundColor ?: fallback.defaultBackgroundColor,
+        defaultItalic = baseStyle?.italic ?: fallback.defaultItalic,
+        defaultUnderline = baseStyle?.underline ?: fallback.defaultUnderline,
+        defaultFont = if (baseStyle != null) baseStyle.font else fallback.defaultFont,
+        monoFont = if (baseStyle != null) baseStyle.monoFont else fallback.monoFont,
+    )
+
+// Merge an imported [baseStyle] over the current base: the import wins only where it actually sets a
+// value, otherwise the current base is kept. A null [baseStyle] (older export) changes nothing.
+private fun CharacterSettingsConfig.mergeBase(baseStyle: BaseStyleExport?): CharacterSettingsConfig {
+    baseStyle ?: return this
+    return copy(
+        defaultTextColor = baseStyle.textColor.specifiedOrNull() ?: defaultTextColor,
+        defaultBackgroundColor = baseStyle.backgroundColor.specifiedOrNull() ?: defaultBackgroundColor,
+        defaultItalic = baseStyle.italic || defaultItalic,
+        defaultUnderline = baseStyle.underline || defaultUnderline,
+        defaultFont = baseStyle.font ?: defaultFont,
+        monoFont = baseStyle.monoFont ?: monoFont,
+    )
 }

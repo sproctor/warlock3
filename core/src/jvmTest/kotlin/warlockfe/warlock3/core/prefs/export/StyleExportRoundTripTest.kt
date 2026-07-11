@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -74,5 +75,47 @@ class StyleExportRoundTripTest {
         assertEquals(false, parsed.bold)
         assertEquals(false, parsed.italic)
         assertEquals(false, parsed.underline)
+    }
+
+    private fun characterExport(baseStyle: BaseStyleExport?) =
+        CharacterExport(
+            id = "gs4:tholan",
+            gameCode = "gs4",
+            name = "Tholan",
+            scriptDirectories = emptyList(),
+            settings = emptyMap(),
+            baseStyle = baseStyle,
+            variables = emptyMap(),
+            aliases = emptyList(),
+            alterations = emptyList(),
+            highlights = emptyList(),
+            macros = emptyList(),
+            names = emptyList(),
+            presets = emptyList(),
+            windows = emptyList(),
+        )
+
+    @Test
+    fun characterExportBaseStyleRoundTrips() {
+        val base =
+            BaseStyleExport(
+                textColor = red,
+                backgroundColor = blue,
+                italic = true,
+                underline = false,
+                font = FontConfig(family = "Menlo", size = 13f, weight = 700),
+                monoFont = FontConfig(family = "Courier", size = 12f, weight = null),
+            )
+        val export = characterExport(base)
+        val back = json.decodeFromString(CharacterExport.serializer(), json.encodeToString(CharacterExport.serializer(), export))
+        assertEquals(base, back.baseStyle)
+    }
+
+    @Test
+    fun oldCharacterExportWithoutBaseStyleLoadsAsNull() {
+        val full = json.encodeToJsonElement(CharacterExport.serializer(), characterExport(BaseStyleExport(textColor = red))) as JsonObject
+        val legacy = JsonObject(full.filterKeys { it != "baseStyle" })
+        val parsed = json.decodeFromJsonElement(CharacterExport.serializer(), legacy)
+        assertNull(parsed.baseStyle) // absent -> null, so import keeps the target's base style
     }
 }
