@@ -17,4 +17,7 @@ data class WindowSettingsExport(
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
 )

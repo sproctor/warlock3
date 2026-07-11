@@ -18,6 +18,8 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.readString
+import warlockfe.warlock3.core.text.Background
+import warlockfe.warlock3.core.text.StyleLayer
 import kotlin.uuid.Uuid
 
 const val GLOBAL_CHARACTER_ID = "global"
@@ -90,22 +92,24 @@ class CharacterConfigStore(
             loaded[characterId] = config
             templates[characterId] = sectionTemplates.toMutableMap()
         }
-        // Fill in any missing ids, persisting only the sections we actually changed.
+        // Normalize each config (fill missing ids, fold the legacy "default" preset into the base
+        // style), persisting only the sections that actually changed.
         val normalized = mutableMapOf<String, CharacterConfig>()
-        val changed = mutableSetOf<String>()
+        val changedSections = mutableMapOf<String, MutableSet<Section>>()
         for ((key, config) in loaded) {
-            val (fixed, didChange) = config.withGeneratedIds()
-            normalized[key] = fixed
-            if (didChange) changed += key
+            val (withIds, idsChanged) = config.withGeneratedIds()
+            if (idsChanged) changedSections.getOrPut(key) { mutableSetOf() }.addAll(ID_SECTIONS)
+            val (folded, foldChanged) = withIds.foldLegacyDefaultPreset()
+            if (foldChanged) changedSections.getOrPut(key) { mutableSetOf() }.addAll(listOf(Section.PRESETS, Section.SETTINGS))
+            normalized[key] = folded
         }
         state.value = normalized
-        for (key in changed) {
+        for ((key, sections) in changedSections) {
             writeMutex.withLock {
                 ensureDir(charactersDir)
                 withFileLock(lockFileFor(key)) {
                     val dir = dirForCharacter(key)
-                    // Only id-bearing sections can change during normalization.
-                    for (section in ID_SECTIONS) persistSection(key, dir, section, normalized.getValue(key))
+                    for (section in sections) persistSection(key, dir, section, normalized.getValue(key))
                 }
             }
         }
@@ -490,6 +494,29 @@ private val ID_SECTIONS = listOf(Section.HIGHLIGHTS, Section.NAMES, Section.ALIA
 // comment follows its entry when the list is reordered. Entries without an id fall back to position.
 internal val CONFIG_ELEMENT_KEY: (TomlElement) -> Any? = { element ->
     (element as? TomlTable)?.get("id")?.let { (it as? TomlLiteral)?.content }
+}
+
+/**
+ * The base ("default text") style used to be a preset keyed "default". It is now a first-class part of
+ * the character settings, so fold any lingering `presets["default"]` into the base style and drop it.
+ * Base values the user has already set win; the legacy preset only fills the attributes the base leaves
+ * unset. Returns the (possibly) rewritten config and whether anything changed.
+ */
+private fun CharacterConfig.foldLegacyDefaultPreset(): Pair<CharacterConfig, Boolean> {
+    val legacy = presets["default"] ?: return this to false
+    val base = settings.toBaseStyleLayer()
+    val fill = legacy.toStyleLayer()
+    val merged =
+        StyleLayer(
+            textColor = base.textColor ?: fill.textColor,
+            background = if (base.background != Background.Unset) base.background else fill.background,
+            fontFamily = base.fontFamily ?: fill.fontFamily,
+            fontSize = base.fontSize ?: fill.fontSize,
+            weight = base.weight ?: fill.weight,
+            italic = base.italic ?: fill.italic,
+            underline = base.underline ?: fill.underline,
+        )
+    return copy(presets = presets - "default", settings = settings.applyBaseStyle(merged)) to true
 }
 
 private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {

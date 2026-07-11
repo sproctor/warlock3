@@ -199,6 +199,9 @@ class ExportRepository(
                                 underline = preset.underline,
                                 monospace = preset.monospace,
                                 entireLine = preset.entireLine,
+                                weight = preset.weight,
+                                fontFamily = preset.fontFamily,
+                                fontSize = preset.fontSize,
                             ),
                     )
                 },
@@ -217,6 +220,9 @@ class ExportRepository(
                         font = style.font,
                         monoFont = style.monoFont,
                         nameFilter = style.nameFilter,
+                        bold = style.bold,
+                        italic = style.italic,
+                        underline = style.underline,
                     )
                 },
         )
@@ -403,6 +409,9 @@ class ExportRepository(
                         italic = preset.style.italic,
                         underline = preset.style.underline,
                         monospace = preset.style.monospace,
+                        weight = preset.style.weight,
+                        fontFamily = preset.style.fontFamily,
+                        fontSize = preset.style.fontSize,
                     )
             }
         val importedWindowStyles =
@@ -414,6 +423,9 @@ class ExportRepository(
                         font = window.font,
                         monoFont = window.monoFont,
                         nameFilter = window.nameFilter,
+                        bold = window.bold,
+                        italic = window.italic,
+                        underline = window.underline,
                     )
             }
         val importedCharacterSettings =
