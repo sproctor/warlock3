@@ -12,4 +12,9 @@ data class StyleExport(
     val italic: Boolean,
     val underline: Boolean,
     val monospace: Boolean,
+    // Per-item font (presets only today). Defaulted so exports written before these existed still load,
+    // and so highlight/name styles - which carry no font - can omit them.
+    val weight: Int? = null,
+    val fontFamily: String? = null,
+    val fontSize: Float? = null,
 )
