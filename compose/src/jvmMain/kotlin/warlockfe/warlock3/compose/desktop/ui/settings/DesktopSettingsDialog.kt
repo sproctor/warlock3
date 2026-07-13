@@ -20,10 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
@@ -62,6 +65,8 @@ fun DesktopSettingsDialog(
     DialogWindow(
         title = "Settings",
         onCloseRequest = closeDialog,
+        // Without an explicit icon the title bar falls back to the JBR default (Windows shows it).
+        icon = painterResource(Res.drawable.app_icon),
         state = rememberDialogState(width = 900.dp, height = 650.dp),
     ) {
         var page: SettingsPage by remember { mutableStateOf(SettingsPage.General) }
