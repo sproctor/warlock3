@@ -15,8 +15,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.app_icon
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
@@ -30,6 +33,8 @@ fun WarlockDialog(
     DialogWindow(
         title = title,
         onCloseRequest = onCloseRequest,
+        // Without an explicit icon the title bar falls back to the JBR default (Windows shows it).
+        icon = painterResource(Res.drawable.app_icon),
         state = rememberDialogState(width = width, height = height),
     ) {
         Box(

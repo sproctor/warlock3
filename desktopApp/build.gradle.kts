@@ -207,9 +207,3 @@ potassium {
         isEnabled.set(false)
     }
 }
-
-compose {
-    resources {
-        packageOfResClass = "warlockfe.warlock3.app.resources"
-    }
-}

@@ -16,10 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.app.resources.Res
-import warlockfe.warlock3.app.resources.icon
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.app_icon
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
@@ -37,7 +37,7 @@ fun AboutDialog(
             Row(Modifier.fillMaxWidth()) {
                 Image(
                     modifier = Modifier.size(50.dp),
-                    painter = painterResource(Res.drawable.icon),
+                    painter = painterResource(Res.drawable.app_icon),
                     contentDescription = "Warlock logo",
                 )
                 Spacer(Modifier.width(16.dp))

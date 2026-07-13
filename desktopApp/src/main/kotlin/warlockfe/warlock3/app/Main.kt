@@ -70,6 +70,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
 import org.jetbrains.jewel.ui.component.Text
@@ -82,6 +83,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.observeSkin
@@ -209,6 +211,9 @@ private class WarlockCommand : CliktCommand() {
                 }
             LaunchedEffect(darkMode) { appContainer.darkMode.value = darkMode }
             val skin by appContainer.skin.collectAsState()
+            // Advertise an icon on the window itself (_NET_WM_ICON on Linux). Without it, taskbars
+            // fall back to a generic icon when no .desktop file is installed (e.g. a bare AppImage).
+            val appIcon = painterResource(Res.drawable.app_icon)
             WarlockDesktopTheme(isDark = darkMode) {
                 var showUpdateDialog by remember { mutableStateOf(false) }
                 var availableUpdate: UpdateInfo? by remember { mutableStateOf(null) }
@@ -298,6 +303,7 @@ private class WarlockCommand : CliktCommand() {
                         DecoratedWindow(
                             title = title,
                             state = windowState,
+                            icon = appIcon,
                             onCloseRequest = { closeGame() },
                         ) {
                             window.minimumSize = Dimension(240, 240)
@@ -738,6 +744,7 @@ private fun UpdateDialog(
     DialogWindow(
         onCloseRequest = onDismiss,
         title = "Warlock update available",
+        icon = painterResource(Res.drawable.app_icon),
         state = rememberDialogState(width = 400.dp, height = 300.dp),
     ) {
         Column(
