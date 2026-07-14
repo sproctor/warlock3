@@ -21,7 +21,31 @@ data class StyleLayer(
     val underline: Boolean? = null,
     val entireLine: Boolean? = null,
     val monospace: Boolean? = null,
+    // Skin-palette slots the colors reference, carried beside the resolved color so a palette pick tracks
+    // the skin. Null = a frozen literal. [resolveRefs] refreshes [textColor]/[background] from these; the
+    // render path ignores them and reads the plain colors.
+    val textColorRef: String? = null,
+    val backgroundRef: String? = null,
 )
+
+/**
+ * Refreshes any skin-referenced colors from the current skin [palette] (slot -> color), leaving the ref
+ * metadata in place so the editor can still show a color as skin-tracked. Applied at the compose
+ * boundary (render + settings) where the skin is known; a literal color (no ref) is untouched, and a ref
+ * to a slot the skin doesn't define keeps its last resolved color.
+ */
+fun StyleLayer.resolveRefs(palette: Map<String, WarlockColor>): StyleLayer {
+    if (textColorRef == null && backgroundRef == null) return this
+    return copy(
+        textColor = textColorRef?.let { palette[it] } ?: textColor,
+        background =
+            if (backgroundRef != null && background is Background.Fill) {
+                palette[backgroundRef]?.let { Background.Fill(it) } ?: background
+            } else {
+                background
+            },
+    )
+}
 
 /**
  * Adapts the legacy dense [StyleDefinition] into a sparse [StyleLayer]. A `false` boolean and an

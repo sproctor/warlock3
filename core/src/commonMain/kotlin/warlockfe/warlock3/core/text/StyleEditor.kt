@@ -23,6 +23,11 @@ sealed interface StyleEdit {
         val color: WarlockColor,
     ) : StyleEdit
 
+    /** Point the text color at a skin-palette slot so it tracks the skin; the color is filled by [resolveRefs]. */
+    data class SetTextColorRef(
+        val slot: String,
+    ) : StyleEdit
+
     data class SetBackground(
         val background: Background,
     ) : StyleEdit
@@ -67,22 +72,34 @@ sealed interface StyleEdit {
  */
 fun StyleLayer.applyEdit(edit: StyleEdit): StyleLayer =
     when (edit) {
-        is StyleEdit.SetTextColor -> copy(textColor = edit.color.specifiedOrNull())
-        is StyleEdit.SetBackground -> copy(background = edit.background)
+        // A literal color clears any skin ref ("frozen"); a ref sets the slot, color filled by resolveRefs.
+        is StyleEdit.SetTextColor -> copy(textColor = edit.color.specifiedOrNull(), textColorRef = null)
+
+        is StyleEdit.SetTextColorRef -> copy(textColorRef = edit.slot)
+
+        is StyleEdit.SetBackground -> copy(background = edit.background, backgroundRef = null)
+
         is StyleEdit.SetFontFamily -> copy(fontFamily = edit.family)
+
         is StyleEdit.SetFontSize -> copy(fontSize = edit.size)
+
         is StyleEdit.SetWeight -> copy(weight = edit.weight)
+
         is StyleEdit.SetItalic -> copy(italic = edit.italic)
+
         is StyleEdit.SetUnderline -> copy(underline = edit.underline)
+
         is StyleEdit.SetEntireLine -> copy(entireLine = edit.entireLine)
+
         is StyleEdit.SetMonospace -> copy(monospace = edit.monospace)
+
         is StyleEdit.Reset -> reset(edit.attribute)
     }
 
 private fun StyleLayer.reset(attribute: StyleAttribute): StyleLayer =
     when (attribute) {
-        StyleAttribute.TextColor -> copy(textColor = null)
-        StyleAttribute.Background -> copy(background = Background.Unset)
+        StyleAttribute.TextColor -> copy(textColor = null, textColorRef = null)
+        StyleAttribute.Background -> copy(background = Background.Unset, backgroundRef = null)
         StyleAttribute.FontFamily -> copy(fontFamily = null)
         StyleAttribute.FontSize -> copy(fontSize = null)
         StyleAttribute.Weight -> copy(weight = null)
