@@ -32,6 +32,7 @@ import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.toLayer
@@ -117,30 +118,36 @@ class WindowRegistryImpl(
 
     private val characterId = MutableStateFlow("global")
 
+    // The skin's named-color palette, so a name's skin-referenced color resolves and follows the skin.
+    private val colorPalette: StateFlow<Map<String, WarlockColor>> =
+        skinPresets
+            .map { it.presetColorPalette() }
+            .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
     private val names: StateFlow<List<ViewHighlight>> =
-        characterId
-            .flatMapLatest { characterId ->
-                nameRepository.observeForCharacter(characterId).map { names ->
-                    names.mapNotNull { name ->
-                        if (name.text.isBlank()) return@mapNotNull null
-                        LiteralHighlight(
-                            literal = name.text,
-                            matchPartialWord = false,
-                            ignoreCase = false,
-                            style =
-                                StyleDefinition(
-                                    textColor = name.textColor,
-                                    backgroundColor = name.backgroundColor,
-                                ),
-                            sound = name.sound,
-                        )
-                    }
-                }
-            }.stateIn(
-                scope = scope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyList(),
-            )
+        combine(
+            characterId.flatMapLatest { nameRepository.observeForCharacter(it) },
+            colorPalette,
+        ) { names, palette ->
+            names.mapNotNull { name ->
+                if (name.text.isBlank()) return@mapNotNull null
+                LiteralHighlight(
+                    literal = name.text,
+                    matchPartialWord = false,
+                    ignoreCase = false,
+                    style =
+                        StyleDefinition(
+                            textColor = name.textColorRef?.let { palette[it] } ?: name.textColor,
+                            backgroundColor = name.backgroundColorRef?.let { palette[it] } ?: name.backgroundColor,
+                        ),
+                    sound = name.sound,
+                )
+            }
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList(),
+        )
 
     private val highlights: StateFlow<HighlightIndex> =
         characterId

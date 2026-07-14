@@ -34,6 +34,7 @@ class StyleConfigRoundTripTest {
                         textColor = WarlockColor(red = 0, green = 255, blue = 0),
                         bold = true,
                     ),
+                    NameConfig(id = "n2", text = "Lyrena", textColorRef = "speech"),
                 ),
             presets =
                 mapOf(

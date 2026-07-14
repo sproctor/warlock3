@@ -25,6 +25,8 @@ fun NameConfig.toStyleLayer(): StyleLayer =
         weight = if (bold) 700 else null,
         italic = if (italic) true else null,
         underline = if (underline) true else null,
+        textColorRef = textColorRef,
+        backgroundRef = backgroundColorRef,
     )
 
 /** Writes an edited [layer] back onto a name's color + bold/italic/underline fields. */
@@ -35,4 +37,6 @@ fun NameConfig.withStyle(layer: StyleLayer): NameConfig =
         bold = layer.weight == 700,
         italic = layer.italic == true,
         underline = layer.underline == true,
+        textColorRef = layer.textColorRef,
+        backgroundColorRef = layer.backgroundRef,
     )

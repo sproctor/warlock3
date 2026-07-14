@@ -48,14 +48,18 @@ import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import kotlin.uuid.Uuid
@@ -77,6 +81,7 @@ fun NamesView(
     var editingName by remember { mutableStateOf<NameConfig?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val editingCharacterId = currentCharacterId ?: "global"
+    val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
 
     SettingsListScaffold(
         title = "Names",
@@ -95,7 +100,7 @@ fun NamesView(
                     },
                     leadingContent = {
                         StyleChip(
-                            resolved = resolve(listOf(name.toStyleLayer())),
+                            resolved = resolve(listOf(name.toStyleLayer().resolveRefs(palette))),
                             windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
                         )
                     },
@@ -151,6 +156,7 @@ fun NamesView(
     editingName?.let { name ->
         EditNameDialog(
             name = name,
+            palette = palette,
             saveName = { newName ->
                 coroutineScope.launch {
                     nameRepository.save(editingCharacterId, newName)
@@ -165,13 +171,15 @@ fun NamesView(
 @Composable
 fun EditNameDialog(
     name: NameConfig,
+    palette: Map<String, WarlockColor>,
     saveName: (NameConfig) -> Unit,
     onClose: () -> Unit,
 ) {
     val text = rememberTextFieldState(name.text)
     val sound = rememberTextFieldState(name.sound ?: "")
     var styleLayer by remember { mutableStateOf(name.toStyleLayer()) }
-    val stack = listOf(StyleScope.CHARACTER to styleLayer)
+    val resolvedLayer = styleLayer.resolveRefs(palette)
+    val stack = listOf(StyleScope.CHARACTER to resolvedLayer)
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -216,9 +224,10 @@ fun EditNameDialog(
                     sourced = resolveSourced(stack),
                     sample = sampleStyle(stack),
                     editScope = StyleScope.CHARACTER,
-                    editLayer = styleLayer,
+                    editLayer = resolvedLayer,
                     onSave = { styleLayer = it },
                     showFont = false,
+                    palette = palette,
                 )
                 val soundLauncher =
                     rememberFilePickerLauncher { file ->
