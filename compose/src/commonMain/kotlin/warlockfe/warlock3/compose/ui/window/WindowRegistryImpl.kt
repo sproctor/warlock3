@@ -36,6 +36,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.toLayer
+import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.TextStream
@@ -152,7 +153,10 @@ class WindowRegistryImpl(
     private val highlights: StateFlow<HighlightIndex> =
         characterId
             .flatMapLatest { characterId ->
-                highlightRepository.observeForCharacter(characterId).map { highlights ->
+                combine(highlightRepository.observeForCharacter(characterId), colorPalette) { highlights, palette ->
+                    // Highlight group styles are stored as sparse layers with skin refs; resolve each ref
+                    // against the skin, then flatten to the dense StyleDefinition the render path consumes.
+                    fun render(layer: StyleLayer): StyleDefinition = resolve(listOf(layer.resolveRefs(palette))).toStyleDefinition()
                     highlights.mapNotNull { highlight ->
                         if (highlight.isRegex) {
                             try {
@@ -162,7 +166,7 @@ class WindowRegistryImpl(
                                             pattern = highlight.pattern,
                                             options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
                                         ),
-                                    styles = highlight.styles,
+                                    styles = highlight.styles.mapValues { render(it.value) },
                                     sound = highlight.sound,
                                 )
                             } catch (_: Exception) {
@@ -176,7 +180,7 @@ class WindowRegistryImpl(
                                 literal = highlight.pattern,
                                 matchPartialWord = highlight.matchPartialWord,
                                 ignoreCase = highlight.ignoreCase,
-                                style = highlight.styles[0],
+                                style = highlight.styles[0]?.let { render(it) },
                                 sound = highlight.sound,
                             )
                         }
