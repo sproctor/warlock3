@@ -33,14 +33,18 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.ui.settings.withStyle
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import kotlin.uuid.Uuid
@@ -61,6 +65,7 @@ fun DesktopNamesView(
     }.collectAsState(emptyList())
     var editingName by remember { mutableStateOf<NameConfig?>(null) }
     val scope = rememberCoroutineScope()
+    val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
     val editingCharacterId = currentCharacterId ?: "global"
 
     SettingsListScaffold(
@@ -75,7 +80,7 @@ fun DesktopNamesView(
                 WarlockListItem(
                     leading = {
                         StyleChip(
-                            resolved = resolve(listOf(name.toStyleLayer())),
+                            resolved = resolve(listOf(name.toStyleLayer().resolveRefs(palette))),
                             windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
                         )
                     },
@@ -122,6 +127,7 @@ fun DesktopNamesView(
     editingName?.let { name ->
         DesktopEditNameDialog(
             name = name,
+            palette = palette,
             saveName = { newName ->
                 scope.launch {
                     nameRepository.save(editingCharacterId, newName)
@@ -136,13 +142,15 @@ fun DesktopNamesView(
 @Composable
 private fun DesktopEditNameDialog(
     name: NameConfig,
+    palette: Map<String, WarlockColor>,
     saveName: (NameConfig) -> Unit,
     onClose: () -> Unit,
 ) {
     val text = rememberTextFieldState(name.text)
     val sound = rememberTextFieldState(name.sound ?: "")
     var styleLayer by remember { mutableStateOf(name.toStyleLayer()) }
-    val stack = listOf(StyleScope.CHARACTER to styleLayer)
+    val resolvedLayer = styleLayer.resolveRefs(palette)
+    val stack = listOf(StyleScope.CHARACTER to resolvedLayer)
 
     WarlockDialog(
         title = "Edit name",
@@ -164,9 +172,10 @@ private fun DesktopEditNameDialog(
                 sourced = resolveSourced(stack),
                 sample = sampleStyle(stack),
                 editScope = StyleScope.CHARACTER,
-                editLayer = styleLayer,
+                editLayer = resolvedLayer,
                 onSave = { styleLayer = it },
                 showFont = false,
+                palette = palette,
             )
 
             val soundLauncher =
