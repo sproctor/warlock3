@@ -97,6 +97,8 @@ fun TextStyleEditor(
             inheritedBackground = inheritedBackground,
             onSelect = { edit(StyleEdit.SetBackground(it)) },
             onClose = { editBackground = false },
+            palette = palette,
+            onSelectSlot = { edit(StyleEdit.SetBackgroundRef(it)) },
         )
     }
     if (editTextColor) {
@@ -131,8 +133,13 @@ fun TextStyleEditor(
         }
 
         AttributeRow("Background", sourced.background.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
-            OutlinedButton(onClick = { editBackground = true }) {
-                Text(backgroundLabel(sample.background))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { editBackground = true }) {
+                    Text(backgroundLabel(sample.background))
+                }
+                editLayer.backgroundRef?.let { slot ->
+                    Text("tracks $slot", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
 

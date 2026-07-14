@@ -38,8 +38,10 @@ fun StyleLayer.resolveRefs(palette: Map<String, WarlockColor>): StyleLayer {
     if (textColorRef == null && backgroundRef == null) return this
     return copy(
         textColor = textColorRef?.let { palette[it] } ?: textColor,
+        // A background ref resolves to a Fill of the slot color regardless of the cached background, so it
+        // survives even when the stored fill color was dropped to unspecified. A missing slot keeps what's there.
         background =
-            if (backgroundRef != null && background is Background.Fill) {
+            if (backgroundRef != null) {
                 palette[backgroundRef]?.let { Background.Fill(it) } ?: background
             } else {
                 background
