@@ -173,6 +173,8 @@ internal fun PresetStyleConfig.toStyleLayer(): StyleLayer =
         underline = if (underline) true else null,
         entireLine = if (entireLine) true else null,
         monospace = if (monospace) true else null,
+        textColorRef = textColorRef,
+        backgroundRef = backgroundColorRef,
     )
 
 internal fun StyleLayer.toPresetStyleConfig(): PresetStyleConfig =
@@ -187,6 +189,8 @@ internal fun StyleLayer.toPresetStyleConfig(): PresetStyleConfig =
         weight = weight?.takeUnless { it == 700 },
         fontFamily = fontFamily,
         fontSize = fontSize,
+        textColorRef = textColorRef,
+        backgroundColorRef = backgroundRef,
     )
 
 // The character/global base text style — the color + font + italic/underline that together are the
@@ -202,6 +206,8 @@ internal fun CharacterSettingsConfig.toBaseStyleLayer(): StyleLayer =
         weight = defaultFont?.weight,
         italic = if (defaultItalic) true else null,
         underline = if (defaultUnderline) true else null,
+        textColorRef = defaultTextColorRef,
+        backgroundRef = defaultBackgroundColorRef,
     )
 
 internal fun CharacterSettingsConfig.applyBaseStyle(layer: StyleLayer): CharacterSettingsConfig =
@@ -211,6 +217,8 @@ internal fun CharacterSettingsConfig.applyBaseStyle(layer: StyleLayer): Characte
         defaultItalic = layer.italic == true,
         defaultUnderline = layer.underline == true,
         defaultFont = FontConfig(family = layer.fontFamily, size = layer.fontSize, weight = layer.weight).takeUnless { it.isEmpty() },
+        defaultTextColorRef = layer.textColorRef,
+        defaultBackgroundColorRef = layer.backgroundRef,
     )
 
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =

@@ -41,6 +41,8 @@ class StyleConfigRoundTripTest {
                     "bold" to PresetStyleConfig(bold = true),
                     // Exercise the new per-item font + explicit-weight fields.
                     "heavy" to PresetStyleConfig(weight = 500, fontFamily = "Serif", fontSize = 14f),
+                    // A skin-referenced color (tracks the skin).
+                    "skinned" to PresetStyleConfig(textColorRef = "roomName", backgroundColorRef = "roomNameBg"),
                 ),
             windows =
                 mapOf(
@@ -88,6 +90,22 @@ class StyleConfigRoundTripTest {
         assertEquals(null, preset.weight)
         assertEquals(null, preset.fontFamily)
         assertEquals(null, preset.fontSize)
+    }
+
+    @Test
+    fun `a preset color ref survives the StyleLayer mappers`() {
+        val config = PresetStyleConfig(textColorRef = "roomName", backgroundColorRef = "roomNameBg")
+        val layer = config.toStyleLayer()
+        assertEquals("roomName", layer.textColorRef)
+        assertEquals("roomNameBg", layer.backgroundRef)
+        assertEquals(config, layer.toPresetStyleConfig())
+    }
+
+    @Test
+    fun `a base color ref survives the base-style mappers`() {
+        val config = CharacterSettingsConfig(defaultTextColorRef = "default")
+        assertEquals("default", config.toBaseStyleLayer().textColorRef)
+        assertEquals("default", config.applyBaseStyle(config.toBaseStyleLayer()).defaultTextColorRef)
     }
 
     @Test
