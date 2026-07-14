@@ -96,3 +96,11 @@ fun backgroundLabel(background: Background): String =
         Background.None -> "none"
         Background.Unset -> "no bg"
     }
+
+/** The "Inherit" option's annotation in the background picker: what the background falls back to. */
+fun inheritedBackgroundLabel(inherited: Background): String =
+    when (inherited) {
+        is Background.Fill -> "inherits ${inherited.color.toHexString() ?: "a color"}"
+        Background.None -> "inherits none (transparent)"
+        Background.Unset -> "inherits the window background"
+    }

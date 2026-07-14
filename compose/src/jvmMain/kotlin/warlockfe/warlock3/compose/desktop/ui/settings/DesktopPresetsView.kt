@@ -143,23 +143,27 @@ fun DesktopPresetsView(
             else -> SAFE_DEFAULT_STYLE.backgroundColor.toColor()
         }
 
-    // A preset's chip shows how it renders over the base, so unset attributes inherit the base as in game.
-    fun chipStyle(item: PresetItem): ResolvedStyle =
+    // The full cascade for an item, edit scope first: how it renders over the base, so unset attributes
+    // inherit the base as in game.
+    fun chipStack(item: PresetItem): List<StyleLayer> =
         when (item) {
             PresetItem.Base -> {
-                resolve(baseLayers)
+                baseLayers
             }
 
             is PresetItem.Named -> {
-                resolve(
-                    listOfNotNull(
-                        (charPresets[item.name] ?: StyleLayer()).takeIf { editingCharacterId != null },
-                        globalPresets[item.name] ?: StyleLayer(),
-                        skinLayers[item.name] ?: StyleLayer(),
-                    ) + baseLayers,
-                )
+                listOfNotNull(
+                    (charPresets[item.name] ?: StyleLayer()).takeIf { editingCharacterId != null },
+                    globalPresets[item.name] ?: StyleLayer(),
+                    skinLayers[item.name] ?: StyleLayer(),
+                ) + baseLayers
             }
         }
+
+    fun chipStyle(item: PresetItem): ResolvedStyle = resolve(chipStack(item))
+
+    // What the background would fall back to if the edited scope unset it (the layers below it).
+    fun inheritedBackground(item: PresetItem): Background = resolve(chipStack(item).drop(1)).background
 
     SettingsListScaffold(
         title = "Presets",
@@ -201,6 +205,7 @@ fun DesktopPresetsView(
                     editLayer = model.editLayer,
                     onSave = { save(current, it) },
                     windowBackground = windowBackground,
+                    inheritedBackground = inheritedBackground(current),
                 )
             }
         }
