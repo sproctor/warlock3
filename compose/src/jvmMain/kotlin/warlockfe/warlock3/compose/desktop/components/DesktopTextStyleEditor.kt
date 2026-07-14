@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.backgroundLabel
@@ -62,6 +63,7 @@ fun DesktopTextStyleEditor(
     showMonospace: Boolean = false,
     windowBackground: Color = Color(0xFF1E1F22),
     inheritedBackground: Background = Background.Unset,
+    palette: Map<String, WarlockColor> = emptyMap(),
 ) {
     fun edit(vararg edits: StyleEdit) {
         onSave(edits.fold(editLayer) { layer, e -> layer.applyEdit(e) })
@@ -70,6 +72,7 @@ fun DesktopTextStyleEditor(
     var editColor by remember { mutableStateOf<((WarlockColor) -> Unit)?>(null) }
     var editFont by remember { mutableStateOf(false) }
     var editBackground by remember { mutableStateOf(false) }
+    var editTextColor by remember { mutableStateOf(false) }
 
     editColor?.let { onPick ->
         DesktopColorPickerDialog(
@@ -103,16 +106,37 @@ fun DesktopTextStyleEditor(
             onClose = { editBackground = false },
         )
     }
+    if (editTextColor) {
+        DesktopColorRefPickerDialog(
+            palette = palette,
+            onSelectSlot = { edit(StyleEdit.SetTextColorRef(it)) },
+            onSelectCustom = { editColor = { color -> edit(StyleEdit.SetTextColor(color)) } },
+            onClose = { editTextColor = false },
+        )
+    }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         StylePreview(sample, windowBackground)
 
         AttributeRow("Text color", sourced.textColor.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
-            DesktopColorPickerButton(
-                text = "Text",
-                color = sample.textColor.toColor(),
-                onClick = { editColor = { color -> edit(StyleEdit.SetTextColor(color)) } },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DesktopColorPickerButton(
+                    text = "Text",
+                    color = sample.textColor.toColor(),
+                    onClick = {
+                        // With a skin palette available, offer palette (skin-tracking) picks; otherwise the
+                        // plain color picker stores a frozen literal.
+                        if (palette.isEmpty()) {
+                            editColor = { color -> edit(StyleEdit.SetTextColor(color)) }
+                        } else {
+                            editTextColor = true
+                        }
+                    },
+                )
+                editLayer.textColorRef?.let { slot ->
+                    Text("tracks $slot", color = LocalContentColor.current.copy(alpha = 0.6f))
+                }
+            }
         }
 
         AttributeRow("Background", sourced.background.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
