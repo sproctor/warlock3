@@ -54,6 +54,7 @@ fun TextStyleEditor(
     showEntireLine: Boolean = false,
     showMonospace: Boolean = false,
     windowBackground: Color = Color(0xFF1E1F22),
+    inheritedBackground: Background = Background.Unset,
 ) {
     fun edit(vararg edits: StyleEdit) {
         onSave(edits.fold(editLayer) { layer, e -> layer.applyEdit(e) })
@@ -61,6 +62,7 @@ fun TextStyleEditor(
 
     var editColor by remember { mutableStateOf<((WarlockColor) -> Unit)?>(null) }
     var editFont by remember { mutableStateOf(false) }
+    var editBackground by remember { mutableStateOf(false) }
 
     editColor?.let { onPick ->
         ColorPickerDialog(
@@ -86,6 +88,14 @@ fun TextStyleEditor(
             },
         )
     }
+    if (editBackground) {
+        BackgroundPickerDialog(
+            current = sample.background,
+            inheritedBackground = inheritedBackground,
+            onSelect = { edit(StyleEdit.SetBackground(it)) },
+            onClose = { editBackground = false },
+        )
+    }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         StylePreview(sample, windowBackground)
@@ -99,17 +109,8 @@ fun TextStyleEditor(
         }
 
         AttributeRow("Background", sourced.background.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                ColorPickerButton(
-                    text = "Fill",
-                    color = (sample.background as? Background.Fill)?.color.toColor(),
-                    onClick = { editColor = { color -> edit(StyleEdit.SetBackground(Background.Fill(color))) } },
-                )
-                CheckboxRow(
-                    checked = sample.background == Background.None,
-                    onCheckedChange = { none -> edit(StyleEdit.SetBackground(if (none) Background.None else Background.Unset)) },
-                    text = "None",
-                )
+            OutlinedButton(onClick = { editBackground = true }) {
+                Text(backgroundLabel(sample.background))
             }
         }
 
