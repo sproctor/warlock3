@@ -129,6 +129,9 @@ data class PresetStyleConfig(
     val weight: Int? = null,
     val fontFamily: String? = null,
     val fontSize: Float? = null,
+    // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )
 
 @Serializable
@@ -181,6 +184,9 @@ data class CharacterSettingsConfig(
     val defaultBackgroundColor: WarlockColor = WarlockColor.Unspecified,
     val defaultItalic: Boolean = false,
     val defaultUnderline: Boolean = false,
+    // Skin-palette slots the base colors reference (so they track the skin); null = a literal color.
+    val defaultTextColorRef: String? = null,
+    val defaultBackgroundColorRef: String? = null,
 )
 
 // Per-section file wrappers. Each per-character section is stored in its own file under
