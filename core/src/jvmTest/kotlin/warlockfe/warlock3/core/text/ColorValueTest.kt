@@ -45,6 +45,27 @@ class ColorValueTest {
     }
 
     @Test
+    fun aBackgroundRefResolvesEvenWhenTheCachedBackgroundIsUnset() {
+        // A ref saved with its fill color dropped to unspecified (-> Unset on reload) must still resolve.
+        val layer = StyleLayer(background = Background.Unset, backgroundRef = "roomName")
+        assertEquals(Background.Fill(red), layer.resolveRefs(palette).background)
+    }
+
+    @Test
+    fun settingABackgroundRefRecordsTheSlotAsAFill() {
+        val layer = StyleLayer().applyEdit(StyleEdit.SetBackgroundRef("speech"))
+        assertEquals("speech", layer.backgroundRef)
+        assertEquals(Background.Fill(blue), layer.resolveRefs(palette).background)
+    }
+
+    @Test
+    fun aLiteralBackgroundClearsTheBackgroundRef() {
+        val layer = StyleLayer(backgroundRef = "speech").applyEdit(StyleEdit.SetBackground(Background.Fill(red)))
+        assertEquals(null, layer.backgroundRef)
+        assertEquals(Background.Fill(red), layer.background)
+    }
+
+    @Test
     fun resolveRefsKeepsLastColorWhenTheSlotIsGone() {
         val layer = StyleLayer(textColor = red, textColorRef = "removedSlot")
         assertEquals(red, layer.resolveRefs(palette).textColor)

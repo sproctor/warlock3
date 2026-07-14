@@ -3,11 +3,15 @@ package warlockfe.warlock3.compose.desktop.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +32,7 @@ import warlockfe.warlock3.compose.components.inheritedBackgroundLabel
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.Background
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
 
 /**
@@ -36,6 +41,7 @@ import warlockfe.warlock3.core.text.toHexString
  * looks identical in game but does not inherit a later global background). Color opens the standard
  * color picker. Applies the chosen [Background] and closes.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DesktopBackgroundPickerDialog(
     current: Background,
@@ -43,6 +49,8 @@ fun DesktopBackgroundPickerDialog(
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    palette: Map<String, WarlockColor> = emptyMap(),
+    onSelectSlot: (String) -> Unit = {},
 ) {
     var pickingColor by remember { mutableStateOf(false) }
     if (pickingColor) {
@@ -87,6 +95,33 @@ fun DesktopBackgroundPickerDialog(
                 onClick = { pickingColor = true },
                 swatch = (current as? Background.Fill)?.color.toColor(default = Color.Transparent),
             )
+            if (palette.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Skin palette - tracks the skin",
+                    modifier = Modifier.padding(horizontal = 10.dp),
+                    color = LocalContentColor.current.copy(alpha = 0.6f),
+                )
+                FlowRow(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    palette.toSortedMap().forEach { (slot, color) ->
+                        Box(
+                            Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .background(color.toColor())
+                                .clickable {
+                                    onSelectSlot(slot)
+                                    onClose()
+                                },
+                        )
+                    }
+                }
+            }
         }
     }
 }

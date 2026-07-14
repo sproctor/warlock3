@@ -104,6 +104,8 @@ fun DesktopTextStyleEditor(
             inheritedBackground = inheritedBackground,
             onSelect = { edit(StyleEdit.SetBackground(it)) },
             onClose = { editBackground = false },
+            palette = palette,
+            onSelectSlot = { edit(StyleEdit.SetBackgroundRef(it)) },
         )
     }
     if (editTextColor) {
@@ -140,10 +142,15 @@ fun DesktopTextStyleEditor(
         }
 
         AttributeRow("Background", sourced.background.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
-            WarlockOutlinedButton(
-                onClick = { editBackground = true },
-                text = backgroundLabel(sample.background),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                WarlockOutlinedButton(
+                    onClick = { editBackground = true },
+                    text = backgroundLabel(sample.background),
+                )
+                editLayer.backgroundRef?.let { slot ->
+                    Text("tracks $slot", color = LocalContentColor.current.copy(alpha = 0.6f))
+                }
+            }
         }
 
         AttributeRow("Weight", sourced.weight.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Weight)) }) {

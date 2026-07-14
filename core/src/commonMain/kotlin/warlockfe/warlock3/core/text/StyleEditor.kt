@@ -32,6 +32,11 @@ sealed interface StyleEdit {
         val background: Background,
     ) : StyleEdit
 
+    /** Point the background fill at a skin-palette slot so it tracks the skin; the color is filled by [resolveRefs]. */
+    data class SetBackgroundRef(
+        val slot: String,
+    ) : StyleEdit
+
     data class SetFontFamily(
         val family: String?,
     ) : StyleEdit
@@ -78,6 +83,9 @@ fun StyleLayer.applyEdit(edit: StyleEdit): StyleLayer =
         is StyleEdit.SetTextColorRef -> copy(textColorRef = edit.slot)
 
         is StyleEdit.SetBackground -> copy(background = edit.background, backgroundRef = null)
+
+        // The fill color is a placeholder; resolveRefs fills it from the slot (see [resolveRefs]).
+        is StyleEdit.SetBackgroundRef -> copy(background = Background.Fill(WarlockColor.Unspecified), backgroundRef = edit.slot)
 
         is StyleEdit.SetFontFamily -> copy(fontFamily = edit.family)
 

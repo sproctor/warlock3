@@ -3,8 +3,11 @@ package warlockfe.warlock3.compose.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.Background
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toHexString
 
 /**
@@ -35,6 +39,7 @@ import warlockfe.warlock3.core.text.toHexString
  * selectable states rather than a color-or-clear control. Inherit is annotated with what it falls back
  * to, so it stays distinguishable from None. Color opens the standard color picker.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BackgroundPickerDialog(
     current: Background,
@@ -42,6 +47,8 @@ fun BackgroundPickerDialog(
     onSelect: (Background) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    palette: Map<String, WarlockColor> = emptyMap(),
+    onSelectSlot: (String) -> Unit = {},
 ) {
     var pickingColor by remember { mutableStateOf(false) }
     if (pickingColor) {
@@ -85,6 +92,29 @@ fun BackgroundPickerDialog(
                     onClick = { pickingColor = true },
                     swatch = (current as? Background.Fill)?.color.toColor(default = Color.Transparent),
                 )
+                if (palette.isNotEmpty()) {
+                    Text(
+                        "Skin palette - tracks the skin",
+                        modifier = Modifier.padding(top = 6.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        palette.toSortedMap().forEach { (slot, color) ->
+                            Box(
+                                Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .background(color.toColor())
+                                    .clickable {
+                                        onSelectSlot(slot)
+                                        onClose()
+                                    },
+                            )
+                        }
+                    }
+                }
             }
         },
     )
