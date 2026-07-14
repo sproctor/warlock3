@@ -23,7 +23,7 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
+import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
@@ -33,12 +33,14 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.ui.settings.withStyle
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import kotlin.uuid.Uuid
@@ -72,9 +74,9 @@ fun DesktopNamesView(
             names.forEach { name ->
                 WarlockListItem(
                     leading = {
-                        DesktopStylePreview(
-                            textColor = name.textColor.toColor(),
-                            backgroundColor = name.backgroundColor.toColor(),
+                        StyleChip(
+                            resolved = resolve(listOf(name.toStyleLayer())),
+                            windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
                         )
                     },
                     headline = { Text(name.text) },
