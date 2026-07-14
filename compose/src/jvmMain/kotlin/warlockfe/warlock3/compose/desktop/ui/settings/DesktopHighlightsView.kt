@@ -34,7 +34,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import sh.calvin.reorderable.ReorderableColumn
-import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
+import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
@@ -47,6 +47,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.ui.settings.toStyleDefinition
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
@@ -54,6 +55,7 @@ import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import warlockfe.warlock3.core.text.toLayer
@@ -110,10 +112,9 @@ fun DesktopHighlightsView(
                                                 .draggableHandle(),
                                         colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
                                     )
-                                    val style = highlight.styles[0]
-                                    DesktopStylePreview(
-                                        textColor = style?.textColor.toColor(),
-                                        backgroundColor = style?.backgroundColor.toColor(),
+                                    StyleChip(
+                                        resolved = resolve(listOf((highlight.styles[0] ?: StyleDefinition()).toLayer())),
+                                        windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
                                     )
                                 }
                             },

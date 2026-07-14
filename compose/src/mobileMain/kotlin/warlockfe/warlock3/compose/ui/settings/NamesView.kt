@@ -40,6 +40,7 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
@@ -47,12 +48,14 @@ import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import kotlin.uuid.Uuid
@@ -91,26 +94,10 @@ fun NamesView(
                         Text(text = name.text)
                     },
                     leadingContent = {
-                        val contentColor = name.textColor.toColor()
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = name.backgroundColor.toColor(),
-                                        shape = MaterialTheme.shapes.small,
-                                    ).border(1.dp, contentColor, MaterialTheme.shapes.small),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (contentColor.isSpecified) {
-                                Icon(
-                                    painterResource(Res.drawable.palette),
-                                    contentDescription = "Highlight color",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = contentColor,
-                                )
-                            }
-                        }
+                        StyleChip(
+                            resolved = resolve(listOf(name.toStyleLayer())),
+                            windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
+                        )
                     },
                     trailingContent = {
                         Row {

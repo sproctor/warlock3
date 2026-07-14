@@ -49,6 +49,7 @@ import org.jetbrains.compose.resources.painterResource
 import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
@@ -57,6 +58,7 @@ import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
@@ -64,6 +66,7 @@ import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import warlockfe.warlock3.core.text.toLayer
@@ -119,27 +122,10 @@ fun HighlightsView(
                                         modifier = Modifier.draggableHandle(),
                                     )
                                     Spacer(Modifier.width(8.dp))
-                                    val style = highlight.styles[0]
-                                    val contentColor = style?.textColor?.toColor() ?: Color.Unspecified
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(40.dp)
-                                                .background(
-                                                    color = style?.backgroundColor?.toColor() ?: Color.Unspecified,
-                                                    shape = MaterialTheme.shapes.small,
-                                                ).border(1.dp, contentColor, MaterialTheme.shapes.small),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        if (contentColor.isSpecified) {
-                                            Icon(
-                                                painterResource(Res.drawable.palette),
-                                                contentDescription = "Highlight color",
-                                                modifier = Modifier.size(20.dp),
-                                                tint = contentColor,
-                                            )
-                                        }
-                                    }
+                                    StyleChip(
+                                        resolved = resolve(listOf((highlight.styles[0] ?: StyleDefinition()).toLayer())),
+                                        windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
+                                    )
                                 }
                             },
                             trailingContent = {
