@@ -164,6 +164,9 @@ data class WindowStyleConfig(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
+    // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )
 
 @Serializable
