@@ -18,6 +18,7 @@ import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.HighlightIndex
+import warlockfe.warlock3.compose.util.presetColorPalette
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
@@ -32,6 +33,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
@@ -213,8 +215,12 @@ class WindowRegistryImpl(
         combine(
             skinPresets,
             characterId.flatMapLatest { presetRepository.observeLayersForCharacter(it) },
-        ) { skinDefaults, savedPresets -> (skinDefaults.mapValues { it.value.toLayer() } + savedPresets) - "default" }
-            .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+        ) { skinDefaults, savedPresets ->
+            // Resolve skin-referenced colors against the skin's own palette so a user's palette pick
+            // renders in the referenced color and follows the skin.
+            val palette = skinDefaults.presetColorPalette()
+            (skinDefaults.mapValues { it.value.toLayer() } + savedPresets.mapValues { it.value.resolveRefs(palette) }) - "default"
+        }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     // The resolved base ("default text") style: character base over global base over the skin's default,
     // where each scope's base is the color/font/italic/underline stored in its settings. A legacy
@@ -228,11 +234,12 @@ class WindowRegistryImpl(
             presetRepository.observeGlobal().map { it["default"] },
             skinPresets,
         ) { charBase, charLegacy, globalBase, globalLegacy, skin ->
+            val palette = skin.presetColorPalette()
             resolve(
                 listOfNotNull(
-                    charBase,
+                    charBase.resolveRefs(palette),
                     charLegacy?.toLayer(),
-                    globalBase,
+                    globalBase.resolveRefs(palette),
                     globalLegacy?.toLayer(),
                     skin["default"]?.toLayer(),
                 ),

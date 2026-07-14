@@ -35,6 +35,7 @@ import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
@@ -47,6 +48,7 @@ import warlockfe.warlock3.core.text.StyleEditorModel
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.styleEditorModel
 import warlockfe.warlock3.core.text.toLayer
 
@@ -98,20 +100,28 @@ fun PresetsView(
     val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
     val monoFont by remember(scopeId) { characterSettingsRepository.observeMonoFont(scopeId) }.collectAsState(null)
 
+    // The skin's named-color palette, and the user layers with their skin-referenced colors resolved
+    // against it (the ref is kept, so the editor can still show a color as skin-tracked).
+    val palette = remember(skin, isDark) { skin.toColorPalette(isDark) }
+    val charBaseR = charBase.resolveRefs(palette)
+    val globalBaseR = globalBase.resolveRefs(palette)
+    val charPresetsR = charPresets.mapValues { it.value.resolveRefs(palette) }
+    val globalPresetsR = globalPresets.mapValues { it.value.resolveRefs(palette) }
+
     fun modelFor(item: PresetItem): StyleEditorModel =
         when (item) {
             PresetItem.Base -> {
                 styleEditorModel(
-                    characterLayer = if (editingCharacterId != null) charBase else null,
-                    globalLayer = globalBase,
+                    characterLayer = if (editingCharacterId != null) charBaseR else null,
+                    globalLayer = globalBaseR,
                     skinLayer = skinBase,
                 )
             }
 
             is PresetItem.Named -> {
                 styleEditorModel(
-                    characterLayer = if (editingCharacterId != null) (charPresets[item.name] ?: StyleLayer()) else null,
-                    globalLayer = globalPresets[item.name] ?: StyleLayer(),
+                    characterLayer = if (editingCharacterId != null) (charPresetsR[item.name] ?: StyleLayer()) else null,
+                    globalLayer = globalPresetsR[item.name] ?: StyleLayer(),
                     skinLayer = skinLayers[item.name] ?: StyleLayer(),
                 )
             }
@@ -133,8 +143,8 @@ fun PresetsView(
     // editor preview composite against - never the settings panel surface.
     val baseLayers =
         listOfNotNull(
-            charBase.takeIf { editingCharacterId != null },
-            globalBase,
+            charBaseR.takeIf { editingCharacterId != null },
+            globalBaseR,
             skinBase,
         )
     val windowBackground =
@@ -153,8 +163,8 @@ fun PresetsView(
 
             is PresetItem.Named -> {
                 listOfNotNull(
-                    (charPresets[item.name] ?: StyleLayer()).takeIf { editingCharacterId != null },
-                    globalPresets[item.name] ?: StyleLayer(),
+                    (charPresetsR[item.name] ?: StyleLayer()).takeIf { editingCharacterId != null },
+                    globalPresetsR[item.name] ?: StyleLayer(),
                     skinLayers[item.name] ?: StyleLayer(),
                 ) + baseLayers
             }
@@ -206,6 +216,7 @@ fun PresetsView(
                     onSave = { save(current, it) },
                     windowBackground = windowBackground,
                     inheritedBackground = inheritedBackground(current),
+                    palette = palette,
                 )
             }
         }

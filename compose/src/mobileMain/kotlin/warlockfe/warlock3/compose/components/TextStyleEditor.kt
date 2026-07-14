@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ fun TextStyleEditor(
     showMonospace: Boolean = false,
     windowBackground: Color = Color(0xFF1E1F22),
     inheritedBackground: Background = Background.Unset,
+    palette: Map<String, WarlockColor> = emptyMap(),
 ) {
     fun edit(vararg edits: StyleEdit) {
         onSave(edits.fold(editLayer) { layer, e -> layer.applyEdit(e) })
@@ -63,6 +65,7 @@ fun TextStyleEditor(
     var editColor by remember { mutableStateOf<((WarlockColor) -> Unit)?>(null) }
     var editFont by remember { mutableStateOf(false) }
     var editBackground by remember { mutableStateOf(false) }
+    var editTextColor by remember { mutableStateOf(false) }
 
     editColor?.let { onPick ->
         ColorPickerDialog(
@@ -96,16 +99,35 @@ fun TextStyleEditor(
             onClose = { editBackground = false },
         )
     }
+    if (editTextColor) {
+        ColorRefPickerDialog(
+            palette = palette,
+            onSelectSlot = { edit(StyleEdit.SetTextColorRef(it)) },
+            onSelectCustom = { editColor = { color -> edit(StyleEdit.SetTextColor(color)) } },
+            onClose = { editTextColor = false },
+        )
+    }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         StylePreview(sample, windowBackground)
 
         AttributeRow("Text color", sourced.textColor.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
-            ColorPickerButton(
-                text = "Text",
-                color = sample.textColor.toColor(),
-                onClick = { editColor = { color -> edit(StyleEdit.SetTextColor(color)) } },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ColorPickerButton(
+                    text = "Text",
+                    color = sample.textColor.toColor(),
+                    onClick = {
+                        if (palette.isEmpty()) {
+                            editColor = { color -> edit(StyleEdit.SetTextColor(color)) }
+                        } else {
+                            editTextColor = true
+                        }
+                    },
+                )
+                editLayer.textColorRef?.let { slot ->
+                    Text("tracks $slot", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
 
         AttributeRow("Background", sourced.background.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Background)) }) {
