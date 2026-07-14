@@ -12,7 +12,7 @@ import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockColor
 import java.nio.file.Files
 import kotlin.io.path.deleteRecursively
@@ -51,7 +51,7 @@ class CharacterConfigStoreTest {
         Highlight(
             id = Uuid.random(),
             pattern = pattern,
-            styles = mapOf(0 to StyleDefinition(textColor = WarlockColor(red = 255, green = 0, blue = 0), bold = true)),
+            styles = mapOf(0 to StyleLayer(textColor = WarlockColor(red = 255, green = 0, blue = 0), weight = 700)),
             isRegex = false,
             matchPartialWord = false,
             ignoreCase = true,

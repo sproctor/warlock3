@@ -279,6 +279,9 @@ data class HighlightStyleConfig(
     val weight: Int? = null,
     val fontFamily: String? = null,
     val fontSize: Float? = null,
+    // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )
 
 @Serializable

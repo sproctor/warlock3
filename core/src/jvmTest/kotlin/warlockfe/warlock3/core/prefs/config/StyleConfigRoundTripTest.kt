@@ -104,6 +104,15 @@ class StyleConfigRoundTripTest {
     }
 
     @Test
+    fun `a highlight group color ref survives the StyleLayer mappers`() {
+        val config = HighlightStyleConfig(group = 1, textColorRef = "creature", backgroundColorRef = "creatureBg")
+        val layer = config.toStyleLayer()
+        assertEquals("creature", layer.textColorRef)
+        assertEquals("creatureBg", layer.backgroundRef)
+        assertEquals(config, layer.toStyleConfig(1))
+    }
+
+    @Test
     fun `a base color ref survives the base-style mappers`() {
         val config = CharacterSettingsConfig(defaultTextColorRef = "default")
         assertEquals("default", config.toBaseStyleLayer().textColorRef)
@@ -130,7 +139,7 @@ class StyleConfigRoundTripTest {
     @Test
     fun `an explicit heavy weight renders bold during the transition`() {
         assertEquals(true, PresetStyleConfig(weight = 700).toStyleDefinition().bold)
-        assertEquals(true, HighlightStyleConfig(weight = 600).toStyleDefinition().bold)
+        assertEquals(600, HighlightStyleConfig(weight = 600).toStyleLayer().weight)
         assertEquals(false, PresetStyleConfig(weight = 400).toStyleDefinition().bold)
     }
 

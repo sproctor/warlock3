@@ -42,7 +42,7 @@ internal fun HighlightConfig.toHighlight(): Highlight =
     Highlight(
         id = id?.let { runCatching { Uuid.parse(it) }.getOrNull() } ?: Uuid.random(),
         pattern = pattern,
-        styles = styles.associate { it.group to it.toStyleDefinition() },
+        styles = styles.associate { it.group to it.toStyleLayer() },
         isRegex = isRegex,
         matchPartialWord = matchPartialWord,
         ignoreCase = ignoreCase,
@@ -60,29 +60,38 @@ internal fun Highlight.toConfig(): HighlightConfig =
         styles = styles.map { (group, style) -> style.toStyleConfig(group) },
     )
 
-internal fun HighlightStyleConfig.toStyleDefinition(): StyleDefinition =
-    StyleDefinition(
-        textColor = textColor,
-        backgroundColor = backgroundColor,
-        entireLine = entireLine,
-        // Until the renderer consumes the new model, fold an explicit weight back into the bold flag so
-        // a hand-set `weight` still renders bold-ish. Per-item font family/size are dropped here.
-        bold = bold || (weight?.let { it >= 600 } == true),
-        italic = italic,
-        underline = underline,
-        monospace = monospace,
+// A highlight group's stored style as a sparse [StyleLayer] (carrying the skin-palette refs), the shape
+// the shared appearance editor and the render pipeline consume.
+internal fun HighlightStyleConfig.toStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = textColor.specifiedOrNull(),
+        background = backgroundColor.toBackground(),
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        weight = weight ?: if (bold) 700 else null,
+        italic = if (italic) true else null,
+        underline = if (underline) true else null,
+        entireLine = if (entireLine) true else null,
+        monospace = if (monospace) true else null,
+        textColorRef = textColorRef,
+        backgroundRef = backgroundColorRef,
     )
 
-internal fun StyleDefinition.toStyleConfig(group: Int): HighlightStyleConfig =
+internal fun StyleLayer.toStyleConfig(group: Int): HighlightStyleConfig =
     HighlightStyleConfig(
         group = group,
-        textColor = textColor,
-        backgroundColor = backgroundColor,
-        entireLine = entireLine,
-        bold = bold,
-        italic = italic,
-        underline = underline,
-        monospace = monospace,
+        textColor = textColor ?: WarlockColor.Unspecified,
+        backgroundColor = background.toWarlockColor(),
+        entireLine = entireLine == true,
+        bold = weight == 700,
+        italic = italic == true,
+        underline = underline == true,
+        monospace = monospace == true,
+        weight = weight?.takeUnless { it == 700 },
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        textColorRef = textColorRef,
+        backgroundColorRef = backgroundRef,
     )
 
 internal fun NameEntity.toConfig(): NameConfig =

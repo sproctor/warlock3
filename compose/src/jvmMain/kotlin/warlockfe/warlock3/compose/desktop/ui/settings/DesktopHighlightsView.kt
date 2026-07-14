@@ -46,19 +46,22 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
-import warlockfe.warlock3.compose.ui.settings.toStyleDefinition
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
-import warlockfe.warlock3.core.text.toLayer
 import kotlin.uuid.Uuid
 
 @Composable
@@ -70,6 +73,7 @@ fun DesktopHighlightsView(
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
+    val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
     val highlights by if (currentCharacterId == null) {
         highlightRepository.observeGlobal()
     } else {
@@ -113,7 +117,7 @@ fun DesktopHighlightsView(
                                         colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
                                     )
                                     StyleChip(
-                                        resolved = resolve(listOf((highlight.styles[0] ?: StyleDefinition()).toLayer())),
+                                        resolved = resolve(listOf((highlight.styles[0] ?: StyleLayer()).resolveRefs(palette))),
                                         windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
                                     )
                                 }
@@ -162,6 +166,7 @@ fun DesktopHighlightsView(
     editingHighlight?.let { highlight ->
         DesktopEditHighlightDialog(
             highlight = highlight,
+            palette = palette,
             saveHighlight = { newHighlight ->
                 scope.launch {
                     if (currentCharacterId != null) {
@@ -180,12 +185,13 @@ fun DesktopHighlightsView(
 @Composable
 private fun DesktopEditHighlightDialog(
     highlight: Highlight,
+    palette: Map<String, WarlockColor>,
     saveHighlight: (Highlight) -> Unit,
     onClose: () -> Unit,
 ) {
     val pattern = rememberTextFieldState(highlight.pattern)
     val styles =
-        remember { mutableStateListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
+        remember { mutableStateListOf<StyleLayer>().apply { addAll(highlight.styles.values) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
@@ -236,7 +242,7 @@ private fun DesktopEditHighlightDialog(
 
             // Add blank styles for remaining groups
             while (styles.size <= groupCount) {
-                styles.add(StyleDefinition())
+                styles.add(StyleLayer())
             }
             WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 for (i in 0 until groupCount) {
@@ -244,16 +250,17 @@ private fun DesktopEditHighlightDialog(
                         Spacer(Modifier.height(8.dp))
                         Text("Group $i")
                     }
-                    val layer = styles[i].toLayer()
+                    val layer = styles[i].resolveRefs(palette)
                     val stack = listOf(StyleScope.CHARACTER to layer)
                     DesktopTextStyleEditor(
                         sourced = resolveSourced(stack),
                         sample = sampleStyle(stack),
                         editScope = StyleScope.CHARACTER,
                         editLayer = layer,
-                        onSave = { styles[i] = it.toStyleDefinition() },
+                        onSave = { styles[i] = it },
                         showFont = false,
                         showMonospace = true,
+                        palette = palette,
                     )
                 }
             }
@@ -261,7 +268,7 @@ private fun DesktopEditHighlightDialog(
             if (!isRegex) {
                 val style = styles[0]
                 WarlockCheckboxRow(
-                    checked = style.entireLine,
+                    checked = style.entireLine == true,
                     onCheckedChange = { styles[0] = style.copy(entireLine = it) },
                     text = "Highlight entire line",
                 )
