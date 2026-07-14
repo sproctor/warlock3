@@ -54,6 +54,7 @@ class StyleConfigRoundTripTest {
                             nameFilter = true,
                             italic = true,
                         ),
+                    "combat" to WindowStyleConfig(textColorRef = "creature", backgroundColorRef = "creatureBg"),
                 ),
             settings =
                 CharacterSettingsConfig(

@@ -5,6 +5,10 @@ import androidx.compose.runtime.Stable
 import warlockfe.warlock3.core.prefs.models.WindowSettings
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.specifiedOrNull
+import warlockfe.warlock3.core.text.toBackground
 import warlockfe.warlock3.core.window.WindowInfo
 
 @Stable
@@ -31,12 +35,28 @@ data class DialogWindowData(
     val dialogData: ComposeDialogState,
 ) : WindowData
 
-/** The window's color + weight/italic/underline styling. Fonts are carried separately on [WindowUiState]. */
-fun WindowSettings.getStyle(): StyleDefinition =
+/**
+ * The window's color + weight/italic/underline styling. Fonts are carried separately on [WindowUiState].
+ * A skin-referenced color resolves against [palette]; with the default (empty) palette a ref falls back
+ * to the last-resolved color stored beside it, so render stays correct without threading the palette.
+ */
+fun WindowSettings.getStyle(palette: Map<String, WarlockColor> = emptyMap()): StyleDefinition =
     StyleDefinition(
-        textColor = textColor,
-        backgroundColor = backgroundColor,
+        textColor = textColorRef?.let { palette[it] } ?: textColor,
+        backgroundColor = backgroundColorRef?.let { palette[it] } ?: backgroundColor,
         bold = bold,
         italic = italic,
         underline = underline,
+    )
+
+/** The window's style as an editable [StyleLayer], carrying the skin-palette refs for the style editor. */
+fun WindowSettings.toStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = textColor.specifiedOrNull(),
+        background = backgroundColor.toBackground(),
+        weight = if (bold) 700 else null,
+        italic = if (italic) true else null,
+        underline = if (underline) true else null,
+        textColorRef = textColorRef,
+        backgroundRef = backgroundColorRef,
     )

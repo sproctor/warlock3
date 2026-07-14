@@ -41,12 +41,18 @@ import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
-import warlockfe.warlock3.compose.ui.window.getStyle
+import warlockfe.warlock3.compose.ui.window.toStyleLayer
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.prefs.models.WindowSettings
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import warlockfe.warlock3.core.text.toLayer
@@ -70,6 +76,7 @@ fun WindowsSettingsSection(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
+    val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
     val windowSettings by remember(characterId) {
         windowSettingRepository.observeWindowSettings(characterId)
     }.collectAsState(emptyList())
@@ -122,6 +129,7 @@ fun WindowsSettingsSection(
             title = titlesByName[name]?.title,
             settings = settings,
             defaultStyle = defaultStyle,
+            palette = palette,
             isOpen = name in openNames,
             canToggleShown = name != "main",
             nameFilterAvailable = titlesByName[name]?.nameFilterOption == true || settings?.nameFilter == true,
@@ -140,7 +148,7 @@ fun WindowsSettingsSection(
                     }
                 }
             },
-            onSaveStyle = { style -> scope.launch { windowSettingRepository.setStyle(characterId, name, style) } },
+            onSaveStyle = { layer -> scope.launch { windowSettingRepository.setStyleLayer(characterId, name, layer) } },
             onSaveFont = { font -> scope.launch { windowSettingRepository.setFont(characterId, name, font) } },
             onSaveMonoFont = { font -> scope.launch { windowSettingRepository.setMonoFont(characterId, name, font) } },
             onSaveNameFilter = { value -> scope.launch { windowSettingRepository.setNameFilter(characterId, name, value) } },
@@ -251,13 +259,14 @@ private fun WindowRow(
     title: String?,
     settings: WindowSettings?,
     defaultStyle: StyleDefinition,
+    palette: Map<String, WarlockColor>,
     isOpen: Boolean,
     canToggleShown: Boolean,
     nameFilterAvailable: Boolean,
     expanded: Boolean,
     onToggleExpand: () -> Unit,
     onSetVisible: (Boolean) -> Unit,
-    onSaveStyle: (StyleDefinition) -> Unit,
+    onSaveStyle: (StyleLayer) -> Unit,
     onSaveFont: (FontConfig?) -> Unit,
     onSaveMonoFont: (FontConfig?) -> Unit,
     onSaveNameFilter: (Boolean) -> Unit,
@@ -265,7 +274,6 @@ private fun WindowRow(
     onEditFont: (FontConfig?, Boolean, (FontConfig?) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val style = settings?.getStyle() ?: StyleDefinition()
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().clickable(onClick = onToggleExpand).padding(vertical = 4.dp),
@@ -292,7 +300,7 @@ private fun WindowRow(
                 // A window has no cascade of its own; the character's default text style is the fallback.
                 // Feed it to the sample (for a realistic preview) but not to the source tags, so unset
                 // attributes read "default" rather than "from skin".
-                val windowLayer = style.toLayer()
+                val windowLayer = (settings?.toStyleLayer() ?: StyleLayer()).resolveRefs(palette)
                 TextStyleEditor(
                     sourced = resolveSourced(listOf(StyleScope.CHARACTER to windowLayer)),
                     sample =
@@ -301,8 +309,9 @@ private fun WindowRow(
                         ),
                     editScope = StyleScope.CHARACTER,
                     editLayer = windowLayer,
-                    onSave = { onSaveStyle(it.toStyleDefinition()) },
+                    onSave = { onSaveStyle(it) },
                     showFont = false,
+                    palette = palette,
                 )
                 OutlinedButton(onClick = { onEditFont(settings?.font, false) { onSaveFont(it) } }) {
                     Text("Font: ${settings?.font.fontLabel()}")

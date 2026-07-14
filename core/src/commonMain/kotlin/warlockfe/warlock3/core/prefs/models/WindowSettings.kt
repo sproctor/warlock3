@@ -25,4 +25,6 @@ data class WindowSettings(
     val bold: Boolean = false,
     val italic: Boolean = false,
     val underline: Boolean = false,
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )
