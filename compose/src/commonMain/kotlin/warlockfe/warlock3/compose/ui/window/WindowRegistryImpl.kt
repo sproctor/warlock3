@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.compose.util.presetColorPalette
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
@@ -33,10 +34,10 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.mergeLayers
 import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.toLayer
-import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.TextStream
@@ -120,7 +121,7 @@ class WindowRegistryImpl(
     private val characterId = MutableStateFlow("global")
 
     // The skin's named-color palette, so a name's skin-referenced color resolves and follows the skin.
-    private val colorPalette: StateFlow<Map<String, WarlockColor>> =
+    override val colorPalette: StateFlow<Map<String, WarlockColor>> =
         skinPresets
             .map { it.presetColorPalette() }
             .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
@@ -136,11 +137,9 @@ class WindowRegistryImpl(
                     literal = name.text,
                     matchPartialWord = false,
                     ignoreCase = false,
-                    style =
-                        StyleDefinition(
-                            textColor = name.textColorRef?.let { palette[it] } ?: name.textColor,
-                            backgroundColor = name.backgroundColorRef?.let { palette[it] } ?: name.backgroundColor,
-                        ),
+                    // Sparse (not flattened to StyleDefinition) so bold/italic/underline and per-item
+                    // font/weight the names editor exposes actually render, matching presets/highlights.
+                    style = name.toStyleLayer().resolveRefs(palette),
                     sound = name.sound,
                 )
             }
@@ -155,8 +154,9 @@ class WindowRegistryImpl(
             .flatMapLatest { characterId ->
                 combine(highlightRepository.observeForCharacter(characterId), colorPalette) { highlights, palette ->
                     // Highlight group styles are stored as sparse layers with skin refs; resolve each ref
-                    // against the skin, then flatten to the dense StyleDefinition the render path consumes.
-                    fun render(layer: StyleLayer): StyleDefinition = resolve(listOf(layer.resolveRefs(palette))).toStyleDefinition()
+                    // against the skin and keep the layer sparse (not flattened to StyleDefinition) so
+                    // weight/per-item font survive to the span renderer like presets do.
+                    fun render(layer: StyleLayer): StyleLayer = layer.resolveRefs(palette)
                     highlights.mapNotNull { highlight ->
                         if (highlight.isRegex) {
                             try {
@@ -228,9 +228,15 @@ class WindowRegistryImpl(
             characterId.flatMapLatest { presetRepository.observeLayersForCharacter(it) },
         ) { skinDefaults, savedPresets ->
             // Resolve skin-referenced colors against the skin's own palette so a user's palette pick
-            // renders in the referenced color and follows the skin.
+            // renders in the referenced color and follows the skin. Merged per attribute (not per whole
+            // preset), so e.g. a saved character override of just Italic doesn't blank out the skin's
+            // color for that same preset name.
             val palette = skinDefaults.presetColorPalette()
-            (skinDefaults.mapValues { it.value.toLayer() } + savedPresets.mapValues { it.value.resolveRefs(palette) }) - "default"
+            val skinLayers = skinDefaults.mapValues { it.value.toLayer() }
+            val resolvedSaved = savedPresets.mapValues { it.value.resolveRefs(palette) }
+            (skinLayers.keys + resolvedSaved.keys).associateWith { key ->
+                mergeLayers(listOfNotNull(resolvedSaved[key], skinLayers[key]))
+            } - "default"
         }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
 
     // The resolved base ("default text") style: character base over global base over the skin's default,

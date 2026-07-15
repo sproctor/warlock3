@@ -60,12 +60,12 @@ import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toColorPalette
+import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyleScope
@@ -74,6 +74,7 @@ import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
+import warlockfe.warlock3.core.text.toLayer
 import kotlin.uuid.Uuid
 
 @Composable
@@ -81,11 +82,27 @@ fun HighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     highlightRepository: HighlightRepositoryImpl,
+    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
-    val palette = LocalSkin.current.toColorPalette(LocalDarkTheme.current)
+    val skin = LocalSkin.current
+    val isDark = LocalDarkTheme.current
+    val palette = skin.toColorPalette(isDark)
+    val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
+    val charBase by remember(currentCharacterId) {
+        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
+    }.collectAsState(StyleLayer())
+    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val windowBackground =
+        resolvedWindowBackground(
+            listOfNotNull(
+                charBase.resolveRefs(palette).takeIf { currentCharacterId != null },
+                globalBase.resolveRefs(palette),
+                skinBase,
+            ),
+        )
     val highlights by if (currentCharacterId == null) {
         highlightRepository.observeGlobal()
     } else {
@@ -129,7 +146,7 @@ fun HighlightsView(
                                     Spacer(Modifier.width(8.dp))
                                     StyleChip(
                                         resolved = resolve(listOf((highlight.styles[0] ?: StyleLayer()).resolveRefs(palette))),
-                                        windowBackground = SAFE_DEFAULT_STYLE.backgroundColor.toColor(),
+                                        windowBackground = windowBackground,
                                     )
                                 }
                             },
@@ -189,6 +206,7 @@ fun HighlightsView(
         EditHighlightDialog(
             highlight = highlight,
             palette = palette,
+            windowBackground = windowBackground,
             saveHighlight = { newHighlight ->
                 coroutineScope.launch {
                     if (currentCharacterId != null) {
@@ -208,6 +226,7 @@ fun HighlightsView(
 fun EditHighlightDialog(
     highlight: Highlight,
     palette: Map<String, WarlockColor>,
+    windowBackground: Color,
     saveHighlight: (Highlight) -> Unit,
     onClose: () -> Unit,
 ) {
@@ -344,6 +363,7 @@ fun EditHighlightDialog(
                             showFont = false,
                             showMonospace = true,
                             palette = palette,
+                            windowBackground = windowBackground,
                         )
                     }
                 }

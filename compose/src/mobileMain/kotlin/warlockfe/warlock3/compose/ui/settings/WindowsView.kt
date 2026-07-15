@@ -18,16 +18,20 @@ import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.prefs.repositories.PresetRepository
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.toLayer
+import warlockfe.warlock3.core.text.toStyleDefinition
 
 /** Per-window color/font settings for the selected character. */
 @Composable
 fun WindowsView(
     initialCharacter: GameCharacter?,
     characters: List<GameCharacter>,
-    presetRepository: PresetRepository,
+    characterSettingsRepository: CharacterSettingsRepository,
     windowSettingRepository: WindowSettingsRepository,
     windowLiveContext: WindowSettingsLiveContext?,
     initialWindowTarget: String?,
@@ -43,14 +47,21 @@ fun WindowsView(
         return
     }
 
-    // The character's resolved default text style, used as the fallback shown for unset window colors.
-    val savedPresets by remember(currentCharacter.id) {
-        presetRepository.observePresetsForCharacter(currentCharacter.id)
-    }.collectAsState(emptyMap())
+    // The character's resolved default ("base") text style, used as the fallback shown for unset window
+    // colors: character base over global base over the skin's default, matching WindowRegistryImpl's
+    // baseStyle cascade (not the folded-away presets["default"], which is empty after this PR's own
+    // load-time migration, and not single-scope - it must include the global base too).
     val skin = LocalSkin.current
     val isDark = LocalDarkTheme.current
+    val skinDefault = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
+    val charBase by remember(currentCharacter.id) {
+        characterSettingsRepository.observeBaseStyle(currentCharacter.id)
+    }.collectAsState(StyleLayer())
+    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
     val defaultStyle =
-        remember(skin, isDark, savedPresets) { (skin.toPresets(isDark) + savedPresets)["default"] ?: StyleDefinition() }
+        remember(charBase, globalBase, skinDefault) {
+            resolve(listOf(charBase, globalBase, skinDefault)).toStyleDefinition()
+        }
 
     Column(modifier.fillMaxSize()) {
         SettingsCharacterSelector(

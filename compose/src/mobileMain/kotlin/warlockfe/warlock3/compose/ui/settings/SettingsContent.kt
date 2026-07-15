@@ -77,6 +77,7 @@ fun SettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 highlightRepository = highlightRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 
@@ -85,6 +86,7 @@ fun SettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 nameRepository = nameRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 
@@ -101,7 +103,7 @@ fun SettingsContent(
             WindowsView(
                 initialCharacter = currentCharacter,
                 characters = characters,
-                presetRepository = presetRepository,
+                characterSettingsRepository = characterSettingsRepository,
                 windowSettingRepository = windowSettingRepository,
                 windowLiveContext = windowLiveContext,
                 initialWindowTarget = initialWindowTarget,

@@ -100,7 +100,10 @@ fun DesktopTextStyleEditor(
     }
     if (editBackground) {
         DesktopBackgroundPickerDialog(
-            current = sample.background,
+            // The sparse edit-scope layer, not the resolved sample: Inherit must show selected only when
+            // this scope itself hasn't set a background, even though a lower layer (skin/global) resolves
+            // to a Fill.
+            current = editLayer.background,
             inheritedBackground = inheritedBackground,
             onSelect = { edit(StyleEdit.SetBackground(it)) },
             onClose = { editBackground = false },

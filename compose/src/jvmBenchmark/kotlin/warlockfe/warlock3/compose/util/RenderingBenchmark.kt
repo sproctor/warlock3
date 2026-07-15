@@ -116,7 +116,7 @@ class RenderingBenchmark {
                     literal = name,
                     matchPartialWord = false,
                     ignoreCase = false,
-                    style = StyleDefinition(bold = true, textColor = WarlockColor(red = 255, green = 200, blue = 0)),
+                    style = StyleDefinition(bold = true, textColor = WarlockColor(red = 255, green = 200, blue = 0)).toLayer(),
                     sound = null,
                 )
             }
@@ -127,7 +127,7 @@ class RenderingBenchmark {
                     literal = fragment,
                     matchPartialWord = true,
                     ignoreCase = true,
-                    style = StyleDefinition(textColor = WarlockColor(red = 120, green = 200, blue = 255)),
+                    style = StyleDefinition(textColor = WarlockColor(red = 120, green = 200, blue = 255)).toLayer(),
                     sound = null,
                 )
             }

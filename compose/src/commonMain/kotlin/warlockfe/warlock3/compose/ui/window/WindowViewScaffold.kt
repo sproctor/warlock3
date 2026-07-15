@@ -53,8 +53,10 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -257,13 +259,17 @@ private fun WindowViewContent(
     val fontWeight = effectiveFont?.weight?.let { FontWeight(it) }
     // The text style shared by the rendered row and the off-screen height measurer, so a measured
     // height matches what the row lays out. (Color does not affect height; the measurer ignores it.)
+    val fontStyle = if (style.italic) FontStyle.Italic else null
+    val textDecoration = if (style.underline) TextDecoration.Underline else null
     val rowTextStyle =
-        remember(textColor, fontFamily, fontSize, fontWeight) {
+        remember(textColor, fontFamily, fontSize, fontWeight, fontStyle, textDecoration) {
             TextStyle(
                 color = textColor,
                 fontFamily = fontFamily,
                 fontSize = fontSize,
                 fontWeight = fontWeight,
+                fontStyle = fontStyle,
+                textDecoration = textDecoration,
             )
         }
 

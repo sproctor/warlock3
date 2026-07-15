@@ -155,7 +155,7 @@ class CharacterConfigStoreTest {
             val result = NameRepositoryImpl(reloaded).observeByCharacter("gs4:tholan").first().single()
             assertEquals("Tholan", result.text)
             assertEquals(name.textColor, result.textColor)
-            assertTrue(result.italic)
+            assertEquals(true, result.italic)
         }
 
     @Test

@@ -35,6 +35,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.DialogState
@@ -546,7 +547,7 @@ private fun buildHighlights(count: Int): List<ViewHighlight> =
             literal = if (i < NAMES.size) NAMES[i] else "Hlword$i",
             matchPartialWord = false,
             ignoreCase = false,
-            style = StyleDefinition(bold = true, textColor = WarlockColor(red = 255, green = 200, blue = 0)),
+            style = StyleDefinition(bold = true, textColor = WarlockColor(red = 255, green = 200, blue = 0)).toLayer(),
             sound = null,
         )
     }

@@ -336,6 +336,10 @@ class GameViewModel(
     // skin -> global -> character. Feeds the window base style + font and the input/status chrome.
     val baseStyle = windowRegistry.baseStyle
 
+    // The skin's named-color palette, so a window's skin-referenced text/background color resolves
+    // (see WindowSettings.getStyle) instead of staying stuck at its last-saved literal.
+    private val colorPalette = windowRegistry.colorPalette
+
     /** The character's default (normal) font; used as the base text style for windows without an override. */
     val defaultFont: StateFlow<FontConfig?> =
         observePerCharacter { characterSettingsRepository.observeDefaultFont(it) }
@@ -532,7 +536,7 @@ class GameViewModel(
                             WindowUiState(
                                 name = entity.name,
                                 windowInfo = mutableStateOf(window),
-                                style = entity.getStyle(),
+                                style = entity.getStyle(colorPalette.value),
                                 font = entity.font,
                                 monoFont = entity.monoFont,
                                 width = entity.width,
@@ -563,7 +567,7 @@ class GameViewModel(
                         _mainWindowUiState.update {
                             (it.data as? StreamWindowData)?.stream?.setNameFilter(singleWindowSettings.nameFilter)
                             it.copy(
-                                style = singleWindowSettings.getStyle(),
+                                style = singleWindowSettings.getStyle(colorPalette.value),
                                 font = singleWindowSettings.font,
                                 monoFont = singleWindowSettings.monoFont,
                                 nameFilter = singleWindowSettings.nameFilter,
@@ -580,7 +584,7 @@ class GameViewModel(
                                         ?.setNameFilter(singleWindowSettings.nameFilter)
                                     mutableStates[index] =
                                         states[index].copy(
-                                            style = singleWindowSettings.getStyle(),
+                                            style = singleWindowSettings.getStyle(colorPalette.value),
                                             font = singleWindowSettings.font,
                                             monoFont = singleWindowSettings.monoFont,
                                             nameFilter = singleWindowSettings.nameFilter,
@@ -1228,7 +1232,7 @@ class GameViewModel(
                     WindowUiState(
                         name = name,
                         windowInfo = mutableStateOf(windowInfo),
-                        style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                        style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
                         font = entity?.font,
                         monoFont = entity?.monoFont,
                         width = null,
@@ -1287,7 +1291,7 @@ class GameViewModel(
             WindowUiState(
                 name = name,
                 windowInfo = mutableStateOf(windowInfo),
-                style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
                 font = entity?.font,
                 monoFont = entity?.monoFont,
                 width = null,
