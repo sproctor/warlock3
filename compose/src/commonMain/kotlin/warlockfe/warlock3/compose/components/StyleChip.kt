@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -28,9 +27,9 @@ import warlockfe.warlock3.core.text.toHexString
 /**
  * An honest miniature of how a style renders **in game**: a fixed-width swatch that composites the
  * resolved style over the effective game window background ([windowBackground]) - never the settings
- * panel surface, which would misreport legibility. Two distinct boundaries: an outer hairline separating
- * the chip from the panel, and (only when the background is explicitly set) an inset ring separating the
- * fill from the window, so a background set to the window's own color is still visible as a background.
+ * panel surface, which would misreport legibility. A single hairline separates the chip from the panel;
+ * whether the background is explicitly set or inherited is reported by the row's text label, not by the
+ * chip's own border.
  *
  * The chip is deliberately allowed to be unreadable - that is real information. The item's *name* is
  * rendered elsewhere in normal UI color and stays legible; this shows only the style. Callers pass the
@@ -52,29 +51,17 @@ fun StyleChip(
             Background.None -> windowBackground
             Background.Unset -> windowBackground
         }
-    // The inset ring marks an explicitly-set background (Fill or None); an inherited-unset one has none.
-    val hasExplicitBackground = resolved.background != Background.Unset
-    // Luminance-derived so it reads on any skin: dark ring on light fills, light ring on dark fills.
-    val ring = if (field.luminance() > 0.5f) Color.Black.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.3f)
     val textColor = resolved.textColor.toColor(default = if (field.luminance() > 0.5f) Color.Black else Color.White)
 
     Box(
         modifier =
             modifier
                 .clip(RoundedCornerShape(4.dp))
-                // Outer hairline: chip <-> panel. Panel-agnostic neutral so it reads on light and dark themes.
+                // Hairline: chip <-> panel. Panel-agnostic neutral so it reads on light and dark themes.
                 .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                 .background(field),
         contentAlignment = Alignment.Center,
     ) {
-        if (hasExplicitBackground) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .padding(2.dp)
-                    .border(1.dp, ring, RoundedCornerShape(3.dp)),
-            )
-        }
         BasicText(
             text = sampleText,
             style =
