@@ -24,12 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.components.BASE_SAMPLE
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.StyleChip
+import warlockfe.warlock3.compose.components.StyleSample
 import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.components.backgroundLabel
 import warlockfe.warlock3.compose.components.fontLabel
+import warlockfe.warlock3.compose.components.sampleFor
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
@@ -65,6 +68,13 @@ private fun PresetItem.label(): String =
     when (this) {
         PresetItem.Base -> "Default text"
         is PresetItem.Named -> name.replaceFirstChar { it.uppercase() }
+    }
+
+/** The editor preview's sample: the in-game line this preset styles, so the preview reads like real output. */
+private fun PresetItem.sample(): StyleSample =
+    when (this) {
+        PresetItem.Base -> BASE_SAMPLE
+        is PresetItem.Named -> sampleFor(name)
     }
 
 /**
@@ -217,6 +227,8 @@ fun PresetsView(
                     windowBackground = windowBackground,
                     inheritedBackground = inheritedBackground(current),
                     palette = palette,
+                    sampleLine = current.sample(),
+                    baseStyle = resolve(baseLayers),
                 )
             }
         }

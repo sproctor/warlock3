@@ -57,6 +57,8 @@ fun TextStyleEditor(
     windowBackground: Color = Color(0xFF1E1F22),
     inheritedBackground: Background = Background.Unset,
     palette: Map<String, WarlockColor> = emptyMap(),
+    sampleLine: StyleSample = GENERIC_SAMPLE,
+    baseStyle: ResolvedStyle? = null,
 ) {
     fun edit(vararg edits: StyleEdit) {
         onSave(edits.fold(editLayer) { layer, e -> layer.applyEdit(e) })
@@ -114,7 +116,7 @@ fun TextStyleEditor(
     }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        StylePreview(sample, windowBackground)
+        StylePreview(sample, windowBackground, sampleLine, baseStyle)
 
         AttributeRow("Text color", sourced.textColor.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.TextColor)) }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -235,13 +237,16 @@ private fun AttributeRow(
 private fun StylePreview(
     sample: ResolvedStyle,
     windowBackground: Color,
+    sampleLine: StyleSample,
+    baseStyle: ResolvedStyle?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         StyleChip(
             resolved = sample,
             windowBackground = windowBackground,
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            sampleText = "You hear Lyrena say, \"Well met, friend.\"",
+            sample = sampleLine,
+            baseStyle = baseStyle,
         )
         // Contrast is computed against the effective background - the fill when set, else the window
         // background the text actually sits on. We warn, never block: dim spam channels are a valid choice.
