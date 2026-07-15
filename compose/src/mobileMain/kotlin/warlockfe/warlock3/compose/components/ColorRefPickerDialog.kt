@@ -57,7 +57,7 @@ fun ColorRefPickerDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    palette.toSortedMap().forEach { (slot, color) ->
+                    palette.entries.sortedBy { it.key }.forEach { (slot, color) ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Box(
                                 Modifier

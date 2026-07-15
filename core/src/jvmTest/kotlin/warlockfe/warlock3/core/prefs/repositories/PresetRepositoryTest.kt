@@ -63,8 +63,9 @@ class PresetRepositoryTest {
             repo.save(char, "speech", StyleDefinition(textColor = red))
 
             val forChar = repo.observeForCharacter(char).first()
-            // Character's speech wins; the global-only "bold" still applies.
-            assertEquals(StyleDefinition(textColor = red), forChar["speech"])
+            // Character's speech color wins, but the global "bold" it didn't override still applies
+            // (per-attribute cascade, not whole-preset replacement); the global-only "bold" still applies.
+            assertEquals(StyleDefinition(textColor = red, bold = true), forChar["speech"])
             assertEquals(StyleDefinition(bold = true), forChar["bold"])
         }
 

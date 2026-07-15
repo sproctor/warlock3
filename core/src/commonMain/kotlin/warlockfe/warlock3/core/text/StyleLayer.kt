@@ -50,6 +50,33 @@ fun StyleLayer.resolveRefs(palette: Map<String, WarlockColor>): StyleLayer {
 }
 
 /**
+ * Merges a stack of [StyleLayer]s, most-specific first (e.g. character, then global, then skin), into a
+ * single sparse [StyleLayer] by taking the first layer that sets each attribute independently — like
+ * [resolve], but the result stays sparse (unset attributes stay null/[Background.Unset]) instead of
+ * collapsing to dense defaults. Needed wherever a merged scope stack must still participate in a further
+ * cascade (e.g. a leaf referencing multiple named styles), where [resolve]'s dense "false"/"unspecified"
+ * would incorrectly shadow a lower layer. A color's ref is carried from whichever layer supplied that
+ * color, so [resolveRefs] can still refresh it later.
+ */
+fun mergeLayers(layers: List<StyleLayer>): StyleLayer {
+    val textColorLayer = layers.firstOrNull { it.textColor != null }
+    val backgroundLayer = layers.firstOrNull { it.background != Background.Unset }
+    return StyleLayer(
+        textColor = textColorLayer?.textColor,
+        background = backgroundLayer?.background ?: Background.Unset,
+        fontFamily = layers.firstNotNullOfOrNull { it.fontFamily },
+        fontSize = layers.firstNotNullOfOrNull { it.fontSize },
+        weight = layers.firstNotNullOfOrNull { it.weight },
+        italic = layers.firstNotNullOfOrNull { it.italic },
+        underline = layers.firstNotNullOfOrNull { it.underline },
+        entireLine = layers.firstNotNullOfOrNull { it.entireLine },
+        monospace = layers.firstNotNullOfOrNull { it.monospace },
+        textColorRef = textColorLayer?.textColorRef,
+        backgroundRef = backgroundLayer?.backgroundRef,
+    )
+}
+
+/**
  * Adapts the legacy dense [StyleDefinition] into a sparse [StyleLayer]. A `false` boolean and an
  * unspecified color both mean "inherit", so they map to null / [Background.Unset] — which makes
  * first-set-wins [resolve] reproduce the old boolean-OR merge for existing data (only explicit trues

@@ -57,6 +57,7 @@ class WindowSettingsRepository(
                         bold = style.bold,
                         italic = style.italic,
                         underline = style.underline,
+                        weight = style.weight,
                         textColorRef = style.textColorRef,
                         backgroundColorRef = style.backgroundColorRef,
                     )
@@ -151,8 +152,9 @@ class WindowSettingsRepository(
                     textColor = layer.textColor ?: WarlockColor.Unspecified,
                     backgroundColor = layer.background.toWarlockColor(),
                     bold = layer.weight == 700,
-                    italic = layer.italic == true,
-                    underline = layer.underline == true,
+                    italic = layer.italic,
+                    underline = layer.underline,
+                    weight = layer.weight?.takeUnless { it == 700 },
                     textColorRef = layer.textColorRef,
                     backgroundColorRef = layer.backgroundRef,
                 )

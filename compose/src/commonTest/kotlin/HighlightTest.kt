@@ -2,13 +2,13 @@ import androidx.compose.ui.text.AnnotatedString
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.util.highlight
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockColor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class HighlightTest {
-    private val style = StyleDefinition(textColor = WarlockColor(red = 255, green = 0, blue = 0))
+    private val style = StyleLayer(textColor = WarlockColor(red = 255, green = 0, blue = 0))
 
     private fun literal(
         word: String,

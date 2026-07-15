@@ -2,6 +2,7 @@ import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.toWarlockColor
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -162,7 +163,13 @@ class WraythSettingsTests {
             )
         val wraythSettings = importer.importString(exampleXml)
         val settings = importer.translateSettings(wraythSettings, "test")
-        assertEquals(WarlockColor("#2994F7"), settings.highlights[1].styles[0]!!.backgroundColor)
+        assertEquals(
+            WarlockColor("#2994F7"),
+            settings.highlights[1]
+                .styles[0]!!
+                .background
+                .toWarlockColor(),
+        )
         assertEquals(
             9,
             wraythSettings.macros

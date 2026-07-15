@@ -76,6 +76,7 @@ fun DesktopSettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 highlightRepository = highlightRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 
@@ -84,6 +85,7 @@ fun DesktopSettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 nameRepository = nameRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 
@@ -100,7 +102,7 @@ fun DesktopSettingsContent(
             DesktopWindowsView(
                 initialCharacter = currentCharacter,
                 characters = characters,
-                presetRepository = presetRepository,
+                characterSettingsRepository = characterSettingsRepository,
                 windowSettingRepository = windowSettingRepository,
                 windowLiveContext = windowLiveContext,
                 initialWindowTarget = initialWindowTarget,

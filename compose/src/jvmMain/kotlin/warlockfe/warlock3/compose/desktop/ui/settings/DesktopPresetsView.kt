@@ -31,10 +31,9 @@ import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
+import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
 import warlockfe.warlock3.compose.util.LocalDarkTheme
 import warlockfe.warlock3.compose.util.LocalSkin
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
@@ -147,11 +146,7 @@ fun DesktopPresetsView(
             globalBaseR,
             skinBase,
         )
-    val windowBackground =
-        when (val bg = resolve(baseLayers).background) {
-            is Background.Fill -> bg.color.toColor(default = SAFE_DEFAULT_STYLE.backgroundColor.toColor())
-            else -> SAFE_DEFAULT_STYLE.backgroundColor.toColor()
-        }
+    val windowBackground = resolvedWindowBackground(baseLayers)
 
     // The full cascade for an item, edit scope first: how it renders over the base, so unset attributes
     // inherit the base as in game.

@@ -25,6 +25,7 @@ import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.test.Test
@@ -118,7 +119,7 @@ class ComposeTextStreamTest {
             literal = literal,
             matchPartialWord = false,
             ignoreCase = true,
-            style = StyleDefinition(entireLine = true, bold = true),
+            style = StyleDefinition(entireLine = true, bold = true).toLayer(),
             sound = null,
         )
 

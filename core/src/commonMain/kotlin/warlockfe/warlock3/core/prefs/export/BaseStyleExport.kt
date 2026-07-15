@@ -14,8 +14,11 @@ import warlockfe.warlock3.core.text.WarlockColor
 data class BaseStyleExport(
     val textColor: WarlockColor = WarlockColor.Unspecified,
     val backgroundColor: WarlockColor = WarlockColor.Unspecified,
-    val italic: Boolean = false,
-    val underline: Boolean = false,
+    val italic: Boolean? = false,
+    val underline: Boolean? = false,
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
+    // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )

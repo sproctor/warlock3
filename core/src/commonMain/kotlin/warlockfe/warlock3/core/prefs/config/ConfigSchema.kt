@@ -118,11 +118,14 @@ data class PresetStyleConfig(
     val textColor: WarlockColor = WarlockColor.Unspecified,
     @Serializable(WarlockColorAsHexSerializer::class)
     val backgroundColor: WarlockColor = WarlockColor.Unspecified,
-    val entireLine: Boolean = false,
+    // Tri-state: null = inherit, true/false = an explicit set-here override. Older files that predate
+    // the tri-state cascade wrote `false` for "inherit"; that still round-trips as "inherit" (see
+    // StyleDefinition.toLayer).
+    val entireLine: Boolean? = null,
     val bold: Boolean = false,
-    val italic: Boolean = false,
-    val underline: Boolean = false,
-    val monospace: Boolean = false,
+    val italic: Boolean? = null,
+    val underline: Boolean? = null,
+    val monospace: Boolean? = null,
     // Per-item font override and explicit text weight (bold is weight 700; a non-700 weight is written
     // here instead of `bold`). Null = inherit. Added for the appearance-model rewrite; older files omit
     // them and default to inherit.
@@ -160,10 +163,14 @@ data class WindowStyleConfig(
     @TomlInline
     val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
-    // Base text-style flags for the window, edited via the shared appearance style editor.
+    // Base text-style flags for the window, edited via the shared appearance style editor. Tri-state
+    // (null = inherit) except bold, which mirrors weight == 700 (see PresetStyleConfig).
     val bold: Boolean = false,
-    val italic: Boolean = false,
-    val underline: Boolean = false,
+    val italic: Boolean? = null,
+    val underline: Boolean? = null,
+    // Explicit text weight; bold is written instead when it's exactly 700 (weight stays null then, same
+    // canonicalization as PresetStyleConfig). Null = inherit.
+    val weight: Int? = null,
     // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
     val textColorRef: String? = null,
     val backgroundColorRef: String? = null,
@@ -185,8 +192,9 @@ data class CharacterSettingsConfig(
     val defaultTextColor: WarlockColor = WarlockColor.Unspecified,
     @Serializable(WarlockColorAsHexSerializer::class)
     val defaultBackgroundColor: WarlockColor = WarlockColor.Unspecified,
-    val defaultItalic: Boolean = false,
-    val defaultUnderline: Boolean = false,
+    // Tri-state: null = inherit (skin, then platform), true/false = an explicit override.
+    val defaultItalic: Boolean? = null,
+    val defaultUnderline: Boolean? = null,
     // Skin-palette slots the base colors reference (so they track the skin); null = a literal color.
     val defaultTextColorRef: String? = null,
     val defaultBackgroundColorRef: String? = null,
@@ -270,11 +278,11 @@ data class HighlightStyleConfig(
     val textColor: WarlockColor = WarlockColor.Unspecified,
     @Serializable(WarlockColorAsHexSerializer::class)
     val backgroundColor: WarlockColor = WarlockColor.Unspecified,
-    val entireLine: Boolean = false,
+    val entireLine: Boolean? = null,
     val bold: Boolean = false,
-    val italic: Boolean = false,
-    val underline: Boolean = false,
-    val monospace: Boolean = false,
+    val italic: Boolean? = null,
+    val underline: Boolean? = null,
+    val monospace: Boolean? = null,
     // See PresetStyleConfig: per-item font override + explicit text weight. Null = inherit.
     val weight: Int? = null,
     val fontFamily: String? = null,
@@ -294,9 +302,9 @@ data class NameConfig(
     @Serializable(WarlockColorAsHexSerializer::class)
     val backgroundColor: WarlockColor = WarlockColor.Unspecified,
     val bold: Boolean = false,
-    val italic: Boolean = false,
-    val underline: Boolean = false,
-    val monospace: Boolean = false,
+    val italic: Boolean? = null,
+    val underline: Boolean? = null,
+    val monospace: Boolean? = null,
     // See PresetStyleConfig: per-item font override + explicit text weight. Null = inherit.
     val weight: Int? = null,
     val fontFamily: String? = null,

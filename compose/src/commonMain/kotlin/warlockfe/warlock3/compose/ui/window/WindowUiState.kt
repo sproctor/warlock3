@@ -37,16 +37,16 @@ data class DialogWindowData(
 
 /**
  * The window's color + weight/italic/underline styling. Fonts are carried separately on [WindowUiState].
- * A skin-referenced color resolves against [palette]; with the default (empty) palette a ref falls back
- * to the last-resolved color stored beside it, so render stays correct without threading the palette.
+ * A skin-referenced color resolves against [palette] (the skin's palette at the time of the call); a
+ * ref to a slot the palette doesn't define falls back to the last-resolved color stored beside it.
  */
-fun WindowSettings.getStyle(palette: Map<String, WarlockColor> = emptyMap()): StyleDefinition =
+fun WindowSettings.getStyle(palette: Map<String, WarlockColor>): StyleDefinition =
     StyleDefinition(
         textColor = textColorRef?.let { palette[it] } ?: textColor,
         backgroundColor = backgroundColorRef?.let { palette[it] } ?: backgroundColor,
-        bold = bold,
-        italic = italic,
-        underline = underline,
+        bold = bold || (weight?.let { it >= 600 } == true),
+        italic = italic == true,
+        underline = underline == true,
     )
 
 /** The window's style as an editable [StyleLayer], carrying the skin-palette refs for the style editor. */
@@ -54,9 +54,9 @@ fun WindowSettings.toStyleLayer(): StyleLayer =
     StyleLayer(
         textColor = textColor.specifiedOrNull(),
         background = backgroundColor.toBackground(),
-        weight = if (bold) 700 else null,
-        italic = if (italic) true else null,
-        underline = if (underline) true else null,
+        weight = weight ?: if (bold) 700 else null,
+        italic = italic,
+        underline = underline,
         textColorRef = textColorRef,
         backgroundRef = backgroundColorRef,
     )

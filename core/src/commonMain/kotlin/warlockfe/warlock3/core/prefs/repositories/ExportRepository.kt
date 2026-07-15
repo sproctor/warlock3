@@ -36,6 +36,7 @@ import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.specifiedOrNull
 import kotlin.uuid.Uuid
@@ -142,6 +143,8 @@ class ExportRepository(
                     underline = config.settings.defaultUnderline,
                     font = config.settings.defaultFont,
                     monoFont = config.settings.monoFont,
+                    textColorRef = config.settings.defaultTextColorRef,
+                    backgroundColorRef = config.settings.defaultBackgroundColorRef,
                 ),
             variables = config.variables,
             aliases = config.aliases.map { AliasExport(pattern = it.pattern, replacement = it.replacement) },
@@ -175,6 +178,11 @@ class ExportRepository(
                                         italic = style.italic,
                                         underline = style.underline,
                                         monospace = style.monospace,
+                                        weight = style.weight,
+                                        fontFamily = style.fontFamily,
+                                        fontSize = style.fontSize,
+                                        textColorRef = style.textColorRef,
+                                        backgroundColorRef = style.backgroundColorRef,
                                     )
                             },
                     )
@@ -194,6 +202,11 @@ class ExportRepository(
                                 underline = it.underline,
                                 monospace = it.monospace,
                                 entireLine = false,
+                                weight = it.weight,
+                                fontFamily = it.fontFamily,
+                                fontSize = it.fontSize,
+                                textColorRef = it.textColorRef,
+                                backgroundColorRef = it.backgroundColorRef,
                             ),
                     )
                 },
@@ -213,6 +226,8 @@ class ExportRepository(
                                 weight = preset.weight,
                                 fontFamily = preset.fontFamily,
                                 fontSize = preset.fontSize,
+                                textColorRef = preset.textColorRef,
+                                backgroundColorRef = preset.backgroundColorRef,
                             ),
                     )
                 },
@@ -234,6 +249,9 @@ class ExportRepository(
                         bold = style.bold,
                         italic = style.italic,
                         underline = style.underline,
+                        weight = style.weight,
+                        textColorRef = style.textColorRef,
+                        backgroundColorRef = style.backgroundColorRef,
                     )
                 },
         )
@@ -376,6 +394,11 @@ class ExportRepository(
                                 italic = style.italic,
                                 underline = style.underline,
                                 monospace = style.monospace,
+                                weight = style.weight,
+                                fontFamily = style.fontFamily,
+                                fontSize = style.fontSize,
+                                textColorRef = style.textColorRef,
+                                backgroundColorRef = style.backgroundColorRef,
                             )
                         },
                 )
@@ -392,6 +415,11 @@ class ExportRepository(
                     italic = name.style.italic,
                     underline = name.style.underline,
                     monospace = name.style.monospace,
+                    weight = name.style.weight,
+                    fontFamily = name.style.fontFamily,
+                    fontSize = name.style.fontSize,
+                    textColorRef = name.style.textColorRef,
+                    backgroundColorRef = name.style.backgroundColorRef,
                 )
             }
         val importedAliases =
@@ -409,21 +437,47 @@ class ExportRepository(
                 )
             }
         val importedMacros = data.macros.associate { it.key to it.value }
+        // "default" was folded out of the preset map into the base style before this PR's export/import
+        // gained a dedicated baseStyle field; drop it from the imported presets unconditionally (it's
+        // never a real preset) and, for an old export that has no baseStyle, use it as the base instead
+        // so its color isn't shadowed by whatever base the target already had (see effectiveBaseStyle).
+        val legacyDefaultPreset = data.presets.firstOrNull { it.id == "default" }
         val importedPresets =
-            data.presets.associate { preset ->
-                preset.id to
-                    PresetStyleConfig(
-                        textColor = preset.style.textColor,
-                        backgroundColor = preset.style.backgroundColor,
-                        entireLine = preset.style.entireLine,
-                        bold = preset.style.bold,
-                        italic = preset.style.italic,
-                        underline = preset.style.underline,
-                        monospace = preset.style.monospace,
-                        weight = preset.style.weight,
-                        fontFamily = preset.style.fontFamily,
-                        fontSize = preset.style.fontSize,
-                    )
+            data.presets
+                .filter { it.id != "default" }
+                .associate { preset ->
+                    preset.id to
+                        PresetStyleConfig(
+                            textColor = preset.style.textColor,
+                            backgroundColor = preset.style.backgroundColor,
+                            entireLine = preset.style.entireLine,
+                            bold = preset.style.bold,
+                            italic = preset.style.italic,
+                            underline = preset.style.underline,
+                            monospace = preset.style.monospace,
+                            weight = preset.style.weight,
+                            fontFamily = preset.style.fontFamily,
+                            fontSize = preset.style.fontSize,
+                            textColorRef = preset.style.textColorRef,
+                            backgroundColorRef = preset.style.backgroundColorRef,
+                        )
+                }
+        val effectiveBaseStyle =
+            data.baseStyle ?: legacyDefaultPreset?.style?.let { style ->
+                BaseStyleExport(
+                    textColor = style.textColor,
+                    backgroundColor = style.backgroundColor,
+                    italic = style.italic,
+                    underline = style.underline,
+                    font =
+                        FontConfig(
+                            family = style.fontFamily,
+                            size = style.fontSize,
+                            weight = style.weight ?: if (style.bold) 700 else null,
+                        ).takeUnless { it.isEmpty() },
+                    textColorRef = style.textColorRef,
+                    backgroundColorRef = style.backgroundColorRef,
+                )
             }
         val importedWindowStyles =
             data.windows.associate { window ->
@@ -437,6 +491,9 @@ class ExportRepository(
                         bold = window.bold,
                         italic = window.italic,
                         underline = window.underline,
+                        weight = window.weight,
+                        textColorRef = window.textColorRef,
+                        backgroundColorRef = window.backgroundColorRef,
                     )
             }
         val importedCharacterSettings =
@@ -456,9 +513,10 @@ class ExportRepository(
                     macros = importedMacros,
                     presets = importedPresets,
                     windows = importedWindowStyles,
-                    // Base style + fonts come from the export when present; an older export that omits
-                    // them leaves the target character's base style untouched.
-                    settings = importedCharacterSettings.replaceBase(data.baseStyle, current.settings),
+                    // Base style + fonts come from the export when present (including the legacy
+                    // presets["default"] shim above); an export with neither leaves the target's base
+                    // style untouched.
+                    settings = importedCharacterSettings.replaceBase(effectiveBaseStyle, current.settings),
                 )
             } else {
                 val importedPatterns = importedHighlights.mapTo(mutableSetOf()) { it.pattern }
@@ -481,7 +539,7 @@ class ExportRepository(
                                 typeahead = importedCharacterSettings.typeahead ?: current.settings.typeahead,
                                 scriptCommandPrefix =
                                     importedCharacterSettings.scriptCommandPrefix ?: current.settings.scriptCommandPrefix,
-                            ).mergeBase(data.baseStyle),
+                            ).mergeBase(effectiveBaseStyle),
                 )
             }
         }
@@ -523,8 +581,8 @@ class ExportRepository(
 }
 
 // Replace the base style + fonts with an imported [baseStyle], or keep [fallback]'s when the export
-// predates base-style export (a null [baseStyle]). A present base wins wholesale (even its unset values),
-// matching REPLACE semantics.
+// predates base-style export (a null [baseStyle]). A present base wins wholesale (even its unset values,
+// including its ref-or-literal color metadata), matching REPLACE semantics.
 private fun CharacterSettingsConfig.replaceBase(
     baseStyle: BaseStyleExport?,
     fallback: CharacterSettingsConfig,
@@ -536,18 +594,26 @@ private fun CharacterSettingsConfig.replaceBase(
         defaultUnderline = baseStyle?.underline ?: fallback.defaultUnderline,
         defaultFont = if (baseStyle != null) baseStyle.font else fallback.defaultFont,
         monoFont = if (baseStyle != null) baseStyle.monoFont else fallback.monoFont,
+        defaultTextColorRef = if (baseStyle != null) baseStyle.textColorRef else fallback.defaultTextColorRef,
+        defaultBackgroundColorRef = if (baseStyle != null) baseStyle.backgroundColorRef else fallback.defaultBackgroundColorRef,
     )
 
 // Merge an imported [baseStyle] over the current base: the import wins only where it actually sets a
-// value, otherwise the current base is kept. A null [baseStyle] (older export) changes nothing.
+// value, otherwise the current base is kept. A null [baseStyle] (older export) changes nothing. A color's
+// ref is replaced (even to null) whenever that color wins, so a stale target ref can't outrank the
+// imported literal at render (resolveRefs prefers a ref over the color stored beside it).
 private fun CharacterSettingsConfig.mergeBase(baseStyle: BaseStyleExport?): CharacterSettingsConfig {
     baseStyle ?: return this
+    val importedTextColor = baseStyle.textColor.specifiedOrNull()
+    val importedBackgroundColor = baseStyle.backgroundColor.specifiedOrNull()
     return copy(
-        defaultTextColor = baseStyle.textColor.specifiedOrNull() ?: defaultTextColor,
-        defaultBackgroundColor = baseStyle.backgroundColor.specifiedOrNull() ?: defaultBackgroundColor,
-        defaultItalic = baseStyle.italic || defaultItalic,
-        defaultUnderline = baseStyle.underline || defaultUnderline,
+        defaultTextColor = importedTextColor ?: defaultTextColor,
+        defaultBackgroundColor = importedBackgroundColor ?: defaultBackgroundColor,
+        defaultItalic = baseStyle.italic == true || defaultItalic == true,
+        defaultUnderline = baseStyle.underline == true || defaultUnderline == true,
         defaultFont = baseStyle.font ?: defaultFont,
         monoFont = baseStyle.monoFont ?: monoFont,
+        defaultTextColorRef = if (importedTextColor != null) baseStyle.textColorRef else defaultTextColorRef,
+        defaultBackgroundColorRef = if (importedBackgroundColor != null) baseStyle.backgroundColorRef else defaultBackgroundColorRef,
     )
 }
