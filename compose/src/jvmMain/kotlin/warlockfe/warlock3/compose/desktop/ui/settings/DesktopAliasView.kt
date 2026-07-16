@@ -50,7 +50,6 @@ fun DesktopAliasView(
     val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
-        title = "Aliases",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
         onSelectCharacter = { selectedCharacter = it },

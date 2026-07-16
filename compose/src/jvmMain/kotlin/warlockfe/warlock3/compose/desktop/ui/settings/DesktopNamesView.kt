@@ -90,7 +90,6 @@ fun DesktopNamesView(
         )
 
     SettingsListScaffold(
-        title = "Names",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
         onSelectCharacter = { selectedCharacter = it },

@@ -120,9 +120,6 @@ data class StyleSample(
  */
 val GENERIC_SAMPLE = StyleSample("The quick brown fox jumps over the lazy dog.")
 
-/** Sample for the base "default text" style: ordinary unstyled game output. */
-val BASE_SAMPLE = StyleSample("This is the room description for some room in Riverhaven.")
-
 /**
  * The line each preset actually styles in game, so a preview reads like real output instead of
  * placeholder text. Carried over from the pre-rewrite Appearance preview, which rendered one such line

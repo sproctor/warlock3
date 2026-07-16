@@ -54,7 +54,6 @@ fun DesktopVariablesView(
         .collectAsState(emptyList())
 
     SettingsListScaffold(
-        title = "Variables",
         selectedCharacter = currentCharacter,
         characters = characters,
         onSelectCharacter = { currentCharacterState.value = it },

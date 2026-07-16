@@ -158,9 +158,11 @@ private fun SettingsNavItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    // The accent (focused-outline) color, not the neutral border: at this alpha a saturated tint reads
+    // as a real selection, where the gray border wash was easy to miss.
     val background =
         if (selected) {
-            JewelTheme.globalColors.borders.normal
+            JewelTheme.globalColors.outlines.focused
                 .copy(alpha = 0.25f)
         } else {
             Color.Transparent

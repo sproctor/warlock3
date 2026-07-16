@@ -102,7 +102,6 @@ fun DesktopHighlightsView(
     val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
-        title = "Highlights",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
         onSelectCharacter = { selectedCharacter = it },

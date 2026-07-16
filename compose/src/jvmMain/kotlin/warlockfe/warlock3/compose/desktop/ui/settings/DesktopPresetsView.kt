@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.component.Text
-import warlockfe.warlock3.compose.components.BASE_SAMPLE
+import warlockfe.warlock3.compose.components.GENERIC_SAMPLE
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.StyleSample
 import warlockfe.warlock3.compose.components.backgroundLabel
@@ -72,7 +72,7 @@ private fun PresetItem.label(): String =
 /** The editor preview's sample: the in-game line this preset styles, so the preview reads like real output. */
 private fun PresetItem.sample(): StyleSample =
     when (this) {
-        PresetItem.Base -> BASE_SAMPLE
+        PresetItem.Base -> GENERIC_SAMPLE
         is PresetItem.Named -> sampleFor(name)
     }
 
@@ -181,7 +181,6 @@ fun DesktopPresetsView(
     fun inheritedBackground(item: PresetItem): Background = resolve(chipStack(item).drop(1)).background
 
     SettingsListScaffold(
-        title = "Presets",
         selectedCharacter = selectedCharacter,
         characters = characters,
         onSelectCharacter = { selectedCharacter = it },
@@ -189,8 +188,10 @@ fun DesktopPresetsView(
     ) {
         val current = selectedItem
         if (current == null) {
-            // Base text and the monospace font stand apart from the named presets, so they sit above the
-            // "Presets" heading rather than in the preset list.
+            // Base text and the monospace font stand apart from the named presets: they get their own
+            // "Base" heading above, matching the "Presets" heading below, rather than sitting in the list.
+            Text("Base")
+            Spacer(Modifier.height(8.dp))
             PresetListRow(PresetItem.Base, chipStyle(PresetItem.Base), windowBackground) { selectedItem = PresetItem.Base }
             MonoFontRow(
                 monoFont = monoFont,

@@ -56,7 +56,6 @@ fun DesktopActionsView(
     val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
-        title = "Actions",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
         onSelectCharacter = { selectedCharacter = it },
