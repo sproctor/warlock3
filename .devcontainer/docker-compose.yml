@@ -1,0 +1,72 @@
+# Runs Claude Code unconstrained (--dangerously-skip-permissions) inside a
+# container. The host filesystem/processes are isolated; only the project repo
+# is writable. Network is open so Gradle can reach Maven/Google repos.
+#
+# All ${...} values are supplied by claude-box.sh via a generated .env file
+# (host user/uid/gid, home, repo root, Android SDK path) — no host paths are
+# hard-coded here. Always launch through claude-box.sh so .env is up to date.
+#
+# Usage: ./claude-box.sh            # unconstrained Claude session
+#        ./claude-box.sh bash       # shell in the same environment
+services:
+  claude:
+    build:
+      context: .
+      args:
+        USER_NAME: ${HOST_USER}
+        USER_UID: ${HOST_UID}
+        USER_GID: ${HOST_GID}
+        USER_HOME: ${HOST_HOME}
+        ANDROID_SDK_DIR: ${ANDROID_SDK_DIR}
+    image: warlock3-claudebox
+    init: true
+    stdin_open: true
+    tty: true
+    working_dir: ${REPO_DIR}
+    environment:
+      - TERM=xterm-256color
+      # X11 GUI passthrough (for `./gradlew run`). Uses the host's display;
+      # software OpenGL so it renders without GPU passthrough.
+      - DISPLAY=${DISPLAY:-:0}
+      - LIBGL_ALWAYS_SOFTWARE=1
+      # Git pushes/pulls authenticate via the host's ssh-agent (see volumes).
+      # The agent can only *sign* over this socket — the private keys never
+      # enter the container, so it can't exfiltrate them.
+      - SSH_AUTH_SOCK=/ssh-agent
+      # Commit identity, read from the host's git config by claude-box.sh.
+      # Passed as env rather than mounting ~/.gitconfig: a bind mount of a
+      # non-existent file would silently create a *directory* on the host.
+      - GIT_AUTHOR_NAME=${GIT_USER_NAME}
+      - GIT_AUTHOR_EMAIL=${GIT_USER_EMAIL}
+      - GIT_COMMITTER_NAME=${GIT_USER_NAME}
+      - GIT_COMMITTER_EMAIL=${GIT_USER_EMAIL}
+      # Optional: a GitHub token for `gh` if you'd rather not forward the agent.
+      - GH_TOKEN=${GH_TOKEN:-}
+    volumes:
+      # The project repo, mounted at the identical host path.
+      - ${REPO_DIR}:${REPO_DIR}
+      # Host login (token + account config), read-only, seeded by entrypoint.sh.
+      - ${HOST_HOME}/.claude/.credentials.json:/seed/credentials.json:ro
+      - ${HOST_HOME}/.claude.json:/seed/claude.json:ro
+      # X11 socket for GUI apps. claude-box.sh grants access via xhost.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Host ssh-agent socket, so git can push without private keys in the
+      # container. Falls back to /dev/null when no agent is running, which
+      # simply makes ssh auth unavailable rather than breaking startup.
+      - ${HOST_SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
+      # Persistent state / caches (survive container removal).
+      - claude-home:${HOST_HOME}/.claude
+      - gradle-cache:${HOST_HOME}/.gradle
+      - konan-cache:${HOST_HOME}/.konan
+    # Hardware-accelerated rendering (optional): remove LIBGL_ALWAYS_SOFTWARE
+    # above and uncomment below. Set the GID to your host 'render' group
+    # (run: getent group render).
+    # devices:
+    #   - /dev/dri:/dev/dri
+    # group_add:
+    #   - "109"
+
+volumes:
+  claude-home:
+  gradle-cache:
+  konan-cache:
