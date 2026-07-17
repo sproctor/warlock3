@@ -9,7 +9,13 @@ import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.StoredConnection
+import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.specifiedOrNull
+import warlockfe.warlock3.core.text.toBackground
+import warlockfe.warlock3.core.text.toWarlockColor
 import kotlin.uuid.Uuid
 
 private fun String?.toUuidOrRandom(): Uuid = this?.let { runCatching { Uuid.parse(it) }.getOrNull() } ?: Uuid.random()
@@ -36,7 +42,7 @@ internal fun HighlightConfig.toHighlight(): Highlight =
     Highlight(
         id = id?.let { runCatching { Uuid.parse(it) }.getOrNull() } ?: Uuid.random(),
         pattern = pattern,
-        styles = styles.associate { it.group to it.toStyleDefinition() },
+        styles = styles.associate { it.group to it.toStyleLayer() },
         isRegex = isRegex,
         matchPartialWord = matchPartialWord,
         ignoreCase = ignoreCase,
@@ -54,27 +60,41 @@ internal fun Highlight.toConfig(): HighlightConfig =
         styles = styles.map { (group, style) -> style.toStyleConfig(group) },
     )
 
-internal fun HighlightStyleConfig.toStyleDefinition(): StyleDefinition =
-    StyleDefinition(
-        textColor = textColor,
-        backgroundColor = backgroundColor,
-        entireLine = entireLine,
-        bold = bold,
+// A highlight group's stored style as a sparse [StyleLayer] (carrying the skin-palette refs), the shape
+// the shared appearance editor and the render pipeline consume.
+internal fun HighlightStyleConfig.toStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = textColor.specifiedOrNull(),
+        background = backgroundColor.toBackground(),
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        weight = weight ?: if (bold) 700 else null,
         italic = italic,
         underline = underline,
+        entireLine = entireLine,
         monospace = monospace,
+        textColorRef = textColorRef,
+        backgroundRef = backgroundColorRef,
     )
 
-internal fun StyleDefinition.toStyleConfig(group: Int): HighlightStyleConfig =
+// Tri-state passthrough (not `== true`/`if (x) true else null`): a config field left null round-trips as
+// "inherit", but an explicit true/false set at this scope must survive the round trip so the cascade can
+// still override a lower layer back to "off" (see StyleEditorTest.setItalicFalseOverridesRatherThanClears).
+internal fun StyleLayer.toStyleConfig(group: Int): HighlightStyleConfig =
     HighlightStyleConfig(
         group = group,
-        textColor = textColor,
-        backgroundColor = backgroundColor,
+        textColor = textColor ?: WarlockColor.Unspecified,
+        backgroundColor = background.toWarlockColor(),
         entireLine = entireLine,
-        bold = bold,
+        bold = weight == 700,
         italic = italic,
         underline = underline,
         monospace = monospace,
+        weight = weight?.takeUnless { it == 700 },
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        textColorRef = textColorRef,
+        backgroundColorRef = backgroundRef,
     )
 
 internal fun NameEntity.toConfig(): NameConfig =
@@ -87,6 +107,9 @@ internal fun NameEntity.toConfig(): NameConfig =
         bold = bold,
         italic = italic,
         underline = underline,
+        weight = fontWeight,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
     )
 
 internal fun AliasConfig.toEntity(characterId: String): AliasEntity =
@@ -131,11 +154,13 @@ internal fun PresetStyleConfig.toStyleDefinition(): StyleDefinition =
     StyleDefinition(
         textColor = textColor,
         backgroundColor = backgroundColor,
-        entireLine = entireLine,
-        bold = bold,
-        italic = italic,
-        underline = underline,
-        monospace = monospace,
+        entireLine = entireLine == true,
+        // Until the renderer consumes the new model, fold an explicit weight back into the bold flag so
+        // a hand-set `weight` still renders bold-ish. Per-item font family/size are dropped here.
+        bold = bold || (weight?.let { it >= 600 } == true),
+        italic = italic == true,
+        underline = underline == true,
+        monospace = monospace == true,
     )
 
 internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
@@ -147,6 +172,70 @@ internal fun StyleDefinition.toPresetStyleConfig(): PresetStyleConfig =
         italic = italic,
         underline = underline,
         monospace = monospace,
+    )
+
+// Sparse-layer mappers used by the appearance editor and the resolve()-based renderer. The forward
+// mapper reads the effective weight (`weight ?: bold->700`); the reverse canonicalizes weight 700 back
+// to `bold` (leaving `weight` unset) so a bold preset's TOML stays byte-stable. Tri-state fields
+// (italic/underline/entireLine/monospace) pass through as-is (not `== true`/`if (x) true else null`) so
+// an explicit false set at this scope survives the round trip instead of collapsing to "inherit".
+internal fun PresetStyleConfig.toStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = textColor.specifiedOrNull(),
+        background = backgroundColor.toBackground(),
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        weight = weight ?: if (bold) 700 else null,
+        italic = italic,
+        underline = underline,
+        entireLine = entireLine,
+        monospace = monospace,
+        textColorRef = textColorRef,
+        backgroundRef = backgroundColorRef,
+    )
+
+internal fun StyleLayer.toPresetStyleConfig(): PresetStyleConfig =
+    PresetStyleConfig(
+        textColor = textColor ?: WarlockColor.Unspecified,
+        backgroundColor = background.toWarlockColor(),
+        entireLine = entireLine,
+        bold = weight == 700,
+        italic = italic,
+        underline = underline,
+        monospace = monospace,
+        weight = weight?.takeUnless { it == 700 },
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        textColorRef = textColorRef,
+        backgroundColorRef = backgroundRef,
+    )
+
+// The character/global base text style — the color + font + italic/underline that together are the
+// former "default" preset. Font family/size/weight live in [CharacterSettingsConfig.defaultFont]; the
+// colors and flags live beside it. Editing works on the whole assembled layer, so writing back
+// preserves the font when only a color changed.
+internal fun CharacterSettingsConfig.toBaseStyleLayer(): StyleLayer =
+    StyleLayer(
+        textColor = defaultTextColor.specifiedOrNull(),
+        background = defaultBackgroundColor.toBackground(),
+        fontFamily = defaultFont?.family,
+        fontSize = defaultFont?.size,
+        weight = defaultFont?.weight,
+        italic = defaultItalic,
+        underline = defaultUnderline,
+        textColorRef = defaultTextColorRef,
+        backgroundRef = defaultBackgroundColorRef,
+    )
+
+internal fun CharacterSettingsConfig.applyBaseStyle(layer: StyleLayer): CharacterSettingsConfig =
+    copy(
+        defaultTextColor = layer.textColor ?: WarlockColor.Unspecified,
+        defaultBackgroundColor = layer.background.toWarlockColor(),
+        defaultItalic = layer.italic,
+        defaultUnderline = layer.underline,
+        defaultFont = FontConfig(family = layer.fontFamily, size = layer.fontSize, weight = layer.weight).takeUnless { it.isEmpty() },
+        defaultTextColorRef = layer.textColorRef,
+        defaultBackgroundColorRef = layer.backgroundRef,
     )
 
 internal fun ProgressBarSettingEntity.toConfig(): ProgressBarConfig =

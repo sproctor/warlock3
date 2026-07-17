@@ -15,6 +15,7 @@ import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.decodeWindows1252
 import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.uuid.Uuid
@@ -87,7 +88,7 @@ class WraythImporter(
                                             textColor = highlight.color.toWarlockColor(colors),
                                             backgroundColor = highlight.bgcolor.toWarlockColor(colors),
                                             entireLine = highlight.line == "y",
-                                        ),
+                                        ).toLayer(),
                                 ),
                             isRegex = false,
                             matchPartialWord = true,

@@ -34,8 +34,7 @@ import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
-import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.isSpecified
@@ -58,8 +57,7 @@ fun LargeGameView(
     Column(modifier) {
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
-        val presets = LocalStyleMap.current
-        val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
+        val defaultStyle = LocalBaseStyle.current
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val character by viewModel.character.collectAsState(null)
         val disconnected by viewModel.disconnected.collectAsState()
@@ -147,8 +145,7 @@ fun LargeGameView(
                 onSizeChange = viewModel::setLocationSize,
                 onDrop = { result -> viewModel.onWindowDrop(result) },
                 onCloseClick = viewModel::closeWindow,
-                saveStyle = viewModel::saveWindowStyle,
-                saveNameFilter = viewModel::saveWindowNameFilter,
+                onOpenWindowSettings = viewModel::requestEditWindowSettings,
                 onWindowSelect = viewModel::selectWindow,
                 scrollEvents = viewModel.scrollEvents.collectAsState().value,
                 handledScrollEvent = viewModel::handledScrollEvent,

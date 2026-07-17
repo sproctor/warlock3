@@ -17,7 +17,10 @@ import kotlinx.coroutines.flow.stateIn
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.util.HighlightIndex
+import warlockfe.warlock3.compose.util.presetColorPalette
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
@@ -26,8 +29,15 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.text.FontConfig
+import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.mergeLayers
+import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.DialogState
 import warlockfe.warlock3.core.window.TextStream
@@ -110,35 +120,43 @@ class WindowRegistryImpl(
 
     private val characterId = MutableStateFlow("global")
 
+    // The skin's named-color palette, so a name's skin-referenced color resolves and follows the skin.
+    override val colorPalette: StateFlow<Map<String, WarlockColor>> =
+        skinPresets
+            .map { it.presetColorPalette() }
+            .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
     private val names: StateFlow<List<ViewHighlight>> =
-        characterId
-            .flatMapLatest { characterId ->
-                nameRepository.observeForCharacter(characterId).map { names ->
-                    names.mapNotNull { name ->
-                        if (name.text.isBlank()) return@mapNotNull null
-                        LiteralHighlight(
-                            literal = name.text,
-                            matchPartialWord = false,
-                            ignoreCase = false,
-                            style =
-                                StyleDefinition(
-                                    textColor = name.textColor,
-                                    backgroundColor = name.backgroundColor,
-                                ),
-                            sound = name.sound,
-                        )
-                    }
-                }
-            }.stateIn(
-                scope = scope,
-                started = SharingStarted.Eagerly,
-                initialValue = emptyList(),
-            )
+        combine(
+            characterId.flatMapLatest { nameRepository.observeForCharacter(it) },
+            colorPalette,
+        ) { names, palette ->
+            names.mapNotNull { name ->
+                if (name.text.isBlank()) return@mapNotNull null
+                LiteralHighlight(
+                    literal = name.text,
+                    matchPartialWord = false,
+                    ignoreCase = false,
+                    // Sparse (not flattened to StyleDefinition) so bold/italic/underline and per-item
+                    // font/weight the names editor exposes actually render, matching presets/highlights.
+                    style = name.toStyleLayer().resolveRefs(palette),
+                    sound = name.sound,
+                )
+            }
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList(),
+        )
 
     private val highlights: StateFlow<HighlightIndex> =
         characterId
             .flatMapLatest { characterId ->
-                highlightRepository.observeForCharacter(characterId).map { highlights ->
+                combine(highlightRepository.observeForCharacter(characterId), colorPalette) { highlights, palette ->
+                    // Highlight group styles are stored as sparse layers with skin refs; resolve each ref
+                    // against the skin and keep the layer sparse (not flattened to StyleDefinition) so
+                    // weight/per-item font survive to the span renderer like presets do.
+                    fun render(layer: StyleLayer): StyleLayer = layer.resolveRefs(palette)
                     highlights.mapNotNull { highlight ->
                         if (highlight.isRegex) {
                             try {
@@ -148,7 +166,7 @@ class WindowRegistryImpl(
                                             pattern = highlight.pattern,
                                             options = if (highlight.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
                                         ),
-                                    styles = highlight.styles,
+                                    styles = highlight.styles.mapValues { render(it.value) },
                                     sound = highlight.sound,
                                 )
                             } catch (_: Exception) {
@@ -162,7 +180,7 @@ class WindowRegistryImpl(
                                 literal = highlight.pattern,
                                 matchPartialWord = highlight.matchPartialWord,
                                 ignoreCase = highlight.ignoreCase,
-                                style = highlight.styles[0],
+                                style = highlight.styles[0]?.let { render(it) },
                                 sound = highlight.sound,
                             )
                         }
@@ -201,13 +219,49 @@ class WindowRegistryImpl(
                 initialValue = emptyList(),
             )
 
-    // Skin presets are the defaults; the character's saved presets (from the DB) override them.
-    override val presets: StateFlow<Map<String, StyleDefinition>> =
+    // Skin presets are the defaults, overridden by the global (all-characters) presets, overridden by
+    // the character's own presets (skin -> global -> character). "default" is dropped: the base style is
+    // not a preset (see [baseStyle]).
+    override val presets: StateFlow<Map<String, StyleLayer>> =
         combine(
             skinPresets,
-            characterId.flatMapLatest { presetRepository.observePresetsForCharacter(it) },
-        ) { skinDefaults, dbPresets -> skinDefaults + dbPresets }
-            .stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+            characterId.flatMapLatest { presetRepository.observeLayersForCharacter(it) },
+        ) { skinDefaults, savedPresets ->
+            // Resolve skin-referenced colors against the skin's own palette so a user's palette pick
+            // renders in the referenced color and follows the skin. Merged per attribute (not per whole
+            // preset), so e.g. a saved character override of just Italic doesn't blank out the skin's
+            // color for that same preset name.
+            val palette = skinDefaults.presetColorPalette()
+            val skinLayers = skinDefaults.mapValues { it.value.toLayer() }
+            val resolvedSaved = savedPresets.mapValues { it.value.resolveRefs(palette) }
+            (skinLayers.keys + resolvedSaved.keys).associateWith { key ->
+                mergeLayers(listOfNotNull(resolvedSaved[key], skinLayers[key]))
+            } - "default"
+        }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = emptyMap())
+
+    // The resolved base ("default text") style: character base over global base over the skin's default,
+    // where each scope's base is the color/font/italic/underline stored in its settings. A legacy
+    // "default" preset (from before the base moved out of the preset list) is layered in just under the
+    // new base config so older configs keep their default color until the destructive migration (P6).
+    override val baseStyle: StateFlow<ResolvedStyle> =
+        combine(
+            characterId.flatMapLatest { characterSettingsRepository.observeBaseStyle(it) },
+            characterId.flatMapLatest { presetRepository.observePresetsForCharacter(it) }.map { it["default"] },
+            characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID),
+            presetRepository.observeGlobal().map { it["default"] },
+            skinPresets,
+        ) { charBase, charLegacy, globalBase, globalLegacy, skin ->
+            val palette = skin.presetColorPalette()
+            resolve(
+                listOfNotNull(
+                    charBase.resolveRefs(palette),
+                    charLegacy?.toLayer(),
+                    globalBase.resolveRefs(palette),
+                    globalLegacy?.toLayer(),
+                    skin["default"]?.toLayer(),
+                ),
+            )
+        }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = ResolvedStyle())
 
     // The effective monospace font for a given window: its per-window override if set, otherwise the
     // character's default monospace font. Rebuilt per character; a change re-renders that window's buffer.

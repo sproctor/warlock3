@@ -17,6 +17,7 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 
 @Composable
@@ -37,6 +38,9 @@ fun SettingsContent(
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
     wraythImporter: WraythImporter,
+    windowSettingRepository: WindowSettingsRepository,
+    initialWindowTarget: String? = null,
+    windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
     val characters by characterRepository.observeAllCharacters().collectAsState(emptyList())
 
@@ -73,6 +77,7 @@ fun SettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 highlightRepository = highlightRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 
@@ -81,15 +86,27 @@ fun SettingsContent(
                 currentCharacter = currentCharacter,
                 allCharacters = characters,
                 nameRepository = nameRepository,
+                characterSettingsRepository = characterSettingsRepository,
             )
         }
 
-        SettingsPage.Appearance -> {
-            AppearanceView(
+        SettingsPage.TextStyles -> {
+            PresetsView(
                 presetRepository = presetRepository,
                 characterSettingsRepository = characterSettingsRepository,
                 initialCharacter = currentCharacter,
                 characters = characters,
+            )
+        }
+
+        SettingsPage.Windows -> {
+            WindowsView(
+                initialCharacter = currentCharacter,
+                characters = characters,
+                characterSettingsRepository = characterSettingsRepository,
+                windowSettingRepository = windowSettingRepository,
+                windowLiveContext = windowLiveContext,
+                initialWindowTarget = initialWindowTarget,
             )
         }
 

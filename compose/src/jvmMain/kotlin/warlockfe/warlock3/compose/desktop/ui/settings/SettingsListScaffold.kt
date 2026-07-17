@@ -7,17 +7,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.core.client.GameCharacter
 
 /**
- * The shared preamble for the desktop per-character settings list screens: a character selector
- * followed by a title. Each screen supplies its own list and action buttons as [content] (a
- * [ColumnScope] so the list can take the remaining height with `Modifier.weight(1f)`).
+ * The shared preamble for the desktop per-character settings list screens: a character selector above
+ * the screen's own content. The page title is already shown by the settings dialog's nav, so it is not
+ * repeated here. Each screen supplies its own list and action buttons as [content] (a [ColumnScope] so
+ * the list can take the remaining height with `Modifier.weight(1f)`).
  */
 @Composable
 fun SettingsListScaffold(
-    title: String,
     selectedCharacter: GameCharacter?,
     characters: List<GameCharacter>,
     onSelectCharacter: (GameCharacter?) -> Unit,
@@ -33,8 +32,6 @@ fun SettingsListScaffold(
             allowGlobal = allowGlobal,
         )
         Spacer(Modifier.height(16.dp))
-        Text(title)
-        Spacer(Modifier.height(8.dp))
         content()
     }
 }

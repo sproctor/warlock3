@@ -7,8 +7,11 @@ import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.model.isWordBoundary
 import warlockfe.warlock3.compose.model.wordTokensOf
+import warlockfe.warlock3.compose.ui.settings.toStyleDefinition
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.resolve
 
 fun AnnotatedString.highlight(
     index: HighlightIndex,
@@ -153,18 +156,18 @@ private fun AnnotatedString.Builder.applyRegexHighlight(
 }
 
 private fun AnnotatedString.Builder.applyStyleAtRange(
-    style: StyleDefinition,
+    style: StyleLayer,
     matchStart: Int,
     matchEnd: Int,
     outerSpans: List<AnnotatedString.Range<SpanStyle>>,
     entireLineStyles: MutableList<StyleDefinition>,
     monoFont: FontConfig?,
 ) {
-    if (style.entireLine) {
-        entireLineStyles.add(style)
-        addStyle(style.toSpanStyle(monoFont), 0, length)
+    if (style.entireLine == true) {
+        entireLineStyles.add(style.toStyleDefinition())
+        addStyle(resolve(listOf(style)).toSpanStyle(monoFont), 0, length)
     } else {
-        val spanStyle = style.toSpanStyle(monoFont)
+        val spanStyle = resolve(listOf(style)).toSpanStyle(monoFont)
         addStyle(spanStyle, matchStart, matchEnd)
         // Compose's span merge picks the most recently started active
         // style, so a wider highlight that started before a span would
@@ -187,7 +190,7 @@ data class AnnotatedStringHighlightResult(
 
 expect fun AnnotatedString.Builder.markLinks(
     text: AnnotatedString,
-    presets: Map<String, StyleDefinition>,
+    presets: Map<String, StyleLayer>,
 )
 
 expect val MatchGroup.range_: IntRange

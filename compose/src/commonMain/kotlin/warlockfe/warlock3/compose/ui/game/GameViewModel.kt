@@ -27,11 +27,15 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -256,6 +260,21 @@ class GameViewModel(
 
     val windows = client.windowInfo
 
+    // The connected character's id, used by the settings dialog to decide whether its live window
+    // info (titles, hidden-window list) applies to the character being edited.
+    val connectedCharacterId: StateFlow<String?> get() = client.characterId
+
+    // One-shot request to open the settings dialog on Appearance with a given window's editor focused,
+    // fired by a window's header/context-menu "Window settings" action. A SharedFlow (not a StateFlow)
+    // because it's a navigation event that must not linger and re-fire when settings is next opened.
+    private val _editWindowSettingsRequests =
+        MutableSharedFlow<String>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val editWindowSettingsRequests: SharedFlow<String> = _editWindowSettingsRequests.asSharedFlow()
+
+    fun requestEditWindowSettings(name: String) {
+        _editWindowSettingsRequests.tryEmit(name)
+    }
+
     val scriptCommandPrefix =
         observePerCharacter { characterId ->
             characterSettingsRepository
@@ -312,6 +331,14 @@ class GameViewModel(
         )
 
     val presets = windowRegistry.presets
+
+    // The resolved base ("default text") style: colors + font + weight + italic/underline, cascaded
+    // skin -> global -> character. Feeds the window base style + font and the input/status chrome.
+    val baseStyle = windowRegistry.baseStyle
+
+    // The skin's named-color palette, so a window's skin-referenced text/background color resolves
+    // (see WindowSettings.getStyle) instead of staying stuck at its last-saved literal.
+    private val colorPalette = windowRegistry.colorPalette
 
     /** The character's default (normal) font; used as the base text style for windows without an override. */
     val defaultFont: StateFlow<FontConfig?> =
@@ -509,7 +536,7 @@ class GameViewModel(
                             WindowUiState(
                                 name = entity.name,
                                 windowInfo = mutableStateOf(window),
-                                style = entity.getStyle(),
+                                style = entity.getStyle(colorPalette.value),
                                 font = entity.font,
                                 monoFont = entity.monoFont,
                                 width = entity.width,
@@ -540,7 +567,7 @@ class GameViewModel(
                         _mainWindowUiState.update {
                             (it.data as? StreamWindowData)?.stream?.setNameFilter(singleWindowSettings.nameFilter)
                             it.copy(
-                                style = singleWindowSettings.getStyle(),
+                                style = singleWindowSettings.getStyle(colorPalette.value),
                                 font = singleWindowSettings.font,
                                 monoFont = singleWindowSettings.monoFont,
                                 nameFilter = singleWindowSettings.nameFilter,
@@ -557,7 +584,7 @@ class GameViewModel(
                                         ?.setNameFilter(singleWindowSettings.nameFilter)
                                     mutableStates[index] =
                                         states[index].copy(
-                                            style = singleWindowSettings.getStyle(),
+                                            style = singleWindowSettings.getStyle(colorPalette.value),
                                             font = singleWindowSettings.font,
                                             monoFont = singleWindowSettings.monoFont,
                                             nameFilter = singleWindowSettings.nameFilter,
@@ -1205,7 +1232,7 @@ class GameViewModel(
                     WindowUiState(
                         name = name,
                         windowInfo = mutableStateOf(windowInfo),
-                        style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                        style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
                         font = entity?.font,
                         monoFont = entity?.monoFont,
                         width = null,
@@ -1264,7 +1291,7 @@ class GameViewModel(
             WindowUiState(
                 name = name,
                 windowInfo = mutableStateOf(windowInfo),
-                style = entity?.getStyle() ?: SAFE_DEFAULT_STYLE,
+                style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
                 font = entity?.font,
                 monoFont = entity?.monoFont,
                 width = null,

@@ -51,7 +51,6 @@ fun DesktopAlterationsView(
     val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
-        title = "Alterations",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
         onSelectCharacter = { selectedCharacter = it },

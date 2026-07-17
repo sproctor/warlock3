@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
@@ -34,8 +35,8 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import sh.calvin.reorderable.ReorderableColumn
-import warlockfe.warlock3.compose.desktop.components.DesktopColorTextField
-import warlockfe.warlock3.compose.desktop.components.DesktopStylePreview
+import warlockfe.warlock3.compose.components.StyleChip
+import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
@@ -46,15 +47,24 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
-import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.ui.settings.resolvedWindowBackground
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.toColorPalette
+import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.toHexString
-import warlockfe.warlock3.core.util.toWarlockColor
+import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
+import warlockfe.warlock3.core.text.resolveSourced
+import warlockfe.warlock3.core.text.sampleStyle
+import warlockfe.warlock3.core.text.toLayer
 import kotlin.uuid.Uuid
 
 @Composable
@@ -62,10 +72,27 @@ fun DesktopHighlightsView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     highlightRepository: HighlightRepositoryImpl,
+    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
     val currentCharacterId = selectedCharacter?.id
+    val skin = LocalSkin.current
+    val isDark = LocalDarkTheme.current
+    val palette = skin.toColorPalette(isDark)
+    val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
+    val charBase by remember(currentCharacterId) {
+        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
+    }.collectAsState(StyleLayer())
+    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val windowBackground =
+        resolvedWindowBackground(
+            listOfNotNull(
+                charBase.resolveRefs(palette).takeIf { currentCharacterId != null },
+                globalBase.resolveRefs(palette),
+                skinBase,
+            ),
+        )
     val highlights by if (currentCharacterId == null) {
         highlightRepository.observeGlobal()
     } else {
@@ -75,7 +102,6 @@ fun DesktopHighlightsView(
     val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
-        title = "Highlights",
         selectedCharacter = selectedCharacter,
         characters = allCharacters,
         onSelectCharacter = { selectedCharacter = it },
@@ -108,10 +134,9 @@ fun DesktopHighlightsView(
                                                 .draggableHandle(),
                                         colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
                                     )
-                                    val style = highlight.styles[0]
-                                    DesktopStylePreview(
-                                        textColor = style?.textColor.toColor(),
-                                        backgroundColor = style?.backgroundColor.toColor(),
+                                    StyleChip(
+                                        resolved = resolve(listOf((highlight.styles[0] ?: StyleLayer()).resolveRefs(palette))),
+                                        windowBackground = windowBackground,
                                     )
                                 }
                             },
@@ -159,6 +184,8 @@ fun DesktopHighlightsView(
     editingHighlight?.let { highlight ->
         DesktopEditHighlightDialog(
             highlight = highlight,
+            palette = palette,
+            windowBackground = windowBackground,
             saveHighlight = { newHighlight ->
                 scope.launch {
                     if (currentCharacterId != null) {
@@ -177,12 +204,14 @@ fun DesktopHighlightsView(
 @Composable
 private fun DesktopEditHighlightDialog(
     highlight: Highlight,
+    palette: Map<String, WarlockColor>,
+    windowBackground: Color,
     saveHighlight: (Highlight) -> Unit,
     onClose: () -> Unit,
 ) {
     val pattern = rememberTextFieldState(highlight.pattern)
     val styles =
-        remember { mutableStateListOf<StyleDefinition>().apply { addAll(highlight.styles.values) } }
+        remember { mutableStateListOf<StyleLayer>().apply { addAll(highlight.styles.values) } }
     var isRegex by remember { mutableStateOf(highlight.isRegex) }
     var matchPartialWord by remember { mutableStateOf(highlight.matchPartialWord) }
     var ignoreCase by remember { mutableStateOf(highlight.ignoreCase) }
@@ -233,77 +262,34 @@ private fun DesktopEditHighlightDialog(
 
             // Add blank styles for remaining groups
             while (styles.size <= groupCount) {
-                styles.add(StyleDefinition())
+                styles.add(StyleLayer())
             }
             WarlockScrollableColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 for (i in 0 until groupCount) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (isRegex) {
-                            Text("$i:", modifier = Modifier.align(Alignment.CenterVertically))
-                        }
-                        val textColorState =
-                            rememberTextFieldState(styles[i].textColor.toHexString() ?: "")
-                        LaunchedEffect(textColorState) {
-                            snapshotFlow { textColorState.text.toString() }
-                                .collectLatest {
-                                    styles[i] =
-                                        styles[i].copy(
-                                            textColor = it.toWarlockColor() ?: WarlockColor.Unspecified,
-                                        )
-                                }
-                        }
-                        DesktopColorTextField(
-                            modifier = Modifier.weight(1f),
-                            label = "Text color",
-                            state = textColorState,
-                        )
-
-                        val backgroundColorState =
-                            rememberTextFieldState(styles[i].backgroundColor.toHexString() ?: "")
-                        LaunchedEffect(backgroundColorState) {
-                            snapshotFlow { backgroundColorState.text.toString() }
-                                .collectLatest {
-                                    styles[i] =
-                                        styles[i].copy(
-                                            backgroundColor = it.toWarlockColor() ?: WarlockColor.Unspecified,
-                                        )
-                                }
-                        }
-                        DesktopColorTextField(
-                            modifier = Modifier.weight(1f),
-                            label = "Background color",
-                            state = backgroundColorState,
-                        )
+                    if (isRegex) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Group $i")
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        WarlockCheckboxRow(
-                            checked = styles[i].bold,
-                            onCheckedChange = { styles[i] = styles[i].copy(bold = it) },
-                            text = "Bold",
-                        )
-                        WarlockCheckboxRow(
-                            checked = styles[i].italic,
-                            onCheckedChange = { styles[i] = styles[i].copy(italic = it) },
-                            text = "Italic",
-                        )
-                        WarlockCheckboxRow(
-                            checked = styles[i].underline,
-                            onCheckedChange = { styles[i] = styles[i].copy(underline = it) },
-                            text = "Underline",
-                        )
-                        WarlockCheckboxRow(
-                            checked = styles[i].monospace,
-                            onCheckedChange = { styles[i] = styles[i].copy(monospace = it) },
-                            text = "Mono",
-                        )
-                    }
+                    val layer = styles[i].resolveRefs(palette)
+                    val stack = listOf(StyleScope.CHARACTER to layer)
+                    DesktopTextStyleEditor(
+                        sourced = resolveSourced(stack),
+                        sample = sampleStyle(stack),
+                        editScope = StyleScope.CHARACTER,
+                        editLayer = layer,
+                        onSave = { styles[i] = it },
+                        showFont = false,
+                        showMonospace = true,
+                        palette = palette,
+                        windowBackground = windowBackground,
+                    )
                 }
             }
 
             if (!isRegex) {
                 val style = styles[0]
                 WarlockCheckboxRow(
-                    checked = style.entireLine,
+                    checked = style.entireLine == true,
                     onCheckedChange = { styles[0] = style.copy(entireLine = it) },
                     text = "Highlight entire line",
                 )

@@ -48,12 +48,13 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.HistorySearchState
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.resolvedStyle
 import warlockfe.warlock3.compose.util.timeBarColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -80,8 +81,8 @@ fun DesktopWarlockEntry(
             getCurrentTime = viewModel::getCurrentTime,
         )
     val presets = LocalStyleMap.current
-    val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
-    val style = presets["entry"] ?: StyleDefinition()
+    val defaultStyle = LocalBaseStyle.current
+    val style = presets.resolvedStyle("entry")
     val historySearch by viewModel.historySearch.collectAsState()
     DesktopWarlockEntryContent(
         style = style,

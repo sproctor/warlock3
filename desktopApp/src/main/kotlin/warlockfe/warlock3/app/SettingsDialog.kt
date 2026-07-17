@@ -2,6 +2,8 @@ package warlockfe.warlock3.app
 
 import androidx.compose.runtime.Composable
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopSettingsDialog
+import warlockfe.warlock3.compose.ui.settings.SettingsPage
+import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
@@ -16,6 +18,7 @@ import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 
 @Composable
 fun SettingsDialog(
@@ -33,7 +36,11 @@ fun SettingsDialog(
     scriptDirRepository: ScriptDirRepository,
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
+    windowSettingRepository: WindowSettingsRepository,
     closeDialog: () -> Unit,
+    initialPage: SettingsPage = SettingsPage.General,
+    initialWindowTarget: String? = null,
+    windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
     DesktopSettingsDialog(
         currentCharacter = currentCharacter,
@@ -50,6 +57,10 @@ fun SettingsDialog(
         scriptDirRepository = scriptDirRepository,
         clientSettingRepository = clientSettingRepository,
         accountRepository = accountRepository,
+        windowSettingRepository = windowSettingRepository,
         closeDialog = closeDialog,
+        initialPage = initialPage,
+        initialWindowTarget = initialWindowTarget,
+        windowLiveContext = windowLiveContext,
     )
 }

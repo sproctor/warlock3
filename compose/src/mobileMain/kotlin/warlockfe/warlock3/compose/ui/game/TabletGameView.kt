@@ -29,8 +29,7 @@ import warlockfe.warlock3.compose.components.ResizablePanelState
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.more_vert
 import warlockfe.warlock3.compose.ui.window.WindowView
-import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.core.window.WindowLocation
 
 /**
@@ -131,8 +130,7 @@ private fun MainWindow(
     modifier: Modifier = Modifier,
 ) {
     val mainWindow by viewModel.mainWindowUiState.collectAsState()
-    val presets = LocalStyleMap.current
-    val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
+    val defaultStyle = LocalBaseStyle.current
     val openWindows by viewModel.openWindows.collectAsState(emptyList())
     val menuData by viewModel.menuData.collectAsState()
     val selectedWindow by viewModel.selectedWindow.collectAsState()
@@ -147,8 +145,7 @@ private fun MainWindow(
         menuData = menuData,
         onActionClick = { action -> viewModel.onWindowAction(action) },
         onCloseClick = {},
-        saveStyle = { viewModel.saveWindowStyle(mainWindow.name, it) },
-        saveNameFilter = { viewModel.saveWindowNameFilter(mainWindow.name, it) },
+        onOpenWindowSettings = { viewModel.requestEditWindowSettings(mainWindow.name) },
         onSelect = { viewModel.selectWindow(mainWindow.name) },
         scrollEvents = viewModel.scrollEvents.collectAsState().value,
         handledScrollEvent = viewModel::handledScrollEvent,
@@ -165,8 +162,7 @@ private fun SecondaryWindowPane(
 ) {
     val windows by viewModel.windows.collectAsState()
     val nonMain = remember(windows) { windows.filter { it.name != "main" }.sortedBy { it.title } }
-    val presets = LocalStyleMap.current
-    val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
+    val defaultStyle = LocalBaseStyle.current
     val openWindows by viewModel.openWindows.collectAsState(emptyList())
     val menuData by viewModel.menuData.collectAsState()
     val selectedWindow by viewModel.selectedWindow.collectAsState()
@@ -199,8 +195,7 @@ private fun SecondaryWindowPane(
                 menuData = menuData,
                 onActionClick = { action -> viewModel.onWindowAction(action) },
                 onCloseClick = {},
-                saveStyle = { viewModel.saveWindowStyle(current, it) },
-                saveNameFilter = { viewModel.saveWindowNameFilter(current, it) },
+                onOpenWindowSettings = { viewModel.requestEditWindowSettings(current) },
                 onSelect = { viewModel.selectWindow(current) },
                 scrollEvents = viewModel.scrollEvents.collectAsState().value,
                 handledScrollEvent = viewModel::handledScrollEvent,

@@ -17,4 +17,11 @@ data class WindowSettingsExport(
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
+    val bold: Boolean = false,
+    val italic: Boolean? = false,
+    val underline: Boolean? = false,
+    val weight: Int? = null,
+    // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )

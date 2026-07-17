@@ -53,8 +53,10 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -104,6 +106,7 @@ internal fun WindowViewScaffold(
     onActionClick: (WarlockAction) -> Int?,
     onCloseClick: () -> Unit,
     onSelect: () -> Unit,
+    onOpenWindowSettings: () -> Unit,
     clearStream: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -116,12 +119,10 @@ internal fun WindowViewScaffold(
         content: @Composable () -> Unit,
     ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
-    settingsDialog: @Composable (onCloseRequest: () -> Unit) -> Unit,
     dialogContent: @Composable (data: DialogWindowData, style: StyleDefinition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val window by uiState.windowInfo
-    var showWindowSettingsDialog by remember { mutableStateOf(false) }
     val scrollState = rememberLazyListState()
 
     val title = (window?.title ?: uiState.name) + (window?.subtitle ?: "")
@@ -155,7 +156,7 @@ internal fun WindowViewScaffold(
             },
     ) {
         Column {
-            header(title) { showWindowSettingsDialog = true }
+            header(title, onOpenWindowSettings)
 
             when (val data = uiState.data) {
                 is StreamWindowData -> {
@@ -163,7 +164,7 @@ internal fun WindowViewScaffold(
                         modifier =
                             Modifier.addTextContextMenuOptions(
                                 windowLocation = location,
-                                showSettingsDialog = { showWindowSettingsDialog = true },
+                                showSettingsDialog = onOpenWindowSettings,
                                 onClearClick = clearStream,
                                 onCloseClick = onCloseClick,
                             ),
@@ -191,10 +192,6 @@ internal fun WindowViewScaffold(
                 }
             }
         }
-    }
-
-    if (showWindowSettingsDialog) {
-        settingsDialog { showWindowSettingsDialog = false }
     }
 
     val currentHandledScrollEvent by rememberUpdatedState(handledScrollEvent)
@@ -262,13 +259,17 @@ private fun WindowViewContent(
     val fontWeight = effectiveFont?.weight?.let { FontWeight(it) }
     // The text style shared by the rendered row and the off-screen height measurer, so a measured
     // height matches what the row lays out. (Color does not affect height; the measurer ignores it.)
+    val fontStyle = if (style.italic) FontStyle.Italic else null
+    val textDecoration = if (style.underline) TextDecoration.Underline else null
     val rowTextStyle =
-        remember(textColor, fontFamily, fontSize, fontWeight) {
+        remember(textColor, fontFamily, fontSize, fontWeight, fontStyle, textDecoration) {
             TextStyle(
                 color = textColor,
                 fontFamily = fontFamily,
                 fontSize = fontSize,
                 fontWeight = fontWeight,
+                fontStyle = fontStyle,
+                textDecoration = textDecoration,
             )
         }
 

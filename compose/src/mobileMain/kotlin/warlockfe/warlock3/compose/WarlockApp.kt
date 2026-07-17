@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -40,7 +41,9 @@ import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.ui.dashboard.DashboardView
 import warlockfe.warlock3.compose.ui.game.GameView
+import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.SettingsScreen
+import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.ui.sge.SgeWizard
 import warlockfe.warlock3.compose.ui.theme.AppTheme
 import warlockfe.warlock3.core.client.GameCharacter
@@ -67,7 +70,40 @@ fun WarlockApp(
         // configuration changes (e.g. rotation).
         val gameState = viewModel { AppViewModel() }.gameState
         var showSettings by remember { mutableStateOf(false) }
+        // Where the settings screen opens (null = the category list), plus the window whose editor to
+        // focus. Set by a game window's "Window settings" action; reset when opened from the menu.
+        var settingsInitialPage: SettingsPage? by remember { mutableStateOf(null) }
+        var settingsWindowTarget: String? by remember { mutableStateOf(null) }
         var currentCharacter: GameCharacter? by remember { mutableStateOf(null) }
+
+        val gameViewModel = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel
+        val connectedCharacterId by
+            remember(gameViewModel) { gameViewModel?.connectedCharacterId ?: MutableStateFlow(null) }
+                .collectAsState()
+        // Live window state for the Appearance -> Windows section; null when nothing is connected.
+        val windowLiveContext =
+            remember(gameViewModel, connectedCharacterId) {
+                val cid = connectedCharacterId
+                if (gameViewModel != null && cid != null) {
+                    WindowSettingsLiveContext(
+                        connectedCharacterId = cid,
+                        windowInfo = gameViewModel.windows,
+                        openWindow = gameViewModel::openWindow,
+                        closeWindow = gameViewModel::closeWindow,
+                    )
+                } else {
+                    null
+                }
+            }
+        // A game window's "Window settings" action opens the settings screen to its editor. Kept at the
+        // app root so it stays subscribed while the settings screen is shown.
+        LaunchedEffect(gameViewModel) {
+            gameViewModel?.editWindowSettingsRequests?.collect { name ->
+                settingsInitialPage = SettingsPage.Windows
+                settingsWindowTarget = name
+                showSettings = true
+            }
+        }
 
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
@@ -80,6 +116,8 @@ fun WarlockApp(
                     DrawerContent(
                         openSettings = {
                             scope.launch { drawerState.close() }
+                            settingsInitialPage = null
+                            settingsWindowTarget = null
                             showSettings = true
                         },
                     )
@@ -91,6 +129,9 @@ fun WarlockApp(
                     appContainer = appContainer,
                     currentCharacter = currentCharacter,
                     onClose = { showSettings = false },
+                    initialPage = settingsInitialPage,
+                    initialWindowTarget = settingsWindowTarget,
+                    windowLiveContext = windowLiveContext,
                 )
             } else {
                 Scaffold(
@@ -118,7 +159,11 @@ fun WarlockApp(
                                 GameView(
                                     viewModel = viewModel,
                                     navigateToDashboard = navigateToDashboard,
-                                    openSettings = { showSettings = true },
+                                    openSettings = {
+                                        settingsInitialPage = null
+                                        settingsWindowTarget = null
+                                        showSettings = true
+                                    },
                                     openDrawer = { scope.launch { drawerState.open() } },
                                 )
                             },

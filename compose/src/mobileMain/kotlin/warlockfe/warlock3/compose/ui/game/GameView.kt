@@ -56,19 +56,20 @@ import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.LocalWindowFontSaver
 import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.WindowFontSaver
 import warlockfe.warlock3.compose.util.WindowWidthSizeClass
 import warlockfe.warlock3.compose.util.gameLayout
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.toFontConfig
+import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 
 /**
@@ -119,7 +120,7 @@ fun GameView(
             Column(Modifier.fillMaxSize()) {
                 val progressBarSettings by viewModel.progressBarSettings.collectAsState()
                 val presets by viewModel.presets.collectAsState(emptyMap())
-                val defaultFont by viewModel.defaultFont.collectAsState()
+                val baseStyle by viewModel.baseStyle.collectAsState()
                 val monoFont by viewModel.monoFont.collectAsState()
                 CompositionLocalProvider(
                     LocalProgressBarSettings provides
@@ -130,13 +131,9 @@ fun GameView(
                         ),
                     LocalWindowFindController provides viewModel.windowFindController,
                     LocalStyleMap provides presets,
-                    LocalDefaultFont provides defaultFont,
+                    LocalBaseStyle provides baseStyle.toStyleDefinition(),
+                    LocalDefaultFont provides baseStyle.toFontConfig(),
                     LocalMonoFont provides monoFont,
-                    LocalWindowFontSaver provides
-                        WindowFontSaver(
-                            saveFont = viewModel::saveWindowFont,
-                            saveMonoFont = viewModel::saveWindowMonoFont,
-                        ),
                 ) {
                     when (layout) {
                         MobileGameLayout.Phone -> {
@@ -232,8 +229,7 @@ fun GameTextWindows(
     onSizeChange: (WindowLocation, Int) -> Unit,
     onDrop: (DropResult) -> Unit,
     onCloseClick: (String) -> Unit,
-    saveStyle: (String, StyleDefinition) -> Unit,
-    saveNameFilter: (String, Boolean) -> Unit,
+    onOpenWindowSettings: (String) -> Unit,
     onWindowSelect: (String) -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
@@ -260,8 +256,7 @@ fun GameTextWindows(
                 onHeightChange = onHeightChange,
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
-                saveStyle = saveStyle,
-                saveNameFilter = saveNameFilter,
+                onOpenWindowSettings = onOpenWindowSettings,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
@@ -286,8 +281,7 @@ fun GameTextWindows(
                     onHeightChange = onHeightChange,
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
-                    saveStyle = saveStyle,
-                    saveNameFilter = saveNameFilter,
+                    onOpenWindowSettings = onOpenWindowSettings,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -307,12 +301,7 @@ fun GameTextWindows(
                         menuData = menuData,
                         onActionClick = onActionClick,
                         onCloseClick = {},
-                        saveStyle = {
-                            saveStyle(mainWindowUiState.name, it)
-                        },
-                        saveNameFilter = {
-                            saveNameFilter(mainWindowUiState.name, it)
-                        },
+                        onOpenWindowSettings = { onOpenWindowSettings(mainWindowUiState.name) },
                         onSelect = { onWindowSelect(mainWindowUiState.name) },
                         scrollEvents = scrollEvents,
                         handledScrollEvent = handledScrollEvent,
@@ -334,8 +323,7 @@ fun GameTextWindows(
                     onHeightChange = onHeightChange,
                     onWidthChange = onWidthChange,
                     onCloseClick = onCloseClick,
-                    saveStyle = saveStyle,
-                    saveNameFilter = saveNameFilter,
+                    onOpenWindowSettings = onOpenWindowSettings,
                     onWindowSelect = onWindowSelect,
                     scrollEvents = scrollEvents,
                     handledScrollEvent = handledScrollEvent,
@@ -360,8 +348,7 @@ fun GameTextWindows(
                 onHeightChange = onHeightChange,
                 onWidthChange = onWidthChange,
                 onCloseClick = onCloseClick,
-                saveStyle = saveStyle,
-                saveNameFilter = saveNameFilter,
+                onOpenWindowSettings = onOpenWindowSettings,
                 onWindowSelect = onWindowSelect,
                 scrollEvents = scrollEvents,
                 handledScrollEvent = handledScrollEvent,
@@ -389,8 +376,7 @@ fun GameBottomBar(
     onReconnect: (() -> Unit)? = null,
     onDashboard: (() -> Unit)? = null,
 ) {
-    val presets = LocalStyleMap.current
-    val style = presets["default"] ?: SAFE_DEFAULT_STYLE
+    val style = LocalBaseStyle.current
     Row(
         modifier =
             modifier

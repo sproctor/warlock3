@@ -52,16 +52,16 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
+import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.LocalWindowFontSaver
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.WindowFontSaver
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.text.toFontConfig
+import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowInfo
 
 @Suppress("ktlint:compose:vm-forwarding-check")
@@ -105,8 +105,8 @@ fun DesktopGameView(
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
         val presets by viewModel.presets.collectAsState(emptyMap())
-        val defaultStyle = presets["default"] ?: SAFE_DEFAULT_STYLE
-        val defaultFont by viewModel.defaultFont.collectAsState()
+        val baseStyle by viewModel.baseStyle.collectAsState()
+        val defaultStyle = baseStyle.toStyleDefinition()
         val monoFont by viewModel.monoFont.collectAsState()
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val progressBarSettings by viewModel.progressBarSettings.collectAsState()
@@ -120,13 +120,9 @@ fun DesktopGameView(
                 ),
             LocalWindowFindController provides viewModel.windowFindController,
             LocalStyleMap provides presets,
-            LocalDefaultFont provides defaultFont,
+            LocalBaseStyle provides defaultStyle,
+            LocalDefaultFont provides baseStyle.toFontConfig(),
             LocalMonoFont provides monoFont,
-            LocalWindowFontSaver provides
-                WindowFontSaver(
-                    saveFont = viewModel::saveWindowFont,
-                    saveMonoFont = viewModel::saveWindowMonoFont,
-                ),
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {
@@ -233,8 +229,7 @@ fun DesktopGameView(
                         }
                     },
                     onCloseClick = viewModel::closeWindow,
-                    saveStyle = viewModel::saveWindowStyle,
-                    saveNameFilter = viewModel::saveWindowNameFilter,
+                    onOpenWindowSettings = viewModel::requestEditWindowSettings,
                     onWindowSelect = viewModel::selectWindow,
                     scrollEvents = viewModel.scrollEvents.collectAsState().value,
                     handledScrollEvent = viewModel::handledScrollEvent,

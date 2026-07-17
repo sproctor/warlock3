@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.absolutePath
@@ -40,19 +41,31 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
+import warlockfe.warlock3.compose.components.StyleChip
+import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.audio_file
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.compose.generated.resources.palette
-import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalSkin
+import warlockfe.warlock3.compose.util.toColorPalette
+import warlockfe.warlock3.compose.util.toPresets
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.NameConfig
+import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.StyleScope
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.text.toHexString
-import warlockfe.warlock3.core.util.toWarlockColor
+import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.resolveRefs
+import warlockfe.warlock3.core.text.resolveSourced
+import warlockfe.warlock3.core.text.sampleStyle
+import warlockfe.warlock3.core.text.toLayer
 import kotlin.uuid.Uuid
 
 @Composable
@@ -60,6 +73,7 @@ fun NamesView(
     currentCharacter: GameCharacter?,
     allCharacters: List<GameCharacter>,
     nameRepository: NameRepositoryImpl,
+    characterSettingsRepository: CharacterSettingsRepository,
     modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
@@ -72,6 +86,22 @@ fun NamesView(
     var editingName by remember { mutableStateOf<NameConfig?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val editingCharacterId = currentCharacterId ?: "global"
+    val skin = LocalSkin.current
+    val isDark = LocalDarkTheme.current
+    val palette = skin.toColorPalette(isDark)
+    val skinBase = remember(skin, isDark) { skin.toPresets(isDark)["default"]?.toLayer() ?: StyleLayer() }
+    val charBase by remember(currentCharacterId) {
+        characterSettingsRepository.observeBaseStyle(currentCharacterId ?: GLOBAL_CHARACTER_ID)
+    }.collectAsState(StyleLayer())
+    val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    val windowBackground =
+        resolvedWindowBackground(
+            listOfNotNull(
+                charBase.resolveRefs(palette).takeIf { currentCharacterId != null },
+                globalBase.resolveRefs(palette),
+                skinBase,
+            ),
+        )
 
     SettingsListScaffold(
         title = "Names",
@@ -89,26 +119,10 @@ fun NamesView(
                         Text(text = name.text)
                     },
                     leadingContent = {
-                        val contentColor = name.textColor.toColor()
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = name.backgroundColor.toColor(),
-                                        shape = MaterialTheme.shapes.small,
-                                    ).border(1.dp, contentColor, MaterialTheme.shapes.small),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (contentColor.isSpecified) {
-                                Icon(
-                                    painterResource(Res.drawable.palette),
-                                    contentDescription = "Highlight color",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = contentColor,
-                                )
-                            }
-                        }
+                        StyleChip(
+                            resolved = resolve(listOf(name.toStyleLayer().resolveRefs(palette))),
+                            windowBackground = windowBackground,
+                        )
                     },
                     trailingContent = {
                         Row {
@@ -162,6 +176,8 @@ fun NamesView(
     editingName?.let { name ->
         EditNameDialog(
             name = name,
+            palette = palette,
+            windowBackground = windowBackground,
             saveName = { newName ->
                 coroutineScope.launch {
                     nameRepository.save(editingCharacterId, newName)
@@ -176,13 +192,16 @@ fun NamesView(
 @Composable
 fun EditNameDialog(
     name: NameConfig,
+    palette: Map<String, WarlockColor>,
+    windowBackground: Color,
     saveName: (NameConfig) -> Unit,
     onClose: () -> Unit,
 ) {
     val text = rememberTextFieldState(name.text)
-    val textColor = rememberTextFieldState(name.textColor.toHexString() ?: "")
-    val backgroundColor = rememberTextFieldState(name.backgroundColor.toHexString() ?: "")
     val sound = rememberTextFieldState(name.sound ?: "")
+    var styleLayer by remember { mutableStateOf(name.toStyleLayer()) }
+    val resolvedLayer = styleLayer.resolveRefs(palette)
+    val stack = listOf(StyleScope.CHARACTER to resolvedLayer)
 
     AlertDialog(
         onDismissRequest = onClose,
@@ -191,12 +210,12 @@ fun EditNameDialog(
             TextButton(
                 onClick = {
                     saveName(
-                        name.copy(
-                            text = text.text.toString(),
-                            textColor = textColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
-                            backgroundColor = backgroundColor.text.toString().toWarlockColor() ?: WarlockColor.Unspecified,
-                            sound = sound.text.toString().ifBlank { null },
-                        ),
+                        name
+                            .withStyle(styleLayer)
+                            .copy(
+                                text = text.text.toString(),
+                                sound = sound.text.toString().ifBlank { null },
+                            ),
                     )
                 },
             ) {
@@ -223,19 +242,16 @@ fun EditNameDialog(
                         }
                     },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ColorTextField(
-                        modifier = Modifier.weight(1f),
-                        label = "Text color",
-                        state = textColor,
-                    )
-
-                    ColorTextField(
-                        modifier = Modifier.weight(1f),
-                        label = "Background color",
-                        state = backgroundColor,
-                    )
-                }
+                TextStyleEditor(
+                    sourced = resolveSourced(stack),
+                    sample = sampleStyle(stack),
+                    editScope = StyleScope.CHARACTER,
+                    editLayer = resolvedLayer,
+                    onSave = { styleLayer = it },
+                    showFont = false,
+                    palette = palette,
+                    windowBackground = windowBackground,
+                )
                 val soundLauncher =
                     rememberFilePickerLauncher { file ->
                         if (file != null) {

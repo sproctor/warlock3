@@ -26,6 +26,7 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.CaseInsensitiveMap
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
@@ -401,7 +402,7 @@ class WslContext(
                 Highlight(
                     id = Uuid.random(),
                     pattern = pattern,
-                    styles = mapOf(0 to style),
+                    styles = mapOf(0 to style.toLayer()),
                     matchPartialWord = matchPartialWord,
                     ignoreCase = ignoreCase,
                     isRegex = isRegex,

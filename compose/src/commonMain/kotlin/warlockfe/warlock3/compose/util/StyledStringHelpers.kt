@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.util
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -11,18 +12,23 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import warlockfe.warlock3.core.client.WarlockAction
+import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.FontConfig
+import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringLeaf
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.WarlockStyle
-import warlockfe.warlock3.core.text.flattenStyles
+import warlockfe.warlock3.core.text.resolve
+import warlockfe.warlock3.core.text.toLayer
+import warlockfe.warlock3.core.text.toStyleDefinition
 
 fun StyledString.toAnnotatedString(
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig? = null,
 ): AnnotatedString =
@@ -31,32 +37,44 @@ fun StyledString.toAnnotatedString(
     }
 
 /**
- * Converts this style to a [SpanStyle]. Only text flagged [StyleDefinition.monospace] carries a font;
- * everything else inherits the window's base (normal) font. Monospace spans use [monoFont] (the
- * character/window monospace font), falling back to the generic [FontFamily.Monospace].
+ * Converts a resolved style to a [SpanStyle]. A span only carries the font sub-attributes the resolved
+ * style actually sets ([ResolvedStyle.fontFamily]/[ResolvedStyle.fontSize]/[ResolvedStyle.weight]);
+ * anything unset stays null so it inherits the window's base (normal) font. A [ResolvedStyle.monospace]
+ * style pulls any unset font sub-attribute from [monoFont] (the character/window monospace font),
+ * falling back to the generic [FontFamily.Monospace].
  */
-fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle =
+fun ResolvedStyle.toSpanStyle(monoFont: FontConfig?): SpanStyle =
     SpanStyle(
         color = textColor.toColor(),
-        background = backgroundColor.toColor(),
-        fontFamily = if (monospace) monoFont?.family?.let { createFontFamily(it) } ?: FontFamily.Monospace else null,
+        background =
+            when (val bg = background) {
+                is Background.Fill -> bg.color.toColor()
+                Background.None -> Color.Transparent
+                Background.Unset -> Color.Unspecified
+            },
+        fontFamily =
+            fontFamily?.let { createFontFamily(it) }
+                ?: if (monospace) monoFont?.family?.let { createFontFamily(it) } ?: FontFamily.Monospace else null,
         textDecoration = if (underline) TextDecoration.Underline else null,
         fontWeight =
-            when {
-                bold -> FontWeight.Bold
-                monospace -> monoFont?.weight?.let { FontWeight(it) }
-                else -> null
-            },
+            weight?.let { FontWeight(it) }
+                ?: if (monospace) monoFont?.weight?.let { FontWeight(it) } else null,
         fontStyle = if (italic) FontStyle.Italic else null,
-        fontSize = if (monospace) monoFont?.size?.sp ?: TextUnit.Unspecified else TextUnit.Unspecified,
+        fontSize =
+            fontSize?.sp
+                ?: if (monospace) monoFont?.size?.sp ?: TextUnit.Unspecified else TextUnit.Unspecified,
     )
 
-fun WarlockStyle.toStyleDefinition(styleMap: Map<String, StyleDefinition>): StyleDefinition = (styleMap[name] ?: StyleDefinition())
+/** Bridges the legacy dense style onto the resolved-style span mapping (color-only, no per-item font). */
+fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle = resolve(listOf(toLayer())).toSpanStyle(monoFont)
+
+/** The sparse [StyleLayer] for a named style, or an empty layer when the map has no such style. */
+fun WarlockStyle.toStyleLayer(styleMap: Map<String, StyleLayer>): StyleLayer = styleMap[name] ?: StyleLayer()
 
 private fun AnnotatedString.Builder.appendStyledString(
     styledString: StyledString,
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig?,
 ) {
@@ -68,17 +86,20 @@ private fun AnnotatedString.Builder.appendStyledString(
 private fun AnnotatedString.Builder.appendStyledStringLeaf(
     leaf: StyledStringLeaf,
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
     actionHandler: (WarlockAction) -> Unit,
     monoFont: FontConfig?,
 ) {
-    val flattened = flattenStyles(leaf.styles.map { it.toStyleDefinition(styleMap) })
-    // A monospace leaf carries no style of its own, so synthesize one when there are no other styles.
-    val style =
-        when {
-            leaf.monospace -> (flattened ?: StyleDefinition()).copy(monospace = true)
-            else -> flattened
-        }?.also { pushStyle(it.toSpanStyle(monoFont)) }
+    // Resolve the leaf's named styles (most-specific first, matching the old earliest-wins flatten) plus
+    // the leaf-level monospace flag. An empty stack means the leaf has no style and gets no span, exactly
+    // as before.
+    val layers =
+        leaf.styles.map { styleMap[it.name] ?: StyleLayer() } +
+            if (leaf.monospace) listOf(StyleLayer(monospace = true)) else emptyList()
+    val stylePushed = layers.isNotEmpty()
+    if (stylePushed) {
+        pushStyle(resolve(layers).toSpanStyle(monoFont))
+    }
 
     var linksPushed = 0
     leaf.styles.forEach { st ->
@@ -111,7 +132,7 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
             }
         }
     }
-    if (style != null) {
+    if (stylePushed) {
         pop()
     }
     repeat(linksPushed) { pop() }
@@ -119,14 +140,20 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
 
 fun StyledString.getEntireLineStyles(
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
 ): List<StyleDefinition> = substrings.flatMap { substring -> substring.getEntireLineStyles(variables, styleMap) }
 
 fun StyledStringLeaf.getEntireLineStyles(
     variables: Map<String, StyledString>,
-    styleMap: Map<String, StyleDefinition>,
+    styleMap: Map<String, StyleLayer>,
 ): List<StyleDefinition> {
-    val entireLineStyles = styles.mapNotNull { styleMap[it.name] }.filter { it.entireLine }
+    // Entire-line styling still flows through the dense [StyleDefinition] path shared with highlights, so
+    // project each matching layer down (per-item fonts, which entire-line backgrounds don't use, are lost).
+    val entireLineStyles =
+        styles
+            .mapNotNull { styleMap[it.name] }
+            .filter { it.entireLine == true }
+            .map { resolve(listOf(it)).toStyleDefinition() }
     return when (this) {
         is StyledStringSubstring -> {
             entireLineStyles

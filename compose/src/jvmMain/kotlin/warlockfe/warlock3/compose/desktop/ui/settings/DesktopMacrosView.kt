@@ -47,7 +47,6 @@ fun DesktopMacrosView(
     val scope = rememberCoroutineScope()
 
     SettingsListScaffold(
-        title = "Macros",
         selectedCharacter = currentCharacter,
         characters = characters,
         onSelectCharacter = { currentCharacter = it },

@@ -1,6 +1,6 @@
 package warlockfe.warlock3.compose.model
 
-import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
 
 sealed interface ViewHighlight {
     val sound: String?
@@ -12,7 +12,9 @@ data class LiteralHighlight(
     val literal: String,
     val matchPartialWord: Boolean,
     val ignoreCase: Boolean,
-    val style: StyleDefinition?,
+    // Sparse and already ref-resolved (see StyleLayer.resolveRefs) by the caller, so weight/font and
+    // skin-tracked colors survive to the span renderer instead of collapsing through StyleDefinition.
+    val style: StyleLayer?,
     override val sound: String?,
 ) : ViewHighlight {
     // Precomputed once per highlight (not per line): the lowercased maximal runs of word characters in
@@ -40,7 +42,7 @@ data class LiteralHighlight(
 
 data class RegexHighlight(
     val regex: Regex,
-    val styles: Map<Int, StyleDefinition>,
+    val styles: Map<Int, StyleLayer>,
     override val sound: String?,
 ) : ViewHighlight {
     override fun containsMatchIn(text: String): Boolean = regex.containsMatchIn(text)

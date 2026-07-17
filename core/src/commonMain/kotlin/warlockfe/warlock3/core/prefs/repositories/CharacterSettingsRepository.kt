@@ -5,9 +5,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.config.applyBaseStyle
+import warlockfe.warlock3.core.prefs.config.toBaseStyleLayer
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
 import warlockfe.warlock3.core.text.FontConfig
+import warlockfe.warlock3.core.text.StyleLayer
 
 const val DEFAULT_MAX_TYPE_AHEAD = 0
 const val MAX_TYPE_AHEAD_KEY = "typeahead"
@@ -109,6 +112,20 @@ class CharacterSettingsRepository(
         font: FontConfig?,
     ) {
         store.mutate(characterId) { it.copy(settings = it.settings.copy(monoFont = font?.takeUnless { f -> f.isEmpty() })) }
+    }
+
+    /**
+     * The character's (or global scope's) base text style — the colors + font + italic/underline that
+     * un-styled game text renders as (the former "default" preset). Assembled from the settings config;
+     * editing works on the whole layer so writing back preserves the font when only a color changed.
+     */
+    fun observeBaseStyle(characterId: String): Flow<StyleLayer> = store.observe(characterId).map { it.settings.toBaseStyleLayer() }
+
+    suspend fun saveBaseStyle(
+        characterId: String,
+        layer: StyleLayer,
+    ) {
+        store.mutate(characterId) { it.copy(settings = it.settings.applyBaseStyle(layer)) }
     }
 
     suspend fun saveMainWindowBounds(

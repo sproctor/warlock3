@@ -18,6 +18,9 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.readString
+import warlockfe.warlock3.core.text.Background
+import warlockfe.warlock3.core.text.FontConfig
+import warlockfe.warlock3.core.text.StyleLayer
 import kotlin.uuid.Uuid
 
 const val GLOBAL_CHARACTER_ID = "global"
@@ -90,22 +93,24 @@ class CharacterConfigStore(
             loaded[characterId] = config
             templates[characterId] = sectionTemplates.toMutableMap()
         }
-        // Fill in any missing ids, persisting only the sections we actually changed.
+        // Normalize each config (fill missing ids, fold the legacy "default" preset into the base
+        // style), persisting only the sections that actually changed.
         val normalized = mutableMapOf<String, CharacterConfig>()
-        val changed = mutableSetOf<String>()
+        val changedSections = mutableMapOf<String, MutableSet<Section>>()
         for ((key, config) in loaded) {
-            val (fixed, didChange) = config.withGeneratedIds()
-            normalized[key] = fixed
-            if (didChange) changed += key
+            val (withIds, idsChanged) = config.withGeneratedIds()
+            if (idsChanged) changedSections.getOrPut(key) { mutableSetOf() }.addAll(ID_SECTIONS)
+            val (folded, foldChanged) = withIds.foldLegacyDefaultPreset()
+            if (foldChanged) changedSections.getOrPut(key) { mutableSetOf() }.addAll(listOf(Section.PRESETS, Section.SETTINGS))
+            normalized[key] = folded
         }
         state.value = normalized
-        for (key in changed) {
+        for ((key, sections) in changedSections) {
             writeMutex.withLock {
                 ensureDir(charactersDir)
                 withFileLock(lockFileFor(key)) {
                     val dir = dirForCharacter(key)
-                    // Only id-bearing sections can change during normalization.
-                    for (section in ID_SECTIONS) persistSection(key, dir, section, normalized.getValue(key))
+                    for (section in sections) persistSection(key, dir, section, normalized.getValue(key))
                 }
             }
         }
@@ -150,7 +155,8 @@ class CharacterConfigStore(
                 }.onFailure {
                     Logger.e(it) { "Failed to reload config file $path; ignoring it" }
                 }.getOrNull() ?: return@withLock
-            val (element, updated) = read
+            val (element, decoded) = read
+            val (updated, _) = decoded.clampFontWeights().foldLegacyDefaultPreset()
             if (updated != current) {
                 templates.getOrPut(characterId) { mutableMapOf() }[section] = element
                 state.value = state.value + (characterId to updated)
@@ -208,7 +214,8 @@ class CharacterConfigStore(
                     // Update in-memory state + comment template from exactly the bytes we wrote.
                     val element = toml.parseToTomlTable(content)
                     val current = state.value[characterId] ?: CharacterConfig(character = characterId)
-                    val updated = section.decodeInto(toml, element, current).copy(character = characterId)
+                    val decoded = section.decodeInto(toml, element, current).copy(character = characterId)
+                    val (updated, _) = decoded.clampFontWeights().foldLegacyDefaultPreset()
                     templates.getOrPut(characterId) { mutableMapOf() }[section] = element
                     state.value = state.value + (characterId to updated)
                 }.onFailure {
@@ -301,7 +308,7 @@ class CharacterConfigStore(
             sectionTemplates[section] = read.first
             config = read.second
         }
-        return config to sectionTemplates
+        return config.clampFontWeights() to sectionTemplates
     }
 
     private fun persistSection(
@@ -490,6 +497,63 @@ private val ID_SECTIONS = listOf(Section.HIGHLIGHTS, Section.NAMES, Section.ALIA
 // comment follows its entry when the list is reordered. Entries without an id fall back to position.
 internal val CONFIG_ELEMENT_KEY: (TomlElement) -> Any? = { element ->
     (element as? TomlTable)?.get("id")?.let { (it as? TomlLiteral)?.content }
+}
+
+// A Compose FontWeight must be in 1..1000; a hand-edited (or otherwise out-of-range) weight would
+// otherwise crash composition wherever the style reaches a SpanStyle/TextStyle. Clamped once here, right
+// after decoding a section from disk, so every in-memory consumer (mappers, direct FontConfig reads like
+// a window's per-window font override) sees an already-valid value.
+private const val MIN_FONT_WEIGHT = 1
+private const val MAX_FONT_WEIGHT = 1000
+
+private fun Int?.clampFontWeight(): Int? = this?.coerceIn(MIN_FONT_WEIGHT, MAX_FONT_WEIGHT)
+
+private fun FontConfig?.clampFontWeight(): FontConfig? = this?.copy(weight = weight.clampFontWeight())
+
+internal fun CharacterConfig.clampFontWeights(): CharacterConfig =
+    copy(
+        presets = presets.mapValues { (_, p) -> p.copy(weight = p.weight.clampFontWeight()) },
+        highlights =
+            highlights.map { h ->
+                h.copy(styles = h.styles.map { it.copy(weight = it.weight.clampFontWeight()) })
+            },
+        names = names.map { it.copy(weight = it.weight.clampFontWeight()) },
+        windows =
+            windows.mapValues { (_, w) ->
+                w.copy(weight = w.weight.clampFontWeight(), font = w.font.clampFontWeight(), monoFont = w.monoFont.clampFontWeight())
+            },
+        settings =
+            settings.copy(
+                defaultFont = settings.defaultFont.clampFontWeight(),
+                monoFont = settings.monoFont.clampFontWeight(),
+            ),
+    )
+
+/**
+ * The base ("default text") style used to be a preset keyed "default". It is now a first-class part of
+ * the character settings, so fold any lingering `presets["default"]` into the base style and drop it.
+ * Base values the user has already set win; the legacy preset only fills the attributes the base leaves
+ * unset. Returns the (possibly) rewritten config and whether anything changed.
+ */
+private fun CharacterConfig.foldLegacyDefaultPreset(): Pair<CharacterConfig, Boolean> {
+    val legacy = presets["default"] ?: return this to false
+    val base = settings.toBaseStyleLayer()
+    val fill = legacy.toStyleLayer()
+    val merged =
+        StyleLayer(
+            textColor = base.textColor ?: fill.textColor,
+            background = if (base.background != Background.Unset) base.background else fill.background,
+            fontFamily = base.fontFamily ?: fill.fontFamily,
+            fontSize = base.fontSize ?: fill.fontSize,
+            weight = base.weight ?: fill.weight,
+            italic = base.italic ?: fill.italic,
+            underline = base.underline ?: fill.underline,
+            // Carry whichever side's color actually won above, so a skin-tracked base color survives the
+            // fold instead of applyBaseStyle nulling it out.
+            textColorRef = if (base.textColor != null) base.textColorRef else fill.textColorRef,
+            backgroundRef = if (base.background != Background.Unset) base.backgroundRef else fill.backgroundRef,
+        )
+    return copy(presets = presets - "default", settings = settings.applyBaseStyle(merged)) to true
 }
 
 private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {

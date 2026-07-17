@@ -12,6 +12,9 @@ import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.models.WindowSettings
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
+import warlockfe.warlock3.core.text.StyleLayer
+import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.text.toWarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
 
 /**
@@ -51,6 +54,12 @@ class WindowSettingsRepository(
                         font = style.font,
                         monoFont = style.monoFont,
                         nameFilter = style.nameFilter,
+                        bold = style.bold,
+                        italic = style.italic,
+                        underline = style.underline,
+                        weight = style.weight,
+                        textColorRef = style.textColorRef,
+                        backgroundColorRef = style.backgroundColorRef,
                     )
                 }
                 // Match the DAO's `ORDER BY position` (SQLite sorts NULLs first on ascending).
@@ -120,6 +129,34 @@ class WindowSettingsRepository(
                 existing.copy(
                     textColor = style.textColor,
                     backgroundColor = style.backgroundColor,
+                    bold = style.bold,
+                    italic = style.italic,
+                    underline = style.underline,
+                    textColorRef = null,
+                    backgroundColorRef = null,
+                )
+            current.copy(windows = current.windows + (name to updated))
+        }
+    }
+
+    /** Persists a window's style as a sparse [StyleLayer], carrying the skin-palette refs (so they track the skin). */
+    suspend fun setStyleLayer(
+        characterId: String,
+        name: String,
+        layer: StyleLayer,
+    ) {
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            val updated =
+                existing.copy(
+                    textColor = layer.textColor ?: WarlockColor.Unspecified,
+                    backgroundColor = layer.background.toWarlockColor(),
+                    bold = layer.weight == 700,
+                    italic = layer.italic,
+                    underline = layer.underline,
+                    weight = layer.weight?.takeUnless { it == 700 },
+                    textColorRef = layer.textColorRef,
+                    backgroundColorRef = layer.backgroundRef,
                 )
             current.copy(windows = current.windows + (name to updated))
         }

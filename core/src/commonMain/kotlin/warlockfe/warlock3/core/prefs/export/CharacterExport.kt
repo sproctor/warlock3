@@ -9,6 +9,9 @@ data class CharacterExport(
     val name: String,
     val scriptDirectories: List<String>,
     val settings: Map<String, String>,
+    // The base text style + default/mono fonts. Null on exports written before it was exportable, so
+    // import keeps the target character's base style rather than clearing it.
+    val baseStyle: BaseStyleExport? = null,
     val variables: Map<String, String>,
     val aliases: List<AliasExport>,
     val alterations: List<AlterationExport>,

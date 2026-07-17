@@ -20,8 +20,10 @@ data class WarlockStyle(
         val Default = WarlockStyle("")
 
         // The customizable style presets, in display order. The appearance settings edit this fixed,
-        // known set rather than whatever presets the skin happens to define.
+        // known set rather than whatever presets the skin happens to define. [Default] is deliberately
+        // excluded: the base ("default text") style is not a preset — it lives in the character settings
+        // (color + font) and is edited separately.
         val presets: List<WarlockStyle> =
-            listOf(Default, RoomName, Bold, Speech, Whisper, Thought, Watching, Command, Echo, Error, Link(null))
+            listOf(RoomName, Bold, Speech, Whisper, Thought, Watching, Command, Echo, Error, Link(null))
     }
 }

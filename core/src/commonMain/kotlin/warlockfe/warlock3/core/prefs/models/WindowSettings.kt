@@ -22,4 +22,12 @@ data class WindowSettings(
     val font: FontConfig?,
     val monoFont: FontConfig?,
     val nameFilter: Boolean,
+    // bold mirrors weight == 700 for legacy readers; tri-state (null = inherit) otherwise, matching
+    // WindowStyleConfig so a round trip through the appearance editor doesn't lose an explicit "off".
+    val bold: Boolean = false,
+    val italic: Boolean? = null,
+    val underline: Boolean? = null,
+    val weight: Int? = null,
+    val textColorRef: String? = null,
+    val backgroundColorRef: String? = null,
 )
