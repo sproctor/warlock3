@@ -300,14 +300,9 @@ private class ItemInfo(
     }
 }
 
-// The server sizes/positions dialogs for Wrayth's compact pixel grid. Treating those pixels as dp
-// 1:1 renders everything a bit small and cramped, so scale them up for legibility (positions, sizes
-// and margins all scale together, keeping the layout proportional).
-private const val DIALOG_PIXEL_SCALE = 1.5f
-
 /**
  * Resolves a dialog distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
- * [DataDistance.Pixels] is treated as a (scaled) dp count (and so ignores [basis]).
+ * [DataDistance.Pixels] is treated as a dp count (and so ignores [basis]).
  */
 private fun DataDistance.toPx(
     basis: Int,
@@ -315,5 +310,5 @@ private fun DataDistance.toPx(
 ): Int =
     when (this) {
         is DataDistance.Percent -> basis * value.value / 100
-        is DataDistance.Pixels -> with(density) { (value * DIALOG_PIXEL_SCALE).dp.roundToPx() }
+        is DataDistance.Pixels -> with(density) { value.dp.roundToPx() }
     }
