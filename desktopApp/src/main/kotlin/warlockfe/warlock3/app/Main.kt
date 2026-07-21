@@ -195,7 +195,6 @@ private class WarlockCommand : CliktCommand() {
                 addAll(createInitialGameStates(appContainer, credentials, sgeSettings, logger))
             }
 
-        disableMacAccessibilityWorkaround()
         installUncaughtExceptionWorkaround()
 
         val updater = buildUpdater(clientSettings)
@@ -632,39 +631,25 @@ private class WarlockCommand : CliktCommand() {
         }
     }
 
-    // Turn off Compose Desktop's accessibility bridge on macOS. Bug 2 below (the
-    // ComposeSceneAccessibility.defaultAccessibilityFocusTarget NPE) fires in practice only on
-    // macOS, whose a11y system aggressively queries AccessibleContext and so keeps driving the
-    // crashing node-sync/focus-retarget path. installUncaughtExceptionWorkaround can swallow the
-    // resulting uncaught exception, but only after the sync is interrupted mid-way, leaving the a11y
-    // tree inconsistent so it re-throws on the next focus change. Disabling the bridge stops that
-    // path from ever running. The trade-off is no screen-reader support on macOS until the upstream
-    // fix lands, which beats a crash loop. Compose reads this system property lazily when it builds
-    // the first ComposeSceneAccessibility, so this must run before the first window opens; we leave
-    // an explicit -Dcompose.accessibility.enable=... on the command line untouched as an escape hatch.
-    private fun disableMacAccessibilityWorkaround() {
-        if (DesktopPlatform.Current == DesktopPlatform.MacOS &&
-            System.getProperty("compose.accessibility.enable") == null
-        ) {
-            System.setProperty("compose.accessibility.enable", "false")
-        }
-    }
-
     // Swallow known, unrecoverable upstream Compose Desktop crashes that surface as uncaught
     // exceptions on the AWT event thread. Each originates entirely inside Compose framework code, so
     // there is nothing for us to fix and nothing the user can do; killing the whole app over them is
-    // worse than carrying on (at worst with degraded screen-reader support).
+    // worse than carrying on (at worst a transient input glitch in the affected control).
     //   1. NoSuchElementException "Cannot find value for key": https://issuetracker.google.com/issues/399134381
-    //   2. NullPointerException in ComposeSceneAccessibility.defaultAccessibilityFocusTarget: while
-    //      retargeting accessibility focus after a node is removed it walks the Accessible tree into
-    //      an ArrayDeque, but getAccessibleChild() can return null and ArrayDeque rejects nulls.
-    //      Still unguarded in compose-multiplatform 1.11.x. disableMacAccessibilityWorkaround stops
-    //      this from ever firing on macOS; this stays as the cross-platform safety net.
-    //   3. NullPointerException from DefaultOpenContextMenu's onKeyEvent handler in
+    //   2. NullPointerException from DefaultOpenContextMenu's onKeyEvent handler in
     //      BasicContextMenuRepresentation: pressing an arrow key while the text context menu (the
     //      right-click Copy/Paste popup) is open calls FocusManager.moveFocus to step between menu
     //      items, and that traversal NPEs inside Compose's focus machinery. Not accessibility-related
     //      and not macOS-specific. No upstream issue located; still present in 1.11.x.
+    //   3. IndexOutOfBoundsException from MultiSelectionLayout.getCrossStatus (SelectionLayout.kt),
+    //      thrown while starting a text selection in a stream window. Each stream wraps a LazyColumn of
+    //      per-line selectables in a single SelectionContainer; when a drag starts, the layout indexes
+    //      infoList with a slot the SelectionRegistrar handed out for a line that has since left
+    //      composition or been trimmed from the scrollback buffer (both routine as game text streams),
+    //      so the registrar and the freshly built layout disagree on the selectable count and the
+    //      index runs off the end. Inherent to lazy layouts inside a SelectionContainer, whose text
+    //      selection is documented as undefined for items that are not currently composed; unfixed
+    //      upstream (JetBrains/compose-multiplatform#1280).
     // Matching on frame names is reliable because the desktop build never runs ProGuard
     // (it is disabled in build.gradle.kts), so class/method names are never obfuscated.
     private fun installUncaughtExceptionWorkaround() {
@@ -698,17 +683,20 @@ private class WarlockCommand : CliktCommand() {
                         cause.message?.contains("Cannot find value for key") == true
                     }
 
-                    // Workarounds: the a11y focus-target crash (bug 2,
-                    // https://youtrack.jetbrains.com/issue/CMP-10170/Crash-in-A11Y-subsystem) and the
-                    // context-menu arrow-key crash (bug 3, no upstream issue).
+                    // Workaround: the context-menu arrow-key crash (bug 2, no upstream issue).
                     is NullPointerException -> {
                         cause.stackTrace.any {
-                            it.className.endsWith("ComposeSceneAccessibility") &&
-                                it.methodName == "defaultAccessibilityFocusTarget"
-                        } ||
-                            cause.stackTrace.any {
-                                it.className.contains("BasicContextMenuRepresentation")
-                            }
+                            it.className.contains("BasicContextMenuRepresentation")
+                        }
+                    }
+
+                    // Workaround: text selection in a lazy layout (bug 3). Any out-of-bounds thrown
+                    // from inside Compose's selection package is this class of upstream bug: our own
+                    // code never runs there, so scoping to that package keeps real app bugs visible.
+                    is IndexOutOfBoundsException -> {
+                        cause.stackTrace.any {
+                            it.className.startsWith("androidx.compose.foundation.text.selection.")
+                        }
                     }
 
                     else -> {
