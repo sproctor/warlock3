@@ -37,10 +37,24 @@ compose-material3 = "1.12.0-alpha03"
 colorpicker = "1.2.0"
 fastscroller = "0.3.2"
 filekit = "0.14.2"
-intellij = "262.8665.258"
-##    ⬆ = "262.8665.262"
-##    ⬆ = "262.8665.270"
-jewel = "0.38.0-262.8665.258"
+# Treat the Jewel/platform pair as one pinned unit, and prefer builds published to
+# Maven Central. Two traps here, both hit in v3.1.0-beta.21:
+#
+#  1. 0.38.x exists ONLY in the IntelliJ platform repository. Those artifacts are a
+#     byproduct of the IJ monorepo build, not published releases: 0.38's standalone
+#     POM omits the icons-api/icons-impl its own bytecode requires, and pulling those
+#     in drags JetBrains' coroutines fork onto the packaged classpath alongside stock
+#     kotlinx-coroutines. That duplicate crashed the app at startup.
+#  2. The trailing platform build is part of the API, not just metadata. 0.37.0-262.4852.51
+#     dropped the rememberSelectableLazyListState(selectionMode=) overload that
+#     0.37.0-261.26222.65 has and WarlockDropdownSelect depends on, despite both
+#     calling themselves 0.37.0.
+#
+# So: bump these two together, and verify the packaged app launches, not just that it
+# compiles. `icons` is resource-only (SVGs, no classes, empty POM) and comes from the
+# IntelliJ repo since that group is not on Maven Central.
+intellij = "261.26222.65"
+jewel = "0.37.0-261.26222.65"
 kermit = "2.1.0"
 kotlin = "2.4.10"
 kotlinx-benchmark = "0.4.17"
@@ -112,7 +126,6 @@ ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
-intellij-platform-icons-impl = { module = "com.jetbrains.intellij.platform:icons-impl", version.ref = "intellij" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
