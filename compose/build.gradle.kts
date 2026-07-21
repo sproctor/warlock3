@@ -135,11 +135,6 @@ kotlin {
             // does not pull the platform icons jar, so the SVG resources have to be added
             // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.
             implementation(libs.intellij.platform.icons)
-            // Jewel 0.38's IntUiTheme activates a com.intellij.platform.icons.IconManager
-            // (via StandaloneIconManager). Those runtime classes ship in icons-impl (which
-            // pulls icons-api transitively), not in the resource-only icons jar above; without
-            // them the app crashes at theme composition with NoClassDefFoundError: IconManager.
-            implementation(libs.intellij.platform.icons.impl)
         }
         if (!skipIos) {
             iosMain.dependencies {

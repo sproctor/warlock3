@@ -37,10 +37,9 @@ compose-material3 = "1.12.0-alpha03"
 colorpicker = "1.2.0"
 fastscroller = "0.3.2"
 filekit = "0.14.2"
-intellij = "262.8665.258"
-##    ⬆ = "262.8665.262"
-##    ⬆ = "262.8665.270"
-jewel = "0.38.0-262.8665.258"
+# Jewel 0.38 is not officially released. check maven central before updating. IJ repo gets pre-released versions
+intellij = "261.26222.65"
+jewel = "0.37.0-261.26222.65"
 kermit = "2.1.0"
 kotlin = "2.4.10"
 kotlinx-benchmark = "0.4.17"
@@ -112,7 +111,6 @@ ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
-intellij-platform-icons-impl = { module = "com.jetbrains.intellij.platform:icons-impl", version.ref = "intellij" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
