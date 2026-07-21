@@ -10,10 +10,13 @@ Warlock is a multi-platform front-end client for the Simutronics Game Engine (SG
 
 ```bash
 # Run the desktop app
-./gradlew run
+./gradlew :desktopApp:run
 
 # Build everything
 ./gradlew build
+
+# What CI runs (Android Lint and iOS targets are skipped there)
+./gradlew check -PiosSkip=true -PlintSkip=true
 
 # Run all tests
 ./gradlew allTests
@@ -24,11 +27,14 @@ Warlock is a multi-platform front-end client for the Simutronics Game Engine (SG
 # Run a single test class (JVM)
 ./gradlew jvmTest --tests "com.example.MyTest"
 
-# Full release pipeline
-./release.sh
+# Build the packaged desktop app locally (output under
+# desktopApp/build/potassium/binaries/main/app/)
+./gradlew :desktopApp:createDistributable
 ```
 
-Requires Java 21 JVM toolchain.
+Compilation uses a Java 21 toolchain. The desktop app *runs* and is *packaged*
+under JBR 25, configured via `javaHome` in `desktopApp/build.gradle.kts`, so
+`:desktopApp:run` and the packaging tasks use a different JVM than the build.
 
 ## Module Architecture
 
@@ -59,4 +65,29 @@ The project is organized into 6 Gradle modules:
 
 ## Distribution
 
-Desktop packages are built with [Conveyor](https://www.hydraulic.software/). The `conveyor.conf` file configures macOS DMG, Windows MSI, and Linux Deb packaging with code signing and auto-update via GitHub Pages.
+Releases are cut by pushing a git tag; `.github/workflows/release.yaml` does the
+rest. Use `./release.sh` rather than tagging by hand: it derives the next
+version from the tag history (`-v` prints it without tagging, `-p` cuts a
+production release, `-m` starts a new minor).
+
+**The tag is the only source of versioning.** No version string is committed
+anywhere. `release.yaml` passes the tag through as `RELEASE_VERSION`, and
+`desktopApp/build.gradle.kts` routes a tag containing `beta`/`alpha` to the
+matching update channel and marks the GitHub release a prerelease.
+
+Packaging is handled by [Potassium](https://github.com/sproctor/potassium)
+(`potassium { }` in `desktopApp/build.gradle.kts`), which produces NSIS for
+Windows, DMG + Zip for macOS, and Deb/AppImage/Tar for Linux, with Azure Trusted
+Signing on Windows and Developer ID signing + notarization on macOS. The
+workflow builds a matrix of Linux amd64/arm64, Windows amd64, and macOS
+arm64/intel, then publishes them as a GitHub release. An Android job builds an
+AAB and uploads to the Play internal track, gated on the `PUBLISH_ANDROID` repo
+variable.
+
+**Verify the packaged app, not just CI.** `check` compiles and tests against
+Gradle's resolved classpath, which is not the classpath the shipped app runs on:
+the packaged `lib/` directory can contain jars Gradle deduplicated away. A
+release has shipped that passed CI and crashed on launch for every user
+(`v3.1.0-beta.21`, a duplicate `kotlinx-coroutines` from a transitive IntelliJ
+dependency). Before tagging, run `:desktopApp:createDistributable` and launch
+`desktopApp/build/potassium/binaries/main/app/warlock/bin/warlock`.
