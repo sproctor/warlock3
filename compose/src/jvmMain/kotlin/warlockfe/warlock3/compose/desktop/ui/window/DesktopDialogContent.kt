@@ -166,6 +166,7 @@ fun DesktopDialogContent(
                             },
                             modifier = Modifier.padding(2.dp),
                             itemLabelBuilder = { it.text },
+                            textStyle = labelStyle,
                         )
                     }
                 }
