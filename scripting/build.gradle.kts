@@ -66,17 +66,6 @@ kotlin {
         }
     }
 
-    applyDefaultHierarchyTemplate {
-        common {
-            group("commonJvmAndroid") {
-                withJvm()
-                withAndroidTarget()
-                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
-                withCompilations { it is KotlinMultiplatformAndroidCompilation }
-            }
-        }
-    }
-
     sourceSets {
         commonMain {
             kotlin {
@@ -90,8 +79,8 @@ kotlin {
                 // Parsing
                 implementation(libs.antlr.kotlin.runtime)
 
-                // Needed for JS scripting implementation
-                implementation(libs.kotlin.reflect)
+                // Lua scripting engine
+                implementation(libs.lua.kmp)
             }
         }
 
@@ -99,13 +88,6 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
-            }
-        }
-
-        val commonJvmAndroidMain by getting {
-            dependencies {
-                // TODO: make sure this works on android
-                implementation(libs.rhino)
             }
         }
     }

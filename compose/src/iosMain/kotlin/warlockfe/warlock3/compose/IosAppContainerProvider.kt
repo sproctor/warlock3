@@ -20,6 +20,7 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
+import warlockfe.warlock3.scripting.lua.LuaEngine
 import warlockfe.warlock3.scripting.wsl.WslEngine
 
 @OptIn(ExperimentalForeignApi::class)
@@ -105,6 +106,7 @@ class IosAppContainer(
             engines =
                 listOf(
                     WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
+                    LuaEngine(variableRepository, fileSystem),
                 ),
             scriptDirRepository = scriptDirRepository,
             fileSystem = fileSystem,

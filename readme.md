@@ -142,7 +142,7 @@ Top-level modules:
 
 - `core/` — multiplatform business logic (client, networking, macro/scripting, preferences)
 - `wrayth/` — SGE protocol parser (ANTLR)
-- `scripting/` — scripting engine (ANTLR + Rhino on JVM/Android)
+- `scripting/` — scripting engine (ANTLR-based WSL plus Lua via lua-kmp)
 - `compose/` — shared Compose UI (desktop screens use Jewel; mobile screens use Material3)
 - `desktopApp/` — JVM desktop entry point
 - `androidApp/` — Android wrapper
