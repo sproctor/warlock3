@@ -57,8 +57,8 @@ ksp = "2.3.10"
 ktlint-gradle = "14.2.0"
 ktlint-compose-rules = "0.6.3"
 ktor = "3.5.1"
+lua-kmp = "0.1.0"
 potassium = "0.3.1"
-rhino = "1.9.1"
 room = "3.0.0"
 sentryKotlin = "0.27.0"
 slf4j = "2.0.18"
@@ -93,7 +93,6 @@ fastscroller-core = { module = "io.github.oikvpqya.compose.fastscroller:fastscro
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
 ktlint-compose-rules = { module = "io.nlopez.compose.rules:ktlint", version.ref = "ktlint-compose-rules" }
-kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 kotlinx-benchmark-runtime = { group = "org.jetbrains.kotlinx", name = "kotlinx-benchmark-runtime", version.ref = "kotlinx-benchmark" }
 kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
@@ -113,9 +112,9 @@ ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
+lua-kmp = { group = "com.seanproctor", name = "lua-kmp", version.ref = "lua-kmp" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 potassium-updater = { module = "com.seanproctor:potassium-updater", version.ref = "potassium" }
-rhino = { group = "org.mozilla", name = "rhino", version.ref = "rhino" }
 room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }

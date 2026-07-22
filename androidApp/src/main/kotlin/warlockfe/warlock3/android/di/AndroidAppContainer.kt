@@ -11,7 +11,7 @@ import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
-import warlockfe.warlock3.scripting.js.JsEngine
+import warlockfe.warlock3.scripting.lua.LuaEngine
 import warlockfe.warlock3.scripting.wsl.WslEngine
 
 class AndroidAppContainer(
@@ -30,7 +30,7 @@ class AndroidAppContainer(
             engines =
                 listOf(
                     WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
-                    JsEngine(variableRepository),
+                    LuaEngine(variableRepository, fileSystem),
                 ),
             scriptDirRepository = scriptDirRepository,
             fileSystem = fileSystem,

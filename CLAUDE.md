@@ -48,7 +48,7 @@ The project is organized into 6 Gradle modules:
   - `script/` — Script handling
   - `compass/`, `text/`, `window/`, `util/` — Supporting domain modules
 - **`wrayth/`** — SGE network protocol parsing (ANTLR grammars: `WraythParser.g4`, `WraythLexer.g4`)
-- **`scripting/`** — Scripting engine (ANTLR + Rhino JS for JVM/Android)
+- **`scripting/`** — Scripting engine (ANTLR-based WSL plus Lua via lua-kmp, all platforms)
 - **`compose/`** — Multiplatform Compose UI components (dashboard, game screen, settings, themes)
 - **`desktopApp/`** — JVM desktop entry point (`Main.kt`), uses Jewel for native look & feel
 - **`androidApp/`** — Android wrapper around the compose module
@@ -89,5 +89,6 @@ Gradle's resolved classpath, which is not the classpath the shipped app runs on:
 the packaged `lib/` directory can contain jars Gradle deduplicated away. A
 release has shipped that passed CI and crashed on launch for every user
 (`v3.1.0-beta.21`, a duplicate `kotlinx-coroutines` from a transitive IntelliJ
-dependency). Before tagging, run `:desktopApp:createDistributable` and launch
-`desktopApp/build/potassium/binaries/main/app/warlock/bin/warlock`.
+dependency). Before tagging, run `:desktopApp:createDistributable` and run
+`desktopApp/build/potassium/binaries/main/app/warlock/bin/warlock --version`
+(or another flag that exits before a window opens) and check for exit code 0.

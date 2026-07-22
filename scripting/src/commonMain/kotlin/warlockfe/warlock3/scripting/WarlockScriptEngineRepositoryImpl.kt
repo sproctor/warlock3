@@ -77,7 +77,7 @@ class WarlockScriptEngineRepositoryImpl(
         contents: String,
         scriptManager: ScriptManager,
     ): ScriptLaunchResult {
-        // Inline scripts are WSL only; the JS engine has no string-backed instance.
+        // Inline scripts are WSL only; the Lua engine has no string-backed instance.
         val engine =
             engines.filterIsInstance<WslEngine>().firstOrNull()
                 ?: return ScriptLaunchResult.Failure("WSL scripting engine is unavailable")
