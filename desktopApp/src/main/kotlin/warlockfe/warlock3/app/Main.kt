@@ -195,8 +195,6 @@ private class WarlockCommand : CliktCommand() {
                 addAll(createInitialGameStates(appContainer, credentials, sgeSettings, logger))
             }
 
-        installUncaughtExceptionWorkaround()
-
         val updater = buildUpdater(clientSettings)
         val updateSupported = updater.isUpdateSupported()
 
@@ -630,80 +628,6 @@ private class WarlockCommand : CliktCommand() {
             currentVersion = resolvedVersion
         }
     }
-
-    // Swallow known, unrecoverable upstream Compose Desktop crashes that surface as uncaught
-    // exceptions on the AWT event thread. Each originates entirely inside Compose framework code, so
-    // there is nothing for us to fix and nothing the user can do; killing the whole app over them is
-    // worse than carrying on (at worst a transient input glitch in the affected control).
-    //   1. NoSuchElementException "Cannot find value for key": https://issuetracker.google.com/issues/399134381
-    //   2. NullPointerException from DefaultOpenContextMenu's onKeyEvent handler in
-    //      BasicContextMenuRepresentation: pressing an arrow key while the text context menu (the
-    //      right-click Copy/Paste popup) is open calls FocusManager.moveFocus to step between menu
-    //      items, and that traversal NPEs inside Compose's focus machinery. Not accessibility-related
-    //      and not macOS-specific. No upstream issue located; still present in 1.11.x.
-    //   3. IndexOutOfBoundsException from MultiSelectionLayout.getCrossStatus (SelectionLayout.kt),
-    //      thrown while starting a text selection in a stream window. Each stream wraps a LazyColumn of
-    //      per-line selectables in a single SelectionContainer; when a drag starts, the layout indexes
-    //      infoList with a slot the SelectionRegistrar handed out for a line that has since left
-    //      composition or been trimmed from the scrollback buffer (both routine as game text streams),
-    //      so the registrar and the freshly built layout disagree on the selectable count and the
-    //      index runs off the end. Inherent to lazy layouts inside a SelectionContainer, whose text
-    //      selection is documented as undefined for items that are not currently composed; unfixed
-    //      upstream (JetBrains/compose-multiplatform#1280).
-    // Matching on frame names is reliable because the desktop build never runs ProGuard
-    // (it is disabled in build.gradle.kts), so class/method names are never obfuscated.
-    private fun installUncaughtExceptionWorkaround() {
-        val existingHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            if (throwable.isKnownComposeBug()) {
-                // Swallow silently; see installUncaughtExceptionWorkaround.
-            } else if (existingHandler != null) {
-                existingHandler.uncaughtException(thread, throwable)
-            } else {
-                // There was no prior default handler, so installing ours suppressed the JVM's
-                // built-in fallback (ThreadGroup.uncaughtException). Without this branch every real
-                // crash would be swallowed silently. Replicate that fallback so the stacktrace still
-                // reaches the command line.
-                System.err.print("Exception in thread \"${thread.name}\" ")
-                throwable.printStackTrace(System.err)
-            }
-        }
-    }
-
-    /** Whether this throwable (or anything in its cause chain) is one of the known Compose crashes. */
-    private fun Throwable.isKnownComposeBug(): Boolean =
-        // The real exception is often wrapped (e.g. coroutines' DiagnosticCoroutineContextException),
-        // so walk the cause chain; take(20) bounds against pathological cause cycles.
-        generateSequence(this) { it.cause }
-            .take(20)
-            .any { cause ->
-                when (cause) {
-                    // Workaround: https://issuetracker.google.com/issues/399134381
-                    is NoSuchElementException -> {
-                        cause.message?.contains("Cannot find value for key") == true
-                    }
-
-                    // Workaround: the context-menu arrow-key crash (bug 2, no upstream issue).
-                    is NullPointerException -> {
-                        cause.stackTrace.any {
-                            it.className.contains("BasicContextMenuRepresentation")
-                        }
-                    }
-
-                    // Workaround: text selection in a lazy layout (bug 3). Any out-of-bounds thrown
-                    // from inside Compose's selection package is this class of upstream bug: our own
-                    // code never runs there, so scoping to that package keeps real app bugs visible.
-                    is IndexOutOfBoundsException -> {
-                        cause.stackTrace.any {
-                            it.className.startsWith("androidx.compose.foundation.text.selection.")
-                        }
-                    }
-
-                    else -> {
-                        false
-                    }
-                }
-            }
 }
 
 @OptIn(ExperimentalResourceApi::class)
