@@ -85,6 +85,11 @@ potassium {
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
+    // Turn off Compose Desktop's accessibility bridge. Only macOS actually drives it (its a11y system
+    // aggressively queries AccessibleContext), and that traversal has crashed the app; the property is
+    // inert on Windows/Linux, so it is set unconditionally rather than per-host - the packages are
+    // cross-built, so a host check here would apply to the wrong platform anyway.
+    jvmArgs += "-Dcompose.accessibility.enable=false"
     // Opt-in GC + safepoint logging for diagnosing stream-render stalls:
     //   ./gradlew :desktopApp:run -PgcLog
     // Writes per-pid logs (so multiple connections/processes don't collide) under the build dir with
