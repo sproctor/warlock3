@@ -25,7 +25,7 @@ class MacroRepository(
     fun observeCharacterMacros(characterId: String): Flow<List<Macro>> {
         require(characterId != GLOBAL_CHARACTER_ID)
         return combine(store.observe(characterId), store.observe(GLOBAL_CHARACTER_ID)) { own, global ->
-            (own.macros + global.macros).toMacros()
+            (global.macros + own.macros).toMacros()
         }
     }
 
