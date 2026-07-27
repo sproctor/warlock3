@@ -42,10 +42,9 @@ colorpicker = "1.2.0"
 fastscroller = "0.3.2"
 filekit = "0.14.2"
 intellij = "262.8665.337"
-intellij-api = "262.9437.21"
 # IJ repo gets pre-released versions and refreshVersions can't properly filter it.
 # Usable versions are here: https://central.sonatype.com/artifact/org.jetbrains.jewel/jewel-int-ui-standalone/versions
-jewel = "0.39.0-262.9437.21"
+jewel = "0.39.1-262.9437.29"
 kermit = "2.1.0"
 kotlin = "2.4.10"
 kotlinx-benchmark = "0.4.17"
@@ -116,9 +115,6 @@ ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
-intellij-platform-icons-api = { module = "com.jetbrains.intellij.platform:icons-api", version.ref = "intellij-api" }
-intellij-platform-icons-api-rendering = { module = "com.jetbrains.intellij.platform:icons-api-rendering", version.ref = "intellij-api" }
-intellij-platform-icons-impl = { module = "com.jetbrains.intellij.platform:icons-impl", version.ref = "intellij-api" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 lua-kmp = { group = "com.seanproctor", name = "lua-kmp", version.ref = "lua-kmp" }

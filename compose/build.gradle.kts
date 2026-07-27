@@ -135,10 +135,6 @@ kotlin {
             // does not pull the platform icons jar, so the SVG resources have to be added
             // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.
             implementation(libs.intellij.platform.icons)
-            // Workaround missing transitive dependencies in Jewel
-            implementation(libs.intellij.platform.icons.api)
-            implementation(libs.intellij.platform.icons.api.rendering)
-            implementation(libs.intellij.platform.icons.impl)
         }
         if (!skipIos) {
             iosMain.dependencies {
