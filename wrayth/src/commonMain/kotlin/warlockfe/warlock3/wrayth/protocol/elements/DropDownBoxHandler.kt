@@ -1,10 +1,10 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
-import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
+import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
 import warlockfe.warlock3.wrayth.util.parseDistance
 
 class DropDownBoxHandler : BaseElementListener() {
@@ -16,10 +16,10 @@ class DropDownBoxHandler : BaseElementListener() {
         val values = element.attributes["content_value"]?.split(",") ?: texts
         val options =
             texts.mapIndexed { index, text ->
-                DialogObject.DropDownBox.Option(text = text, value = values.getOrElse(index) { text })
+                PanelObject.DropDownBox.Option(text = text, value = values.getOrElse(index) { text })
             }
-        return WraythDialogObjectEvent(
-            DialogObject.DropDownBox(
+        return WraythPanelObjectEvent(
+            PanelObject.DropDownBox(
                 id = id,
                 value = element.attributes["value"],
                 cmd = element.attributes["cmd"],

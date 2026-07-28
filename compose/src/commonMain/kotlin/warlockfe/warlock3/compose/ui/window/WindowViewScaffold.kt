@@ -90,9 +90,9 @@ private const val OFFSCREEN_MEASURE_CHUNK = 64
 
 /**
  * Platform-agnostic window view. Holds the structure shared by the desktop and mobile clients (the
- * frame, header, stream/dialog dispatch, the text/image render loop, and keyboard scroll handling).
+ * frame, header, stream/panel dispatch, the text/image render loop, and keyboard scroll handling).
  * The pieces that genuinely differ between toolkits (the surrounding surface, the header chrome, the
- * scrollbar, the action context menu, the settings dialog, and dialog content) are supplied by the
+ * scrollbar, the action context menu, the settings dialog, and panel content) are supplied by the
  * caller as slots so each platform can render them with its own component library.
  */
 @Composable
@@ -119,7 +119,7 @@ internal fun WindowViewScaffold(
         content: @Composable () -> Unit,
     ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
-    dialogContent: @Composable (data: DialogWindowData, style: StyleDefinition) -> Unit,
+    panelContent: @Composable (data: PanelWindowData, style: StyleDefinition) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val window by uiState.windowInfo
@@ -183,8 +183,8 @@ internal fun WindowViewScaffold(
                     )
                 }
 
-                is DialogWindowData -> {
-                    dialogContent(data, uiState.style.mergeWith(defaultStyle))
+                is PanelWindowData -> {
+                    panelContent(data, uiState.style.mergeWith(defaultStyle))
                 }
 
                 else -> {

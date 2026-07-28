@@ -11,13 +11,13 @@ import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.client.DataDistance
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.util.getIgnoringCase
 
 /**
- * Lays out the objects of a game "dialog" panel (progress bars, labels, links, images, ...).
+ * Lays out the objects of a game panel (progress bars, labels, links, images, ...).
  *
- * A dialog rarely gives absolute coordinates for everything; each object is positioned by one of a
+ * A panel rarely gives absolute coordinates for everything; each object is positioned by one of a
  * handful of rules. Vertically (highest priority first): below a sibling it `topAnchor`s to, at an
  * explicit `top` offset inside its parent skin container, on the row of a `leftAnchor` sibling,
  * below the previous object, or on the previous object's row. Horizontally: right of a `leftAnchor`
@@ -28,10 +28,10 @@ import warlockfe.warlock3.core.util.getIgnoringCase
  * sent. [content] is invoked once per object with the skin child that styles it (if any).
  */
 @Composable
-fun DialogObjectLayout(
-    dataObjects: List<DialogObject>,
+fun PanelObjectLayout(
+    dataObjects: List<PanelObject>,
     modifier: Modifier = Modifier,
-    content: @Composable (data: DialogObject, skinObject: SkinObject?) -> Unit,
+    content: @Composable (data: PanelObject, skinObject: SkinObject?) -> Unit,
 ) {
     val skin = LocalSkin.current
     // A `Skin` object names a skin entry and lists the ids it "controls". For each controlled id,
@@ -41,7 +41,7 @@ fun DialogObjectLayout(
     val skinObjects = mutableMapOf<String, SkinObject>()
     val parentSkins = mutableMapOf<String, String>()
     dataObjects.forEach { data ->
-        if (data is DialogObject.Skin) {
+        if (data is PanelObject.Skin) {
             val skinObject = skin.getIgnoringCase(data.name)
             if (skinObject != null) {
                 data.controls.forEach { id ->
@@ -59,7 +59,7 @@ fun DialogObjectLayout(
     // convention to let such a bar be skinned too. It has no parent skin, so its own top/left
     // position it - the skin entry should carry colors only, not offsets.
     dataObjects.forEach { data ->
-        if (data is DialogObject.ProgressBar && skinObjects.getIgnoringCase(data.id) == null) {
+        if (data is PanelObject.ProgressBar && skinObjects.getIgnoringCase(data.id) == null) {
             skin
                 .getIgnoringCase("${data.id}Bar")
                 ?.children
@@ -91,7 +91,7 @@ fun DialogObjectLayout(
         val itemInfos =
             dataObjects.mapIndexed { index, data ->
                 val skinObject = skinObjects.getIgnoringCase(data.id)
-                val imageData = (data as? DialogObject.Image)?.name?.let { skin.getIgnoringCase(it) }
+                val imageData = (data as? PanelObject.Image)?.name?.let { skin.getIgnoringCase(it) }
 
                 // Size preference: an explicit pixel size from the image or skin entry, else the
                 // size the server sent. A null target leaves the dimension unconstrained so the
@@ -104,7 +104,7 @@ fun DialogObjectLayout(
                 val targetWidth = widthSource?.toPx(widthBasis, this)
                 val targetHeight =
                     heightSource?.toPx(heightBasis, this)
-                        ?: progressBarHeightPx.takeIf { data is DialogObject.ProgressBar }
+                        ?: progressBarHeightPx.takeIf { data is PanelObject.ProgressBar }
 
                 val childConstraints =
                     Constraints(
@@ -135,7 +135,7 @@ fun DialogObjectLayout(
 
         // Resolve placements in topological order so an item's anchors/parent are
         // already placed when we read them. Items may reference anchors that appear
-        // later in the data list because the dialog state appends updated items to
+        // later in the data list because the panel state appends updated items to
         // the end. Drawing still happens in data order to preserve z-ordering.
         val indexById = itemInfos.withIndex().associate { (idx, info) -> info.data.id to idx }
         val visitState = IntArray(itemInfos.size) // 0=unvisited, 1=in-progress, 2=done
@@ -172,7 +172,7 @@ fun DialogObjectLayout(
             // A "pure flow" object (no anchors, no explicit top/left, no centering) simply follows the
             // previous object along its row. When such a row would overflow a bounded panel width, wrap
             // to the next line (matching Wrayth) rather than running off the clipped edge - e.g. the
-            // row of "skin search grip activate left" links at the bottom of the combat dialog.
+            // row of "skin search grip activate left" links at the bottom of the combat panel.
             val flowsAfterPrevious =
                 data.topAnchor == null && info.dataTop == null && data.leftAnchor == null &&
                     info.dataLeft == null && data.align != "n" && data.align != "ne"
@@ -283,7 +283,7 @@ private data class ItemPlacement(
 }
 
 private class ItemInfo(
-    val data: DialogObject,
+    val data: PanelObject,
     val placeable: Placeable,
     val dataTop: DataDistance?,
     val dataLeft: DataDistance?,
@@ -301,7 +301,7 @@ private class ItemInfo(
 }
 
 /**
- * Resolves a dialog distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
+ * Resolves a panel distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
  * [DataDistance.Pixels] is treated as a dp count (and so ignores [basis]).
  */
 private fun DataDistance.toPx(

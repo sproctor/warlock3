@@ -110,7 +110,7 @@ fun DesktopWindowView(
             Box(
                 modifier =
                     surfaceModifier
-                        // Clip so a body that paints its own background (dialog panels, user styles) does not
+                        // Clip so a body that paints its own background (panels, user styles) does not
                         // overdraw the rounded corners.
                         .clip(frameShape)
                         .background(gameChrome.panel, frameShape)
@@ -195,14 +195,14 @@ fun DesktopWindowView(
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
-        dialogContent = { data, style ->
+        panelContent = { data, style ->
             WarlockScrollableColumn(
                 Modifier
                     .fillMaxSize()
                     .background(style.backgroundColor.toColor()),
             ) {
-                val dataObjects by data.dialogData.objects.collectAsState()
-                DesktopDialogContent(
+                val dataObjects by data.panelData.objects.collectAsState()
+                DesktopPanelContent(
                     dataObjects = dataObjects,
                     modifier = Modifier.padding(8.dp),
                     executeCommand = { command ->

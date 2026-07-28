@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.protocol
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
@@ -8,7 +8,7 @@ import warlockfe.warlock3.core.window.BackgroundImageMode
 import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
 import warlockfe.warlock3.wrayth.util.CmdDefinition
 import warlockfe.warlock3.wrayth.util.WraythCmd
-import warlockfe.warlock3.wrayth.util.WraythDialogWindow
+import warlockfe.warlock3.wrayth.util.WraythPanelWindow
 import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 
 sealed interface WraythEvent
@@ -73,11 +73,11 @@ data class WraythSettingsInfoEvent(
     val instance: String?,
 ) : WraythEvent
 
-data class WraythDialogObjectEvent(
-    val data: DialogObject,
+data class WraythPanelObjectEvent(
+    val data: PanelObject,
 ) : WraythEvent
 
-data class WraythDialogDataEvent(
+data class WraythPanelDataEvent(
     val id: String?,
     val clear: Boolean,
 ) : WraythEvent
@@ -121,8 +121,8 @@ data class WraythStreamWindowEvent(
     val window: WraythStreamWindow,
 ) : WraythEvent
 
-data class WraythDialogWindowEvent(
-    val window: WraythDialogWindow,
+data class WraythPanelWindowEvent(
+    val window: WraythPanelWindow,
 ) : WraythEvent
 
 data object WraythNavEvent : WraythEvent

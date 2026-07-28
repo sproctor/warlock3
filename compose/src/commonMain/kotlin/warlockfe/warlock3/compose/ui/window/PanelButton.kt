@@ -19,7 +19,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.Dp
 
 @Composable
-fun DialogButton(
+fun PanelButton(
     onClick: () -> Unit,
     shape: Shape,
     background: (isHovered: Boolean, isPressed: Boolean) -> Brush,

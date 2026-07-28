@@ -25,7 +25,7 @@ data class GameChrome(
     val appBackground: Color,
     /** The control bar pinned to the bottom. */
     val controlBar: Color,
-    /** Window/dialog body background. */
+    /** Window body background. */
     val panel: Color,
     /** Secondary panel surface: sidebar, hand boxes, unlit compass cells. */
     val panelAlt: Color,

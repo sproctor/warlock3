@@ -22,7 +22,7 @@ import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.CONTRAST_CROSSOVER_LUMINANCE
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.text.WarlockColor
 
 // Dark halo stamped behind light progress-bar labels (the vital bars' white-text-with-outline
@@ -36,9 +36,9 @@ private val barHorizontalPadding = 2.dp
 private val barCornerRadius = 4.dp
 
 @Composable
-fun DialogProgressBar(
+fun PanelProgressBar(
     skinObject: SkinObject?,
-    data: DialogObject.ProgressBar,
+    data: PanelObject.ProgressBar,
     style: TextStyle,
     modifier: Modifier = Modifier,
     barColorOverride: WarlockColor = WarlockColor.Unspecified,

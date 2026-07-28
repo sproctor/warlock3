@@ -20,7 +20,6 @@ import warlockfe.warlock3.wrayth.protocol.elements.CompassHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ComponentHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ContainerHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DHandler
-import warlockfe.warlock3.wrayth.protocol.elements.DialogDataHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DirHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DropDownBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DynaStreamHandler
@@ -35,8 +34,9 @@ import warlockfe.warlock3.wrayth.protocol.elements.MenuHandler
 import warlockfe.warlock3.wrayth.protocol.elements.MiHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ModeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.NavHandler
-import warlockfe.warlock3.wrayth.protocol.elements.OpenDialogHandler
+import warlockfe.warlock3.wrayth.protocol.elements.OpenPanelHandler
 import warlockfe.warlock3.wrayth.protocol.elements.OutputHandler
+import warlockfe.warlock3.wrayth.protocol.elements.PanelDataHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PopBoldHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PopStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.PresetHandler
@@ -78,7 +78,7 @@ class WraythProtocolHandler {
             "component" to ComponentHandler(),
             "container" to ContainerHandler(),
             "d" to DHandler(),
-            "dialogdata" to DialogDataHandler(),
+            "dialogdata" to PanelDataHandler(),
             "dir" to DirHandler(),
             "dropdownbox" to DropDownBoxHandler(),
             "dynastream" to DynaStreamHandler(),
@@ -93,7 +93,7 @@ class WraythProtocolHandler {
             "mi" to MiHandler(),
             "mode" to ModeHandler(),
             "nav" to NavHandler(),
-            "opendialog" to OpenDialogHandler(),
+            "opendialog" to OpenPanelHandler(),
             "output" to OutputHandler(),
             "preset" to PresetHandler(),
             "popbold" to PopBoldHandler(),

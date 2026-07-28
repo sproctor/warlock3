@@ -1,17 +1,17 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
-import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
+import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
 import warlockfe.warlock3.wrayth.util.parseDistance
 
 class SkinHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
         val id = element.attributes["id"] ?: return null
-        return WraythDialogObjectEvent(
-            DialogObject.Skin(
+        return WraythPanelObjectEvent(
+            PanelObject.Skin(
                 id = id,
                 name = element.attributes["name"] ?: "",
                 controls = element.attributes["controls"]?.split(',') ?: emptyList(),

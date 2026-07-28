@@ -119,7 +119,7 @@ It has two parts:
 **Body** (fills the rest of the window). One of two kinds:
 
 - **Text stream window** (the common case): a vertically scrolling log of game text. Details in 4.3.
-- **Dialog window**: a structured panel of UI objects (progress bars and similar) rather than free
+- **Panel window**: a structured panel of UI objects (progress bars and similar) rather than free
   text. Used for game-provided custom panels. Rendered with the window's background color.
 
 ### 4.3 Text stream window behavior
@@ -212,7 +212,7 @@ width); right side holds the indicators and the compass.
 ### 6.2 Vital bars (middle of the left column)
 
 - A thin (16dp tall) full-width row of **progress bars** showing the character's vitals: health,
-  mana, stamina, spirit, and similar pools the game reports. This is a game-provided dialog panel
+  mana, stamina, spirit, and similar pools the game reports. This is a game-provided panel
   ("minivitals"), so the exact bars depend on the game.
 - These are **display only**; they are not clickable.
 
@@ -306,7 +306,7 @@ not buttons.
 
 - Screen container: `DesktopGameView.kt`
 - Window grid (the five docks): `DesktopGameTextWindows.kt`
-- A single window (header + text/dialog body, images, menus): `DesktopWindowView.kt`,
+- A single window (header + text/panel body, images, menus): `DesktopWindowView.kt`,
   `WindowHeader.jvm.kt`
 - Bottom bar: `DesktopGameBottomBar.kt`, entry + roundtime: `DesktopWarlockEntry.kt`,
   hands: `DesktopHandsView.kt`, indicators: `DesktopIndicatorView.kt`, compass: `CompassView.kt`

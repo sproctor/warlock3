@@ -159,14 +159,14 @@ fun WindowView(
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
-        dialogContent = { data, style ->
+        panelContent = { data, style ->
             ScrollableColumn(
                 Modifier
                     .fillMaxSize()
                     .background(style.backgroundColor.toColor()),
             ) {
-                val dataObjects by data.dialogData.objects.collectAsState()
-                DialogContent(
+                val dataObjects by data.panelData.objects.collectAsState()
+                PanelContent(
                     dataObjects = dataObjects,
                     modifier = Modifier.padding(8.dp),
                     executeCommand = { command ->

@@ -70,9 +70,6 @@ import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentStartEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDataReceivedEvent
-import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
-import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
-import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEndCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythEolEvent
@@ -87,6 +84,9 @@ import warlockfe.warlock3.wrayth.protocol.WraythModeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOpenUrlEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOutputEvent
+import warlockfe.warlock3.wrayth.protocol.WraythPanelDataEvent
+import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
+import warlockfe.warlock3.wrayth.protocol.WraythPanelWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythParseErrorEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPopStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPromptEvent
@@ -217,7 +217,7 @@ class WraythClient(
     // Whether the current `<output>` block is monospace ("mono"). Line-level; applies to echoed text too.
     private var monospace: Boolean = false
 
-    private var dialogDataId: String? = null
+    private var panelDataId: String? = null
     private val directions: HashSet<Direction> = hashSetOf()
     private var componentId: String? = null
 
@@ -451,26 +451,26 @@ class WraythClient(
                 sendCommandDirect("_STATE CHATMODE OFF")
             }
 
-            is WraythDialogDataEvent -> {
+            is WraythPanelDataEvent -> {
                 if (event.id == null) {
-                    dialogDataId?.let { windowRegistry.getOrCreateDialog(it).updateState() }
+                    panelDataId?.let { windowRegistry.getOrCreatePanel(it).updateState() }
                 }
-                dialogDataId = event.id
+                panelDataId = event.id
                 if (event.clear && event.id != null) {
-                    this@WraythClient.windowRegistry.getOrCreateDialog(event.id).clear()
+                    this@WraythClient.windowRegistry.getOrCreatePanel(event.id).clear()
                 }
             }
 
-            is WraythDialogObjectEvent -> {
+            is WraythPanelObjectEvent -> {
                 // TODO: record this data somewhere
                 // val data = event.data
-                // if (data is DialogObject.ProgressBar) {
+                // if (data is PanelObject.ProgressBar) {
                 //    _properties.value = _properties.value +
                 // (data.id to data.value.value.toString()) +
                 //            ((data.id + "text") to (data.text ?: ""))
                 // }
-                dialogDataId?.let {
-                    windowRegistry.getOrCreateDialog(it).setObject(event.data)
+                panelDataId?.let {
+                    windowRegistry.getOrCreatePanel(it).setObject(event.data)
                 }
             }
 
@@ -551,7 +551,7 @@ class WraythClient(
                 addWindow(event.window)
             }
 
-            is WraythDialogWindowEvent -> {
+            is WraythPanelWindowEvent -> {
                 val window = event.window
                 if (window.resident) {
                     lateinit var info: WindowInfo
@@ -562,7 +562,7 @@ class WraythClient(
                                 name = window.id,
                                 title = window.title,
                                 subtitle = null,
-                                windowType = WindowType.DIALOG,
+                                windowType = WindowType.PANEL,
                                 showTimestamps = false,
                                 backgroundImage = existing?.backgroundImage,
                             )

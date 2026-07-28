@@ -46,12 +46,12 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
-import warlockfe.warlock3.compose.ui.window.DialogContent
 import warlockfe.warlock3.compose.ui.window.DragDropState
 import warlockfe.warlock3.compose.ui.window.DragOverlay
 import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
+import warlockfe.warlock3.compose.ui.window.PanelContent
 import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowView
@@ -447,7 +447,7 @@ fun GameBottomBar(
                 }
             }
             val vitalBars by viewModel.vitalBars.objects.collectAsState()
-            DialogContent(
+            PanelContent(
                 dataObjects = vitalBars,
                 modifier = Modifier.fillMaxWidth().height(16.dp),
                 executeCommand = {

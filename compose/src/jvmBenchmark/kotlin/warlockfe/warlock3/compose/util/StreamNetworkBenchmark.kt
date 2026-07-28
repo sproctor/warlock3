@@ -19,7 +19,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
-import warlockfe.warlock3.compose.ui.window.ComposeDialogState
+import warlockfe.warlock3.compose.ui.window.ComposePanelState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.StreamProfiling
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
@@ -38,7 +38,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.core.window.DialogState
+import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.NetworkSocket
@@ -326,7 +326,7 @@ private class BenchWindowRegistry(
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())
     private val monoFont = MutableStateFlow<warlockfe.warlock3.core.text.FontConfig?>(null)
     private val streams = ConcurrentHashMap<String, ComposeTextStream>()
-    private val dialogs = ConcurrentHashMap<String, ComposeDialogState>()
+    private val panels = ConcurrentHashMap<String, ComposePanelState>()
     private val recompositions =
         java.util.concurrent.atomic
             .AtomicLong()
@@ -381,7 +381,7 @@ private class BenchWindowRegistry(
         }
     }
 
-    override fun getOrCreateDialog(name: String): DialogState = dialogs.computeIfAbsent(name) { ComposeDialogState(name) }
+    override fun getOrCreatePanel(name: String): PanelState = panels.computeIfAbsent(name) { ComposePanelState(name) }
 
     override fun setCharacterId(characterId: String) {
         workQueue.tag = characterId

@@ -52,9 +52,9 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
-import warlockfe.warlock3.compose.ui.window.ComposeDialogState
+import warlockfe.warlock3.compose.ui.window.ComposePanelState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
-import warlockfe.warlock3.compose.ui.window.DialogWindowData
+import warlockfe.warlock3.compose.ui.window.PanelWindowData
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowData
@@ -165,7 +165,7 @@ class GameViewModel(
         }
     }
 
-    val vitalBars: ComposeDialogState = windowRegistry.getOrCreateDialog("minivitals") as ComposeDialogState
+    val vitalBars: ComposePanelState = windowRegistry.getOrCreatePanel("minivitals") as ComposePanelState
 
     val indicators = client.indicators
     val leftHand = client.leftHand
@@ -461,7 +461,7 @@ class GameViewModel(
     ): WindowData? =
         when (windowType) {
             WindowType.STREAM -> StreamWindowData(windowRegistry.getOrCreateStream(name) as ComposeTextStream)
-            WindowType.DIALOG -> DialogWindowData(windowRegistry.getOrCreateDialog(name) as ComposeDialogState)
+            WindowType.PANEL -> PanelWindowData(windowRegistry.getOrCreatePanel(name) as ComposePanelState)
             else -> null
         }
 
@@ -1031,7 +1031,7 @@ class GameViewModel(
     }
 
     // Open the find overlay over the currently selected window. No-op if that window has no text
-    // stream (e.g. a dialog window). Starts with an empty query, so nothing matches until the user
+    // stream (e.g. a panel window). Starts with an empty query, so nothing matches until the user
     // types.
     private fun openFind() {
         val target = selectedWindow.value

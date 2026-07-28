@@ -22,5 +22,5 @@ enum class WindowLocation(
 
 enum class WindowType {
     STREAM,
-    DIALOG,
+    PANEL,
 }
