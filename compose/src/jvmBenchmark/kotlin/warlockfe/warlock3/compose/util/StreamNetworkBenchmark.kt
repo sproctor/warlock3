@@ -322,6 +322,10 @@ private class BenchWindowRegistry(
     private val uiCostMicros: Long,
 ) : WindowRegistry {
     override val baseStyle: StateFlow<ResolvedStyle> = MutableStateFlow(ResolvedStyle())
+
+    // No skin is loaded in the benchmark, so skin-referenced colors never resolve. Same rationale as
+    // the constant [baseStyle]: the parse/render path being measured does not depend on the palette.
+    override val colorPalette: StateFlow<Map<String, WarlockColor>> = MutableStateFlow(emptyMap())
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())
     private val monoFont = MutableStateFlow<warlockfe.warlock3.core.text.FontConfig?>(null)
