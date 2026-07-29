@@ -1,6 +1,6 @@
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,7 +57,7 @@ class WraythProtocolHandlerTests {
     private inline fun <reified T : PanelObject> parsePanelObject(line: String): T =
         WraythProtocolHandler()
             .parseLine(line)
-            .filterIsInstance<WraythPanelObjectEvent>()
+            .filterIsInstance<WraythDialogObjectEvent>()
             .map { it.data }
             .filterIsInstance<T>()
             .single()

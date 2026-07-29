@@ -3,14 +3,14 @@ package warlockfe.warlock3.wrayth.protocol.elements
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
+import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
 import warlockfe.warlock3.wrayth.util.parseDistance
 
 class UpDownEditBoxHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
         val id = element.attributes["id"] ?: return null
-        return WraythPanelObjectEvent(
+        return WraythDialogObjectEvent(
             PanelObject.UpDownEditBox(
                 id = id,
                 value = element.attributes["value"]?.toIntOrNull(),

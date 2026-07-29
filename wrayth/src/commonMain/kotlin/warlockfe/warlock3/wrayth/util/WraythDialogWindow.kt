@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.util
 
-data class WraythPanelWindow(
+data class WraythDialogWindow(
     val id: String,
     val title: String,
     val location: String?,

@@ -70,6 +70,9 @@ import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentStartEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDataReceivedEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDirectionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEndCmdList
 import warlockfe.warlock3.wrayth.protocol.WraythEolEvent
@@ -84,9 +87,6 @@ import warlockfe.warlock3.wrayth.protocol.WraythModeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythNavEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOpenUrlEvent
 import warlockfe.warlock3.wrayth.protocol.WraythOutputEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPanelDataEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPanelWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythParseErrorEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPopStyleEvent
 import warlockfe.warlock3.wrayth.protocol.WraythPromptEvent
@@ -217,7 +217,7 @@ class WraythClient(
     // Whether the current `<output>` block is monospace ("mono"). Line-level; applies to echoed text too.
     private var monospace: Boolean = false
 
-    private var panelDataId: String? = null
+    private var dialogDataId: String? = null
     private val directions: HashSet<Direction> = hashSetOf()
     private var componentId: String? = null
 
@@ -451,17 +451,17 @@ class WraythClient(
                 sendCommandDirect("_STATE CHATMODE OFF")
             }
 
-            is WraythPanelDataEvent -> {
+            is WraythDialogDataEvent -> {
                 if (event.id == null) {
-                    panelDataId?.let { windowRegistry.getOrCreatePanel(it).updateState() }
+                    dialogDataId?.let { windowRegistry.getOrCreatePanel(it).updateState() }
                 }
-                panelDataId = event.id
+                dialogDataId = event.id
                 if (event.clear && event.id != null) {
                     this@WraythClient.windowRegistry.getOrCreatePanel(event.id).clear()
                 }
             }
 
-            is WraythPanelObjectEvent -> {
+            is WraythDialogObjectEvent -> {
                 // TODO: record this data somewhere
                 // val data = event.data
                 // if (data is PanelObject.ProgressBar) {
@@ -469,7 +469,7 @@ class WraythClient(
                 // (data.id to data.value.value.toString()) +
                 //            ((data.id + "text") to (data.text ?: ""))
                 // }
-                panelDataId?.let {
+                dialogDataId?.let {
                     windowRegistry.getOrCreatePanel(it).setObject(event.data)
                 }
             }
@@ -551,7 +551,7 @@ class WraythClient(
                 addWindow(event.window)
             }
 
-            is WraythPanelWindowEvent -> {
+            is WraythDialogWindowEvent -> {
                 val window = event.window
                 if (window.resident) {
                     lateinit var info: WindowInfo

@@ -3,8 +3,8 @@ package warlockfe.warlock3.wrayth.protocol.elements
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
+import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
-import warlockfe.warlock3.wrayth.protocol.WraythPanelObjectEvent
 import warlockfe.warlock3.wrayth.util.parseDistance
 
 class DropDownBoxHandler : BaseElementListener() {
@@ -18,7 +18,7 @@ class DropDownBoxHandler : BaseElementListener() {
             texts.mapIndexed { index, text ->
                 PanelObject.DropDownBox.Option(text = text, value = values.getOrElse(index) { text })
             }
-        return WraythPanelObjectEvent(
+        return WraythDialogObjectEvent(
             PanelObject.DropDownBox(
                 id = id,
                 value = element.attributes["value"],
