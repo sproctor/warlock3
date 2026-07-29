@@ -190,6 +190,7 @@ fun DesktopGameView(
                         }
                         if (streams.isNotEmpty()) {
                             DesktopWindowCategoryHeader(
+                                color = sidebarTextColor,
                                 label = "Streams",
                                 count = streams.size,
                                 expanded = streamsExpanded,
@@ -199,6 +200,7 @@ fun DesktopGameView(
                         }
                         if (panels.isNotEmpty()) {
                             DesktopWindowCategoryHeader(
+                                color = sidebarTextColor,
                                 label = "Panels",
                                 count = panels.size,
                                 expanded = panelsExpanded,
@@ -296,9 +298,14 @@ private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> = filter
 /**
  * A collapsible category header in the window-list sidebar. Uses the same disclosure-triangle idiom
  * as the settings window list: a rotating [Res.drawable.arrow_right], a dimmed label, and a count.
+ *
+ * [color] is the sidebar's text color, which follows the character's skin when it sets one. The
+ * header dims it rather than reaching for a chrome color, so it cannot end up light-on-light when a
+ * light skin background meets the dark app theme.
  */
 @Composable
 private fun DesktopWindowCategoryHeader(
+    color: Color,
     label: String,
     count: Int,
     expanded: Boolean,
@@ -323,13 +330,13 @@ private fun DesktopWindowCategoryHeader(
         Image(
             modifier = Modifier.size(12.dp).rotate(if (expanded) 90f else 0f),
             painter = painterResource(Res.drawable.arrow_right),
-            colorFilter = ColorFilter.tint(gameChrome.textFaint),
+            colorFilter = ColorFilter.tint(color.copy(alpha = 0.5f)),
             contentDescription = null,
         )
         Spacer(Modifier.width(10.dp))
         Text(
             text = "$label ($count)",
-            color = gameChrome.textMuted,
+            color = color.copy(alpha = 0.7f),
         )
     }
 }

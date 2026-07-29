@@ -113,11 +113,12 @@ fun LargeGameView(
                     val panels = remember(windows) { windows.ofType(WindowType.PANEL) }
                     var streamsExpanded by remember { mutableStateOf(true) }
                     var panelsExpanded by remember { mutableStateOf(true) }
+                    val sidebarTextColor =
+                        defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
+                            ?: MaterialTheme.colorScheme.onSurface
                     val item: @Composable (WindowInfo) -> Unit = { window ->
                         WindowListItem(
-                            color =
-                                defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
-                                    ?: MaterialTheme.colorScheme.onSurface,
+                            color = sidebarTextColor,
                             windowInfo = window,
                             isOpen = openWindows.contains(window.name),
                             onClick = { open ->
@@ -133,6 +134,7 @@ fun LargeGameView(
                     }
                     if (streams.isNotEmpty()) {
                         WindowCategoryHeader(
+                            color = sidebarTextColor,
                             label = "Streams",
                             count = streams.size,
                             expanded = streamsExpanded,
@@ -142,6 +144,7 @@ fun LargeGameView(
                     }
                     if (panels.isNotEmpty()) {
                         WindowCategoryHeader(
+                            color = sidebarTextColor,
                             label = "Panels",
                             count = panels.size,
                             expanded = panelsExpanded,
@@ -198,9 +201,14 @@ private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> = filter
 /**
  * A collapsible category header in the window-list sidebar: a rotating disclosure triangle, a dimmed
  * label, and a count. The Material twin of the desktop sidebar's header.
+ *
+ * [color] is the sidebar's text color, which follows the character's skin when it sets one. The
+ * header dims it rather than reaching for a theme color, so it cannot end up light-on-light when a
+ * light skin background meets a dark app theme.
  */
 @Composable
 private fun WindowCategoryHeader(
+    color: Color,
     label: String,
     count: Int,
     expanded: Boolean,
@@ -225,13 +233,13 @@ private fun WindowCategoryHeader(
         Icon(
             modifier = Modifier.size(12.dp).rotate(if (expanded) 90f else 0f),
             painter = painterResource(Res.drawable.arrow_right),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = color.copy(alpha = 0.5f),
             contentDescription = null,
         )
         Spacer(Modifier.width(10.dp))
         Text(
             text = "$label ($count)",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = color.copy(alpha = 0.7f),
             style = MaterialTheme.typography.labelLarge,
         )
     }
