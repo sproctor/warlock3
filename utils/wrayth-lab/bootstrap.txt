@@ -1,0 +1,30 @@
+## Sent to Wrayth right after it connects, to get it out of the login state and
+## into a normal in-game screen. Lines starting with "##" are comments and are
+## not sent. Edit freely; this file is only a convenient starting point.
+##
+## Resend it at any time with:  wlab.py boot
+## Send a different file with:  wlab.py boot my-sequence.txt
+##
+## --- enter game mode -------------------------------------------------------
+<mode id="GAME"/>
+<settingsInfo space_not_found="0" crc="0" instance="DR"/>
+<app char="Wlab" game="DR" title="[DR: Wlab]"/>
+## --- windows ---------------------------------------------------------------
+<streamWindow id='main' title='Story' subtitle=" - [Wrayth Lab]" location='center' target='drop'/>
+<streamWindow id='inv' title='My Inventory' location='inv' target='wear' ifClosed='' resident='true'/>
+<streamWindow id='thoughts' title='Thoughts' location='left' target='thoughts' resident='true'/>
+<streamWindow id='logons' title='Arrivals' location='left' target='logons' resident='true'/>
+<streamWindow id='death' title='Deaths' location='left' target='death' resident='true'/>
+## --- status bar vitals -----------------------------------------------------
+## Wrayth parses one line at a time and wants each line to be well formed: a tag
+## opened on one line and closed on the next comes back as "<c>_error ... Ending
+## tag not found", so keep container tags and their contents on a single line.
+<opendialog type='dynamic' id='minivitals' title='Vitals' location='statusbar' target='minivitals' resident='true'><dialogData id='minivitals'><progressBar id='health' value='100' text='health 100%' left='0%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='mana' value='100' text='mana 100%' left='20%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='stamina' value='100' text='stamina 100%' left='40%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='spirit' value='100' text='spirit 100%' left='60%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='concentration' value='100' text='concentration 100%' left='80%' customText='t' top='0%' width='20%' height='100%'/></dialogData></opendialog>
+## --- some room text so the main window is not empty ------------------------
+<streamWindow id='room' title='Room' subtitle=" - [Wrayth Lab]" location='center' target='drop'/>
+<compass><dir value="n"/><dir value="e"/><dir value="out"/></compass>
+<component id='room desc'>A bare room with a workbench along one wall. Protocol fragments are pinned above it.</component>
+<component id='room objs'>You also see a test dummy.</component>
+<component id='room players'></component>
+<component id='room exits'>Obvious exits: <d>north</d>, <d>east</d>, <d>out</d>.<compass></compass></component>
+<prompt time="1700000000">&gt;</prompt>
