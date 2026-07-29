@@ -37,6 +37,9 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -305,10 +308,16 @@ private fun DesktopWindowCategoryHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = 2.dp),
+                .clickable(
+                    onClickLabel = if (expanded) "Collapse" else "Expand",
+                    role = Role.Button,
+                    onClick = onClick,
+                ).semantics {
+                    stateDescription = if (expanded) "Expanded" else "Collapsed"
+                }.padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The arrow is decorative: the row carries the label, the open/closed state, and the action.
         Image(
             modifier = Modifier.size(12.dp).rotate(if (expanded) 90f else 0f),
             painter = painterResource(Res.drawable.arrow_right),
