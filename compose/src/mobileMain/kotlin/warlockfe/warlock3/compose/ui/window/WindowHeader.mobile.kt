@@ -31,7 +31,7 @@ actual fun WindowHeader(
     location: WindowLocation,
     isSelected: Boolean,
     onSettingsClick: () -> Unit,
-    onClearClick: () -> Unit,
+    onClearClick: (() -> Unit)?,
     onCloseClick: () -> Unit,
     modifier: Modifier,
 ) {
@@ -71,13 +71,15 @@ actual fun WindowHeader(
                     },
                     text = { Text("Window Settings ...") },
                 )
-                DropdownMenuItem(
-                    onClick = {
-                        onClearClick()
-                        showMenu = false
-                    },
-                    text = { Text("Clear window") },
-                )
+                if (onClearClick != null) {
+                    DropdownMenuItem(
+                        onClick = {
+                            onClearClick()
+                            showMenu = false
+                        },
+                        text = { Text("Clear window") },
+                    )
+                }
                 if (location != WindowLocation.MAIN) {
                     DropdownMenuItem(
                         onClick = {

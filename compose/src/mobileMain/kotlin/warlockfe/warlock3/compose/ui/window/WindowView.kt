@@ -114,7 +114,9 @@ fun WindowView(
                 location = location,
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
-                onClearClick = clearStream,
+                // A panel is a fixed layout of widgets with no text stream behind it, so there is
+                // nothing for "Clear window" to clear.
+                onClearClick = clearStream.takeIf { uiState.data !is PanelWindowData },
                 onCloseClick = onCloseClick,
             )
         },

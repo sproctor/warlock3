@@ -175,7 +175,14 @@ fun DesktopGameView(
                                         }
                                     }
                                 },
-                                onClear = { viewModel.clearStream(window.name) },
+                                // A panel is a fixed layout of widgets with no text stream behind it,
+                                // so there is nothing for "Clear window" to clear.
+                                onClear =
+                                    if (window.windowType == WindowType.STREAM) {
+                                        { viewModel.clearStream(window.name) }
+                                    } else {
+                                        null
+                                    },
                             )
                         }
                         if (streams.isNotEmpty()) {
@@ -322,7 +329,7 @@ private fun DesktopWindowListItem(
     windowInfo: WindowInfo,
     isOpen: Boolean,
     onClick: (Boolean) -> Unit,
-    onClear: () -> Unit,
+    onClear: (() -> Unit)?,
 ) {
     // Per the design: a leading status dot (filled accent when shown, hollow + dimmed when hidden)
     // replaces the old eye icons, and a trailing "..." opens the per-window menu. Clicking the row
@@ -365,14 +372,16 @@ private fun DesktopWindowListItem(
             ) {
                 Text(if (isOpen) "Hide window" else "Show window")
             }
-            selectableItem(
-                selected = false,
-                onClick = {
-                    dismiss()
-                    onClear()
-                },
-            ) {
-                Text("Clear window")
+            if (onClear != null) {
+                selectableItem(
+                    selected = false,
+                    onClick = {
+                        dismiss()
+                        onClear()
+                    },
+                ) {
+                    Text("Clear window")
+                }
             }
         }
     }

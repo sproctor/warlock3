@@ -52,6 +52,7 @@ import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
+import warlockfe.warlock3.compose.ui.window.PanelWindowData
 import warlockfe.warlock3.compose.ui.window.WindowHeader
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowViewScaffold
@@ -148,7 +149,9 @@ fun DesktopWindowView(
                 location = location,
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
-                onClearClick = clearStream,
+                // A panel is a fixed layout of widgets with no text stream behind it, so there is
+                // nothing for "Clear window" to clear.
+                onClearClick = clearStream.takeIf { uiState.data !is PanelWindowData },
                 onCloseClick = onCloseClick,
             )
         },

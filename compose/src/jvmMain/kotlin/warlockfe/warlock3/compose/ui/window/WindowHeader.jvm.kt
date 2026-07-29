@@ -39,7 +39,7 @@ actual fun WindowHeader(
     location: WindowLocation,
     isSelected: Boolean,
     onSettingsClick: () -> Unit,
-    onClearClick: () -> Unit,
+    onClearClick: (() -> Unit)?,
     onCloseClick: () -> Unit,
     modifier: Modifier,
 ) {
@@ -55,12 +55,14 @@ actual fun WindowHeader(
                         onClick = onSettingsClick,
                     ),
                 )
-                add(
-                    ContextMenuItem(
-                        label = "Clear window",
-                        onClick = onClearClick,
-                    ),
-                )
+                if (onClearClick != null) {
+                    add(
+                        ContextMenuItem(
+                            label = "Clear window",
+                            onClick = onClearClick,
+                        ),
+                    )
+                }
                 if (location != WindowLocation.MAIN) {
                     add(
                         ContextMenuItem(
@@ -129,14 +131,16 @@ actual fun WindowHeader(
                 ) {
                     Text("Window settings ...")
                 }
-                selectableItem(
-                    selected = false,
-                    onClick = {
-                        dismiss()
-                        onClearClick()
-                    },
-                ) {
-                    Text("Clear window")
+                if (onClearClick != null) {
+                    selectableItem(
+                        selected = false,
+                        onClick = {
+                            dismiss()
+                            onClearClick()
+                        },
+                    ) {
+                        Text("Clear window")
+                    }
                 }
                 if (location != WindowLocation.MAIN) {
                     selectableItem(
