@@ -214,12 +214,14 @@ private fun WindowCategoryHeader(
                     onClickLabel = if (expanded) "Collapse" else "Expand",
                     role = Role.Button,
                     onClick = onClick,
-                ).semantics {
+                ).semantics(mergeDescendants = true) {
                     stateDescription = if (expanded) "Expanded" else "Collapsed"
                 }.padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The arrow is decorative: the row carries the label, the open/closed state, and the action.
+        // Merging is what pulls the label onto the button node; neither clickable nor a bare
+        // semantics block merges, which would leave a button with a state but no name.
         Icon(
             modifier = Modifier.size(12.dp).rotate(if (expanded) 90f else 0f),
             painter = painterResource(Res.drawable.arrow_right),
