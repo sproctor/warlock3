@@ -46,6 +46,7 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowType
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -115,8 +116,13 @@ fun WindowView(
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
                 // A panel is a fixed layout of widgets with no text stream behind it, so there is
-                // nothing for "Clear window" to clear.
-                onClearClick = clearStream.takeIf { uiState.data !is PanelWindowData },
+                // nothing for "Clear window" to clear. Key off the window kind rather than the data:
+                // a restored window has no data until the server re-announces it, and offering Clear
+                // in that gap would mint the phantom stream this guard exists to prevent.
+                onClearClick =
+                    clearStream.takeIf {
+                        uiState.windowInfo.value?.windowType == WindowType.STREAM
+                    },
                 onCloseClick = onCloseClick,
             )
         },

@@ -52,7 +52,6 @@ import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.theme.menuStyle
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
-import warlockfe.warlock3.compose.ui.window.PanelWindowData
 import warlockfe.warlock3.compose.ui.window.WindowHeader
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.WindowViewScaffold
@@ -64,6 +63,7 @@ import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowType
 
 private val titleSmallStyle =
     TextStyle(
@@ -150,8 +150,13 @@ fun DesktopWindowView(
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
                 // A panel is a fixed layout of widgets with no text stream behind it, so there is
-                // nothing for "Clear window" to clear.
-                onClearClick = clearStream.takeIf { uiState.data !is PanelWindowData },
+                // nothing for "Clear window" to clear. Key off the window kind rather than the data:
+                // a restored window has no data until the server re-announces it, and offering Clear
+                // in that gap would mint the phantom stream this guard exists to prevent.
+                onClearClick =
+                    clearStream.takeIf {
+                        uiState.windowInfo.value?.windowType == WindowType.STREAM
+                    },
                 onCloseClick = onCloseClick,
             )
         },
