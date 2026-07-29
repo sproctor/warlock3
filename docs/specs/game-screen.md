@@ -164,7 +164,8 @@ no panels shows only the Streams group.
 **Category header** rows carry a disclosure triangle (a 12dp arrow that rotates from pointing right
 to pointing down when expanded), the category name, and a count in parentheses, for example
 `Streams (7)`. Both categories start expanded; clicking a header collapses or expands that group.
-The expanded/collapsed state is per-session and is not persisted.
+The expanded/collapsed state is not persisted, and resets to expanded whenever the sidebar is
+hidden and shown again.
 
 **Window rows** each have:
 
