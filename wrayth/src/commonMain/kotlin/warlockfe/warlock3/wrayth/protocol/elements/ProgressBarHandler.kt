@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
@@ -12,7 +12,7 @@ class ProgressBarHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
         val id = element.attributes["id"] ?: return null
         return WraythDialogObjectEvent(
-            DialogObject.ProgressBar(
+            PanelObject.ProgressBar(
                 id = id,
                 value = element.attributes["value"]?.let { Percentage.fromString(it) } ?: Percentage(0),
                 text = element.attributes["text"],

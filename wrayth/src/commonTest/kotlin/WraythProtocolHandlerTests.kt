@@ -1,4 +1,4 @@
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
@@ -54,7 +54,7 @@ class WraythProtocolHandlerTests {
         assertEquals(WraythActionEvent("into the river", "swim"), second)
     }
 
-    private inline fun <reified T : DialogObject> parseDialogObject(line: String): T =
+    private inline fun <reified T : PanelObject> parsePanelObject(line: String): T =
         WraythProtocolHandler()
             .parseLine(line)
             .filterIsInstance<WraythDialogObjectEvent>()
@@ -65,7 +65,7 @@ class WraythProtocolHandlerTests {
     @Test
     fun dropDownBoxParsesOptionsAndCommand() {
         val box =
-            parseDialogObject<DialogObject.DropDownBox>(
+            parsePanelObject<PanelObject.DropDownBox>(
                 "<dropDownBox id='dDBAim' value='head' cmd='aim %dDBAim%' " +
                     "content_text='random,head,neck' content_value='rnd,hd,nk'/>",
             )
@@ -75,9 +75,9 @@ class WraythProtocolHandlerTests {
         assertEquals("aim %dDBAim%", box.cmd)
         assertEquals(
             listOf(
-                DialogObject.DropDownBox.Option("random", "rnd"),
-                DialogObject.DropDownBox.Option("head", "hd"),
-                DialogObject.DropDownBox.Option("neck", "nk"),
+                PanelObject.DropDownBox.Option("random", "rnd"),
+                PanelObject.DropDownBox.Option("head", "hd"),
+                PanelObject.DropDownBox.Option("neck", "nk"),
             ),
             box.options,
         )
@@ -86,7 +86,7 @@ class WraythProtocolHandlerTests {
     @Test
     fun radioParsesSelectionAndCommand() {
         val box =
-            parseDialogObject<DialogObject.Radio>(
+            parsePanelObject<PanelObject.Radio>(
                 "<radio id=\"bothRad\" value=\"1\" text=\"Both\" cmd=\"_injury 2\" group=\"injureMode\"/>",
             )
 
@@ -99,12 +99,12 @@ class WraythProtocolHandlerTests {
 
     @Test
     fun unselectedRadioIsNotSelected() {
-        assertEquals(false, parseDialogObject<DialogObject.Radio>("<radio id=\"r\" value=\"0\" text=\"x\"/>").selected)
+        assertEquals(false, parsePanelObject<PanelObject.Radio>("<radio id=\"r\" value=\"0\" text=\"x\"/>").selected)
     }
 
     @Test
     fun upDownEditBoxParsesBounds() {
-        val box = parseDialogObject<DialogObject.UpDownEditBox>("<upDownEditBox id='uDEQuickstrike' min='-60' max='60' value='-1'/>")
+        val box = parsePanelObject<PanelObject.UpDownEditBox>("<upDownEditBox id='uDEQuickstrike' min='-60' max='60' value='-1'/>")
 
         assertEquals("uDEQuickstrike", box.id)
         assertEquals(-1, box.value)

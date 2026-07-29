@@ -24,7 +24,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import warlockfe.warlock3.compose.desktop.ui.window.DesktopDialogContent
+import warlockfe.warlock3.compose.desktop.ui.window.DesktopPanelContent
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.IndicatorPalette
 import warlockfe.warlock3.compose.ui.game.IndicatorView
@@ -89,7 +89,7 @@ fun DesktopGameBottomBar(
                     val vitalBars by viewModel.vitalBars.objects.collectAsState()
                     // Color and font overrides come from LocalProgressBarSettings, provided by DesktopGameView
                     // around both this control bar and the text windows.
-                    DesktopDialogContent(
+                    DesktopPanelContent(
                         dataObjects = vitalBars,
                         modifier = Modifier.fillMaxWidth().height(16.dp),
                         executeCommand = {

@@ -453,24 +453,24 @@ class WraythClient(
 
             is WraythDialogDataEvent -> {
                 if (event.id == null) {
-                    dialogDataId?.let { windowRegistry.getOrCreateDialog(it).updateState() }
+                    dialogDataId?.let { windowRegistry.getOrCreatePanel(it).updateState() }
                 }
                 dialogDataId = event.id
                 if (event.clear && event.id != null) {
-                    this@WraythClient.windowRegistry.getOrCreateDialog(event.id).clear()
+                    this@WraythClient.windowRegistry.getOrCreatePanel(event.id).clear()
                 }
             }
 
             is WraythDialogObjectEvent -> {
                 // TODO: record this data somewhere
                 // val data = event.data
-                // if (data is DialogObject.ProgressBar) {
+                // if (data is PanelObject.ProgressBar) {
                 //    _properties.value = _properties.value +
                 // (data.id to data.value.value.toString()) +
                 //            ((data.id + "text") to (data.text ?: ""))
                 // }
                 dialogDataId?.let {
-                    windowRegistry.getOrCreateDialog(it).setObject(event.data)
+                    windowRegistry.getOrCreatePanel(it).setObject(event.data)
                 }
             }
 
@@ -562,7 +562,7 @@ class WraythClient(
                                 name = window.id,
                                 title = window.title,
                                 subtitle = null,
-                                windowType = WindowType.DIALOG,
+                                windowType = WindowType.PANEL,
                                 showTimestamps = false,
                                 backgroundImage = existing?.backgroundImage,
                             )

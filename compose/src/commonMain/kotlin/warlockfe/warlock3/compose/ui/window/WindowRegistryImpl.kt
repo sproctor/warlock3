@@ -39,7 +39,7 @@ import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
-import warlockfe.warlock3.core.window.DialogState
+import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
@@ -60,7 +60,7 @@ class WindowRegistryImpl(
 ) : WindowRegistry {
     private val streams = AtomicReference(persistentMapOf<String, ComposeTextStream>())
 
-    private val dialogs = AtomicReference(persistentMapOf<String, ComposeDialogState>())
+    private val panels = AtomicReference(persistentMapOf<String, ComposePanelState>())
 
     private val scope = CoroutineScope(SupervisorJob())
 
@@ -320,13 +320,13 @@ class WindowRegistryImpl(
         }
     }
 
-    override fun getOrCreateDialog(name: String): DialogState {
-        dialogs.load()[name]?.let { return it }
-        val candidate = ComposeDialogState(id = name)
+    override fun getOrCreatePanel(name: String): PanelState {
+        panels.load()[name]?.let { return it }
+        val candidate = ComposePanelState(id = name)
         while (true) {
-            val current = dialogs.load()
+            val current = panels.load()
             current[name]?.let { return it }
-            if (dialogs.compareAndSet(current, current.putting(name, candidate))) {
+            if (panels.compareAndSet(current, current.putting(name, candidate))) {
                 return candidate
             }
         }

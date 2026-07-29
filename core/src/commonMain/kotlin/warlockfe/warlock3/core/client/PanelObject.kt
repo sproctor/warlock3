@@ -1,6 +1,6 @@
 package warlockfe.warlock3.core.client
 
-sealed class DialogObject {
+sealed class PanelObject {
     abstract val id: String
     abstract val left: DataDistance?
     abstract val top: DataDistance?
@@ -23,7 +23,7 @@ sealed class DialogObject {
         override val tooltip: String?,
         val name: String,
         val controls: List<String>,
-    ) : DialogObject()
+    ) : PanelObject()
 
     data class ProgressBar(
         override val id: String,
@@ -37,7 +37,7 @@ sealed class DialogObject {
         override val tooltip: String?,
         val value: Percentage,
         val text: String?,
-    ) : DialogObject()
+    ) : PanelObject()
 
     data class Label(
         override val id: String,
@@ -50,7 +50,7 @@ sealed class DialogObject {
         override val leftAnchor: String?,
         override val tooltip: String?,
         val value: String?,
-    ) : DialogObject()
+    ) : PanelObject()
 
     data class Link(
         override val id: String,
@@ -65,7 +65,7 @@ sealed class DialogObject {
         val value: String?,
         val cmd: String?,
         val echo: String?,
-    ) : DialogObject()
+    ) : PanelObject()
 
     // cmdButton
     data class Button(
@@ -81,7 +81,7 @@ sealed class DialogObject {
         val value: String?,
         val cmd: String?,
         val echo: String?,
-    ) : DialogObject()
+    ) : PanelObject()
 
     // dropDownBox: a selector. Picking an option runs [cmd] with `%<id>%` replaced by the option value.
     data class DropDownBox(
@@ -97,7 +97,7 @@ sealed class DialogObject {
         val value: String?,
         val cmd: String?,
         val options: List<Option>,
-    ) : DialogObject() {
+    ) : PanelObject() {
         data class Option(
             val text: String,
             val value: String,
@@ -119,7 +119,7 @@ sealed class DialogObject {
         val cmd: String?,
         val group: String?,
         val selected: Boolean,
-    ) : DialogObject()
+    ) : PanelObject()
 
     // upDownEditBox: a numeric spinner clamped to [min, max]. Changing it runs [cmd] with `%<id>%`.
     data class UpDownEditBox(
@@ -136,7 +136,7 @@ sealed class DialogObject {
         val min: Int?,
         val max: Int?,
         val cmd: String?,
-    ) : DialogObject()
+    ) : PanelObject()
 
     data class Image(
         override val id: String,
@@ -151,7 +151,7 @@ sealed class DialogObject {
         val name: String?,
         val cmd: String?,
         val echo: String?,
-    ) : DialogObject()
+    ) : PanelObject()
 }
 
 sealed class DataDistance {

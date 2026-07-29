@@ -113,13 +113,15 @@ It has two parts:
 - The **title** (and an optional subtitle appended to it), single line, truncates with an ellipsis.
 - A **selected** state: the currently selected window's header is highlighted (filled with the
   border color). Only the selected window receives keyboard scroll commands (see 4.4).
-- A **right-click context menu** on the header (and on the text body) with: **Window settings...**,
-  **Clear window**, and **Hide window** (the last is omitted for MAIN).
+- A **right-click context menu** on the header (and on the text body), also reachable from a visible
+  **"..." button** at the end of the header, with: **Window settings...**, **Clear window**, and
+  **Hide window**. **Clear window** appears only on a text stream window (a panel has no stream to
+  clear); **Hide window** is omitted for MAIN.
 
 **Body** (fills the rest of the window). One of two kinds:
 
 - **Text stream window** (the common case): a vertically scrolling log of game text. Details in 4.3.
-- **Dialog window**: a structured panel of UI objects (progress bars and similar) rather than free
+- **Panel window**: a structured panel of UI objects (progress bars and similar) rather than free
   text. Used for game-provided custom panels. Rendered with the window's background color.
 
 ### 4.3 Text stream window behavior
@@ -154,14 +156,29 @@ This is where most reading happens, so its behaviors matter:
 ### 4.5 The window list (sidebar)
 
 A 240dp-wide scrollable panel on the far left, shown when the sidebar is toggled on (from the app's
-window chrome, outside this screen). It lists **all known windows** sorted by title. Each row has:
+window chrome, outside this screen). It lists **all known windows**, grouped into two collapsible
+categories by window kind (see 4.2): **Streams** first, then **Panels**. Within a category the
+windows are sorted by title. A category with no windows is not drawn at all, so a game that provides
+no panels shows only the Streams group.
 
-- a visibility icon (an open eye when the window is currently shown, a crossed-out eye when hidden),
-- the window's title.
+**Category header** rows carry a disclosure triangle (a 12dp arrow that rotates from pointing right
+to pointing down when expanded), the category name, and a count in parentheses, for example
+`Streams (7)`. Both categories start expanded; clicking a header collapses or expands that group.
+The expanded/collapsed state is not persisted, and resets to expanded whenever the sidebar is
+hidden and shown again.
 
-Clicking a row toggles that window open or closed. This is how the user brings back a hidden window
-or hides one they do not want. The sidebar uses the default text/background colors so it visually
-matches the game theme.
+**Window rows** each have:
+
+- a leading 12dp **status dot**: filled and tinted with the accent color when the window is currently
+  shown, hollow and dimmed when it is hidden,
+- the window's **title**, single line, truncating with an ellipsis, drawn in the default text color
+  when shown and dimmed when hidden,
+- a trailing **"..." menu button**, revealed at the end of the row, offering **Show window** /
+  **Hide window** (whichever applies), plus **Clear window** on rows in the Streams category only.
+
+Clicking anywhere else on a row toggles that window open or closed. This is how the user brings back
+a hidden window or hides one they do not want. The sidebar uses the default text/background colors
+so it visually matches the game theme.
 
 ### 4.6 Per-window settings dialog
 
@@ -212,7 +229,7 @@ width); right side holds the indicators and the compass.
 ### 6.2 Vital bars (middle of the left column)
 
 - A thin (16dp tall) full-width row of **progress bars** showing the character's vitals: health,
-  mana, stamina, spirit, and similar pools the game reports. This is a game-provided dialog panel
+  mana, stamina, spirit, and similar pools the game reports. This is a game-provided panel
   ("minivitals"), so the exact bars depend on the game.
 - These are **display only**; they are not clickable.
 
@@ -273,7 +290,9 @@ not buttons.
 | Clicks a window | That window becomes selected (receives scroll macros) |
 | Drags a window header | Moves/reorders the window across docks (MAIN excluded) |
 | Drags a dock edge | Resizes that dock (top/bottom height, left/right width) |
-| Clicks an eye row in sidebar | Shows/hides that window |
+| Clicks a window row in sidebar | Shows/hides that window |
+| Clicks a category header in sidebar | Collapses/expands the Streams or Panels group |
+| Clicks a sidebar row's "..." | Show/Hide window, plus Clear window on stream rows |
 | Right-clicks a window | Window settings / Clear / Hide menu |
 | Clicks interactive game text | Sends a command or opens a drill-down action menu |
 | Hovers an inline image | Image expands to full size |
@@ -306,7 +325,7 @@ not buttons.
 
 - Screen container: `DesktopGameView.kt`
 - Window grid (the five docks): `DesktopGameTextWindows.kt`
-- A single window (header + text/dialog body, images, menus): `DesktopWindowView.kt`,
+- A single window (header + text/panel body, images, menus): `DesktopWindowView.kt`,
   `WindowHeader.jvm.kt`
 - Bottom bar: `DesktopGameBottomBar.kt`, entry + roundtime: `DesktopWarlockEntry.kt`,
   hands: `DesktopHandsView.kt`, indicators: `DesktopIndicatorView.kt`, compass: `CompassView.kt`

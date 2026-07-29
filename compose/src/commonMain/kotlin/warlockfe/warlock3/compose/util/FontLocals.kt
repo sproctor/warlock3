@@ -20,6 +20,6 @@ val LocalDefaultFont = staticCompositionLocalOf<FontConfig?> { null }
 /**
  * The active character's monospace font, used for text flagged monospace. Null means the generic
  * monospace family. Stream text bakes this in itself (per window); this local is for the settings
- * previews and dialog windows that render outside a stream.
+ * previews and panel windows that render outside a stream.
  */
 val LocalMonoFont = staticCompositionLocalOf<FontConfig?> { null }
