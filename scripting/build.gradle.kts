@@ -1,8 +1,4 @@
-@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
-
-import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     alias(libs.plugins.android.kmp.library)
@@ -12,6 +8,7 @@ plugins {
 
 val generateKotlinGrammarSource =
     tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
+        description = "Generate ANTLR grammars."
         dependsOn("cleanGenerateKotlinGrammarSource")
 
         // ANTLR .g4 files are under {example-project}/antlr
