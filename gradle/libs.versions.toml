@@ -26,7 +26,6 @@ agp = "9.1.1"
 ##⬆= "9.3.1"
 androidx-activity = "1.13.0"
 androidx-core-splashscreen = "1.2.0"
-androidxLifecycleViewmodel = "2.11.0"
 androidxSqlite = "2.7.0"
 antlr-kotlin = "1.0.12"
 appdirs = "2.0.0"
@@ -41,7 +40,7 @@ compose-material3 = "1.11.0-alpha07"
 colorpicker = "1.2.0"
 fastscroller = "0.3.2"
 filekit = "0.14.2"
-intellij = "262.8665.337"
+intellij = "262.8665.386"
 # IJ repo gets pre-released versions and refreshVersions can't properly filter it.
 # Usable versions are here: https://central.sonatype.com/artifact/org.jetbrains.jewel/jewel-int-ui-standalone/versions
 jewel = "0.39.1-262.9437.29"
@@ -55,6 +54,8 @@ kotlinx-datetime = "0.8.0"
 kompress = "1.4.3"
 kotlinx-io = "0.9.1"
 kotlinx-serialization = "1.11.0"
+# As of 2.11.0, androidx lifecycle libs are multiplatform
+lifecycle = "2.11.0"
 navigation3 = "1.1.1"
 reorderable = "3.1.0"
 tomlkt = "0.7.0"
@@ -64,7 +65,7 @@ ktlint-compose-rules = "0.6.3"
 ktor = "3.5.1"
 lua-kmp = "0.1.0"
 potassium = "0.3.1"
-room = "3.0.0"
+room = "3.0.1"
 sentryKotlin = "0.27.0"
 slf4j = "2.0.18"
 slf4jAndroid = "2.0.17-0"
@@ -81,9 +82,8 @@ jvmToolchainVersion = "21"
 appdirs = { group = "ca.gosyer", name = "kotlin-multiplatform-appdirs", version.ref="appdirs" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidx-core-splashscreen" }
-androidx-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidxLifecycleViewmodel" }
-androidx-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleViewmodel" }
-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycle" }
 antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }
 autolink = { module = "org.nibor.autolink:autolink", version.ref = "autolink" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
@@ -96,6 +96,9 @@ compose-ui-tooling = { module = " org.jetbrains.compose.ui:ui-tooling", version.
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
 fastscroller-core = { module = "io.github.oikvpqya.compose.fastscroller:fastscroller-core", version.ref = "fastscroller" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
+jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
+jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
 ktlint-compose-rules = { module = "io.nlopez.compose.rules:ktlint", version.ref = "ktlint-compose-rules" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
@@ -114,10 +117,9 @@ ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
-intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
-jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
-jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 lua-kmp = { group = "com.seanproctor", name = "lua-kmp", version.ref = "lua-kmp" }
+# AndroidX versions still contain stubs for desktop, so we can't migrate yet
+navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 potassium-updater = { module = "com.seanproctor:potassium-updater", version.ref = "potassium" }
 room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
