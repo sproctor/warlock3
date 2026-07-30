@@ -132,7 +132,7 @@ fun DesktopGameView(
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {
-                    val windows by viewModel.windows.collectAsState()
+                    val windows by viewModel.residentWindows.collectAsState()
                     val scope = rememberCoroutineScope()
                     val sidebarBackground =
                         defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()

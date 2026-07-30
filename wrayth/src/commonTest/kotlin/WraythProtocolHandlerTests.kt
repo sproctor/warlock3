@@ -1,7 +1,10 @@
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
+import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
+import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
+import warlockfe.warlock3.wrayth.util.WraythDialogWindow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -110,5 +113,57 @@ class WraythProtocolHandlerTests {
         assertEquals(-1, box.value)
         assertEquals(-60, box.min)
         assertEquals(60, box.max)
+    }
+
+    private fun parseDialogWindow(line: String): WraythDialogWindow =
+        WraythProtocolHandler()
+            .parseLine(line)
+            .filterIsInstance<WraythDialogWindowEvent>()
+            .single()
+            .window
+
+    @Test
+    fun openDialogKeepsLocationAndResident() {
+        // The shape the game sends for a permanent panel: content nested in the tag, on one line.
+        val window =
+            parseDialogWindow(
+                "<openDialog type='dynamic' id='combat' title='Combat' location='right' target='combat' " +
+                    "height='219' resident='true'><dialogData id='combat' clear='t'></dialogData></openDialog>",
+            )
+
+        assertEquals("combat", window.id)
+        assertEquals("Combat", window.title)
+        assertEquals("dynamic", window.type)
+        assertEquals("right", window.location)
+        assertEquals(true, window.resident)
+    }
+
+    @Test
+    fun openDialogWithoutResidentIsTransient() {
+        val window =
+            parseDialogWindow(
+                "<openDialog type='dynamic' id='bank' title='Bank' location='right'>" +
+                    "<dialogData id='bank'></dialogData></openDialog>",
+            )
+
+        assertEquals(false, window.resident)
+        assertEquals("right", window.location)
+    }
+
+    @Test
+    fun closeDialogProducesCloseEvent() {
+        val events = WraythProtocolHandler().parseLine("<closeDialog id=\"bank\"/>")
+
+        assertEquals(
+            WraythCloseDialogEvent(id = "bank"),
+            events.filterIsInstance<WraythCloseDialogEvent>().single(),
+        )
+    }
+
+    @Test
+    fun closeDialogWithoutIdIsIgnored() {
+        val events = WraythProtocolHandler().parseLine("<closeDialog/>")
+
+        assertEquals(emptyList(), events.filterIsInstance<WraythCloseDialogEvent>())
     }
 }

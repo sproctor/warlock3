@@ -125,6 +125,11 @@ data class WraythDialogWindowEvent(
     val window: WraythDialogWindow,
 ) : WraythEvent
 
+/** The game closing a panel it opened. Only ever carries an id. */
+data class WraythCloseDialogEvent(
+    val id: String,
+) : WraythEvent
+
 data object WraythNavEvent : WraythEvent
 
 data class WraythBackgroundEvent(

@@ -13,6 +13,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.CastTimeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearContainerHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CliHandler
+import warlockfe.warlock3.wrayth.protocol.elements.CloseDialogHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CmdButtonHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CmdlistHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CompDefHandler
@@ -71,6 +72,7 @@ class WraythProtocolHandler {
             "clearcontainer" to ClearContainerHandler(),
             "clearstream" to ClearStreamHandler(),
             "cli" to CliHandler(),
+            "closedialog" to CloseDialogHandler(),
             "cmdbutton" to CmdButtonHandler(),
             "cmdlist" to CmdlistHandler(),
             "compass" to CompassHandler(),

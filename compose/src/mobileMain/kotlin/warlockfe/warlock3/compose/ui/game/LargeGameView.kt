@@ -87,7 +87,7 @@ fun LargeGameView(
 
         Row(modifier = Modifier.weight(1f)) {
             if (windowListVisible) {
-                val windows by viewModel.windows.collectAsState()
+                val windows by viewModel.residentWindows.collectAsState()
                 val scope = rememberCoroutineScope()
                 ScrollableColumn(
                     Modifier

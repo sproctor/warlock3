@@ -66,6 +66,16 @@ class WindowSettingsRepository(
                 .sortedWith(compareBy { it.position })
         }
 
+    /**
+     * The dock this character has saved for a window, or null when they have never placed it or have
+     * closed it. Read straight from the DAO rather than from [observeWindowSettings] so a caller can
+     * ask before the observed settings have had a chance to emit.
+     */
+    suspend fun getWindowLocation(
+        characterId: String,
+        name: String,
+    ): WindowLocation? = windowSettingsDao.getByName(characterId = characterId, name = name)?.location
+
     suspend fun openWindow(
         characterId: String,
         name: String,
