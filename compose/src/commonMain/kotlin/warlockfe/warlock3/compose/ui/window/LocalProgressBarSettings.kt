@@ -7,7 +7,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 /**
  * Carries the current character's progress-bar overrides (keyed by progress-bar id): the color
  * overrides plus an optional font, and callbacks to persist new colors or a new font. Provided high
- * in the game view so the deeply-nested dialog content can read/write per-id settings without
+ * in the game view so the deeply-nested panel content can read/write per-id settings without
  * threading callbacks through every layer.
  */
 data class ProgressBarSettingsState(

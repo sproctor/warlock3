@@ -31,7 +31,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DataDistance
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.getIgnoringCase
@@ -57,9 +57,9 @@ private fun VitalBarsPreview() {
                     ),
             ),
     ) {
-        val dialogData =
+        val panelData =
             listOf(
-                DialogObject.Skin(
+                PanelObject.Skin(
                     id = "healthSkin",
                     left = null,
                     top = null,
@@ -72,7 +72,7 @@ private fun VitalBarsPreview() {
                     name = "healthBar",
                     controls = listOf("health"),
                 ),
-                DialogObject.ProgressBar(
+                PanelObject.ProgressBar(
                     id = "health",
                     left = DataDistance.Percent(value = Percentage(value = 0)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -85,7 +85,7 @@ private fun VitalBarsPreview() {
                     value = Percentage(value = 50),
                     text = "health 13/26",
                 ),
-                DialogObject.Skin(
+                PanelObject.Skin(
                     id = "manaSkin",
                     left = DataDistance.Percent(value = Percentage(value = 25)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -98,7 +98,7 @@ private fun VitalBarsPreview() {
                     name = "manaBar",
                     controls = listOf("mana"),
                 ),
-                DialogObject.ProgressBar(
+                PanelObject.ProgressBar(
                     id = "mana",
                     left = DataDistance.Percent(value = Percentage(value = 25)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -111,7 +111,7 @@ private fun VitalBarsPreview() {
                     value = Percentage(value = 100),
                     text = "mana 2/2",
                 ),
-                DialogObject.Skin(
+                PanelObject.Skin(
                     id = "spiritSkin",
                     left = DataDistance.Percent(value = Percentage(value = 75)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -124,7 +124,7 @@ private fun VitalBarsPreview() {
                     name = "spiritBar",
                     controls = listOf("spirit"),
                 ),
-                DialogObject.ProgressBar(
+                PanelObject.ProgressBar(
                     id = "spirit",
                     left = DataDistance.Percent(value = Percentage(value = 75)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -137,7 +137,7 @@ private fun VitalBarsPreview() {
                     value = Percentage(value = 100),
                     text = "spirit 7/7",
                 ),
-                DialogObject.Skin(
+                PanelObject.Skin(
                     id = "staminaSkin",
                     left = DataDistance.Percent(value = Percentage(value = 50)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -150,7 +150,7 @@ private fun VitalBarsPreview() {
                     name = "staminaBar",
                     controls = listOf("stamina"),
                 ),
-                DialogObject.ProgressBar(
+                PanelObject.ProgressBar(
                     id = "stamina",
                     left = DataDistance.Percent(value = Percentage(value = 50)),
                     top = DataDistance.Percent(value = Percentage(value = 0)),
@@ -164,8 +164,8 @@ private fun VitalBarsPreview() {
                     text = "stamina 26/26",
                 ),
             )
-        DialogContent(
-            dataObjects = dialogData,
+        PanelContent(
+            dataObjects = panelData,
             modifier = Modifier.size(400.dp, 24.dp),
             executeCommand = {},
             style = StyleDefinition(),
@@ -175,10 +175,10 @@ private fun VitalBarsPreview() {
 
 @Preview
 @Composable
-private fun CombatDialogPreview() {
-    val dialogData =
+private fun CombatPanelPreview() {
+    val panelData =
         listOf(
-            DialogObject.Image(
+            PanelObject.Image(
                 id = "unsheathe",
                 left = DataDistance.Pixels(value = -50),
                 top = DataDistance.Pixels(value = 3),
@@ -192,7 +192,7 @@ private fun CombatDialogPreview() {
                 cmd = "_ready weapon",
                 echo = "ready weapon",
             ),
-            DialogObject.Image(
+            PanelObject.Image(
                 id = "readyshield",
                 left = DataDistance.Pixels(value = 3),
                 top = null,
@@ -206,7 +206,7 @@ private fun CombatDialogPreview() {
                 cmd = "_ready shield",
                 echo = "ready shield",
             ),
-            DialogObject.Image(
+            PanelObject.Image(
                 id = "sheathe",
                 left = DataDistance.Pixels(value = 8),
                 top = null,
@@ -220,7 +220,7 @@ private fun CombatDialogPreview() {
                 cmd = "_store weapon",
                 echo = "store weapon",
             ),
-            DialogObject.Image(
+            PanelObject.Image(
                 id = "storeshield",
                 left = DataDistance.Pixels(value = 3),
                 top = null,
@@ -234,7 +234,7 @@ private fun CombatDialogPreview() {
                 cmd = "_store shield",
                 echo = "store shield",
             ),
-            DialogObject.Link(
+            PanelObject.Link(
                 id = "lnConfigure",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 30),
@@ -248,7 +248,7 @@ private fun CombatDialogPreview() {
                 cmd = "_cmbtpl configure dialog",
                 echo = "configure",
             ),
-            DialogObject.ProgressBar(
+            PanelObject.ProgressBar(
                 id = "pbarStance",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 51),
@@ -261,7 +261,7 @@ private fun CombatDialogPreview() {
                 value = Percentage(value = 100),
                 text = "defensive(100 %)",
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdDefStance",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 70),
@@ -275,7 +275,7 @@ private fun CombatDialogPreview() {
                 cmd = "_stance defensive",
                 echo = "stance defensive",
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdOffStance",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 70),
@@ -289,7 +289,7 @@ private fun CombatDialogPreview() {
                 cmd = "_stance offensive",
                 echo = "stance offensive",
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdTarget",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 93),
@@ -303,7 +303,7 @@ private fun CombatDialogPreview() {
                 cmd = "target random",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdAttack",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 93),
@@ -317,7 +317,7 @@ private fun CombatDialogPreview() {
                 cmd = "attack",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdHide",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 116),
@@ -331,7 +331,7 @@ private fun CombatDialogPreview() {
                 cmd = "hide",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdAmbush",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 116),
@@ -345,7 +345,7 @@ private fun CombatDialogPreview() {
                 cmd = "ambush",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdJab",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 139),
@@ -359,7 +359,7 @@ private fun CombatDialogPreview() {
                 cmd = "jab",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdPunch",
                 left = DataDistance.Pixels(value = 38),
                 top = DataDistance.Pixels(value = 139),
@@ -373,7 +373,7 @@ private fun CombatDialogPreview() {
                 cmd = "punch",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdGrapple",
                 left = DataDistance.Pixels(value = 91),
                 top = DataDistance.Pixels(value = 139),
@@ -387,7 +387,7 @@ private fun CombatDialogPreview() {
                 cmd = "grapple",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdKick",
                 left = DataDistance.Pixels(value = 150),
                 top = DataDistance.Pixels(value = 139),
@@ -401,7 +401,7 @@ private fun CombatDialogPreview() {
                 cmd = "kick",
                 echo = null,
             ),
-            DialogObject.Button(
+            PanelObject.Button(
                 id = "cmdQuickstrike",
                 left = DataDistance.Pixels(value = 53),
                 top = DataDistance.Pixels(value = 165),
@@ -415,7 +415,7 @@ private fun CombatDialogPreview() {
                 cmd = "quickstrike % uDEQuickstrike %",
                 echo = null,
             ),
-            DialogObject.Link(
+            PanelObject.Link(
                 id = "lnSkin",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 191),
@@ -429,7 +429,7 @@ private fun CombatDialogPreview() {
                 cmd = "_skin",
                 echo = "skin",
             ),
-            DialogObject.Link(
+            PanelObject.Link(
                 id = "lnSearch",
                 left = null,
                 top = null,
@@ -443,7 +443,7 @@ private fun CombatDialogPreview() {
                 cmd = "_search",
                 echo = "search",
             ),
-            DialogObject.Link(
+            PanelObject.Link(
                 id = "lnGrip",
                 left = null,
                 top = null,
@@ -458,8 +458,8 @@ private fun CombatDialogPreview() {
                 echo = "grip",
             ),
         )
-    DialogContent(
-        dataObjects = dialogData,
+    PanelContent(
+        dataObjects = panelData,
         modifier = Modifier.size(190.dp, 219.dp),
         executeCommand = {},
         style = StyleDefinition(),
@@ -469,9 +469,9 @@ private fun CombatDialogPreview() {
 @Preview
 @Composable
 private fun ExperiencePreview() {
-    val dialogData =
+    val panelData =
         listOf(
-            DialogObject.Label(
+            PanelObject.Label(
                 id = "yourLvl",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 0),
@@ -483,7 +483,7 @@ private fun ExperiencePreview() {
                 tooltip = null,
                 value = "Level 0",
             ),
-            DialogObject.ProgressBar(
+            PanelObject.ProgressBar(
                 id = "mindState",
                 left = DataDistance.Pixels(value = 3),
                 top = DataDistance.Pixels(value = 45),
@@ -496,7 +496,7 @@ private fun ExperiencePreview() {
                 value = Percentage(value = 0),
                 text = "clear as a bell",
             ),
-            DialogObject.ProgressBar(
+            PanelObject.ProgressBar(
                 id = "nextLvlPB",
                 left = DataDistance.Pixels(value = 3),
                 top = DataDistance.Pixels(value = 20),
@@ -509,7 +509,7 @@ private fun ExperiencePreview() {
                 value = Percentage(value = 6),
                 text = "2365 until next level",
             ),
-            DialogObject.Label(
+            PanelObject.Label(
                 id = "PTPs",
                 left = DataDistance.Pixels(value = 20),
                 top = DataDistance.Pixels(value = 0),
@@ -521,7 +521,7 @@ private fun ExperiencePreview() {
                 tooltip = "Physical Training Points",
                 value = "5 PTPs",
             ),
-            DialogObject.Label(
+            PanelObject.Label(
                 id = "MTPs",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 0),
@@ -533,7 +533,7 @@ private fun ExperiencePreview() {
                 tooltip = "Mental Training Points",
                 value = "3 MTPs",
             ),
-            DialogObject.Label(
+            PanelObject.Label(
                 id = "p2m",
                 left = DataDistance.Pixels(value = 20),
                 top = DataDistance.Pixels(value = 0),
@@ -545,7 +545,7 @@ private fun ExperiencePreview() {
                 tooltip = "Physical tps that have been converted to Mental tps",
                 value = "0 P2M",
             ),
-            DialogObject.Label(
+            PanelObject.Label(
                 id = "m2p",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 0),
@@ -557,7 +557,7 @@ private fun ExperiencePreview() {
                 tooltip = "Mental tps that have been converted to Physical tps",
                 value = "0 M2P",
             ),
-            DialogObject.Link(
+            PanelObject.Link(
                 id = "exprLNK",
                 left = DataDistance.Pixels(value = 20),
                 top = DataDistance.Pixels(value = 0),
@@ -571,7 +571,7 @@ private fun ExperiencePreview() {
                 cmd = "experie",
                 echo = "experience",
             ),
-            DialogObject.Link(
+            PanelObject.Link(
                 id = "goalsLNK",
                 left = DataDistance.Pixels(value = 0),
                 top = DataDistance.Pixels(value = 0),
@@ -586,8 +586,8 @@ private fun ExperiencePreview() {
                 echo = "goals",
             ),
         )
-    DialogContent(
-        dataObjects = dialogData,
+    PanelContent(
+        dataObjects = panelData,
         modifier = Modifier.size(190.dp, 200.dp),
         executeCommand = {},
         style = StyleDefinition(),

@@ -13,7 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import warlockfe.warlock3.compose.ui.window.DialogContent
+import warlockfe.warlock3.compose.ui.window.PanelContent
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 
 /**
@@ -35,7 +35,7 @@ fun GameStatusCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             val vitalBars by viewModel.vitalBars.objects.collectAsState()
-            DialogContent(
+            PanelContent(
                 dataObjects = vitalBars,
                 modifier = Modifier.fillMaxWidth().height(16.dp),
                 executeCommand = {

@@ -95,7 +95,7 @@ fun DecoratedWindowScope.WarlockApp(
             if (gameViewModel != null && cid != null) {
                 WindowSettingsLiveContext(
                     connectedCharacterId = cid,
-                    windowInfo = gameViewModel.windows,
+                    windowInfo = gameViewModel.residentWindows,
                     openWindow = gameViewModel::openWindow,
                     closeWindow = gameViewModel::closeWindow,
                 )

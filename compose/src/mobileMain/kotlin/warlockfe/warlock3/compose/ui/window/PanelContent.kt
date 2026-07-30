@@ -1,13 +1,18 @@
-package warlockfe.warlock3.compose.desktop.ui.window
+package warlockfe.warlock3.compose.ui.window
 
-import androidx.compose.foundation.ContextMenuArea
-import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -19,53 +24,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.foundation.theme.LocalContentColor
-import org.jetbrains.jewel.ui.component.Link
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.styling.LinkColors
-import org.jetbrains.jewel.ui.component.styling.LinkStyle
-import org.jetbrains.jewel.ui.component.styling.LinkUnderlineBehavior
-import org.jetbrains.jewel.ui.theme.defaultButtonStyle
-import org.jetbrains.jewel.ui.theme.linkStyle
-import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
-import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
-import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
-import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
+import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.model.SkinObject
-import warlockfe.warlock3.compose.ui.window.DialogButton
-import warlockfe.warlock3.compose.ui.window.DialogImage
-import warlockfe.warlock3.compose.ui.window.DialogObjectLayout
-import warlockfe.warlock3.compose.ui.window.DialogProgressBar
-import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
-private val labelStyle
-    @Composable
-    get() =
-        JewelTheme.defaultTextStyle.copy(
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-        )
-
 @Composable
-fun DesktopDialogContent(
-    dataObjects: List<DialogObject>,
+fun PanelContent(
+    dataObjects: List<PanelObject>,
     executeCommand: (String) -> Unit,
     style: StyleDefinition,
     modifier: Modifier = Modifier,
@@ -78,24 +64,24 @@ fun DesktopDialogContent(
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
     ) {
-        DialogObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
+        PanelObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
             when (data) {
-                is DialogObject.Skin -> {
-                    DialogSkin(data = data)
+                is PanelObject.Skin -> {
+                    PanelSkin(data = data)
                 }
 
-                is DialogObject.ProgressBar -> {
+                is PanelObject.ProgressBar -> {
                     ProgressBarWithColorMenu(
                         skinObject = skinObject,
                         data = data,
                     )
                 }
 
-                is DialogObject.Label -> {
+                is PanelObject.Label -> {
                     Label(skinObject = skinObject, data = data)
                 }
 
-                is DialogObject.Link -> {
+                is PanelObject.Link -> {
                     Link(
                         skinObject = skinObject,
                         data = data,
@@ -103,8 +89,8 @@ fun DesktopDialogContent(
                     )
                 }
 
-                is DialogObject.Image -> {
-                    DialogImage(
+                is PanelObject.Image -> {
+                    PanelImage(
                         skinObject = skinObject,
                         data = data,
                         executeCommand = execute,
@@ -112,74 +98,53 @@ fun DesktopDialogContent(
                     )
                 }
 
-                is DialogObject.Button -> {
-                    val colors = JewelTheme.defaultButtonStyle.colors
-                    DialogButton(
+                is PanelObject.Button -> {
+                    val baseColor = MaterialTheme.colorScheme.primaryContainer
+                    val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
+                    val borderBrush = SolidColor(MaterialTheme.colorScheme.outline)
+                    PanelButton(
                         onClick = { data.cmd?.let(execute) },
                         modifier = Modifier.padding(2.dp),
-                        shape = RoundedCornerShape(2.dp),
+                        shape = MaterialTheme.shapes.extraSmall,
                         background = { isHovered, isPressed ->
-                            when {
-                                isPressed -> colors.backgroundPressed
-                                isHovered -> colors.backgroundHovered
-                                else -> colors.background
+                            var color = baseColor
+                            if (isPressed) {
+                                color = lerp(color, stateLayer, 0.10f)
                             }
+                            if (isHovered) {
+                                lerp(color, stateLayer, 0.08f)
+                            }
+                            SolidColor(color)
                         },
-                        border = { isHovered, isPressed ->
-                            when {
-                                isPressed -> colors.borderPressed
-                                isHovered -> colors.borderHovered
-                                else -> colors.border
-                            }
-                        },
-                    ) { isHovered, isPressed ->
-                        val textColor =
-                            when {
-                                isPressed -> colors.contentPressed
-                                isHovered -> colors.contentHovered
-                                else -> colors.content
-                            }
+                        border = { _, _ -> borderBrush },
+                    ) { _, _ ->
                         Text(
                             modifier = Modifier.align(Alignment.Center),
                             text = data.value ?: "",
-                            color = textColor,
-                            style = labelStyle,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                         )
                     }
                 }
 
-                is DialogObject.DropDownBox -> {
-                    // Seed/refresh the shared value from the server; local selections override until the next update.
-                    LaunchedEffect(data.id, data.value) { data.value?.let { values[data.id] = it } }
-                    if (data.options.isEmpty()) {
-                        Box {}
-                    } else {
-                        val selectedValue = values[data.id] ?: data.value
-                        val selected = data.options.firstOrNull { it.value == selectedValue } ?: data.options.first()
-                        WarlockDropdownSelect(
-                            items = data.options,
-                            selected = selected,
-                            onSelect = { option ->
-                                values[data.id] = option.value
-                                data.cmd?.let(execute)
-                            },
-                            modifier = Modifier.padding(2.dp),
-                            itemLabelBuilder = { it.text },
-                            textStyle = labelStyle,
+                is PanelObject.DropDownBox -> {
+                    DropDownBox(data = data, values = values, executeCommand = execute)
+                }
+
+                is PanelObject.Radio -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = data.selected,
+                            onClick = { data.cmd?.let(execute) },
                         )
+                        data.text?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        }
                     }
                 }
 
-                is DialogObject.Radio -> {
-                    WarlockRadioButtonRow(
-                        selected = data.selected,
-                        onClick = { data.cmd?.let(execute) },
-                        text = data.text ?: "",
-                    )
-                }
-
-                is DialogObject.UpDownEditBox -> {
+                is PanelObject.UpDownEditBox -> {
                     UpDownEditBox(data = data, values = values, executeCommand = execute)
                 }
             }
@@ -189,7 +154,7 @@ fun DesktopDialogContent(
 
 private val commandVariableRegex = Regex("%([^%]+)%")
 
-// Replaces `%<id>%` placeholders in a command with the current values of the dialog's value-bearing
+// Replaces `%<id>%` placeholders in a command with the current values of the panel's value-bearing
 // widgets (e.g. "prep %dDBSpell0%" -> "prep 401"). Unknown placeholders are left as-is.
 private fun substitute(
     cmd: String,
@@ -197,8 +162,38 @@ private fun substitute(
 ): String = commandVariableRegex.replace(cmd) { match -> values[match.groupValues[1]] ?: match.value }
 
 @Composable
+private fun DropDownBox(
+    data: PanelObject.DropDownBox,
+    values: SnapshotStateMap<String, String>,
+    executeCommand: (String) -> Unit,
+) {
+    // Seed/refresh the shared value from the server; local selections below override until the next update.
+    LaunchedEffect(data.id, data.value) { data.value?.let { values[data.id] = it } }
+    var expanded by remember { mutableStateOf(false) }
+    val selectedValue = values[data.id] ?: data.value
+    val currentLabel = data.options.firstOrNull { it.value == selectedValue }?.text ?: selectedValue ?: ""
+    Box(modifier = Modifier.padding(2.dp)) {
+        TextButton(onClick = { expanded = true }) {
+            Text(currentLabel, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            data.options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.text) },
+                    onClick = {
+                        expanded = false
+                        values[data.id] = option.value
+                        data.cmd?.let(executeCommand)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun UpDownEditBox(
-    data: DialogObject.UpDownEditBox,
+    data: PanelObject.UpDownEditBox,
     values: SnapshotStateMap<String, String>,
     executeCommand: (String) -> Unit,
 ) {
@@ -217,13 +212,13 @@ private fun UpDownEditBox(
         Text(
             "−",
             modifier = Modifier.clickable { step(-1) }.padding(horizontal = 6.dp),
-            style = labelStyle,
+            style = MaterialTheme.typography.labelSmall,
         )
-        Text(current.toString(), style = labelStyle)
+        Text(current.toString(), style = MaterialTheme.typography.labelSmall)
         Text(
             "+",
             modifier = Modifier.clickable { step(1) }.padding(horizontal = 6.dp),
-            style = labelStyle,
+            style = MaterialTheme.typography.labelSmall,
         )
     }
 }
@@ -234,10 +229,15 @@ private enum class ProgressBarColorTarget {
     Text,
 }
 
+/**
+ * A vital/progress bar that applies the current character's saved color overrides and, on long
+ * press, offers a menu to recolor (or reset) the bar/background/text - the touch equivalent of the
+ * desktop right-click color menu. Reads and persists through [LocalProgressBarSettings].
+ */
 @Composable
 private fun ProgressBarWithColorMenu(
     skinObject: SkinObject?,
-    data: DialogObject.ProgressBar,
+    data: PanelObject.ProgressBar,
 ) {
     val settingsState = LocalProgressBarSettings.current
     val setting = settingsState.settings[data.id]
@@ -245,24 +245,69 @@ private fun ProgressBarWithColorMenu(
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
     // Merge the saved font override (if any) onto the base label style.
+    val baseStyle = MaterialTheme.typography.labelSmall
     val style =
-        labelStyle.copy(
-            fontFamily = setting?.fontFamily?.let { createFontFamily(it) } ?: labelStyle.fontFamily,
-            fontSize = setting?.fontSize?.sp ?: labelStyle.fontSize,
-            fontWeight = setting?.fontWeight?.let { FontWeight(it) } ?: labelStyle.fontWeight,
+        baseStyle.copy(
+            fontFamily = setting?.fontFamily?.let { createFontFamily(it) } ?: baseStyle.fontFamily,
+            fontSize = setting?.fontSize?.sp ?: baseStyle.fontSize,
+            fontWeight = setting?.fontWeight?.let { FontWeight(it) } ?: baseStyle.fontWeight,
         )
 
+    var menuOpen by remember { mutableStateOf(false) }
     var editingTarget by remember { mutableStateOf<ProgressBarColorTarget?>(null) }
     var editingFont by remember { mutableStateOf(false) }
 
-    ContextMenuArea(
-        items = {
-            listOf(
-                ContextMenuItem("Change bar color ...") { editingTarget = ProgressBarColorTarget.Bar },
-                ContextMenuItem("Change background color ...") { editingTarget = ProgressBarColorTarget.Background },
-                ContextMenuItem("Change text color ...") { editingTarget = ProgressBarColorTarget.Text },
-                ContextMenuItem("Change font ...") { editingFont = true },
-                ContextMenuItem("Reset colors") {
+    Box {
+        PanelProgressBar(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(data.id) {
+                        detectTapGestures(onLongPress = { menuOpen = true })
+                    },
+            skinObject = skinObject,
+            data = data,
+            barColorOverride = barColor,
+            backgroundColorOverride = backgroundColor,
+            textColorOverride = textColor,
+            style = style,
+        )
+        DropdownMenu(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Change bar color") },
+                onClick = {
+                    menuOpen = false
+                    editingTarget = ProgressBarColorTarget.Bar
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Change background color") },
+                onClick = {
+                    menuOpen = false
+                    editingTarget = ProgressBarColorTarget.Background
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Change text color") },
+                onClick = {
+                    menuOpen = false
+                    editingTarget = ProgressBarColorTarget.Text
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Change font") },
+                onClick = {
+                    menuOpen = false
+                    editingFont = true
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Reset colors") },
+                onClick = {
+                    menuOpen = false
                     settingsState.saveColors(
                         data.id,
                         WarlockColor.Unspecified,
@@ -271,17 +316,7 @@ private fun ProgressBarWithColorMenu(
                     )
                 },
             )
-        },
-    ) {
-        DialogProgressBar(
-            modifier = Modifier.fillMaxSize(),
-            skinObject = skinObject,
-            data = data,
-            barColorOverride = barColor,
-            backgroundColorOverride = backgroundColor,
-            textColorOverride = textColor,
-            style = style,
-        )
+        }
     }
 
     editingTarget?.let { target ->
@@ -291,8 +326,8 @@ private fun ProgressBarWithColorMenu(
                 ProgressBarColorTarget.Background -> backgroundColor
                 ProgressBarColorTarget.Text -> textColor
             }
-        DesktopColorPickerDialog(
-            initialColor = current.toColor(),
+        ColorPickerDialog(
+            initialColor = current.toColor().takeIf { it.isSpecified },
             onCloseRequest = { editingTarget = null },
             onColorSelect = { chosen ->
                 settingsState.saveColors(
@@ -307,7 +342,7 @@ private fun ProgressBarWithColorMenu(
     }
 
     if (editingFont) {
-        DesktopFontPickerDialog(
+        FontPickerDialog(
             current =
                 FontConfig(
                     family = setting?.fontFamily,
@@ -326,7 +361,7 @@ private fun ProgressBarWithColorMenu(
 @Composable
 private fun Label(
     skinObject: SkinObject?,
-    data: DialogObject.Label,
+    data: PanelObject.Label,
 ) {
     val colorGroup = skinObject.getColorGroup()
     Box(modifier = Modifier.padding(horizontal = 4.dp)) {
@@ -334,7 +369,7 @@ private fun Label(
             modifier = Modifier.align(Alignment.Center),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = labelStyle,
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
     }
@@ -343,42 +378,31 @@ private fun Label(
 @Composable
 private fun Link(
     skinObject: SkinObject?,
-    data: DialogObject.Link,
+    data: PanelObject.Link,
     executeCommand: (String) -> Unit,
 ) {
-    // A dialog link uses its skin-defined text color, falling back to the user-configurable "link"
-    // preset (the same one that styles links in the text stream), then to Jewel's themed link color.
-    // It keeps that color across the interactive states (the always-on underline is the affordance),
-    // dims a little while pressed, and fades further when disabled.
+    // Render a panel link as a low-emphasis text button. The label uses its skin-defined color,
+    // falling back to the user-configurable "link" preset (the same one that styles stream-text
+    // links), then to the Material primary color.
     val linkPreset = LocalStyleMap.current.getIgnoringCase("link")
-    val presetColor = linkPreset?.textColor.toColor().takeOrElse { JewelTheme.linkStyle.colors.content }
-    val linkColor = skinObject.getColorGroup().text.takeOrElse { presetColor }
-    val colors =
-        LinkColors(
-            content = linkColor,
-            contentHovered = linkColor,
-            contentFocused = linkColor,
-            contentPressed = linkColor.copy(alpha = 0.7f),
-            contentVisited = linkColor,
-            contentDisabled = linkColor.copy(alpha = 0.4f),
-        )
-    Link(
+    val presetColor = linkPreset?.textColor.toColor().takeOrElse { MaterialTheme.colorScheme.primary }
+    val content = skinObject.getColorGroup().text.takeOrElse { presetColor }
+    TextButton(
         modifier = Modifier.padding(horizontal = 6.dp),
-        text = data.value ?: "",
         onClick = { executeCommand(data.cmd ?: "") },
-        textStyle = labelStyle,
-        style =
-            LinkStyle(
-                colors = colors,
-                metrics = JewelTheme.linkStyle.metrics,
-                icons = JewelTheme.linkStyle.icons,
-                underlineBehavior = LinkUnderlineBehavior.ShowAlways,
-            ),
-    )
+    ) {
+        Text(
+            text = data.value ?: "",
+            color = content,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            textDecoration = TextDecoration.Underline,
+        )
+    }
 }
 
 @Composable
-private fun DialogSkin(data: DialogObject.Skin) {
+private fun PanelSkin(data: PanelObject.Skin) {
     val skin = LocalSkin.current
     val skinObject = skin.getIgnoringCase(data.name)
     val image = skinObject?.image?.data?.let { Base64.decode(it) }

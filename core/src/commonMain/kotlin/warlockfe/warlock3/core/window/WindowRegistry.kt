@@ -30,7 +30,7 @@ interface WindowRegistry {
         value: StyledString,
     )
 
-    fun getOrCreateDialog(name: String): DialogState
+    fun getOrCreatePanel(name: String): PanelState
 
     fun setCharacterId(characterId: String)
 

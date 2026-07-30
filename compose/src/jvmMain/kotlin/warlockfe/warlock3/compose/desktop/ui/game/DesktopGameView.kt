@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -36,6 +37,9 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +50,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
@@ -63,6 +68,7 @@ import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.text.toFontConfig
 import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowInfo
+import warlockfe.warlock3.core.window.WindowType
 
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -126,7 +132,7 @@ fun DesktopGameView(
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {
-                    val windows by viewModel.windows.collectAsState()
+                    val windows by viewModel.residentWindows.collectAsState()
                     val scope = rememberCoroutineScope()
                     val sidebarBackground =
                         defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
@@ -151,7 +157,14 @@ fun DesktopGameView(
                         contentPadding = PaddingValues(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        windows.sortedBy { it.title }.forEach { window ->
+                        // Streams and panels are different kinds of window (a scrolling text log vs a
+                        // fixed layout of widgets), so each gets its own collapsible category instead
+                        // of one mixed alphabetical list. A category with no windows is not rendered.
+                        val streams = remember(windows) { windows.ofType(WindowType.STREAM) }
+                        val panels = remember(windows) { windows.ofType(WindowType.PANEL) }
+                        var streamsExpanded by remember { mutableStateOf(true) }
+                        var panelsExpanded by remember { mutableStateOf(true) }
+                        val item: @Composable (WindowInfo) -> Unit = { window ->
                             DesktopWindowListItem(
                                 color = sidebarTextColor,
                                 windowInfo = window,
@@ -165,8 +178,35 @@ fun DesktopGameView(
                                         }
                                     }
                                 },
-                                onClear = { viewModel.clearStream(window.name) },
+                                // A panel is a fixed layout of widgets with no text stream behind it,
+                                // so there is nothing for "Clear window" to clear.
+                                onClear =
+                                    if (window.windowType == WindowType.STREAM) {
+                                        { viewModel.clearStream(window.name) }
+                                    } else {
+                                        null
+                                    },
                             )
+                        }
+                        if (streams.isNotEmpty()) {
+                            DesktopWindowCategoryHeader(
+                                color = sidebarTextColor,
+                                label = "Streams",
+                                count = streams.size,
+                                expanded = streamsExpanded,
+                                onClick = { streamsExpanded = !streamsExpanded },
+                            )
+                            if (streamsExpanded) streams.forEach { item(it) }
+                        }
+                        if (panels.isNotEmpty()) {
+                            DesktopWindowCategoryHeader(
+                                color = sidebarTextColor,
+                                label = "Panels",
+                                count = panels.size,
+                                expanded = panelsExpanded,
+                                onClick = { panelsExpanded = !panelsExpanded },
+                            )
+                            if (panelsExpanded) panels.forEach { item(it) }
                         }
                     }
                 }
@@ -252,13 +292,62 @@ fun DesktopGameView(
     }
 }
 
+/** The sidebar's windows of one kind, in the alphabetical order the flat list used to show them in. */
+private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> = filter { it.windowType == type }.sortedBy { it.title }
+
+/**
+ * A collapsible category header in the window-list sidebar. Uses the same disclosure-triangle idiom
+ * as the settings window list: a rotating [Res.drawable.arrow_right], a dimmed label, and a count.
+ *
+ * [color] is the sidebar's text color, which follows the character's skin when it sets one. The
+ * header dims it rather than reaching for a chrome color, so it cannot end up light-on-light when a
+ * light skin background meets the dark app theme.
+ */
+@Composable
+private fun DesktopWindowCategoryHeader(
+    color: Color,
+    label: String,
+    count: Int,
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel = if (expanded) "Collapse" else "Expand",
+                    role = Role.Button,
+                    onClick = onClick,
+                ).semantics(mergeDescendants = true) {
+                    stateDescription = if (expanded) "Expanded" else "Collapsed"
+                }.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // The arrow is decorative: the row carries the label, the open/closed state, and the action.
+        // Merging is what pulls the label onto the button node; neither clickable nor a bare
+        // semantics block merges, which would leave a button with a state but no name.
+        Image(
+            modifier = Modifier.size(12.dp).rotate(if (expanded) 90f else 0f),
+            painter = painterResource(Res.drawable.arrow_right),
+            colorFilter = ColorFilter.tint(color.copy(alpha = 0.5f)),
+            contentDescription = null,
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = "$label ($count)",
+            color = color.copy(alpha = 0.7f),
+        )
+    }
+}
+
 @Composable
 private fun DesktopWindowListItem(
     color: Color,
     windowInfo: WindowInfo,
     isOpen: Boolean,
     onClick: (Boolean) -> Unit,
-    onClear: () -> Unit,
+    onClear: (() -> Unit)?,
 ) {
     // Per the design: a leading status dot (filled accent when shown, hollow + dimmed when hidden)
     // replaces the old eye icons, and a trailing "..." opens the per-window menu. Clicking the row
@@ -301,14 +390,16 @@ private fun DesktopWindowListItem(
             ) {
                 Text(if (isOpen) "Hide window" else "Show window")
             }
-            selectableItem(
-                selected = false,
-                onClick = {
-                    dismiss()
-                    onClear()
-                },
-            ) {
-                Text("Clear window")
+            if (onClear != null) {
+                selectableItem(
+                    selected = false,
+                    onClick = {
+                        dismiss()
+                        onClear()
+                    },
+                ) {
+                    Text("Clear window")
+                }
             }
         }
     }

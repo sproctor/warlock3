@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.protocol
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
@@ -74,7 +74,7 @@ data class WraythSettingsInfoEvent(
 ) : WraythEvent
 
 data class WraythDialogObjectEvent(
-    val data: DialogObject,
+    val data: PanelObject,
 ) : WraythEvent
 
 data class WraythDialogDataEvent(
@@ -123,6 +123,11 @@ data class WraythStreamWindowEvent(
 
 data class WraythDialogWindowEvent(
     val window: WraythDialogWindow,
+) : WraythEvent
+
+/** The game closing a panel it opened. Only ever carries an id. */
+data class WraythCloseDialogEvent(
+    val id: String,
 ) : WraythEvent
 
 data object WraythNavEvent : WraythEvent

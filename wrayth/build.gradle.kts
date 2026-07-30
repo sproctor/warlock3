@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
+import com.android.build.api.withAndroid
 import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
@@ -21,6 +21,7 @@ allOpen {
 
 val generateKotlinGrammarSource =
     tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
+        description = "Generate ANTLR grammars."
         dependsOn("cleanGenerateKotlinGrammarSource")
 
         // ANTLR .g4 files are under {example-project}/antlr
@@ -93,9 +94,8 @@ kotlin {
         common {
             group("commonJvmAndroid") {
                 withJvm()
-                withAndroidTarget()
-                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
-                withCompilations { it is KotlinMultiplatformAndroidCompilation }
+                @Suppress("UnstableApiUsage")
+                withAndroid()
             }
         }
     }

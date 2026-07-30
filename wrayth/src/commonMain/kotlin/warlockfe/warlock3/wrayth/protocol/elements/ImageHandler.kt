@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
@@ -11,7 +11,7 @@ class ImageHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
         val id = element.attributes["id"] ?: return null
         return WraythDialogObjectEvent(
-            DialogObject.Image(
+            PanelObject.Image(
                 id = id,
                 name = element.attributes["name"],
                 cmd = element.attributes["cmd"],

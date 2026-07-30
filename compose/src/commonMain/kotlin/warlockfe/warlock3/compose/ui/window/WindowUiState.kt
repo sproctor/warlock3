@@ -31,8 +31,8 @@ data class StreamWindowData(
     val stream: ComposeTextStream,
 ) : WindowData
 
-data class DialogWindowData(
-    val dialogData: ComposeDialogState,
+data class PanelWindowData(
+    val panelData: ComposePanelState,
 ) : WindowData
 
 /**

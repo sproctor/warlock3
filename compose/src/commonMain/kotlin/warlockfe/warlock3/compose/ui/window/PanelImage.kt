@@ -24,14 +24,14 @@ import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
 @Composable
-internal fun DialogImage(
+internal fun PanelImage(
     skinObject: SkinObject?,
-    data: DialogObject.Image,
+    data: PanelObject.Image,
     executeCommand: (String) -> Unit,
     contentColor: Color,
 ) {

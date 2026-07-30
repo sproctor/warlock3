@@ -8,7 +8,6 @@ import warlockfe.warlock3.wrayth.util.WraythDialogWindow
 
 class OpenDialogHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
-        // We receive a location here that we're ignoring to have a bit more control over where things are placed
         val id = element.attributes["id"] ?: return null
         return WraythDialogWindowEvent(
             WraythDialogWindow(

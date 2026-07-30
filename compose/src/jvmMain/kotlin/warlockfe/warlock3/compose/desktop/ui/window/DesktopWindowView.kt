@@ -63,6 +63,7 @@ import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowType
 
 private val titleSmallStyle =
     TextStyle(
@@ -110,7 +111,7 @@ fun DesktopWindowView(
             Box(
                 modifier =
                     surfaceModifier
-                        // Clip so a body that paints its own background (dialog panels, user styles) does not
+                        // Clip so a body that paints its own background (panels, user styles) does not
                         // overdraw the rounded corners.
                         .clip(frameShape)
                         .background(gameChrome.panel, frameShape)
@@ -148,7 +149,14 @@ fun DesktopWindowView(
                 location = location,
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
-                onClearClick = clearStream,
+                // A panel is a fixed layout of widgets with no text stream behind it, so there is
+                // nothing for "Clear window" to clear. Key off the window kind rather than the data:
+                // a restored window has no data until the server re-announces it, and offering Clear
+                // in that gap would mint the phantom stream this guard exists to prevent.
+                onClearClick =
+                    clearStream.takeIf {
+                        uiState.windowInfo.value?.windowType == WindowType.STREAM
+                    },
                 onCloseClick = onCloseClick,
             )
         },
@@ -195,14 +203,14 @@ fun DesktopWindowView(
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
-        dialogContent = { data, style ->
+        panelContent = { data, style ->
             WarlockScrollableColumn(
                 Modifier
                     .fillMaxSize()
                     .background(style.backgroundColor.toColor()),
             ) {
-                val dataObjects by data.dialogData.objects.collectAsState()
-                DesktopDialogContent(
+                val dataObjects by data.panelData.objects.collectAsState()
+                DesktopPanelContent(
                     dataObjects = dataObjects,
                     modifier = Modifier.padding(8.dp),
                     executeCommand = { command ->

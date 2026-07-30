@@ -1,6 +1,6 @@
 package warlockfe.warlock3.wrayth.protocol.elements
 
-import warlockfe.warlock3.core.client.DialogObject
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.BaseElementListener
 import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
@@ -11,7 +11,7 @@ class LabelHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
         val id = element.attributes["id"] ?: return null
         return WraythDialogObjectEvent(
-            DialogObject.Label(
+            PanelObject.Label(
                 id = id,
                 value = element.attributes["value"],
                 left = element.attributes["left"]?.let { parseDistance(it) },

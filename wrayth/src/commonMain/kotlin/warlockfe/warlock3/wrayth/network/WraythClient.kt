@@ -29,10 +29,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
+import warlockfe.warlock3.core.client.ClientCloseWindowEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
+import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
@@ -57,6 +59,7 @@ import warlockfe.warlock3.core.util.replaceOrAdd
 import warlockfe.warlock3.core.window.ClientBackgroundImage
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
+import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
@@ -65,6 +68,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythBackgroundEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythClearStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCliEvent
+import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCompassEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
@@ -453,24 +457,24 @@ class WraythClient(
 
             is WraythDialogDataEvent -> {
                 if (event.id == null) {
-                    dialogDataId?.let { windowRegistry.getOrCreateDialog(it).updateState() }
+                    dialogDataId?.let { windowRegistry.getOrCreatePanel(it).updateState() }
                 }
                 dialogDataId = event.id
                 if (event.clear && event.id != null) {
-                    this@WraythClient.windowRegistry.getOrCreateDialog(event.id).clear()
+                    this@WraythClient.windowRegistry.getOrCreatePanel(event.id).clear()
                 }
             }
 
             is WraythDialogObjectEvent -> {
                 // TODO: record this data somewhere
                 // val data = event.data
-                // if (data is DialogObject.ProgressBar) {
+                // if (data is PanelObject.ProgressBar) {
                 //    _properties.value = _properties.value +
                 // (data.id to data.value.value.toString()) +
                 //            ((data.id + "text") to (data.text ?: ""))
                 // }
                 dialogDataId?.let {
-                    windowRegistry.getOrCreateDialog(it).setObject(event.data)
+                    windowRegistry.getOrCreatePanel(it).setObject(event.data)
                 }
             }
 
@@ -552,24 +556,37 @@ class WraythClient(
             }
 
             is WraythDialogWindowEvent -> {
+                // Every panel the game opens is registered, resident or not, so it has a title and a
+                // type to render with. Resident is what decides whether it may be saved, not whether
+                // we know about it. An openDialog for a panel that is already up is the game updating
+                // its contents, which the nested dialogData has already done by now.
                 val window = event.window
-                if (window.resident) {
-                    lateinit var info: WindowInfo
-                    _windowInfo.update { windowInfo ->
-                        val existing = windowInfo.firstOrNull { it.name == window.id }
-                        info =
-                            WindowInfo(
-                                name = window.id,
-                                title = window.title,
-                                subtitle = null,
-                                windowType = WindowType.DIALOG,
-                                showTimestamps = false,
-                                backgroundImage = existing?.backgroundImage,
-                            )
-                        windowInfo.replaceOrAdd(info) { it.name == info.name }
-                    }
-                    notifyListeners(ClientWindowInfoEvent(info))
+                lateinit var info: WindowInfo
+                _windowInfo.update { windowInfo ->
+                    val existing = windowInfo.firstOrNull { it.name == window.id }
+                    info =
+                        WindowInfo(
+                            name = window.id,
+                            title = window.title,
+                            subtitle = null,
+                            windowType = WindowType.PANEL,
+                            showTimestamps = false,
+                            backgroundImage = existing?.backgroundImage,
+                            resident = window.resident,
+                        )
+                    windowInfo.replaceOrAdd(info) { it.name == info.name }
                 }
+                notifyListeners(ClientWindowInfoEvent(info))
+                notifyListeners(
+                    ClientOpenWindowEvent(
+                        name = window.id,
+                        location = WindowLocation.fromProtocol(window.location),
+                    ),
+                )
+            }
+
+            is WraythCloseDialogEvent -> {
+                notifyListeners(ClientCloseWindowEvent(name = event.id))
             }
 
             is WraythActionEvent -> {

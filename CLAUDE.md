@@ -63,6 +63,43 @@ The project is organized into 6 Gradle modules:
 
 **Dependency Versions**: All dependency versions are centralized in `gradle/libs.versions.toml`. Use version catalog references (e.g., `libs.ktor.client.core`) in build files.
 
+## Verifying Protocol Questions Against the Real Client
+
+**Do not guess at protocol semantics.** When the question is what a tag means,
+how the official client renders it, or what it sends back, check it against the
+real Wrayth client instead of reasoning from our parser.
+`utils/wrayth-lab/wlab.py` runs `Wrayth.exe` under wine against a fake game
+server on loopback, feeds it any protocol fragment, and screenshots the result.
+It needs wine with Wrayth installed in the prefix, plus `xwininfo` and
+ImageMagick; on Wayland it works through XWayland.
+
+```bash
+# fake server + client, connected and past login
+utils/wrayth-lab/wlab.py up
+
+# feed it protocol, one line per text line
+utils/wrayth-lab/wlab.py send '<pushBold/>bold text<popBold/>'
+
+# see what it rendered, and what it sent back to the server
+utils/wrayth-lab/wlab.py shot bold.png
+utils/wrayth-lab/wlab.py recv
+
+utils/wrayth-lab/wlab.py stop
+```
+
+Two properties make this an unusually direct oracle. Wrayth **reports its own
+parse failures back over the socket** as
+`<c>_error error at offset N: ...`, so `recv` answers "does the client accept
+this construct" without reading a single pixel. And because it parses one line
+at a time, **each protocol line must be well formed on its own**: a tag opened
+on one line and closed on the next is an error, which is worth remembering when
+writing test fixtures for our own parser.
+
+`utils/wrayth-lab/README.md` covers the rest, including how the client is
+actually launched (it ignores a `.sal` path on its command line and wants
+`/G<code>/H<host>/P<port>/K<key>` switches instead) and the wine and screenshot
+quirks that took the longest to work out.
+
 ## Distribution
 
 Releases are cut by pushing a git tag; `.github/workflows/release.yaml` does the
