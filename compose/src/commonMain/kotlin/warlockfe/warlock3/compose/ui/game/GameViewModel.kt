@@ -631,7 +631,7 @@ class GameViewModel(
                     }
 
                     is ClientCloseWindowEvent -> {
-                        closeWindow(event.name)
+                        closeWindowFromGame(event.name)
                     }
 
                     is ClientWindowInfoEvent -> {
@@ -1260,6 +1260,9 @@ class GameViewModel(
      * the panel exists, not where the user keeps it. That is read from the repository rather than the
      * observed settings because these tags arrive during login, possibly before the settings flow has
      * emitted, and guessing "unsaved" there would overwrite the user's placement.
+     *
+     * A window the user closed is left closed. The game announces its panels on every login, so
+     * without that a panel the user does not want would come back every time they connect.
      */
     private fun openWindowFromGame(
         name: String,
@@ -1270,8 +1273,10 @@ class GameViewModel(
         val location = protocolLocation?.takeUnless { it == WindowLocation.MAIN } ?: return
         viewModelScope.launch {
             val characterId = client.characterId.value
-            if (characterId != null && windowSettingsRepository.getWindowLocation(characterId, name) != null) {
-                return@launch
+            if (characterId != null) {
+                // A window the user closed stays closed until they ask for it back.
+                if (windowSettingsRepository.isHidden(characterId, name)) return@launch
+                if (windowSettingsRepository.getWindowLocation(characterId, name) != null) return@launch
             }
             if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return@launch
             openWindowAt(name = name, location = location)
@@ -1331,14 +1336,37 @@ class GameViewModel(
      */
     private fun canSaveWindow(name: String): Boolean = windows.value.firstOrNull { it.name == name }?.resident != false
 
+    /**
+     * The user closing a window. It is remembered as hidden, so the game cannot bring it back with an
+     * `openDialog` - the user has to ask for it again.
+     */
     fun closeWindow(name: String) {
+        removeWindow(name = name, hide = true)
+    }
+
+    /**
+     * The game closing a panel with a `closeDialog` tag. It leaves the layout but is not hidden: the
+     * game is free to open it again later.
+     */
+    private fun closeWindowFromGame(name: String) {
+        removeWindow(name = name, hide = false)
+    }
+
+    private fun removeWindow(
+        name: String,
+        hide: Boolean,
+    ) {
         windowUiStateLists.forEach { windowUiStates ->
             windowUiStates.update { states -> states.filter { it.name != name } }
         }
         if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                windowSettingsRepository.closeWindow(characterId = characterId, name = name)
+                if (hide) {
+                    windowSettingsRepository.closeWindow(characterId = characterId, name = name)
+                } else {
+                    windowSettingsRepository.removeWindowFromLayout(characterId = characterId, name = name)
+                }
             }
         }
     }

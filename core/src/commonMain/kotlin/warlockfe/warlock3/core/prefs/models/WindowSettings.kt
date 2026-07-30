@@ -22,6 +22,8 @@ data class WindowSettings(
     val font: FontConfig?,
     val monoFont: FontConfig?,
     val nameFilter: Boolean,
+    // The user closed this window and has not asked for it back, so the game must not reopen it.
+    val hidden: Boolean = false,
     // bold mirrors weight == 700 for legacy readers; tri-state (null = inherit) otherwise, matching
     // WindowStyleConfig so a round trip through the appearance editor doesn't lose an explicit "off".
     val bold: Boolean = false,

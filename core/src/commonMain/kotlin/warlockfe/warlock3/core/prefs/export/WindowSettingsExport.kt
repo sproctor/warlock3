@@ -17,6 +17,9 @@ data class WindowSettingsExport(
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
+    // The user closed this window, so the game must not reopen it. Defaults false for exports written
+    // before the flag existed.
+    val hidden: Boolean = false,
     val bold: Boolean = false,
     val italic: Boolean? = false,
     val underline: Boolean? = false,
