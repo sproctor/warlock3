@@ -54,6 +54,7 @@ class WindowSettingsRepository(
                         font = style.font,
                         monoFont = style.monoFont,
                         nameFilter = style.nameFilter,
+                        hidden = style.hidden,
                         bold = style.bold,
                         italic = style.italic,
                         underline = style.underline,
@@ -66,6 +67,29 @@ class WindowSettingsRepository(
                 .sortedWith(compareBy { it.position })
         }
 
+    /**
+     * The dock this character has saved for a window, or null when they have never placed it or have
+     * closed it. Read straight from the DAO rather than from [observeWindowSettings] so a caller can
+     * ask before the observed settings have had a chance to emit.
+     */
+    suspend fun getWindowLocation(
+        characterId: String,
+        name: String,
+    ): WindowLocation? = windowSettingsDao.getByName(characterId = characterId, name = name)?.location
+
+    /**
+     * Whether the user has closed this window and not asked for it back, in which case the game must
+     * not reopen it. Read from the config store's loaded state, which is populated at startup.
+     */
+    fun isHidden(
+        characterId: String,
+        name: String,
+    ): Boolean = store.current(characterId).windows[name]?.hidden == true
+
+    /**
+     * Places a window in the layout. Anything in the layout is by definition not hidden, so this also
+     * clears the flag [closeWindow] sets.
+     */
     suspend fun openWindow(
         characterId: String,
         name: String,
@@ -75,15 +99,47 @@ class WindowSettingsRepository(
         logger.d { "openWindow: $characterId, $name, $location, $position" }
         withContext(NonCancellable) {
             windowSettingsDao.openWindow(characterId, name, location, position)
+            setHidden(characterId = characterId, name = name, hidden = false)
         }
     }
 
+    /**
+     * The user closing a window: it leaves the layout and is marked hidden, so the game cannot bring
+     * it back with an `openDialog`. Use [removeWindowFromLayout] when the game is the one closing it.
+     */
     suspend fun closeWindow(
         characterId: String,
         name: String,
     ) {
         withContext(NonCancellable) {
             windowSettingsDao.closeWindow(characterId, name)
+            setHidden(characterId = characterId, name = name, hidden = true)
+        }
+    }
+
+    /**
+     * A window leaving the layout without the user asking, because the game closed the panel. It is
+     * not marked hidden, so a later `openDialog` for it opens it again.
+     */
+    suspend fun removeWindowFromLayout(
+        characterId: String,
+        name: String,
+    ) {
+        withContext(NonCancellable) {
+            windowSettingsDao.closeWindow(characterId, name)
+        }
+    }
+
+    private suspend fun setHidden(
+        characterId: String,
+        name: String,
+        hidden: Boolean,
+    ) {
+        // Don't rewrite the character's config file when the flag already reads that way.
+        if (isHidden(characterId = characterId, name = name) == hidden) return
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            current.copy(windows = current.windows + (name to existing.copy(hidden = hidden)))
         }
     }
 

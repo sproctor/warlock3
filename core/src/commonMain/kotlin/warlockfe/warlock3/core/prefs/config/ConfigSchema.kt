@@ -163,6 +163,11 @@ data class WindowStyleConfig(
     @TomlInline
     val monoFont: FontConfig? = null,
     val nameFilter: Boolean = false,
+    // Set when the user closes the window, and cleared when they ask for it back. It keeps a window
+    // the user does not want from being reopened by the game, which announces its panels with an
+    // openDialog on every login. Distinct from "not in the layout": a window that has simply never
+    // been placed has no saved location either, and that one the game may open.
+    val hidden: Boolean = false,
     // Base text-style flags for the window, edited via the shared appearance style editor. Tri-state
     // (null = inherit) except bold, which mirrors weight == 700 (see PresetStyleConfig).
     val bold: Boolean = false,

@@ -64,8 +64,10 @@ import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.openUrl
+import warlockfe.warlock3.core.client.ClientCloseWindowEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
+import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.SendCommandType
@@ -259,6 +261,18 @@ class GameViewModel(
         }
 
     val windows = client.windowInfo
+
+    // The windows a character owns: the ones that can be listed, shown, hidden and given saved
+    // settings. Transient panels the game opened stay out of it, so they never reach the window list
+    // or the settings tree - the game is the only thing that opens and closes them.
+    val residentWindows =
+        windows
+            .map { infos -> infos.filter { it.resident } }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
 
     // The connected character's id, used by the settings dialog to decide whether its live window
     // info (titles, hidden-window list) applies to the character being edited.
@@ -610,6 +624,14 @@ class GameViewModel(
 
                     is ClientOpenUrlEvent -> {
                         openUrl(event.url)
+                    }
+
+                    is ClientOpenWindowEvent -> {
+                        openWindowFromGame(name = event.name, protocolLocation = event.location)
+                    }
+
+                    is ClientCloseWindowEvent -> {
+                        closeWindowFromGame(event.name)
                     }
 
                     is ClientWindowInfoEvent -> {
@@ -1132,6 +1154,7 @@ class GameViewModel(
             mutableStates.add(targetIndex.coerceAtMost(mutableStates.size), uiState)
             mutableStates
         }
+        if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.moveWindowToPosition(
@@ -1148,6 +1171,7 @@ class GameViewModel(
         name: String,
         width: Int,
     ) {
+        if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setWindowWidth(
@@ -1163,6 +1187,7 @@ class GameViewModel(
         name: String,
         height: Int,
     ) {
+        if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.setWindowHeight(
@@ -1213,60 +1238,135 @@ class GameViewModel(
                 val range = if (fromIndex < clampedToIndex) fromIndex..clampedToIndex else clampedToIndex..fromIndex
                 for (index in range) {
                     val name = windowUiStates.value[index].name
+                    // A transient panel takes part in the reorder on screen but records nothing.
+                    if (!canSaveWindow(name)) continue
                     logger.d { "Setting window $name position to $index" }
-                    windowSettingsRepository.setPosition(characterId, windowUiStates.value[index].name, index)
+                    windowSettingsRepository.setPosition(characterId, name, index)
                 }
             }
         }
     }
 
     fun openWindow(name: String) {
+        openWindowAt(name = name, location = WindowLocation.TOP)
+    }
+
+    /**
+     * Opens a window because the game asked for it with an `openDialog` tag, at the location the
+     * protocol named. A window the game names somewhere we do not dock panels stays registered but
+     * closed, which is what the game's own client does with one.
+     *
+     * A window the character already has a saved dock for is left to the saved layout: the tag says
+     * the panel exists, not where the user keeps it. That is read from the repository rather than the
+     * observed settings because these tags arrive during login, possibly before the settings flow has
+     * emitted, and guessing "unsaved" there would overwrite the user's placement.
+     *
+     * A window the user closed is left closed. The game announces its panels on every login, so
+     * without that a panel the user does not want would come back every time they connect.
+     */
+    private fun openWindowFromGame(
+        name: String,
+        protocolLocation: WindowLocation?,
+    ) {
+        if (name == _mainWindowUiState.value.name) return
+        // MAIN belongs to the main text window; a panel can never take that slot.
+        val location = protocolLocation?.takeUnless { it == WindowLocation.MAIN } ?: return
+        viewModelScope.launch {
+            val characterId = client.characterId.value
+            if (characterId != null) {
+                // A window the user closed stays closed until they ask for it back.
+                if (windowSettingsRepository.isHidden(characterId, name)) return@launch
+                if (windowSettingsRepository.getWindowLocation(characterId, name) != null) return@launch
+            }
+            if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return@launch
+            openWindowAt(name = name, location = location)
+        }
+    }
+
+    private fun openWindowAt(
+        name: String,
+        location: WindowLocation,
+    ) {
+        val windowUiStates = getWindowUiStatesForLocation(location)
         var newState: WindowUiState? = null
-        _topWindowUiStates.update { states ->
+        windowUiStates.update { states ->
             if (states.any { it.name == name }) {
                 states
             } else {
-                val entity = windowSettings.value.firstOrNull { it.name == name }
-                val windowInfo = windows.value.firstOrNull { it.name == name }
-                newState =
-                    WindowUiState(
-                        name = name,
-                        windowInfo = mutableStateOf(windowInfo),
-                        style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
-                        font = entity?.font,
-                        monoFont = entity?.monoFont,
-                        width = null,
-                        height = null,
-                        nameFilter = entity?.nameFilter ?: false,
-                        data = createWindowData(windowInfo?.windowType, name),
-                    )
+                newState = buildWindowUiState(name)
                 states + newState
             }
         }
-        newState?.let { state ->
-            (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
-        }
-        if (newState != null) {
-            viewModelScope.launch {
-                client.characterId.value?.let { characterId ->
-                    windowSettingsRepository.openWindow(
-                        characterId = characterId,
-                        name = name,
-                        location = WindowLocation.TOP,
-                        position = _topWindowUiStates.value.lastIndex,
-                    )
-                }
+        val state = newState ?: return
+        (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
+        if (!canSaveWindow(name)) return
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                windowSettingsRepository.openWindow(
+                    characterId = characterId,
+                    name = name,
+                    location = location,
+                    position = windowUiStates.value.lastIndex,
+                )
             }
         }
     }
 
+    private fun buildWindowUiState(name: String): WindowUiState {
+        val entity = windowSettings.value.firstOrNull { it.name == name }
+        val windowInfo = windows.value.firstOrNull { it.name == name }
+        return WindowUiState(
+            name = name,
+            windowInfo = mutableStateOf(windowInfo),
+            style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
+            font = entity?.font,
+            monoFont = entity?.monoFont,
+            width = entity?.width,
+            height = entity?.height,
+            nameFilter = entity?.nameFilter ?: false,
+            data = createWindowData(windowInfo?.windowType, name),
+        )
+    }
+
+    /**
+     * Whether a window's layout may be written to the character's settings. A transient panel is
+     * still moved, resized and closed in the running layout, it just leaves nothing behind. Windows
+     * the game has not told us about are treated as savable, so a stream window still restores where
+     * the user put it if its info has not arrived yet.
+     */
+    private fun canSaveWindow(name: String): Boolean = windows.value.firstOrNull { it.name == name }?.resident != false
+
+    /**
+     * The user closing a window. It is remembered as hidden, so the game cannot bring it back with an
+     * `openDialog` - the user has to ask for it again.
+     */
     fun closeWindow(name: String) {
+        removeWindow(name = name, hide = true)
+    }
+
+    /**
+     * The game closing a panel with a `closeDialog` tag. It leaves the layout but is not hidden: the
+     * game is free to open it again later.
+     */
+    private fun closeWindowFromGame(name: String) {
+        removeWindow(name = name, hide = false)
+    }
+
+    private fun removeWindow(
+        name: String,
+        hide: Boolean,
+    ) {
         windowUiStateLists.forEach { windowUiStates ->
             windowUiStates.update { states -> states.filter { it.name != name } }
         }
+        if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                windowSettingsRepository.closeWindow(characterId = characterId, name = name)
+                if (hide) {
+                    windowSettingsRepository.closeWindow(characterId = characterId, name = name)
+                } else {
+                    windowSettingsRepository.removeWindowFromLayout(characterId = characterId, name = name)
+                }
             }
         }
     }
