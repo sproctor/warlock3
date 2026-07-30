@@ -115,6 +115,9 @@ ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 intellij-platform-icons = { module = "com.jetbrains.intellij.platform:icons", version.ref = "intellij" }
+intellij-platform-icons-api = { module = "com.jetbrains.intellij.platform:icons-api", version.ref = "intellij" }
+intellij-platform-icons-api-rendering = { module = "com.jetbrains.intellij.platform:icons-api-rendering", version.ref = "intellij" }
+intellij-platform-icons-impl = { module = "com.jetbrains.intellij.platform:icons-impl", version.ref = "intellij" }
 jewel-standalone = { module = "org.jetbrains.jewel:jewel-int-ui-standalone", version.ref = "jewel" }
 jewel-decorated-window = { module = "org.jetbrains.jewel:jewel-int-ui-decorated-window", version.ref = "jewel" }
 lua-kmp = { group = "com.seanproctor", name = "lua-kmp", version.ref = "lua-kmp" }
