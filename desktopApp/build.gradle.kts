@@ -70,6 +70,7 @@ val releaseVersion: String = resolvedReleaseVersion ?: "0.0.0-dev"
 val jbrRuntime =
     javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
+        @Suppress("UnstableApiUsage")
         vendor = JvmVendorSpec.JETBRAINS
     }
 

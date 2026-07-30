@@ -1,8 +1,6 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidCompilation
-import org.gradle.api.tasks.bundling.Zip
-import org.gradle.api.tasks.bundling.ZipEntryCompression
+import com.android.build.api.withAndroid
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
@@ -60,14 +58,12 @@ kotlin {
         common {
             group("commonJvmAndroid") {
                 withJvm()
-                withAndroidTarget()
-                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
-                withCompilations { it is KotlinMultiplatformAndroidCompilation }
+                @Suppress("UnstableApiUsage")
+                withAndroid()
             }
             group("mobile") {
-                withAndroidTarget()
-                // Following line can be removed when https://issuetracker.google.com/issues/442950553 is fixed
-                withCompilations { it is KotlinMultiplatformAndroidCompilation }
+                @Suppress("UnstableApiUsage")
+                withAndroid()
                 // Keep the ios subgroup declared even when iOS targets are skipped so
                 // the mobileMain source set is still created for androidMain.
                 group("ios") {
@@ -217,6 +213,7 @@ tasks.register<JavaExec>("streamNetworkBenchmark") {
 // churn between builds. The zip readers on every platform (java.util.zip on JVM/Android, kompress on
 // iOS) handle DEFLATE, so the archive is compressed.
 val packageDefaultSkin by tasks.registering(Zip::class) {
+    description = "Creates skin zip from skin files"
     from(layout.projectDirectory.dir("skin"))
     archiveFileName.set("skin.zip")
     destinationDirectory.set(layout.buildDirectory.dir("generated/skin/files"))
