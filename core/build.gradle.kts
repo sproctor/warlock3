@@ -14,6 +14,18 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/** The LWJGL natives classifier for the machine running the build. */
+val lwjglNatives: String =
+    run {
+        val os = System.getProperty("os.name").lowercase()
+        val arm = System.getProperty("os.arch").lowercase().let { it.startsWith("aarch64") || it.startsWith("arm") }
+        when {
+            os.contains("win") -> "natives-windows"
+            os.contains("mac") || os.contains("darwin") -> if (arm) "natives-macos-arm64" else "natives-macos"
+            else -> if (arm) "natives-linux-arm64" else "natives-linux"
+        }
+    }
+
 val generateKotlinGrammarSource =
     tasks.register<AntlrKotlinTask>("generateKotlinGrammarSource") {
 
@@ -117,6 +129,13 @@ kotlin {
                 implementation(libs.antlr.kotlin.runtime)
             }
         }
+        jvmMain {
+            dependencies {
+                // Desktop audio output (DesktopSoundPlayer); the matching natives are added below.
+                implementation(libs.lwjgl.core)
+                implementation(libs.lwjgl.openal)
+            }
+        }
         jvmTest {
             dependencies {
                 implementation(kotlin("test"))
@@ -137,6 +156,13 @@ kotlin {
 }
 
 dependencies {
+    // LWJGL ships its native libraries as classifier artifacts, one per platform. The release
+    // workflow builds each platform on its own runner, so the build host's natives are the ones
+    // that belong in the package. Declared here because variantOf() is not available inside the
+    // multiplatform source set blocks.
+    add("jvmMainRuntimeOnly", variantOf(libs.lwjgl.core) { classifier(lwjglNatives) })
+    add("jvmMainRuntimeOnly", variantOf(libs.lwjgl.openal) { classifier(lwjglNatives) })
+
     // Room
     add("kspAndroid", libs.room.compiler)
     add("kspJvm", libs.room.compiler)
