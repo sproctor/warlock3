@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.files.Path
 import warlockfe.warlock3.compose.ui.window.ComposePanelState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
@@ -544,6 +545,12 @@ class GameViewModel(
                 if (characterId != null) {
                     val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
                     settings.filter { it.location != null }.forEach { entity ->
+                        // A game-announced window may already be up (openWindowFromGame races this
+                        // restore on the same characterId emission), and a reconnect runs the
+                        // restore again over a populated layout - never add a second copy.
+                        if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
+                            return@forEach
+                        }
                         logger.d { "Loading entity: $entity" }
                         val window = windows.value.firstOrNull { it.name == entity.name }
                         val uiState =
@@ -1301,7 +1308,13 @@ class GameViewModel(
         // MAIN belongs to the main text window; a panel can never take that slot.
         val location = protocolLocation?.takeUnless { it == WindowLocation.MAIN } ?: return
         viewModelScope.launch {
-            val characterId = client.characterId.value
+            // The game announces most of its windows before naming the character (GS4 sends the
+            // whole panel list ahead of the <app> tag), and the guards below are meaningless
+            // without the character's saved state - sampling a still-null id here is what used to
+            // reopen hidden panels and duplicate docked ones on every GS4 login. Wait for the id;
+            // the timeout only covers a server that never identifies the character at all.
+            val characterId =
+                withTimeoutOrNull(10_000) { client.characterId.filterNotNull().first() }
             if (characterId != null) {
                 // A window the user closed stays closed until they ask for it back.
                 if (windowSettingsRepository.isHidden(characterId, name)) return@launch
