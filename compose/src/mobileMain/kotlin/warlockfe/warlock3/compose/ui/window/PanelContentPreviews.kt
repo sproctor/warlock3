@@ -167,7 +167,7 @@ private fun VitalBarsPreview() {
         PanelContent(
             dataObjects = panelData,
             modifier = Modifier.size(400.dp, 24.dp),
-            executeCommand = {},
+            onAction = {},
             style = StyleDefinition(),
         )
     }
@@ -461,7 +461,7 @@ private fun CombatPanelPreview() {
     PanelContent(
         dataObjects = panelData,
         modifier = Modifier.size(190.dp, 219.dp),
-        executeCommand = {},
+        onAction = {},
         style = StyleDefinition(),
     )
 }
@@ -589,7 +589,7 @@ private fun ExperiencePreview() {
     PanelContent(
         dataObjects = panelData,
         modifier = Modifier.size(190.dp, 200.dp),
-        executeCommand = {},
+        onAction = {},
         style = StyleDefinition(),
     )
 }

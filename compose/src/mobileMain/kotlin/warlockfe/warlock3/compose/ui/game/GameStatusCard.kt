@@ -38,7 +38,7 @@ fun GameStatusCard(
             PanelContent(
                 dataObjects = vitalBars,
                 modifier = Modifier.fillMaxWidth().height(16.dp),
-                executeCommand = {
+                onAction = {
                     // Vitals are display-only.
                 },
                 style = style,

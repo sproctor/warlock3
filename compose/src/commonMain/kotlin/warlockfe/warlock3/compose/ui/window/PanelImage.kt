@@ -20,46 +20,53 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.allDrawableResources
 import warlockfe.warlock3.compose.generated.resources.broken_image
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
-import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
 @Composable
 internal fun PanelImage(
     skinObject: SkinObject?,
-    data: PanelObject.Image,
-    executeCommand: (String) -> Unit,
+    name: String?,
     contentColor: Color,
+    onClick: (() -> Unit)?,
 ) {
     val skin = LocalSkin.current
     val colorGroup = skinObject.getColorGroup()
-    val imageData = data.name?.let { skin.getIgnoringCase(it) }
+    val imageData = name?.let { skin.getIgnoringCase(it) }
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
     Box(
         modifier =
-            if (data.cmd != null) {
+            if (onClick != null) {
                 Modifier
                     .pointerHoverIcon(PointerIcon.Hand)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
-                    ) {
-                        executeCommand(data.cmd!!)
-                    }
+                        onClick = onClick,
+                    )
             } else {
                 Modifier
             },
         contentAlignment = Alignment.Center,
     ) {
-        val image = (imageData?.image ?: skinObject?.image)?.data?.let { Base64.decode(it) }
+        val imageEntry = imageData?.takeIf { it.image != null } ?: skinObject
+        val image = imageEntry?.image?.data?.let { Base64.decode(it) }
+        val drawable = imageEntry?.image?.name?.let { Res.allDrawableResources[it] }
         if (image != null) {
             AsyncImage(image, contentDescription = null)
+        } else if (drawable != null) {
+            Image(
+                painter = painterResource(drawable),
+                colorFilter = ColorFilter.tint(imageEntry.getColorGroup().text.takeOrElse { contentColor }),
+                contentDescription = null,
+            )
         } else {
             Image(
                 painter = painterResource(Res.drawable.broken_image),
@@ -67,7 +74,7 @@ internal fun PanelImage(
                 contentDescription = null,
             )
         }
-        if (data.cmd != null) {
+        if (onClick != null) {
             val overlayAlpha =
                 when {
                     isPressed && isHovered -> 0.172f

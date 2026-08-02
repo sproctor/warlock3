@@ -43,6 +43,7 @@ import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
@@ -52,7 +53,7 @@ import kotlin.io.encoding.Base64
 @Composable
 fun PanelContent(
     dataObjects: List<PanelObject>,
-    executeCommand: (String) -> Unit,
+    onAction: (WarlockAction) -> Unit,
     style: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
@@ -60,7 +61,10 @@ fun PanelContent(
     // widgets' commands reference them as %<id>% (e.g. "prep %dDBSpell0%", "quickstrike %uDEQuickstrike%").
     // A spinner has no command of its own, so its value lives here until another widget consumes it.
     val values = remember { mutableStateMapOf<String, String>() }
-    val execute: (String) -> Unit = { executeCommand(substitute(it, values)) }
+    val executeWidget: (String, String?) -> Unit = { cmd, echo ->
+        onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
+    }
+    val execute: (String) -> Unit = { executeWidget(it, null) }
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
     ) {
@@ -84,17 +88,37 @@ fun PanelContent(
                 is PanelObject.Link -> {
                     Link(
                         skinObject = skinObject,
-                        data = data,
-                        executeCommand = execute,
+                        text = data.value,
+                        onClick = { data.cmd?.let { executeWidget(it, data.echo) } },
+                    )
+                }
+
+                is PanelObject.MenuLink -> {
+                    Link(
+                        skinObject = skinObject,
+                        text = data.value,
+                        onClick = { data.exist?.let { onAction(WarlockAction.RequestMenu(it, data.noun)) } },
                     )
                 }
 
                 is PanelObject.Image -> {
                     PanelImage(
                         skinObject = skinObject,
-                        data = data,
-                        executeCommand = execute,
+                        name = data.name,
                         contentColor = LocalContentColor.current,
+                        onClick = data.cmd?.let { cmd -> { executeWidget(cmd, data.echo) } },
+                    )
+                }
+
+                is PanelObject.MenuImage -> {
+                    PanelImage(
+                        skinObject = skinObject,
+                        name = data.name,
+                        contentColor = LocalContentColor.current,
+                        onClick =
+                            data.exist?.let { exist ->
+                                { onAction(WarlockAction.RequestMenu(exist, data.noun)) }
+                            },
                     )
                 }
 
@@ -103,7 +127,7 @@ fun PanelContent(
                     val stateLayer = MaterialTheme.colorScheme.onPrimaryContainer
                     val borderBrush = SolidColor(MaterialTheme.colorScheme.outline)
                     PanelButton(
-                        onClick = { data.cmd?.let(execute) },
+                        onClick = { data.cmd?.let { executeWidget(it, data.echo) } },
                         modifier = Modifier.padding(2.dp),
                         shape = MaterialTheme.shapes.extraSmall,
                         background = { isHovered, isPressed ->
@@ -378,8 +402,8 @@ private fun Label(
 @Composable
 private fun Link(
     skinObject: SkinObject?,
-    data: PanelObject.Link,
-    executeCommand: (String) -> Unit,
+    text: String?,
+    onClick: () -> Unit,
 ) {
     // Render a panel link as a low-emphasis text button. The label uses its skin-defined color,
     // falling back to the user-configurable "link" preset (the same one that styles stream-text
@@ -389,10 +413,10 @@ private fun Link(
     val content = skinObject.getColorGroup().text.takeOrElse { presetColor }
     TextButton(
         modifier = Modifier.padding(horizontal = 6.dp),
-        onClick = { executeCommand(data.cmd ?: "") },
+        onClick = onClick,
     ) {
         Text(
-            text = data.value ?: "",
+            text = text ?: "",
             color = content,
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,

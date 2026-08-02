@@ -91,7 +91,13 @@ fun PanelObjectLayout(
         val itemInfos =
             dataObjects.mapIndexed { index, data ->
                 val skinObject = skinObjects.getIgnoringCase(data.id)
-                val imageData = (data as? PanelObject.Image)?.name?.let { skin.getIgnoringCase(it) }
+                val imageName =
+                    when (data) {
+                        is PanelObject.Image -> data.name
+                        is PanelObject.MenuImage -> data.name
+                        else -> null
+                    }
+                val imageData = imageName?.let { skin.getIgnoringCase(it) }
 
                 // Size preference: an explicit pixel size from the image or skin entry, else the
                 // size the server sent. A null target leaves the dimension unconstrained so the

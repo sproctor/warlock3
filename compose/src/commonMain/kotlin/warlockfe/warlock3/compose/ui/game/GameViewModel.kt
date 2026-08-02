@@ -778,6 +778,20 @@ class GameViewModel(
         }
     }
 
+    fun sendWidgetCommand(
+        command: String,
+        echo: String?,
+    ) {
+        viewModelScope.launch {
+            client.sendWidgetCommand(command, echo)
+        }
+    }
+
+    fun requestMenu(
+        exist: String,
+        noun: String?,
+    ): Int = client.requestMenu(exist, noun)
+
     fun sendCommand(command: suspend () -> String) {
         viewModelScope.launch {
             commandHandler(command())
@@ -1249,6 +1263,21 @@ class GameViewModel(
 
     fun openWindow(name: String) {
         openWindowAt(name = name, location = WindowLocation.TOP)
+        notifyPanelVisibility(name, open = true)
+    }
+
+    /**
+     * Tells the server when the user shows or hides a dialog panel, as Wrayth does, so it knows
+     * whether sending that panel's updates is worthwhile.
+     */
+    private fun notifyPanelVisibility(
+        name: String,
+        open: Boolean,
+    ) {
+        if (windows.value.firstOrNull { it.name == name }?.windowType != WindowType.PANEL) return
+        viewModelScope.launch {
+            client.sendCommandDirect(if (open) "_DBOPEN $name" else "_DBCLOSE $name")
+        }
     }
 
     /**
@@ -1342,6 +1371,7 @@ class GameViewModel(
      */
     fun closeWindow(name: String) {
         removeWindow(name = name, hide = true)
+        notifyPanelVisibility(name, open = false)
     }
 
     /**
