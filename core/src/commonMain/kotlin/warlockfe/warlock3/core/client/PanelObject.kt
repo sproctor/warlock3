@@ -152,6 +152,40 @@ sealed class PanelObject {
         val cmd: String?,
         val echo: String?,
     ) : PanelObject()
+
+    // menuLink: a link that opens the server-driven context menu for [exist] (the same menu an
+    // `<a exist=...>` link in stream text opens), instead of running a fixed command.
+    data class MenuLink(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val value: String?,
+        val exist: String?,
+        val noun: String?,
+    ) : PanelObject()
+
+    // menuImage: an image (e.g. a demeanor face in the befriend panel) that opens the same
+    // server-driven context menu as [MenuLink].
+    data class MenuImage(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val name: String?,
+        val exist: String?,
+        val noun: String?,
+    ) : PanelObject()
 }
 
 sealed class DataDistance {

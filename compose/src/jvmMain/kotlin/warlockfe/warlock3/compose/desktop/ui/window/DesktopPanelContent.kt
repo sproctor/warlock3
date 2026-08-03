@@ -49,6 +49,7 @@ import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
@@ -66,7 +67,7 @@ private val labelStyle
 @Composable
 fun DesktopPanelContent(
     dataObjects: List<PanelObject>,
-    executeCommand: (String) -> Unit,
+    onAction: (WarlockAction) -> Unit,
     style: StyleDefinition,
     modifier: Modifier = Modifier,
 ) {
@@ -74,7 +75,10 @@ fun DesktopPanelContent(
     // widgets' commands reference them as %<id>% (e.g. "prep %dDBSpell0%", "quickstrike %uDEQuickstrike%").
     // A spinner has no command of its own, so its value lives here until another widget consumes it.
     val values = remember { mutableStateMapOf<String, String>() }
-    val execute: (String) -> Unit = { executeCommand(substitute(it, values)) }
+    val executeWidget: (String, String?) -> Unit = { cmd, echo ->
+        onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
+    }
+    val execute: (String) -> Unit = { executeWidget(it, null) }
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
     ) {
@@ -98,24 +102,44 @@ fun DesktopPanelContent(
                 is PanelObject.Link -> {
                     Link(
                         skinObject = skinObject,
-                        data = data,
-                        executeCommand = execute,
+                        text = data.value,
+                        onClick = { data.cmd?.let { executeWidget(it, data.echo) } },
+                    )
+                }
+
+                is PanelObject.MenuLink -> {
+                    Link(
+                        skinObject = skinObject,
+                        text = data.value,
+                        onClick = { data.exist?.let { onAction(WarlockAction.RequestMenu(it, data.noun)) } },
                     )
                 }
 
                 is PanelObject.Image -> {
                     PanelImage(
                         skinObject = skinObject,
-                        data = data,
-                        executeCommand = execute,
+                        name = data.name,
                         contentColor = LocalContentColor.current,
+                        onClick = data.cmd?.let { cmd -> { executeWidget(cmd, data.echo) } },
+                    )
+                }
+
+                is PanelObject.MenuImage -> {
+                    PanelImage(
+                        skinObject = skinObject,
+                        name = data.name,
+                        contentColor = LocalContentColor.current,
+                        onClick =
+                            data.exist?.let { exist ->
+                                { onAction(WarlockAction.RequestMenu(exist, data.noun)) }
+                            },
                     )
                 }
 
                 is PanelObject.Button -> {
                     val colors = JewelTheme.defaultButtonStyle.colors
                     PanelButton(
-                        onClick = { data.cmd?.let(execute) },
+                        onClick = { data.cmd?.let { executeWidget(it, data.echo) } },
                         modifier = Modifier.padding(2.dp),
                         shape = RoundedCornerShape(2.dp),
                         background = { isHovered, isPressed ->
@@ -343,8 +367,8 @@ private fun Label(
 @Composable
 private fun Link(
     skinObject: SkinObject?,
-    data: PanelObject.Link,
-    executeCommand: (String) -> Unit,
+    text: String?,
+    onClick: () -> Unit,
 ) {
     // A panel link uses its skin-defined text color, falling back to the user-configurable "link"
     // preset (the same one that styles links in the text stream), then to Jewel's themed link color.
@@ -364,8 +388,8 @@ private fun Link(
         )
     Link(
         modifier = Modifier.padding(horizontal = 6.dp),
-        text = data.value ?: "",
-        onClick = { executeCommand(data.cmd ?: "") },
+        text = text ?: "",
+        onClick = onClick,
         textStyle = labelStyle,
         style =
             LinkStyle(

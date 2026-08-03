@@ -744,15 +744,7 @@ class WraythClient(
         } else if (cmd.exist != null) {
             styleStack.addLast(
                 WarlockStyle.Link(
-                    WarlockAction.OpenMenu {
-                        val menuId = menuCount++
-                        _menuData.value = WarlockMenuData(menuId, emptyList())
-                        currentCmd = cmd
-                        scope.launch {
-                            sendCommandDirect("_menu #${cmd.exist} $menuId")
-                        }
-                        menuId
-                    },
+                    WarlockAction.OpenMenu { requestMenu(cmd) },
                 ),
             )
         } else {
@@ -860,6 +852,31 @@ class WraythClient(
             commandQueue.send(line)
             SendCommandType.COMMAND
         }
+
+    override suspend fun sendWidgetCommand(
+        command: String,
+        echo: String?,
+    ) {
+        // Wrayth semantics: the widget's cmd goes to the server as-is (it is often an internal form
+        // like "_ready weapon") and only the echo attribute, when present, is shown to the user.
+        echo?.let { printCommand(it) }
+        sendCommandDirect(command)
+    }
+
+    override fun requestMenu(
+        exist: String,
+        noun: String?,
+    ): Int = requestMenu(WraythCmd(coord = null, noun = noun, exist = exist))
+
+    private fun requestMenu(cmd: WraythCmd): Int {
+        val menuId = menuCount++
+        _menuData.value = WarlockMenuData(menuId, emptyList())
+        currentCmd = cmd
+        scope.launch {
+            sendCommandDirect("_menu #${cmd.exist} $menuId")
+        }
+        return menuId
+    }
 
     override suspend fun sendCommandDirect(command: String) {
         withContext(writeContext) {

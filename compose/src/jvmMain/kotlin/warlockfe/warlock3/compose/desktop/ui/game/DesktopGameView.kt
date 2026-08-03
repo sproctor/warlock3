@@ -245,6 +245,15 @@ fun DesktopGameView(
                                 action.onClick()
                             }
 
+                            is WarlockAction.SendWidgetCommand -> {
+                                viewModel.sendWidgetCommand(action.command, action.echo)
+                                null
+                            }
+
+                            is WarlockAction.RequestMenu -> {
+                                viewModel.requestMenu(action.exist, action.noun)
+                            }
+
                             else -> {
                                 null
                             }

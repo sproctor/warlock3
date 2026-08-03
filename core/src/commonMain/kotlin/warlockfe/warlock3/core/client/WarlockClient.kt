@@ -37,6 +37,20 @@ interface WarlockClient {
 
     suspend fun sendCommandDirect(command: String)
 
+    // A panel widget's command: sends [command] to the server verbatim without the normal command
+    // echo, showing [echo] as the echoed text when present (Wrayth semantics).
+    suspend fun sendWidgetCommand(
+        command: String,
+        echo: String?,
+    )
+
+    // Requests the server-driven context menu for [exist] (a menuLink/menuImage widget or a text
+    // link). Returns the menu id; the response arrives via [menuData].
+    fun requestMenu(
+        exist: String,
+        noun: String?,
+    ): Int
+
     suspend fun print(message: StyledString)
 
     suspend fun debug(message: String)

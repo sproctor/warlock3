@@ -119,7 +119,7 @@ internal fun WindowViewScaffold(
         content: @Composable () -> Unit,
     ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
-    panelContent: @Composable (data: PanelWindowData, style: StyleDefinition) -> Unit,
+    panelContent: @Composable (data: PanelWindowData, style: StyleDefinition, onAction: (WarlockAction) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val window by uiState.windowInfo
@@ -184,7 +184,33 @@ internal fun WindowViewScaffold(
                 }
 
                 is PanelWindowData -> {
-                    panelContent(data, uiState.style.mergeWith(defaultStyle))
+                    // Panel widgets (menuLink/menuImage) open the same server-driven context menu
+                    // as links in stream text: the widget's action returns a menu id, and the popup
+                    // renders once the server's menu response arrives under that id. The click
+                    // position is observed in the Initial pass (before the widget consumes the
+                    // press) so the popup can anchor where the user clicked.
+                    var clickOffset by remember { mutableStateOf<Offset?>(null) }
+                    var openMenuId by remember { mutableStateOf<Int?>(null) }
+                    val currentOnActionClick by rememberUpdatedState(onActionClick)
+                    Box(
+                        Modifier.pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    if (event.type == PointerEventType.Press) {
+                                        clickOffset = event.changes.firstOrNull()?.position
+                                    }
+                                }
+                            }
+                        },
+                    ) {
+                        panelContent(data, uiState.style.mergeWith(defaultStyle)) { action ->
+                            openMenuId = currentOnActionClick(action)
+                        }
+                        if (menuData != null && menuData.id == openMenuId) {
+                            actionContextMenu(clickOffset, menuData) { openMenuId = null }
+                        }
+                    }
                 }
 
                 else -> {
