@@ -12,7 +12,9 @@ class OpenDialogHandler : BaseElementListener() {
         return WraythDialogWindowEvent(
             WraythDialogWindow(
                 id = id,
-                title = element.attributes["title"] ?: id,
+                // Titles use Windows menu-mnemonic escaping: "Friends && Enemies" displays a
+                // single ampersand.
+                title = (element.attributes["title"] ?: id).replace("&&", "&"),
                 type = element.attributes["type"],
                 location = element.attributes["location"],
                 resident = element.attributes["resident"]?.startsWith(prefix = "t", ignoreCase = true) == true,

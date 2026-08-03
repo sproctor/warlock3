@@ -450,7 +450,7 @@ fun GameBottomBar(
             PanelContent(
                 dataObjects = vitalBars,
                 modifier = Modifier.fillMaxWidth().height(16.dp),
-                executeCommand = {
+                onAction = {
                     // Cannot execute commands from vitals bar
                 },
                 style = style,
@@ -518,6 +518,15 @@ internal fun GameViewModel.onWindowAction(action: WarlockAction): Int? =
 
         is WarlockAction.OpenMenu -> {
             action.onClick()
+        }
+
+        is WarlockAction.SendWidgetCommand -> {
+            sendWidgetCommand(action.command, action.echo)
+            null
+        }
+
+        is WarlockAction.RequestMenu -> {
+            requestMenu(action.exist, action.noun)
         }
 
         else -> {

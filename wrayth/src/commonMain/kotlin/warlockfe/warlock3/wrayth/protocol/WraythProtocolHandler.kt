@@ -33,6 +33,8 @@ import warlockfe.warlock3.wrayth.protocol.elements.LaunchURLHandler
 import warlockfe.warlock3.wrayth.protocol.elements.LeftHandler
 import warlockfe.warlock3.wrayth.protocol.elements.LinkHandler
 import warlockfe.warlock3.wrayth.protocol.elements.MenuHandler
+import warlockfe.warlock3.wrayth.protocol.elements.MenuImageHandler
+import warlockfe.warlock3.wrayth.protocol.elements.MenuLinkHandler
 import warlockfe.warlock3.wrayth.protocol.elements.MiHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ModeHandler
 import warlockfe.warlock3.wrayth.protocol.elements.NavHandler
@@ -92,6 +94,8 @@ class WraythProtocolHandler {
             "left" to LeftHandler(),
             "link" to LinkHandler(),
             "menu" to MenuHandler(),
+            "menuimage" to MenuImageHandler(),
+            "menulink" to MenuLinkHandler(),
             "mi" to MiHandler(),
             "mode" to ModeHandler(),
             "nav" to NavHandler(),

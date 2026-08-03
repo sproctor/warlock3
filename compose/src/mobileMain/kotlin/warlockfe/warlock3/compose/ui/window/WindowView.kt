@@ -167,7 +167,7 @@ fun WindowView(
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
-        panelContent = { data, style ->
+        panelContent = { data, style, onAction ->
             ScrollableColumn(
                 Modifier
                     .fillMaxSize()
@@ -177,9 +177,7 @@ fun WindowView(
                 PanelContent(
                     dataObjects = dataObjects,
                     modifier = Modifier.padding(8.dp),
-                    executeCommand = { command ->
-                        onActionClick(WarlockAction.SendCommand(command))
-                    },
+                    onAction = onAction,
                     style = style,
                 )
             }

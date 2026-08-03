@@ -106,6 +106,62 @@ class WraythProtocolHandlerTests {
     }
 
     @Test
+    fun menuLinkParsesExistAndNoun() {
+        // A row from the GS4 befriend (Friends & Enemies) panel.
+        val link =
+            parsePanelObject<PanelObject.MenuLink>(
+                "<menuLink id=\"friend1\" value=\"Medikel\" exist=\"-10246518\" noun=\"Medikel\" " +
+                    "align=\"nw\" top=\"0\" left=\"0\" width=\"100\"/>",
+            )
+
+        assertEquals("friend1", link.id)
+        assertEquals("Medikel", link.value)
+        assertEquals("-10246518", link.exist)
+        assertEquals("Medikel", link.noun)
+        assertEquals("nw", link.align)
+    }
+
+    @Test
+    fun menuImageParsesFaceAndTooltip() {
+        val image =
+            parsePanelObject<PanelObject.MenuImage>(
+                "<menuImage id=\"demeanor1\" name=\"friendlyFace\" tooltip=\"Friendly\" exist=\"-10246518\" " +
+                    "noun=\"Medikel\" align=\"nw\" top=\"0\" left=\"100\" height=\"25\" width=\"25\"/>",
+            )
+
+        assertEquals("demeanor1", image.id)
+        assertEquals("friendlyFace", image.name)
+        assertEquals("Friendly", image.tooltip)
+        assertEquals("-10246518", image.exist)
+        assertEquals("Medikel", image.noun)
+    }
+
+    @Test
+    fun befriendRowParsesAllThreeWidgets() {
+        // A full befriend dialogData line as the game sends it: name link, demeanor face, remove
+        // button. The remove image keeps its cmd/echo pair.
+        val objects =
+            WraythProtocolHandler()
+                .parseLine(
+                    "<dialogData id=\"befriend\"><menuLink id=\"friend1\" value=\"Medikel\" exist=\"-10246518\" " +
+                        "noun=\"Medikel\" align=\"nw\" top=\"0\" left=\"0\" width=\"100\"/>" +
+                        "<menuImage id=\"demeanor1\" name=\"friendlyFace\" tooltip=\"Friendly\" exist=\"-10246518\" " +
+                        "noun=\"Medikel\" align=\"nw\" top=\"0\" left=\"100\" height=\"25\" width=\"25\"/>" +
+                        "<image id='remove1' name='crossFace' cmd='befriend clear 1' align='nw' top=\"0\" " +
+                        "left=\"130\" height=\"25\" width=\"25\" tooltip=\"Remove\" echo=\"befriend clear 1\"/>" +
+                        "</dialogData>",
+                ).filterIsInstance<WraythDialogObjectEvent>()
+                .map { it.data }
+
+        assertEquals(3, objects.size)
+        val remove = objects.filterIsInstance<PanelObject.Image>().single()
+        assertEquals("crossFace", remove.name)
+        assertEquals("befriend clear 1", remove.cmd)
+        assertEquals("befriend clear 1", remove.echo)
+        assertEquals("Remove", remove.tooltip)
+    }
+
+    @Test
     fun upDownEditBoxParsesBounds() {
         val box = parsePanelObject<PanelObject.UpDownEditBox>("<upDownEditBox id='uDEQuickstrike' min='-60' max='60' value='-1'/>")
 
@@ -135,6 +191,22 @@ class WraythProtocolHandlerTests {
         assertEquals("Combat", window.title)
         assertEquals("dynamic", window.type)
         assertEquals("right", window.location)
+        assertEquals(true, window.resident)
+    }
+
+    @Test
+    fun openDialogCollapsesMnemonicAmpersandsInTitle() {
+        // The befriend panel's title uses Windows menu-mnemonic escaping on the wire: Wrayth
+        // displays "Friends &amp;&amp; Enemies" as "Friends & Enemies".
+        val window =
+            parseDialogWindow(
+                "<openDialog type=\"dynamic\" id=\"befriend\" title=\"Friends &amp;&amp; Enemies\" " +
+                    "location=\"right\" target=\"befriend\" height=\"165\" resident=\"true\">" +
+                    "<dialogData id=\"befriend\"></dialogData></openDialog>",
+            )
+
+        assertEquals("befriend", window.id)
+        assertEquals("Friends & Enemies", window.title)
         assertEquals(true, window.resident)
     }
 

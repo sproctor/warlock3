@@ -203,7 +203,7 @@ fun DesktopWindowView(
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
-        panelContent = { data, style ->
+        panelContent = { data, style, onAction ->
             WarlockScrollableColumn(
                 Modifier
                     .fillMaxSize()
@@ -213,9 +213,7 @@ fun DesktopWindowView(
                 DesktopPanelContent(
                     dataObjects = dataObjects,
                     modifier = Modifier.padding(8.dp),
-                    executeCommand = { command ->
-                        onActionClick(WarlockAction.SendCommand(command))
-                    },
+                    onAction = onAction,
                     style = style,
                 )
             }

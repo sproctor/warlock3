@@ -323,5 +323,11 @@
       "webbed": { "image": { "name": "webbed" }, "top": 13, "left": 13, "width": 11, "height": 11 },
       "stunned": { "image": { "name": "stunned" } }
     }
-  }
+  },
+  "friendlyFace": { "color": { "light": "#D49200", "dark": "#FFFF00" }, "image": { "name": "sentiment_very_satisfied" } },
+  "warmFace": { "color": { "light": "#1E9E40", "dark": "#6EE787" }, "image": { "name": "sentiment_satisfied" } },
+  "neutralFace": { "color": { "light": "#546E7A", "dark": "#B0BEC5" }, "image": { "name": "sentiment_neutral" } },
+  "reservedFace": { "color": { "light": "#0277BD", "dark": "#4FC3F7" }, "image": { "name": "sentiment_content" } },
+  "coldFace": { "color": { "light": "#2962FF", "dark": "#82B1FF" }, "image": { "name": "sentiment_dissatisfied" } },
+  "crossFace": { "color": { "light": "#C62828", "dark": "#DB5C5C" }, "image": { "name": "sentiment_very_dissatisfied" } }
 }

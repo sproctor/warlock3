@@ -7,6 +7,8 @@ import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10
 import org.lwjgl.openal.ALC
 import org.lwjgl.openal.ALC10
+import org.lwjgl.openal.EnumerateAllExt
+import org.lwjgl.openal.SOFTReopenDevice
 import org.lwjgl.system.MemoryUtil
 import java.io.File
 import java.nio.ByteBuffer
@@ -46,6 +48,7 @@ class DesktopSoundPlayer(
     private var context = 0L
     private var initError: String? = null
     private var initialized = false
+    private var canReopen = false
 
     // Sources still playing, with the buffer each one owns. Swept on every play so a long session
     // does not exhaust OpenAL's finite source pool.
@@ -60,6 +63,7 @@ class DesktopSoundPlayer(
 
             openDevice()?.let { return@withContext it }
 
+            followDefaultDevice()
             releaseFinished()
 
             val sound =
@@ -98,6 +102,7 @@ class DesktopSoundPlayer(
                     } else {
                         ALC10.alcMakeContextCurrent(context)
                         AL.createCapabilities(capabilities)
+                        canReopen = ALC10.alcIsExtensionPresent(device, "ALC_SOFT_reopen_device")
                         logger.d { "OpenAL ready: ${AL10.alGetString(AL10.AL_RENDERER)}" }
                         null
                     }
@@ -109,6 +114,22 @@ class DesktopSoundPlayer(
                 "Could not initialize audio: ${e.message}"
             }
         return initError
+    }
+
+    /**
+     * Moves the device to the system default output when the default has changed since the device
+     * was opened. openal-soft's CoreAudio backend resolves the default to a concrete device at open
+     * time and stays pinned to it, so on a Mac a long-lived device keeps playing through the old
+     * output after the user switches. WASAPI and PulseAudio migrate on their own, so the names never
+     * differ there and this is a no-op.
+     */
+    private fun followDefaultDevice() {
+        if (!canReopen) return
+        val default = ALC10.alcGetString(0, EnumerateAllExt.ALC_DEFAULT_ALL_DEVICES_SPECIFIER) ?: return
+        if (default == ALC10.alcGetString(device, EnumerateAllExt.ALC_ALL_DEVICES_SPECIFIER)) return
+        if (!SOFTReopenDevice.alcReopenDeviceSOFT(device, null as ByteBuffer?, null as IntArray?)) {
+            logger.d { "Could not move playback to the new default audio device" }
+        }
     }
 
     private class Sound(

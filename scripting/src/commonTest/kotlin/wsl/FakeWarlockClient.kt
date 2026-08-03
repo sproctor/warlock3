@@ -62,6 +62,18 @@ class FakeWarlockClient(
         sentCommands += command
     }
 
+    override suspend fun sendWidgetCommand(
+        command: String,
+        echo: String?,
+    ) {
+        sentCommands += command
+    }
+
+    override fun requestMenu(
+        exist: String,
+        noun: String?,
+    ): Int = 0
+
     override suspend fun print(message: StyledString) {
         printed += message
     }

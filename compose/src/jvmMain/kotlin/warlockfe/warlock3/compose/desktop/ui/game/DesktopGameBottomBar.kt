@@ -92,7 +92,7 @@ fun DesktopGameBottomBar(
                     DesktopPanelContent(
                         dataObjects = vitalBars,
                         modifier = Modifier.fillMaxWidth().height(16.dp),
-                        executeCommand = {
+                        onAction = {
                             // Cannot execute commands from vitals bar
                         },
                         style = style,
