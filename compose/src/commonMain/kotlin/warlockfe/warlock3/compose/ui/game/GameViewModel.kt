@@ -409,6 +409,11 @@ class GameViewModel(
     private val windowUiStateLists
         get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
 
+    // True once the saved window layout has been restored into the dock lists; stays true for the
+    // life of the session since the lists are never cleared. Game-announced opens wait on it so
+    // the position they record counts the restored layout instead of racing it.
+    private val layoutRestored = MutableStateFlow(false)
+
     // On-demand window ui states for the mobile phone/tablet stream tabs, keyed by window name, so
     // switching tabs reuses the same stream and scroll state instead of rebuilding each time.
     private val tabWindowUiStates = mutableMapOf<String, WindowUiState>()
@@ -543,37 +548,43 @@ class GameViewModel(
         client.characterId
             .onEach { characterId ->
                 if (characterId != null) {
-                    val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
-                    settings.filter { it.location != null }.forEach { entity ->
-                        // A game-announced window may already be up (openWindowFromGame races this
-                        // restore on the same characterId emission), and a reconnect runs the
-                        // restore again over a populated layout - never add a second copy.
-                        if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
-                            return@forEach
+                    try {
+                        // Heal duplicate/gapped positions before reading: duplicates sort by
+                        // rowid, which need not match the order the user last saw.
+                        windowSettingsRepository.normalizePositions(characterId)
+                        val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
+                        settings.filter { it.location != null }.forEach { entity ->
+                            // A reconnect runs the restore again over a populated layout - never
+                            // add a second copy.
+                            if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
+                                return@forEach
+                            }
+                            logger.d { "Loading entity: $entity" }
+                            val window = windows.value.firstOrNull { it.name == entity.name }
+                            val uiState =
+                                WindowUiState(
+                                    name = entity.name,
+                                    windowInfo = mutableStateOf(window),
+                                    style = entity.getStyle(colorPalette.value),
+                                    font = entity.font,
+                                    monoFont = entity.monoFont,
+                                    width = entity.width,
+                                    height = entity.height,
+                                    nameFilter = entity.nameFilter,
+                                    data = createWindowData(window?.windowType, entity.name),
+                                )
+                            (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
+                            when (entity.location) {
+                                WindowLocation.MAIN -> _mainWindowUiState.value = uiState
+                                WindowLocation.TOP -> _topWindowUiStates.update { it + uiState }
+                                WindowLocation.BOTTOM -> _bottomWindowUiStates.update { it + uiState }
+                                WindowLocation.LEFT -> _leftWindowUiStates.update { it + uiState }
+                                WindowLocation.RIGHT -> _rightWindowUiStates.update { it + uiState }
+                                else -> Unit // Nothing to do
+                            }
                         }
-                        logger.d { "Loading entity: $entity" }
-                        val window = windows.value.firstOrNull { it.name == entity.name }
-                        val uiState =
-                            WindowUiState(
-                                name = entity.name,
-                                windowInfo = mutableStateOf(window),
-                                style = entity.getStyle(colorPalette.value),
-                                font = entity.font,
-                                monoFont = entity.monoFont,
-                                width = entity.width,
-                                height = entity.height,
-                                nameFilter = entity.nameFilter,
-                                data = createWindowData(window?.windowType, entity.name),
-                            )
-                        (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
-                        when (entity.location) {
-                            WindowLocation.MAIN -> _mainWindowUiState.value = uiState
-                            WindowLocation.TOP -> _topWindowUiStates.update { it + uiState }
-                            WindowLocation.BOTTOM -> _bottomWindowUiStates.update { it + uiState }
-                            WindowLocation.LEFT -> _leftWindowUiStates.update { it + uiState }
-                            WindowLocation.RIGHT -> _rightWindowUiStates.update { it + uiState }
-                            else -> Unit // Nothing to do
-                        }
+                    } finally {
+                        layoutRestored.value = true
                     }
                 }
             }.launchIn(viewModelScope)
@@ -1316,6 +1327,10 @@ class GameViewModel(
             val characterId =
                 withTimeoutOrNull(10_000) { client.characterId.filterNotNull().first() }
             if (characterId != null) {
+                // The layout restore wakes on this same characterId emission; let it finish so
+                // this window lands after the saved layout instead of racing it into the dock.
+                // The timeout only covers a restore that is itself stuck.
+                withTimeoutOrNull(10_000) { layoutRestored.first { it } }
                 // A window the user closed stays closed until they ask for it back.
                 if (windowSettingsRepository.isHidden(characterId, name)) return@launch
                 if (windowSettingsRepository.getWindowLocation(characterId, name) != null) return@launch
@@ -1331,11 +1346,13 @@ class GameViewModel(
     ) {
         val windowUiStates = getWindowUiStatesForLocation(location)
         var newState: WindowUiState? = null
+        var newPosition = 0
         windowUiStates.update { states ->
             if (states.any { it.name == name }) {
                 states
             } else {
                 newState = buildWindowUiState(name)
+                newPosition = states.size
                 states + newState
             }
         }
@@ -1348,7 +1365,9 @@ class GameViewModel(
                     characterId = characterId,
                     name = name,
                     location = location,
-                    position = windowUiStates.value.lastIndex,
+                    // Captured at append time: reading the list here would count windows opened
+                    // after this one, recording the same position for both.
+                    position = newPosition,
                 )
             }
         }

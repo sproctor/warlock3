@@ -229,4 +229,25 @@ interface WindowSettingsDao {
         name: String,
         pos: Int,
     )
+
+    /**
+     * Rewrites each dock's positions to 0..n in their current sort order. Racy writes have left
+     * duplicates and gaps behind, and duplicated positions make ORDER BY resolve ties by rowid,
+     * which need not match the order the user last saw. Windows without a location keep their
+     * null position.
+     */
+    @Transaction
+    suspend fun normalizePositions(characterId: String) {
+        getByCharacter(characterId)
+            .filter { it.location != null }
+            .groupBy { it.location }
+            .values
+            .forEach { windows ->
+                windows.forEachIndexed { index, window ->
+                    if (window.position != index) {
+                        setPosition(characterId = characterId, name = window.name, pos = index)
+                    }
+                }
+            }
+    }
 }

@@ -263,4 +263,15 @@ class WindowSettingsRepository(
             windowSettingsDao.setPosition(characterId, name, pos)
         }
     }
+
+    /**
+     * Renumbers each dock's saved positions to 0..n, healing the duplicates and gaps older
+     * releases wrote (see [WindowSettingsDao.normalizePositions]). Run at connect, before the
+     * layout is restored, so the restore and the next session sort the same way.
+     */
+    suspend fun normalizePositions(characterId: String) {
+        withContext(NonCancellable) {
+            windowSettingsDao.normalizePositions(characterId)
+        }
+    }
 }
