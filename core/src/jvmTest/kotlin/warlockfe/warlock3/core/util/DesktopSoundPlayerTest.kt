@@ -71,6 +71,16 @@ class DesktopSoundPlayerTest {
             assertPlayed(DesktopSoundPlayer(dirs).playSound(file.absolutePath))
         }
 
+    /** The player holds its device across plays, re-checking the default output each time. */
+    @Test
+    fun playsRepeatedlyThroughOnePlayer() =
+        runBlocking {
+            val player = DesktopSoundPlayer(dirs)
+            val file = writeTone("repeat.wav")
+            assertPlayed(player.playSound(file.absolutePath))
+            assertPlayed(player.playSound(file.absolutePath))
+        }
+
     @Test
     fun findsSoundsRelativeToTheWarlockDirectories() =
         runBlocking {
