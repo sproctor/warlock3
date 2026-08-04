@@ -141,7 +141,7 @@ fun WindowsSettingsSection(
                 } else {
                     scope.launch {
                         if (show) {
-                            windowSettingRepository.openWindow(characterId, name, WindowLocation.TOP, openWindows.size)
+                            windowSettingRepository.openWindowAtEnd(characterId, name, WindowLocation.TOP)
                         } else {
                             windowSettingRepository.closeWindow(characterId, name)
                         }

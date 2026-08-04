@@ -87,23 +87,6 @@ class WindowSettingsRepository(
     ): Boolean = store.current(characterId).windows[name]?.hidden == true
 
     /**
-     * Places a window in the layout. Anything in the layout is by definition not hidden, so this also
-     * clears the flag [closeWindow] sets.
-     */
-    suspend fun openWindow(
-        characterId: String,
-        name: String,
-        location: WindowLocation,
-        position: Int,
-    ) {
-        logger.d { "openWindow: $characterId, $name, $location, $position" }
-        withContext(NonCancellable) {
-            windowSettingsDao.openWindow(characterId, name, location, position)
-            setHidden(characterId = characterId, name = name, hidden = false)
-        }
-    }
-
-    /**
      * The user closing a window: it leaves the layout and is marked hidden, so the game cannot bring
      * it back with an `openDialog`. Use [removeWindowFromLayout] when the game is the one closing it.
      */
@@ -253,14 +236,46 @@ class WindowSettingsRepository(
         }
     }
 
-    suspend fun setPosition(
+    /**
+     * Persists a dock's full order atomically: each name's position becomes its index in
+     * [names]. Callers pass every savable window in the dock, so the write also repairs any
+     * stale positions the dock carried.
+     */
+    suspend fun setPositions(
         characterId: String,
-        name: String,
-        pos: Int,
+        names: List<String>,
     ) {
         withContext(NonCancellable) {
-            logger.d { "setPosition: $characterId, $name, $pos" }
-            windowSettingsDao.setPosition(characterId, name, pos)
+            logger.d { "setPositions: $characterId, $names" }
+            windowSettingsDao.setPositions(characterId, names)
+        }
+    }
+
+    /**
+     * Places a window at the end of a dock, letting the DAO compute the position (see
+     * [WindowSettingsDao.openWindowAtEnd]). Anything in the layout is by definition not hidden,
+     * so this also clears the flag [closeWindow] sets.
+     */
+    suspend fun openWindowAtEnd(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+    ) {
+        logger.d { "openWindowAtEnd: $characterId, $name, $location" }
+        withContext(NonCancellable) {
+            windowSettingsDao.openWindowAtEnd(characterId = characterId, name = name, location = location)
+            setHidden(characterId = characterId, name = name, hidden = false)
+        }
+    }
+
+    /**
+     * Renumbers each dock's saved positions to 0..n, healing the duplicates and gaps older
+     * releases wrote (see [WindowSettingsDao.normalizePositions]). Run at connect, before the
+     * layout is restored, so the restore and the next session sort the same way.
+     */
+    suspend fun normalizePositions(characterId: String) {
+        withContext(NonCancellable) {
+            windowSettingsDao.normalizePositions(characterId)
         }
     }
 }

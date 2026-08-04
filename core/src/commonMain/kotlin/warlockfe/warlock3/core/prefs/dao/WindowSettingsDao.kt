@@ -229,4 +229,59 @@ interface WindowSettingsDao {
         name: String,
         pos: Int,
     )
+
+    /**
+     * Rewrites each dock's positions to 0..n in their current sort order. Racy writes have left
+     * duplicates and gaps behind, and SQLite leaves the relative order of duplicated positions
+     * unspecified, so until they are renumbered the restored order need not match the one the
+     * user last saw. Windows without a location keep their null position.
+     */
+    @Transaction
+    suspend fun normalizePositions(characterId: String) {
+        getByCharacter(characterId)
+            .filter { it.location != null }
+            .groupBy { it.location }
+            .values
+            .forEach { windows ->
+                windows.forEachIndexed { index, window ->
+                    if (window.position != index) {
+                        setPosition(characterId = characterId, name = window.name, pos = index)
+                    }
+                }
+            }
+    }
+
+    /**
+     * Places a window at the end of a dock, with the position computed here rather than passed
+     * in: positions derived from on-screen lists went stale under concurrency and counted
+     * transient panels that have no row, which is how duplicate positions were written.
+     */
+    @Transaction
+    suspend fun openWindowAtEnd(
+        characterId: String,
+        name: String,
+        location: WindowLocation,
+    ) {
+        val position =
+            getByLocation(characterId = characterId, location = location)
+                .filter { it.name != name }
+                .maxOfOrNull { it.position ?: -1 }
+                ?.plus(1) ?: 0
+        openWindow(characterId = characterId, name = name, location = location, position = position)
+    }
+
+    /**
+     * Persists a dock's full order in one transaction, position = index in [names]. A reorder
+     * written as independent per-row updates could interleave with another writer and leave
+     * duplicate positions behind.
+     */
+    @Transaction
+    suspend fun setPositions(
+        characterId: String,
+        names: List<String>,
+    ) {
+        names.forEachIndexed { index, name ->
+            setPosition(characterId = characterId, name = name, pos = index)
+        }
+    }
 }
