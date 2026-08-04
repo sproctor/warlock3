@@ -59,11 +59,18 @@ class InMemoryWindowSettingsDao : WindowSettingsDao {
                 )
     }
 
-    override suspend fun doCloseWindow(
+    override suspend fun closeWindow(
         characterId: String,
         name: String,
     ) {
         rows[characterId to name]?.let { rows[characterId to name] = it.copy(open = false) }
+    }
+
+    override suspend fun markOpen(
+        characterId: String,
+        name: String,
+    ) {
+        rows[characterId to name]?.let { rows[characterId to name] = it.copy(open = true) }
     }
 
     override suspend fun setPosition(
@@ -80,29 +87,12 @@ class InMemoryWindowSettingsDao : WindowSettingsDao {
         location: WindowLocation,
         position: Int,
     ) {
-        shift(characterId, location, from = position, delta = 1)
-    }
-
-    override suspend fun closeGap(
-        characterId: String,
-        location: WindowLocation?,
-        position: Int?,
-    ) {
-        if (location == null || position == null) return
-        shift(characterId, location, from = position + 1, delta = -1)
-    }
-
-    private fun shift(
-        characterId: String,
-        location: WindowLocation,
-        from: Int,
-        delta: Int,
-    ) {
+        // Shifts the whole dock order, closed windows included, like the real query.
         rows.entries.forEach { entry ->
             val row = entry.value
-            val position = row.position
-            if (row.characterId == characterId && row.location == location && row.open && position != null && position >= from) {
-                entry.setValue(row.copy(position = position + delta))
+            val rowPosition = row.position
+            if (row.characterId == characterId && row.location == location && rowPosition != null && rowPosition >= position) {
+                entry.setValue(row.copy(position = rowPosition + 1))
             }
         }
     }

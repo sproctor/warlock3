@@ -261,17 +261,18 @@ class WindowSettingsRepository(
     }
 
     /**
-     * Persists a dock's full order atomically: each name's position becomes its index in
-     * [names]. Callers pass every savable window in the dock, so the write also repairs any
-     * stale positions the dock carried.
+     * Persists a dock reorder atomically: the open windows take the order of [names], and each
+     * closed window keeps its remembered slot in the dock's sequence (see
+     * [WindowSettingsDao.setPositions]).
      */
     suspend fun setPositions(
         characterId: String,
+        location: WindowLocation,
         names: List<String>,
     ) {
         withContext(NonCancellable) {
-            logger.d { "setPositions: $characterId, $names" }
-            windowSettingsDao.setPositions(characterId, names)
+            logger.d { "setPositions: $characterId, $location, $names" }
+            windowSettingsDao.setPositions(characterId = characterId, location = location, names = names)
         }
     }
 

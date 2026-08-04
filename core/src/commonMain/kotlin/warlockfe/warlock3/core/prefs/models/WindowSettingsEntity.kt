@@ -14,12 +14,12 @@ data class WindowSettingsEntity(
     val name: String,
     val width: Int?,
     val height: Int?,
-    // Where the window lives when [open], and its remembered placement when closed - closing a
-    // window keeps these so it reopens where the user left it.
+    // The window's dock, and its slot in that dock's total order - kept across close/reopen so
+    // the window comes back where the user left it. Slots may be sparse; only order matters.
     val location: WindowLocation?,
     val position: Int?,
-    // Whether the window is in the layout. Only open windows take part in a dock's 0..n
-    // numbering; a closed window's position is frozen at its close-time index.
+    // Whether the window is in the layout. A closed window keeps its location and slot as the
+    // remembered placement.
     @ColumnInfo(defaultValue = "0")
     val open: Boolean = false,
     @ColumnInfo(defaultValue = "-1")

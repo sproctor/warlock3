@@ -1309,7 +1309,7 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.d { "Reordering $location: $names" }
-                windowSettingsRepository.setPositions(characterId, names)
+                windowSettingsRepository.setPositions(characterId = characterId, location = location, names = names)
             }
         }
     }
