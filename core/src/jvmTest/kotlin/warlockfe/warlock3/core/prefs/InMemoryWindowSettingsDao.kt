@@ -49,15 +49,21 @@ class InMemoryWindowSettingsDao : WindowSettingsDao {
     ) {
         val existing = rows[characterId to name]
         rows[characterId to name] =
-            existing?.copy(location = location, position = position)
-                ?: windowSettingsEntity(characterId = characterId, name = name, location = location, position = position)
+            existing?.copy(location = location, position = position, open = true)
+                ?: windowSettingsEntity(
+                    characterId = characterId,
+                    name = name,
+                    location = location,
+                    position = position,
+                    open = true,
+                )
     }
 
     override suspend fun doCloseWindow(
         characterId: String,
         name: String,
     ) {
-        rows[characterId to name]?.let { rows[characterId to name] = it.copy(location = null, position = null) }
+        rows[characterId to name]?.let { rows[characterId to name] = it.copy(open = false) }
     }
 
     override suspend fun setPosition(
@@ -95,7 +101,7 @@ class InMemoryWindowSettingsDao : WindowSettingsDao {
         rows.entries.forEach { entry ->
             val row = entry.value
             val position = row.position
-            if (row.characterId == characterId && row.location == location && position != null && position >= from) {
+            if (row.characterId == characterId && row.location == location && row.open && position != null && position >= from) {
                 entry.setValue(row.copy(position = position + delta))
             }
         }
@@ -138,6 +144,7 @@ fun windowSettingsEntity(
     name: String,
     location: WindowLocation? = null,
     position: Int? = null,
+    open: Boolean = false,
 ): WindowSettingsEntity =
     WindowSettingsEntity(
         characterId = characterId,
@@ -146,6 +153,7 @@ fun windowSettingsEntity(
         height = null,
         location = location,
         position = position,
+        open = open,
         textColor = WarlockColor.Unspecified,
         backgroundColor = WarlockColor.Unspecified,
         fontFamily = null,
@@ -153,11 +161,14 @@ fun windowSettingsEntity(
         fontWeight = null,
     )
 
-/** The (name, position) pairs docked at [location], in the order [WindowSettingsDao.getByCharacter] returns them. */
+/**
+ * The (name, position) pairs open at [location], in the order [WindowSettingsDao.getByCharacter]
+ * returns them. Closed windows remember a placement there but are not docked.
+ */
 suspend fun WindowSettingsDao.dock(
     characterId: String,
     location: WindowLocation,
 ): List<Pair<String, Int?>> =
     getByCharacter(characterId)
-        .filter { it.location == location }
+        .filter { it.location == location && it.open }
         .map { it.name to it.position }

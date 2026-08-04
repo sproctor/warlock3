@@ -259,7 +259,7 @@ class GameViewModel(
     val openWindows =
         windowSettings.map { currentWindowSettings ->
             currentWindowSettings.mapNotNull { entity ->
-                entity.takeIf { it.position != null }?.name
+                entity.takeIf { it.open }?.name
             }
         }
 
@@ -579,7 +579,7 @@ class GameViewModel(
                             logger.w(e) { "Failed to normalize window positions" }
                         }
                         val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
-                        settings.filter { it.location != null }.forEach { entity ->
+                        settings.filter { it.open }.forEach { entity ->
                             // A user open, or a game open that gave up waiting on this restore,
                             // can land first - never add a second copy.
                             if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
@@ -1315,8 +1315,23 @@ class GameViewModel(
     }
 
     fun openWindow(name: String) {
-        openWindowAt(name = name, location = WindowLocation.TOP)
-        notifyPanelVisibility(name, open = true)
+        viewModelScope.launch {
+            // A window that was closed goes back to the placement its close remembered; TOP is
+            // only the default for one never placed before.
+            val characterId = client.characterId.value
+            val placement =
+                if (characterId != null && canSaveWindow(name)) {
+                    windowSettingsRepository.reopenWindow(characterId, name)
+                } else {
+                    null
+                }
+            if (placement != null) {
+                placeWindowUi(name = name, location = placement.location, position = placement.position)
+            } else {
+                openWindowAt(name = name, location = WindowLocation.TOP)
+            }
+            notifyPanelVisibility(name, open = true)
+        }
     }
 
     /**
@@ -1374,7 +1389,19 @@ class GameViewModel(
             }
             // Superseded by a later open or close for this window while suspended above.
             if (latestGameWindowEvent[name] != stamp) return@launch
-            openWindowAt(name = name, location = location)
+            // A window the game closed earlier reopens at the placement that close remembered;
+            // the protocol's location is only the default for one never placed.
+            val placement =
+                if (characterId != null && canSaveWindow(name)) {
+                    windowSettingsRepository.reopenWindow(characterId, name)
+                } else {
+                    null
+                }
+            if (placement != null) {
+                placeWindowUi(name = name, location = placement.location, position = placement.position)
+            } else {
+                openWindowAt(name = name, location = location)
+            }
         }
     }
 
@@ -1382,24 +1409,7 @@ class GameViewModel(
         name: String,
         location: WindowLocation,
     ) {
-        // A window lives in exactly one dock: an open for one already docked anywhere is a
-        // no-op (the visibility toggles route those to closeWindow).
-        if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return
-        val windowUiStates = getWindowUiStatesForLocation(location)
-        var newState: WindowUiState? = null
-        windowUiStates.update { states ->
-            // Reset on entry: update{} may retry, and a retry can take the other branch.
-            newState = null
-            if (states.any { it.name == name }) {
-                states
-            } else {
-                val added = buildWindowUiState(name)
-                newState = added
-                states + added
-            }
-        }
-        val state = newState ?: return
-        (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
+        if (!placeWindowUi(name = name, location = location, position = Int.MAX_VALUE)) return
         if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
@@ -1412,6 +1422,45 @@ class GameViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Docks a window at [position], its rank among the dock's saved windows, and returns whether
+     * it was added. Transient panels occupy on-screen slots but no saved ones, so the rank maps
+     * to the on-screen index of the savable window currently holding it (appending when the rank
+     * is past the end). Persists nothing: callers own the saved placement.
+     */
+    private fun placeWindowUi(
+        name: String,
+        location: WindowLocation,
+        position: Int,
+    ): Boolean {
+        // A window lives in exactly one dock: an open for one already docked anywhere is a
+        // no-op (the visibility toggles route those to closeWindow).
+        if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return false
+        val windowUiStates = getWindowUiStatesForLocation(location)
+        var newState: WindowUiState? = null
+        windowUiStates.update { states ->
+            // Reset on entry: update{} may retry, and a retry can take the other branch.
+            newState = null
+            if (states.any { it.name == name }) {
+                states
+            } else {
+                val added = buildWindowUiState(name)
+                newState = added
+                val insertIndex =
+                    states
+                        .withIndex()
+                        .filter { canSaveWindow(it.value.name) }
+                        .getOrNull(position)
+                        ?.index
+                        ?: states.size
+                states.toMutableList().apply { add(insertIndex, added) }
+            }
+        }
+        val state = newState ?: return false
+        (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
+        return true
     }
 
     private fun buildWindowUiState(name: String): WindowUiState {

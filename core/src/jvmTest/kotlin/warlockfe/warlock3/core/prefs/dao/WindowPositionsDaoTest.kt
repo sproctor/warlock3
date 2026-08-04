@@ -5,16 +5,18 @@ import warlockfe.warlock3.core.prefs.InMemoryWindowSettingsDao
 import warlockfe.warlock3.core.prefs.dock
 import warlockfe.warlock3.core.prefs.windowSettingsEntity
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowPlacement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
  * The dock-position invariants behind a stable window order across launches: normalizePositions
- * renumbers each dock to 0..n at connect (healing the duplicates racy writers left behind, which
- * SQLite would otherwise return in an unspecified order), openWindowAtEnd computes an appended
- * window's position inside the DB instead of trusting a caller-derived index, and setPositions
- * persists a reorder as one transaction.
+ * renumbers each dock's open windows to 0..n at connect (healing the duplicates racy writers
+ * left behind, which SQLite would otherwise return in an unspecified order), openWindowAtEnd
+ * computes an appended window's position inside the DB instead of trusting a caller-derived
+ * index, setPositions persists a reorder as one transaction, and a closed window remembers its
+ * placement so reopenWindow puts it back where it was.
  */
 class WindowPositionsDaoTest {
     private val character = "gs4:warlock"
@@ -44,7 +46,7 @@ class WindowPositionsDaoTest {
             val dao = InMemoryWindowSettingsDao()
             dao.openWindow(character, "deaths", WindowLocation.TOP, 2)
             dao.openWindow(character, "arrivals", WindowLocation.TOP, 5)
-            dao.save(windowSettingsEntity(character, "familiar", location = WindowLocation.TOP, position = null))
+            dao.save(windowSettingsEntity(character, "familiar", location = WindowLocation.TOP, position = null, open = true))
 
             dao.normalizePositions(character)
 
@@ -68,16 +70,19 @@ class WindowPositionsDaoTest {
         }
 
     @Test
-    fun windowsOutOfTheLayoutAreLeftAlone() =
+    fun aClosedWindowKeepsItsRememberedPlacementUnrenumbered() =
         runBlocking {
             val dao = InMemoryWindowSettingsDao()
             dao.openWindow(character, "bank", WindowLocation.RIGHT, 4)
-            dao.doCloseWindow(character, "bank")
+            dao.closeWindow(character, "bank")
 
             dao.normalizePositions(character)
 
-            assertNull(dao.getByName(character, "bank")?.position)
-            assertNull(dao.getByName(character, "bank")?.location)
+            // Out of the layout, but the placement stays remembered exactly as it was.
+            val row = dao.getByName(character, "bank")
+            assertEquals(false, row?.open)
+            assertEquals(WindowLocation.RIGHT, row?.location)
+            assertEquals(4, row?.position)
         }
 
     @Test
@@ -125,6 +130,66 @@ class WindowPositionsDaoTest {
             dao.openWindowAtEnd(character, "thoughts", WindowLocation.RIGHT)
 
             assertEquals(0, dao.getByName(character, "thoughts")?.position)
+        }
+
+    @Test
+    fun aReopenedWindowReturnsToItsRememberedSpot() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            dao.openWindow(character, "thoughts", WindowLocation.RIGHT, 0)
+            dao.openWindow(character, "logons", WindowLocation.RIGHT, 1)
+            dao.openWindow(character, "deaths", WindowLocation.RIGHT, 2)
+
+            dao.closeWindow(character, "logons")
+            assertEquals(listOf("thoughts" to 0, "deaths" to 1), dao.dock(character, WindowLocation.RIGHT))
+
+            val placement = dao.reopenWindow(character, "logons")
+
+            assertEquals(WindowPlacement(WindowLocation.RIGHT, 1), placement)
+            assertEquals(
+                listOf("thoughts" to 0, "logons" to 1, "deaths" to 2),
+                dao.dock(character, WindowLocation.RIGHT),
+            )
+        }
+
+    @Test
+    fun aRememberedSpotPastTheDockEndIsClamped() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            dao.openWindow(character, "thoughts", WindowLocation.RIGHT, 0)
+            dao.openWindow(character, "logons", WindowLocation.RIGHT, 1)
+            dao.openWindow(character, "deaths", WindowLocation.RIGHT, 2)
+            dao.closeWindow(character, "deaths")
+            dao.closeWindow(character, "logons")
+
+            // deaths remembers index 2, but only thoughts is still open.
+            val placement = dao.reopenWindow(character, "deaths")
+
+            assertEquals(WindowPlacement(WindowLocation.RIGHT, 1), placement)
+        }
+
+    @Test
+    fun reopeningANeverPlacedWindowReturnsNull() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            // A style-only row: settings were saved but the window was never docked.
+            dao.save(windowSettingsEntity(character, "familiar"))
+
+            assertNull(dao.reopenWindow(character, "familiar"))
+            assertNull(dao.reopenWindow(character, "neverSeen"))
+        }
+
+    @Test
+    fun openWindowAtEndIgnoresClosedWindowsRememberedPositions() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            dao.openWindow(character, "thoughts", WindowLocation.RIGHT, 0)
+            dao.openWindow(character, "deaths", WindowLocation.RIGHT, 5)
+            dao.closeWindow(character, "deaths")
+
+            dao.openWindowAtEnd(character, "befriend", WindowLocation.RIGHT)
+
+            assertEquals(1, dao.getByName(character, "befriend")?.position)
         }
 
     @Test

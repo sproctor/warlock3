@@ -90,9 +90,9 @@ fun DesktopWindowsSettingsSection(
     val settingsByName = remember(windowSettings) { windowSettings.associateBy { it.name } }
     // "main" is always shown and can't be hidden, so it's handled separately (it has no position row).
     val openWindows =
-        remember(windowSettings) { windowSettings.filter { it.position != null && it.name != "main" } }
+        remember(windowSettings) { windowSettings.filter { it.open && it.name != "main" } }
     val savedNotOpen =
-        remember(windowSettings) { windowSettings.filter { it.position == null && it.name != "main" } }
+        remember(windowSettings) { windowSettings.filter { !it.open && it.name != "main" } }
     val hiddenWindows =
         remember(liveWindows, settingsByName) {
             liveWindows.filter { it.name !in settingsByName && it.name != "main" }.sortedBy { it.name }
@@ -146,7 +146,10 @@ fun DesktopWindowsSettingsSection(
                 } else {
                     scope.launch {
                         if (show) {
-                            windowSettingRepository.openWindowAtEnd(characterId, name, WindowLocation.TOP)
+                            // Back to the remembered placement; TOP only for one never placed.
+                            if (windowSettingRepository.reopenWindow(characterId, name) == null) {
+                                windowSettingRepository.openWindowAtEnd(characterId, name, WindowLocation.TOP)
+                            }
                         } else {
                             windowSettingRepository.closeWindow(characterId, name)
                         }

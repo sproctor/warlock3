@@ -7,6 +7,7 @@ import warlockfe.warlock3.core.prefs.InMemoryWindowSettingsDao
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowPlacement
 import java.nio.file.Files
 import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest
@@ -88,6 +89,22 @@ class WindowHiddenStateTest {
             // Out of the layout, but the game is free to open it again.
             assertNull(repository.getWindowLocation(character, "bank"))
             assertFalse(repository.isHidden(character, "bank"))
+        }
+
+    @Test
+    fun reopeningAtTheRememberedPlacementClearsHidden() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            val repository = newRepository(dao)
+
+            repository.openWindowAtEnd(character, "combat", WindowLocation.RIGHT)
+            repository.closeWindow(character, "combat")
+
+            val placement = repository.reopenWindow(character, "combat")
+
+            assertEquals(WindowPlacement(WindowLocation.RIGHT, 0), placement)
+            assertFalse(repository.isHidden(character, "combat"))
+            assertEquals(WindowLocation.RIGHT, repository.getWindowLocation(character, "combat"))
         }
 
     @Test

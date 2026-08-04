@@ -16,6 +16,7 @@ import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toWarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowPlacement
 
 /**
  * Window settings, split across two stores: geometry (size/location/position) lives in SQLite via
@@ -49,6 +50,7 @@ class WindowSettingsRepository(
                         height = geometry?.height,
                         location = geometry?.location,
                         position = geometry?.position,
+                        open = geometry?.open == true,
                         textColor = style.textColor,
                         backgroundColor = style.backgroundColor,
                         font = style.font,
@@ -68,14 +70,19 @@ class WindowSettingsRepository(
         }
 
     /**
-     * The dock this character has saved for a window, or null when they have never placed it or have
-     * closed it. Read straight from the DAO rather than from [observeWindowSettings] so a caller can
-     * ask before the observed settings have had a chance to emit.
+     * The dock a window is currently open in for this character, or null when they have never
+     * placed it or have closed it (a closed window still remembers its placement, but it is not
+     * in the layout). Read straight from the DAO rather than from [observeWindowSettings] so a
+     * caller can ask before the observed settings have had a chance to emit.
      */
     suspend fun getWindowLocation(
         characterId: String,
         name: String,
-    ): WindowLocation? = windowSettingsDao.getByName(characterId = characterId, name = name)?.location
+    ): WindowLocation? =
+        windowSettingsDao
+            .getByName(characterId = characterId, name = name)
+            ?.takeIf { it.open }
+            ?.location
 
     /**
      * Whether the user has closed this window and not asked for it back, in which case the game must
@@ -87,8 +94,9 @@ class WindowSettingsRepository(
     ): Boolean = store.current(characterId).windows[name]?.hidden == true
 
     /**
-     * The user closing a window: it leaves the layout and is marked hidden, so the game cannot bring
-     * it back with an `openDialog`. Use [removeWindowFromLayout] when the game is the one closing it.
+     * The user closing a window: it leaves the layout (keeping its placement remembered for
+     * [reopenWindow]) and is marked hidden, so the game cannot bring it back with an
+     * `openDialog`. Use [removeWindowFromLayout] when the game is the one closing it.
      */
     suspend fun closeWindow(
         characterId: String,
@@ -101,8 +109,9 @@ class WindowSettingsRepository(
     }
 
     /**
-     * A window leaving the layout without the user asking, because the game closed the panel. It is
-     * not marked hidden, so a later `openDialog` for it opens it again.
+     * A window leaving the layout without the user asking, because the game closed the panel. It
+     * keeps its placement remembered and is not marked hidden, so a later `openDialog` for it
+     * reopens it where it was.
      */
     suspend fun removeWindowFromLayout(
         characterId: String,
@@ -112,6 +121,21 @@ class WindowSettingsRepository(
             windowSettingsDao.closeWindow(characterId, name)
         }
     }
+
+    /**
+     * Reopens a window at the placement its last close remembered (see
+     * [WindowSettingsDao.reopenWindow]), or returns null when it has never been placed and the
+     * caller must pick a location. Placing a window in the layout clears the hidden flag.
+     */
+    suspend fun reopenWindow(
+        characterId: String,
+        name: String,
+    ): WindowPlacement? =
+        withContext(NonCancellable) {
+            windowSettingsDao.reopenWindow(characterId = characterId, name = name)?.also {
+                setHidden(characterId = characterId, name = name, hidden = false)
+            }
+        }
 
     private suspend fun setHidden(
         characterId: String,

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowPlacement
 
 @Dao
 interface WindowSettingsDao {
@@ -80,12 +81,13 @@ interface WindowSettingsDao {
 
     @Query(
         """
-        INSERT INTO WindowSettings (characterId, name, location, position)
-        VALUES (:characterId, :name, :location, :position)
+        INSERT INTO WindowSettings (characterId, name, location, position, open)
+        VALUES (:characterId, :name, :location, :position, 1)
         ON CONFLICT(characterId, name) DO
         UPDATE SET
             location = :location,
-            position = :position;
+            position = :position,
+            open = 1;
     """,
     )
     suspend fun openWindow(
@@ -95,10 +97,14 @@ interface WindowSettingsDao {
         position: Int,
     )
 
+    /**
+     * Leaves the layout but keeps location/position as the remembered placement, so the window
+     * reopens where the user left it (see [reopenWindow]).
+     */
     @Query(
         """
         UPDATE WindowSettings
-        SET location = NULL, position = NULL
+        SET open = 0
         WHERE characterId = :characterId AND name = :name;
     """,
     )
@@ -113,6 +119,7 @@ interface WindowSettingsDao {
         name: String,
     ) {
         getByName(characterId = characterId, name = name)
+            ?.takeIf { it.open }
             ?.let { window ->
                 doCloseWindow(
                     characterId = characterId,
@@ -126,16 +133,25 @@ interface WindowSettingsDao {
             }
     }
 
+    /**
+     * Reopens a window at its remembered placement: the same index it had in its dock when it
+     * closed, clamped to the dock's current size. Returns where it was placed, or null when the
+     * window has never been placed (the caller picks a default location and appends). Reopening
+     * an already-open window just reports its placement.
+     */
     @Transaction
-    suspend fun moveWindow(
+    suspend fun reopenWindow(
         characterId: String,
         name: String,
-        location: WindowLocation,
-    ) {
-        val oldWindow = getByName(characterId = characterId, name = name) ?: return
-        val newPosition = getByLocation(characterId = characterId, location = location).size
-        openWindow(characterId, name, location = location, position = newPosition)
-        closeGap(characterId, oldWindow.location, oldWindow.position)
+    ): WindowPlacement? {
+        val window = getByName(characterId = characterId, name = name) ?: return null
+        val location = window.location ?: return null
+        if (window.open) return WindowPlacement(location, window.position ?: 0)
+        val openCount = getByLocation(characterId = characterId, location = location).count { it.open }
+        val position = (window.position ?: openCount).coerceIn(0, openCount)
+        openGap(characterId = characterId, location = location, position = position)
+        openWindow(characterId = characterId, name = name, location = location, position = position)
+        return WindowPlacement(location, position)
     }
 
     @Query("SELECT * FROM WindowSettings WHERE characterId = :characterId AND location = :location")
@@ -154,7 +170,7 @@ interface WindowSettingsDao {
         """
         UPDATE WindowSettings
         SET position = position + 1
-        WHERE characterId = :characterId AND location = :location AND position >= :position
+        WHERE characterId = :characterId AND location = :location AND position >= :position AND open = 1
     """,
     )
     suspend fun openGap(
@@ -178,11 +194,13 @@ interface WindowSettingsDao {
         openWindow(characterId, name, location, position)
     }
 
+    // The gap operations maintain the open windows' 0..n numbering; a closed window's remembered
+    // position is frozen at its close-time index (reopenWindow clamps it), so they skip it.
     @Query(
         """
         UPDATE WindowSettings
         SET position = position - 1
-        WHERE characterId = :characterId AND location = :location AND position > :position;
+        WHERE characterId = :characterId AND location = :location AND position > :position AND open = 1;
     """,
     )
     suspend fun closeGap(
@@ -231,15 +249,15 @@ interface WindowSettingsDao {
     )
 
     /**
-     * Rewrites each dock's positions to 0..n in their current sort order. Racy writes have left
-     * duplicates and gaps behind, and SQLite leaves the relative order of duplicated positions
-     * unspecified, so until they are renumbered the restored order need not match the one the
-     * user last saw. Windows without a location keep their null position.
+     * Rewrites each dock's open-window positions to 0..n in their current sort order. Racy
+     * writes have left duplicates and gaps behind, and SQLite leaves the relative order of
+     * duplicated positions unspecified, so until they are renumbered the restored order need not
+     * match the one the user last saw. Closed windows keep their remembered positions.
      */
     @Transaction
     suspend fun normalizePositions(characterId: String) {
         getByCharacter(characterId)
-            .filter { it.location != null }
+            .filter { it.open && it.location != null }
             .groupBy { it.location }
             .values
             .forEach { windows ->
@@ -264,7 +282,7 @@ interface WindowSettingsDao {
     ) {
         val position =
             getByLocation(characterId = characterId, location = location)
-                .filter { it.name != name }
+                .filter { it.open && it.name != name }
                 .maxOfOrNull { it.position ?: -1 }
                 ?.plus(1) ?: 0
         openWindow(characterId = characterId, name = name, location = location, position = position)

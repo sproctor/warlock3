@@ -12,6 +12,9 @@ data class WindowSettingsExport(
     val height: Int?,
     val location: WindowLocation?,
     val position: Int?,
+    // Whether the window is in the layout (location/position are its remembered placement when
+    // not). Null for exports written before the flag existed, where placed meant location != null.
+    val open: Boolean? = null,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,
     val font: FontConfig? = null,

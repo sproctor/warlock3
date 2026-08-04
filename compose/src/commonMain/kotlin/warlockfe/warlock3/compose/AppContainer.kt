@@ -37,6 +37,7 @@ import warlockfe.warlock3.core.mudmobile.MudMobileApi
 import warlockfe.warlock3.core.mudmobile.WarlockSettingsSync
 import warlockfe.warlock3.core.prefs.MIGRATION_10_11
 import warlockfe.warlock3.core.prefs.MIGRATION_14_16
+import warlockfe.warlock3.core.prefs.MIGRATION_20_21
 import warlockfe.warlock3.core.prefs.PREFS_DATABASE_VERSION
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
@@ -368,7 +369,7 @@ fun openPrefsDatabase(
         buildDatabase = { dbPath ->
             builderFactory(dbPath.toString())
                 .setDriver(sqlDriver)
-                .addMigrations(MIGRATION_10_11, MIGRATION_14_16)
+                .addMigrations(MIGRATION_10_11, MIGRATION_14_16, MIGRATION_20_21)
                 .build()
         },
         checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem, sqlDriver) },
