@@ -196,6 +196,18 @@ class WindowPositionsDaoTest {
         }
 
     @Test
+    fun aRememberedMainLocationReadsAsNeverPlaced() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            // Legacy rows remember MAIN (2022-era defaults wrote them); reopening into MAIN
+            // would replace the main text window.
+            dao.save(windowSettingsEntity(character, "spells", location = WindowLocation.MAIN, position = 0))
+
+            assertNull(dao.reopenWindow(character, "spells"))
+            assertEquals(false, dao.getByName(character, "spells")?.open)
+        }
+
+    @Test
     fun aNewWindowAppendsAfterRememberedSlots() =
         runBlocking {
             val dao = InMemoryWindowSettingsDao()
@@ -222,6 +234,24 @@ class WindowPositionsDaoTest {
 
             assertEquals(
                 listOf("deaths" to 0, "thoughts" to 1, "logons" to 2),
+                dao.dock(character, WindowLocation.RIGHT),
+            )
+        }
+
+    @Test
+    fun aReorderLeavesUnnamedOpenRowsInTheirSlots() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            dao.openWindow(character, "thoughts", WindowLocation.RIGHT, 0)
+            // An open row the screen no longer shows (e.g. its window turned out non-resident):
+            // it must not drift to the end on every reorder.
+            dao.openWindow(character, "stale", WindowLocation.RIGHT, 1)
+            dao.openWindow(character, "logons", WindowLocation.RIGHT, 2)
+
+            dao.setPositions(character, WindowLocation.RIGHT, listOf("logons", "thoughts"))
+
+            assertEquals(
+                listOf("logons" to 0, "stale" to 1, "thoughts" to 2),
                 dao.dock(character, WindowLocation.RIGHT),
             )
         }

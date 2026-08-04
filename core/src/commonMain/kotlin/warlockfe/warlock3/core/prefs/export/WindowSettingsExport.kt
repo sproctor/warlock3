@@ -10,11 +10,17 @@ data class WindowSettingsExport(
     val name: String,
     val width: Int?,
     val height: Int?,
+    // Only set while the window is in the layout: older builds read location != null as docked
+    // (their parsers drop the newer fields), so a closed window must not carry these.
     val location: WindowLocation?,
     val position: Int?,
-    // Whether the window is in the layout (location/position are its remembered placement when
-    // not). Null for exports written before the flag existed, where placed meant location != null.
+    // Whether the window is in the layout. Null for exports written before the flag existed,
+    // where placed meant location != null.
     val open: Boolean? = null,
+    // A closed window's remembered placement, split from location/position so an old build
+    // importing this export cannot resurrect closed windows.
+    val rememberedLocation: WindowLocation? = null,
+    val rememberedPosition: Int? = null,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,
     val font: FontConfig? = null,

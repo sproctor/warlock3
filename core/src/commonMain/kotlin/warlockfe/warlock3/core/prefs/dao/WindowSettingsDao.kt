@@ -139,7 +139,10 @@ interface WindowSettingsDao {
         name: String,
     ): WindowPlacement? {
         val window = getByName(characterId = characterId, name = name) ?: return null
-        val location = window.location ?: return null
+        // A remembered MAIN reads as never placed: MAIN is the main text window's slot, legacy
+        // rows remember it (2022-era defaults wrote them), and reopening into it would replace
+        // the main window - or crash a dock list that has no MAIN slot.
+        val location = window.location?.takeUnless { it == WindowLocation.MAIN } ?: return null
         if (!window.open) markOpen(characterId = characterId, name = name)
         val rank =
             getByLocation(characterId = characterId, location = location)
@@ -187,16 +190,25 @@ interface WindowSettingsDao {
         index: Int,
     ) {
         val dock = getByLocation(characterId = characterId, location = location).filter { it.name != name }
-        val slot =
+        val target =
             dock
                 .filter { it.open }
                 .sortedWith(compareBy { it.position })
                 .getOrNull(index)
-                ?.position
-                ?: (dock.maxOfOrNull { it.position ?: -1 }?.plus(1) ?: 0)
+        val slot =
+            if (target != null) {
+                // A target row can carry a NULL slot (imports write them; they sort first, and
+                // the connect heal numbers them later) - inserting before it means the top.
+                target.position ?: 0
+            } else {
+                appendSlot(dock)
+            }
         openGap(characterId = characterId, location = location, position = slot)
         openWindow(characterId = characterId, name = name, location = location, position = slot)
     }
+
+    /** The slot after every one in use - remembered slots included, so an append cannot collide. */
+    private fun appendSlot(dock: List<WindowSettingsEntity>): Int = dock.maxOfOrNull { it.position ?: -1 }?.plus(1) ?: 0
 
     @Query(
         """
@@ -271,20 +283,18 @@ interface WindowSettingsDao {
         name: String,
         location: WindowLocation,
     ) {
-        val position =
-            getByLocation(characterId = characterId, location = location)
-                .filter { it.name != name }
-                .maxOfOrNull { it.position ?: -1 }
-                ?.plus(1) ?: 0
+        val position = appendSlot(getByLocation(characterId = characterId, location = location).filter { it.name != name })
         openWindow(characterId = characterId, name = name, location = location, position = position)
     }
 
     /**
-     * Persists a dock reorder in one transaction: the open windows take the order of [names],
-     * while each closed window keeps its index from the top of the dock's full sequence, staying
-     * the k-th slot it was when it closed. One transaction because a reorder written as
-     * independent per-row updates could interleave with another writer and leave duplicate
-     * positions behind.
+     * Persists a dock reorder in one transaction: the open windows named in [names] take that
+     * order, while every other row - closed windows, and open rows the caller does not know
+     * about - keeps its slot from the top of the dock's full sequence. Keeping unnamed rows in
+     * place (rather than appending them) means a row the screen no longer shows, like one whose
+     * window later turned out non-resident, cannot drift on every reorder. One transaction
+     * because a reorder written as independent per-row updates could interleave with another
+     * writer and leave duplicate positions behind.
      */
     @Transaction
     suspend fun setPositions(
@@ -293,20 +303,11 @@ interface WindowSettingsDao {
         names: List<String>,
     ) {
         val dock = getByLocation(characterId = characterId, location = location).sortedWith(compareBy { it.position })
-        val openNames = dock.filter { it.open }.map { it.name }.toSet()
-        val closedAtIndex =
-            dock
-                .withIndex()
-                .filter { !it.value.open }
-                .associate { it.index to it.value.name }
-        val openOrder =
-            ArrayDeque(
-                names.filter { it in openNames } + openNames.filter { it !in names },
-            )
-        val sequence = mutableListOf<String>()
-        for (index in dock.indices) {
-            sequence += closedAtIndex[index] ?: openOrder.removeFirstOrNull() ?: continue
-        }
+        val reordered = names.filter { name -> dock.any { it.open && it.name == name } }
+        val newOrder = ArrayDeque(reordered)
+        // Walk the dock's current sequence: each slot holding a reordered window takes the next
+        // reordered name; every other row keeps its slot.
+        val sequence = dock.map { row -> if (row.open && row.name in reordered) newOrder.removeFirst() else row.name }
         val positionsByName = dock.associate { it.name to it.position }
         sequence.forEachIndexed { index, name ->
             if (positionsByName[name] != index) {

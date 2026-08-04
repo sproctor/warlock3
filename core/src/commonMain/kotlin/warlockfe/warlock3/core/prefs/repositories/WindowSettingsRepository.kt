@@ -137,6 +137,21 @@ class WindowSettingsRepository(
             }
         }
 
+    /**
+     * Reopens a window at its remembered placement, or appends it to [default] when it has never
+     * been placed - the whole open policy for callers that don't drive a dock list themselves
+     * (the settings screens editing an unconnected character).
+     */
+    suspend fun reopenOrOpenAtEnd(
+        characterId: String,
+        name: String,
+        default: WindowLocation,
+    ) {
+        if (reopenWindow(characterId = characterId, name = name) == null) {
+            openWindowAtEnd(characterId = characterId, name = name, location = default)
+        }
+    }
+
     private suspend fun setHidden(
         characterId: String,
         name: String,

@@ -146,10 +146,7 @@ fun DesktopWindowsSettingsSection(
                 } else {
                     scope.launch {
                         if (show) {
-                            // Back to the remembered placement; TOP only for one never placed.
-                            if (windowSettingRepository.reopenWindow(characterId, name) == null) {
-                                windowSettingRepository.openWindowAtEnd(characterId, name, WindowLocation.TOP)
-                            }
+                            windowSettingRepository.reopenOrOpenAtEnd(characterId, name, WindowLocation.TOP)
                         } else {
                             windowSettingRepository.closeWindow(characterId, name)
                         }
