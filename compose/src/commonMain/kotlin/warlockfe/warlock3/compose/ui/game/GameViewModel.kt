@@ -23,6 +23,8 @@ import co.touchlab.kermit.Logger
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -409,10 +411,26 @@ class GameViewModel(
     private val windowUiStateLists
         get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
 
-    // True once the saved window layout has been restored into the dock lists; stays true for the
-    // life of the session since the lists are never cleared. Game-announced opens wait on it so
-    // the position they record counts the restored layout instead of racing it.
-    private val layoutRestored = MutableStateFlow(false)
+    // Completed once the saved window layout has been restored into the dock lists (also on a
+    // failed restore - see restoreWindowLayoutOnConnect). A Deferred rather than a resettable
+    // flag: the dock lists are never cleared, so "restored" can never become false again.
+    // Game-announced opens and closes wait on it so they land after the saved layout instead of
+    // racing it into the docks.
+    private val layoutRestored = CompletableDeferred<Unit>()
+
+    // Stamp of the game's latest open/close instruction per window, taken while the event
+    // collector is still synchronous. The handlers suspend (on the character id and the layout
+    // restore) before acting, so each re-checks that it still holds the newest instruction and
+    // drops itself otherwise - without this, an open parked on the restore could land after the
+    // close that superseded it.
+    private var gameWindowEventCounter = 0L
+    private val latestGameWindowEvent = mutableMapOf<String, Long>()
+
+    private fun stampGameWindowEvent(name: String): Long {
+        val stamp = ++gameWindowEventCounter
+        latestGameWindowEvent[name] = stamp
+        return stamp
+    }
 
     // On-demand window ui states for the mobile phone/tablet stream tabs, keyed by window name, so
     // switching tabs reuses the same stream and scroll state instead of rebuilding each time.
@@ -549,13 +567,21 @@ class GameViewModel(
             .onEach { characterId ->
                 if (characterId != null) {
                     try {
-                        // Heal duplicate/gapped positions before reading: duplicates sort by
-                        // rowid, which need not match the order the user last saw.
-                        windowSettingsRepository.normalizePositions(characterId)
+                        try {
+                            // Heal duplicate/gapped positions before reading: SQLite returns
+                            // duplicates in an unspecified order, so until they are renumbered
+                            // the restored order need not match the one the user last saw.
+                            windowSettingsRepository.normalizePositions(characterId)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            // Restoring from the un-normalized read beats not restoring at all.
+                            logger.w(e) { "Failed to normalize window positions" }
+                        }
                         val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
                         settings.filter { it.location != null }.forEach { entity ->
-                            // A reconnect runs the restore again over a populated layout - never
-                            // add a second copy.
+                            // A user open, or a game open that gave up waiting on this restore,
+                            // can land first - never add a second copy.
                             if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
                                 return@forEach
                             }
@@ -583,8 +609,18 @@ class GameViewModel(
                                 else -> Unit // Nothing to do
                             }
                         }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Swallowing keeps the collector alive for the next connection and off
+                        // viewModelScope's unhandled path (a crash on Android).
+                        logger.w(e) { "Failed to restore the window layout" }
                     } finally {
-                        layoutRestored.value = true
+                        // Released even when the restore failed: parked opens append after the
+                        // dock's saved positions (computed in the DB), so proceeding against a
+                        // half-populated layout cannot corrupt it, while holding the gate would
+                        // stall every panel on its timeout.
+                        layoutRestored.complete(Unit)
                     }
                 }
             }.launchIn(viewModelScope)
@@ -1256,25 +1292,24 @@ class GameViewModel(
         toIndex: Int,
     ) {
         val windowUiStates = getWindowUiStatesForLocation(location)
+        var reordered: List<WindowUiState> = emptyList()
         windowUiStates.update { states ->
             val mutableStates = states.toMutableList()
             val item = mutableStates.removeAt(fromIndex)
             val adjustedToIndex = if (toIndex > fromIndex) toIndex - 1 else toIndex
             mutableStates.add(adjustedToIndex, item)
+            reordered = mutableStates
             mutableStates
         }
+        // The dock's whole order, captured before suspending and written in one transaction:
+        // per-row writes from the live list could interleave with another reorder and leave
+        // duplicate positions behind. A transient panel takes part in the reorder on screen but
+        // records nothing.
+        val names = reordered.filter { canSaveWindow(it.name) }.map { it.name }
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                logger.d { "Moving window at $location from $fromIndex to $toIndex" }
-                val clampedToIndex = toIndex.coerceAtMost(windowUiStates.value.size - 1)
-                val range = if (fromIndex < clampedToIndex) fromIndex..clampedToIndex else clampedToIndex..fromIndex
-                for (index in range) {
-                    val name = windowUiStates.value[index].name
-                    // A transient panel takes part in the reorder on screen but records nothing.
-                    if (!canSaveWindow(name)) continue
-                    logger.d { "Setting window $name position to $index" }
-                    windowSettingsRepository.setPosition(characterId, name, index)
-                }
+                logger.d { "Reordering $location: $names" }
+                windowSettingsRepository.setPositions(characterId, names)
             }
         }
     }
@@ -1318,6 +1353,7 @@ class GameViewModel(
         if (name == _mainWindowUiState.value.name) return
         // MAIN belongs to the main text window; a panel can never take that slot.
         val location = protocolLocation?.takeUnless { it == WindowLocation.MAIN } ?: return
+        val stamp = stampGameWindowEvent(name)
         viewModelScope.launch {
             // The game announces most of its windows before naming the character (GS4 sends the
             // whole panel list ahead of the <app> tag), and the guards below are meaningless
@@ -1329,13 +1365,15 @@ class GameViewModel(
             if (characterId != null) {
                 // The layout restore wakes on this same characterId emission; let it finish so
                 // this window lands after the saved layout instead of racing it into the dock.
-                // The timeout only covers a restore that is itself stuck.
-                withTimeoutOrNull(10_000) { layoutRestored.first { it } }
+                if (withTimeoutOrNull(10_000) { layoutRestored.await() } == null) {
+                    logger.w { "Layout restore still running after 10s; opening $name against it" }
+                }
                 // A window the user closed stays closed until they ask for it back.
                 if (windowSettingsRepository.isHidden(characterId, name)) return@launch
                 if (windowSettingsRepository.getWindowLocation(characterId, name) != null) return@launch
             }
-            if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return@launch
+            // Superseded by a later open or close for this window while suspended above.
+            if (latestGameWindowEvent[name] != stamp) return@launch
             openWindowAt(name = name, location = location)
         }
     }
@@ -1344,16 +1382,20 @@ class GameViewModel(
         name: String,
         location: WindowLocation,
     ) {
+        // A window lives in exactly one dock: an open for one already docked anywhere is a
+        // no-op (the visibility toggles route those to closeWindow).
+        if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return
         val windowUiStates = getWindowUiStatesForLocation(location)
         var newState: WindowUiState? = null
-        var newPosition = 0
         windowUiStates.update { states ->
+            // Reset on entry: update{} may retry, and a retry can take the other branch.
+            newState = null
             if (states.any { it.name == name }) {
                 states
             } else {
-                newState = buildWindowUiState(name)
-                newPosition = states.size
-                states + newState
+                val added = buildWindowUiState(name)
+                newState = added
+                states + added
             }
         }
         val state = newState ?: return
@@ -1361,13 +1403,12 @@ class GameViewModel(
         if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                windowSettingsRepository.openWindow(
+                // The position is assigned in the DB - the end of this dock's saved positions -
+                // so transient panels in the on-screen list and concurrent opens cannot skew it.
+                windowSettingsRepository.openWindowAtEnd(
                     characterId = characterId,
                     name = name,
                     location = location,
-                    // Captured at append time: reading the list here would count windows opened
-                    // after this one, recording the same position for both.
-                    position = newPosition,
                 )
             }
         }
@@ -1409,9 +1450,25 @@ class GameViewModel(
     /**
      * The game closing a panel with a `closeDialog` tag. It leaves the layout but is not hidden: the
      * game is free to open it again later.
+     *
+     * Closes wait on the same gate as game opens: one that ran mid-restore would remove nothing
+     * from the not-yet-populated dock while nulling the saved row underneath it, and a close
+     * running ahead of a parked open for the same window would invert the protocol's order (the
+     * stamp check settles who acts).
      */
     private fun closeWindowFromGame(name: String) {
-        removeWindow(name = name, hide = false)
+        val stamp = stampGameWindowEvent(name)
+        viewModelScope.launch {
+            // No character means no restore is pending (it only runs for an identified
+            // character), and the gate would never complete - act immediately.
+            if (client.characterId.value != null) {
+                if (withTimeoutOrNull(10_000) { layoutRestored.await() } == null) {
+                    logger.w { "Layout restore still running after 10s; closing $name against it" }
+                }
+            }
+            if (latestGameWindowEvent[name] != stamp) return@launch
+            removeWindow(name = name, hide = false)
+        }
     }
 
     private fun removeWindow(
