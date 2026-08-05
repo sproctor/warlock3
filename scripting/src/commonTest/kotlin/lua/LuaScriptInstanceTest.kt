@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 private var luaTestSeq = 0
@@ -155,7 +156,7 @@ class LuaScriptInstanceTest {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
             withTimeout(10.seconds) {
                 while (!client.printedText().contains("before")) {
-                    delay(20)
+                    delay(20.milliseconds)
                 }
             }
             instance.stop()
@@ -170,7 +171,7 @@ class LuaScriptInstanceTest {
         val instance = createInstance("while true do end")
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            delay(300)
+            delay(300.milliseconds)
             instance.stop()
             instance.awaitStopped(10.seconds)
         }
@@ -189,7 +190,7 @@ class LuaScriptInstanceTest {
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
             instance.suspend()
-            delay(700)
+            delay(700.milliseconds)
             assertFalse(client.printedText().contains("after"))
             instance.resume()
             instance.awaitStopped()
@@ -216,7 +217,7 @@ class LuaScriptInstanceTest {
                 launch {
                     while (true) {
                         client.emit(ClientTextEvent("a goblin arrives"))
-                        delay(50)
+                        delay(50.milliseconds)
                     }
                 }
             instance.awaitStopped()

@@ -61,6 +61,8 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.isSpecified
 import kotlin.math.min
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @Suppress("ktlint:compose:vm-forwarding-check")
@@ -296,7 +298,7 @@ private fun countdownSeconds(
             seconds = ((remainingMs + 999) / 1000).toInt()
             if (remaining < Duration.ZERO) break
             val msUntilNextTick = remainingMs % 1000
-            delay(if (msUntilNextTick == 0L) 1000L else msUntilNextTick)
+            delay(if (msUntilNextTick == 0L) 1.seconds else msUntilNextTick.milliseconds)
         }
     }
     return seconds

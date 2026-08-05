@@ -1342,7 +1342,7 @@ class GameViewModel(
             // Clicked during login: wait for the saved layout, or the remembered rank would map
             // onto a not-yet-populated dock and pin the window at the top.
             viewModelScope.launch {
-                withTimeoutOrNull(10_000) { layoutRestored.await() }
+                withTimeoutOrNull(10.seconds) { layoutRestored.await() }
                 openWindowNow(name)
             }
         }
@@ -1433,11 +1433,11 @@ class GameViewModel(
             // reopen hidden panels and duplicate docked ones on every GS4 login. Wait for the id;
             // the timeout only covers a server that never identifies the character at all.
             val characterId =
-                withTimeoutOrNull(10_000) { client.characterId.filterNotNull().first() }
+                withTimeoutOrNull(10.seconds) { client.characterId.filterNotNull().first() }
             if (characterId != null) {
                 // The layout restore wakes on this same characterId emission; let it finish so
                 // this window lands after the saved layout instead of racing it into the dock.
-                if (withTimeoutOrNull(10_000) { layoutRestored.await() } == null) {
+                if (withTimeoutOrNull(10.seconds) { layoutRestored.await() } == null) {
                     logger.w { "Layout restore still running after 10s; opening $name against it" }
                 }
                 // A window the user closed stays closed until they ask for it back.
@@ -1574,7 +1574,7 @@ class GameViewModel(
             // No character means no restore is pending (it only runs for an identified
             // character), and the gate would never complete - act immediately.
             if (client.characterId.value != null) {
-                if (withTimeoutOrNull(10_000) { layoutRestored.await() } == null) {
+                if (withTimeoutOrNull(10.seconds) { layoutRestored.await() } == null) {
                     logger.w { "Layout restore still running after 10s; closing $name against it" }
                 }
             }
