@@ -48,6 +48,7 @@ import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopWindowSettingsDialog
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.HistorySearchState
+import warlockfe.warlock3.compose.ui.game.countdownSeconds
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
@@ -281,25 +282,4 @@ fun BoxScope.DesktopRoundTimeBar(
             )
         }
     }
-}
-
-@Composable
-private fun countdownSeconds(
-    endTime: Instant?,
-    getCurrentTime: () -> Instant,
-): Int {
-    var seconds by remember { mutableIntStateOf(0) }
-    val currentGetCurrentTime by rememberUpdatedState(getCurrentTime)
-    LaunchedEffect(endTime) {
-        while (endTime != null) {
-            val now = currentGetCurrentTime()
-            val remaining = endTime - now
-            val remainingMs = remaining.inWholeMilliseconds
-            seconds = ((remainingMs + 999) / 1000).toInt()
-            if (remaining < Duration.ZERO) break
-            val msUntilNextTick = remainingMs % 1000
-            delay(if (msUntilNextTick == 0L) 1.seconds else msUntilNextTick.milliseconds)
-        }
-    }
-    return seconds
 }
