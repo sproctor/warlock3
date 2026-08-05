@@ -110,6 +110,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowPlacement
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import kotlin.time.Duration.Companion.seconds
@@ -259,7 +260,7 @@ class GameViewModel(
     val openWindows =
         windowSettings.map { currentWindowSettings ->
             currentWindowSettings.mapNotNull { entity ->
-                entity.takeIf { it.position != null }?.name
+                entity.takeIf { it.open }?.name
             }
         }
 
@@ -579,7 +580,7 @@ class GameViewModel(
                             logger.w(e) { "Failed to normalize window positions" }
                         }
                         val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
-                        settings.filter { it.location != null }.forEach { entity ->
+                        settings.filter { it.open }.forEach { entity ->
                             // A user open, or a game open that gave up waiting on this restore,
                             // can land first - never add a second copy.
                             if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
@@ -692,6 +693,17 @@ class GameViewModel(
                         if (event.info.name == "main") {
                             _mainWindowUiState.value.windowInfo.value = event.info
                         } else {
+                            // A non-resident panel persists nothing, but one announced late can
+                            // have picked up a saved row before its info arrived (canSaveWindow
+                            // is true for unknown windows). Clear it, or the restore and every
+                            // reorder keep tracking a window that saves nothing.
+                            if (!event.info.resident) {
+                                viewModelScope.launch {
+                                    client.characterId.value?.let { characterId ->
+                                        windowSettingsRepository.removeWindowFromLayout(characterId, event.info.name)
+                                    }
+                                }
+                            }
                             windowUiStateLists.forEach { windowUiStates ->
                                 windowUiStates.value
                                     .indexOfFirst { it.name == event.info.name }
@@ -1223,13 +1235,22 @@ class GameViewModel(
             mutableStates
         }
         if (!canSaveWindow(name)) return
+        // The DAO takes the rank among the dock's open saved rows, but the drop index counts
+        // every on-screen window - transient panels and not-yet-saved windows included - so
+        // count only ranked windows above the drop.
+        val openNames = windowSettings.value.filter { it.open && it.name != name }.mapTo(mutableSetOf()) { it.name }
+        val rank =
+            targetStates.value.let { states ->
+                val index = states.indexOfFirst { it.name == name }
+                if (index < 0) targetIndex else states.take(index).count { it.name in openNames }
+            }
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.moveWindowToPosition(
                     characterId = characterId,
                     name = name,
                     location = targetLocation,
-                    position = targetIndex,
+                    position = rank,
                 )
             }
         }
@@ -1309,14 +1330,65 @@ class GameViewModel(
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.d { "Reordering $location: $names" }
-                windowSettingsRepository.setPositions(characterId, names)
+                windowSettingsRepository.setPositions(characterId = characterId, location = location, names = names)
             }
         }
     }
 
     fun openWindow(name: String) {
-        openWindowAt(name = name, location = WindowLocation.TOP)
+        if (client.characterId.value == null || layoutRestored.isCompleted) {
+            openWindowNow(name)
+        } else {
+            // Clicked during login: wait for the saved layout, or the remembered rank would map
+            // onto a not-yet-populated dock and pin the window at the top.
+            viewModelScope.launch {
+                withTimeoutOrNull(10.seconds) { layoutRestored.await() }
+                openWindowNow(name)
+            }
+        }
+    }
+
+    /**
+     * Docks a window at the placement the observed settings remember (TOP for one never placed)
+     * and then persists. The dock updates before anything suspends - normally in the same frame
+     * as the click - so a close arriving afterwards always finds it docked, and the screen and
+     * the saved state cannot disagree about whether it is open.
+     */
+    private fun openWindowNow(name: String) {
+        val placement = rememberedPlacement(name)
+        if (placement == null) {
+            openWindowAt(name = name, location = WindowLocation.TOP)
+            notifyPanelVisibility(name, open = true)
+            return
+        }
+        if (!placeWindowUi(name = name, location = placement.location, position = placement.position)) return
         notifyPanelVisibility(name, open = true)
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                // Recomputed against the DB rows inside the transaction; the observed placement
+                // above only seeded the on-screen spot.
+                windowSettingsRepository.reopenWindow(characterId, name)
+            }
+        }
+    }
+
+    /**
+     * The placement a window's saved row remembers - its dock plus its rank among the dock's
+     * open windows - read from the observed settings so callers can dock without a DB
+     * round-trip; null when the window has never been placed. A remembered MAIN reads as never
+     * placed, mirroring [WindowSettingsRepository.reopenWindow]: MAIN is the main text window's
+     * slot.
+     */
+    private fun rememberedPlacement(name: String): WindowPlacement? {
+        if (!canSaveWindow(name)) return null
+        val settings = windowSettings.value
+        val window = settings.firstOrNull { it.name == name } ?: return null
+        val location = window.location?.takeUnless { it == WindowLocation.MAIN } ?: return null
+        val rank =
+            settings.count {
+                it.open && it.location == location && it.name != name && compareValues(it.position, window.position) < 0
+            }
+        return WindowPlacement(location, rank)
     }
 
     /**
@@ -1361,11 +1433,11 @@ class GameViewModel(
             // reopen hidden panels and duplicate docked ones on every GS4 login. Wait for the id;
             // the timeout only covers a server that never identifies the character at all.
             val characterId =
-                withTimeoutOrNull(10_000) { client.characterId.filterNotNull().first() }
+                withTimeoutOrNull(10.seconds) { client.characterId.filterNotNull().first() }
             if (characterId != null) {
                 // The layout restore wakes on this same characterId emission; let it finish so
                 // this window lands after the saved layout instead of racing it into the dock.
-                if (withTimeoutOrNull(10_000) { layoutRestored.await() } == null) {
+                if (withTimeoutOrNull(10.seconds) { layoutRestored.await() } == null) {
                     logger.w { "Layout restore still running after 10s; opening $name against it" }
                 }
                 // A window the user closed stays closed until they ask for it back.
@@ -1374,7 +1446,19 @@ class GameViewModel(
             }
             // Superseded by a later open or close for this window while suspended above.
             if (latestGameWindowEvent[name] != stamp) return@launch
-            openWindowAt(name = name, location = location)
+            // A window the game closed earlier reopens at the placement that close remembered;
+            // the protocol's location is only the default for one never placed.
+            val placement =
+                if (characterId != null && canSaveWindow(name)) {
+                    windowSettingsRepository.reopenWindow(characterId, name)
+                } else {
+                    null
+                }
+            if (placement != null) {
+                placeWindowUi(name = name, location = placement.location, position = placement.position)
+            } else {
+                openWindowAt(name = name, location = location)
+            }
         }
     }
 
@@ -1382,24 +1466,7 @@ class GameViewModel(
         name: String,
         location: WindowLocation,
     ) {
-        // A window lives in exactly one dock: an open for one already docked anywhere is a
-        // no-op (the visibility toggles route those to closeWindow).
-        if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return
-        val windowUiStates = getWindowUiStatesForLocation(location)
-        var newState: WindowUiState? = null
-        windowUiStates.update { states ->
-            // Reset on entry: update{} may retry, and a retry can take the other branch.
-            newState = null
-            if (states.any { it.name == name }) {
-                states
-            } else {
-                val added = buildWindowUiState(name)
-                newState = added
-                states + added
-            }
-        }
-        val state = newState ?: return
-        (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
+        if (!placeWindowUi(name = name, location = location)) return
         if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
@@ -1412,6 +1479,51 @@ class GameViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Docks a window at [position], its rank among the dock's open saved windows (null appends),
+     * and returns whether it was added. The rank maps to the on-screen index of the window
+     * currently holding it: an on-screen window without an open saved row - a transient panel,
+     * or one whose first save is still in flight - holds a screen slot but no rank. Persists
+     * nothing: callers own the saved placement.
+     */
+    private fun placeWindowUi(
+        name: String,
+        location: WindowLocation,
+        position: Int? = null,
+    ): Boolean {
+        // A window lives in exactly one dock: an open for one already docked anywhere is a
+        // no-op (the visibility toggles route those to closeWindow).
+        if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return false
+        val windowUiStates = getWindowUiStatesForLocation(location)
+        var newState: WindowUiState? = null
+        windowUiStates.update { states ->
+            // Reset on entry: update{} may retry, and a retry can take the other branch.
+            newState = null
+            if (states.any { it.name == name }) {
+                states
+            } else {
+                val added = buildWindowUiState(name)
+                newState = added
+                val insertIndex =
+                    if (position == null) {
+                        states.size
+                    } else {
+                        val openNames = windowSettings.value.filter { it.open }.mapTo(mutableSetOf()) { it.name }
+                        states
+                            .withIndex()
+                            .filter { it.value.name in openNames }
+                            .getOrNull(position)
+                            ?.index
+                            ?: states.size
+                    }
+                states.toMutableList().apply { add(insertIndex, added) }
+            }
+        }
+        val state = newState ?: return false
+        (state.data as? StreamWindowData)?.stream?.setNameFilter(state.nameFilter)
+        return true
     }
 
     private fun buildWindowUiState(name: String): WindowUiState {
@@ -1462,7 +1574,7 @@ class GameViewModel(
             // No character means no restore is pending (it only runs for an identified
             // character), and the gate would never complete - act immediately.
             if (client.characterId.value != null) {
-                if (withTimeoutOrNull(10_000) { layoutRestored.await() } == null) {
+                if (withTimeoutOrNull(10.seconds) { layoutRestored.await() } == null) {
                     logger.w { "Layout restore still running after 10s; closing $name against it" }
                 }
             }

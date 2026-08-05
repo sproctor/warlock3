@@ -15,8 +15,11 @@ data class WindowSettings(
     val name: String,
     val width: Int?,
     val height: Int?,
+    // Where the window lives when [open], and its remembered placement when closed.
     val location: WindowLocation?,
     val position: Int?,
+    // Whether the window is in the layout; closed windows keep location/position remembered.
+    val open: Boolean = false,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,
     val font: FontConfig?,

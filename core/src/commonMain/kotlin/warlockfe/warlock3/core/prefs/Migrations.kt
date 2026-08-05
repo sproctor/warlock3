@@ -25,6 +25,16 @@ val MIGRATION_10_11 =
         }
     }
 
+// Not an AutoMigration because of the backfill: under the old schema "placed in the layout" was
+// location IS NOT NULL, and those windows must come up open.
+val MIGRATION_20_21 =
+    object : Migration(20, 21) {
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE WindowSettings ADD COLUMN `open` INTEGER NOT NULL DEFAULT 0")
+            connection.execSQL("UPDATE WindowSettings SET `open` = 1 WHERE location IS NOT NULL")
+        }
+    }
+
 val MIGRATION_14_16 =
     object : Migration(14, 16) {
         public override suspend fun migrate(connection: SQLiteConnection) {

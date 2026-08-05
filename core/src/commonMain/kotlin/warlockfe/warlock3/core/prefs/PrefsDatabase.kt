@@ -43,7 +43,7 @@ import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 
-const val PREFS_DATABASE_VERSION = 20
+const val PREFS_DATABASE_VERSION = 21
 
 @Database(
     entities = [

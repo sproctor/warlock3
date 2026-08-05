@@ -64,6 +64,7 @@ import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
 import kotlin.math.min
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
 @Composable
@@ -263,27 +264,6 @@ fun BoxScope.RoundTimeBar(
             )
         }
     }
-}
-
-@Composable
-private fun countdownSeconds(
-    endTime: Instant?,
-    getCurrentTime: () -> Instant,
-): Int {
-    var seconds by remember { mutableIntStateOf(0) }
-    val currentGetCurrentTime by rememberUpdatedState(getCurrentTime)
-    LaunchedEffect(endTime) {
-        while (endTime != null) {
-            val now = currentGetCurrentTime()
-            val remaining = endTime - now
-            val remainingMs = remaining.inWholeMilliseconds
-            seconds = ((remainingMs + 999) / 1000).toInt()
-            if (remaining < Duration.ZERO) break
-            val msUntilNextTick = remainingMs % 1000
-            delay(if (msUntilNextTick == 0L) 1000L else msUntilNextTick)
-        }
-    }
-    return seconds
 }
 
 @Preview(widthDp = 800, backgroundColor = 0xFF444444)

@@ -48,3 +48,11 @@ enum class WindowType {
     STREAM,
     PANEL,
 }
+
+/**
+ * A window's place in the layout: its dock and its index among the dock's saved windows.
+ */
+data class WindowPlacement(
+    val location: WindowLocation,
+    val position: Int,
+)

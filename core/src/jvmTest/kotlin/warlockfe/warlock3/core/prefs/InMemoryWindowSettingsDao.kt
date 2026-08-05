@@ -49,15 +49,28 @@ class InMemoryWindowSettingsDao : WindowSettingsDao {
     ) {
         val existing = rows[characterId to name]
         rows[characterId to name] =
-            existing?.copy(location = location, position = position)
-                ?: windowSettingsEntity(characterId = characterId, name = name, location = location, position = position)
+            existing?.copy(location = location, position = position, open = true)
+                ?: windowSettingsEntity(
+                    characterId = characterId,
+                    name = name,
+                    location = location,
+                    position = position,
+                    open = true,
+                )
     }
 
-    override suspend fun doCloseWindow(
+    override suspend fun closeWindow(
         characterId: String,
         name: String,
     ) {
-        rows[characterId to name]?.let { rows[characterId to name] = it.copy(location = null, position = null) }
+        rows[characterId to name]?.let { rows[characterId to name] = it.copy(open = false) }
+    }
+
+    override suspend fun markOpen(
+        characterId: String,
+        name: String,
+    ) {
+        rows[characterId to name]?.let { rows[characterId to name] = it.copy(open = true) }
     }
 
     override suspend fun setPosition(
@@ -74,29 +87,12 @@ class InMemoryWindowSettingsDao : WindowSettingsDao {
         location: WindowLocation,
         position: Int,
     ) {
-        shift(characterId, location, from = position, delta = 1)
-    }
-
-    override suspend fun closeGap(
-        characterId: String,
-        location: WindowLocation?,
-        position: Int?,
-    ) {
-        if (location == null || position == null) return
-        shift(characterId, location, from = position + 1, delta = -1)
-    }
-
-    private fun shift(
-        characterId: String,
-        location: WindowLocation,
-        from: Int,
-        delta: Int,
-    ) {
+        // Shifts the whole dock order, closed windows included, like the real query.
         rows.entries.forEach { entry ->
             val row = entry.value
-            val position = row.position
-            if (row.characterId == characterId && row.location == location && position != null && position >= from) {
-                entry.setValue(row.copy(position = position + delta))
+            val rowPosition = row.position
+            if (row.characterId == characterId && row.location == location && rowPosition != null && rowPosition >= position) {
+                entry.setValue(row.copy(position = rowPosition + 1))
             }
         }
     }
@@ -138,6 +134,7 @@ fun windowSettingsEntity(
     name: String,
     location: WindowLocation? = null,
     position: Int? = null,
+    open: Boolean = false,
 ): WindowSettingsEntity =
     WindowSettingsEntity(
         characterId = characterId,
@@ -146,6 +143,7 @@ fun windowSettingsEntity(
         height = null,
         location = location,
         position = position,
+        open = open,
         textColor = WarlockColor.Unspecified,
         backgroundColor = WarlockColor.Unspecified,
         fontFamily = null,
@@ -153,11 +151,14 @@ fun windowSettingsEntity(
         fontWeight = null,
     )
 
-/** The (name, position) pairs docked at [location], in the order [WindowSettingsDao.getByCharacter] returns them. */
+/**
+ * The (name, position) pairs open at [location], in the order [WindowSettingsDao.getByCharacter]
+ * returns them. Closed windows remember a placement there but are not docked.
+ */
 suspend fun WindowSettingsDao.dock(
     characterId: String,
     location: WindowLocation,
 ): List<Pair<String, Int?>> =
     getByCharacter(characterId)
-        .filter { it.location == location }
+        .filter { it.location == location && it.open }
         .map { it.name to it.position }

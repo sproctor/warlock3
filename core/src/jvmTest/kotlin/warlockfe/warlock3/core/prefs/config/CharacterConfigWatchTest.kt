@@ -17,6 +17,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The store reloads files changed out of band (hand edits, or writes from another app instance) so
@@ -83,15 +85,15 @@ class CharacterConfigWatchTest {
 
             val watchScope = CoroutineScope(Dispatchers.IO + Job())
             store.startWatching(watchScope)
-            delay(500) // let the watcher register its directories before we change the file
+            delay(500.milliseconds) // let the watcher register its directories before we change the file
 
             // Another instance (or the user in a text editor) adds a highlight.
             atomicWrite(globalHighlightsFile(), globalToml("apple", "banana"))
 
             try {
-                withTimeout(15_000) {
+                withTimeout(15.seconds) {
                     while (store.current(GLOBAL_CHARACTER_ID).highlights.none { it.pattern == "banana" }) {
-                        delay(100)
+                        delay(100.milliseconds)
                     }
                 }
             } finally {

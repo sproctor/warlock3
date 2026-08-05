@@ -31,6 +31,7 @@ import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -87,7 +88,7 @@ class ComposeTextStreamTest {
         }
 
         suspend fun awaitLines(predicate: (List<StreamLine>) -> Boolean): List<StreamLine> =
-            withTimeout(5_000) { stream.lines.first(predicate) }
+            withTimeout(5.seconds) { stream.lines.first(predicate) }
 
         fun close() = scope.cancel()
     }

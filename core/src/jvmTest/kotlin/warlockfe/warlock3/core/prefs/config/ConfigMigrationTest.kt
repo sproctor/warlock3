@@ -453,7 +453,12 @@ private class FakeWindowSettingsDao : WindowSettingsDao {
         position: Int,
     ) = error("unused")
 
-    override suspend fun doCloseWindow(
+    override suspend fun closeWindow(
+        characterId: String,
+        name: String,
+    ) = error("unused")
+
+    override suspend fun markOpen(
         characterId: String,
         name: String,
     ) = error("unused")
@@ -472,12 +477,6 @@ private class FakeWindowSettingsDao : WindowSettingsDao {
         characterId: String,
         location: warlockfe.warlock3.core.window.WindowLocation,
         position: Int,
-    ) = error("unused")
-
-    override suspend fun closeGap(
-        characterId: String,
-        location: warlockfe.warlock3.core.window.WindowLocation?,
-        position: Int?,
     ) = error("unused")
 
     override suspend fun updateWidth(

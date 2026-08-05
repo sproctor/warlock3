@@ -139,6 +139,8 @@ kotlin {
         jvmTest {
             dependencies {
                 implementation(kotlin("test"))
+                // Real SQLite for the Room migration test (PrefsMigrationTest).
+                implementation(libs.sqlite.bundled)
             }
         }
     }
