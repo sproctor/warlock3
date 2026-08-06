@@ -1309,15 +1309,24 @@ class GameViewModel(
 
     fun changeWindowPositions(
         location: WindowLocation,
-        fromIndex: Int,
+        name: String,
         toIndex: Int,
     ) {
         val windowUiStates = getWindowUiStatesForLocation(location)
-        var reordered: List<WindowUiState> = emptyList()
+        var reordered: List<WindowUiState>? = null
         windowUiStates.update { states ->
+            // Reset on entry: update{} may retry.
+            reordered = null
+            // The gesture's indices are snapshots, and the dock can change under a drag (the
+            // game closing a panel mid-drag is the everyday case): resolve the dragged window
+            // by name against the current list and clamp the drop index. A stale index crashed
+            // here on a shrunken dock, and a stale-but-in-bounds one would have moved whatever
+            // window sits at it now.
+            val fromIndex = states.indexOfFirst { it.name == name }
+            if (fromIndex == -1) return@update states
             val mutableStates = states.toMutableList()
             val item = mutableStates.removeAt(fromIndex)
-            val adjustedToIndex = if (toIndex > fromIndex) toIndex - 1 else toIndex
+            val adjustedToIndex = (if (toIndex > fromIndex) toIndex - 1 else toIndex).coerceIn(0, mutableStates.size)
             mutableStates.add(adjustedToIndex, item)
             reordered = mutableStates
             mutableStates
@@ -1326,7 +1335,7 @@ class GameViewModel(
         // per-row writes from the live list could interleave with another reorder and leave
         // duplicate positions behind. A transient panel takes part in the reorder on screen but
         // records nothing.
-        val names = reordered.filter { canSaveWindow(it.name) }.map { it.name }
+        val names = reordered?.filter { canSaveWindow(it.name) }?.map { it.name } ?: return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.d { "Reordering $location: $names" }

@@ -539,7 +539,7 @@ internal fun GameViewModel.onWindowDrop(result: DropResult) {
     if (result.sourceLocation == result.target.location) {
         changeWindowPositions(
             result.sourceLocation,
-            result.sourceIndex,
+            result.name,
             result.target.insertionIndex,
         )
     } else {

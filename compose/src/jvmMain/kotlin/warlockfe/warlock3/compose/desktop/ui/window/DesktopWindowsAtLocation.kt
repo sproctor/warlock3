@@ -316,7 +316,7 @@ private fun WindowViewSlot(
                     onDragStart = { offset ->
                         val coords = headerCoordinates.value ?: return@detectDragGestures
                         val rootOffset = coords.localToRoot(offset)
-                        dragDropState.startDrag(uiState, location, index, rootOffset)
+                        dragDropState.startDrag(uiState, location, rootOffset)
                     },
                     onDrag = { change, _ ->
                         change.consume()

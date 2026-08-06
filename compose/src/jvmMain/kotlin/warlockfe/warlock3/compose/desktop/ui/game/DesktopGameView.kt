@@ -266,7 +266,7 @@ fun DesktopGameView(
                         if (result.sourceLocation == result.target.location) {
                             viewModel.changeWindowPositions(
                                 result.sourceLocation,
-                                result.sourceIndex,
+                                result.name,
                                 result.target.insertionIndex,
                             )
                         } else {
