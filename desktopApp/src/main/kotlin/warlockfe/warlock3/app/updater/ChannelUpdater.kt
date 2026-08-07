@@ -18,9 +18,18 @@ internal const val STABLE_CHANNEL = "latest"
  * The channel a version string belongs to: its first semver pre-release identifier, which is how
  * both potassium and electron-updater classify a tag (`3.1.0-beta.8` -> `beta`). Anything we don't
  * publish under counts as stable.
+ *
+ * Build metadata is dropped first. Our tags never carry any, but semver puts it after the
+ * pre-release (`3.1.0-beta+build.7`), where it would otherwise glue itself onto the identifier and
+ * read as a stable release - which would strand that build on the stable channel.
  */
 internal fun channelOfVersion(version: String): String =
-    when (version.substringAfter('-', missingDelimiterValue = "").substringBefore('.')) {
+    when (
+        version
+            .substringAfter('-', missingDelimiterValue = "")
+            .substringBefore('+')
+            .substringBefore('.')
+    ) {
         ALPHA_CHANNEL -> ALPHA_CHANNEL
         BETA_CHANNEL -> BETA_CHANNEL
         else -> STABLE_CHANNEL

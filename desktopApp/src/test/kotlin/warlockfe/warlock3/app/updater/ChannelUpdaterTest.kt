@@ -46,6 +46,17 @@ class ChannelUpdaterTest {
     }
 
     @Test
+    fun `build metadata does not hide the prerelease identifier`() {
+        val setting = ReleaseChannelSetting.CURRENT
+        assertEquals(listOf(BETA_CHANNEL, STABLE_CHANNEL), setting.channelsToCheck("3.1.0-beta+build.7"))
+        assertEquals(
+            listOf(ALPHA_CHANNEL, BETA_CHANNEL, STABLE_CHANNEL),
+            setting.channelsToCheck("3.1.0-alpha.2+sha.9f3c1d0"),
+        )
+        assertEquals(listOf(STABLE_CHANNEL), setting.channelsToCheck("3.1.0+build.7"))
+    }
+
+    @Test
     fun `an unrecognized prerelease is treated as stable`() {
         // Only alpha and beta are published; anything else shouldn't widen the search.
         assertEquals(listOf(STABLE_CHANNEL), ReleaseChannelSetting.CURRENT.channelsToCheck("3.1.0-rc.1"))
