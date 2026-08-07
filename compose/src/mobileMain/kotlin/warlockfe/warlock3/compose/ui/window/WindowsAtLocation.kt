@@ -231,7 +231,6 @@ private fun DockableSection(
                 modifier = itemModifier,
                 uiState = uiState,
                 location = location,
-                index = index,
                 defaultStyle = defaultStyle,
                 openWindows = openWindows,
                 isLast = index == windowUiStates.lastIndex,
@@ -278,7 +277,6 @@ private fun DockableSection(
 private fun WindowViewSlot(
     uiState: WindowUiState,
     location: WindowLocation,
-    index: Int,
     defaultStyle: StyleDefinition,
     openWindows: List<String>,
     isLast: Boolean,
@@ -303,7 +301,10 @@ private fun WindowViewSlot(
     val headerModifier =
         Modifier
             .onGloballyPositioned { headerCoordinates.value = it }
-            .pointerInput(uiState.name, location, index) {
+            // Keyed on identity only. Keying on the window's index would restart this block -
+            // cancelling an in-flight drag - whenever a window ahead of it leaves the dock,
+            // which is exactly when a drag is most likely to be in flight.
+            .pointerInput(uiState.name, location) {
                 detectDragGestures(
                     onDragStart = { offset ->
                         val coords = headerCoordinates.value ?: return@detectDragGestures

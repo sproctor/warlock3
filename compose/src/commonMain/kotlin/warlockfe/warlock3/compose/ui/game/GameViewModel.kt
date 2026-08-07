@@ -1334,8 +1334,9 @@ class GameViewModel(
         // The dock's whole order, captured before suspending and written in one transaction:
         // per-row writes from the live list could interleave with another reorder and leave
         // duplicate positions behind. A transient panel takes part in the reorder on screen but
-        // records nothing.
-        val names = reordered?.filter { canSaveWindow(it.name) }?.map { it.name } ?: return
+        // records nothing, so a dock holding only those has no saved order to rewrite.
+        val names = reordered?.filter { canSaveWindow(it.name) }?.map { it.name }
+        if (names.isNullOrEmpty()) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 logger.d { "Reordering $location: $names" }
