@@ -314,7 +314,7 @@ fun DesktopGeneralSettingsView(
                         onClick = {
                             scope.launch { clientSettingRepository.putReleaseChannel(entry) }
                         },
-                        text = entry.name.lowercase(),
+                        text = entry.label(),
                     )
                 }
             }
@@ -402,3 +402,16 @@ fun DesktopGeneralSettingsView(
         }
     }
 }
+
+/**
+ * Each channel also picks up everything more stable than itself, so a beta build still moves to the
+ * stable release that supersedes it. The labels spell that out - "beta" alone reads like it would
+ * strand you on prereleases.
+ */
+private fun ReleaseChannelSetting.label(): String =
+    when (this) {
+        ReleaseChannelSetting.CURRENT -> "Current - stay on the channel this build came from"
+        ReleaseChannelSetting.STABLE -> "Stable - stable releases only"
+        ReleaseChannelSetting.BETA -> "Beta - betas and stable releases"
+        ReleaseChannelSetting.ALPHA -> "Alpha - the newest release of any kind"
+    }

@@ -79,6 +79,8 @@ import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
 import org.jetbrains.jewel.window.utils.DesktopPlatform
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.di.JvmAppContainer
+import warlockfe.warlock3.app.updater.ChannelUpdater
+import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
@@ -92,7 +94,6 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
-import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
@@ -606,27 +607,18 @@ private class WarlockCommand : CliktCommand() {
             }
         }
 
-    private fun buildUpdater(clientSettings: ClientSettingRepository): PotassiumUpdater {
+    private fun buildUpdater(clientSettings: ClientSettingRepository): ChannelUpdater {
         val resolvedVersion = version ?: "0.0.0"
-        val versionChannel =
-            when {
-                resolvedVersion.contains("beta") -> "beta"
-                resolvedVersion.contains("alpha") -> "alpha"
-                else -> "latest"
-            }
         val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
-        val selectedChannel =
-            when (channelSetting) {
-                ReleaseChannelSetting.CURRENT -> versionChannel
-                ReleaseChannelSetting.STABLE -> "latest"
-                ReleaseChannelSetting.BETA -> "beta"
-                ReleaseChannelSetting.ALPHA -> "alpha"
-            }
-        return PotassiumUpdater {
-            provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
-            channel = selectedChannel
-            currentVersion = resolvedVersion
-        }
+        return ChannelUpdater(
+            channelSetting.channelsToCheck(resolvedVersion).map { channelName ->
+                PotassiumUpdater {
+                    provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
+                    channel = channelName
+                    currentVersion = resolvedVersion
+                }
+            },
+        )
     }
 }
 
@@ -642,7 +634,7 @@ fun main(args: Array<String>) =
 
 @Composable
 private fun UpdateDialog(
-    updater: PotassiumUpdater,
+    updater: ChannelUpdater,
     updateSupported: Boolean,
     availableUpdate: UpdateInfo?,
     clientSettings: ClientSettingRepository,
