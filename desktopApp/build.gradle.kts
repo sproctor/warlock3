@@ -41,6 +41,8 @@ dependencies {
 
     // In-app updates
     implementation(libs.potassium.updater)
+
+    testImplementation(kotlin("test"))
 }
 
 kotlin {
