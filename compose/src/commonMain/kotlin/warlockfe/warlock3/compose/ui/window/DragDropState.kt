@@ -16,9 +16,6 @@ class DragDropState {
         private set
     var sourceLocation: WindowLocation? by mutableStateOf(null)
         private set
-    var sourceIndex: Int by mutableIntStateOf(-1)
-        private set
-
     var dragOffset: Offset by mutableStateOf(Offset.Zero)
         private set
 
@@ -32,12 +29,10 @@ class DragDropState {
     fun startDrag(
         item: WindowUiState,
         location: WindowLocation,
-        index: Int,
         offset: Offset,
     ) {
         draggedItem = item
         sourceLocation = location
-        sourceIndex = index
         dragOffset = offset
         dropTarget = null
     }
@@ -57,7 +52,6 @@ class DragDropState {
                 DropResult(
                     name = item.name,
                     sourceLocation = source,
-                    sourceIndex = sourceIndex,
                     target = target,
                 )
             } else {
@@ -124,7 +118,6 @@ class DragDropState {
     private fun clearState() {
         draggedItem = null
         sourceLocation = null
-        sourceIndex = -1
         dragOffset = Offset.Zero
         dropTarget = null
     }
@@ -144,6 +137,5 @@ data class SectionInfo(
 data class DropResult(
     val name: String,
     val sourceLocation: WindowLocation,
-    val sourceIndex: Int,
     val target: DropTarget,
 )
