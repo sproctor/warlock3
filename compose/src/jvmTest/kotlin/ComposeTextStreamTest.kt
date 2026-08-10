@@ -558,4 +558,78 @@ class ComposeTextStreamTest {
                 )
             }
         }
+
+    // The memory usage view reports what the stream is holding; the line counts have to be exact for
+    // it to be worth anything.
+    @Test
+    fun memoryUsageCountsBufferedLines() =
+        runBlocking {
+            withFixture { f ->
+                repeat(5) { i ->
+                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+
+                val usage = f.stream.memoryUsage()
+                assertEquals("main", usage.streamId)
+                assertEquals(5, usage.shownLines)
+                assertEquals(5, usage.bufferedLines)
+                assertEquals(5, usage.heldLines)
+                assertEquals(1000, usage.maxLines)
+                assertEquals(25L, usage.textCharacters)
+                assertEquals(0L, usage.componentReferences)
+                assertTrue(usage.estimatedBytes > 0, "a buffer holding lines should estimate above zero")
+            }
+        }
+
+    // Past capacity the buffer stops growing, so the reported size has to stop growing with it.
+    @Test
+    fun memoryUsageStopsGrowingAtCapacity() =
+        runBlocking {
+            withFixture(maxLines = 4) { f ->
+                repeat(4) { i ->
+                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+                val atCapacity = f.stream.memoryUsage()
+
+                repeat(40) { i ->
+                    f.stream.appendLine(text("later$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+                val wellPast = f.stream.memoryUsage()
+
+                assertEquals(4, atCapacity.bufferedLines)
+                assertEquals(4, wellPast.bufferedLines)
+                assertEquals(4, wellPast.shownLines)
+                // The displayed list compacts lazily, so it can still pin an evicted prefix - bounded
+                // by the live window, never unbounded.
+                assertTrue(
+                    wellPast.heldLines in 4..8,
+                    "held lines should stay within one compaction window of the buffer, was ${wellPast.heldLines}",
+                )
+            }
+        }
+
+    // The component index is never pruned when lines are evicted (see removeLines), so on a stream
+    // that receives components it grows for the life of the connection. Surfacing that count is a
+    // large part of why the memory view exists; this pins the behaviour it reports.
+    @Test
+    fun memoryUsageReportsUnprunedComponentIndex() =
+        runBlocking {
+            withFixture(maxLines = 4) { f ->
+                repeat(40) { i ->
+                    f.stream.appendLine(lineWithComponent("row$i ", "hp"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+
+                val usage = f.stream.memoryUsage()
+                assertEquals(4, usage.bufferedLines)
+                assertEquals(
+                    40L,
+                    usage.componentReferences,
+                    "component locations outlive the lines that registered them",
+                )
+            }
+        }
 }

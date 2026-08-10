@@ -6,6 +6,7 @@ import co.touchlab.kermit.Logger
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,8 +31,13 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.StyledStringLeaf
+import warlockfe.warlock3.core.text.StyledStringSubstring
+import warlockfe.warlock3.core.text.StyledStringVariable
 import warlockfe.warlock3.core.text.flattenStyles
 import warlockfe.warlock3.core.util.SoundPlayer
+import warlockfe.warlock3.core.window.MemoryEstimate
+import warlockfe.warlock3.core.window.StreamMemoryUsage
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.getComponents
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
@@ -518,6 +524,105 @@ class ComposeTextStream(
             linesUpdated()
         }
     }
+
+    /**
+     * What this stream is retaining, for the memory usage view.
+     *
+     * Measured on the work queue, the only coroutine that touches these buffers - reading them from
+     * the UI thread could observe a half-applied append or trip over a concurrent eviction.
+     */
+    suspend fun memoryUsage(): StreamMemoryUsage {
+        val result = CompletableDeferred<StreamMemoryUsage>()
+        try {
+            workQueue.submit("memory") {
+                // Cancelling the caller does not cancel a standalone CompletableDeferred, so a
+                // caller that gave up (the dialog times out) leaves this op still queued. The walk
+                // is O(buffer) and the queue it would run on is the one feeding the windows, so
+                // skip it rather than spend that time on a report nobody is waiting for. A scan
+                // already under way runs to completion - computeMemoryUsage never suspends.
+                if (result.isActive) {
+                    result.complete(computeMemoryUsage())
+                }
+            }
+            return result.await()
+        } finally {
+            // No-op once completed; on cancellation it is what the queued op checks for.
+            result.cancel()
+        }
+    }
+
+    private fun computeMemoryUsage(): StreamMemoryUsage {
+        var characters = 0L
+        var bytes = 0L
+
+        // The rendered lines, and the source each was rendered from. The two are index-parallel and
+        // both bounded by maxLines, so a line in the buffer is paid for twice - once as an
+        // AnnotatedString, once as the StyledString it came from.
+        for (line in finishedLines) {
+            bytes += streamLineBytes(line)
+            characters += (line as? StreamTextLine)?.text?.length?.toLong() ?: 0L
+        }
+        for (cachedLine in cacheLines) {
+            bytes += MemoryEstimate.REFERENCE_BYTES
+            if (cachedLine == null) continue
+            bytes += MemoryEstimate.OBJECT_BYTES
+            bytes += cachedLine.text.substrings.sumOf { leafBytes(it) }
+        }
+
+        // Lines evicted from the buffer but still pinned by the displayed list's backing, which only
+        // compacts once the dropped prefix grows as large as the live window.
+        for (index in 0 until displayStart) {
+            bytes += streamLineBytes(displayBacking[index])
+        }
+        bytes += displayBacking.size * MemoryEstimate.REFERENCE_BYTES
+
+        var componentReferences = 0L
+        for ((name, serialNumbers) in componentLocations) {
+            componentReferences += serialNumbers.size
+            bytes += MemoryEstimate.string(name.length) + MemoryEstimate.OBJECT_BYTES
+            // Boxed Longs in a Set: the entry plus the box it points at.
+            bytes += serialNumbers.size * (MemoryEstimate.OBJECT_BYTES + MemoryEstimate.REFERENCE_BYTES)
+        }
+        for ((name, value) in components) {
+            bytes += MemoryEstimate.string(name.length) + MemoryEstimate.OBJECT_BYTES
+            bytes += value.substrings.sumOf { leafBytes(it) }
+        }
+
+        return StreamMemoryUsage(
+            streamId = id,
+            shownLines = displayBacking.size - displayStart,
+            bufferedLines = finishedLines.size,
+            heldLines = finishedLines.size + displayStart,
+            maxLines = maxLines,
+            textCharacters = characters,
+            componentReferences = componentReferences,
+            estimatedBytes = bytes,
+        )
+    }
+
+    private fun leafBytes(leaf: StyledStringLeaf): Long =
+        MemoryEstimate.OBJECT_BYTES + leaf.styles.size * MemoryEstimate.REFERENCE_BYTES +
+            when (leaf) {
+                is StyledStringSubstring -> MemoryEstimate.string(leaf.text.length)
+                is StyledStringVariable -> MemoryEstimate.string(leaf.name.length)
+            }
+
+    private fun streamLineBytes(line: StreamLine): Long =
+        MemoryEstimate.OBJECT_BYTES +
+            when (line) {
+                is StreamTextLine -> {
+                    val text = line.text
+                    if (text == null) {
+                        0L
+                    } else {
+                        MemoryEstimate.string(text.length) + text.spanStyles.size * MemoryEstimate.SPAN_BYTES
+                    }
+                }
+
+                is StreamImageLine -> {
+                    MemoryEstimate.string(line.url.length)
+                }
+            }
 
     fun setMarkLinks(markLinks: Boolean) {
         this.markLinks = markLinks

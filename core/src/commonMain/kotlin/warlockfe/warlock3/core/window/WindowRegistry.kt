@@ -32,6 +32,10 @@ interface WindowRegistry {
 
     fun getOrCreatePanel(name: String): PanelState
 
+    // What this connection's streams and panels are currently retaining, for the memory usage view.
+    // Suspends because each stream reports from the work-queue coroutine that owns its buffers.
+    suspend fun memoryUsage(): WindowMemoryUsage
+
     fun setCharacterId(characterId: String)
 
     fun close()

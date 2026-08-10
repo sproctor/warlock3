@@ -65,6 +65,7 @@ internal fun DecoratedWindowScope.TitleBarView(
     runScript: (Path) -> Unit,
     showUpdateDialog: () -> Unit,
     showAboutDialog: () -> Unit,
+    showMemoryDialog: () -> Unit,
     exportSettings: (File) -> Unit,
     exportCharacterSettings: (File) -> Unit,
     importSettings: (File) -> Unit,
@@ -172,6 +173,7 @@ internal fun DecoratedWindowScope.TitleBarView(
                         items =
                             listOf(
                                 AppMenuItem("Updates", onClick = showUpdateDialog),
+                                AppMenuItem("Memory usage...", onClick = showMemoryDialog),
                                 AppMenuItem("About", onClick = showAboutDialog),
                             ),
                     ),
