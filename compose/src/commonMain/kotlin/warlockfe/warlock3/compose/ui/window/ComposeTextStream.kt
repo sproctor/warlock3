@@ -261,12 +261,16 @@ class ComposeTextStream(
     // lines until at most [effectiveMaxLines] remain.
     private fun removeLines() {
         val cap = effectiveMaxLines(maxLines)
+        var evicted = false
         while (finishedLines.size > cap) {
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
+            evicted = true
         }
-        pruneComponentLocations()
+        if (evicted) {
+            pruneComponentLocations()
+        }
     }
 
     /**
@@ -274,10 +278,15 @@ class ComposeTextStream(
      *
      * These used to be left in place deliberately ("they don't exist in the main window, and no
      * other windows get long enough"), but on any stream that does carry components the index grew
-     * for the life of the connection - one entry per occurrence, never reclaimed. Pruning here ties
-     * it to the buffer, which is already capped.
+     * for the life of the connection - one entry per occurrence, never reclaimed.
      *
-     * Runs once per append and walks one deque per component name, of which a stream has a handful.
+     * Runs only after an eviction actually happened, and walks one deque per component name. That
+     * is O(names), not O(1), but the server sends a small fixed set of component ids, so it is a
+     * few map steps. The alternative - re-deriving the evicted line's components and dropping only
+     * those - trades those steps for a getComponents() per evicted line, and makes correctness rest
+     * on the front entry belonging to that line, which a partial line (registered per increment,
+     * cached as the accumulation) makes harder to see. The stream benchmark could not tell the two
+     * apart: run-to-run spread on identical code was wider than any difference between them.
      */
     private fun pruneComponentLocations() {
         if (componentLocations.isEmpty()) return

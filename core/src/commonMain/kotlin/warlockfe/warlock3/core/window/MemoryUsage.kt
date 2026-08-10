@@ -22,9 +22,12 @@ data class StreamMemoryUsage(
     val maxLines: Int,
     val textCharacters: Long,
     /**
-     * Serial numbers recorded in the component index: one per buffered line that references a
-     * server component. Pruned as lines are evicted, so it tracks the buffer rather than the
-     * connection - a count far above [bufferedLines] means that pruning has stopped working.
+     * Entries in the component index: one per server component referenced by a buffered line, so a
+     * line mentioning several counts several times and the total can sit well above [bufferedLines].
+     *
+     * Pruned as lines are evicted, so it tracks the buffer rather than the connection. What is worth
+     * noticing is a count out of proportion to how many components the window's lines actually
+     * carry, or one that climbs while [bufferedLines] holds steady.
      */
     val componentReferences: Long,
     val estimatedBytes: Long,

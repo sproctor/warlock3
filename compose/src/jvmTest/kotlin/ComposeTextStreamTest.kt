@@ -664,6 +664,34 @@ class ComposeTextStreamTest {
             }
         }
 
+    // A line can reference several components, so the index legitimately runs above the line count;
+    // what matters is that it stays proportional to the buffer rather than to the session.
+    @Test
+    fun componentIndexCountsEveryReferenceOnALine() =
+        runBlocking {
+            withFixture(maxLines = 4) { f ->
+                repeat(30) { i ->
+                    f.stream.appendLine(
+                        StyledString(
+                            persistentListOf(
+                                StyledStringSubstring("row$i ", persistentListOf()),
+                                StyledStringVariable("hp", persistentListOf()),
+                                StyledStringSubstring(" ", persistentListOf()),
+                                StyledStringVariable("mana", persistentListOf()),
+                            ),
+                        ),
+                        ignoreWhenBlank = false,
+                        showWhenClosed = null,
+                    )
+                }
+                f.drain()
+
+                val usage = f.stream.memoryUsage()
+                assertEquals(4, usage.bufferedLines)
+                assertEquals(8L, usage.componentReferences, "two components on each of four buffered lines")
+            }
+        }
+
     // Pruning must not disturb the mapping from a component to the lines still buffered: an update
     // after eviction has to reach every remaining occurrence.
     @Test
