@@ -39,6 +39,31 @@ class LazyItemKeyTest {
         }
     }
 
+    // A span this wide needs more lines than fit in memory, so it is unreachable - but the whole
+    // point of this function is distinct keys, so it must not have a size at which it stops
+    // delivering them and returns a colliding modulus instead.
+    @Test
+    fun modulusHandlesSpansTooLargeToFold() {
+        for (span in listOf(1L shl 40, (1L shl 40) + 1, 1L shl 41, Long.MAX_VALUE / 4)) {
+            val modulus = lazyItemKeyModulus(span)
+            assertTrue(modulus > span, "modulus $modulus must exceed span $span")
+        }
+        // Past the point where doubling would overflow, the fold degrades to the identity rather
+        // than wrapping negative and collapsing back to the floor.
+        for (span in listOf(Long.MAX_VALUE / 2, Long.MAX_VALUE - 1, Long.MAX_VALUE)) {
+            assertEquals(Long.MAX_VALUE, lazyItemKeyModulus(span), "span $span should stop folding")
+        }
+    }
+
+    // Serial numbers around the overflow boundary still have to key distinctly.
+    @Test
+    fun keysAreDistinctForAnEnormousSpan() {
+        val span = Long.MAX_VALUE / 2
+        val modulus = lazyItemKeyModulus(span)
+        val serials = listOf(0L, 1L, span / 2, span - 1, span)
+        assertEquals(serials.size, serials.mapTo(HashSet()) { it % modulus }.size)
+    }
+
     @Test
     fun modulusStaysBoundedAndStableForTheDefaultScrollback() {
         // The default 2000-line buffer must land on one value and stay there, so rows are not

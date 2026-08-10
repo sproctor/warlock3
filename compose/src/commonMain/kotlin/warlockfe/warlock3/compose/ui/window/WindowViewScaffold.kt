@@ -651,8 +651,18 @@ internal fun List<StreamLine>.serialSpan(): Long = if (isEmpty()) 0L else last()
 internal fun lazyItemKeyModulus(serialSpan: Long): Long {
     var modulus = MIN_LAZY_ITEM_KEY_MODULUS
     // Doubling rather than computing a bit length keeps the growth obvious, and the loop runs a
-    // handful of times at most: the span is bounded by the scrollback buffer.
-    while (modulus < serialSpan * 2 && modulus < MAX_LAZY_ITEM_KEY_MODULUS) {
+    // handful of times at most: the span is bounded by the scrollback buffer. The comparison halves
+    // the modulus rather than doubling the span, because doubling a large span would overflow and
+    // wrap negative - which would end the loop early and hand back a modulus that collides.
+    while (modulus / 2 <= serialSpan) {
+        if (modulus > Long.MAX_VALUE / 2) {
+            // No Long modulus can separate a span this wide, so stop folding rather than return one
+            // that quietly collides: at this size the modulo is the identity. Unreachable in
+            // practice - the lines spanning it would have exhausted memory long before - but this
+            // function exists to guarantee distinct keys, so it should not have a size at which it
+            // silently stops.
+            return Long.MAX_VALUE
+        }
         modulus *= 2
     }
     return modulus
@@ -660,7 +670,3 @@ internal fun lazyItemKeyModulus(serialSpan: Long): Long {
 
 // Comfortably above the default scrollback, so the common case never re-keys after warmup.
 private const val MIN_LAZY_ITEM_KEY_MODULUS = 4096L
-
-// A guard for an unbounded buffer (scrollback set to zero): the modulus stops doubling, and the key
-// space stops being recycled, once it is larger than any buffer that could fit in memory anyway.
-private const val MAX_LAZY_ITEM_KEY_MODULUS = 1L shl 40
