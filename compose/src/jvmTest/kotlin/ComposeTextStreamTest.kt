@@ -16,6 +16,7 @@ import warlockfe.warlock3.compose.ui.window.StreamImageLine
 import warlockfe.warlock3.compose.ui.window.StreamLine
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
+import warlockfe.warlock3.compose.ui.window.effectiveMaxLines
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -608,6 +609,37 @@ class ComposeTextStreamTest {
                     wellPast.heldLines in 4..8,
                     "held lines should stay within one compaction window of the buffer, was ${wellPast.heldLines}",
                 )
+            }
+        }
+
+    // A scrollback of zero or less used to mean an unbounded buffer. It is capped now, so the
+    // buffer always has an end regardless of the setting.
+    @Test
+    fun effectiveMaxLinesIsAlwaysBounded() {
+        assertEquals(2_000, effectiveMaxLines(2_000))
+        assertEquals(1, effectiveMaxLines(1))
+        assertEquals(1_000_000, effectiveMaxLines(1_000_000))
+        // Past the cap, and the old "unbounded" values, all land on the cap.
+        assertEquals(1_000_000, effectiveMaxLines(1_000_001))
+        assertEquals(1_000_000, effectiveMaxLines(Int.MAX_VALUE))
+        assertEquals(1_000_000, effectiveMaxLines(0))
+        assertEquals(1_000_000, effectiveMaxLines(-1))
+        assertEquals(1_000_000, effectiveMaxLines(Int.MIN_VALUE))
+    }
+
+    // A stream told it is unbounded still evicts, rather than growing with every line.
+    @Test
+    fun unboundedSettingStillTrimsTheBuffer() =
+        runBlocking {
+            withFixture(maxLines = 0) { f ->
+                repeat(20) { i ->
+                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+
+                val usage = f.stream.memoryUsage()
+                assertEquals(20, usage.bufferedLines, "below the cap nothing is dropped")
+                assertEquals(1_000_000, usage.maxLines, "the buffer reports the cap, not the setting")
             }
         }
 

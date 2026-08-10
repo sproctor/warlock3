@@ -258,9 +258,10 @@ class ComposeTextStream(
         )
 
     // Trim the buffer down to the cap. Callers append first, then trim, so this evicts the oldest
-    // lines until at most maxLines remain (maxLines <= 0 means unbounded).
+    // lines until at most [effectiveMaxLines] remain.
     private fun removeLines() {
-        while (maxLines > 0 && finishedLines.size > maxLines) {
+        val cap = effectiveMaxLines(maxLines)
+        while (finishedLines.size > cap) {
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
@@ -630,7 +631,8 @@ class ComposeTextStream(
             shownLines = displayBacking.size - displayStart,
             bufferedLines = finishedLines.size,
             heldLines = finishedLines.size + displayStart,
-            maxLines = maxLines,
+            // The cap actually in force, so the view never shows a "max" the buffer would not honour.
+            maxLines = effectiveMaxLines(maxLines),
             textCharacters = characters,
             componentReferences = componentReferences,
             estimatedBytes = bytes,
@@ -754,6 +756,18 @@ data class CachedLine(
             applyStyling = applyStyling,
         )
 }
+
+/**
+ * The buffer's ceiling, whatever the scrollback setting says: a setting of zero or less otherwise
+ * means an unbounded buffer, and every line is retained twice over (the rendered line plus the
+ * source it was rendered from) for every window of every connection.
+ *
+ * Far past any use anyone has for scrollback, so a setting near it is a mistake rather than a
+ * preference, and lines past it are dropped without saying anything.
+ */
+private const val HARD_MAX_LINES = 1_000_000
+
+internal fun effectiveMaxLines(maxLines: Int): Int = if (maxLines > 0) minOf(maxLines, HARD_MAX_LINES) else HARD_MAX_LINES
 
 private val streamLineLogger = Logger.withTag("toStreamLine")
 
