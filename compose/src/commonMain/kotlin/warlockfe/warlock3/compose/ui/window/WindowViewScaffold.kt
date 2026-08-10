@@ -419,9 +419,18 @@ private fun WindowViewContent(
                                 },
                         state = scrollState,
                     ) {
+                        // Recycled item keys. Compose caches one CachedItemContent per distinct item
+                        // key in LazyLayoutItemContentFactory and never evicts an entry, so keying
+                        // rows by a serial number - which only ever counts up - retains one entry
+                        // (plus its boxed key) per line ever displayed, for the window's lifetime.
+                        // Measured at ~45k entries a minute under a heavy stream, growing linearly
+                        // while the line buffer itself stayed flat. Keys only need to be unique
+                        // among the rows present at once, so folding them into a bounded space caps
+                        // the cache instead. See [lazyItemKeyModulus] for why the bound is safe.
+                        val keyModulus = lazyItemKeyModulus(lines.serialSpan())
                         items(
                             count = lines.size,
-                            key = { index -> lines[index].serialNumber },
+                            key = { index -> lines[index].serialNumber % keyModulus },
                         ) { index ->
                             when (val line = lines[index]) {
                                 is StreamTextLine -> {
@@ -621,3 +630,37 @@ internal fun Modifier.addTextContextMenuOptions(
             }
         }
     }
+
+/**
+ * The width of the serial-number range the displayed lines occupy: one past the distance from the
+ * oldest shown line to the newest. Serial numbers are handed out in order, so however many lines a
+ * filter hides, every shown line falls inside this range.
+ */
+internal fun List<StreamLine>.serialSpan(): Long = if (isEmpty()) 0L else last().serialNumber - first().serialNumber + 1
+
+/**
+ * A modulus that folds ever-increasing serial numbers into a bounded set of lazy-list item keys.
+ *
+ * Keys must be unique among the rows present at once, and nothing more: a key that repeats after a
+ * line is gone just reuses its cache entry, which is the point. Rows occupy a contiguous serial
+ * range [serialSpan] wide, so any modulus greater than that span maps them to distinct keys. This
+ * returns at least twice the span (and never less than [MIN_LAZY_ITEM_KEY_MODULUS]), rounded up to
+ * a power of two so it changes rarely - a change re-keys every row, costing one full recomposition
+ * of the list, so with the default scrollback it settles during warmup and then holds.
+ */
+internal fun lazyItemKeyModulus(serialSpan: Long): Long {
+    var modulus = MIN_LAZY_ITEM_KEY_MODULUS
+    // Doubling rather than computing a bit length keeps the growth obvious, and the loop runs a
+    // handful of times at most: the span is bounded by the scrollback buffer.
+    while (modulus < serialSpan * 2 && modulus < MAX_LAZY_ITEM_KEY_MODULUS) {
+        modulus *= 2
+    }
+    return modulus
+}
+
+// Comfortably above the default scrollback, so the common case never re-keys after warmup.
+private const val MIN_LAZY_ITEM_KEY_MODULUS = 4096L
+
+// A guard for an unbounded buffer (scrollback set to zero): the modulus stops doubling, and the key
+// space stops being recycled, once it is larger than any buffer that could fit in memory anyway.
+private const val MAX_LAZY_ITEM_KEY_MODULUS = 1L shl 40
