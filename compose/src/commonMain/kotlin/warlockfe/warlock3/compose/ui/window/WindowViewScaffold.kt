@@ -650,19 +650,11 @@ internal fun List<StreamLine>.serialSpan(): Long = if (isEmpty()) 0L else last()
  */
 internal fun lazyItemKeyModulus(serialSpan: Long): Long {
     var modulus = MIN_LAZY_ITEM_KEY_MODULUS
-    // Doubling rather than computing a bit length keeps the growth obvious, and the loop runs a
-    // handful of times at most: the span is bounded by the scrollback buffer. The comparison halves
-    // the modulus rather than doubling the span, because doubling a large span would overflow and
-    // wrap negative - which would end the loop early and hand back a modulus that collides.
+    // The rows on screen come out of the scrollback buffer, which removeLines caps, so the span has
+    // a ceiling of about a million and this doubles nine times at the very most. Doubling rather
+    // than computing a bit length keeps the growth obvious; halving the modulus rather than doubling
+    // the span keeps the comparison away from any overflow question.
     while (modulus / 2 <= serialSpan) {
-        if (modulus > Long.MAX_VALUE / 2) {
-            // No Long modulus can separate a span this wide, so stop folding rather than return one
-            // that quietly collides: at this size the modulo is the identity. Unreachable in
-            // practice - the lines spanning it would have exhausted memory long before - but this
-            // function exists to guarantee distinct keys, so it should not have a size at which it
-            // silently stops.
-            return Long.MAX_VALUE
-        }
         modulus *= 2
     }
     return modulus
