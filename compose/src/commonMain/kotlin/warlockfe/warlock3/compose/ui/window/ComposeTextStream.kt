@@ -70,8 +70,12 @@ class ComposeTextStream(
     StreamWorkQueue.Flushable {
     // ArrayDeque so trimming the oldest line (removeAt(0)) once the buffer fills is O(1) rather than
     // the O(n) front shift of an ArrayList.
-    private val cacheLines = ArrayDeque<CachedLine?>(maxLines)
-    private val finishedLines = ArrayDeque<StreamLine>(maxLines)
+    //
+    // Pre-sized through [initialBufferCapacity] rather than from the setting directly: the capacity
+    // argument is allocated up front, so the raw value would let an oversized setting allocate that
+    // array immediately, and a negative one throws outright.
+    private val cacheLines = ArrayDeque<CachedLine?>(initialBufferCapacity(maxLines))
+    private val finishedLines = ArrayDeque<StreamLine>(initialBufferCapacity(maxLines))
 
     // Seeded with an (empty) OffsetList rather than emptyList() so every value this flow ever holds
     // shares OffsetList's referential equality. emptyList() compares by content, which would make the
@@ -775,6 +779,17 @@ data class CachedLine(
  * preference, and lines past it are dropped without saying anything.
  */
 private const val HARD_MAX_LINES = 1_000_000
+
+/**
+ * How much room to give the line buffers to start with.
+ *
+ * Only an optimization: a deque grows amortized, so starting smaller than the buffer will hold
+ * costs a few array copies. Starting *larger* is not free, though - the capacity is allocated
+ * immediately - so this stays modest and covers the default scrollback without regrowing.
+ */
+internal fun initialBufferCapacity(maxLines: Int): Int = effectiveMaxLines(maxLines).coerceAtMost(MAX_INITIAL_BUFFER_CAPACITY)
+
+private const val MAX_INITIAL_BUFFER_CAPACITY = 4096
 
 internal fun effectiveMaxLines(maxLines: Int): Int = if (maxLines > 0) minOf(maxLines, HARD_MAX_LINES) else HARD_MAX_LINES
 

@@ -17,6 +17,7 @@ import warlockfe.warlock3.compose.ui.window.StreamLine
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
 import warlockfe.warlock3.compose.ui.window.effectiveMaxLines
+import warlockfe.warlock3.compose.ui.window.initialBufferCapacity
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -661,6 +662,39 @@ class ComposeTextStreamTest {
                     usage.componentReferences,
                     "component locations should be pruned along with the lines that registered them",
                 )
+            }
+        }
+
+    @Test
+    fun initialBufferCapacityNeverAsksForAnOversizedOrNegativeArray() {
+        assertEquals(2_000, initialBufferCapacity(2_000))
+        assertEquals(4_096, initialBufferCapacity(4_096))
+        // A deque allocates its initial capacity immediately, so a large buffer starts smaller and
+        // grows rather than reserving the whole thing up front.
+        assertEquals(4_096, initialBufferCapacity(1_000_000))
+        assertEquals(4_096, initialBufferCapacity(Int.MAX_VALUE))
+        // ArrayDeque(negative) throws, so these must never reach it.
+        assertEquals(4_096, initialBufferCapacity(0))
+        assertEquals(4_096, initialBufferCapacity(-1))
+        assertEquals(4_096, initialBufferCapacity(Int.MIN_VALUE))
+    }
+
+    // A setting the deque constructor would reject (negative) or choke on (oversized) has to build a
+    // working stream, not throw or allocate the whole buffer up front.
+    @Test
+    fun streamsBuildAndTrimForHostileSettings() =
+        runBlocking {
+            for (setting in listOf(-1, 0, Int.MAX_VALUE)) {
+                withFixture(maxLines = setting) { f ->
+                    repeat(5) { i ->
+                        f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                    }
+                    f.drain()
+
+                    val usage = f.stream.memoryUsage()
+                    assertEquals(5, usage.bufferedLines, "setting $setting should still buffer normally")
+                    assertEquals(1_000_000, usage.maxLines, "setting $setting should report the cap")
+                }
             }
         }
 
