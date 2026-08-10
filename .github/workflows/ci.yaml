@@ -26,6 +26,10 @@ jobs:
           distribution: 'jetbrains'
           java-version: '25'
 
+      # Pinned to v5, the last release that is MIT licensed throughout. v6 extracted caching
+      # into gradle-actions-caching, a proprietary component outside the repo's MIT license
+      # whose Terms of Use you accept by using the action. v6.1+ can opt back out with
+      # cache-provider: basic, so moving up means taking that setting with it.
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
