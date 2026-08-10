@@ -124,6 +124,9 @@ potassium {
         "jdk.accessibility",
         "java.instrument",
         "java.management",
+        // HotSpotDiagnosticMXBean, which the memory usage dialog's heap dump goes through. Not part
+        // of java.management, so without this the packaged app can see heap totals but cannot dump.
+        "jdk.management",
         "jdk.dynalink",
         "jdk.security.auth",
         "jdk.unsupported",

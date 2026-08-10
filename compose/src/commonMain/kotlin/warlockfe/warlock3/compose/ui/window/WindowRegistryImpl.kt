@@ -41,6 +41,7 @@ import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
+import warlockfe.warlock3.core.window.WindowMemoryUsage
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.concurrent.atomics.AtomicReference
@@ -331,6 +332,14 @@ class WindowRegistryImpl(
             }
         }
     }
+
+    // Streams report one at a time rather than in parallel: they all share a single work queue, so
+    // concurrent requests would only queue up behind each other anyway.
+    override suspend fun memoryUsage(): WindowMemoryUsage =
+        WindowMemoryUsage(
+            streams = streams.load().values.map { it.memoryUsage() },
+            panelCount = panels.load().size,
+        )
 
     override fun setCharacterId(characterId: String) {
         this.characterId.value = characterId

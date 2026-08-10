@@ -323,6 +323,7 @@ private class WarlockCommand : CliktCommand() {
                                     warlockVersion = version ?: "Development",
                                     appContainer = appContainer,
                                     gameState = gameState,
+                                    games = games,
                                     openNewWindow = {
                                         // A manually opened window shows the dashboard; never auto-connect into it.
                                         games.add(GameState().apply { autoConnectAttempted = true })
@@ -734,7 +735,7 @@ private fun UpdateDialog(
     }
 }
 
-private fun GameState.getTitle(): Flow<String> =
+internal fun GameState.getTitle(): Flow<String> =
     when (val screen = this.screen) {
         GameScreen.Dashboard -> {
             flow { emit("Dashboard") }
