@@ -24,6 +24,9 @@ import com.sun.management.HotSpotDiagnosticMXBean
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -272,30 +275,45 @@ private data class ConnectionMemoryReport(
 
 private suspend fun collectReport(games: List<GameState>): MemoryReport {
     val heap = ManagementFactory.getMemoryMXBean().heapMemoryUsage
+    // Snapshot first: games is the live window list, and it can gain or lose an entry while the
+    // report is being gathered.
+    val snapshot = games.toList()
+    // One coroutine per connection. Each has its own work queue, so a connection that never answers
+    // costs its own timeout rather than delaying every connection behind it. Within a connection the
+    // streams still report one at a time - they share a queue, so there is nothing to overlap.
     val connections =
-        games.mapIndexed { index, gameState ->
-            val viewModel = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel
-            // Bounded like the usage read below: the report is a diagnostic, so it should always
-            // arrive, even if some part of a wedged connection never answers.
-            val name = withTimeoutOrNull(1.seconds) { gameState.getTitle().first() } ?: "unknown"
-            val title = "Window ${index + 1}: $name"
-            if (viewModel == null) {
-                ConnectionMemoryReport(title = title, usage = WindowMemoryUsage.EMPTY, runningScripts = 0)
-            } else {
-                // A stream reports from the work queue that owns its buffers, so a wedged or saturated
-                // queue would otherwise hang the dialog. Report what we can instead.
-                val usage = withTimeoutOrNull(5.seconds) { viewModel.memoryUsage() }
-                ConnectionMemoryReport(
-                    title = if (usage == null) "$title (did not respond)" else title,
-                    usage = usage ?: WindowMemoryUsage.EMPTY,
-                    runningScripts = viewModel.runningScriptCount,
-                )
-            }
+        coroutineScope {
+            snapshot
+                .mapIndexed { index, gameState ->
+                    async { collectConnectionReport(index, gameState) }
+                }.awaitAll()
         }
     return MemoryReport(
         heapUsedBytes = heap.used,
         heapMaxBytes = heap.max,
         connections = connections,
+    )
+}
+
+private suspend fun collectConnectionReport(
+    index: Int,
+    gameState: GameState,
+): ConnectionMemoryReport {
+    val viewModel = (gameState.screen as? GameScreen.ConnectedGameState)?.viewModel
+    // Bounded like the usage read below: the report is a diagnostic, so it should always arrive,
+    // even if some part of a wedged connection never answers.
+    val name = withTimeoutOrNull(1.seconds) { gameState.getTitle().first() } ?: "unknown"
+    val title = "Window ${index + 1}: $name"
+    if (viewModel == null) {
+        return ConnectionMemoryReport(title = title, usage = WindowMemoryUsage.EMPTY, runningScripts = 0)
+    }
+    // A stream reports from the work queue that owns its buffers, so a wedged or saturated queue
+    // would otherwise hang the dialog. Report what we can instead.
+    val usage = withTimeoutOrNull(5.seconds) { viewModel.memoryUsage() }
+    return ConnectionMemoryReport(
+        title = if (usage == null) "$title (did not respond)" else title,
+        usage = usage ?: WindowMemoryUsage.EMPTY,
+        runningScripts = viewModel.runningScriptCount,
     )
 }
 

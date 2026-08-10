@@ -533,8 +533,22 @@ class ComposeTextStream(
      */
     suspend fun memoryUsage(): StreamMemoryUsage {
         val result = CompletableDeferred<StreamMemoryUsage>()
-        workQueue.submit("memory") { result.complete(computeMemoryUsage()) }
-        return result.await()
+        try {
+            workQueue.submit("memory") {
+                // Cancelling the caller does not cancel a standalone CompletableDeferred, so a
+                // caller that gave up (the dialog times out) leaves this op still queued. The walk
+                // is O(buffer) and the queue it would run on is the one feeding the windows, so
+                // skip it rather than spend that time on a report nobody is waiting for. A scan
+                // already under way runs to completion - computeMemoryUsage never suspends.
+                if (result.isActive) {
+                    result.complete(computeMemoryUsage())
+                }
+            }
+            return result.await()
+        } finally {
+            // No-op once completed; on cancellation it is what the queued op checks for.
+            result.cancel()
+        }
     }
 
     private fun computeMemoryUsage(): StreamMemoryUsage {
