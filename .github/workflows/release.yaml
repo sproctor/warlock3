@@ -145,9 +145,11 @@ jobs:
 
       - uses: android-actions/setup-android@v4
 
-      # Pinned to v5, the last fully MIT-licensed release; v6's caching is proprietary. See the
-      # longer note in ci.yaml.
-      - uses: gradle/actions/setup-gradle@v5
+      # cache-provider: basic keeps caching on the MIT implementation; the default 'enhanced' is
+      # proprietary. See the longer note in ci.yaml.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Decode upload keystore
         shell: bash
