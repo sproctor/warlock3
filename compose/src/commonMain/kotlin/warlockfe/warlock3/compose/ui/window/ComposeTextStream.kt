@@ -70,8 +70,12 @@ class ComposeTextStream(
     StreamWorkQueue.Flushable {
     // ArrayDeque so trimming the oldest line (removeAt(0)) once the buffer fills is O(1) rather than
     // the O(n) front shift of an ArrayList.
-    private val cacheLines = ArrayDeque<CachedLine?>(maxLines)
-    private val finishedLines = ArrayDeque<StreamLine>(maxLines)
+    //
+    // Pre-sized through [initialBufferCapacity] rather than from the setting directly: the capacity
+    // argument is allocated up front, so the raw value would let an oversized setting allocate that
+    // array immediately, and a negative one throws outright.
+    private val cacheLines = ArrayDeque<CachedLine?>(initialBufferCapacity(maxLines))
+    private val finishedLines = ArrayDeque<StreamLine>(initialBufferCapacity(maxLines))
 
     // Seeded with an (empty) OffsetList rather than emptyList() so every value this flow ever holds
     // shares OffsetList's referential equality. emptyList() compares by content, which would make the
@@ -106,7 +110,10 @@ class ComposeTextStream(
 
     private var partialLine: StyledString? = null
 
-    private val componentLocations = mutableMapOf<String, Set<Long>>()
+    // Serial numbers of the buffered lines that reference each component, oldest first. A deque
+    // rather than a set: appends go on the back and eviction drops from the front, so keeping it in
+    // step with the buffer costs O(1) per line instead of rebuilding a whole set per occurrence.
+    private val componentLocations = mutableMapOf<String, ArrayDeque<Long>>()
 
     var actionHandler: ((WarlockAction) -> Unit)? = null
 
@@ -231,8 +238,12 @@ class ComposeTextStream(
         serialNumber: Long,
     ) {
         text.getComponents().forEach { name ->
-            val existingLocations = componentLocations[name] ?: emptySet()
-            componentLocations[name] = existingLocations + serialNumber
+            val locations = componentLocations.getOrPut(name) { ArrayDeque() }
+            // A partial line re-registers its serial every time it grows, and serials only ever
+            // increase, so checking the tail is enough to keep this one entry per line.
+            if (locations.lastOrNull() != serialNumber) {
+                locations.addLast(serialNumber)
+            }
         }
     }
 
@@ -251,14 +262,54 @@ class ComposeTextStream(
         )
 
     // Trim the buffer down to the cap. Callers append first, then trim, so this evicts the oldest
-    // lines until at most maxLines remain (maxLines <= 0 means unbounded).
+    // lines until at most [effectiveMaxLines] remain.
     private fun removeLines() {
-        while (maxLines > 0 && finishedLines.size > maxLines) {
+        val cap = effectiveMaxLines(maxLines)
+        var evicted = false
+        while (finishedLines.size > cap) {
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
-            // Intentionally leak components here. They don't exist in the main window,
-            // and no other windows get long enough
+            evicted = true
+        }
+        if (evicted) {
+            pruneComponentLocations()
+        }
+    }
+
+    /**
+     * Drops component locations pointing at lines the buffer no longer holds.
+     *
+     * These used to be left in place deliberately ("they don't exist in the main window, and no
+     * other windows get long enough"), but on any stream that does carry components the index grew
+     * for the life of the connection - one entry per occurrence, never reclaimed.
+     *
+     * Runs only after an eviction actually happened, and walks one deque per component name. That
+     * is O(names), not O(1), but the server sends a small fixed set of component ids, so it is a
+     * few map steps. The alternative - re-deriving the evicted line's components and dropping only
+     * those - trades those steps for a getComponents() per evicted line, and makes correctness rest
+     * on the front entry belonging to that line, which a partial line (registered per increment,
+     * cached as the accumulation) makes harder to see. The stream benchmark could not tell the two
+     * apart: run-to-run spread on identical code was wider than any difference between them.
+     */
+    private fun pruneComponentLocations() {
+        if (componentLocations.isEmpty()) return
+        // No buffered lines means no location can point at one; otherwise drop everything below the
+        // oldest line still held. Serials are appended in order, so the stale entries are a prefix.
+        val oldestSerial = finishedLines.firstOrNull()?.serialNumber
+        val entries = componentLocations.iterator()
+        while (entries.hasNext()) {
+            val locations = entries.next().value
+            if (oldestSerial == null) {
+                locations.clear()
+            } else {
+                while (locations.isNotEmpty() && locations.first() < oldestSerial) {
+                    locations.removeFirst()
+                }
+            }
+            if (locations.isEmpty()) {
+                entries.remove()
+            }
         }
     }
 
@@ -593,7 +644,8 @@ class ComposeTextStream(
             shownLines = displayBacking.size - displayStart,
             bufferedLines = finishedLines.size,
             heldLines = finishedLines.size + displayStart,
-            maxLines = maxLines,
+            // The cap actually in force, so the view never shows a "max" the buffer would not honour.
+            maxLines = effectiveMaxLines(maxLines),
             textCharacters = characters,
             componentReferences = componentReferences,
             estimatedBytes = bytes,
@@ -717,6 +769,29 @@ data class CachedLine(
             applyStyling = applyStyling,
         )
 }
+
+/**
+ * The buffer's ceiling, whatever the scrollback setting says: a setting of zero or less otherwise
+ * means an unbounded buffer, and every line is retained twice over (the rendered line plus the
+ * source it was rendered from) for every window of every connection.
+ *
+ * Far past any use anyone has for scrollback, so a setting near it is a mistake rather than a
+ * preference, and lines past it are dropped without saying anything.
+ */
+private const val HARD_MAX_LINES = 1_000_000
+
+/**
+ * How much room to give the line buffers to start with.
+ *
+ * Only an optimization: a deque grows amortized, so starting smaller than the buffer will hold
+ * costs a few array copies. Starting *larger* is not free, though - the capacity is allocated
+ * immediately - so this stays modest and covers the default scrollback without regrowing.
+ */
+internal fun initialBufferCapacity(maxLines: Int): Int = effectiveMaxLines(maxLines).coerceAtMost(MAX_INITIAL_BUFFER_CAPACITY)
+
+private const val MAX_INITIAL_BUFFER_CAPACITY = 4096
+
+internal fun effectiveMaxLines(maxLines: Int): Int = if (maxLines > 0) minOf(maxLines, HARD_MAX_LINES) else HARD_MAX_LINES
 
 private val streamLineLogger = Logger.withTag("toStreamLine")
 

@@ -16,6 +16,8 @@ import warlockfe.warlock3.compose.ui.window.StreamImageLine
 import warlockfe.warlock3.compose.ui.window.StreamLine
 import warlockfe.warlock3.compose.ui.window.StreamTextLine
 import warlockfe.warlock3.compose.ui.window.StreamWorkQueue
+import warlockfe.warlock3.compose.ui.window.effectiveMaxLines
+import warlockfe.warlock3.compose.ui.window.initialBufferCapacity
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -611,11 +613,41 @@ class ComposeTextStreamTest {
             }
         }
 
-    // The component index is never pruned when lines are evicted (see removeLines), so on a stream
-    // that receives components it grows for the life of the connection. Surfacing that count is a
-    // large part of why the memory view exists; this pins the behaviour it reports.
+    // A scrollback of zero or less used to mean an unbounded buffer. It is capped now, so the
+    // buffer always has an end regardless of the setting.
     @Test
-    fun memoryUsageReportsUnprunedComponentIndex() =
+    fun effectiveMaxLinesIsAlwaysBounded() {
+        assertEquals(2_000, effectiveMaxLines(2_000))
+        assertEquals(1, effectiveMaxLines(1))
+        assertEquals(1_000_000, effectiveMaxLines(1_000_000))
+        // Past the cap, and the old "unbounded" values, all land on the cap.
+        assertEquals(1_000_000, effectiveMaxLines(1_000_001))
+        assertEquals(1_000_000, effectiveMaxLines(Int.MAX_VALUE))
+        assertEquals(1_000_000, effectiveMaxLines(0))
+        assertEquals(1_000_000, effectiveMaxLines(-1))
+        assertEquals(1_000_000, effectiveMaxLines(Int.MIN_VALUE))
+    }
+
+    // A stream told it is unbounded still evicts, rather than growing with every line.
+    @Test
+    fun unboundedSettingStillTrimsTheBuffer() =
+        runBlocking {
+            withFixture(maxLines = 0) { f ->
+                repeat(20) { i ->
+                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+
+                val usage = f.stream.memoryUsage()
+                assertEquals(20, usage.bufferedLines, "below the cap nothing is dropped")
+                assertEquals(1_000_000, usage.maxLines, "the buffer reports the cap, not the setting")
+            }
+        }
+
+    // The component index used to outlive the lines that registered it, growing for the life of the
+    // connection on any stream carrying components. It is now pruned with the buffer.
+    @Test
+    fun memoryUsagePrunesComponentIndexWithTheBuffer() =
         runBlocking {
             withFixture(maxLines = 4) { f ->
                 repeat(40) { i ->
@@ -626,9 +658,91 @@ class ComposeTextStreamTest {
                 val usage = f.stream.memoryUsage()
                 assertEquals(4, usage.bufferedLines)
                 assertEquals(
-                    40L,
+                    4L,
                     usage.componentReferences,
-                    "component locations outlive the lines that registered them",
+                    "component locations should be pruned along with the lines that registered them",
+                )
+            }
+        }
+
+    @Test
+    fun initialBufferCapacityNeverAsksForAnOversizedOrNegativeArray() {
+        assertEquals(2_000, initialBufferCapacity(2_000))
+        assertEquals(4_096, initialBufferCapacity(4_096))
+        // A deque allocates its initial capacity immediately, so a large buffer starts smaller and
+        // grows rather than reserving the whole thing up front.
+        assertEquals(4_096, initialBufferCapacity(1_000_000))
+        assertEquals(4_096, initialBufferCapacity(Int.MAX_VALUE))
+        // ArrayDeque(negative) throws, so these must never reach it.
+        assertEquals(4_096, initialBufferCapacity(0))
+        assertEquals(4_096, initialBufferCapacity(-1))
+        assertEquals(4_096, initialBufferCapacity(Int.MIN_VALUE))
+    }
+
+    // A setting the deque constructor would reject (negative) or choke on (oversized) has to build a
+    // working stream, not throw or allocate the whole buffer up front.
+    @Test
+    fun streamsBuildAndTrimForHostileSettings() =
+        runBlocking {
+            for (setting in listOf(-1, 0, Int.MAX_VALUE)) {
+                withFixture(maxLines = setting) { f ->
+                    repeat(5) { i ->
+                        f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
+                    }
+                    f.drain()
+
+                    val usage = f.stream.memoryUsage()
+                    assertEquals(5, usage.bufferedLines, "setting $setting should still buffer normally")
+                    assertEquals(1_000_000, usage.maxLines, "setting $setting should report the cap")
+                }
+            }
+        }
+
+    // A line can reference several components, so the index legitimately runs above the line count;
+    // what matters is that it stays proportional to the buffer rather than to the session.
+    @Test
+    fun componentIndexCountsEveryReferenceOnALine() =
+        runBlocking {
+            withFixture(maxLines = 4) { f ->
+                repeat(30) { i ->
+                    f.stream.appendLine(
+                        StyledString(
+                            persistentListOf(
+                                StyledStringSubstring("row$i ", persistentListOf()),
+                                StyledStringVariable("hp", persistentListOf()),
+                                StyledStringSubstring(" ", persistentListOf()),
+                                StyledStringVariable("mana", persistentListOf()),
+                            ),
+                        ),
+                        ignoreWhenBlank = false,
+                        showWhenClosed = null,
+                    )
+                }
+                f.drain()
+
+                val usage = f.stream.memoryUsage()
+                assertEquals(4, usage.bufferedLines)
+                assertEquals(8L, usage.componentReferences, "two components on each of four buffered lines")
+            }
+        }
+
+    // Pruning must not disturb the mapping from a component to the lines still buffered: an update
+    // after eviction has to reach every remaining occurrence.
+    @Test
+    fun componentUpdatesReachRemainingLinesAfterEviction() =
+        runBlocking {
+            withFixture(maxLines = 3) { f ->
+                repeat(10) { i ->
+                    f.stream.appendLine(lineWithComponent("row$i ", "hp"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+                f.stream.updateComponent("hp", text("42"))
+                f.drain()
+
+                assertEquals(
+                    listOf("row7 42", "row8 42", "row9 42"),
+                    f.stream.lines.value
+                        .texts(),
                 )
             }
         }
