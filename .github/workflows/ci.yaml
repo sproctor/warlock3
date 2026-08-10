@@ -35,6 +35,34 @@ jobs:
         with:
           cache-provider: basic
 
+      # The potassium composite actions and the potassium Gradle plugin / updater library are the
+      # same project, so a release should run the actions from the version it builds against.
+      # Nothing couples them: the catalog version moves on its own (refreshVersions), and the
+      # action refs are string literals GitHub cannot interpolate, so they drift silently and a
+      # release quietly runs an older action. Fail here instead, while it is still cheap to fix.
+      - name: Potassium action refs match the catalog version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^potassium = "\([^"]*\)"$/\1/p' gradle/libs.versions.toml)
+          if [ -z "$version" ]; then
+            echo "Could not read the potassium version from gradle/libs.versions.toml" >&2
+            exit 1
+          fi
+          status=0
+          while read -r file ref; do
+            if [ "$ref" != "$version" ]; then
+              echo "$file pins a potassium action at v$ref, but the catalog builds against $version" >&2
+              status=1
+            fi
+          done < <(grep -rno 'sproctor/potassium/[^@]*@v[^ ]*' .github/workflows/ |
+            sed 's|^\([^:]*\):[0-9]*:.*@v|\1 |')
+          if [ "$status" -ne 0 ]; then
+            echo "Bump the action refs to v$version (or the catalog to match)." >&2
+            exit 1
+          fi
+          echo "potassium actions and catalog agree on $version"
+
       - name: Checks
         run: ./gradlew check -PiosSkip=true -PlintSkip=true --stacktrace
 
