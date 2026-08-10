@@ -110,7 +110,7 @@ val wslCommands =
                         }
                         context.setStoredVariable(name, value ?: "")
                     },
-                    "shift" to ::shiftCommand,
+                    "shift" to { context, _ -> shiftCommand(context) },
                     "timer" to ::timerCommand,
                     "typeahead" to { context, args ->
                         args.firstArgument().toIntOrNull()?.let { context.setTypeahead(it) }
@@ -332,10 +332,7 @@ private suspend fun setArray(
     }
 }
 
-private suspend fun shiftCommand(
-    context: WslContext,
-    args: String,
-) {
+private suspend fun shiftCommand(context: WslContext) {
     var i = 1
     while (true) {
         val nextName = (i + 1).toString()
