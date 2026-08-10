@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +34,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.seanproctor.docking.material3.Material3Docking
+import com.seanproctor.docking.state.DockState
+import com.seanproctor.docking.ui.DockArea
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.ScrollableColumn
@@ -41,7 +46,6 @@ import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowType
@@ -62,7 +66,6 @@ fun LargeGameView(
     var windowListVisible by remember { mutableStateOf(false) }
     Column(modifier) {
         val mainWindow = viewModel.mainWindowUiState.collectAsState()
-        val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
         val defaultStyle = LocalBaseStyle.current
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val character by viewModel.character.collectAsState(null)
@@ -117,19 +120,27 @@ fun LargeGameView(
                         defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
                             ?: MaterialTheme.colorScheme.onSurface
                     val item: @Composable (WindowInfo) -> Unit = { window ->
+                        // The main text window is the layout's fixed centerpiece: always listed as
+                        // shown, never toggleable.
+                        val isMain = window.name == MAIN_WINDOW_NAME
                         WindowListItem(
                             color = sidebarTextColor,
                             windowInfo = window,
-                            isOpen = openWindows.contains(window.name),
-                            onClick = { open ->
-                                scope.launch {
-                                    if (open) {
-                                        viewModel.openWindow(window.name)
-                                    } else {
-                                        viewModel.closeWindow(window.name)
+                            isOpen = isMain || openWindows.contains(window.name),
+                            onClick =
+                                if (isMain) {
+                                    null
+                                } else {
+                                    { open ->
+                                        scope.launch {
+                                            if (open) {
+                                                viewModel.openWindow(window.name)
+                                            } else {
+                                                viewModel.closeWindow(window.name)
+                                            }
+                                        }
                                     }
-                                }
-                            },
+                                },
                         )
                     }
                     if (streams.isNotEmpty()) {
@@ -154,37 +165,32 @@ fun LargeGameView(
                     }
                 }
             }
-            val leftWindows by viewModel.leftWindowUiStates.collectAsState()
-            val rightWindows by viewModel.rightWindowUiStates.collectAsState()
-            val topWindows by viewModel.topWindowUiStates.collectAsState()
-            val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
-            GameTextWindows(
-                modifier = Modifier.weight(1f),
-                leftWindowUiStates = leftWindows,
-                rightWindowUiStates = rightWindows,
-                topWindowUiStates = topWindows,
-                bottomWindowUiStates = bottomWindows,
-                mainWindowUiState = mainWindow.value,
-                defaultStyle = defaultStyle,
-                selectedWindow = viewModel.selectedWindow.collectAsState().value,
-                openWindows = openWindows,
-                topHeight = viewModel.topHeight.collectAsState(null).value,
-                bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
-                leftWidth = viewModel.leftWidth.collectAsState(null).value,
-                rightWidth = viewModel.rightWidth.collectAsState(null).value,
-                menuData = menuData,
-                onActionClick = { action -> viewModel.onWindowAction(action) },
-                onWidthChange = { name, width -> viewModel.setWindowWidth(name, width) },
-                onHeightChange = { name, height -> viewModel.setWindowHeight(name, height) },
-                onSizeChange = viewModel::setLocationSize,
-                onDrop = { result -> viewModel.onWindowDrop(result) },
-                onCloseClick = viewModel::closeWindow,
-                onOpenWindowSettings = viewModel::requestEditWindowSettings,
-                onWindowSelect = viewModel::selectWindow,
-                scrollEvents = viewModel.scrollEvents.collectAsState().value,
-                handledScrollEvent = viewModel::handledScrollEvent,
-                clearStream = viewModel::clearStream,
-            )
+            // Both lambdas read everything they need from the view model at invocation time and
+            // capture only it, so their instances survive recomposition and a keystroke in the
+            // entry (which recomposes this view) does not invalidate every docked window.
+            val trailingActions =
+                remember(viewModel) {
+                    @Composable { state: DockState, window: OpenGameWindow ->
+                        MobileDockWindowActions(state = state, viewModel = viewModel, window = window)
+                    }
+                }
+            val windowContent =
+                remember(viewModel) {
+                    @Composable { window: OpenGameWindow ->
+                        MobileDockedWindow(viewModel = viewModel, window = window)
+                    }
+                }
+            val dockState =
+                rememberGameDockState(
+                    viewModel = viewModel,
+                    trailingActions = trailingActions,
+                    windowContent = windowContent,
+                )
+            Box(Modifier.weight(1f)) {
+                Material3Docking {
+                    DockArea(dockState, modifier = Modifier.fillMaxSize())
+                }
+            }
         }
         // Settings and the window-list toggle live in the top app bar, so the bottom bar here is
         // just the entry / vitals / hands / indicators / compass.
@@ -250,15 +256,21 @@ private fun WindowListItem(
     color: Color,
     windowInfo: WindowInfo,
     isOpen: Boolean,
-    onClick: (Boolean) -> Unit,
+    // Null makes the row informational: no click toggle (the main window, which is always shown).
+    onClick: ((Boolean) -> Unit)?,
 ) {
     // A filled accent dot when shown, a hollow dimmed ring when hidden (matching the desktop list).
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = { onClick(!isOpen) })
-                .padding(vertical = 2.dp),
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = { onClick(!isOpen) })
+                    } else {
+                        Modifier
+                    },
+                ).padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(

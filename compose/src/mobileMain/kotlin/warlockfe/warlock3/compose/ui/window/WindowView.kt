@@ -65,6 +65,9 @@ fun WindowView(
     handledScrollEvent: (ScrollEvent) -> Unit,
     modifier: Modifier = Modifier,
     headerModifier: Modifier = Modifier,
+    // False when the window sits in a dock area, whose header (title, drag handle, actions)
+    // replaces the window's own.
+    showHeader: Boolean = true,
     clearStream: () -> Unit,
 ) {
     WindowViewScaffold(
@@ -93,6 +96,7 @@ fun WindowView(
             }
         },
         header = { title, onSettingsClick ->
+            if (!showHeader) return@WindowViewScaffold
             WindowHeader(
                 modifier =
                     headerModifier

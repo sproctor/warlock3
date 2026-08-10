@@ -38,6 +38,7 @@ compose-material3 = "1.11.0-alpha07"
 ##             ⬆ = "1.12.0-alpha02"
 ##             ⬆ = "1.12.0-alpha03"
 colorpicker = "1.2.0"
+compose-docking = "0.1.0"
 fastscroller = "0.3.2"
 filekit = "0.14.2"
 intellij = "262.9437.136"
@@ -92,6 +93,9 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
+compose-docking-core = { module = "com.seanproctor:compose-docking-core", version.ref = "compose-docking" }
+compose-docking-jewel = { module = "com.seanproctor:compose-docking-jewel", version.ref = "compose-docking" }
+compose-docking-material3 = { module = "com.seanproctor:compose-docking-material3", version.ref = "compose-docking" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui-tooling = { module = " org.jetbrains.compose.ui:ui-tooling", version.ref = "compose" }
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }

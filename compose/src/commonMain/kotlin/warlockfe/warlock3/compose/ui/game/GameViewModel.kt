@@ -122,6 +122,11 @@ const val CLIENT_COMMAND_PREFIX = '/'
 // Per-character setting key for the tablet layout's secondary (non-main) tabbed pane location.
 const val TABLET_WINDOW_LOCATION_KEY = "tabletWindowLocation"
 
+// The compose-docking layout JSON for this character, one blob per character. Written debounced on
+// every layout change; the legacy per-window location/position rows only seed windows that are not
+// in it yet (first run, or a window the character has never opened).
+const val DOCK_LAYOUT_KEY = "dockLayout"
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
     private val windowSettingsRepository: WindowSettingsRepository,
@@ -1223,77 +1228,6 @@ class GameViewModel(
             meta = event.isMetaPressed,
         )
 
-    fun moveWindowToPosition(
-        name: String,
-        targetLocation: WindowLocation,
-        targetIndex: Int,
-    ) {
-        val uiState = windowUiStateLists.flatMap { it.value }.firstOrNull { it.name == name } ?: return
-        windowUiStateLists.forEach { states ->
-            states.update { state ->
-                state.filter { it.name != name }
-            }
-        }
-        val targetStates = getWindowUiStatesForLocation(targetLocation)
-        targetStates.update { states ->
-            val mutableStates = states.toMutableList()
-            mutableStates.add(targetIndex.coerceAtMost(mutableStates.size), uiState)
-            mutableStates
-        }
-        if (!canSaveWindow(name)) return
-        // The DAO takes the rank among the dock's open saved rows, but the drop index counts
-        // every on-screen window - transient panels and not-yet-saved windows included - so
-        // count only ranked windows above the drop.
-        val openNames = windowSettings.value.filter { it.open && it.name != name }.mapTo(mutableSetOf()) { it.name }
-        val rank =
-            targetStates.value.let { states ->
-                val index = states.indexOfFirst { it.name == name }
-                if (index < 0) targetIndex else states.take(index).count { it.name in openNames }
-            }
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                windowSettingsRepository.moveWindowToPosition(
-                    characterId = characterId,
-                    name = name,
-                    location = targetLocation,
-                    position = rank,
-                )
-            }
-        }
-    }
-
-    fun setWindowWidth(
-        name: String,
-        width: Int,
-    ) {
-        if (!canSaveWindow(name)) return
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                windowSettingsRepository.setWindowWidth(
-                    characterId = characterId,
-                    name = name,
-                    width = width,
-                )
-            }
-        }
-    }
-
-    fun setWindowHeight(
-        name: String,
-        height: Int,
-    ) {
-        if (!canSaveWindow(name)) return
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                windowSettingsRepository.setWindowHeight(
-                    characterId = characterId,
-                    name = name,
-                    height = height,
-                )
-            }
-        }
-    }
-
     fun setLocationSize(
         location: WindowLocation,
         size: Int,
@@ -1309,44 +1243,6 @@ class GameViewModel(
                         WindowLocation.MAIN -> error("Cannot set size on main location")
                     }
                 characterSettingsRepository.save(characterId, key, size.toString())
-            }
-        }
-    }
-
-    fun changeWindowPositions(
-        location: WindowLocation,
-        name: String,
-        toIndex: Int,
-    ) {
-        val windowUiStates = getWindowUiStatesForLocation(location)
-        var reordered: List<WindowUiState>? = null
-        windowUiStates.update { states ->
-            // Reset on entry: update{} may retry.
-            reordered = null
-            // The gesture's indices are snapshots, and the dock can change under a drag (the
-            // game closing a panel mid-drag is the everyday case): resolve the dragged window
-            // by name against the current list and clamp the drop index. A stale index crashed
-            // here on a shrunken dock, and a stale-but-in-bounds one would have moved whatever
-            // window sits at it now.
-            val fromIndex = states.indexOfFirst { it.name == name }
-            if (fromIndex == -1) return@update states
-            val mutableStates = states.toMutableList()
-            val item = mutableStates.removeAt(fromIndex)
-            val adjustedToIndex = (if (toIndex > fromIndex) toIndex - 1 else toIndex).coerceIn(0, mutableStates.size)
-            mutableStates.add(adjustedToIndex, item)
-            reordered = mutableStates
-            mutableStates
-        }
-        // The dock's whole order, captured before suspending and written in one transaction:
-        // per-row writes from the live list could interleave with another reorder and leave
-        // duplicate positions behind. A transient panel takes part in the reorder on screen but
-        // records nothing, so a dock holding only those has no saved order to rewrite.
-        val names = reordered?.filter { canSaveWindow(it.name) }?.map { it.name }
-        if (names.isNullOrEmpty()) return
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                logger.d { "Reordering $location: $names" }
-                windowSettingsRepository.setPositions(characterId = characterId, location = location, names = names)
             }
         }
     }
@@ -1664,6 +1560,52 @@ class GameViewModel(
             }
         }
     }
+
+    /** The character's saved docking-layout JSON, or null when none has been saved yet. */
+    suspend fun loadDockLayout(): String? =
+        client.characterId.value?.let { characterId ->
+            characterSettingsRepository.get(characterId, DOCK_LAYOUT_KEY)
+        }
+
+    /** Persists the docking-layout JSON. Layout churn is debounced by the caller. */
+    fun saveDockLayout(layout: String) {
+        viewModelScope.launch {
+            client.characterId.value?.let { characterId ->
+                characterSettingsRepository.save(characterId, DOCK_LAYOUT_KEY, layout)
+            }
+        }
+    }
+
+    /** Shared handling for a clickable game-text action (command link or menu). */
+    fun onWindowAction(action: WarlockAction): Int? =
+        when (action) {
+            is WarlockAction.SendCommand -> {
+                sendCommand(action.command)
+                null
+            }
+
+            is WarlockAction.SendCommandWithLookup -> {
+                sendCommand(action.command)
+                null
+            }
+
+            is WarlockAction.OpenMenu -> {
+                action.onClick()
+            }
+
+            is WarlockAction.SendWidgetCommand -> {
+                sendWidgetCommand(action.command, action.echo)
+                null
+            }
+
+            is WarlockAction.RequestMenu -> {
+                requestMenu(action.exist, action.noun)
+            }
+
+            else -> {
+                null
+            }
+        }
 
     fun saveWindowStyle(
         name: String,

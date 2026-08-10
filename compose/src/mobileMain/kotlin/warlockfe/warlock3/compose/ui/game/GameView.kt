@@ -2,7 +2,6 @@ package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,16 +45,10 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
-import warlockfe.warlock3.compose.ui.window.DragDropState
-import warlockfe.warlock3.compose.ui.window.DragOverlay
-import warlockfe.warlock3.compose.ui.window.DropResult
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.PanelContent
 import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
-import warlockfe.warlock3.compose.ui.window.WindowUiState
-import warlockfe.warlock3.compose.ui.window.WindowView
-import warlockfe.warlock3.compose.ui.window.WindowsAtLocation
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
@@ -64,13 +57,8 @@ import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.WindowWidthSizeClass
 import warlockfe.warlock3.compose.util.gameLayout
-import warlockfe.warlock3.core.client.WarlockAction
-import warlockfe.warlock3.core.client.WarlockMenuData
-import warlockfe.warlock3.core.macro.ScrollEvent
-import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.toFontConfig
 import warlockfe.warlock3.core.text.toStyleDefinition
-import warlockfe.warlock3.core.window.WindowLocation
 
 /**
  * The mobile game screen. Responsive across Material 3 width size classes: a [PhoneGameView] (all
@@ -205,160 +193,6 @@ fun GameView(
                 },
             )
         }
-    }
-}
-
-@Composable
-fun GameTextWindows(
-    topWindowUiStates: List<WindowUiState>,
-    bottomWindowUiStates: List<WindowUiState>,
-    leftWindowUiStates: List<WindowUiState>,
-    rightWindowUiStates: List<WindowUiState>,
-    mainWindowUiState: WindowUiState?,
-    defaultStyle: StyleDefinition,
-    selectedWindow: String,
-    openWindows: List<String>,
-    topHeight: Int?,
-    bottomHeight: Int?,
-    leftWidth: Int?,
-    rightWidth: Int?,
-    menuData: WarlockMenuData?,
-    onActionClick: (WarlockAction) -> Int?,
-    onHeightChange: (String, Int) -> Unit,
-    onWidthChange: (String, Int) -> Unit,
-    onSizeChange: (WindowLocation, Int) -> Unit,
-    onDrop: (DropResult) -> Unit,
-    onCloseClick: (String) -> Unit,
-    onOpenWindowSettings: (String) -> Unit,
-    onWindowSelect: (String) -> Unit,
-    scrollEvents: List<ScrollEvent>,
-    handledScrollEvent: (ScrollEvent) -> Unit,
-    modifier: Modifier = Modifier,
-    clearStream: (String) -> Unit,
-) {
-    val dragDropState = remember { DragDropState() }
-
-    Box(modifier = modifier) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Left column
-            WindowsAtLocation(
-                location = WindowLocation.LEFT,
-                size = leftWidth,
-                windowUiStates = leftWindowUiStates,
-                defaultStyle = defaultStyle,
-                openWindows = openWindows,
-                horizontalPanel = true,
-                handleBefore = false,
-                selectedWindow = selectedWindow,
-                onSizeChange = { onSizeChange(WindowLocation.LEFT, it) },
-                menuData = menuData,
-                onActionClick = onActionClick,
-                onHeightChange = onHeightChange,
-                onWidthChange = onWidthChange,
-                onCloseClick = onCloseClick,
-                onOpenWindowSettings = onOpenWindowSettings,
-                onWindowSelect = onWindowSelect,
-                scrollEvents = scrollEvents,
-                handledScrollEvent = handledScrollEvent,
-                clearStream = clearStream,
-                dragDropState = dragDropState,
-                onDrop = onDrop,
-            )
-            // Center column
-            Column(modifier = Modifier.weight(1f)) {
-                WindowsAtLocation(
-                    location = WindowLocation.TOP,
-                    size = topHeight,
-                    windowUiStates = topWindowUiStates,
-                    defaultStyle = defaultStyle,
-                    openWindows = openWindows,
-                    horizontalPanel = false,
-                    handleBefore = false,
-                    selectedWindow = selectedWindow,
-                    onSizeChange = { onSizeChange(WindowLocation.TOP, it) },
-                    menuData = menuData,
-                    onActionClick = onActionClick,
-                    onHeightChange = onHeightChange,
-                    onWidthChange = onWidthChange,
-                    onCloseClick = onCloseClick,
-                    onOpenWindowSettings = onOpenWindowSettings,
-                    onWindowSelect = onWindowSelect,
-                    scrollEvents = scrollEvents,
-                    handledScrollEvent = handledScrollEvent,
-                    clearStream = clearStream,
-                    dragDropState = dragDropState,
-                    onDrop = onDrop,
-                )
-                if (mainWindowUiState != null) {
-                    WindowView(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        headerModifier = Modifier,
-                        uiState = mainWindowUiState,
-                        location = WindowLocation.MAIN,
-                        defaultStyle = defaultStyle,
-                        isSelected = selectedWindow == mainWindowUiState.name,
-                        openWindows = openWindows,
-                        menuData = menuData,
-                        onActionClick = onActionClick,
-                        onCloseClick = {},
-                        onOpenWindowSettings = { onOpenWindowSettings(mainWindowUiState.name) },
-                        onSelect = { onWindowSelect(mainWindowUiState.name) },
-                        scrollEvents = scrollEvents,
-                        handledScrollEvent = handledScrollEvent,
-                        clearStream = { clearStream(mainWindowUiState.name) },
-                    )
-                }
-                WindowsAtLocation(
-                    location = WindowLocation.BOTTOM,
-                    size = bottomHeight,
-                    windowUiStates = bottomWindowUiStates,
-                    defaultStyle = defaultStyle,
-                    openWindows = openWindows,
-                    horizontalPanel = false,
-                    handleBefore = true,
-                    selectedWindow = selectedWindow,
-                    onSizeChange = { onSizeChange(WindowLocation.BOTTOM, it) },
-                    menuData = menuData,
-                    onActionClick = onActionClick,
-                    onHeightChange = onHeightChange,
-                    onWidthChange = onWidthChange,
-                    onCloseClick = onCloseClick,
-                    onOpenWindowSettings = onOpenWindowSettings,
-                    onWindowSelect = onWindowSelect,
-                    scrollEvents = scrollEvents,
-                    handledScrollEvent = handledScrollEvent,
-                    clearStream = clearStream,
-                    dragDropState = dragDropState,
-                    onDrop = onDrop,
-                )
-            }
-            // Right Column
-            WindowsAtLocation(
-                location = WindowLocation.RIGHT,
-                size = rightWidth,
-                windowUiStates = rightWindowUiStates,
-                defaultStyle = defaultStyle,
-                openWindows = openWindows,
-                horizontalPanel = true,
-                handleBefore = true,
-                selectedWindow = selectedWindow,
-                onSizeChange = { onSizeChange(WindowLocation.RIGHT, it) },
-                menuData = menuData,
-                onActionClick = onActionClick,
-                onHeightChange = onHeightChange,
-                onWidthChange = onWidthChange,
-                onCloseClick = onCloseClick,
-                onOpenWindowSettings = onOpenWindowSettings,
-                onWindowSelect = onWindowSelect,
-                scrollEvents = scrollEvents,
-                handledScrollEvent = handledScrollEvent,
-                clearStream = clearStream,
-                dragDropState = dragDropState,
-                onDrop = onDrop,
-            )
-        }
-        // Drag overlay rendered on top of everything
-        DragOverlay(dragDropState = dragDropState)
     }
 }
 
@@ -499,54 +333,6 @@ fun GameBottomBar(
                     border = MaterialTheme.colorScheme.outlineVariant,
                     icon = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                 ),
-        )
-    }
-}
-
-/** Shared handling for a clickable game-text action (command link or menu). */
-internal fun GameViewModel.onWindowAction(action: WarlockAction): Int? =
-    when (action) {
-        is WarlockAction.SendCommand -> {
-            sendCommand(action.command)
-            null
-        }
-
-        is WarlockAction.SendCommandWithLookup -> {
-            sendCommand(action.command)
-            null
-        }
-
-        is WarlockAction.OpenMenu -> {
-            action.onClick()
-        }
-
-        is WarlockAction.SendWidgetCommand -> {
-            sendWidgetCommand(action.command, action.echo)
-            null
-        }
-
-        is WarlockAction.RequestMenu -> {
-            requestMenu(action.exist, action.noun)
-        }
-
-        else -> {
-            null
-        }
-    }
-
-/** Shared handling for a window drag-and-drop result (reorder within, or move across, locations). */
-internal fun GameViewModel.onWindowDrop(result: DropResult) {
-    if (result.sourceLocation == result.target.location) {
-        changeWindowPositions(
-            result.sourceLocation,
-            result.name,
-            result.target.insertionIndex,
-        )
-    } else {
-        moveWindowToPosition(
-            result.name,
-            result.target.location,
-            result.target.insertionIndex,
         )
     }
 }
