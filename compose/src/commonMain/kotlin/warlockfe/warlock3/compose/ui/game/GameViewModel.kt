@@ -408,20 +408,11 @@ class GameViewModel(
     val historySearch: StateFlow<HistorySearchState?> = _historySearch.asStateFlow()
     private var historySearchIndex = 0
 
-    private val _leftWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
-    val leftWindowUiStates: StateFlow<List<WindowUiState>> = _leftWindowUiStates.asStateFlow()
-
-    private val _rightWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
-    val rightWindowUiStates: StateFlow<List<WindowUiState>> = _rightWindowUiStates.asStateFlow()
-
-    private val _topWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
-    val topWindowUiStates: StateFlow<List<WindowUiState>> = _topWindowUiStates.asStateFlow()
-
-    private val _bottomWindowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
-    val bottomWindowUiStates: StateFlow<List<WindowUiState>> = _bottomWindowUiStates.asStateFlow()
-
-    private val windowUiStateLists
-        get() = listOf(_leftWindowUiStates, _rightWindowUiStates, _topWindowUiStates, _bottomWindowUiStates)
+    // Every open non-main window with the dock its saved settings remember, in restore/open order
+    // (windows sharing a dock stay in their saved order). The docking bridge reconciles the dock
+    // tree from this; the location only seeds a window's default spot there.
+    private val _windowUiStates = MutableStateFlow<List<OpenGameWindow>>(emptyList())
+    val windowUiStates: StateFlow<List<OpenGameWindow>> = _windowUiStates.asStateFlow()
 
     // Completed once the saved window layout has been restored into the dock lists (also on a
     // failed restore - see restoreWindowLayoutOnConnect). A Deferred rather than a resettable
@@ -594,7 +585,7 @@ class GameViewModel(
                         settings.filter { it.open }.forEach { entity ->
                             // A user open, or a game open that gave up waiting on this restore,
                             // can land first - never add a second copy.
-                            if (windowUiStateLists.any { states -> states.value.any { it.name == entity.name } }) {
+                            if (_windowUiStates.value.any { it.name == entity.name }) {
                                 return@forEach
                             }
                             logger.d { "Loading entity: $entity" }
@@ -612,13 +603,13 @@ class GameViewModel(
                                     data = createWindowData(window?.windowType, entity.name),
                                 )
                             (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
-                            when (entity.location) {
+                            when (val location = entity.location) {
                                 WindowLocation.MAIN -> _mainWindowUiState.value = uiState
-                                WindowLocation.TOP -> _topWindowUiStates.update { it + uiState }
-                                WindowLocation.BOTTOM -> _bottomWindowUiStates.update { it + uiState }
-                                WindowLocation.LEFT -> _leftWindowUiStates.update { it + uiState }
-                                WindowLocation.RIGHT -> _rightWindowUiStates.update { it + uiState }
-                                else -> Unit // Nothing to do
+
+                                null -> Unit
+
+                                // Never placed; nothing to restore
+                                else -> _windowUiStates.update { it + OpenGameWindow(location, uiState) }
                             }
                         }
                     } catch (e: CancellationException) {
@@ -654,25 +645,26 @@ class GameViewModel(
                             )
                         }
                     } else {
-                        windowUiStateLists.forEach { stateList ->
-                            stateList.update { states ->
-                                val index = states.indexOfFirst { it.name == singleWindowSettings.name }
-                                if (index != -1) {
-                                    val mutableStates = states.toMutableList()
-                                    (states[index].data as? StreamWindowData)
-                                        ?.stream
-                                        ?.setNameFilter(singleWindowSettings.nameFilter)
-                                    mutableStates[index] =
-                                        states[index].copy(
-                                            style = singleWindowSettings.getStyle(colorPalette.value),
-                                            font = singleWindowSettings.font,
-                                            monoFont = singleWindowSettings.monoFont,
-                                            nameFilter = singleWindowSettings.nameFilter,
-                                        )
-                                    mutableStates
-                                } else {
-                                    states
-                                }
+                        _windowUiStates.update { states ->
+                            val index = states.indexOfFirst { it.name == singleWindowSettings.name }
+                            if (index != -1) {
+                                val mutableStates = states.toMutableList()
+                                (states[index].uiState.data as? StreamWindowData)
+                                    ?.stream
+                                    ?.setNameFilter(singleWindowSettings.nameFilter)
+                                mutableStates[index] =
+                                    states[index].copy(
+                                        uiState =
+                                            states[index].uiState.copy(
+                                                style = singleWindowSettings.getStyle(colorPalette.value),
+                                                font = singleWindowSettings.font,
+                                                monoFont = singleWindowSettings.monoFont,
+                                                nameFilter = singleWindowSettings.nameFilter,
+                                            ),
+                                    )
+                                mutableStates
+                            } else {
+                                states
                             }
                         }
                     }
@@ -715,28 +707,27 @@ class GameViewModel(
                                     }
                                 }
                             }
-                            windowUiStateLists.forEach { windowUiStates ->
-                                windowUiStates.value
-                                    .indexOfFirst { it.name == event.info.name }
-                                    .takeIf { it != -1 }
-                                    ?.let { index ->
-                                        val uiState = windowUiStates.value[index]
-                                        uiState.windowInfo.value = event.info
-                                        if (uiState.data == null) {
-                                            windowUiStates.update { states ->
-                                                val mutableStates = states.toMutableList()
-                                                mutableStates[index] =
-                                                    uiState.copy(
-                                                        data = createWindowData(event.info.windowType, event.info.name),
-                                                    )
-                                                (mutableStates[index].data as? StreamWindowData)
-                                                    ?.stream
-                                                    ?.setNameFilter(uiState.nameFilter)
-                                                mutableStates
-                                            }
+                            _windowUiStates.value
+                                .indexOfFirst { it.name == event.info.name }
+                                .takeIf { it != -1 }
+                                ?.let { index ->
+                                    val uiState = _windowUiStates.value[index].uiState
+                                    uiState.windowInfo.value = event.info
+                                    if (uiState.data == null) {
+                                        _windowUiStates.update { states ->
+                                            val mutableStates = states.toMutableList()
+                                            val filled =
+                                                uiState.copy(
+                                                    data = createWindowData(event.info.windowType, event.info.name),
+                                                )
+                                            mutableStates[index] = states[index].copy(uiState = filled)
+                                            (filled.data as? StreamWindowData)
+                                                ?.stream
+                                                ?.setNameFilter(uiState.nameFilter)
+                                            mutableStates
                                         }
                                     }
-                            }
+                                }
                         }
                     }
 
@@ -1405,12 +1396,11 @@ class GameViewModel(
         location: WindowLocation,
         position: Int? = null,
     ): Boolean {
-        // A window lives in exactly one dock: an open for one already docked anywhere is a
-        // no-op (the visibility toggles route those to closeWindow).
-        if (windowUiStateLists.any { states -> states.value.any { it.name == name } }) return false
-        val windowUiStates = getWindowUiStatesForLocation(location)
+        // A window lives in the list exactly once: an open for one already there is a no-op
+        // (the visibility toggles route those to closeWindow).
+        if (_windowUiStates.value.any { it.name == name }) return false
         var newState: WindowUiState? = null
-        windowUiStates.update { states ->
+        _windowUiStates.update { states ->
             // Reset on entry: update{} may retry, and a retry can take the other branch.
             newState = null
             if (states.any { it.name == name }) {
@@ -1418,19 +1408,25 @@ class GameViewModel(
             } else {
                 val added = buildWindowUiState(name)
                 newState = added
+                // The end of this dock's group: after its last window, or the end of the list
+                // when it has none yet.
+                val groupEnd =
+                    states.indexOfLast { it.location == location }.let { last ->
+                        if (last == -1) states.size else last + 1
+                    }
                 val insertIndex =
                     if (position == null) {
-                        states.size
+                        groupEnd
                     } else {
                         val openNames = windowSettings.value.filter { it.open }.mapTo(mutableSetOf()) { it.name }
                         states
                             .withIndex()
-                            .filter { it.value.name in openNames }
+                            .filter { it.value.location == location && it.value.name in openNames }
                             .getOrNull(position)
                             ?.index
-                            ?: states.size
+                            ?: groupEnd
                     }
-                states.toMutableList().apply { add(insertIndex, added) }
+                states.toMutableList().apply { add(insertIndex, OpenGameWindow(location, added)) }
             }
         }
         val state = newState ?: return false
@@ -1499,9 +1495,7 @@ class GameViewModel(
         name: String,
         hide: Boolean,
     ) {
-        windowUiStateLists.forEach { windowUiStates ->
-            windowUiStates.update { states -> states.filter { it.name != name } }
-        }
+        _windowUiStates.update { states -> states.filter { it.name != name } }
         if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
@@ -1845,15 +1839,6 @@ class GameViewModel(
     fun handledMacroError() {
         _macroError.value = null
     }
-
-    private fun getWindowUiStatesForLocation(location: WindowLocation): MutableStateFlow<List<WindowUiState>> =
-        when (location) {
-            WindowLocation.LEFT -> _leftWindowUiStates
-            WindowLocation.RIGHT -> _rightWindowUiStates
-            WindowLocation.TOP -> _topWindowUiStates
-            WindowLocation.BOTTOM -> _bottomWindowUiStates
-            else -> error("Change position error: Invalid window location")
-        }
 
     override fun entryClearToEnd() {
         entryDelete(entryTextState.selection.end, entryTextState.text.length)

@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
@@ -89,20 +90,15 @@ fun rememberGameDockState(
     windowContent: @Composable (window: OpenGameWindow) -> Unit,
 ): DockState {
     val main by viewModel.mainWindowUiState.collectAsState()
-    val left by viewModel.leftWindowUiStates.collectAsState()
-    val right by viewModel.rightWindowUiStates.collectAsState()
-    val top by viewModel.topWindowUiStates.collectAsState()
-    val bottom by viewModel.bottomWindowUiStates.collectAsState()
+    val windows by viewModel.windowUiStates.collectAsState()
 
-    // Insertion-ordered (main first, then each dock in its saved order), so reconciling docks the
-    // windows in the order the old layout stacked them.
+    // Insertion-ordered (main first, then the view model's restore/open order, which keeps windows
+    // sharing a dock in their saved order), so reconciling docks them the way the old layout
+    // stacked them.
     val openWindows: Map<String, OpenGameWindow> =
         buildMap {
             put(main.name, OpenGameWindow(WindowLocation.MAIN, main))
-            left.forEach { put(it.name, OpenGameWindow(WindowLocation.LEFT, it)) }
-            top.forEach { put(it.name, OpenGameWindow(WindowLocation.TOP, it)) }
-            bottom.forEach { put(it.name, OpenGameWindow(WindowLocation.BOTTOM, it)) }
-            right.forEach { put(it.name, OpenGameWindow(WindowLocation.RIGHT, it)) }
+            windows.forEach { put(it.name, it) }
         }
     val currentOpenWindows: State<Map<String, OpenGameWindow>> = rememberUpdatedState(openWindows)
 
@@ -170,8 +166,11 @@ fun rememberGameDockState(
         )
     }
 
-    remember {
+    DisposableEffect(state) {
         registerWindow(MAIN_WINDOW_NAME)
+        onDispose {
+            state.registry.unregister(DockableId(MAIN_WINDOW_NAME))
+        }
     }
 
     // The dock's focus follows into the view model's selected window (scroll macros and find act
