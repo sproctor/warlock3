@@ -22,9 +22,9 @@ data class StreamMemoryUsage(
     val maxLines: Int,
     val textCharacters: Long,
     /**
-     * Serial numbers recorded in the component index. This index is never pruned when lines are
-     * evicted, so on a stream that receives server components it grows for the life of the
-     * connection - one entry per component occurrence, forever.
+     * Serial numbers recorded in the component index: one per buffered line that references a
+     * server component. Pruned as lines are evicted, so it tracks the buffer rather than the
+     * connection - a count far above [bufferedLines] means that pruning has stopped working.
      */
     val componentReferences: Long,
     val estimatedBytes: Long,

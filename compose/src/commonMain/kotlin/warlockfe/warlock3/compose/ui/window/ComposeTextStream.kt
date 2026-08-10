@@ -106,7 +106,10 @@ class ComposeTextStream(
 
     private var partialLine: StyledString? = null
 
-    private val componentLocations = mutableMapOf<String, Set<Long>>()
+    // Serial numbers of the buffered lines that reference each component, oldest first. A deque
+    // rather than a set: appends go on the back and eviction drops from the front, so keeping it in
+    // step with the buffer costs O(1) per line instead of rebuilding a whole set per occurrence.
+    private val componentLocations = mutableMapOf<String, ArrayDeque<Long>>()
 
     var actionHandler: ((WarlockAction) -> Unit)? = null
 
@@ -231,8 +234,12 @@ class ComposeTextStream(
         serialNumber: Long,
     ) {
         text.getComponents().forEach { name ->
-            val existingLocations = componentLocations[name] ?: emptySet()
-            componentLocations[name] = existingLocations + serialNumber
+            val locations = componentLocations.getOrPut(name) { ArrayDeque() }
+            // A partial line re-registers its serial every time it grows, and serials only ever
+            // increase, so checking the tail is enough to keep this one entry per line.
+            if (locations.lastOrNull() != serialNumber) {
+                locations.addLast(serialNumber)
+            }
         }
     }
 
@@ -257,8 +264,38 @@ class ComposeTextStream(
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
-            // Intentionally leak components here. They don't exist in the main window,
-            // and no other windows get long enough
+        }
+        pruneComponentLocations()
+    }
+
+    /**
+     * Drops component locations pointing at lines the buffer no longer holds.
+     *
+     * These used to be left in place deliberately ("they don't exist in the main window, and no
+     * other windows get long enough"), but on any stream that does carry components the index grew
+     * for the life of the connection - one entry per occurrence, never reclaimed. Pruning here ties
+     * it to the buffer, which is already capped.
+     *
+     * Runs once per append and walks one deque per component name, of which a stream has a handful.
+     */
+    private fun pruneComponentLocations() {
+        if (componentLocations.isEmpty()) return
+        // No buffered lines means no location can point at one; otherwise drop everything below the
+        // oldest line still held. Serials are appended in order, so the stale entries are a prefix.
+        val oldestSerial = finishedLines.firstOrNull()?.serialNumber
+        val entries = componentLocations.iterator()
+        while (entries.hasNext()) {
+            val locations = entries.next().value
+            if (oldestSerial == null) {
+                locations.clear()
+            } else {
+                while (locations.isNotEmpty() && locations.first() < oldestSerial) {
+                    locations.removeFirst()
+                }
+            }
+            if (locations.isEmpty()) {
+                entries.remove()
+            }
         }
     }
 

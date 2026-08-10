@@ -611,11 +611,10 @@ class ComposeTextStreamTest {
             }
         }
 
-    // The component index is never pruned when lines are evicted (see removeLines), so on a stream
-    // that receives components it grows for the life of the connection. Surfacing that count is a
-    // large part of why the memory view exists; this pins the behaviour it reports.
+    // The component index used to outlive the lines that registered it, growing for the life of the
+    // connection on any stream carrying components. It is now pruned with the buffer.
     @Test
-    fun memoryUsageReportsUnprunedComponentIndex() =
+    fun memoryUsagePrunesComponentIndexWithTheBuffer() =
         runBlocking {
             withFixture(maxLines = 4) { f ->
                 repeat(40) { i ->
@@ -626,9 +625,30 @@ class ComposeTextStreamTest {
                 val usage = f.stream.memoryUsage()
                 assertEquals(4, usage.bufferedLines)
                 assertEquals(
-                    40L,
+                    4L,
                     usage.componentReferences,
-                    "component locations outlive the lines that registered them",
+                    "component locations should be pruned along with the lines that registered them",
+                )
+            }
+        }
+
+    // Pruning must not disturb the mapping from a component to the lines still buffered: an update
+    // after eviction has to reach every remaining occurrence.
+    @Test
+    fun componentUpdatesReachRemainingLinesAfterEviction() =
+        runBlocking {
+            withFixture(maxLines = 3) { f ->
+                repeat(10) { i ->
+                    f.stream.appendLine(lineWithComponent("row$i ", "hp"), ignoreWhenBlank = false, showWhenClosed = null)
+                }
+                f.drain()
+                f.stream.updateComponent("hp", text("42"))
+                f.drain()
+
+                assertEquals(
+                    listOf("row7 42", "row8 42", "row9 42"),
+                    f.stream.lines.value
+                        .texts(),
                 )
             }
         }
