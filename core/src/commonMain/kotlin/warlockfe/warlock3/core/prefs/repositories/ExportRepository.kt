@@ -237,13 +237,15 @@ class ExportRepository(
                     val style = config.windows[windowName] ?: WindowStyleConfig()
                     WindowSettingsExport(
                         name = windowName,
-                        width = geometry?.width,
-                        height = geometry?.height,
-                        location = if (geometry?.open == true) geometry.location else null,
-                        position = if (geometry?.open == true) geometry.position else null,
+                        // Arrangement and sizes live in the docking layout JSON now; these fields
+                        // stay in the format only so old exports keep importing.
+                        width = null,
+                        height = null,
+                        location = null,
+                        position = null,
                         open = geometry?.open == true,
-                        rememberedLocation = if (geometry != null && !geometry.open) geometry.location else null,
-                        rememberedPosition = if (geometry != null && !geometry.open) geometry.position else null,
+                        rememberedLocation = null,
+                        rememberedPosition = null,
                         textColor = style.textColor,
                         backgroundColor = style.backgroundColor,
                         font = style.font,
@@ -560,24 +562,15 @@ class ExportRepository(
             scriptDirDao.save(ScriptDirEntity(characterId = targetCharacterId, path = path))
         }
 
-        // Window geometry → SQLite (styling was written to the config above; the entity's styling
-        // columns are vestigial, so they're left at their defaults here).
+        // The open flag → SQLite (styling was written to the config above). An export that
+        // predates the flag says "placed in the layout" with a non-null location, so those come
+        // up open.
         data.windows.forEach { window ->
             windowSettingsDao.save(
                 WindowSettingsEntity(
                     characterId = targetCharacterId,
                     name = window.name,
-                    width = window.width,
-                    height = window.height,
-                    location = window.location ?: window.rememberedLocation,
-                    position = window.position ?: window.rememberedPosition,
                     open = window.open ?: (window.location != null),
-                    textColor = WarlockColor.Unspecified,
-                    backgroundColor = WarlockColor.Unspecified,
-                    fontFamily = null,
-                    fontSize = null,
-                    fontWeight = null,
-                    nameFilter = false,
                 ),
             )
         }

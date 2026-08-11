@@ -55,14 +55,24 @@ private const val BAND_PROPORTION = 0.25f
 private val CHARACTER_WAIT = 10.seconds
 
 /**
- * One open game window as the docking bridge sees it: the dock the legacy settings remember it in
- * (which seeds its default spot in the dock tree) plus its live ui state.
+ * One open game window as the docking bridge sees it. [location] is the dock the game's
+ * announcement suggests, read live from the window info (announcements can arrive after the
+ * window opens); it seeds the default spot for a window the saved layout does not know.
  */
 data class OpenGameWindow(
-    val location: WindowLocation,
     val uiState: WindowUiState,
 ) {
     val name: String get() = uiState.name
+
+    val location: WindowLocation
+        get() =
+            if (name == MAIN_WINDOW_NAME) {
+                WindowLocation.MAIN
+            } else {
+                uiState.windowInfo.value
+                    ?.location
+                    ?: WindowLocation.TOP
+            }
 }
 
 /**
@@ -71,8 +81,9 @@ data class OpenGameWindow(
  *
  * The view model stays the authority on which windows are open (the game and the sidebar open and
  * close them); the dock state owns only their arrangement. The bridge reconciles the two: a window
- * appearing in the view model's dock lists is docked (at its spot in the saved layout JSON when it
- * has one, else at a default derived from its legacy location), and one disappearing is undocked.
+ * appearing in the view model's open list is docked (at its spot in the saved layout JSON when it
+ * has one, else at a default derived from its game-announced location), and one disappearing is
+ * undocked.
  * Closing from the dock's own chrome routes through [GameViewModel.closeWindow], so the window is
  * remembered hidden exactly as the old header close button did.
  *
@@ -92,13 +103,11 @@ fun rememberGameDockState(
     val main by viewModel.mainWindowUiState.collectAsState()
     val windows by viewModel.windowUiStates.collectAsState()
 
-    // Insertion-ordered (main first, then the view model's restore/open order, which keeps windows
-    // sharing a dock in their saved order), so reconciling docks them the way the old layout
-    // stacked them.
+    // Insertion-ordered: main first, then the view model's restore/open order.
     val openWindows: Map<String, OpenGameWindow> =
         buildMap {
-            put(main.name, OpenGameWindow(WindowLocation.MAIN, main))
-            windows.forEach { put(it.name, it) }
+            put(main.name, OpenGameWindow(main))
+            windows.forEach { put(it.name, OpenGameWindow(it)) }
         }
     val currentOpenWindows: State<Map<String, OpenGameWindow>> = rememberUpdatedState(openWindows)
 
@@ -266,14 +275,15 @@ internal data class DockPlacement(
 )
 
 /**
- * The default spot for a window, derived from the dock its legacy settings remember. The remembered
+ * The default spot for a window, derived from the dock the game's announcement suggests. The
  * location names a region relative to the main text window (left/right columns, top/bottom bands);
  * the window joins that region as it exists *now* - stacked onto the last open window currently on
  * that side of main (columns stack downward, bands extend rightward) - and when the region is
- * empty it opens it with a fresh split directly off the main window.
+ * empty it opens it with a fresh split: side columns at the window root, outside everything, and
+ * top/bottom bands directly off the main window.
  *
  * Membership in a region is decided by where a window sits in the tree today, not by the location
- * tag it was seeded from: once the user drags a window somewhere else, it stops attracting its old
+ * it was seeded from: once the user drags a window somewhere else, it stops attracting its old
  * dock-mates there (and a window dragged into a region becomes part of it). The main window itself
  * is never a region member; it is the reference point the regions are measured against.
  */
@@ -321,10 +331,16 @@ internal fun defaultPlacement(
             DockTarget.Root()
         }
     return when (location) {
-        WindowLocation.LEFT -> DockPlacement(mainTarget, DockRegion.West, SIDE_COLUMN_PROPORTION)
-        WindowLocation.RIGHT -> DockPlacement(mainTarget, DockRegion.East, SIDE_COLUMN_PROPORTION)
+        // Side columns open at the window root, outside everything else, running the full height
+        // rather than sitting inside the center column.
+        WindowLocation.LEFT -> DockPlacement(DockTarget.Root(), DockRegion.West, SIDE_COLUMN_PROPORTION)
+
+        WindowLocation.RIGHT -> DockPlacement(DockTarget.Root(), DockRegion.East, SIDE_COLUMN_PROPORTION)
+
         WindowLocation.TOP -> DockPlacement(mainTarget, DockRegion.North, BAND_PROPORTION)
+
         WindowLocation.BOTTOM -> DockPlacement(mainTarget, DockRegion.South, BAND_PROPORTION)
+
         WindowLocation.MAIN -> DockPlacement(DockTarget.Root(), DockRegion.Center, BAND_PROPORTION)
     }
 }

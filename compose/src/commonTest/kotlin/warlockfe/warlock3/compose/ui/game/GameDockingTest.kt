@@ -8,25 +8,40 @@ import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
 import warlockfe.warlock3.compose.ui.window.WindowUiState
+import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
+import warlockfe.warlock3.core.window.WindowType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GameDockingTest {
-    private fun uiState(name: String): WindowUiState =
+    private fun uiState(
+        name: String,
+        location: WindowLocation?,
+    ): WindowUiState =
         WindowUiState(
             name = name,
-            windowInfo = mutableStateOf(null),
+            // The game-announced location rides on the window info, exactly as in production.
+            windowInfo =
+                mutableStateOf(
+                    WindowInfo(
+                        name = name,
+                        title = name,
+                        subtitle = null,
+                        windowType = WindowType.STREAM,
+                        showTimestamps = false,
+                        backgroundImage = null,
+                        location = location.takeUnless { it == WindowLocation.MAIN },
+                    ),
+                ),
             style = warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE,
-            width = null,
-            height = null,
             data = null,
         )
 
     private fun openWindows(vararg windows: Pair<String, WindowLocation>): Map<String, OpenGameWindow> =
-        windows.associate { (name, location) -> name to OpenGameWindow(location, uiState(name)) }
+        windows.associate { (name, location) -> name to OpenGameWindow(uiState(name, location)) }
 
     private fun newState(): DockState =
         DockState(
@@ -92,7 +107,7 @@ class GameDockingTest {
     }
 
     @Test
-    fun firstWindowOfADockSplitsOffMainAndLaterOnesStackOntoIt() {
+    fun firstWindowOfADockSplitsFreshAndLaterOnesStackOntoIt() {
         val state = newState()
         val windows =
             openWindows(
@@ -107,7 +122,7 @@ class GameDockingTest {
                 layout = state.layout,
                 openWindows = windows,
             )
-        assertEquals(DockTarget.OnDockable(DockableId(MAIN_WINDOW_NAME)), first.target)
+        assertEquals(DockTarget.Root(), first.target)
         assertEquals(DockRegion.West, first.region)
         register(state)("thoughts")
         state.dock(DockableId("thoughts"), first.target, first.region)
@@ -176,6 +191,59 @@ class GameDockingTest {
             DockRegion.North,
             relativeRegion(state.layout.mainWindow.root!!, DockableId("atmospherics"), mainId),
         )
+    }
+
+    @Test
+    fun rightColumnOpensAtTheRootRightOfEverything() {
+        val state = newState()
+        val registerWindow = register(state)
+        val mainId = DockableId(MAIN_WINDOW_NAME)
+        // A top band exists; the right column must still open outside it, not inside the center
+        // column.
+        reconcile(
+            state,
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.MAIN,
+                "room" to WindowLocation.TOP,
+            ),
+            registerWindow,
+        )
+        val windows =
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.MAIN,
+                "room" to WindowLocation.TOP,
+                "inv" to WindowLocation.RIGHT,
+            )
+        val placement =
+            defaultPlacement(
+                name = "inv",
+                location = WindowLocation.RIGHT,
+                layout = state.layout,
+                openWindows = windows,
+            )
+        assertEquals(DockTarget.Root(), placement.target)
+        assertEquals(DockRegion.East, placement.region)
+        reconcile(state, windows, registerWindow)
+        val tree = state.layout.mainWindow.root!!
+        // Right of the main window and of the top band alike.
+        assertEquals(DockRegion.East, relativeRegion(tree, DockableId("inv"), mainId))
+        assertEquals(DockRegion.East, relativeRegion(tree, DockableId("inv"), DockableId("room")))
+        // The next right window stacks below it rather than opening a second column.
+        val second =
+            defaultPlacement(
+                name = "combat",
+                location = WindowLocation.RIGHT,
+                layout = state.layout,
+                openWindows =
+                    openWindows(
+                        MAIN_WINDOW_NAME to WindowLocation.MAIN,
+                        "room" to WindowLocation.TOP,
+                        "inv" to WindowLocation.RIGHT,
+                        "combat" to WindowLocation.RIGHT,
+                    ),
+            )
+        assertEquals(DockTarget.OnDockable(DockableId("inv")), second.target)
+        assertEquals(DockRegion.South, second.region)
     }
 
     @Test

@@ -19,8 +19,6 @@ data class WindowUiState(
     // Per-window font overrides; null falls back to the character default / monospace font.
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
-    val width: Int?,
-    val height: Int?,
     val data: WindowData?,
     val nameFilter: Boolean = false,
 )

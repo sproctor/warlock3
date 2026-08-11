@@ -8,6 +8,10 @@ data class WindowInfo(
     val showTimestamps: Boolean,
     val backgroundImage: ClientBackgroundImage?,
     val nameFilterOption: Boolean = false,
+    // The dock the game's announcement suggested (via WindowLocation.fromProtocol), or null when it
+    // named none or somewhere we do not dock. Only the default for a window the character has never
+    // placed; the saved layout wins once one exists.
+    val location: WindowLocation? = null,
     // Whether anything about this window may be saved. The game marks a panel resident when it is a
     // permanent fixture of the character's layout; a non-resident panel is transient, so it can be
     // moved, resized and closed while it is up but nothing about it is persisted and it stays out of
@@ -48,11 +52,3 @@ enum class WindowType {
     STREAM,
     PANEL,
 }
-
-/**
- * A window's place in the layout: its dock and its index among the dock's saved windows.
- */
-data class WindowPlacement(
-    val location: WindowLocation,
-    val position: Int,
-)

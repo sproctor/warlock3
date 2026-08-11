@@ -111,7 +111,6 @@ import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.splitFirstWord
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowMemoryUsage
-import warlockfe.warlock3.core.window.WindowPlacement
 import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.core.window.WindowType
 import kotlin.time.Duration.Companion.seconds
@@ -123,8 +122,7 @@ const val CLIENT_COMMAND_PREFIX = '/'
 const val TABLET_WINDOW_LOCATION_KEY = "tabletWindowLocation"
 
 // The compose-docking layout JSON for this character, one blob per character. Written debounced on
-// every layout change; the legacy per-window location/position rows only seed windows that are not
-// in it yet (first run, or a window the character has never opened).
+// every layout change; a window it does not know yet docks at its game-announced location.
 const val DOCK_LAYOUT_KEY = "dockLayout"
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -408,11 +406,11 @@ class GameViewModel(
     val historySearch: StateFlow<HistorySearchState?> = _historySearch.asStateFlow()
     private var historySearchIndex = 0
 
-    // Every open non-main window with the dock its saved settings remember, in restore/open order
-    // (windows sharing a dock stay in their saved order). The docking bridge reconciles the dock
-    // tree from this; the location only seeds a window's default spot there.
-    private val _windowUiStates = MutableStateFlow<List<OpenGameWindow>>(emptyList())
-    val windowUiStates: StateFlow<List<OpenGameWindow>> = _windowUiStates.asStateFlow()
+    // Every open non-main window, in restore/open order. The docking bridge reconciles the dock
+    // tree from this; where each window docks is the layout JSON's business (with the
+    // game-announced location as the seed for windows the JSON does not know).
+    private val _windowUiStates = MutableStateFlow<List<WindowUiState>>(emptyList())
+    val windowUiStates: StateFlow<List<WindowUiState>> = _windowUiStates.asStateFlow()
 
     // Completed once the saved window layout has been restored into the dock lists (also on a
     // failed restore - see restoreWindowLayoutOnConnect). A Deferred rather than a resettable
@@ -449,8 +447,6 @@ class GameViewModel(
                     StreamWindowData(
                         stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
                     ),
-                width = null,
-                height = null,
             ),
         )
     val mainWindowUiState: StateFlow<WindowUiState> = _mainWindowUiState.asStateFlow()
@@ -570,17 +566,6 @@ class GameViewModel(
             .onEach { characterId ->
                 if (characterId != null) {
                     try {
-                        try {
-                            // Heal duplicate/gapped positions before reading: SQLite returns
-                            // duplicates in an unspecified order, so until they are renumbered
-                            // the restored order need not match the one the user last saw.
-                            windowSettingsRepository.normalizePositions(characterId)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            // Restoring from the un-normalized read beats not restoring at all.
-                            logger.w(e) { "Failed to normalize window positions" }
-                        }
                         val settings = windowSettingsRepository.observeWindowSettings(characterId).first()
                         settings.filter { it.open }.forEach { entity ->
                             // A user open, or a game open that gave up waiting on this restore,
@@ -597,19 +582,14 @@ class GameViewModel(
                                     style = entity.getStyle(colorPalette.value),
                                     font = entity.font,
                                     monoFont = entity.monoFont,
-                                    width = entity.width,
-                                    height = entity.height,
                                     nameFilter = entity.nameFilter,
                                     data = createWindowData(window?.windowType, entity.name),
                                 )
                             (uiState.data as? StreamWindowData)?.stream?.setNameFilter(entity.nameFilter)
-                            when (val location = entity.location) {
-                                WindowLocation.MAIN -> _mainWindowUiState.value = uiState
-
-                                null -> Unit
-
-                                // Never placed; nothing to restore
-                                else -> _windowUiStates.update { it + OpenGameWindow(location, uiState) }
+                            if (entity.name == "main") {
+                                _mainWindowUiState.value = uiState
+                            } else {
+                                _windowUiStates.update { it + uiState }
                             }
                         }
                     } catch (e: CancellationException) {
@@ -649,18 +629,15 @@ class GameViewModel(
                             val index = states.indexOfFirst { it.name == singleWindowSettings.name }
                             if (index != -1) {
                                 val mutableStates = states.toMutableList()
-                                (states[index].uiState.data as? StreamWindowData)
+                                (states[index].data as? StreamWindowData)
                                     ?.stream
                                     ?.setNameFilter(singleWindowSettings.nameFilter)
                                 mutableStates[index] =
                                     states[index].copy(
-                                        uiState =
-                                            states[index].uiState.copy(
-                                                style = singleWindowSettings.getStyle(colorPalette.value),
-                                                font = singleWindowSettings.font,
-                                                monoFont = singleWindowSettings.monoFont,
-                                                nameFilter = singleWindowSettings.nameFilter,
-                                            ),
+                                        style = singleWindowSettings.getStyle(colorPalette.value),
+                                        font = singleWindowSettings.font,
+                                        monoFont = singleWindowSettings.monoFont,
+                                        nameFilter = singleWindowSettings.nameFilter,
                                     )
                                 mutableStates
                             } else {
@@ -711,17 +688,16 @@ class GameViewModel(
                                 .indexOfFirst { it.name == event.info.name }
                                 .takeIf { it != -1 }
                                 ?.let { index ->
-                                    val uiState = _windowUiStates.value[index].uiState
+                                    val uiState = _windowUiStates.value[index]
                                     uiState.windowInfo.value = event.info
                                     if (uiState.data == null) {
                                         _windowUiStates.update { states ->
                                             val mutableStates = states.toMutableList()
-                                            val filled =
+                                            mutableStates[index] =
                                                 uiState.copy(
                                                     data = createWindowData(event.info.windowType, event.info.name),
                                                 )
-                                            mutableStates[index] = states[index].copy(uiState = filled)
-                                            (filled.data as? StreamWindowData)
+                                            (mutableStates[index].data as? StreamWindowData)
                                                 ?.stream
                                                 ?.setNameFilter(uiState.nameFilter)
                                             mutableStates
@@ -1238,60 +1214,26 @@ class GameViewModel(
         }
     }
 
+    /**
+     * The user opening a window. Its dock comes from the docking layout JSON when it is in there,
+     * else from the game-announced location (see the bridge in GameDocking.kt); this only puts the
+     * window in the layout. The list updates before anything suspends - normally in the same frame
+     * as the click - so a close arriving afterwards always finds it there, and the screen and the
+     * saved state cannot disagree about whether it is open.
+     */
     fun openWindow(name: String) {
-        if (client.characterId.value == null || layoutRestored.isCompleted) {
-            openWindowNow(name)
-        } else {
-            // Clicked during login: wait for the saved layout, or the remembered rank would map
-            // onto a not-yet-populated dock and pin the window at the top.
-            viewModelScope.launch {
-                withTimeoutOrNull(10.seconds) { layoutRestored.await() }
-                openWindowNow(name)
-            }
-        }
+        if (!placeWindowUi(name)) return
+        notifyPanelVisibility(name, open = true)
+        persistWindowOpen(name)
     }
 
-    /**
-     * Docks a window at the placement the observed settings remember (TOP for one never placed)
-     * and then persists. The dock updates before anything suspends - normally in the same frame
-     * as the click - so a close arriving afterwards always finds it docked, and the screen and
-     * the saved state cannot disagree about whether it is open.
-     */
-    private fun openWindowNow(name: String) {
-        val placement = rememberedPlacement(name)
-        if (placement == null) {
-            openWindowAt(name = name, location = WindowLocation.TOP)
-            notifyPanelVisibility(name, open = true)
-            return
-        }
-        if (!placeWindowUi(name = name, location = placement.location, position = placement.position)) return
-        notifyPanelVisibility(name, open = true)
+    private fun persistWindowOpen(name: String) {
+        if (!canSaveWindow(name)) return
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
-                // Recomputed against the DB rows inside the transaction; the observed placement
-                // above only seeded the on-screen spot.
-                windowSettingsRepository.reopenWindow(characterId, name)
+                windowSettingsRepository.openWindow(characterId = characterId, name = name)
             }
         }
-    }
-
-    /**
-     * The placement a window's saved row remembers - its dock plus its rank among the dock's
-     * open windows - read from the observed settings so callers can dock without a DB
-     * round-trip; null when the window has never been placed. A remembered MAIN reads as never
-     * placed, mirroring [WindowSettingsRepository.reopenWindow]: MAIN is the main text window's
-     * slot.
-     */
-    private fun rememberedPlacement(name: String): WindowPlacement? {
-        if (!canSaveWindow(name)) return null
-        val settings = windowSettings.value
-        val window = settings.firstOrNull { it.name == name } ?: return null
-        val location = window.location?.takeUnless { it == WindowLocation.MAIN } ?: return null
-        val rank =
-            settings.count {
-                it.open && it.location == location && it.name != name && compareValues(it.position, window.position) < 0
-            }
-        return WindowPlacement(location, rank)
     }
 
     /**
@@ -1309,14 +1251,9 @@ class GameViewModel(
     }
 
     /**
-     * Opens a window because the game asked for it with an `openDialog` tag, at the location the
-     * protocol named. A window the game names somewhere we do not dock panels stays registered but
-     * closed, which is what the game's own client does with one.
-     *
-     * A window the character already has a saved dock for is left to the saved layout: the tag says
-     * the panel exists, not where the user keeps it. That is read from the repository rather than the
-     * observed settings because these tags arrive during login, possibly before the settings flow has
-     * emitted, and guessing "unsaved" there would overwrite the user's placement.
+     * Opens a window because the game asked for it with an `openDialog` tag. A window the game
+     * names somewhere we do not dock panels stays registered but closed, which is what the game's
+     * own client does with one.
      *
      * A window the user closed is left closed. The game announces its panels on every login, so
      * without that a panel the user does not want would come back every time they connect.
@@ -1327,14 +1264,14 @@ class GameViewModel(
     ) {
         if (name == _mainWindowUiState.value.name) return
         // MAIN belongs to the main text window; a panel can never take that slot.
-        val location = protocolLocation?.takeUnless { it == WindowLocation.MAIN } ?: return
+        if (protocolLocation == null || protocolLocation == WindowLocation.MAIN) return
         val stamp = stampGameWindowEvent(name)
         viewModelScope.launch {
             // The game announces most of its windows before naming the character (GS4 sends the
-            // whole panel list ahead of the <app> tag), and the guards below are meaningless
+            // whole panel list ahead of the <app> tag), and the hidden check below is meaningless
             // without the character's saved state - sampling a still-null id here is what used to
-            // reopen hidden panels and duplicate docked ones on every GS4 login. Wait for the id;
-            // the timeout only covers a server that never identifies the character at all.
+            // reopen hidden panels on every GS4 login. Wait for the id; the timeout only covers a
+            // server that never identifies the character at all.
             val characterId =
                 withTimeoutOrNull(10.seconds) { client.characterId.filterNotNull().first() }
             if (characterId != null) {
@@ -1345,57 +1282,19 @@ class GameViewModel(
                 }
                 // A window the user closed stays closed until they ask for it back.
                 if (windowSettingsRepository.isHidden(characterId, name)) return@launch
-                if (windowSettingsRepository.getWindowLocation(characterId, name) != null) return@launch
             }
             // Superseded by a later open or close for this window while suspended above.
             if (latestGameWindowEvent[name] != stamp) return@launch
-            // A window the game closed earlier reopens at the placement that close remembered;
-            // the protocol's location is only the default for one never placed.
-            val placement =
-                if (characterId != null && canSaveWindow(name)) {
-                    windowSettingsRepository.reopenWindow(characterId, name)
-                } else {
-                    null
-                }
-            if (placement != null) {
-                placeWindowUi(name = name, location = placement.location, position = placement.position)
-            } else {
-                openWindowAt(name = name, location = location)
-            }
-        }
-    }
-
-    private fun openWindowAt(
-        name: String,
-        location: WindowLocation,
-    ) {
-        if (!placeWindowUi(name = name, location = location)) return
-        if (!canSaveWindow(name)) return
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                // The position is assigned in the DB - the end of this dock's saved positions -
-                // so transient panels in the on-screen list and concurrent opens cannot skew it.
-                windowSettingsRepository.openWindowAtEnd(
-                    characterId = characterId,
-                    name = name,
-                    location = location,
-                )
-            }
+            if (!placeWindowUi(name)) return@launch
+            persistWindowOpen(name)
         }
     }
 
     /**
-     * Docks a window at [position], its rank among the dock's open saved windows (null appends),
-     * and returns whether it was added. The rank maps to the on-screen index of the window
-     * currently holding it: an on-screen window without an open saved row - a transient panel,
-     * or one whose first save is still in flight - holds a screen slot but no rank. Persists
-     * nothing: callers own the saved placement.
+     * Adds a window to the open list and returns whether it was added. Persists nothing: callers
+     * own the saved open flag. Where the window docks is the bridge's business.
      */
-    private fun placeWindowUi(
-        name: String,
-        location: WindowLocation,
-        position: Int? = null,
-    ): Boolean {
+    private fun placeWindowUi(name: String): Boolean {
         // A window lives in the list exactly once: an open for one already there is a no-op
         // (the visibility toggles route those to closeWindow).
         if (_windowUiStates.value.any { it.name == name }) return false
@@ -1408,25 +1307,7 @@ class GameViewModel(
             } else {
                 val added = buildWindowUiState(name)
                 newState = added
-                // The end of this dock's group: after its last window, or the end of the list
-                // when it has none yet.
-                val groupEnd =
-                    states.indexOfLast { it.location == location }.let { last ->
-                        if (last == -1) states.size else last + 1
-                    }
-                val insertIndex =
-                    if (position == null) {
-                        groupEnd
-                    } else {
-                        val openNames = windowSettings.value.filter { it.open }.mapTo(mutableSetOf()) { it.name }
-                        states
-                            .withIndex()
-                            .filter { it.value.location == location && it.value.name in openNames }
-                            .getOrNull(position)
-                            ?.index
-                            ?: groupEnd
-                    }
-                states.toMutableList().apply { add(insertIndex, OpenGameWindow(location, added)) }
+                states + added
             }
         }
         val state = newState ?: return false
@@ -1443,8 +1324,6 @@ class GameViewModel(
             style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
             font = entity?.font,
             monoFont = entity?.monoFont,
-            width = entity?.width,
-            height = entity?.height,
             nameFilter = entity?.nameFilter ?: false,
             data = createWindowData(windowInfo?.windowType, name),
         )
@@ -1531,8 +1410,6 @@ class GameViewModel(
                 style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
                 font = entity?.font,
                 monoFont = entity?.monoFont,
-                width = null,
-                height = null,
                 nameFilter = entity?.nameFilter ?: false,
                 data = createWindowData(windowInfo?.windowType, name),
             )

@@ -573,6 +573,7 @@ class WraythClient(
                             showTimestamps = false,
                             backgroundImage = existing?.backgroundImage,
                             resident = window.resident,
+                            location = WindowLocation.fromProtocol(window.location),
                         )
                     windowInfo.replaceOrAdd(info) { it.name == info.name }
                 }
@@ -997,6 +998,7 @@ class WraythClient(
                     showTimestamps = window.timestamp,
                     backgroundImage = existing?.backgroundImage,
                     nameFilterOption = window.nameFilterOption,
+                    location = WindowLocation.fromProtocol(window.location),
                 )
             windowInfo.replaceOrAdd(info) { it.name == window.name }
         }

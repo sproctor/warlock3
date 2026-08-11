@@ -6,8 +6,6 @@ import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.prefs.InMemoryWindowSettingsDao
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
-import warlockfe.warlock3.core.window.WindowLocation
-import warlockfe.warlock3.core.window.WindowPlacement
 import java.nio.file.Files
 import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest
@@ -15,7 +13,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -48,19 +45,22 @@ class WindowHiddenStateTest {
         store: CharacterConfigStore,
     ) = WindowSettingsRepository(dao, store)
 
+    private suspend fun WindowSettingsDao.isOpen(name: String): Boolean = getByName(character, name)?.open == true
+
     @Test
     fun userClosingAWindowHidesIt() =
         runBlocking {
             val dao = InMemoryWindowSettingsDao()
             val repository = newRepository(dao)
 
-            repository.openWindowAtEnd(character, "combat", WindowLocation.RIGHT)
+            repository.openWindow(character, "combat")
             assertFalse(repository.isHidden(character, "combat"))
+            assertTrue(dao.isOpen("combat"))
 
             repository.closeWindow(character, "combat")
 
             assertTrue(repository.isHidden(character, "combat"))
-            assertNull(repository.getWindowLocation(character, "combat"))
+            assertFalse(dao.isOpen("combat"))
         }
 
     @Test
@@ -69,12 +69,12 @@ class WindowHiddenStateTest {
             val dao = InMemoryWindowSettingsDao()
             val repository = newRepository(dao)
 
-            repository.openWindowAtEnd(character, "combat", WindowLocation.RIGHT)
+            repository.openWindow(character, "combat")
             repository.closeWindow(character, "combat")
-            repository.openWindowAtEnd(character, "combat", WindowLocation.TOP)
+            repository.openWindow(character, "combat")
 
             assertFalse(repository.isHidden(character, "combat"))
-            assertEquals(WindowLocation.TOP, repository.getWindowLocation(character, "combat"))
+            assertTrue(dao.isOpen("combat"))
         }
 
     @Test
@@ -83,28 +83,12 @@ class WindowHiddenStateTest {
             val dao = InMemoryWindowSettingsDao()
             val repository = newRepository(dao)
 
-            repository.openWindowAtEnd(character, "bank", WindowLocation.RIGHT)
+            repository.openWindow(character, "bank")
             repository.removeWindowFromLayout(character, "bank")
 
             // Out of the layout, but the game is free to open it again.
-            assertNull(repository.getWindowLocation(character, "bank"))
+            assertFalse(dao.isOpen("bank"))
             assertFalse(repository.isHidden(character, "bank"))
-        }
-
-    @Test
-    fun reopeningAtTheRememberedPlacementClearsHidden() =
-        runBlocking {
-            val dao = InMemoryWindowSettingsDao()
-            val repository = newRepository(dao)
-
-            repository.openWindowAtEnd(character, "combat", WindowLocation.RIGHT)
-            repository.closeWindow(character, "combat")
-
-            val placement = repository.reopenWindow(character, "combat")
-
-            assertEquals(WindowPlacement(WindowLocation.RIGHT, 0), placement)
-            assertFalse(repository.isHidden(character, "combat"))
-            assertEquals(WindowLocation.RIGHT, repository.getWindowLocation(character, "combat"))
         }
 
     @Test
@@ -125,5 +109,18 @@ class WindowHiddenStateTest {
             val reloaded = repositoryOn(dao, newStore())
 
             assertTrue(reloaded.isHidden(character, "combat"))
+        }
+
+    @Test
+    fun observedSettingsCarryTheOpenFlag() =
+        runBlocking {
+            val dao = InMemoryWindowSettingsDao()
+            val repository = newRepository(dao)
+
+            repository.openWindow(character, "combat")
+
+            val row = dao.getByCharacter(character).single()
+            assertEquals("combat", row.name)
+            assertTrue(row.open)
         }
 }

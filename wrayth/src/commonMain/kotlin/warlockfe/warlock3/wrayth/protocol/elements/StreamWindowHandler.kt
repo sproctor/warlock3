@@ -8,7 +8,6 @@ import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 
 class StreamWindowHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
-        // We receive a location here that we're ignoring to have a bit more control over where things are placed
         val id = element.attributes["id"] ?: return null
         // ifClosed defaults to "main" and is set to null if it was blank
         // Consumers should
@@ -21,6 +20,8 @@ class StreamWindowHandler : BaseElementListener() {
                 styleIfClosed = element.attributes["styleIfClosed"],
                 nameFilterOption = element.attributes["nameFilterOption"].toBoolean(),
                 timestamp = element.attributes["timestamp"].equals("on", ignoreCase = true),
+                // The saved layout wins over this; it only seeds where the window first docks.
+                location = element.attributes["location"],
             ),
         )
     }
