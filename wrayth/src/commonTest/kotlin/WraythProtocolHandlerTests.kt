@@ -4,6 +4,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
+import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
 import warlockfe.warlock3.wrayth.util.WraythDialogWindow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -237,5 +238,30 @@ class WraythProtocolHandlerTests {
         val events = WraythProtocolHandler().parseLine("<closeDialog/>")
 
         assertEquals(emptyList(), events.filterIsInstance<WraythCloseDialogEvent>())
+    }
+
+    @Test
+    fun tagNamesAreMatchedCaseSensitively() {
+        // The real client reads <opendialog> as a tag it has never heard of and drops it on the
+        // floor, no error, no panel. Ours used to lowercase every name and so accepted spellings
+        // the game never sends - which hid a miscased tag in our own lab bootstrap for months.
+        val handled = WraythProtocolHandler().parseLine("<openDialog id=\"bank\" title=\"Bank\"/>")
+        assertEquals(1, handled.filterIsInstance<WraythDialogWindowEvent>().size)
+
+        val miscased = WraythProtocolHandler().parseLine("<opendialog id=\"bank\" title=\"Bank\"/>")
+        assertEquals(emptyList(), miscased.filterIsInstance<WraythDialogWindowEvent>())
+        assertEquals(
+            listOf("opendialog"),
+            miscased.filterIsInstance<WraythUnhandledTagEvent>().map { it.tag },
+        )
+    }
+
+    @Test
+    fun tagsWeKnowinglyIgnoreAreNotReportedAsUnhandled() {
+        // A tag carrying nothing we use is registered all the same, so the unhandled channel keeps
+        // meaning "we have never seen this" rather than "this is one of the forty we ignore".
+        val events = WraythProtocolHandler().parseLine("<timestamp time=\"1700000000\"/>")
+
+        assertEquals(emptyList(), events.filterIsInstance<WraythUnhandledTagEvent>())
     }
 }
