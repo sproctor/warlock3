@@ -60,66 +60,174 @@ import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpDownEditBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
 
+// How many distinct unknown tag names one connection will report before giving up on them. Sized
+// well above the whole known protocol so a real vocabulary can never reach it.
+private const val MAX_UNKNOWN_TAGS_REPORTED = 256
+
 class WraythProtocolHandler {
     private val logger = Logger.withTag("WraythProtocolHandler")
 
+    // Tags already reported by [warnOnUnknownTag]. A tag on every line warns once, not thousands
+    // of times. Capped because nothing on the wire promises a finite set of names: the connection
+    // can carry whatever a Lich script emits, and this set lives as long as the connection does.
+    private val unknownReported = mutableSetOf<String>()
+    private var unknownOverflowReported = false
+
+    /**
+     * Warns the first time a tag arrives that the table does not account for at all. Every tag the
+     * game is known to send is registered above, the ones we do nothing with as
+     * [IgnoredTagHandler], so reaching here means either the protocol has grown something new or a
+     * spelling in the table is wrong - and since tag names are matched exactly, a single wrong
+     * letter would otherwise be invisible. The message names the nearest spelling we do hold when
+     * there is one, which is usually the whole diagnosis.
+     *
+     * Past [MAX_UNKNOWN_TAGS_REPORTED] distinct names this goes quiet and stops remembering them.
+     * The whole protocol is not much over a hundred tags, so passing that many *unknown* ones means
+     * something is generating names rather than sending a vocabulary, and neither the warnings nor
+     * the set are any use at that point.
+     */
+    private fun warnOnUnknownTag(tagName: String) {
+        if (tagName in unknownReported) return
+        if (unknownReported.size >= MAX_UNKNOWN_TAGS_REPORTED) {
+            if (!unknownOverflowReported) {
+                unknownOverflowReported = true
+                logger.w {
+                    "Seen $MAX_UNKNOWN_TAGS_REPORTED distinct unknown tags; no longer reporting them. " +
+                        "Something is generating tag names rather than sending a fixed set."
+                }
+            }
+            return
+        }
+        unknownReported.add(tagName)
+        val miscased = elementListeners.keys.firstOrNull { it.equals(tagName, ignoreCase = true) }
+        if (miscased != null) {
+            logger.w { "Ignoring <$tagName>: the tag we handle is spelled <$miscased>. One of the two is wrong." }
+        } else {
+            logger.w { "Ignoring <$tagName>: no handler for it. Add one, or an IgnoredTagHandler if it carries nothing we use." }
+        }
+    }
+
     private val elementListeners: Map<String, ElementListener> =
         mapOf(
-            // all keys must be lowercase
+            // Keyed by the protocol's exact spelling, because the real client matches tag
+            // names case-sensitively: <streamWindow> and <openDialog> are recognised, while
+            // <streamwindow> and <opendialog> are ignored without even an error (verified in
+            // utils/wrayth-lab). Every spelling below was read off captured DR/DRT/GS4
+            // sessions rather than inferred from the handler class name, which is not a
+            // reliable guide - UpdateVerbsHandler answers to <updateverbs>.
             "a" to AHandler(),
             "app" to AppHandler(),
             "b" to BHandler(),
             "background" to BackgroundHandler(),
-            "casttime" to CastTimeHandler(),
-            "clearcontainer" to ClearContainerHandler(),
-            "clearstream" to ClearStreamHandler(),
+            "castTime" to CastTimeHandler(),
+            "clearContainer" to ClearContainerHandler(),
+            "clearStream" to ClearStreamHandler(),
             "cli" to CliHandler(),
-            "closedialog" to CloseDialogHandler(),
-            "cmdbutton" to CmdButtonHandler(),
+            "closeDialog" to CloseDialogHandler(),
+            "cmdButton" to CmdButtonHandler(),
             "cmdlist" to CmdlistHandler(),
             "compass" to CompassHandler(),
-            "compdef" to CompDefHandler(),
+            "compDef" to CompDefHandler(),
             "component" to ComponentHandler(),
             "container" to ContainerHandler(),
             "d" to DHandler(),
-            "dialogdata" to DialogDataHandler(),
+            "dialogData" to DialogDataHandler(),
             "dir" to DirHandler(),
-            "dropdownbox" to DropDownBoxHandler(),
+            "dropDownBox" to DropDownBoxHandler(),
+            // No captured session contains these two, so their exact spelling is unknown.
+            // Both forms are registered rather than guessed at, because guessing wrong would
+            // silently drop a tag the game does send. Collapse each to a single entry once one
+            // shows up in a log.
             "dynastream" to DynaStreamHandler(),
+            "dynaStream" to DynaStreamHandler(),
             "image" to ImageHandler(),
             "indicator" to IndicatorHandler(),
             "inv" to InvHandler(),
             "label" to LabelHandler(),
             "launchurl" to LaunchURLHandler(),
+            "launchURL" to LaunchURLHandler(),
             "left" to LeftHandler(),
             "link" to LinkHandler(),
             "menu" to MenuHandler(),
-            "menuimage" to MenuImageHandler(),
-            "menulink" to MenuLinkHandler(),
+            "menuImage" to MenuImageHandler(),
+            "menuLink" to MenuLinkHandler(),
             "mi" to MiHandler(),
             "mode" to ModeHandler(),
             "nav" to NavHandler(),
-            "opendialog" to OpenDialogHandler(),
+            "openDialog" to OpenDialogHandler(),
             "output" to OutputHandler(),
             "preset" to PresetHandler(),
-            "popbold" to PopBoldHandler(),
-            "popstream" to PopStreamHandler(),
-            "progressbar" to ProgressBarHandler(),
+            "popBold" to PopBoldHandler(),
+            "popStream" to PopStreamHandler(),
+            "progressBar" to ProgressBarHandler(),
             "prompt" to PromptHandler(),
-            "pushbold" to PushBoldHandler(),
-            "pushstream" to PushStreamHandler(),
+            "pushBold" to PushBoldHandler(),
+            "pushStream" to PushStreamHandler(),
             "radio" to RadioHandler(),
             "resource" to ResourceHandler(),
             "right" to RightHandler(),
-            "roundtime" to RoundTimeHandler(),
-            "settingsinfo" to SettingsInfoHandler(),
+            "roundTime" to RoundTimeHandler(),
+            "settingsInfo" to SettingsInfoHandler(),
             "skin" to SkinHandler(),
             "spell" to SpellHandler(),
             "stream" to StreamHandler(),
-            "streamwindow" to StreamWindowHandler(),
+            "streamWindow" to StreamWindowHandler(),
             "style" to StyleHandler(),
             "updateverbs" to UpdateVerbsHandler(),
-            "updowneditbox" to UpDownEditBoxHandler(),
+            // Tags the game sends that carry nothing we use. Registered so the warning above
+            // stays meaningful: anything that reaches it is genuinely new, or misspelled. Every
+            // name here was taken from captured DR/DRT/GS4 sessions.
+            //
+            // The bulk of them are the settings blob the server replays at login - <settings> and
+            // its sections, down to the one-letter entries inside them (<i> palette, <k> macro key,
+            // <w> window, <o> option, <p> preset, <m> misc, <s> script). Warlock keeps its own
+            // settings, so none of it is read.
+            "builtin" to IgnoredTagHandler(),
+            "cmdline" to IgnoredTagHandler(),
+            "detach" to IgnoredTagHandler(),
+            "dialog" to IgnoredTagHandler(),
+            "display" to IgnoredTagHandler(),
+            "i" to IgnoredTagHandler(),
+            "ignores" to IgnoredTagHandler(),
+            "k" to IgnoredTagHandler(),
+            "keys" to IgnoredTagHandler(),
+            "m" to IgnoredTagHandler(),
+            "macros" to IgnoredTagHandler(),
+            "misc" to IgnoredTagHandler(),
+            "names" to IgnoredTagHandler(),
+            "o" to IgnoredTagHandler(),
+            "options" to IgnoredTagHandler(),
+            "p" to IgnoredTagHandler(),
+            "palette" to IgnoredTagHandler(),
+            "panels" to IgnoredTagHandler(),
+            "presets" to IgnoredTagHandler(),
+            "s" to IgnoredTagHandler(),
+            "scripts" to IgnoredTagHandler(),
+            "settings" to IgnoredTagHandler(),
+            "strings" to IgnoredTagHandler(),
+            "toggles" to IgnoredTagHandler(),
+            "vars" to IgnoredTagHandler(),
+            "w" to IgnoredTagHandler(),
+            // The rest arrive during play.
+            "closeButton" to IgnoredTagHandler(),
+            "checkBox" to IgnoredTagHandler(),
+            "cmdtimestamp" to IgnoredTagHandler(),
+            "command" to IgnoredTagHandler(),
+            "deleteContainer" to IgnoredTagHandler(),
+            "endSetup" to IgnoredTagHandler(),
+            "exposeContainer" to IgnoredTagHandler(),
+            "exposeDialog" to IgnoredTagHandler(),
+            "exposeStream" to IgnoredTagHandler(),
+            "font" to IgnoredTagHandler(),
+            "group" to IgnoredTagHandler(),
+            "module" to IgnoredTagHandler(),
+            "objectives" to IgnoredTagHandler(),
+            "playerID" to IgnoredTagHandler(),
+            "roommeta" to IgnoredTagHandler(),
+            "sep" to IgnoredTagHandler(),
+            "switchQuickBar" to IgnoredTagHandler(),
+            "timestamp" to IgnoredTagHandler(),
+            "upDownEditBox" to UpDownEditBoxHandler(),
         )
 
     // Reused across [parseLine] calls (see the note there). Error listeners are removed so malformed
@@ -160,7 +268,7 @@ class WraythProtocolHandler {
             when (content) {
                 is StartElement -> {
                     lineHasTags = true
-                    val tagName = content.name.lowercase()
+                    val tagName = content.name
                     tagStack.addFirst(OpenTag(tagName, content))
                     val listener = elementListeners[tagName]
                     if (listener != null) {
@@ -168,6 +276,7 @@ class WraythProtocolHandler {
                             events.add(it)
                         }
                     } else {
+                        warnOnUnknownTag(tagName)
                         events.add(WraythUnhandledTagEvent(content.name))
                     }
                 }
@@ -184,7 +293,7 @@ class WraythProtocolHandler {
                     val topOfStack =
                         tagStack.firstOrNull()
                             ?: continue // rule #1
-                    val tagName = content.name.lowercase()
+                    val tagName = content.name
                     val matched: OpenTag
                     if (topOfStack.name != tagName) {
                         logger.e {
@@ -275,3 +384,10 @@ abstract class BaseElementListener : ElementListener {
 
     override fun endElement(): WraythEvent? = null
 }
+
+/**
+ * A tag the game sends that we knowingly do nothing with. Registering it is what separates "we
+ * looked at this and it carries nothing we use" from "we have never seen this before", which is the
+ * only case [WraythProtocolHandler] warns about.
+ */
+class IgnoredTagHandler : BaseElementListener()

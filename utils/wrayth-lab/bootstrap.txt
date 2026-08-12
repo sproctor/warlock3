@@ -10,8 +10,12 @@
 <settingsInfo space_not_found="0" crc="0" instance="DR"/>
 <app char="Wlab" game="DR" title="[DR: Wlab]"/>
 ## --- windows ---------------------------------------------------------------
+## Tag names are case-sensitive to Wrayth and locations are checked: <opendialog>
+## is ignored outright, and a location it does not know comes back as
+## "_error bad location in <the tag>". These lines are copied from real DR/GS4
+## sessions, so keep them that way rather than inventing plausible-looking ones.
 <streamWindow id='main' title='Story' subtitle=" - [Wrayth Lab]" location='center' target='drop'/>
-<streamWindow id='inv' title='My Inventory' location='inv' target='wear' ifClosed='' resident='true'/>
+<streamWindow id='inv' title='My Inventory' target='wear' ifClosed='' resident='true'/>
 <streamWindow id='thoughts' title='Thoughts' location='left' target='thoughts' resident='true'/>
 <streamWindow id='logons' title='Arrivals' location='left' target='logons' resident='true'/>
 <streamWindow id='death' title='Deaths' location='left' target='death' resident='true'/>
@@ -19,7 +23,7 @@
 ## Wrayth parses one line at a time and wants each line to be well formed: a tag
 ## opened on one line and closed on the next comes back as "<c>_error ... Ending
 ## tag not found", so keep container tags and their contents on a single line.
-<opendialog type='dynamic' id='minivitals' title='Vitals' location='statusbar' target='minivitals' resident='true'><dialogData id='minivitals'><progressBar id='health' value='100' text='health 100%' left='0%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='mana' value='100' text='mana 100%' left='20%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='stamina' value='100' text='stamina 100%' left='40%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='spirit' value='100' text='spirit 100%' left='60%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='concentration' value='100' text='concentration 100%' left='80%' customText='t' top='0%' width='20%' height='100%'/></dialogData></opendialog>
+<openDialog type='dynamic' id='minivitals' title='Vitals' location='statBar' target='minivitals' resident='true'><dialogData id='minivitals'><progressBar id='health' value='100' text='health 100%' left='0%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='mana' value='100' text='mana 100%' left='20%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='stamina' value='100' text='stamina 100%' left='40%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='spirit' value='100' text='spirit 100%' left='60%' customText='t' top='0%' width='20%' height='100%'/><progressBar id='concentration' value='100' text='concentration 100%' left='80%' customText='t' top='0%' width='20%' height='100%'/></dialogData></openDialog>
 ## --- some room text so the main window is not empty ------------------------
 <streamWindow id='room' title='Room' subtitle=" - [Wrayth Lab]" location='center' target='drop'/>
 <compass><dir value="n"/><dir value="e"/><dir value="out"/></compass>
