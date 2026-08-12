@@ -7,6 +7,7 @@ android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version
 antlr-kotlin = { id = "com.strumenta.antlr-kotlin", version.ref = "antlr-kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -32,15 +33,18 @@ appdirs = "2.0.0"
 autolink = "0.12.0"
 clikt = "5.1.0"
 coil = "3.5.0"
-compose = "1.11.1"
-compose-material3 = "1.11.0-alpha07"
+compose = "1.12.0-rc01"
+# Compose Hot Reload. Brings `:desktopApp:hotRunJvm` (run with live reload) and, from
+# 1.2.0, `hotMcpServer` - an MCP server that lets an agent drive the running app.
+compose-hot-reload = "1.2.0"
+compose-material3 = "1.12.0-alpha03"
 ##             ⬆ = "1.12.0-alpha01"
 ##             ⬆ = "1.12.0-alpha02"
 ##             ⬆ = "1.12.0-alpha03"
 colorpicker = "1.2.0"
-compose-docking = "0.1.0"
+compose-docking = "0.2.0-SNAPSHOT"
 fastscroller = "0.3.2"
-filekit = "0.14.2"
+filekit = "0.15.0"
 intellij = "262.9437.136"
 # IJ repo gets pre-released versions and refreshVersions can't properly filter it.
 # Usable versions are here: https://central.sonatype.com/artifact/org.jetbrains.jewel/jewel-int-ui-standalone/versions

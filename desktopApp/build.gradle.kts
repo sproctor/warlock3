@@ -3,11 +3,13 @@ import com.seanproctor.potassium.dsl.MacOSTargetFormat
 import com.seanproctor.potassium.dsl.ReleaseChannel
 import com.seanproctor.potassium.dsl.ReleaseType
 import com.seanproctor.potassium.dsl.WindowsTargetFormat
+import org.jetbrains.compose.reload.gradle.AbstractComposeHotRun
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.compose.hot.reload)
     alias(libs.plugins.potassium)
 }
 
@@ -75,6 +77,14 @@ val jbrRuntime =
         @Suppress("UnstableApiUsage")
         vendor = JvmVendorSpec.JETBRAINS
     }
+
+// Compose Hot Reload launches the app itself, and defaults to whatever JetBrains Runtime it
+// finds rather than the one the app is built against - which lands on JBR 21 here and dies with
+// "JewelTheme has been compiled by a more recent version of the Java Runtime (class file 69.0)".
+// Point it at the same JBR 25 potassium runs and packages under.
+tasks.withType<AbstractComposeHotRun>().configureEach {
+    javaLauncher = jbrRuntime
+}
 
 potassium {
     mainClass = "warlockfe.warlock3.app.MainKt"
