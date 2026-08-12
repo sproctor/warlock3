@@ -60,12 +60,18 @@ import warlockfe.warlock3.wrayth.protocol.elements.StyleHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpDownEditBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.UpdateVerbsHandler
 
+// How many distinct unknown tag names one connection will report before giving up on them. Sized
+// well above the whole known protocol so a real vocabulary can never reach it.
+private const val MAX_UNKNOWN_TAGS_REPORTED = 256
+
 class WraythProtocolHandler {
     private val logger = Logger.withTag("WraythProtocolHandler")
 
     // Tags already reported by [warnOnUnknownTag]. A tag on every line warns once, not thousands
-    // of times.
+    // of times. Capped because nothing on the wire promises a finite set of names: the connection
+    // can carry whatever a Lich script emits, and this set lives as long as the connection does.
     private val unknownReported = mutableSetOf<String>()
+    private var unknownOverflowReported = false
 
     /**
      * Warns the first time a tag arrives that the table does not account for at all. Every tag the
@@ -74,9 +80,25 @@ class WraythProtocolHandler {
      * spelling in the table is wrong - and since tag names are matched exactly, a single wrong
      * letter would otherwise be invisible. The message names the nearest spelling we do hold when
      * there is one, which is usually the whole diagnosis.
+     *
+     * Past [MAX_UNKNOWN_TAGS_REPORTED] distinct names this goes quiet and stops remembering them.
+     * The whole protocol is not much over a hundred tags, so passing that many *unknown* ones means
+     * something is generating names rather than sending a vocabulary, and neither the warnings nor
+     * the set are any use at that point.
      */
     private fun warnOnUnknownTag(tagName: String) {
-        if (!unknownReported.add(tagName)) return
+        if (tagName in unknownReported) return
+        if (unknownReported.size >= MAX_UNKNOWN_TAGS_REPORTED) {
+            if (!unknownOverflowReported) {
+                unknownOverflowReported = true
+                logger.w {
+                    "Seen $MAX_UNKNOWN_TAGS_REPORTED distinct unknown tags; no longer reporting them. " +
+                        "Something is generating tag names rather than sending a fixed set."
+                }
+            }
+            return
+        }
+        unknownReported.add(tagName)
         val miscased = elementListeners.keys.firstOrNull { it.equals(tagName, ignoreCase = true) }
         if (miscased != null) {
             logger.w { "Ignoring <$tagName>: the tag we handle is spelled <$miscased>. One of the two is wrong." }

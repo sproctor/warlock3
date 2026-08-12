@@ -257,6 +257,19 @@ class WraythProtocolHandlerTests {
     }
 
     @Test
+    fun anEndlessStreamOfNewTagNamesDoesNotAccumulate() {
+        // Nothing on the wire promises a finite set of tag names - the connection carries whatever
+        // a Lich script emits - and the de-duplication set lives as long as the connection. Feed it
+        // far more distinct names than the protocol has and it must still be reporting them as
+        // unhandled without having kept them all.
+        val handler = WraythProtocolHandler()
+        repeat(2000) { i ->
+            val events = handler.parseLine("<generated$i/>")
+            assertEquals(listOf("generated$i"), events.filterIsInstance<WraythUnhandledTagEvent>().map { it.tag })
+        }
+    }
+
+    @Test
     fun tagsWeKnowinglyIgnoreAreNotReportedAsUnhandled() {
         // A tag carrying nothing we use is registered all the same, so the unhandled channel keeps
         // meaning "we have never seen this" rather than "this is one of the forty we ignore".
