@@ -29,13 +29,13 @@ data class ClientWindowInfoEvent(
 ) : ClientEvent
 
 /**
- * The game asked for a window to be shown. [location] is where the protocol wants it, which is only
- * used when the character has no saved location for the window; null means the game named somewhere
- * we do not dock panels, so the window is left closed.
+ * The game asked for a window to be shown. Where it goes is not part of this: the announced
+ * location rides on the window's [warlockfe.warlock3.core.window.WindowInfo], which is what the
+ * docking bridge reads when the character has no saved spot for it. A panel the game puts in the
+ * client's own chrome (`statBar`, `quickBar`) never raises this event at all.
  */
 data class ClientOpenWindowEvent(
     val name: String,
-    val location: WindowLocation?,
 ) : ClientEvent
 
 /** The game asked for a window to be closed. */

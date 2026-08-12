@@ -43,7 +43,7 @@ import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.models.WindowSettingsEntity
 
-const val PREFS_DATABASE_VERSION = 21
+const val PREFS_DATABASE_VERSION = 22
 
 @Database(
     entities = [
@@ -79,6 +79,11 @@ const val PREFS_DATABASE_VERSION = 21
         AutoMigration(from = 17, to = 18),
         AutoMigration(from = 18, to = 19),
         AutoMigration(from = 19, to = 20),
+        AutoMigration(
+            from = 21,
+            to = 22,
+            spec = PrefsDatabase.AutoMigration22::class,
+        ),
     ],
 )
 @ColumnTypeConverters(DatabaseConverters::class)
@@ -86,6 +91,15 @@ const val PREFS_DATABASE_VERSION = 21
 abstract class PrefsDatabase : RoomDatabase() {
     @DeleteColumn(tableName = "character", columnName = "accountId")
     class AutoMigration12 : AutoMigrationSpec
+
+    // The docking layout JSON (DOCK_LAYOUT_KEY) owns window arrangement, and nothing read the
+    // sizes since the docking switch. The vestigial styling columns stay: the first-run config
+    // migration still reads them (they would be dropped before it ran).
+    @DeleteColumn(tableName = "WindowSettings", columnName = "location")
+    @DeleteColumn(tableName = "WindowSettings", columnName = "position")
+    @DeleteColumn(tableName = "WindowSettings", columnName = "width")
+    @DeleteColumn(tableName = "WindowSettings", columnName = "height")
+    class AutoMigration22 : AutoMigrationSpec
 
     abstract fun accountDao(): AccountDao
 

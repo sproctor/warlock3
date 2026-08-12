@@ -62,7 +62,6 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
 
 private val titleSmallStyle =
@@ -75,7 +74,7 @@ private val titleSmallStyle =
 @Composable
 fun DesktopWindowView(
     uiState: WindowUiState,
-    location: WindowLocation,
+    canHide: Boolean,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -88,11 +87,14 @@ fun DesktopWindowView(
     handledScrollEvent: (ScrollEvent) -> Unit,
     modifier: Modifier = Modifier,
     headerModifier: Modifier = Modifier,
+    // False when the window sits in a dock area, whose header (title, drag handle, actions)
+    // replaces the window's own.
+    showHeader: Boolean = true,
     clearStream: () -> Unit,
 ) {
     WindowViewScaffold(
         uiState = uiState,
-        location = location,
+        canHide = canHide,
         defaultStyle = defaultStyle,
         isSelected = isSelected,
         openWindows = openWindows,
@@ -125,6 +127,7 @@ fun DesktopWindowView(
             }
         },
         header = { title, onSettingsClick ->
+            if (!showHeader) return@WindowViewScaffold
             WindowHeader(
                 modifier =
                     headerModifier
@@ -146,7 +149,7 @@ fun DesktopWindowView(
                         style = titleSmallStyle,
                     )
                 },
-                location = location,
+                canHide = canHide,
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
                 // A panel is a fixed layout of widgets with no text stream behind it, so there is

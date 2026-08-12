@@ -3,7 +3,6 @@ package warlockfe.warlock3.core.prefs.export
 import kotlinx.serialization.Serializable
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.window.WindowLocation
 
 @Serializable
 data class WindowSettingsExport(
@@ -11,15 +10,18 @@ data class WindowSettingsExport(
     val width: Int?,
     val height: Int?,
     // Only set while the window is in the layout: older builds read location != null as docked
-    // (their parsers drop the newer fields), so a closed window must not carry these.
-    val location: WindowLocation?,
+    // (their parsers drop the newer fields), so a closed window must not carry these. We write null
+    // now and read only its null-ness, so it stays a plain string rather than a WindowLocation:
+    // exports from those builds hold names ("TOP", "MAIN") that the enum no longer has, and
+    // deserializing them into it would fail the whole import.
+    val location: String?,
     val position: Int?,
     // Whether the window is in the layout. Null for exports written before the flag existed,
     // where placed meant location != null.
     val open: Boolean? = null,
     // A closed window's remembered placement, split from location/position so an old build
     // importing this export cannot resurrect closed windows.
-    val rememberedLocation: WindowLocation? = null,
+    val rememberedLocation: String? = null,
     val rememberedPosition: Int? = null,
     val textColor: WarlockColor,
     val backgroundColor: WarlockColor,

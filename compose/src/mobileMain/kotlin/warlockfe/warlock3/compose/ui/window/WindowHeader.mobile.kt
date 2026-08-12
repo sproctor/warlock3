@@ -23,12 +23,11 @@ import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
 import warlockfe.warlock3.compose.generated.resources.more_vert
-import warlockfe.warlock3.core.window.WindowLocation
 
 @Composable
 actual fun WindowHeader(
     title: @Composable (() -> Unit),
-    location: WindowLocation,
+    canHide: Boolean,
     isSelected: Boolean,
     onSettingsClick: () -> Unit,
     onClearClick: (() -> Unit)?,
@@ -40,7 +39,7 @@ actual fun WindowHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(Modifier.width(4.dp))
-        if (location != WindowLocation.MAIN) {
+        if (canHide) {
             Icon(
                 modifier = Modifier.size(18.dp),
                 painter = painterResource(Res.drawable.drag_indicator),
@@ -80,7 +79,7 @@ actual fun WindowHeader(
                         text = { Text("Clear window") },
                     )
                 }
-                if (location != WindowLocation.MAIN) {
+                if (canHide) {
                     DropdownMenuItem(
                         onClick = {
                             onCloseClick()

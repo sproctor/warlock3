@@ -9,4 +9,6 @@ data class WraythStreamWindow(
     val timestamp: Boolean,
     val nameFilterOption: Boolean = false,
     val applyStyling: Boolean = true,
+    // The protocol's location attribute, verbatim; where the game suggests the window docks.
+    val location: String? = null,
 )

@@ -1,6 +1,5 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import co.touchlab.kermit.Logger
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -15,22 +14,18 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toWarlockColor
-import warlockfe.warlock3.core.window.WindowLocation
-import warlockfe.warlock3.core.window.WindowPlacement
 
 /**
- * Window settings, split across two stores: geometry (size/location/position) lives in SQLite via
- * [WindowSettingsDao] because it's auto-saved and churns on every resize, while styling (colors,
- * font, name filter) lives in the character's TOML config. [observeWindowSettings] merges the two by
- * window name; the geometry mutators hit the DAO and the styling mutators hit the config store.
+ * Window settings, split across two stores: the open flag lives in SQLite via [WindowSettingsDao],
+ * while styling (colors, font, name filter) lives in the character's TOML config.
+ * [observeWindowSettings] merges the two by window name. Where an open window docks is not
+ * recorded here at all: arrangement belongs to the docking layout JSON.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WindowSettingsRepository(
     private val windowSettingsDao: WindowSettingsDao,
     private val store: CharacterConfigStore,
 ) {
-    private val logger = Logger.withTag("WindowSettingsRepository")
-
     fun observeWindowSettings(characterId: String): Flow<List<WindowSettings>> =
         combine(
             windowSettingsDao.observeByCharacter(characterId),
@@ -46,10 +41,6 @@ class WindowSettingsRepository(
                     WindowSettings(
                         characterId = characterId,
                         name = name,
-                        width = geometry?.width,
-                        height = geometry?.height,
-                        location = geometry?.location,
-                        position = geometry?.position,
                         open = geometry?.open == true,
                         textColor = style.textColor,
                         backgroundColor = style.backgroundColor,
@@ -65,24 +56,9 @@ class WindowSettingsRepository(
                         backgroundColorRef = style.backgroundColorRef,
                     )
                 }
-                // Match the DAO's `ORDER BY position` (SQLite sorts NULLs first on ascending).
-                .sortedWith(compareBy { it.position })
+                // Match the DAO's `ORDER BY name`, deterministically.
+                .sortedBy { it.name }
         }
-
-    /**
-     * The dock a window is currently open in for this character, or null when they have never
-     * placed it or have closed it (a closed window still remembers its placement, but it is not
-     * in the layout). Read straight from the DAO rather than from [observeWindowSettings] so a
-     * caller can ask before the observed settings have had a chance to emit.
-     */
-    suspend fun getWindowLocation(
-        characterId: String,
-        name: String,
-    ): WindowLocation? =
-        windowSettingsDao
-            .getByName(characterId = characterId, name = name)
-            ?.takeIf { it.open }
-            ?.location
 
     /**
      * Whether the user has closed this window and not asked for it back, in which case the game must
@@ -94,9 +70,9 @@ class WindowSettingsRepository(
     ): Boolean = store.current(characterId).windows[name]?.hidden == true
 
     /**
-     * The user closing a window: it leaves the layout (keeping its placement remembered for
-     * [reopenWindow]) and is marked hidden, so the game cannot bring it back with an
-     * `openDialog`. Use [removeWindowFromLayout] when the game is the one closing it.
+     * The user closing a window: it leaves the layout and is marked hidden, so the game cannot
+     * bring it back with an `openDialog`. Use [removeWindowFromLayout] when the game is the one
+     * closing it.
      */
     suspend fun closeWindow(
         characterId: String,
@@ -110,8 +86,7 @@ class WindowSettingsRepository(
 
     /**
      * A window leaving the layout without the user asking, because the game closed the panel. It
-     * keeps its placement remembered and is not marked hidden, so a later `openDialog` for it
-     * reopens it where it was.
+     * is not marked hidden, so a later `openDialog` for it reopens it.
      */
     suspend fun removeWindowFromLayout(
         characterId: String,
@@ -123,32 +98,17 @@ class WindowSettingsRepository(
     }
 
     /**
-     * Reopens a window at the placement its last close remembered (see
-     * [WindowSettingsDao.reopenWindow]), or returns null when it has never been placed and the
-     * caller must pick a location. Placing a window in the layout clears the hidden flag.
+     * Puts a window in the layout. Where it docks is the docking layout JSON's business (or, for a
+     * window the JSON does not know, the game-announced location). Anything in the layout is by
+     * definition not hidden, so this also clears the flag [closeWindow] sets.
      */
-    suspend fun reopenWindow(
+    suspend fun openWindow(
         characterId: String,
         name: String,
-    ): WindowPlacement? =
-        withContext(NonCancellable) {
-            windowSettingsDao.reopenWindow(characterId = characterId, name = name)?.also {
-                setHidden(characterId = characterId, name = name, hidden = false)
-            }
-        }
-
-    /**
-     * Reopens a window at its remembered placement, or appends it to [default] when it has never
-     * been placed - the whole open policy for callers that don't drive a dock list themselves
-     * (the settings screens editing an unconnected character).
-     */
-    suspend fun reopenOrOpenAtEnd(
-        characterId: String,
-        name: String,
-        default: WindowLocation,
     ) {
-        if (reopenWindow(characterId = characterId, name = name) == null) {
-            openWindowAtEnd(characterId = characterId, name = name, location = default)
+        withContext(NonCancellable) {
+            windowSettingsDao.openWindow(characterId = characterId, name = name)
+            setHidden(characterId = characterId, name = name, hidden = false)
         }
     }
 
@@ -162,37 +122,6 @@ class WindowSettingsRepository(
         store.mutate(characterId) { current ->
             val existing = current.windows[name] ?: WindowStyleConfig()
             current.copy(windows = current.windows + (name to existing.copy(hidden = hidden)))
-        }
-    }
-
-    suspend fun moveWindowToPosition(
-        characterId: String,
-        name: String,
-        location: WindowLocation,
-        position: Int,
-    ) {
-        withContext(NonCancellable) {
-            windowSettingsDao.moveWindowToPosition(characterId, name, location, position)
-        }
-    }
-
-    suspend fun setWindowWidth(
-        characterId: String,
-        name: String,
-        width: Int,
-    ) {
-        withContext(NonCancellable) {
-            windowSettingsDao.updateWidth(characterId = characterId, name = name, width = width)
-        }
-    }
-
-    suspend fun setWindowHeight(
-        characterId: String,
-        name: String,
-        height: Int,
-    ) {
-        withContext(NonCancellable) {
-            windowSettingsDao.updateHeight(characterId = characterId, name = name, height = height)
         }
     }
 
@@ -272,50 +201,6 @@ class WindowSettingsRepository(
         store.mutate(characterId) { current ->
             val existing = current.windows[name] ?: WindowStyleConfig()
             current.copy(windows = current.windows + (name to existing.copy(nameFilter = nameFilter)))
-        }
-    }
-
-    /**
-     * Persists a dock reorder atomically: the open windows take the order of [names], and each
-     * closed window keeps its remembered slot in the dock's sequence (see
-     * [WindowSettingsDao.setPositions]).
-     */
-    suspend fun setPositions(
-        characterId: String,
-        location: WindowLocation,
-        names: List<String>,
-    ) {
-        withContext(NonCancellable) {
-            logger.d { "setPositions: $characterId, $location, $names" }
-            windowSettingsDao.setPositions(characterId = characterId, location = location, names = names)
-        }
-    }
-
-    /**
-     * Places a window at the end of a dock, letting the DAO compute the position (see
-     * [WindowSettingsDao.openWindowAtEnd]). Anything in the layout is by definition not hidden,
-     * so this also clears the flag [closeWindow] sets.
-     */
-    suspend fun openWindowAtEnd(
-        characterId: String,
-        name: String,
-        location: WindowLocation,
-    ) {
-        logger.d { "openWindowAtEnd: $characterId, $name, $location" }
-        withContext(NonCancellable) {
-            windowSettingsDao.openWindowAtEnd(characterId = characterId, name = name, location = location)
-            setHidden(characterId = characterId, name = name, hidden = false)
-        }
-    }
-
-    /**
-     * Renumbers each dock's saved positions to 0..n, healing the duplicates and gaps older
-     * releases wrote (see [WindowSettingsDao.normalizePositions]). Run at connect, before the
-     * layout is restored, so the restore and the next session sort the same way.
-     */
-    suspend fun normalizePositions(characterId: String) {
-        withContext(NonCancellable) {
-            windowSettingsDao.normalizePositions(characterId)
         }
     }
 }

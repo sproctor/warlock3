@@ -64,7 +64,6 @@ class PrefsMigrationTest {
             try {
                 val rows = database.windowSettingsDao().getByCharacter(character).associateBy { it.name }
                 assertEquals(true, rows.getValue("thoughts").open)
-                assertEquals(0, rows.getValue("thoughts").position)
                 assertEquals(false, rows.getValue("styleOnly").open)
             } finally {
                 database.close()

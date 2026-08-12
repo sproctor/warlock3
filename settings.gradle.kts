@@ -36,7 +36,14 @@ dependencyResolutionManagement {
         maven("https://www.jetbrains.com/intellij-repository/releases") {
             content { includeGroupByRegex("com\\.jetbrains\\.intellij\\..*") }
         }
-        // mavenLocal()
+        // compose-docking is developed alongside this app, so an unreleased build of it is
+        // consumed from the local Maven cache (`./gradlew publishToMavenLocal` in that repo).
+        // Filtered to those artifacts for the same reason as the repository above: an
+        // unfiltered mavenLocal can shadow any dependency with whatever happens to be in
+        // ~/.m2, which is exactly the failure mode the note above describes.
+        mavenLocal {
+            content { includeGroupByRegex("com\\.seanproctor") }
+        }
     }
 }
 

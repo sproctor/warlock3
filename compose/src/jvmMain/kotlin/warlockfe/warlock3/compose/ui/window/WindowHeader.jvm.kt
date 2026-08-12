@@ -28,7 +28,6 @@ import warlockfe.warlock3.compose.desktop.ui.game.WindowMenuButton
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
-import warlockfe.warlock3.core.window.WindowLocation
 import java.awt.Cursor
 
 private val moveCursor = PointerIcon(Cursor(Cursor.MOVE_CURSOR))
@@ -36,7 +35,7 @@ private val moveCursor = PointerIcon(Cursor(Cursor.MOVE_CURSOR))
 @Composable
 actual fun WindowHeader(
     title: @Composable () -> Unit,
-    location: WindowLocation,
+    canHide: Boolean,
     isSelected: Boolean,
     onSettingsClick: () -> Unit,
     onClearClick: (() -> Unit)?,
@@ -45,7 +44,7 @@ actual fun WindowHeader(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val isDraggable = location != WindowLocation.MAIN
+    val isDraggable = canHide
     ContextMenuArea(
         items = {
             buildList {
@@ -63,7 +62,7 @@ actual fun WindowHeader(
                         ),
                     )
                 }
-                if (location != WindowLocation.MAIN) {
+                if (canHide) {
                     add(
                         ContextMenuItem(
                             label = "Hide window",
@@ -142,7 +141,7 @@ actual fun WindowHeader(
                         Text("Clear window")
                     }
                 }
-                if (location != WindowLocation.MAIN) {
+                if (canHide) {
                     selectableItem(
                         selected = false,
                         onClick = {

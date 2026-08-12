@@ -7,6 +7,7 @@ android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version
 antlr-kotlin = { id = "com.strumenta.antlr-kotlin", version.ref = "antlr-kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
 kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -27,20 +28,24 @@ agp = "9.1.1"
 androidx-activity = "1.13.0"
 androidx-core-splashscreen = "1.2.0"
 androidxSqlite = "2.7.0"
-antlr-kotlin = "1.0.12"
+antlr-kotlin = "1.0.13"
 appdirs = "2.0.0"
 autolink = "0.12.0"
 clikt = "5.1.0"
 coil = "3.5.0"
-compose = "1.11.1"
-compose-material3 = "1.11.0-alpha07"
-##             ⬆ = "1.12.0-alpha01"
-##             ⬆ = "1.12.0-alpha02"
-##             ⬆ = "1.12.0-alpha03"
+compose = "1.12.0-rc01"
+# Compose Hot Reload. Brings `:desktopApp:hotRunJvm` (run with live reload) and, from
+# 1.2.0, `hotMcpServer` - an MCP server that lets an agent drive the running app.
+compose-hot-reload = "1.2.0"
+compose-material3 = "1.12.0-alpha03"
 colorpicker = "1.2.0"
+compose-docking = "0.2.0"
 fastscroller = "0.3.2"
-filekit = "0.14.2"
+filekit = "0.15.0"
 intellij = "262.9437.136"
+##    ⬆ = "262.9437.185"
+##    ⬆ = "262.9437.195"
+##    ⬆ = "262.9437.214"
 # IJ repo gets pre-released versions and refreshVersions can't properly filter it.
 # Usable versions are here: https://central.sonatype.com/artifact/org.jetbrains.jewel/jewel-int-ui-standalone/versions
 jewel = "0.39.1-262.9437.29"
@@ -92,6 +97,9 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
+compose-docking-core = { module = "com.seanproctor:compose-docking-core", version.ref = "compose-docking" }
+compose-docking-jewel = { module = "com.seanproctor:compose-docking-jewel", version.ref = "compose-docking" }
+compose-docking-material3 = { module = "com.seanproctor:compose-docking-material3", version.ref = "compose-docking" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
 compose-ui-tooling = { module = " org.jetbrains.compose.ui:ui-tooling", version.ref = "compose" }
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }

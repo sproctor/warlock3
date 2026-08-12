@@ -573,16 +573,16 @@ class WraythClient(
                             showTimestamps = false,
                             backgroundImage = existing?.backgroundImage,
                             resident = window.resident,
+                            location = WindowLocation.fromProtocol(window.location),
                         )
                     windowInfo.replaceOrAdd(info) { it.name == info.name }
                 }
                 notifyListeners(ClientWindowInfoEvent(info))
-                notifyListeners(
-                    ClientOpenWindowEvent(
-                        name = window.id,
-                        location = WindowLocation.fromProtocol(window.location),
-                    ),
-                )
+                // The vitals and command bars are chrome we draw ourselves, so a panel bound for
+                // one is registered above but never opened as a window in the layout.
+                if (!info.location.isChrome) {
+                    notifyListeners(ClientOpenWindowEvent(name = window.id))
+                }
             }
 
             is WraythCloseDialogEvent -> {
@@ -997,6 +997,7 @@ class WraythClient(
                     showTimestamps = window.timestamp,
                     backgroundImage = existing?.backgroundImage,
                     nameFilterOption = window.nameFilterOption,
+                    location = WindowLocation.fromProtocol(window.location),
                 )
             windowInfo.replaceOrAdd(info) { it.name == window.name }
         }

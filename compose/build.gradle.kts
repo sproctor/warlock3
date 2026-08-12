@@ -92,6 +92,9 @@ kotlin {
             // Third party UI
             implementation(libs.colorpicker)
             implementation(libs.filekit.dialogs)
+            // The docking layout engine; the renderers live in the platform source sets
+            // (Jewel on desktop, Material 3 on mobile).
+            implementation(libs.compose.docking.core)
 
             // Other stuff
             implementation(libs.kotlinx.collections.immutable)
@@ -103,6 +106,7 @@ kotlin {
         getByName(if (skipIos) "androidMain" else "mobileMain") {
             dependencies {
                 implementation(libs.compose.material3)
+                implementation(libs.compose.docking.material3)
                 implementation(libs.fastscroller.core)
             }
         }
@@ -125,6 +129,7 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.jewel.standalone)
+            implementation(libs.compose.docking.jewel)
             // Title-bar + decorated-window styling for WarlockDesktopTheme (Jewel's DecoratedWindow).
             implementation(libs.jewel.decorated.window)
             // Jewel references AllIconsKeys (e.g. ComboBox chevron) but its standalone POM

@@ -68,6 +68,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
@@ -82,11 +83,16 @@ import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.ClientBackgroundImage
-import warlockfe.warlock3.core.window.WindowLocation
+import kotlin.time.Duration.Companion.milliseconds
 
 // Off-screen lines are measured in batches of this many between yield()s, so a full-buffer pass never
 // blocks a frame.
 private const val OFFSCREEN_MEASURE_CHUNK = 64
+
+// How long the window must hold a width before the off-screen height cache is rebuilt for
+// it. Long enough to sit out a divider drag, short enough that the scrollbar corrects
+// itself as soon as the user lets go.
+private val RESIZE_SETTLE = 200.milliseconds
 
 /**
  * Platform-agnostic window view. Holds the structure shared by the desktop and mobile clients (the
@@ -98,7 +104,7 @@ private const val OFFSCREEN_MEASURE_CHUNK = 64
 @Composable
 internal fun WindowViewScaffold(
     uiState: WindowUiState,
-    location: WindowLocation,
+    canHide: Boolean,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -163,7 +169,7 @@ internal fun WindowViewScaffold(
                     WindowViewContent(
                         modifier =
                             Modifier.addTextContextMenuOptions(
-                                windowLocation = location,
+                                canHide = canHide,
                                 showSettingsDialog = onOpenWindowSettings,
                                 onClearClick = clearStream,
                                 onCloseClick = onCloseClick,
@@ -338,12 +344,29 @@ private fun WindowViewContent(
                         modifier = Modifier.align(image.backgroundAlignment()),
                     )
                 }
+                // The width the height cache below is keyed on, held back until the window has
+                // stopped changing size. A new width invalidates every cached height and restarts
+                // the off-screen measure pass over the whole scrollback; while the user drags a
+                // dock divider the width changes every frame, so keying on it directly meant
+                // throwing the cache away and re-measuring thousands of lines sixty times a
+                // second, which is what made resizing a panel crawl. Visible rows still report
+                // their real heights live through onSizeChanged, so all that lags is the
+                // scrollbar thumb's estimate for off-screen lines, and only until the drag stops.
+                val liveWidth = constraints.maxWidth
+                var settledWidth by remember { mutableStateOf(liveWidth) }
+                LaunchedEffect(liveWidth) {
+                    if (settledWidth != liveWidth) {
+                        delay(RESIZE_SETTLE)
+                        settledWidth = liveWidth
+                    }
+                }
+
                 // Cache each line's measured height so the scrollbar can size its thumb from the
                 // real content height instead of extrapolating from the visible items' average,
                 // which makes the thumb jump when lines wrap to different heights. Recreate the cache
                 // whenever the wrap width or text style changes, since both invalidate every height.
                 val measuredHeights =
-                    remember(constraints.maxWidth, style, defaultFontSize, generation) {
+                    remember(settledWidth, style, defaultFontSize, generation) {
                         mutableStateMapOf<Long, Int>()
                     }
                 val currentLines = rememberUpdatedState(lines)
@@ -366,7 +389,10 @@ private fun WindowViewContent(
                 val textMeasurer = rememberTextMeasurer()
                 val horizontalPaddingPx =
                     with(density) { (streamRowStartPadding + streamRowEndPadding).roundToPx() }
-                val textWidthPx = (constraints.maxWidth - horizontalPaddingPx).coerceAtLeast(0)
+                // Settled, not live: this feeds the off-screen measure pass, which must not restart
+                // on every frame of a resize. Visible rows are laid out by the LazyColumn at the
+                // live width regardless.
+                val textWidthPx = (settledWidth - horizontalPaddingPx).coerceAtLeast(0)
                 val imageHeightPx = with(density) { streamImageRowHeight.roundToPx() }
                 // Measure the lines the LazyColumn never lays out (off-screen scrollback) so the scroll
                 // model has an exact height for every line instead of the running-average estimate that
@@ -608,7 +634,7 @@ private fun WindowViewContent(
 
 @Composable
 internal fun Modifier.addTextContextMenuOptions(
-    windowLocation: WindowLocation,
+    canHide: Boolean,
     showSettingsDialog: () -> Unit,
     onClearClick: () -> Unit,
     onCloseClick: () -> Unit,
@@ -623,7 +649,7 @@ internal fun Modifier.addTextContextMenuOptions(
             onClearClick()
             close()
         }
-        if (windowLocation != WindowLocation.MAIN) {
+        if (canHide) {
             addItem(key = CloseContextMenuItemKey, label = "Hide window") {
                 onCloseClick()
                 close()

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,9 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.seanproctor.docking.jewel.JewelDocking
+import com.seanproctor.docking.state.DockState
+import com.seanproctor.docking.ui.DockArea
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
@@ -54,6 +58,9 @@ import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.game.MAIN_WINDOW_NAME
+import warlockfe.warlock3.compose.ui.game.OpenGameWindow
+import warlockfe.warlock3.compose.ui.game.rememberGameDockState
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
@@ -62,8 +69,6 @@ import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.toColor
-import warlockfe.warlock3.core.client.WarlockAction
-import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.text.toFontConfig
 import warlockfe.warlock3.core.text.toStyleDefinition
@@ -108,8 +113,6 @@ fun DesktopGameView(
                     }
                 },
     ) {
-        val mainWindow = viewModel.mainWindowUiState.collectAsState()
-        val menuData: WarlockMenuData? by viewModel.menuData.collectAsState()
         val presets by viewModel.presets.collectAsState(emptyMap())
         val baseStyle by viewModel.baseStyle.collectAsState()
         val defaultStyle = baseStyle.toStyleDefinition()
@@ -165,19 +168,27 @@ fun DesktopGameView(
                         var streamsExpanded by remember { mutableStateOf(true) }
                         var panelsExpanded by remember { mutableStateOf(true) }
                         val item: @Composable (WindowInfo) -> Unit = { window ->
+                            // The main text window is the layout's fixed centerpiece: always
+                            // listed as shown, never toggleable.
+                            val isMain = window.name == MAIN_WINDOW_NAME
                             DesktopWindowListItem(
                                 color = sidebarTextColor,
                                 windowInfo = window,
-                                isOpen = openWindows.contains(window.name),
-                                onClick = { open ->
-                                    scope.launch {
-                                        if (open) {
-                                            viewModel.openWindow(window.name)
-                                        } else {
-                                            viewModel.closeWindow(window.name)
+                                isOpen = isMain || openWindows.contains(window.name),
+                                onClick =
+                                    if (isMain) {
+                                        null
+                                    } else {
+                                        { open ->
+                                            scope.launch {
+                                                if (open) {
+                                                    viewModel.openWindow(window.name)
+                                                } else {
+                                                    viewModel.closeWindow(window.name)
+                                                }
+                                            }
                                         }
-                                    }
-                                },
+                                    },
                                 // A panel is a fixed layout of widgets with no text stream behind it,
                                 // so there is nothing for "Clear window" to clear.
                                 onClear =
@@ -210,80 +221,32 @@ fun DesktopGameView(
                         }
                     }
                 }
-                val leftWindows by viewModel.leftWindowUiStates.collectAsState()
-                val rightWindows by viewModel.rightWindowUiStates.collectAsState()
-                val topWindows by viewModel.topWindowUiStates.collectAsState()
-                val bottomWindows by viewModel.bottomWindowUiStates.collectAsState()
-                DesktopGameTextWindows(
-                    modifier = Modifier.weight(1f).padding(2.dp),
-                    leftWindowUiStates = leftWindows,
-                    rightWindowUiStates = rightWindows,
-                    topWindowUiStates = topWindows,
-                    bottomWindowUiStates = bottomWindows,
-                    mainWindowUiState = mainWindow.value,
-                    defaultStyle = defaultStyle,
-                    selectedWindow = viewModel.selectedWindow.collectAsState().value,
-                    openWindows = openWindows,
-                    topHeight = viewModel.topHeight.collectAsState(null).value,
-                    bottomHeight = viewModel.bottomHeight.collectAsState(null).value,
-                    leftWidth = viewModel.leftWidth.collectAsState(null).value,
-                    rightWidth = viewModel.rightWidth.collectAsState(null).value,
-                    menuData = menuData,
-                    onActionClick = { action ->
-                        when (action) {
-                            is WarlockAction.SendCommand -> {
-                                viewModel.sendCommand(action.command)
-                                null
-                            }
-
-                            is WarlockAction.SendCommandWithLookup -> {
-                                viewModel.sendCommand(action.command)
-                                null
-                            }
-
-                            is WarlockAction.OpenMenu -> {
-                                action.onClick()
-                            }
-
-                            is WarlockAction.SendWidgetCommand -> {
-                                viewModel.sendWidgetCommand(action.command, action.echo)
-                                null
-                            }
-
-                            is WarlockAction.RequestMenu -> {
-                                viewModel.requestMenu(action.exist, action.noun)
-                            }
-
-                            else -> {
-                                null
-                            }
+                // Both lambdas read everything they need from the view model at invocation time and
+                // capture only it, so their instances survive recomposition and a keystroke in the
+                // entry (which recomposes this view) does not invalidate every docked window.
+                val trailingActions =
+                    remember(viewModel) {
+                        @Composable { state: DockState, window: OpenGameWindow ->
+                            DesktopDockWindowActions(state = state, viewModel = viewModel, window = window)
                         }
-                    },
-                    onWidthChange = { name, width -> viewModel.setWindowWidth(name, width) },
-                    onHeightChange = { name, height -> viewModel.setWindowHeight(name, height) },
-                    onSizeChange = viewModel::setLocationSize,
-                    onDrop = { result ->
-                        if (result.sourceLocation == result.target.location) {
-                            viewModel.changeWindowPositions(
-                                result.sourceLocation,
-                                result.name,
-                                result.target.insertionIndex,
-                            )
-                        } else {
-                            viewModel.moveWindowToPosition(
-                                result.name,
-                                result.target.location,
-                                result.target.insertionIndex,
-                            )
+                    }
+                val windowContent =
+                    remember(viewModel) {
+                        @Composable { window: OpenGameWindow ->
+                            DesktopDockedWindow(viewModel = viewModel, window = window)
                         }
-                    },
-                    onCloseClick = viewModel::closeWindow,
-                    onOpenWindowSettings = viewModel::requestEditWindowSettings,
-                    onWindowSelect = viewModel::selectWindow,
-                    scrollEvents = viewModel.scrollEvents.collectAsState().value,
-                    handledScrollEvent = viewModel::handledScrollEvent,
-                    clearStream = viewModel::clearStream,
-                )
+                    }
+                val dockState =
+                    rememberGameDockState(
+                        viewModel = viewModel,
+                        trailingActions = trailingActions,
+                        windowContent = windowContent,
+                    )
+                Box(Modifier.weight(1f).padding(2.dp)) {
+                    JewelDocking {
+                        DockArea(dockState, modifier = Modifier.fillMaxSize())
+                    }
+                }
             }
             DesktopGameBottomBar(viewModel, entryFocusRequester)
         }
@@ -301,8 +264,13 @@ fun DesktopGameView(
     }
 }
 
-/** The sidebar's windows of one kind, in the alphabetical order the flat list used to show them in. */
-private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> = filter { it.windowType == type }.sortedBy { it.title }
+/**
+ * The sidebar's windows of one kind, in the alphabetical order the flat list used to show them in.
+ * A window the game put in the client's own chrome is drawn there, not shown as a window, so it is
+ * not offered here either - a toggle for it would have nothing to show.
+ */
+private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> =
+    filter { it.windowType == type && !it.location.isChrome }.sortedBy { it.title }
 
 /**
  * A collapsible category header in the window-list sidebar. Uses the same disclosure-triangle idiom
@@ -355,7 +323,9 @@ private fun DesktopWindowListItem(
     color: Color,
     windowInfo: WindowInfo,
     isOpen: Boolean,
-    onClick: (Boolean) -> Unit,
+    // Null makes the row informational: no click toggle and no Hide/Show menu item (the main
+    // window, which is always shown).
+    onClick: ((Boolean) -> Unit)?,
     onClear: (() -> Unit)?,
 ) {
     // Per the design: a leading status dot (filled accent when shown, hollow + dimmed when hidden)
@@ -365,8 +335,13 @@ private fun DesktopWindowListItem(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = { onClick(!isOpen) })
-                .padding(vertical = 1.dp),
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = { onClick(!isOpen) })
+                    } else {
+                        Modifier
+                    },
+                ).padding(vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
@@ -386,28 +361,32 @@ private fun DesktopWindowListItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        WindowMenuButton(
-            tint = gameChrome.textFaint,
-            horizontalAlignment = Alignment.End,
-        ) { dismiss ->
-            selectableItem(
-                selected = false,
-                onClick = {
-                    dismiss()
-                    onClick(!isOpen)
-                },
-            ) {
-                Text(if (isOpen) "Hide window" else "Show window")
-            }
-            if (onClear != null) {
-                selectableItem(
-                    selected = false,
-                    onClick = {
-                        dismiss()
-                        onClear()
-                    },
-                ) {
-                    Text("Clear window")
+        if (onClick != null || onClear != null) {
+            WindowMenuButton(
+                tint = gameChrome.textFaint,
+                horizontalAlignment = Alignment.End,
+            ) { dismiss ->
+                if (onClick != null) {
+                    selectableItem(
+                        selected = false,
+                        onClick = {
+                            dismiss()
+                            onClick(!isOpen)
+                        },
+                    ) {
+                        Text(if (isOpen) "Hide window" else "Show window")
+                    }
+                }
+                if (onClear != null) {
+                    selectableItem(
+                        selected = false,
+                        onClick = {
+                            dismiss()
+                            onClear()
+                        },
+                    ) {
+                        Text("Clear window")
+                    }
                 }
             }
         }

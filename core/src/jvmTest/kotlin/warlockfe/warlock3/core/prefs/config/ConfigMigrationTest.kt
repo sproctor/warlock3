@@ -430,27 +430,9 @@ private class FakeWindowSettingsDao : WindowSettingsDao {
 
     override suspend fun save(windowSettings: WindowSettingsEntity) = error("unused")
 
-    override suspend fun setStyle(
-        characterId: String,
-        name: String,
-        textColor: WarlockColor,
-        backgroundColor: WarlockColor,
-        fontFamily: String?,
-        fontSize: Float?,
-        fontWeight: Int?,
-    ) = error("unused")
-
-    override suspend fun setNameFilter(
-        characterId: String,
-        name: String,
-        nameFilter: Boolean,
-    ) = error("unused")
-
     override suspend fun openWindow(
         characterId: String,
         name: String,
-        location: warlockfe.warlock3.core.window.WindowLocation,
-        position: Int,
     ) = error("unused")
 
     override suspend fun closeWindow(
@@ -458,42 +440,8 @@ private class FakeWindowSettingsDao : WindowSettingsDao {
         name: String,
     ) = error("unused")
 
-    override suspend fun markOpen(
-        characterId: String,
-        name: String,
-    ) = error("unused")
-
-    override suspend fun getByLocation(
-        characterId: String,
-        location: warlockfe.warlock3.core.window.WindowLocation,
-    ): List<WindowSettingsEntity> = error("unused")
-
     override suspend fun getByName(
         characterId: String,
         name: String,
     ): WindowSettingsEntity? = error("unused")
-
-    override suspend fun openGap(
-        characterId: String,
-        location: warlockfe.warlock3.core.window.WindowLocation,
-        position: Int,
-    ) = error("unused")
-
-    override suspend fun updateWidth(
-        characterId: String,
-        name: String,
-        width: Int,
-    ) = error("unused")
-
-    override suspend fun updateHeight(
-        characterId: String,
-        name: String,
-        height: Int,
-    ) = error("unused")
-
-    override suspend fun setPosition(
-        characterId: String,
-        name: String,
-        pos: Int,
-    ) = error("unused")
 }

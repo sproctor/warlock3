@@ -58,7 +58,6 @@ import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.window.WindowInfo
-import warlockfe.warlock3.core.window.WindowLocation
 
 /**
  * Per-window color/font settings for the selected character, grouped into shown windows, windows with
@@ -146,7 +145,7 @@ fun DesktopWindowsSettingsSection(
                 } else {
                     scope.launch {
                         if (show) {
-                            windowSettingRepository.reopenOrOpenAtEnd(characterId, name, WindowLocation.TOP)
+                            windowSettingRepository.openWindow(characterId, name)
                         } else {
                             windowSettingRepository.closeWindow(characterId, name)
                         }
