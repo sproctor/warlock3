@@ -11,8 +11,10 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.seanproctor.docking.layout.dockLayout
+import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
@@ -26,6 +28,8 @@ import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingEvent
+import com.seanproctor.docking.state.DockingSettings
+import com.seanproctor.docking.state.EmptyAnchorVisibility
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.debounce
@@ -50,29 +54,87 @@ const val MAIN_WINDOW_NAME = "main"
 private const val SIDE_COLUMN_PROPORTION = 0.2f
 private const val BAND_PROPORTION = 0.25f
 
+// How wide an emptied dock area is while a drag is in flight. It is invisible the rest of the
+// time, so this only has to be a comfortable target to drop on, not a small price to pay.
+private val EMPTY_AREA_STRIP = 24.dp
+
 // How long to wait for the character to be identified before giving up on a saved dock layout,
 // matching the gates in GameViewModel that hold game-driven opens for the same reason.
 private val CHARACTER_WAIT = 10.seconds
 
+// The three areas windows are arranged into, as compose-docking anchors. An anchor is a named slot:
+// when the last window carrying it leaves, the library restores a placeholder in its place instead
+// of collapsing the split, so an area the user empties is still there for the next window that
+// wants it - which lands back in the same spot, at the same size. Since the placeholder is hidden
+// until a drag (see the DockState settings below), an emptied area is invisible until the user
+// picks something up, and only then offers itself as a strip to drop on.
+//
+// All three are declared in the initial layout, so a character who has never opened a side window
+// still has somewhere to drop one: pick a window up and the empty areas offer themselves. That is
+// only affordable because they are invisible until then - at full size it would mean two empty
+// columns and a band on every game screen.
+private val LEFT_ANCHOR = AnchorId("left")
+private val CENTER_ANCHOR = AnchorId("center")
+private val RIGHT_ANCHOR = AnchorId("right")
+
+/** The area a window announced for [this] belongs to. */
+internal val WindowLocation.anchor: AnchorId
+    get() =
+        when (this) {
+            WindowLocation.LEFT -> LEFT_ANCHOR
+
+            WindowLocation.RIGHT -> RIGHT_ANCHOR
+
+            // We dock rather than float, so the locations the real client floats (and the chrome
+            // ones, which never reach the dock) share the band above main with the room window.
+            WindowLocation.CENTER,
+            WindowLocation.DETACHED,
+            WindowLocation.STATBAR,
+            WindowLocation.QUICKBAR,
+            -> CENTER_ANCHOR
+        }
+
 /**
- * One open game window as the docking bridge sees it. [location] is the dock the game's
- * announcement suggests, read live from the window info (announcements can arrive after the
- * window opens); it seeds the default spot for a window the saved layout does not know.
+ * The empty game layout: the main text window with the three areas declared around it. Built
+ * innermost outwards, so the band sits above main inside the centre column and the two side
+ * columns wrap the whole thing and run the full height.
+ *
+ * Declaring the areas up front is what lets all three offer themselves during a drag on a layout
+ * that has never used them, and it is only affordable because an empty one is invisible until then
+ * - at full size it would mean two empty columns and a band on every game screen.
+ */
+internal fun gameDockLayout(): DockLayout =
+    dockLayout {
+        mainWindow {
+            dock(MAIN_WINDOW_NAME)
+            anchorAtRoot(CENTER_ANCHOR.value, DockRegion.North, BAND_PROPORTION)
+            anchorAtRoot(LEFT_ANCHOR.value, DockRegion.West, SIDE_COLUMN_PROPORTION)
+            anchorAtRoot(RIGHT_ANCHOR.value, DockRegion.East, SIDE_COLUMN_PROPORTION)
+        }
+    }
+
+/**
+ * One open game window as the docking bridge sees it. [location] is where the game's announcement
+ * asks for, read live from the window info (announcements can arrive after the window opens); it
+ * seeds the default spot for a window the saved layout does not know.
+ *
+ * A window the game did not place goes to [WindowLocation.CENTER], which is the fallback the real
+ * client uses for the same three cases (no location, chrome bars we draw ourselves, a location it
+ * rejects). The main text window is not placed from a location at all; it is the fixed point the
+ * others are arranged around, so [isMain] answers for it instead.
  */
 data class OpenGameWindow(
     val uiState: WindowUiState,
 ) {
     val name: String get() = uiState.name
 
+    val isMain: Boolean get() = name == MAIN_WINDOW_NAME
+
     val location: WindowLocation
         get() =
-            if (name == MAIN_WINDOW_NAME) {
-                WindowLocation.MAIN
-            } else {
-                uiState.windowInfo.value
-                    ?.location
-                    ?: WindowLocation.TOP
-            }
+            uiState.windowInfo.value
+                ?.location
+                ?: WindowLocation.CENTER
 }
 
 /**
@@ -103,11 +165,16 @@ fun rememberGameDockState(
     val main by viewModel.mainWindowUiState.collectAsState()
     val windows by viewModel.windowUiStates.collectAsState()
 
-    // Insertion-ordered: main first, then the view model's restore/open order.
+    // Insertion-ordered: main first, then the view model's restore/open order. A window the game
+    // put in the client's own chrome is drawn there and never docked, so it is left out here -
+    // which also undocks one an older build's saved layout still names.
     val openWindows: Map<String, OpenGameWindow> =
         buildMap {
             put(main.name, OpenGameWindow(main))
-            windows.forEach { put(it.name, OpenGameWindow(it)) }
+            windows
+                .map { OpenGameWindow(it) }
+                .filterNot { it.location.isChrome }
+                .forEach { put(it.name, it) }
         }
     val currentOpenWindows: State<Map<String, OpenGameWindow>> = rememberUpdatedState(openWindows)
 
@@ -129,18 +196,29 @@ fun rememberGameDockState(
     val state =
         remember {
             DockState(
-                initialLayout =
-                    dockLayout {
-                        mainWindow {
-                            dock(MAIN_WINDOW_NAME)
-                        }
-                    },
+                // An emptied area holds its slot open so the next window lands back in it, but a
+                // game screen should not carry a visible reminder of a column the user just
+                // cleared. Hidden until a drag, the area costs nothing at all; picking up any
+                // window brings its strip back to aim at, and dropping there restores the column
+                // at the size it was.
+                settings =
+                    DockingSettings(
+                        collapsedAnchorThickness = EMPTY_AREA_STRIP,
+                        emptyAnchorVisibility = EmptyAnchorVisibility.WhileDragging,
+                    ),
+                initialLayout = gameDockLayout(),
             )
         }
 
-    fun registerWindow(name: String) {
+    // Re-registers when the anchor changes, which is how a window that moved between areas takes its
+    // new one: the registry is where the library reads a dockable's anchor from, so overwriting the
+    // spec is the whole update. Registration is otherwise idempotent.
+    fun registerWindow(
+        name: String,
+        anchor: AnchorId?,
+    ) {
         val id = DockableId(name)
-        if (state.registry.isRegistered(id)) return
+        if (state.registry[id]?.options?.anchor == anchor && state.registry.isRegistered(id)) return
         state.registry.register(
             DockableSpec(
                 id = id,
@@ -150,6 +228,7 @@ fun rememberGameDockState(
                         // Floating OS windows need application-scope wiring the game screen does
                         // not have yet; keep every window inside the main window for now.
                         floatable = false,
+                        anchor = anchor,
                     ),
                 title = {
                     val info =
@@ -176,7 +255,9 @@ fun rememberGameDockState(
     }
 
     DisposableEffect(state) {
-        registerWindow(MAIN_WINDOW_NAME)
+        // Main carries no anchor: it belongs to no area, and a carrier would stop the center's
+        // placeholder from ever being restored.
+        registerWindow(MAIN_WINDOW_NAME, anchor = null)
         onDispose {
             state.registry.unregister(DockableId(MAIN_WINDOW_NAME))
         }
@@ -205,6 +286,13 @@ fun rememberGameDockState(
                     .onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
             }
         }
+        // A restore replaces the layout the builder made, so a character whose JSON was saved
+        // before the areas were declared comes back without them - and would have nowhere to drop
+        // a window. Put back whichever are missing; each call is a no-op when the area is already
+        // there, whether as a placeholder or as windows the character has in it.
+        state.ensureAnchor(LEFT_ANCHOR, DockRegion.West, SIDE_COLUMN_PROPORTION)
+        state.ensureAnchor(RIGHT_ANCHOR, DockRegion.East, SIDE_COLUMN_PROPORTION)
+        state.ensureAnchor(CENTER_ANCHOR, DockRegion.North, BAND_PROPORTION)
         // A restored layout retains a leaf for every window it remembers, including ones that are
         // closed right now; reconcile immediately so they never render as placeholders.
         reconcile(state, currentOpenWindows.value, ::registerWindow)
@@ -242,17 +330,30 @@ fun rememberGameDockState(
  * Brings the dock state in line with the view model's open windows: registers and docks the ones
  * that opened, undocks the ones that closed. Never touches a window that is both open and docked,
  * so a user arrangement is left alone.
+ *
+ * Registration also keeps each window's anchor pointed at the area it is in right now, which is why
+ * this runs on every drop as well as on every open and close: the anchor a docked window carries is
+ * the area it sits in, and only a window that is not docked yet falls back to the one its
+ * announcement asked for. That is what makes the placeholder the library restores land where the
+ * user last had the window, rather than where the game first put it.
  */
 internal fun reconcile(
     state: DockState,
     openWindows: Map<String, OpenGameWindow>,
-    registerWindow: (String) -> Unit,
+    registerWindow: (String, AnchorId?) -> Unit,
 ) {
     dockedIds(state.layout)
         .filter { it.value != MAIN_WINDOW_NAME && it.value !in openWindows }
         .forEach { state.undock(it) }
+    val mainWindow = state.layout.mainWindow
+    val tree = mainWindow.maximized?.savedRoot ?: mainWindow.root
     openWindows.forEach { (name, window) ->
-        registerWindow(name)
+        val anchor =
+            when {
+                name == MAIN_WINDOW_NAME -> null
+                else -> tree?.let { currentAnchorOf(it, name) } ?: window.location.anchor
+            }
+        registerWindow(name, anchor)
         val id = DockableId(name)
         if (!state.isOpen(id)) {
             val placement =
@@ -275,17 +376,23 @@ internal data class DockPlacement(
 )
 
 /**
- * The default spot for a window, derived from the dock the game's announcement suggests. The
- * location names a region relative to the main text window (left/right columns, top/bottom bands);
- * the window joins that region as it exists *now* - stacked onto the last open window currently on
- * that side of main (columns stack downward, bands extend rightward) - and when the region is
- * empty it opens it with a fresh split: side columns at the window root, outside everything, and
- * top/bottom bands directly off the main window.
+ * The default spot for a window, derived from the area its announcement asks for. Three cases, in
+ * order:
  *
- * Membership in a region is decided by where a window sits in the tree today, not by the location
- * it was seeded from: once the user drags a window somewhere else, it stops attracting its old
- * dock-mates there (and a window dragged into a region becomes part of it). The main window itself
- * is never a region member; it is the reference point the regions are measured against.
+ * 1. The area is holding a placeholder, because the user emptied it earlier. [DockTarget.Anchor]
+ *    drops the window straight into that slot, so the area reopens exactly where it was.
+ * 2. The area has windows in it. The new one stacks onto the last of them (columns stack downward,
+ *    the band above main extends rightward), which is how the real client fills its panel columns.
+ * 3. The area is missing from the tree altogether, which now only happens to a layout saved before
+ *    the areas were declared up front. It opens with a fresh split: side columns at the window
+ *    root, outside everything, and the band directly off the main window.
+ *
+ * Which windows are "in" an area is read from where they sit in the tree right now, not from the
+ * location they were seeded with: drag a window out of the left column and it stops attracting its
+ * old dock-mates there, while one dragged in starts attracting them. [reconcile] keeps each
+ * window's registered anchor in step with that, so the placeholder the library restores is the one
+ * for the area the user last had the window in. The main window belongs to no area; it is the fixed
+ * point the areas are measured against, so it takes the center and ignores [location] entirely.
  */
 internal fun defaultPlacement(
     name: String,
@@ -293,36 +400,34 @@ internal fun defaultPlacement(
     layout: DockLayout,
     openWindows: Map<String, OpenGameWindow>,
 ): DockPlacement {
+    if (name == MAIN_WINDOW_NAME) {
+        return DockPlacement(DockTarget.Root(), DockRegion.Center, BAND_PROPORTION)
+    }
     val mainWindow = layout.mainWindow
     val tree = mainWindow.maximized?.savedRoot ?: mainWindow.root
     val mainId = DockableId(MAIN_WINDOW_NAME)
-    val regionOfLocation =
-        when (location) {
-            WindowLocation.LEFT -> DockRegion.West
-            WindowLocation.RIGHT -> DockRegion.East
-            WindowLocation.TOP -> DockRegion.North
-            WindowLocation.BOTTOM -> DockRegion.South
-            WindowLocation.MAIN -> null
-        }
+    val anchor = location.anchor
+    if (tree != null && tree.holdsAnchor(anchor)) {
+        // Region and proportion are ignored for an anchor target: the placeholder names the slot.
+        return DockPlacement(DockTarget.Anchor(anchor), DockRegion.Center, BAND_PROPORTION)
+    }
     val neighbor =
-        if (tree != null && regionOfLocation != null) {
+        if (tree != null) {
             openWindows.keys.lastOrNull { other ->
-                other != name &&
-                    other != MAIN_WINDOW_NAME &&
-                    relativeRegion(tree, DockableId(other), mainId) == regionOfLocation
+                other != name && other != MAIN_WINDOW_NAME && currentAnchorOf(tree, other) == anchor
             }
         } else {
             null
         }
     if (neighbor != null) {
         val region =
-            when (location) {
-                WindowLocation.LEFT, WindowLocation.RIGHT -> DockRegion.South
+            when (anchor) {
+                LEFT_ANCHOR, RIGHT_ANCHOR -> DockRegion.South
                 else -> DockRegion.East
             }
         return DockPlacement(DockTarget.OnDockable(DockableId(neighbor)), region, 0.5f)
     }
-    // Nothing in the region yet: open it with a split directly off the main text window (or the
+    // Nothing in the area yet: open it with a split directly off the main text window (or the
     // window root when main is somehow absent, which the next reconcile pass heals).
     val mainTarget =
         if (tree?.containsDockable(mainId) == true) {
@@ -330,20 +435,46 @@ internal fun defaultPlacement(
         } else {
             DockTarget.Root()
         }
-    return when (location) {
+    return when (anchor) {
         // Side columns open at the window root, outside everything else, running the full height
         // rather than sitting inside the center column.
-        WindowLocation.LEFT -> DockPlacement(DockTarget.Root(), DockRegion.West, SIDE_COLUMN_PROPORTION)
+        LEFT_ANCHOR -> DockPlacement(DockTarget.Root(), DockRegion.West, SIDE_COLUMN_PROPORTION)
 
-        WindowLocation.RIGHT -> DockPlacement(DockTarget.Root(), DockRegion.East, SIDE_COLUMN_PROPORTION)
+        RIGHT_ANCHOR -> DockPlacement(DockTarget.Root(), DockRegion.East, SIDE_COLUMN_PROPORTION)
 
-        WindowLocation.TOP -> DockPlacement(mainTarget, DockRegion.North, BAND_PROPORTION)
-
-        WindowLocation.BOTTOM -> DockPlacement(mainTarget, DockRegion.South, BAND_PROPORTION)
-
-        WindowLocation.MAIN -> DockPlacement(DockTarget.Root(), DockRegion.Center, BAND_PROPORTION)
+        else -> DockPlacement(mainTarget, DockRegion.North, BAND_PROPORTION)
     }
 }
+
+/**
+ * The area [name] currently sits in, read from its position relative to the main window, or null
+ * when it is not docked. This is what makes an area the user's arrangement rather than the game's:
+ * a window dragged from one column to the other changes areas by being moved, with no announcement
+ * involved.
+ */
+internal fun currentAnchorOf(
+    tree: DockNode,
+    name: String,
+): AnchorId? {
+    val id = DockableId(name)
+    if (!tree.containsDockable(id)) return null
+    return when (relativeRegion(tree, id, DockableId(MAIN_WINDOW_NAME))) {
+        DockRegion.West -> LEFT_ANCHOR
+
+        DockRegion.East -> RIGHT_ANCHOR
+
+        // North, South and tabbed-with-main (no direction between tabs) all read as the center.
+        else -> CENTER_ANCHOR
+    }
+}
+
+/** Whether [anchor]'s placeholder is holding a slot open in this tree. */
+internal fun DockNode.holdsAnchor(anchor: AnchorId): Boolean =
+    when (this) {
+        is DockNode.Anchor -> anchorId == anchor
+        is DockNode.Split -> first.holdsAnchor(anchor) || second.holdsAnchor(anchor)
+        is DockNode.Leaf, is DockNode.Tabs -> false
+    }
 
 /**
  * The side of [b] that [a] currently sits on in [root]: the orientation of their lowest common
