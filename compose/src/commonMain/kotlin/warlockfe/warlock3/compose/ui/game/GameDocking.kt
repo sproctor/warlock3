@@ -30,6 +30,7 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingEvent
 import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.debounce
@@ -58,8 +59,10 @@ private const val BAND_PROPORTION = 0.25f
 // time, so this only has to be a comfortable target to drop on, not a small price to pay.
 private val EMPTY_AREA_STRIP = 24.dp
 
-// How long to wait for the character to be identified before giving up on a saved dock layout,
-// matching the gates in GameViewModel that hold game-driven opens for the same reason.
+// How long the first layout pass holds out for the saved dock layout before laying windows out
+// anyway, matching the gates in GameViewModel that hold game-driven opens for the same reason.
+// Only the initial wait is bounded: the restore itself (and the save loop behind it) waits for
+// the character however long identification takes.
 private val CHARACTER_WAIT = 10.seconds
 
 // The three areas windows are arranged into, as compose-docking anchors. An anchor is a named slot:
@@ -236,6 +239,8 @@ fun rememberGameDockState(
                             ?.uiState
                             ?.windowInfo
                             ?.value
+                    // A subtitle arrives from the protocol with its separator baked in (" - [...]"),
+                    // so plain concatenation renders the title bar the real client shows.
                     (info?.title ?: name) + (info?.subtitle ?: "")
                 },
                 canClose = {
@@ -272,32 +277,47 @@ fun rememberGameDockState(
     }
 
     LaunchedEffect(state, viewModel) {
-        // Restore the saved arrangement once the character is known. Until then the only window on
-        // screen is main: the view model's own restore gates every other open on the character id.
-        val characterId =
-            withTimeoutOrNull(CHARACTER_WAIT) {
-                viewModel.connectedCharacterId.filterNotNull().first()
-            }
-        if (characterId != null) {
-            val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
-            if (saved != null) {
-                runCatching { DockingPersistence.decode(saved) }
-                    .onSuccess { state.restoreLayout(it, mergeFloatingWindows = true) }
-                    .onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
-            }
-        }
-        // A restore replaces the layout the builder made, so a character whose JSON was saved
-        // before the areas were declared comes back without them - and would have nowhere to drop
-        // a window. Put back whichever are missing; each call is a no-op when the area is already
-        // there, whether as a placeholder or as windows the character has in it.
-        state.ensureAnchor(LEFT_ANCHOR, DockRegion.West, SIDE_COLUMN_PROPORTION)
-        state.ensureAnchor(RIGHT_ANCHOR, DockRegion.East, SIDE_COLUMN_PROPORTION)
-        state.ensureAnchor(CENTER_ANCHOR, DockRegion.North, BAND_PROPORTION)
-        // A restored layout retains a leaf for every window it remembers, including ones that are
-        // closed right now; reconcile immediately so they never render as placeholders.
-        reconcile(state, currentOpenWindows.value, ::registerWindow)
+        val restoreFinished = CompletableDeferred<Unit>()
         coroutineScope {
+            // Restore the saved arrangement once the character is known, however long
+            // identification takes, and keep every later change saved. A session that never
+            // identifies a character has nothing to restore from or save under.
             launch {
+                viewModel.connectedCharacterId.filterNotNull().first()
+                val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
+                if (saved != null) {
+                    runCatching { DockingPersistence.decode(saved) }
+                        .onSuccess { state.restoreLayout(it, mergeFloatingWindows = true) }
+                        .onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
+                }
+                // A restore replaces the layout the builder made, so a character whose JSON was
+                // saved before the areas were declared comes back without them - and would have
+                // nowhere to drop a window. Put back whichever are missing; each call is a no-op
+                // when the area is already there, whether as a placeholder or as windows the
+                // character has in it.
+                state.ensureAnchor(LEFT_ANCHOR, DockRegion.West, SIDE_COLUMN_PROPORTION)
+                state.ensureAnchor(RIGHT_ANCHOR, DockRegion.East, SIDE_COLUMN_PROPORTION)
+                state.ensureAnchor(CENTER_ANCHOR, DockRegion.North, BAND_PROPORTION)
+                // A restored layout retains a leaf for every window it remembers, including ones
+                // that are closed right now; reconcile immediately so they never render as
+                // placeholders. This also re-docks anything a late restore displaced, when the
+                // bounded wait below gave up and laid windows out first.
+                reconcile(state, currentOpenWindows.value, ::registerWindow)
+                restoreFinished.complete(Unit)
+                snapshotFlow { state.layout }
+                    .drop(1)
+                    .debounce(1.seconds)
+                    .collect {
+                        viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
+                    }
+            }
+            // Hold the first layout pass for the restore, so early windows do not flash into
+            // default spots only to be replaced - but only for a bounded moment, so a session
+            // whose character is identified slowly (or never) still lays out. A restore landing
+            // after the timeout reconciles again above.
+            launch {
+                withTimeoutOrNull(CHARACTER_WAIT) { restoreFinished.await() }
+                reconcile(state, currentOpenWindows.value, ::registerWindow)
                 merge(
                     snapshotFlow { currentOpenWindows.value }.map { },
                     // A drop can re-dock a window the game closed mid-drag; a Docked event is the
@@ -308,16 +328,6 @@ fun rememberGameDockState(
                         .map { },
                 ).collect {
                     reconcile(state, currentOpenWindows.value, ::registerWindow)
-                }
-            }
-            if (characterId != null) {
-                launch {
-                    snapshotFlow { state.layout }
-                        .drop(1)
-                        .debounce(1.seconds)
-                        .collect {
-                            viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
-                        }
                 }
             }
         }

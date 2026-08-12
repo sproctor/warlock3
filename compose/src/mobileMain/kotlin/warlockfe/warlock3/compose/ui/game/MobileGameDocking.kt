@@ -12,6 +12,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -133,7 +134,11 @@ internal fun MobileDockWindowActions(
     }
 }
 
-/** A compact icon button sized for the dock header (a Material 3 IconButton is far too tall). */
+/**
+ * A dock-header icon button. Visually compact (a Material 3 IconButton is far too tall for the
+ * header), but the whole [minimumInteractiveComponentSize] target is clickable: the header's fixed
+ * height caps it there, so this widens the touch target without growing the header.
+ */
 @Composable
 private fun DockIconButton(
     painter: Painter,
@@ -143,8 +148,7 @@ private fun DockIconButton(
     Box(
         modifier =
             Modifier
-                .padding(horizontal = 2.dp)
-                .size(22.dp)
+                .minimumInteractiveComponentSize()
                 .clip(RoundedCornerShape(4.dp))
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
