@@ -55,7 +55,7 @@ internal fun MobileDockedWindow(
     WindowView(
         modifier = Modifier.fillMaxSize(),
         uiState = window.uiState,
-        location = window.location,
+        canHide = !window.isMain,
         defaultStyle = defaultStyle,
         isSelected = selectedWindow == window.name,
         openWindows = openWindows,

@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -73,6 +74,7 @@ import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
@@ -175,7 +177,24 @@ class GameViewModel(
         }
     }
 
-    val vitalBars: ComposePanelState = windowRegistry.getOrCreatePanel("minivitals") as ComposePanelState
+    /**
+     * The widgets of whichever panel the game put in the status bar, which we draw as chrome rather
+     * than as a window. The game names the panel (`minivitals` in both GS4 and DR) but the name is
+     * not the contract: `location='statBar'` is, so we follow the location and stay right if a game
+     * ever calls its vitals panel something else. Empty until one is announced.
+     */
+    val vitalBars: StateFlow<List<PanelObject>> =
+        client.windowInfo
+            .map { infos -> infos.firstOrNull { it.location == WindowLocation.STATBAR }?.name }
+            .distinctUntilChanged()
+            .flatMapLatest { name ->
+                name?.let { (windowRegistry.getOrCreatePanel(it) as ComposePanelState).objects }
+                    ?: flowOf(emptyList())
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
 
     val indicators = client.indicators
     val leftHand = client.leftHand
@@ -662,7 +681,7 @@ class GameViewModel(
                     }
 
                     is ClientOpenWindowEvent -> {
-                        openWindowFromGame(name = event.name, protocolLocation = event.location)
+                        openWindowFromGame(name = event.name)
                     }
 
                     is ClientCloseWindowEvent -> {
@@ -1196,18 +1215,17 @@ class GameViewModel(
         )
 
     fun setLocationSize(
-        location: WindowLocation,
+        location: PaneLocation,
         size: Int,
     ) {
         client.characterId.value?.let { characterId ->
             viewModelScope.launch {
                 val key =
                     when (location) {
-                        WindowLocation.LEFT -> "leftWidth"
-                        WindowLocation.RIGHT -> "rightWidth"
-                        WindowLocation.TOP -> "topHeight"
-                        WindowLocation.BOTTOM -> "bottomHeight"
-                        WindowLocation.MAIN -> error("Cannot set size on main location")
+                        PaneLocation.LEFT -> "leftWidth"
+                        PaneLocation.RIGHT -> "rightWidth"
+                        PaneLocation.TOP -> "topHeight"
+                        PaneLocation.BOTTOM -> "bottomHeight"
                     }
                 characterSettingsRepository.save(characterId, key, size.toString())
             }
@@ -1251,20 +1269,16 @@ class GameViewModel(
     }
 
     /**
-     * Opens a window because the game asked for it with an `openDialog` tag. A window the game
-     * names somewhere we do not dock panels stays registered but closed, which is what the game's
-     * own client does with one.
+     * Opens a window because the game asked for it with an `openDialog` tag. Where it lands is the
+     * docking bridge's business; a panel the game did not place goes to the same spot the real
+     * client floats an unplaced one, and one bound for the client's own chrome never gets here (see
+     * ClientOpenWindowEvent).
      *
      * A window the user closed is left closed. The game announces its panels on every login, so
      * without that a panel the user does not want would come back every time they connect.
      */
-    private fun openWindowFromGame(
-        name: String,
-        protocolLocation: WindowLocation?,
-    ) {
+    private fun openWindowFromGame(name: String) {
         if (name == _mainWindowUiState.value.name) return
-        // MAIN belongs to the main text window; a panel can never take that slot.
-        if (protocolLocation == null || protocolLocation == WindowLocation.MAIN) return
         val stamp = stampGameWindowEvent(name)
         viewModelScope.launch {
             // The game announces most of its windows before naming the character (GS4 sends the
@@ -1417,14 +1431,14 @@ class GameViewModel(
     }
 
     /** The tablet layout's secondary (non-main) tabbed pane location; defaults to the right. */
-    fun observeTabletWindowLocation(): Flow<WindowLocation> =
+    fun observeTabletWindowLocation(): Flow<PaneLocation> =
         observePerCharacter { characterId ->
             characterSettingsRepository.observe(characterId, TABLET_WINDOW_LOCATION_KEY).map { value ->
-                value?.let { runCatching { WindowLocation.valueOf(it) }.getOrNull() } ?: WindowLocation.RIGHT
+                value?.let { runCatching { PaneLocation.valueOf(it) }.getOrNull() } ?: PaneLocation.RIGHT
             }
         }
 
-    fun setTabletWindowLocation(location: WindowLocation) {
+    fun setTabletWindowLocation(location: PaneLocation) {
         viewModelScope.launch {
             client.characterId.value?.let { characterId ->
                 characterSettingsRepository.save(characterId, TABLET_WINDOW_LOCATION_KEY, location.name)

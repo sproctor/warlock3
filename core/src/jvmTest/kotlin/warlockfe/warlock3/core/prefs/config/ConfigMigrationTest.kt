@@ -38,7 +38,6 @@ import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.window.WindowLocation
 import java.nio.file.Files
 import kotlin.io.path.deleteRecursively
 import kotlin.test.AfterTest

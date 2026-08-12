@@ -30,7 +30,6 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.more_vert
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.util.LocalBaseStyle
-import warlockfe.warlock3.core.window.WindowLocation
 
 /**
  * The tablet (Expanded) layout: the main window plus a resizable, tabbed secondary pane holding the
@@ -46,7 +45,7 @@ fun TabletGameView(
     navigateToDashboard: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val location by viewModel.observeTabletWindowLocation().collectAsState(WindowLocation.RIGHT)
+    val location by viewModel.observeTabletWindowLocation().collectAsState(PaneLocation.RIGHT)
     val windows by viewModel.windows.collectAsState()
     val hasSecondary = windows.any { it.name != "main" }
     val disconnected by viewModel.disconnected.collectAsState()
@@ -56,15 +55,14 @@ fun TabletGameView(
             if (!hasSecondary) {
                 MainWindow(viewModel = viewModel, modifier = Modifier.fillMaxSize())
             } else {
-                val isHorizontal = location == WindowLocation.LEFT || location == WindowLocation.RIGHT
-                val handleBefore = location == WindowLocation.RIGHT || location == WindowLocation.BOTTOM
+                val isHorizontal = location == PaneLocation.LEFT || location == PaneLocation.RIGHT
+                val handleBefore = location == PaneLocation.RIGHT || location == PaneLocation.BOTTOM
                 val size =
                     when (location) {
-                        WindowLocation.LEFT -> viewModel.leftWidth.collectAsState(null).value
-                        WindowLocation.RIGHT -> viewModel.rightWidth.collectAsState(null).value
-                        WindowLocation.TOP -> viewModel.topHeight.collectAsState(null).value
-                        WindowLocation.BOTTOM -> viewModel.bottomHeight.collectAsState(null).value
-                        else -> null
+                        PaneLocation.LEFT -> viewModel.leftWidth.collectAsState(null).value
+                        PaneLocation.RIGHT -> viewModel.rightWidth.collectAsState(null).value
+                        PaneLocation.TOP -> viewModel.topHeight.collectAsState(null).value
+                        PaneLocation.BOTTOM -> viewModel.bottomHeight.collectAsState(null).value
                     }
                 val panelState =
                     remember(location, size == null) {
@@ -138,7 +136,7 @@ private fun MainWindow(
         modifier = modifier,
         headerModifier = Modifier,
         uiState = mainWindow,
-        location = WindowLocation.MAIN,
+        canHide = false,
         defaultStyle = defaultStyle,
         isSelected = selectedWindow == mainWindow.name,
         openWindows = openWindows,
@@ -157,7 +155,7 @@ private fun MainWindow(
 @Composable
 private fun SecondaryWindowPane(
     viewModel: GameViewModel,
-    onChangeLocation: (WindowLocation) -> Unit,
+    onChangeLocation: (PaneLocation) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val windows by viewModel.windows.collectAsState()
@@ -188,7 +186,7 @@ private fun SecondaryWindowPane(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 headerModifier = Modifier,
                 uiState = viewModel.streamWindowUiState(current),
-                location = WindowLocation.MAIN,
+                canHide = false,
                 defaultStyle = defaultStyle,
                 isSelected = selectedWindow == current,
                 openWindows = openWindows,
@@ -206,7 +204,7 @@ private fun SecondaryWindowPane(
 }
 
 @Composable
-private fun PaneLocationMenu(onChangeLocation: (WindowLocation) -> Unit) {
+private fun PaneLocationMenu(onChangeLocation: (PaneLocation) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
@@ -214,10 +212,10 @@ private fun PaneLocationMenu(onChangeLocation: (WindowLocation) -> Unit) {
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOf(
-                "Dock right" to WindowLocation.RIGHT,
-                "Dock left" to WindowLocation.LEFT,
-                "Dock top" to WindowLocation.TOP,
-                "Dock bottom" to WindowLocation.BOTTOM,
+                "Dock right" to PaneLocation.RIGHT,
+                "Dock left" to PaneLocation.LEFT,
+                "Dock top" to PaneLocation.TOP,
+                "Dock bottom" to PaneLocation.BOTTOM,
             ).forEach { (label, loc) ->
                 DropdownMenuItem(
                     text = { Text(label) },

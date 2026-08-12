@@ -201,8 +201,13 @@ fun LargeGameView(
     }
 }
 
-/** The sidebar's windows of one kind, in the alphabetical order the flat list used to show them in. */
-private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> = filter { it.windowType == type }.sortedBy { it.title }
+/**
+ * The sidebar's windows of one kind, in the alphabetical order the flat list used to show them in.
+ * A window the game put in the client's own chrome is drawn there, not shown as a window, so it is
+ * not offered here either - a toggle for it would have nothing to show.
+ */
+private fun List<WindowInfo>.ofType(type: WindowType): List<WindowInfo> =
+    filter { it.windowType == type && !it.location.isChrome }.sortedBy { it.title }
 
 /**
  * A collapsible category header in the window-list sidebar: a rotating disclosure triangle, a dimmed

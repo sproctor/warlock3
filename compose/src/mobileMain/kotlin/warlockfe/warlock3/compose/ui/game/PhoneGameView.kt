@@ -25,7 +25,6 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.explore
 import warlockfe.warlock3.compose.ui.window.WindowView
 import warlockfe.warlock3.compose.util.LocalBaseStyle
-import warlockfe.warlock3.core.window.WindowLocation
 
 /**
  * The phone (Compact/Medium) layout: an M3 top app bar, a status card (vitals + hands + condition
@@ -82,7 +81,7 @@ fun PhoneGameView(
             modifier = Modifier.fillMaxWidth().weight(1f),
             headerModifier = Modifier,
             uiState = viewModel.streamWindowUiState(currentTab),
-            location = WindowLocation.MAIN,
+            canHide = false,
             defaultStyle = defaultStyle,
             isSelected = selectedWindow == currentTab,
             openWindows = openWindows,

@@ -45,14 +45,13 @@ import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
-import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WindowView(
     uiState: WindowUiState,
-    location: WindowLocation,
+    canHide: Boolean,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -72,7 +71,7 @@ fun WindowView(
 ) {
     WindowViewScaffold(
         uiState = uiState,
-        location = location,
+        canHide = canHide,
         defaultStyle = defaultStyle,
         isSelected = isSelected,
         openWindows = openWindows,
@@ -116,7 +115,7 @@ fun WindowView(
                         style = MaterialTheme.typography.titleSmall,
                     )
                 },
-                location = location,
+                canHide = canHide,
                 isSelected = isSelected,
                 onSettingsClick = onSettingsClick,
                 // A panel is a fixed layout of widgets with no text stream behind it, so there is

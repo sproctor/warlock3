@@ -280,7 +280,7 @@ fun GameBottomBar(
                     }
                 }
             }
-            val vitalBars by viewModel.vitalBars.objects.collectAsState()
+            val vitalBars by viewModel.vitalBars.collectAsState()
             PanelContent(
                 dataObjects = vitalBars,
                 modifier = Modifier.fillMaxWidth().height(16.dp),

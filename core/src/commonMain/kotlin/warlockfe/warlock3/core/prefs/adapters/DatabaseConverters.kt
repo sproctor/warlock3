@@ -2,16 +2,9 @@ package warlockfe.warlock3.core.prefs.adapters
 
 import androidx.room3.ColumnTypeConverter
 import warlockfe.warlock3.core.text.WarlockColor
-import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.uuid.Uuid
 
 class DatabaseConverters {
-    @ColumnTypeConverter
-    fun toWindowLocation(databaseValue: String): WindowLocation = WindowLocation.entries.first { it.value == databaseValue }
-
-    @ColumnTypeConverter
-    fun fromWindowLocation(value: WindowLocation): String = value.value
-
     @ColumnTypeConverter
     fun toUuid(databaseValue: ByteArray): Uuid =
         // New rows store the UUID as 16 raw bytes. Legacy rows (written by old app versions and

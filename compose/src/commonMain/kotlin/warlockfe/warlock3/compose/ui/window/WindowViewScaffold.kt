@@ -82,7 +82,6 @@ import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.ClientBackgroundImage
-import warlockfe.warlock3.core.window.WindowLocation
 
 // Off-screen lines are measured in batches of this many between yield()s, so a full-buffer pass never
 // blocks a frame.
@@ -98,7 +97,7 @@ private const val OFFSCREEN_MEASURE_CHUNK = 64
 @Composable
 internal fun WindowViewScaffold(
     uiState: WindowUiState,
-    location: WindowLocation,
+    canHide: Boolean,
     defaultStyle: StyleDefinition,
     isSelected: Boolean,
     openWindows: List<String>,
@@ -163,7 +162,7 @@ internal fun WindowViewScaffold(
                     WindowViewContent(
                         modifier =
                             Modifier.addTextContextMenuOptions(
-                                windowLocation = location,
+                                canHide = canHide,
                                 showSettingsDialog = onOpenWindowSettings,
                                 onClearClick = clearStream,
                                 onCloseClick = onCloseClick,
@@ -608,7 +607,7 @@ private fun WindowViewContent(
 
 @Composable
 internal fun Modifier.addTextContextMenuOptions(
-    windowLocation: WindowLocation,
+    canHide: Boolean,
     showSettingsDialog: () -> Unit,
     onClearClick: () -> Unit,
     onCloseClick: () -> Unit,
@@ -623,7 +622,7 @@ internal fun Modifier.addTextContextMenuOptions(
             onClearClick()
             close()
         }
-        if (windowLocation != WindowLocation.MAIN) {
+        if (canHide) {
             addItem(key = CloseContextMenuItemKey, label = "Hide window") {
                 onCloseClick()
                 close()
