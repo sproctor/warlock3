@@ -1,3 +1,4 @@
+import warlockfe.warlock3.core.client.PanelJustify
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
@@ -160,6 +161,40 @@ class WraythProtocolHandlerTests {
         assertEquals("befriend clear 1", remove.cmd)
         assertEquals("befriend clear 1", remove.echo)
         assertEquals("Remove", remove.tooltip)
+    }
+
+    private fun parseLabelJustify(justify: String): PanelJustify =
+        parsePanelObject<PanelObject.Label>("<label id='l' value='x' width='100%' justify='$justify'/>").justify
+
+    @Test
+    fun labelJustifyIsADrawTextMask() {
+        // `justify` is a Win32 DrawText format mask, not an enum: DT_CENTER (1) beats DT_RIGHT (2),
+        // and every other bit leaves the text on the left. Each of these was rendered by the real
+        // client and read off the screen.
+        assertEquals(listOf(0, 4, 8).map { PanelJustify.Left }, listOf(0, 4, 8).map { parseLabelJustify("$it") })
+        assertEquals(
+            listOf(1, 3, 5, 7, 9).map { PanelJustify.Center },
+            listOf(1, 3, 5, 7, 9).map { parseLabelJustify("$it") },
+        )
+        assertEquals(listOf(2, 6, 10).map { PanelJustify.Right }, listOf(2, 6, 10).map { parseLabelJustify("$it") })
+    }
+
+    @Test
+    fun missingOrEmptyJustifyCenters() {
+        // Wrayth draws a label with no usable `justify` with a hardcoded 5 (DT_VCENTER or DT_CENTER).
+        // An empty attribute takes that same path, unlike a non-empty one that merely is not a number.
+        assertEquals(
+            PanelJustify.Center,
+            parsePanelObject<PanelObject.Label>("<label id='l' value='x' width='100%'/>").justify,
+        )
+        assertEquals(PanelJustify.Center, parseLabelJustify(""))
+    }
+
+    @Test
+    fun labelJustifyThatIsNotANumberGoesLeft() {
+        // Wrayth's string-to-number conversion yields no horizontal bits here, so it draws left.
+        // Real game data only ever sends numbers; this pins the edge to what the client does.
+        assertEquals(PanelJustify.Left, parseLabelJustify("right"))
     }
 
     @Test

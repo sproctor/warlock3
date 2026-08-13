@@ -41,6 +41,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
+import warlockfe.warlock3.compose.util.toAlignment
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.WarlockAction
@@ -390,7 +391,7 @@ private fun Label(
     val colorGroup = skinObject.getColorGroup()
     Box(modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier.align(data.justify.toAlignment()),
             text = data.value ?: "",
             color = colorGroup.text,
             style = MaterialTheme.typography.labelSmall,

@@ -31,6 +31,7 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.DataDistance
+import warlockfe.warlock3.core.client.PanelJustify
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -482,6 +483,7 @@ private fun ExperiencePreview() {
                 leftAnchor = null,
                 tooltip = null,
                 value = "Level 0",
+                justify = PanelJustify.Center,
             ),
             PanelObject.ProgressBar(
                 id = "mindState",
@@ -520,6 +522,7 @@ private fun ExperiencePreview() {
                 leftAnchor = null,
                 tooltip = "Physical Training Points",
                 value = "5 PTPs",
+                justify = PanelJustify.Center,
             ),
             PanelObject.Label(
                 id = "MTPs",
@@ -532,6 +535,7 @@ private fun ExperiencePreview() {
                 leftAnchor = "PTPs",
                 tooltip = "Mental Training Points",
                 value = "3 MTPs",
+                justify = PanelJustify.Center,
             ),
             PanelObject.Label(
                 id = "p2m",
@@ -544,6 +548,7 @@ private fun ExperiencePreview() {
                 leftAnchor = null,
                 tooltip = "Physical tps that have been converted to Mental tps",
                 value = "0 P2M",
+                justify = PanelJustify.Center,
             ),
             PanelObject.Label(
                 id = "m2p",
@@ -556,6 +561,7 @@ private fun ExperiencePreview() {
                 leftAnchor = "p2m",
                 tooltip = "Mental tps that have been converted to Physical tps",
                 value = "0 M2P",
+                justify = PanelJustify.Center,
             ),
             PanelObject.Link(
                 id = "exprLNK",

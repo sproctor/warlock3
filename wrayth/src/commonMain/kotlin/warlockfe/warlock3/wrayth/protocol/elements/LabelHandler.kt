@@ -6,6 +6,7 @@ import warlockfe.warlock3.wrayth.protocol.StartElement
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.util.parseDistance
+import warlockfe.warlock3.wrayth.util.parseJustify
 
 class LabelHandler : BaseElementListener() {
     override fun startElement(element: StartElement): WraythEvent? {
@@ -22,6 +23,7 @@ class LabelHandler : BaseElementListener() {
                 topAnchor = element.attributes["anchor_top"],
                 leftAnchor = element.attributes["anchor_left"],
                 tooltip = element.attributes["tooltip"],
+                justify = parseJustify(element.attributes["justify"]),
             ),
         )
     }
