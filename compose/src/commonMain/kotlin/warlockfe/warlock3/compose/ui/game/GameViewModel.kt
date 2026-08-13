@@ -66,6 +66,7 @@ import warlockfe.warlock3.compose.ui.window.WindowFindController
 import warlockfe.warlock3.compose.ui.window.WindowFindUiState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
+import warlockfe.warlock3.compose.util.LatestValueWriter
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.core.client.ClientCloseWindowEvent
@@ -437,6 +438,18 @@ class GameViewModel(
     // Game-announced opens and closes wait on it so they land after the saved layout instead of
     // racing it into the docks.
     private val layoutRestored = CompletableDeferred<Unit>()
+
+    /**
+     * Suspends until the character's saved open windows have been loaded into [windowUiStates].
+     *
+     * The docking bridge waits on this before it reconciles a restored arrangement, for the same
+     * reason [openWindowFromGame] does. Both it and [restoreWindowLayoutOnConnect] wake on the same
+     * [connectedCharacterId] emission with nothing ordering them, and a reconcile against a window
+     * list that is still empty undocks every window the arrangement just restored.
+     */
+    suspend fun awaitWindowsRestored() {
+        layoutRestored.await()
+    }
 
     // Stamp of the game's latest open/close instruction per window, taken while the event
     // collector is still synchronous. The handlers suspend (on the character id and the layout
@@ -1452,13 +1465,26 @@ class GameViewModel(
             characterSettingsRepository.get(characterId, DOCK_LAYOUT_KEY)
         }
 
-    /** Persists the docking-layout JSON. Layout churn is debounced by the caller. */
-    fun saveDockLayout(layout: String) {
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                characterSettingsRepository.save(characterId, DOCK_LAYOUT_KEY, layout)
-            }
+    // The dock layout is auto-saved, so two writes that finished out of order would leave the older
+    // arrangement stored with nothing to correct it. Both writers - the bridge's debounced save and
+    // the flush in [close] - go through one [LatestValueWriter], which keeps the newest layout the
+    // last one written. It lives here rather than in the composition so [close] can flush a layout
+    // the debounce has not gotten to: an arrangement changed within a second of quitting would
+    // otherwise never reach the database, the composition being torn down first.
+    private val dockLayoutWriter = LatestValueWriter(::writeDockLayout)
+
+    private suspend fun writeDockLayout(layout: String) {
+        client.characterId.value?.let { characterId ->
+            characterSettingsRepository.save(characterId, DOCK_LAYOUT_KEY, layout)
         }
+    }
+
+    /**
+     * Persists the docking-layout JSON. Layout churn is debounced by the caller, which collects
+     * sequentially and awaits this, so saves never pile up behind one another.
+     */
+    suspend fun saveDockLayout(layout: String) {
+        dockLayoutWriter.write(layout)
     }
 
     /** Shared handling for a clickable game-text action (command link or menu). */
@@ -1591,6 +1617,10 @@ class GameViewModel(
     }
 
     suspend fun close() {
+        // Write any arrangement the bridge's debounce has not saved yet. This runs here rather than
+        // from the composition because callers await close() before tearing the window down (and,
+        // on the last window, before exiting the process), so the write is ordered ahead of both.
+        dockLayoutWriter.flush()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.
