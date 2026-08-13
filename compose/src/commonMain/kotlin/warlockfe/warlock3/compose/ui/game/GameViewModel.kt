@@ -438,6 +438,18 @@ class GameViewModel(
     // racing it into the docks.
     private val layoutRestored = CompletableDeferred<Unit>()
 
+    /**
+     * Suspends until the character's saved open windows have been loaded into [windowUiStates].
+     *
+     * The docking bridge waits on this before it reconciles a restored arrangement, for the same
+     * reason [openWindowFromGame] does. Both it and [restoreWindowLayoutOnConnect] wake on the same
+     * [connectedCharacterId] emission with nothing ordering them, and a reconcile against a window
+     * list that is still empty undocks every window the arrangement just restored.
+     */
+    suspend fun awaitWindowsRestored() {
+        layoutRestored.await()
+    }
+
     // Stamp of the game's latest open/close instruction per window, taken while the event
     // collector is still synchronous. The handlers suspend (on the character id and the layout
     // restore) before acting, so each re-checks that it still holds the newest instruction and
@@ -1452,13 +1464,26 @@ class GameViewModel(
             characterSettingsRepository.get(characterId, DOCK_LAYOUT_KEY)
         }
 
+    // The most recently encoded dock layout. Kept so [close] can write one the bridge's debounce
+    // has not gotten to yet: an arrangement changed within a second of quitting would otherwise
+    // never reach the database, because the composition holding the debounce is torn down first.
+    private var pendingDockLayout: String? = null
+
     /** Persists the docking-layout JSON. Layout churn is debounced by the caller. */
     fun saveDockLayout(layout: String) {
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                characterSettingsRepository.save(characterId, DOCK_LAYOUT_KEY, layout)
-            }
-        }
+        pendingDockLayout = layout
+        viewModelScope.launch { flushDockLayout() }
+    }
+
+    /**
+     * Writes the latest dock layout. Re-writing one that already landed is a harmless upsert, so
+     * this does not track what has been written - which keeps a failed write from dropping the
+     * layout that a later flush would otherwise have saved.
+     */
+    private suspend fun flushDockLayout() {
+        val layout = pendingDockLayout ?: return
+        val characterId = client.characterId.value ?: return
+        characterSettingsRepository.save(characterId, DOCK_LAYOUT_KEY, layout)
     }
 
     /** Shared handling for a clickable game-text action (command link or menu). */
@@ -1591,6 +1616,10 @@ class GameViewModel(
     }
 
     suspend fun close() {
+        // Write any arrangement the bridge's debounce has not saved yet. This runs here rather than
+        // from the composition because callers await close() before tearing the window down (and,
+        // on the last window, before exiting the process), so the write is ordered ahead of both.
+        flushDockLayout()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.

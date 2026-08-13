@@ -5,6 +5,9 @@ import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
+import com.seanproctor.docking.persistence.DockingPersistence
+import com.seanproctor.docking.persistence.captureLayout
+import com.seanproctor.docking.persistence.restoreLayout
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
@@ -393,5 +396,79 @@ class GameDockingTest {
                     ),
             )
         assertEquals(DockRegion.East, next.region)
+    }
+
+    // The arrangement a session saves: the game's defaults, then the user drags room out of the
+    // band above main and down into the left column. Returns the layout JSON.
+    private fun savedArrangement(announced: Map<String, OpenGameWindow>): String {
+        val state = newState()
+        val registerWindow = register(state)
+        reconcile(state, announced, registerWindow)
+        state.dock(DockableId("room"), DockTarget.OnDockable(DockableId("thoughts")), DockRegion.South)
+        reconcile(state, announced, registerWindow)
+        assertEquals(
+            WindowLocation.LEFT.anchor,
+            currentAnchorOf(state.layout.mainWindow.root!!, "room"),
+            "precondition: the user's arrangement puts room in the left column",
+        )
+        return DockingPersistence.encode(state.captureLayout())
+    }
+
+    private val announced =
+        openWindows(
+            MAIN_WINDOW_NAME to WindowLocation.CENTER,
+            "thoughts" to WindowLocation.LEFT,
+            "room" to WindowLocation.CENTER,
+        )
+
+    private fun anchorOfRoom(state: DockState): AnchorId? = currentAnchorOf(state.layout.mainWindow.root!!, "room")
+
+    @Test
+    fun aRestoreAppliedAgainstTheRestoredWindowsKeepsTheArrangement() {
+        val state = newState()
+        applyRestoredLayout(state, savedArrangement(announced), announced, register(state))
+        assertEquals(
+            WindowLocation.LEFT.anchor,
+            anchorOfRoom(state),
+            "room should come back in the left column the user dragged it to",
+        )
+    }
+
+    // Why rememberGameDockState waits on GameViewModel.awaitWindowsRestored() before it applies a
+    // restore: reconcile cannot tell a window the user closed from one the view model has not
+    // restored yet, so applying the arrangement against a list that is still empty undocks the
+    // whole thing - and the debounced save writes the result over it a second later, which is what
+    // users saw as the layout never being saved. Pinned so the gate is not removed as redundant.
+    @Test
+    fun aRestoreAppliedBeforeTheWindowsAreRestoredLosesTheArrangement() {
+        val state = newState()
+        val onlyMain = openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER)
+        applyRestoredLayout(state, savedArrangement(announced), onlyMain, register(state))
+        // The windows arrive a moment later and fall back to their game-announced spots.
+        reconcile(state, announced, register(state))
+        assertEquals(
+            WindowLocation.CENTER.anchor,
+            anchorOfRoom(state),
+            "without the gate, room falls back to the location the game announced",
+        )
+    }
+
+    @Test
+    fun anUnreadableSavedLayoutFallsBackToTheDefaults() {
+        val state = newState()
+        applyRestoredLayout(state, "{not json", announced, register(state))
+        // The areas are still there and every window is docked, rather than the connect failing.
+        announced.keys.forEach { name ->
+            assertTrue(state.isOpen(DockableId(name)), "$name should be docked")
+        }
+        assertEquals(WindowLocation.CENTER.anchor, anchorOfRoom(state))
+    }
+
+    @Test
+    fun aCharacterWithNoSavedLayoutGetsTheAnnouncedSpots() {
+        val state = newState()
+        applyRestoredLayout(state, null, announced, register(state))
+        assertEquals(WindowLocation.LEFT.anchor, currentAnchorOf(state.layout.mainWindow.root!!, "thoughts"))
+        assertEquals(WindowLocation.CENTER.anchor, anchorOfRoom(state))
     }
 }

@@ -117,6 +117,24 @@ internal fun gameDockLayout(): DockLayout =
     }
 
 /**
+ * The windows to reconcile against, keyed by name. Insertion-ordered: main first, then the view
+ * model's restore/open order. A window the game put in the client's own chrome is drawn there and
+ * never docked, so it is left out - which also undocks one an older build's saved layout still
+ * names.
+ */
+internal fun openGameWindows(
+    main: WindowUiState,
+    windows: List<WindowUiState>,
+): Map<String, OpenGameWindow> =
+    buildMap {
+        put(main.name, OpenGameWindow(main))
+        windows
+            .map { OpenGameWindow(it) }
+            .filterNot { it.location.isChrome }
+            .forEach { put(it.name, it) }
+    }
+
+/**
  * One open game window as the docking bridge sees it. [location] is where the game's announcement
  * asks for, read live from the window info (announcements can arrive after the window opens); it
  * seeds the default spot for a window the saved layout does not know.
@@ -168,18 +186,14 @@ fun rememberGameDockState(
     val main by viewModel.mainWindowUiState.collectAsState()
     val windows by viewModel.windowUiStates.collectAsState()
 
-    // Insertion-ordered: main first, then the view model's restore/open order. A window the game
-    // put in the client's own chrome is drawn there and never docked, so it is left out here -
-    // which also undocks one an older build's saved layout still names.
-    val openWindows: Map<String, OpenGameWindow> =
-        buildMap {
-            put(main.name, OpenGameWindow(main))
-            windows
-                .map { OpenGameWindow(it) }
-                .filterNot { it.location.isChrome }
-                .forEach { put(it.name, it) }
-        }
+    val openWindows: Map<String, OpenGameWindow> = openGameWindows(main, windows)
     val currentOpenWindows: State<Map<String, OpenGameWindow>> = rememberUpdatedState(openWindows)
+
+    // The open set as the view model has it right now, rather than as of the last composition.
+    // Reconciles run from coroutines that can outpace recomposition - the first one after a restore
+    // reliably does - and reconciling against a stale, still-empty set undocks the whole restored
+    // arrangement. The composition-lagged state above stays as the recomposition trigger only.
+    fun liveOpenWindows(): Map<String, OpenGameWindow> = openGameWindows(viewModel.mainWindowUiState.value, viewModel.windowUiStates.value)
 
     // Snapshot-state mirror read by the dockable specs' lambdas (title, actions, content), so a
     // registered dockable keeps rendering the live ui state without re-registration.
@@ -284,25 +298,17 @@ fun rememberGameDockState(
             // identifies a character has nothing to restore from or save under.
             launch {
                 viewModel.connectedCharacterId.filterNotNull().first()
-                val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
-                if (saved != null) {
-                    runCatching { DockingPersistence.decode(saved) }
-                        .onSuccess { state.restoreLayout(it, mergeFloatingWindows = true) }
-                        .onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
+                // The view model restores the character's open windows off that same emission, and
+                // nothing orders the two. Wait for its list before reconciling: the reconcile below
+                // undocks every window the saved arrangement names that is not open, so running it
+                // against a list that has not been filled in yet throws the arrangement away and
+                // then saves the wreckage over it a second later. Bounded like the gate below, so a
+                // restore that never finishes cannot strand the layout unrestored.
+                if (withTimeoutOrNull(CHARACTER_WAIT) { viewModel.awaitWindowsRestored() } == null) {
+                    Logger.w { "Window restore still running after $CHARACTER_WAIT; docking against it" }
                 }
-                // A restore replaces the layout the builder made, so a character whose JSON was
-                // saved before the areas were declared comes back without them - and would have
-                // nowhere to drop a window. Put back whichever are missing; each call is a no-op
-                // when the area is already there, whether as a placeholder or as windows the
-                // character has in it.
-                state.ensureAnchor(LEFT_ANCHOR, DockRegion.West, SIDE_COLUMN_PROPORTION)
-                state.ensureAnchor(RIGHT_ANCHOR, DockRegion.East, SIDE_COLUMN_PROPORTION)
-                state.ensureAnchor(CENTER_ANCHOR, DockRegion.North, BAND_PROPORTION)
-                // A restored layout retains a leaf for every window it remembers, including ones
-                // that are closed right now; reconcile immediately so they never render as
-                // placeholders. This also re-docks anything a late restore displaced, when the
-                // bounded wait below gave up and laid windows out first.
-                reconcile(state, currentOpenWindows.value, ::registerWindow)
+                val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
+                applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow)
                 restoreFinished.complete(Unit)
                 snapshotFlow { state.layout }
                     .drop(1)
@@ -317,7 +323,7 @@ fun rememberGameDockState(
             // after the timeout reconciles again above.
             launch {
                 withTimeoutOrNull(CHARACTER_WAIT) { restoreFinished.await() }
-                reconcile(state, currentOpenWindows.value, ::registerWindow)
+                reconcile(state, liveOpenWindows(), ::registerWindow)
                 merge(
                     snapshotFlow { currentOpenWindows.value }.map { },
                     // A drop can re-dock a window the game closed mid-drag; a Docked event is the
@@ -327,13 +333,48 @@ fun rememberGameDockState(
                         .filter { !it.isTemporary }
                         .map { },
                 ).collect {
-                    reconcile(state, currentOpenWindows.value, ::registerWindow)
+                    reconcile(state, liveOpenWindows(), ::registerWindow)
                 }
             }
         }
     }
 
     return state
+}
+
+/**
+ * Puts the character's saved arrangement back: decodes [saved] over the layout, restores any area
+ * it does not carry, and reconciles the result against [openWindows].
+ *
+ * [openWindows] must be the character's restored window list, not an empty or partial one.
+ * [reconcile] cannot tell a window the user closed from one that has not been restored yet, so it
+ * undocks everything the arrangement names that is not in the set - and the debounced save then
+ * writes the wreckage over the arrangement a second later. That is why the caller waits on
+ * [GameViewModel.awaitWindowsRestored] before getting here.
+ */
+internal fun applyRestoredLayout(
+    state: DockState,
+    saved: String?,
+    openWindows: Map<String, OpenGameWindow>,
+    registerWindow: (String, AnchorId?) -> Unit,
+) {
+    if (saved != null) {
+        runCatching { DockingPersistence.decode(saved) }
+            .onSuccess { state.restoreLayout(it, mergeFloatingWindows = true) }
+            .onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
+    }
+    // A restore replaces the layout the builder made, so a character whose JSON was saved before
+    // the areas were declared comes back without them - and would have nowhere to drop a window.
+    // Put back whichever are missing; each call is a no-op when the area is already there, whether
+    // as a placeholder or as windows the character has in it.
+    state.ensureAnchor(LEFT_ANCHOR, DockRegion.West, SIDE_COLUMN_PROPORTION)
+    state.ensureAnchor(RIGHT_ANCHOR, DockRegion.East, SIDE_COLUMN_PROPORTION)
+    state.ensureAnchor(CENTER_ANCHOR, DockRegion.North, BAND_PROPORTION)
+    // A restored layout retains a leaf for every window it remembers, including ones that are
+    // closed right now; reconcile immediately so they never render as placeholders. This also
+    // re-docks anything a late restore displaced, when the bounded wait in the bridge gave up and
+    // laid windows out first.
+    reconcile(state, openWindows, registerWindow)
 }
 
 /**
