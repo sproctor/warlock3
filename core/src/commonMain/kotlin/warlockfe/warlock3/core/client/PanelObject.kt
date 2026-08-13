@@ -50,6 +50,7 @@ sealed class PanelObject {
         override val leftAnchor: String?,
         override val tooltip: String?,
         val value: String?,
+        val justify: PanelJustify,
     ) : PanelObject()
 
     data class Link(
@@ -186,6 +187,16 @@ sealed class PanelObject {
         val exist: String?,
         val noun: String?,
     ) : PanelObject()
+}
+
+/**
+ * How a label's text sits inside the box its width gives it. Not to be confused with [PanelObject.align],
+ * which places the box itself within the panel.
+ */
+enum class PanelJustify {
+    Left,
+    Center,
+    Right,
 }
 
 sealed class DataDistance {

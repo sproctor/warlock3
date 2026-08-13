@@ -122,11 +122,26 @@ fun PanelObjectLayout(
 
                 val placeable = measurables[index].measure(childConstraints)
 
-                // Offsets prefer the skin's pixel top/left over the server's. Both margins are
-                // measured against widthBasis; Pixels ignore the basis, so this only affects Percent
-                // offsets.
-                val dataTop = skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
-                val dataLeft = skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
+                // A skin child's top/left places the object inside its skin container, so it only has
+                // something to say about an object the server did not anchor (the injuries panel's
+                // body parts, the compass arrows). Once an object is anchored, top/left are the gap
+                // from that anchor and belong to the server: UberBar stacks its vital bars that way,
+                // pairing each with a `<skin controls=...>` whose child sits at 0,0, and preferring
+                // the skin there would drop every `top='3'` and leave the bars touching.
+                // Both margins are measured against widthBasis; Pixels ignore the basis, so this only
+                // affects Percent offsets.
+                val dataTop =
+                    if (data.topAnchor != null) {
+                        data.top
+                    } else {
+                        skinObject?.top?.let { DataDistance.Pixels(it) } ?: data.top
+                    }
+                val dataLeft =
+                    if (data.leftAnchor != null) {
+                        data.left
+                    } else {
+                        skinObject?.left?.let { DataDistance.Pixels(it) } ?: data.left
+                    }
 
                 ItemInfo(
                     data = data,
@@ -306,9 +321,15 @@ private class ItemInfo(
     }
 }
 
+// The server sizes and positions panels for Wrayth's compact pixel grid, and for the small font it
+// drew labels with. Treating those pixels as dp 1:1 leaves a box only just wide enough for Wrayth's
+// font, so our wider one gets clipped. Scaling them up buys that room back; positions, sizes and
+// margins scale together, so the layout stays proportional. 1.5 proved too generous.
+private const val PANEL_PIXEL_SCALE = 1.2f
+
 /**
  * Resolves a panel distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
- * [DataDistance.Pixels] is treated as a dp count (and so ignores [basis]).
+ * [DataDistance.Pixels] is treated as a (scaled) dp count (and so ignores [basis]).
  */
 private fun DataDistance.toPx(
     basis: Int,
@@ -316,5 +337,5 @@ private fun DataDistance.toPx(
 ): Int =
     when (this) {
         is DataDistance.Percent -> basis * value.value / 100
-        is DataDistance.Pixels -> with(density) { value.dp.roundToPx() }
+        is DataDistance.Pixels -> with(density) { (value * PANEL_PIXEL_SCALE).dp.roundToPx() }
     }
