@@ -83,7 +83,49 @@ jobs:
           # app-specific notarization password. Both are only read by the macOS package task.
           MAC_KEYCHAIN_PATH: ${{ steps.signing.outputs.keychain-path }}
           NOTARY_PWD: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
-        run: ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon
+        # Three network paths have flaked here across releases, each clearing on a plain
+        # re-run: the wrapper's Gradle distribution download (it does not retry on its
+        # own), electron-builder fetching its packaging tools, and notarytool's poll of
+        # Apple's notary service dropping while a submission is still In Progress. Retry
+        # those, and only those -- a compile error has to fail on the first attempt
+        # rather than burn three builds on every runner before reporting it.
+        #
+        # Retrying that last one re-submits to Apple: Potassium saves the submission ID but
+        # never resumes a poll from it, so the in-progress submission is abandoned and a new
+        # one uploaded. That costs a round trip, which is still less than the manual job
+        # re-run it replaces (which re-submits too, after recompiling from scratch).
+        run: |
+          transient='Unexpected end of file from server|socket hang up|Connection reset|Connection timed out|Read timed out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|The Internet connection appears to be offline|Could not (GET|HEAD|resolve)|429 Too Many Requests|502 Bad Gateway|503 Service|Remote host terminated the handshake'
+          # notarytool has also been killed outright mid-submission (exit 138 = SIGBUS).
+          # Anything past 128 is a signal death, not a verdict on what we built. Apple's
+          # "403 ... agreement is missing or has expired" deliberately matches neither:
+          # that one needs a human to go sign something, so it must fail on attempt one.
+          crashed='Exit code: 1(2[89]|[3-6][0-9])'
+          for attempt in 1 2 3; do
+            if [ "$attempt" -gt 1 ]; then
+              echo "::warning::Previous attempt failed in a way that clears on a re-run; retrying (attempt $attempt of 3)."
+              sleep $(( (attempt - 1) * 30 ))
+            fi
+            log="$(mktemp)"
+            status=0
+            ./gradlew :desktopApp:packageDistributionForCurrentOS --stacktrace --no-daemon 2>&1 | tee "$log" \
+              || status="${PIPESTATUS[0]}"
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+            # A signal death reaches us two ways. Gradle prints "Exit code: 138" when a tool it
+            # ran was killed, which is the beta.20 notarytool case the pattern above catches. But
+            # when Gradle itself is the one killed -- the runner's OOM killer, say -- it gets no
+            # chance to write that line, and the signal shows up only as our own exit status.
+            if [ "$status" -lt 128 ] || [ "$status" -gt 169 ]; then
+              if ! grep -qiE "$transient" "$log" && ! grep -qE "$crashed" "$log"; then
+                echo "::error::Build failed for a reason that a retry will not fix; not retrying."
+                exit 1
+              fi
+            fi
+          done
+          echo "::error::Build still failing after 3 attempts."
+          exit 1
 
       - uses: actions/upload-artifact@v7
         with:
