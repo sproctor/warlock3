@@ -16,10 +16,13 @@ import kotlin.math.abs
  * list has currently laid out, so it sets `contentSize = averageVisibleItemHeight * itemCount`. When
  * lines wrap to wildly different heights, that average shifts every time you drag into a taller or
  * shorter region, so the computed content size (and therefore the thumb height) jumps around. By
- * caching the real height of each line as it scrolls into view - and measuring off-screen lines via
- * [renderedHeight] - regions contribute their exact height; only a line that has not been measured by
- * either path yet falls back to the running average, which is a brief transient as the caller's
- * measuring pass catches up.
+ * caching the real height of each line as it scrolls into view, regions contribute their exact
+ * height; a line that has never been rendered falls back to the running average.
+ *
+ * That average is the mean of every height measured so far, not of the items currently on screen,
+ * which is what keeps it stable: dragging into a region of tall lines does not move it, because
+ * those lines' real heights join the pool as soon as they render. Heights are only ever recorded as
+ * a side effect of a row being laid out, so the cache costs nothing to fill.
  *
  * Heights are keyed by [StreamLine.serialNumber] (stable across buffer trimming and re-filtering)
  * rather than by list index, which shifts whenever the scrollback buffer drops its oldest lines.
@@ -34,8 +37,10 @@ import kotlin.math.abs
  * @param isRendered whether the line at an index paints a non-zero-height row (see
  *   [rendersContent]); hidden/collapsed lines occupy a zero-height slot and must contribute 0.
  * @param measuredHeights cache of measured heights by serial number, populated by the caller as
- *   items are laid out (and pre-filled for off-screen lines). Recreate the map (rather than clearing
- *   it) whenever the line width or text style changes, since those invalidate every cached height.
+ *   items are laid out. Keep it across width and style changes: those leave entries stale by
+ *   whatever the re-wrap changed, which still estimates far better than having no height at all, and
+ *   each stale entry is corrected the next time its line renders. Recreate it only when serial
+ *   numbers restart (a buffer clear), where stale entries would be attributed to the wrong lines.
  */
 @Stable
 class LazyListMeasuredScrollModel(

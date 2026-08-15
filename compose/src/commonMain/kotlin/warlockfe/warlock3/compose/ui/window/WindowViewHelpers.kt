@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -20,10 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
@@ -92,8 +91,8 @@ internal fun WindowBackgroundImage(
                     .requiredWidth(imageWidthDp)
                     .requiredHeight(imageHeightDp)
             }
-        }.then(backgroundImage.opacityModifier())
-            .then(backgroundImage.gradientModifier())
+        }.opacity(backgroundImage)
+            .gradient(backgroundImage)
 
     Image(
         modifier = imageModifier,
@@ -143,23 +142,22 @@ internal fun BackgroundImageMode.contentScale(): ContentScale =
         -> ContentScale.FillHeight
     }
 
-internal fun ClientBackgroundImage.gradientModifier(): Modifier =
-    when (mode) {
+internal fun Modifier.gradient(backgroundImage: ClientBackgroundImage): Modifier =
+    when (backgroundImage.mode) {
         BackgroundImageMode.GRADIENT -> {
-            Modifier
-                .graphicsLayer {
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }.drawWithContent {
-                    drawContent()
-                    drawRect(
-                        brush = Brush.horizontalGradient(*gradientColorStops()),
-                        blendMode = BlendMode.DstIn,
-                    )
-                }
+            graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }.drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.horizontalGradient(*backgroundImage.gradientColorStops()),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
         }
 
         else -> {
-            Modifier
+            this
         }
     }
 
@@ -186,12 +184,12 @@ internal fun ClientBackgroundImage.gradientColorStops(): Array<Pair<Float, Color
     }
 }
 
-internal fun ClientBackgroundImage.opacityModifier(): Modifier =
-    if (mode == BackgroundImageMode.GRADIENT || opacity == 100) {
-        Modifier
+internal fun Modifier.opacity(backgroundImage: ClientBackgroundImage): Modifier =
+    if (backgroundImage.mode == BackgroundImageMode.GRADIENT || backgroundImage.opacity == 100) {
+        this
     } else {
-        Modifier.graphicsLayer {
-            alpha = opacity.toPercentFraction()
+        graphicsLayer {
+            alpha = backgroundImage.opacity.toPercentFraction()
         }
     }
 
@@ -241,40 +239,27 @@ internal fun List<StreamLine>.isPreviousPrompt(
     return false
 }
 
-// Layout constants shared by the stream row in WindowViewContent and the off-screen height measurer
-// ([renderedHeight]), so a computed height matches what the row actually lays out. The row and the
-// measurer MUST reference these same values rather than inline literals, or the two can drift.
+/**
+ * Records this row's laid-out height into [measuredHeights] under [serialNumber], for the scroll
+ * model to size the scrollbar from.
+ *
+ * Every row that [rendersContent] reports as rendering must carry this. A row that does not never
+ * gets a height and is estimated by the running average forever - which is what happened to image
+ * rows, four times the height of a text row, once the off-screen measure pass was removed.
+ */
+internal fun Modifier.recordRowHeight(
+    serialNumber: Long,
+    measuredHeights: SnapshotStateMap<Long, Int>,
+): Modifier =
+    onSizeChanged { size ->
+        val height = size.height
+        if (height > 0 && measuredHeights[serialNumber] != height) {
+            measuredHeights[serialNumber] = height
+        }
+    }
+
+// Layout constants for the stream row in WindowViewContent. Kept here rather than inlined so the
+// row's horizontal padding has one definition.
 internal val streamRowStartPadding = 4.dp
 internal val streamRowEndPadding = 8.dp
 internal val streamImageRowHeight = 80.dp
-
-/**
- * Intrinsic pixel height of [this] line when it renders content, computed the way WindowViewContent
- * lays the row out (the same [textStyle], with the row's horizontal padding already removed from
- * [textWidthPx]) so the scroll model's estimate of an off-screen line matches its real laid-out
- * height. Visibility / prompt-collapse gating is applied separately by the scroll model via
- * [rendersContent]; a text line with no text contributes 0.
- */
-internal fun StreamLine.renderedHeight(
-    textMeasurer: TextMeasurer,
-    textStyle: TextStyle,
-    textWidthPx: Int,
-    imageHeightPx: Int,
-): Int =
-    when (this) {
-        is StreamTextLine -> {
-            val content = text ?: return 0
-            val layout =
-                textMeasurer.measure(
-                    text = content,
-                    style = textStyle,
-                    softWrap = true,
-                    constraints = Constraints(maxWidth = textWidthPx.coerceAtLeast(0)),
-                )
-            layout.size.height
-        }
-
-        is StreamImageLine -> {
-            imageHeightPx
-        }
-    }
