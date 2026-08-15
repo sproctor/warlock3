@@ -4,6 +4,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogWindowEvent
+import warlockfe.warlock3.wrayth.protocol.WraythOpenUrlEvent
 import warlockfe.warlock3.wrayth.protocol.WraythProtocolHandler
 import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
 import warlockfe.warlock3.wrayth.util.WraythDialogWindow
@@ -195,6 +196,23 @@ class WraythProtocolHandlerTests {
         // Wrayth's string-to-number conversion yields no horizontal bits here, so it draws left.
         // Real game data only ever sends numbers; this pins the edge to what the client does.
         assertEquals(PanelJustify.Left, parseLabelJustify("right"))
+    }
+
+    @Test
+    fun launchUrlIsRecognisedInTheCapitalisedFormGs4Sends() {
+        // Straight off a GS4 session: the EXP window's Goals link, and the GOALS command, are both
+        // answered with this. The tag is capitalised, which neither of the spellings we first
+        // guessed matched once names started being compared exactly - so Goals silently launched
+        // nothing. The src is a bare path; resolving it against the session's base URI happens in
+        // the client, not here.
+        val events =
+            WraythProtocolHandler()
+                .parseLine("<LaunchURL src=\"/gs4/play/cm/loader.asp?uname=X&gcode=GS4\"/>")
+        assertEquals(
+            listOf("/gs4/play/cm/loader.asp?uname=X&gcode=GS4"),
+            events.filterIsInstance<WraythOpenUrlEvent>().map { it.url },
+        )
+        assertEquals(emptyList(), events.filterIsInstance<WraythUnhandledTagEvent>())
     }
 
     @Test
