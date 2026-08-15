@@ -68,7 +68,11 @@ sealed class PanelObject {
         val echo: String?,
     ) : PanelObject()
 
-    // cmdButton
+    /**
+     * cmdButton, and closeButton when [closesPanel] is set. A close button is a command button that
+     * also dismisses the panel it sits in: the real client sends the command and then closes the
+     * panel (refusing, with an error of its own, when the panel is resident).
+     */
     data class Button(
         override val id: String,
         override val left: DataDistance?,
@@ -82,6 +86,31 @@ sealed class PanelObject {
         val value: String?,
         val cmd: String?,
         val echo: String?,
+        val closesPanel: Boolean = false,
+    ) : PanelObject()
+
+    /**
+     * checkBox: a toggle that sends nothing of its own. Its state is read by another widget, whose
+     * `cmd` names it as `%<id>%` and receives [checkedValue] or [uncheckedValue].
+     *
+     * Both values are required rather than nullable because the real client draws no checkbox at
+     * all unless the wire carried both `checked_value` and `unchecked_value` - a checkbox without
+     * them has nothing to contribute to a command, and Wrayth gives it neither pixels nor width.
+     */
+    data class CheckBox(
+        override val id: String,
+        override val left: DataDistance?,
+        override val top: DataDistance?,
+        override val width: DataDistance?,
+        override val height: DataDistance?,
+        override val align: String?,
+        override val topAnchor: String?,
+        override val leftAnchor: String?,
+        override val tooltip: String?,
+        val text: String?,
+        val checked: Boolean,
+        val checkedValue: String,
+        val uncheckedValue: String,
     ) : PanelObject()
 
     // dropDownBox: a selector. Picking an option runs [cmd] with `%<id>%` replaced by the option value.

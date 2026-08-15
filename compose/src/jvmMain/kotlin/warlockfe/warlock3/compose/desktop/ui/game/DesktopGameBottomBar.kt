@@ -91,6 +91,7 @@ fun DesktopGameBottomBar(
                     // around both this control bar and the text windows.
                     DesktopPanelContent(
                         dataObjects = vitalBars,
+                        panelId = null,
                         modifier = Modifier.fillMaxWidth().height(16.dp),
                         onAction = {
                             // Cannot execute commands from vitals bar

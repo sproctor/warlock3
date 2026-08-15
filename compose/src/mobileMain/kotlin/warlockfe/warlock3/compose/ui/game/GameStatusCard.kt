@@ -37,6 +37,7 @@ fun GameStatusCard(
             val vitalBars by viewModel.vitalBars.collectAsState()
             PanelContent(
                 dataObjects = vitalBars,
+                panelId = null,
                 modifier = Modifier.fillMaxWidth().height(16.dp),
                 onAction = {
                     // Vitals are display-only.

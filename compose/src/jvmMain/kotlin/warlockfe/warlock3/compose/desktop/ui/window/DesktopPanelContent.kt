@@ -35,6 +35,7 @@ import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import org.jetbrains.jewel.ui.theme.linkStyle
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
+import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.model.SkinObject
@@ -68,6 +69,9 @@ private val labelStyle
 @Composable
 fun DesktopPanelContent(
     dataObjects: List<PanelObject>,
+    // The panel this content belongs to, or null when it is drawn as chrome (the status bar's
+    // vitals) rather than as a window - chrome has no panel for a close button to dismiss.
+    panelId: String?,
     onAction: (WarlockAction) -> Unit,
     style: StyleDefinition,
     modifier: Modifier = Modifier,
@@ -140,7 +144,14 @@ fun DesktopPanelContent(
                 is PanelObject.Button -> {
                     val colors = JewelTheme.defaultButtonStyle.colors
                     PanelButton(
-                        onClick = { data.cmd?.let { executeWidget(it, data.echo) } },
+                        onClick = {
+                            // A close button sends its command first and dismisses the panel after,
+                            // which is the order the real client uses.
+                            data.cmd?.let { executeWidget(it, data.echo) }
+                            if (data.closesPanel && panelId != null) {
+                                onAction(WarlockAction.ClosePanel(panelId))
+                            }
+                        },
                         modifier = Modifier.padding(2.dp),
                         shape = RoundedCornerShape(2.dp),
                         background = { isHovered, isPressed ->
@@ -201,6 +212,25 @@ fun DesktopPanelContent(
                         selected = data.selected,
                         onClick = { data.cmd?.let(execute) },
                         text = data.text ?: "",
+                    )
+                }
+
+                is PanelObject.CheckBox -> {
+                    // Seed/refresh the shared value from the server; local toggles override it until
+                    // the next update, the same rule the dropdown and spinner follow.
+                    LaunchedEffect(data.id, data.checked) {
+                        values[data.id] = if (data.checked) data.checkedValue else data.uncheckedValue
+                    }
+                    WarlockCheckboxRow(
+                        checked = values[data.id] == data.checkedValue,
+                        // Toggling sends nothing: a checkbox only holds a value for another widget's
+                        // command to pick up as `%<id>%`. Verified against the real client, which
+                        // sends nothing on the click and the new value on the button that reads it.
+                        onCheckedChange = { isChecked ->
+                            values[data.id] = if (isChecked) data.checkedValue else data.uncheckedValue
+                        },
+                        text = data.text ?: "",
+                        modifier = Modifier.padding(2.dp),
                     )
                 }
 

@@ -9,6 +9,8 @@ import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
 import warlockfe.warlock3.wrayth.util.WraythDialogWindow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class WraythProtocolHandlerTests {
     @Test
@@ -195,6 +197,81 @@ class WraythProtocolHandlerTests {
         // Wrayth's string-to-number conversion yields no horizontal bits here, so it draws left.
         // Real game data only ever sends numbers; this pins the edge to what the client does.
         assertEquals(PanelJustify.Left, parseLabelJustify("right"))
+    }
+
+    private fun panelObjects(line: String): List<PanelObject> =
+        WraythProtocolHandler()
+            .parseLine(line)
+            .filterIsInstance<WraythDialogObjectEvent>()
+            .mapNotNull { it.data }
+
+    @Test
+    fun checkBoxCarriesTheValueAnotherWidgetSubstitutes() {
+        // Straight off the wire, from a real combat panel.
+        val box =
+            parsePanelObject<PanelObject.CheckBox>(
+                "<checkBox id='chkBoxCmbtpnl12' checked_value=\"on\" unchecked_value=\"off\" checked=\"\" " +
+                    "text=\"quickstrike control group\" top='314' left='10' width='180' height='20' " +
+                    "skin='check' align='nw'/>",
+            )
+        assertEquals("chkBoxCmbtpnl12", box.id)
+        assertEquals("quickstrike control group", box.text)
+        assertEquals("on", box.checkedValue)
+        assertEquals("off", box.uncheckedValue)
+    }
+
+    @Test
+    fun checkBoxIsCheckedByThePresenceOfTheAttribute() {
+        // `checked` is presence-based, not a boolean: the real client ticks the box for every one of
+        // these and leaves it clear only when the attribute is absent. Read off the screen for each.
+        listOf("checked=''", "checked='off'", "checked='false'", "checked='0'", "checked='true'")
+            .forEach { attr ->
+                val box =
+                    parsePanelObject<PanelObject.CheckBox>(
+                        "<checkBox id='c' checked_value='on' unchecked_value='off' text='t' $attr/>",
+                    )
+                assertTrue(box.checked, "$attr should read as checked")
+            }
+        val absent =
+            parsePanelObject<PanelObject.CheckBox>(
+                "<checkBox id='c' checked_value='on' unchecked_value='off' text='t'/>",
+            )
+        assertFalse(absent.checked, "no attribute at all is the only unchecked state")
+    }
+
+    @Test
+    fun checkBoxWithoutBothValuesIsDropped() {
+        // The real client draws nothing for these - not an empty box, and no width either - because
+        // a checkbox with no values has nothing to hand the command that reads it.
+        listOf(
+            "<checkBox id='c' text='t' checked=''/>",
+            "<checkBox id='c' checked_value='on' text='t' checked=''/>",
+            "<checkBox id='c' unchecked_value='off' text='t' checked=''/>",
+        ).forEach { line ->
+            assertEquals(emptyList(), panelObjects(line), "should be dropped: $line")
+        }
+    }
+
+    @Test
+    fun closeButtonIsACommandButtonThatAlsoCloses() {
+        val button =
+            parsePanelObject<PanelObject.Button>("<closeButton id='b' value='Done' cmd='saybye'/>")
+        assertEquals("Done", button.value)
+        assertEquals("saybye", button.cmd)
+        assertTrue(button.closesPanel)
+        // A cmdButton is the same widget without the closing half.
+        val cmd = parsePanelObject<PanelObject.Button>("<cmdButton id='b' value='Go' cmd='go'/>")
+        assertFalse(cmd.closesPanel)
+    }
+
+    @Test
+    fun closeButtonWithoutACaptionIsDropped() {
+        // There is no "Close" fallback: the real client draws nothing at all for a close button with
+        // no value, even one given an explicit width and height.
+        assertEquals(
+            emptyList(),
+            panelObjects("<closeButton id='b' cmd='saybye' width='80' height='26'/>"),
+        )
     }
 
     @Test

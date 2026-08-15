@@ -215,6 +215,7 @@ fun DesktopWindowView(
                 val dataObjects by data.panelData.objects.collectAsState()
                 DesktopPanelContent(
                     dataObjects = dataObjects,
+                    panelId = data.panelData.id,
                     modifier = Modifier.padding(8.dp),
                     onAction = onAction,
                     style = style,

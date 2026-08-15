@@ -29,4 +29,10 @@ sealed class WarlockAction {
     data class OpenLink(
         val url: String,
     ) : WarlockAction()
+
+    // A closeButton dismissing the panel it sits in, named by the panel's id (which is also the
+    // window's name). The command it also carries arrives separately, as a SendWidgetCommand.
+    data class ClosePanel(
+        val id: String,
+    ) : WarlockAction()
 }

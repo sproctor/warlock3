@@ -1513,6 +1513,13 @@ class GameViewModel(
                 requestMenu(action.exist, action.noun)
             }
 
+            is WarlockAction.ClosePanel -> {
+                // Same path as the window's own close button, so the panel is remembered hidden and
+                // the game cannot reopen it unasked.
+                closeWindow(action.id)
+                null
+            }
+
             else -> {
                 null
             }
