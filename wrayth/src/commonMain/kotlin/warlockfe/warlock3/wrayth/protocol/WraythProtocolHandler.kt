@@ -134,11 +134,6 @@ class WraythProtocolHandler {
             "dialogData" to DialogDataHandler(),
             "dir" to DirHandler(),
             "dropDownBox" to DropDownBoxHandler(),
-            // No captured session contains these two, so their exact spelling is unknown.
-            // Both forms are registered rather than guessed at, because guessing wrong would
-            // silently drop a tag the game does send. Collapse each to a single entry once one
-            // shows up in a log.
-            "dynastream" to DynaStreamHandler(),
             "dynaStream" to DynaStreamHandler(),
             "image" to ImageHandler(),
             "indicator" to IndicatorHandler(),
