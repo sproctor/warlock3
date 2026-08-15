@@ -192,11 +192,13 @@ private fun DropDownBox(
     values: SnapshotStateMap<String, String>,
     executeCommand: (String) -> Unit,
 ) {
-    // Seed/refresh the shared value from the server; local selections below override until the next update.
-    LaunchedEffect(data.id, data.value) { data.value?.let { values[data.id] = it } }
+    // Seed/refresh from the server, resolving its label to the option's value so the map holds what
+    // `%<id>%` expands to. Local selections below override until the next update.
+    LaunchedEffect(data.id, data.value, data.serverOption) { data.applyServerSelection(values) }
     var expanded by remember { mutableStateOf(false) }
-    val selectedValue = values[data.id] ?: data.value
-    val currentLabel = data.options.firstOrNull { it.value == selectedValue }?.text ?: selectedValue ?: ""
+    // Empty when the server named an option that does not exist. Its raw value is not a label, and
+    // showing it would read as a selection the box does not have.
+    val currentLabel = data.optionFor(values[data.id])?.text ?: ""
     Box(modifier = Modifier.padding(2.dp)) {
         TextButton(onClick = { expanded = true }) {
             Text(currentLabel, style = MaterialTheme.typography.labelSmall, maxLines = 1)
