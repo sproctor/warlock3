@@ -199,16 +199,18 @@ fun DesktopPanelContent(
                 }
 
                 is PanelObject.DropDownBox -> {
-                    // Seed/refresh the shared value from the server; local selections override until the next update.
-                    LaunchedEffect(data.id, data.value) { data.value?.let { values[data.id] = it } }
+                    // Seed/refresh from the server, resolving its label to the option's value so the
+                    // map holds what `%<id>%` expands to. Local selections override until the next
+                    // update.
+                    LaunchedEffect(data.id, data.value, data.serverOption) { data.applyServerSelection(values) }
                     if (data.options.isEmpty()) {
                         Box {}
                     } else {
-                        val selectedValue = values[data.id] ?: data.value
-                        val selected = data.options.firstOrNull { it.value == selectedValue } ?: data.options.first()
+                        // Null when the server named an option that does not exist, which the box has
+                        // to show as nothing selected rather than as some other option.
                         WarlockDropdownSelect(
                             items = data.options,
-                            selected = selected,
+                            selected = data.optionFor(values[data.id]),
                             onSelect = { option ->
                                 values[data.id] = option.value
                                 data.cmd?.let(execute)
