@@ -10,6 +10,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
 import warlockfe.warlock3.wrayth.util.WraythDialogWindow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class WraythProtocolHandlerTests {
     @Test
@@ -213,6 +214,86 @@ class WraythProtocolHandlerTests {
             events.filterIsInstance<WraythOpenUrlEvent>().map { it.url },
         )
         assertEquals(emptyList(), events.filterIsInstance<WraythUnhandledTagEvent>())
+    }
+
+    @Test
+    fun dropDownBoxValueNamesTheLabelNotTheValue() {
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='neck' cmd='aim %dDBAim%' " +
+                    "content_text='random,head,neck' content_value='rnd,hd,nk'/>",
+            )
+        // The real client shows "neck" for this and sends "aim nk" when a button reads it. Matching
+        // `value` against the content_value column instead finds nothing, which is what left the
+        // combat panel showing its first option while the game held another.
+        assertEquals(PanelObject.DropDownBox.Option("neck", "nk"), box.serverOption)
+        assertEquals(PanelObject.DropDownBox.Option("neck", "nk"), box.optionFor(null))
+    }
+
+    @Test
+    fun dropDownBoxNamingNoLabelSelectsNothing() {
+        // 'hd' is a content_value, not a label. The real client renders a literal "(ERROR)" here
+        // rather than quietly selecting something.
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='hd' content_text='random,head,neck' " +
+                    "content_value='rnd,hd,nk'/>",
+            )
+        assertNull(box.serverOption)
+        assertNull(box.optionFor(null))
+    }
+
+    @Test
+    fun dropDownBoxPrefersTheLocalSelectionOverTheServerLabel() {
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='neck' content_text='random,head,neck' " +
+                    "content_value='rnd,hd,nk'/>",
+            )
+        // The panel's value map holds option values, since that is what `%<id>%` expands to.
+        assertEquals(PanelObject.DropDownBox.Option("head", "hd"), box.optionFor("hd"))
+    }
+
+    @Test
+    fun dropDownBoxUpdateStoresTheOptionValue() {
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='neck' content_text='random,head,neck' " +
+                    "content_value='rnd,hd,nk'/>",
+            )
+        val values = mutableMapOf("dDBAim" to "hd")
+        box.applyServerSelection(values)
+
+        assertEquals(mapOf("dDBAim" to "nk"), values)
+    }
+
+    @Test
+    fun dropDownBoxUpdateNamingNoLabelDropsTheStoredValue() {
+        // The server named nothing this box has, so it has no selection - not the stale one, and not
+        // the raw 'hd', which is a content_value rather than a label.
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='hd' content_text='random,head,neck' " +
+                    "content_value='rnd,hd,nk'/>",
+            )
+        val values = mutableMapOf("dDBAim" to "nk")
+        box.applyServerSelection(values)
+
+        assertEquals(emptyMap(), values)
+        assertNull(box.optionFor(values["dDBAim"]))
+    }
+
+    @Test
+    fun dropDownBoxUpdateWithoutAValueKeepsTheLocalSelection() {
+        // No `value` at all says nothing about the selection, so a local pick survives the update.
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' content_text='random,head,neck' content_value='rnd,hd,nk'/>",
+            )
+        val values = mutableMapOf("dDBAim" to "hd")
+        box.applyServerSelection(values)
+
+        assertEquals(mapOf("dDBAim" to "hd"), values)
     }
 
     @Test

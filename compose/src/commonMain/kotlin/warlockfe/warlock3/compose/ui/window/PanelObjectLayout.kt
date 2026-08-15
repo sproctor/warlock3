@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.Layout
@@ -73,9 +74,14 @@ fun PanelObjectLayout(
     Layout(
         modifier = modifier.clipToBounds(),
         content = {
-            // Emit each object, paired with the skin child that styles it (matched by id).
+            // Emit each object, paired with the skin child that styles it (matched by id). Keyed by
+            // id so a widget's UI state follows the widget rather than its position: without it a
+            // widget that changes place hands its state (a dropdown's selection, a checkbox's tick)
+            // to whatever now occupies the slot. Ids are unique here - the panel state keys on them.
             dataObjects.forEach { data ->
-                content(data, skinObjects.getIgnoringCase(data.id))
+                key(data.id) {
+                    content(data, skinObjects.getIgnoringCase(data.id))
+                }
             }
         },
     ) { measurables, constraints ->
@@ -155,9 +161,9 @@ fun PanelObjectLayout(
             }
 
         // Resolve placements in topological order so an item's anchors/parent are
-        // already placed when we read them. Items may reference anchors that appear
-        // later in the data list because the panel state appends updated items to
-        // the end. Drawing still happens in data order to preserve z-ordering.
+        // already placed when we read them. An item may anchor to one that appears
+        // later in the data list: the server is free to send them in any order.
+        // Drawing still happens in data order to preserve z-ordering.
         val indexById = itemInfos.withIndex().associate { (idx, info) -> info.data.id to idx }
         val visitState = IntArray(itemInfos.size) // 0=unvisited, 1=in-progress, 2=done
         val placementOrder = ArrayList<Int>(itemInfos.size)
