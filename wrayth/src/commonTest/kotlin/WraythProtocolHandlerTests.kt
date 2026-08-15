@@ -237,6 +237,48 @@ class WraythProtocolHandlerTests {
     }
 
     @Test
+    fun dropDownBoxUpdateStoresTheOptionValue() {
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='neck' content_text='random,head,neck' " +
+                    "content_value='rnd,hd,nk'/>",
+            )
+        val values = mutableMapOf("dDBAim" to "hd")
+        box.applyServerSelection(values)
+
+        assertEquals(mapOf("dDBAim" to "nk"), values)
+    }
+
+    @Test
+    fun dropDownBoxUpdateNamingNoLabelDropsTheStoredValue() {
+        // The server named nothing this box has, so it has no selection - not the stale one, and not
+        // the raw 'hd', which is a content_value rather than a label.
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' value='hd' content_text='random,head,neck' " +
+                    "content_value='rnd,hd,nk'/>",
+            )
+        val values = mutableMapOf("dDBAim" to "nk")
+        box.applyServerSelection(values)
+
+        assertEquals(emptyMap(), values)
+        assertNull(box.optionFor(values["dDBAim"]))
+    }
+
+    @Test
+    fun dropDownBoxUpdateWithoutAValueKeepsTheLocalSelection() {
+        // No `value` at all says nothing about the selection, so a local pick survives the update.
+        val box =
+            parsePanelObject<PanelObject.DropDownBox>(
+                "<dropDownBox id='dDBAim' content_text='random,head,neck' content_value='rnd,hd,nk'/>",
+            )
+        val values = mutableMapOf("dDBAim" to "hd")
+        box.applyServerSelection(values)
+
+        assertEquals(mapOf("dDBAim" to "hd"), values)
+    }
+
+    @Test
     fun upDownEditBoxParsesBounds() {
         val box = parsePanelObject<PanelObject.UpDownEditBox>("<upDownEditBox id='uDEQuickstrike' min='-60' max='60' value='-1'/>")
 

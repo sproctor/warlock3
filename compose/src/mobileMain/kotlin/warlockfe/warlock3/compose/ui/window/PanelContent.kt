@@ -194,10 +194,11 @@ private fun DropDownBox(
 ) {
     // Seed/refresh from the server, resolving its label to the option's value so the map holds what
     // `%<id>%` expands to. Local selections below override until the next update.
-    val serverOption = data.serverOption
-    LaunchedEffect(data.id, serverOption) { serverOption?.let { values[data.id] = it.value } }
+    LaunchedEffect(data.id, data.value, data.serverOption) { data.applyServerSelection(values) }
     var expanded by remember { mutableStateOf(false) }
-    val currentLabel = data.optionFor(values[data.id])?.text ?: data.value ?: ""
+    // Empty when the server named an option that does not exist. Its raw value is not a label, and
+    // showing it would read as a selection the box does not have.
+    val currentLabel = data.optionFor(values[data.id])?.text ?: ""
     Box(modifier = Modifier.padding(2.dp)) {
         TextButton(onClick = { expanded = true }) {
             Text(currentLabel, style = MaterialTheme.typography.labelSmall, maxLines = 1)

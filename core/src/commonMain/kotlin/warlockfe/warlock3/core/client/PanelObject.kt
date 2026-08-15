@@ -111,9 +111,27 @@ sealed class PanelObject {
         /**
          * The option to show, given [current] - the value held for this widget in the panel's value
          * map, which is an [Option.value] because that is what `%<id>%` expands to. Falls back to
-         * the server's selection when the map has nothing for this widget yet.
+         * the server's selection when the map has nothing for this widget yet. Null means nothing is
+         * selected, which is a state the panel has to be able to show: see [applyServerSelection].
          */
         fun optionFor(current: String?): Option? = options.firstOrNull { it.value == current } ?: serverOption
+
+        /**
+         * Folds a server update into a panel's [values] map, which holds [Option.value]s because
+         * that is what `%<id>%` expands to.
+         *
+         * A [value] naming no option is the server's error state rather than a selection - the real
+         * client renders a literal "(ERROR)" for it - so any entry left over from an earlier update
+         * or a local pick goes, leaving the box showing nothing. A box that arrives with no [value]
+         * at all says nothing about the selection, so a local one survives it.
+         */
+        fun applyServerSelection(values: MutableMap<String, String>) {
+            val option = serverOption
+            when {
+                option != null -> values[id] = option.value
+                value != null -> values.remove(id)
+            }
+        }
 
         data class Option(
             val text: String,
