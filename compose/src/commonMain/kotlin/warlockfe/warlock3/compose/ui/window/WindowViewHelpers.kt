@@ -23,9 +23,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
@@ -94,8 +91,8 @@ internal fun WindowBackgroundImage(
                     .requiredWidth(imageWidthDp)
                     .requiredHeight(imageHeightDp)
             }
-        }.then(backgroundImage.opacityModifier())
-            .then(backgroundImage.gradientModifier())
+        }.opacity(backgroundImage)
+            .gradient(backgroundImage)
 
     Image(
         modifier = imageModifier,
@@ -145,23 +142,22 @@ internal fun BackgroundImageMode.contentScale(): ContentScale =
         -> ContentScale.FillHeight
     }
 
-internal fun ClientBackgroundImage.gradientModifier(): Modifier =
-    when (mode) {
+internal fun Modifier.gradient(backgroundImage: ClientBackgroundImage): Modifier =
+    when (backgroundImage.mode) {
         BackgroundImageMode.GRADIENT -> {
-            Modifier
-                .graphicsLayer {
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }.drawWithContent {
-                    drawContent()
-                    drawRect(
-                        brush = Brush.horizontalGradient(*gradientColorStops()),
-                        blendMode = BlendMode.DstIn,
-                    )
-                }
+            graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }.drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.horizontalGradient(*backgroundImage.gradientColorStops()),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
         }
 
         else -> {
-            Modifier
+            this
         }
     }
 
@@ -188,12 +184,12 @@ internal fun ClientBackgroundImage.gradientColorStops(): Array<Pair<Float, Color
     }
 }
 
-internal fun ClientBackgroundImage.opacityModifier(): Modifier =
-    if (mode == BackgroundImageMode.GRADIENT || opacity == 100) {
-        Modifier
+internal fun Modifier.opacity(backgroundImage: ClientBackgroundImage): Modifier =
+    if (backgroundImage.mode == BackgroundImageMode.GRADIENT || backgroundImage.opacity == 100) {
+        this
     } else {
-        Modifier.graphicsLayer {
-            alpha = opacity.toPercentFraction()
+        graphicsLayer {
+            alpha = backgroundImage.opacity.toPercentFraction()
         }
     }
 
