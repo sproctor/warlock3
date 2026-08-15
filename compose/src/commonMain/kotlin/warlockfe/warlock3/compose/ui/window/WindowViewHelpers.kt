@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -240,6 +242,25 @@ internal fun List<StreamLine>.isPreviousPrompt(
     }
     return false
 }
+
+/**
+ * Records this row's laid-out height into [measuredHeights] under [serialNumber], for the scroll
+ * model to size the scrollbar from.
+ *
+ * Every row that [rendersContent] reports as rendering must carry this. A row that does not never
+ * gets a height and is estimated by the running average forever - which is what happened to image
+ * rows, four times the height of a text row, once the off-screen measure pass was removed.
+ */
+internal fun Modifier.recordRowHeight(
+    serialNumber: Long,
+    measuredHeights: SnapshotStateMap<Long, Int>,
+): Modifier =
+    onSizeChanged { size ->
+        val height = size.height
+        if (height > 0 && measuredHeights[serialNumber] != height) {
+            measuredHeights[serialNumber] = height
+        }
+    }
 
 // Layout constants for the stream row in WindowViewContent. Kept here rather than inlined so the
 // row's horizontal padding has one definition.

@@ -400,17 +400,10 @@ private fun WindowViewContent(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    // Record this visible row's real laid-out height,
-                                                    // correcting the off-screen estimate. Fires only on
-                                                    // a size change, so there is no per-frame work.
-                                                    .onSizeChanged { size ->
-                                                        val height = size.height
-                                                        if (height > 0 &&
-                                                            measuredHeights[line.serialNumber] != height
-                                                        ) {
-                                                            measuredHeights[line.serialNumber] = height
-                                                        }
-                                                    }.onGloballyPositioned {
+                                                    // Record this row's real laid-out height. Fires
+                                                    // only on a size change, so no per-frame work.
+                                                    .recordRowHeight(line.serialNumber, measuredHeights)
+                                                    .onGloballyPositioned {
                                                         positionInParent = it.positionInParent()
                                                     }.background(
                                                         line.entireLineStyle?.backgroundColor?.toColor()
@@ -463,7 +456,15 @@ private fun WindowViewContent(
 
                                 is StreamImageLine -> {
                                     val defaultHeight = streamImageRowHeight
-                                    Box(Modifier.height(defaultHeight).fillMaxWidth().zIndex(1f)) {
+                                    Box(
+                                        Modifier
+                                            .height(defaultHeight)
+                                            .fillMaxWidth()
+                                            .zIndex(1f)
+                                            // The row slot stays at defaultHeight even when a hovered
+                                            // image overflows it, so this is what the list lays out.
+                                            .recordRowHeight(line.serialNumber, measuredHeights),
+                                    ) {
                                         val painter =
                                             rememberAsyncImagePainter(
                                                 ImageRequest

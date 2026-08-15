@@ -52,7 +52,7 @@ jobs:
 
       # JBR 25 (via actions/setup-java jetbrains), Linux packaging tools + Xvfb, Node, and Gradle.
       - name: Set up build environment
-        uses: sproctor/potassium/.github/actions/setup-potassium@v0.4.1
+        uses: sproctor/potassium/.github/actions/setup-potassium@v0.5.0
         with:
           java-version: '25'
           packaging-tools: 'true'
@@ -65,7 +65,7 @@ jobs:
       - name: Set up macOS signing
         id: signing
         if: runner.os == 'macOS'
-        uses: sproctor/potassium/.github/actions/setup-macos-signing@v0.4.1
+        uses: sproctor/potassium/.github/actions/setup-macos-signing@v0.5.0
         with:
           certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
           certificate-password: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
@@ -251,7 +251,7 @@ jobs:
       # Uploads installers + electron-builder's latest-*.yml, unioning the shared-name
       # macOS/Windows manifests across arches (Linux manifests are already per-arch).
       - name: Publish release
-        uses: sproctor/potassium/.github/actions/publish-github-release@v0.4.1
+        uses: sproctor/potassium/.github/actions/publish-github-release@v0.5.0
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}
