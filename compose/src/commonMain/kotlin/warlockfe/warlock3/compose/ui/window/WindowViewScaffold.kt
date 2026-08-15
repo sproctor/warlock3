@@ -85,15 +85,6 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.ClientBackgroundImage
 import kotlin.time.Duration.Companion.milliseconds
 
-// Off-screen lines are measured in batches of this many between yield()s, so a full-buffer pass never
-// blocks a frame.
-private const val OFFSCREEN_MEASURE_CHUNK = 64
-
-// How long the window must hold a width before the off-screen height cache is rebuilt for
-// it. Long enough to sit out a divider drag, short enough that the scrollbar corrects
-// itself as soon as the user lets go.
-private val RESIZE_SETTLE = 200.milliseconds
-
 /**
  * Platform-agnostic window view. Holds the structure shared by the desktop and mobile clients (the
  * frame, header, stream/panel dispatch, the text/image render loop, and keyboard scroll handling).
@@ -344,29 +335,14 @@ private fun WindowViewContent(
                         modifier = Modifier.align(image.backgroundAlignment()),
                     )
                 }
-                // The width the height cache below is keyed on, held back until the window has
-                // stopped changing size. A new width invalidates every cached height and restarts
-                // the off-screen measure pass over the whole scrollback; while the user drags a
-                // dock divider the width changes every frame, so keying on it directly meant
-                // throwing the cache away and re-measuring thousands of lines sixty times a
-                // second, which is what made resizing a panel crawl. Visible rows still report
-                // their real heights live through onSizeChanged, so all that lags is the
-                // scrollbar thumb's estimate for off-screen lines, and only until the drag stops.
-                val liveWidth = constraints.maxWidth
-                var settledWidth by remember { mutableStateOf(liveWidth) }
-                LaunchedEffect(liveWidth) {
-                    if (settledWidth != liveWidth) {
-                        delay(RESIZE_SETTLE)
-                        settledWidth = liveWidth
-                    }
-                }
-
-                // Cache each line's measured height so the scrollbar can size its thumb from the
-                // real content height instead of extrapolating from the visible items' average,
-                // which makes the thumb jump when lines wrap to different heights. Recreate the cache
-                // whenever the wrap width or text style changes, since both invalidate every height.
+                // Heights are cached as rows render (see onSizeChanged below) and deliberately kept
+                // across width and style changes. A resize leaves them stale by whatever the re-wrap
+                // changed, which is approximately right and self-corrects the moment a line renders
+                // again - far better than discarding everything and having no estimate at all.
+                // Keyed on the generation alone, so the cache is dropped only when the buffer is
+                // cleared and serial numbers restart.
                 val measuredHeights =
-                    remember(settledWidth, style, defaultFontSize, generation) {
+                    remember(generation) {
                         mutableStateMapOf<Long, Int>()
                     }
                 val currentLines = rememberUpdatedState(lines)
@@ -386,53 +362,6 @@ private fun WindowViewContent(
                         )
                     }
                 val density = LocalDensity.current
-                val textMeasurer = rememberTextMeasurer()
-                val horizontalPaddingPx =
-                    with(density) { (streamRowStartPadding + streamRowEndPadding).roundToPx() }
-                // Settled, not live: this feeds the off-screen measure pass, which must not restart
-                // on every frame of a resize. Visible rows are laid out by the LazyColumn at the
-                // live width regardless.
-                val textWidthPx = (settledWidth - horizontalPaddingPx).coerceAtLeast(0)
-                val imageHeightPx = with(density) { streamImageRowHeight.roundToPx() }
-                // Measure the lines the LazyColumn never lays out (off-screen scrollback) so the scroll
-                // model has an exact height for every line instead of the running-average estimate that
-                // made the thumb drift when scrolling into unseen regions. Runs on the composition's
-                // dispatcher, chunked with yield() so it never blocks a frame, and skips serials already
-                // measured (visible items are measured for real by the effect above).
-                LaunchedEffect(measuredHeights, textMeasurer, rowTextStyle, textWidthPx, imageHeightPx) {
-                    snapshotFlow { currentLines.value }
-                        .collect { snapshot ->
-                            // Evict heights for lines trimmed off the front of the scrollback: their
-                            // serials sit below the oldest live line and would otherwise accumulate in
-                            // the cache (and skew the average) for the lifetime of the window.
-                            val oldestSerial = snapshot.firstOrNull()?.serialNumber
-                            if (oldestSerial != null) {
-                                measuredHeights.keys
-                                    .filter { it < oldestSerial }
-                                    .forEach { measuredHeights.remove(it) }
-                            }
-                            var sinceYield = 0
-                            snapshot.forEach { line ->
-                                if (!measuredHeights.containsKey(line.serialNumber)) {
-                                    val height =
-                                        line.renderedHeight(
-                                            textMeasurer = textMeasurer,
-                                            textStyle = rowTextStyle,
-                                            textWidthPx = textWidthPx,
-                                            imageHeightPx = imageHeightPx,
-                                        )
-                                    if (height > 0) {
-                                        measuredHeights[line.serialNumber] = height
-                                    }
-                                    sinceYield++
-                                    if (sinceYield >= OFFSCREEN_MEASURE_CHUNK) {
-                                        sinceYield = 0
-                                        yield()
-                                    }
-                                }
-                            }
-                        }
-                }
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
                         modifier =
