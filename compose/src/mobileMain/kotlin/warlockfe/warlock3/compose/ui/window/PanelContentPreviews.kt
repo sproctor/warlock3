@@ -167,6 +167,8 @@ private fun VitalBarsPreview() {
             )
         PanelContent(
             dataObjects = panelData,
+            // Drawn as status-bar chrome, not as a panel window.
+            panelId = null,
             modifier = Modifier.size(400.dp, 24.dp),
             onAction = {},
             style = StyleDefinition(),
@@ -461,6 +463,7 @@ private fun CombatPanelPreview() {
         )
     PanelContent(
         dataObjects = panelData,
+        panelId = "combat",
         modifier = Modifier.size(190.dp, 219.dp),
         onAction = {},
         style = StyleDefinition(),
@@ -594,6 +597,7 @@ private fun ExperiencePreview() {
         )
     PanelContent(
         dataObjects = panelData,
+        panelId = "expr",
         modifier = Modifier.size(190.dp, 200.dp),
         onAction = {},
         style = StyleDefinition(),

@@ -283,6 +283,7 @@ fun GameBottomBar(
             val vitalBars by viewModel.vitalBars.collectAsState()
             PanelContent(
                 dataObjects = vitalBars,
+                panelId = null,
                 modifier = Modifier.fillMaxWidth().height(16.dp),
                 onAction = {
                     // Cannot execute commands from vitals bar

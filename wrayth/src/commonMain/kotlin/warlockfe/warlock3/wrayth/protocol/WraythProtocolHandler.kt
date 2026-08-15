@@ -10,9 +10,11 @@ import warlockfe.warlock3.wrayth.protocol.elements.AppHandler
 import warlockfe.warlock3.wrayth.protocol.elements.BHandler
 import warlockfe.warlock3.wrayth.protocol.elements.BackgroundHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CastTimeHandler
+import warlockfe.warlock3.wrayth.protocol.elements.CheckBoxHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearContainerHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ClearStreamHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CliHandler
+import warlockfe.warlock3.wrayth.protocol.elements.CloseButtonHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CloseDialogHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CmdButtonHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CmdlistHandler
@@ -120,9 +122,11 @@ class WraythProtocolHandler {
             "b" to BHandler(),
             "background" to BackgroundHandler(),
             "castTime" to CastTimeHandler(),
+            "checkBox" to CheckBoxHandler(),
             "clearContainer" to ClearContainerHandler(),
             "clearStream" to ClearStreamHandler(),
             "cli" to CliHandler(),
+            "closeButton" to CloseButtonHandler(),
             "closeDialog" to CloseDialogHandler(),
             "cmdButton" to CmdButtonHandler(),
             "cmdlist" to CmdlistHandler(),
@@ -209,8 +213,6 @@ class WraythProtocolHandler {
             "vars" to IgnoredTagHandler(),
             "w" to IgnoredTagHandler(),
             // The rest arrive during play.
-            "closeButton" to IgnoredTagHandler(),
-            "checkBox" to IgnoredTagHandler(),
             "cmdtimestamp" to IgnoredTagHandler(),
             "command" to IgnoredTagHandler(),
             "deleteContainer" to IgnoredTagHandler(),

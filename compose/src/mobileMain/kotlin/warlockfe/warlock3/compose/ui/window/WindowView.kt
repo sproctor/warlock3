@@ -179,6 +179,7 @@ fun WindowView(
                 val dataObjects by data.panelData.objects.collectAsState()
                 PanelContent(
                     dataObjects = dataObjects,
+                    panelId = data.panelData.id,
                     modifier = Modifier.padding(8.dp),
                     onAction = onAction,
                     style = style,
