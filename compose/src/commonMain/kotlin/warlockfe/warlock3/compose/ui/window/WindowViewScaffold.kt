@@ -69,6 +69,7 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.yield
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
@@ -361,6 +362,23 @@ private fun WindowViewContent(
                             measuredHeights = measuredHeights,
                         )
                     }
+                // Drop heights for lines trimmed off the front of the scrollback. Serial numbers
+                // only ever increase and the buffer trims from the front, so everything below the
+                // oldest live line is gone for good. Without this the map grows an entry per line
+                // ever rendered - unbounded over a session - and those stale values keep skewing
+                // the average the scroll model uses for lines it has no height for.
+                //
+                // Driven by the oldest serial rather than the line list, so it wakes only when a
+                // trim actually happened instead of on every appended line.
+                LaunchedEffect(measuredHeights) {
+                    snapshotFlow { currentLines.value.firstOrNull()?.serialNumber }
+                        .filterNotNull()
+                        .collect { oldest ->
+                            measuredHeights.keys
+                                .filter { it < oldest }
+                                .forEach { measuredHeights.remove(it) }
+                        }
+                }
                 val density = LocalDensity.current
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
