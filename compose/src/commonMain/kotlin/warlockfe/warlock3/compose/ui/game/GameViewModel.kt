@@ -1374,6 +1374,29 @@ class GameViewModel(
     }
 
     /**
+     * A panel's own `closeButton`. The button's command goes first and the dismissal follows, both
+     * in one coroutine: raised as two actions they would be two coroutines racing for the socket,
+     * and the panel's `_DBCLOSE` could be written ahead of the command that was meant to precede it.
+     *
+     * A resident panel is a permanent fixture of the character's layout, and the real client refuses
+     * to close one rather than hiding it (it answers `_error Cannot close a resident dialog (<id>)`
+     * upstream). The button's command still runs either way.
+     */
+    private fun closePanelFromButton(action: WarlockAction.ClosePanel) {
+        val resident = windows.value.firstOrNull { it.name == action.id }?.resident == true
+        viewModelScope.launch {
+            action.command?.let { client.sendWidgetCommand(it, action.echo) }
+            if (resident) {
+                client.debug("Cannot close a resident dialog (${action.id})")
+                return@launch
+            }
+            // Same path as the window's own close button, so the panel is remembered hidden and the
+            // game cannot reopen it unasked.
+            closeWindow(action.id)
+        }
+    }
+
+    /**
      * The game closing a panel with a `closeDialog` tag. It leaves the layout but is not hidden: the
      * game is free to open it again later.
      *
@@ -1514,9 +1537,7 @@ class GameViewModel(
             }
 
             is WarlockAction.ClosePanel -> {
-                // Same path as the window's own close button, so the panel is remembered hidden and
-                // the game cannot reopen it unasked.
-                closeWindow(action.id)
+                closePanelFromButton(action)
                 null
             }
 

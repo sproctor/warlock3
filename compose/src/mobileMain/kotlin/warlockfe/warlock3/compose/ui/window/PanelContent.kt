@@ -66,6 +66,10 @@ fun PanelContent(
     // widgets' commands reference them as %<id>% (e.g. "prep %dDBSpell0%", "quickstrike %uDEQuickstrike%").
     // A spinner has no command of its own, so its value lives here until another widget consumes it.
     val values = remember { mutableStateMapOf<String, String>() }
+    // A checkbox's tick, kept apart from its substitution value above: nothing stops a box from
+    // carrying the same string for both states, and reading the tick back off [values] would then
+    // leave it permanently ticked and impossible to clear.
+    val checkedStates = remember { mutableStateMapOf<String, Boolean>() }
     val executeWidget: (String, String?) -> Unit = { cmd, echo ->
         onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
     }
@@ -134,10 +138,19 @@ fun PanelContent(
                     PanelButton(
                         onClick = {
                             // A close button sends its command first and dismisses the panel after,
-                            // which is the order the real client uses.
-                            data.cmd?.let { executeWidget(it, data.echo) }
-                            if (data.closesPanel && panelId != null) {
-                                onAction(WarlockAction.ClosePanel(panelId))
+                            // which is the order the real client uses. It goes as one action so the
+                            // two halves cannot be reordered on their way to the socket.
+                            val closes = panelId?.takeIf { data.closesPanel }
+                            if (closes != null) {
+                                onAction(
+                                    WarlockAction.ClosePanel(
+                                        id = closes,
+                                        command = data.cmd?.let { substitute(it, values) },
+                                        echo = data.echo,
+                                    ),
+                                )
+                            } else {
+                                data.cmd?.let { executeWidget(it, data.echo) }
                             }
                         },
                         modifier = Modifier.padding(2.dp),
@@ -181,19 +194,23 @@ fun PanelContent(
                 }
 
                 is PanelObject.CheckBox -> {
-                    // Seed/refresh the shared value from the server; local toggles override it until
-                    // the next update, the same rule the dropdown and spinner follow.
-                    LaunchedEffect(data.id, data.checked) {
+                    // Seed/refresh the tick and the shared value from the server; local toggles
+                    // override them until the next update, the same rule the dropdown and spinner
+                    // follow. Either wire value changing is a refresh too, or the value left behind
+                    // would be one the box no longer offers.
+                    LaunchedEffect(data.id, data.checked, data.checkedValue, data.uncheckedValue) {
+                        checkedStates[data.id] = data.checked
                         values[data.id] = if (data.checked) data.checkedValue else data.uncheckedValue
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
-                            checked = values[data.id] == data.checkedValue,
+                            checked = checkedStates[data.id] ?: data.checked,
                             // Toggling sends nothing: a checkbox only holds a value for another
                             // widget's command to pick up as `%<id>%`. Verified against the real
                             // client, which sends nothing on the click and the new value on the
                             // button that reads it.
                             onCheckedChange = { isChecked ->
+                                checkedStates[data.id] = isChecked
                                 values[data.id] = if (isChecked) data.checkedValue else data.uncheckedValue
                             },
                         )
