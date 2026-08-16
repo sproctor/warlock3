@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.desktop.ui.game
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -79,13 +80,19 @@ internal fun DesktopDockedWindow(
  */
 @Composable
 internal fun DesktopTabActivityDot(hasUnreadText: Boolean) {
-    if (!hasUnreadText) return
-    Image(
-        modifier = Modifier.padding(start = 6.dp).size(7.dp),
-        painter = painterResource(Res.drawable.circle_filled),
-        colorFilter = ColorFilter.tint(gameChrome.accentSubtle),
-        contentDescription = "New text",
-    )
+    // The slot is held open whether or not the dot is in it. A tab that grew when its window took
+    // text would shove the rest of the strip sideways, and the tab someone was reaching for would
+    // slide out from under the pointer exactly when a window started being busy.
+    Box(Modifier.padding(start = 6.dp).size(7.dp)) {
+        if (hasUnreadText) {
+            Image(
+                modifier = Modifier.fillMaxSize(),
+                painter = painterResource(Res.drawable.circle_filled),
+                colorFilter = ColorFilter.tint(gameChrome.accentSubtle),
+                contentDescription = "New text",
+            )
+        }
+    }
 }
 
 /**
