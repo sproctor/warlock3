@@ -18,7 +18,6 @@ import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
-import warlockfe.warlock3.core.prefs.export.AccountExport
 import warlockfe.warlock3.core.prefs.export.AliasExport
 import warlockfe.warlock3.core.prefs.export.AlterationExport
 import warlockfe.warlock3.core.prefs.export.BaseStyleExport
@@ -86,7 +85,6 @@ class ExportRepository(
                     Triple(GLOBAL_CHARACTER_ID, GLOBAL_CHARACTER_ID, GLOBAL_CHARACTER_ID)
             ).distinctBy { it.first }
         return WarlockExport(
-            accounts = accountDao.getAll().map { AccountExport(username = it.username, password = null) },
             characters = characterIds.map { (id, gameCode, name) -> buildCharacterExport(id, gameCode, name) },
             connections =
                 registry.connections.map { connection ->
@@ -297,14 +295,21 @@ class ExportRepository(
 
     /**
      * Restore a full backup. [resolutions] maps an exported character's id to how its data should be
-     * applied; characters absent from the map are skipped. Accounts (usernames only), connections and
-     * global client settings are always restored.
+     * applied; characters absent from the map are skipped. Connections and global client settings are
+     * always restored, along with an account row per username the connections reference.
      */
     suspend fun importFull(
         export: WarlockExport,
         resolutions: Map<String, ImportMode>,
     ) {
-        export.accounts.forEach { accountDao.save(AccountEntity(username = it.username, password = null)) }
+        // An export carries no credentials, so accounts are rebuilt from the connections that name
+        // them: username only, and never overwriting a row that already exists. Replacing them would
+        // clear the passwords saved on this machine every time a backup was restored.
+        export.connections
+            .map { it.username }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .forEach { username -> accountDao.insertIfAbsent(AccountEntity(username = username, password = null)) }
         export.connections.forEach { connection ->
             val proxy = connection.settings
             clientConfigStore.mutateConnections { registry ->
