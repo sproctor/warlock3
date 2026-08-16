@@ -8,3 +8,11 @@ internal actual fun withFileLock(
     lockFile: Path,
     block: () -> Unit,
 ) = block()
+
+internal actual fun tryWithFileLock(
+    lockFile: Path,
+    block: () -> Unit,
+): Boolean {
+    block()
+    return true
+}

@@ -134,6 +134,7 @@ class DatabaseSnapshotTest {
         currentVersion: Int = 17,
         legacy: String = "prefs.db",
         checkpoint: (Path) -> Unit = {},
+        readSchemaVersion: (Path) -> Int? = { null },
         build: (Path) -> Unit = { path -> if (!fs.exists(path)) write(path, "fresh") },
     ) = openVersionedDatabase(
         directory = dir,
@@ -142,6 +143,7 @@ class DatabaseSnapshotTest {
         legacyFileName = legacy,
         buildDatabase = build,
         checkpoint = checkpoint,
+        readSchemaVersion = readSchemaVersion,
     )
 
     @Test
@@ -207,6 +209,99 @@ class DatabaseSnapshotTest {
         assertEquals("legacy", read(Path(dir, "prefs.db")))
         // v17 was seeded from v10, not from the legacy file.
         assertEquals("v10", read(Path(dir, "warlock-v17.db")))
+    }
+
+    // A target still sitting at an older schema was seeded by a launch whose migration never
+    // finished (Room migrates lazily and rolls back on failure). It must not be mistaken for a
+    // healthy database, or it is preferred over its own seed source forever after.
+    @Test
+    fun incompleteTarget_isDiscardedAndReseeded() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+        write(Path(dir, "warlock-v17.db"), "half-migrated")
+        write(Path(dir, "warlock-v17.db-wal"), "stale-wal")
+        var saw: String? = null
+
+        open(readSchemaVersion = { 10 }, build = { path -> saw = read(path) })
+
+        assertEquals("v10-data", saw)
+        assertEquals("v10-data", read(Path(dir, "warlock-v17.db")))
+        assertFalse(fs.exists(Path(dir, "warlock-v17.db-wal")))
+        assertEquals("v10-data", read(Path(dir, "warlock-v10.db")))
+    }
+
+    @Test
+    fun currentTarget_isNotDiscarded() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+        write(Path(dir, "warlock-v17.db"), "migrated")
+        var saw: String? = null
+
+        open(readSchemaVersion = { 17 }, build = { path -> saw = read(path) })
+
+        assertEquals("migrated", saw)
+    }
+
+    // Without an older snapshot the target is the only copy of the user's settings, so an old
+    // version is no reason to delete it -- Room is left to try the migration again.
+    @Test
+    fun incompleteTarget_isKeptWhenThereIsNothingToReseedFrom() {
+        write(Path(dir, "warlock-v17.db"), "only-copy")
+        var saw: String? = null
+
+        open(readSchemaVersion = { 10 }, build = { path -> saw = read(path) })
+
+        assertEquals("only-copy", saw)
+        assertEquals("only-copy", read(Path(dir, "warlock-v17.db")))
+    }
+
+    // Discarding the target means unlinking a file another instance may be migrating right now.
+    // Room guards its migration with an exclusive lock on "<database>.lck", and recovery takes that
+    // same lock; when it can't be had, the destructive half has to be skipped rather than guessed at.
+    @Test
+    fun incompleteTarget_isKeptWhileTheRoomMigrationLockIsHeld() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+        write(Path(dir, "warlock-v17.db"), "being-migrated-by-a-peer")
+
+        val lockFile = java.io.File(dir.toString(), "warlock-v17.db.lck")
+        java.io.RandomAccessFile(lockFile, "rw").use { raf ->
+            val held = raf.channel.lock()
+            try {
+                open(readSchemaVersion = { 10 })
+            } finally {
+                held.release()
+            }
+        }
+
+        assertEquals("being-migrated-by-a-peer", read(Path(dir, "warlock-v17.db")))
+    }
+
+    // Seeding still has to happen without the lock: it only ever writes when the target is absent,
+    // so there is nothing there for a peer to be using.
+    @Test
+    fun missingTarget_isStillSeededWhileTheLockIsHeld() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+
+        val lockFile = java.io.File(dir.toString(), "warlock-v17.db.lck")
+        java.io.RandomAccessFile(lockFile, "rw").use { raf ->
+            val held = raf.channel.lock()
+            try {
+                open()
+            } finally {
+                held.release()
+            }
+        }
+
+        assertEquals("v10-data", read(Path(dir, "warlock-v17.db")))
+    }
+
+    @Test
+    fun unreadableTarget_isKept() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+        write(Path(dir, "warlock-v17.db"), "existing")
+
+        // A version that cannot be read is no evidence of an incomplete migration.
+        open(readSchemaVersion = { null })
+
+        assertEquals("existing", read(Path(dir, "warlock-v17.db")))
     }
 
     @Test

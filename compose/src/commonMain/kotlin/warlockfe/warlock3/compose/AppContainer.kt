@@ -373,6 +373,7 @@ fun openPrefsDatabase(
                 .build()
         },
         checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem, sqlDriver) },
+        readSchemaVersion = { dbPath -> readSchemaVersion(dbPath, fileSystem, sqlDriver) },
     )
 }
 
@@ -395,4 +396,25 @@ private fun checkpointDatabase(
             connection.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
         }
     }.onFailure { snapshotLogger.w(it) { "Failed to checkpoint ${path.name} before seeding snapshot" } }
+}
+
+/**
+ * Read a database file's `PRAGMA user_version` -- the schema version Room stamps once it has
+ * migrated the file. Best-effort: a missing or unreadable file reports null, which the snapshot
+ * machinery reads as "no evidence either way" and leaves the file alone.
+ */
+private fun readSchemaVersion(
+    path: Path,
+    fileSystem: FileSystem,
+    sqlDriver: SQLiteDriver,
+): Int? {
+    if (!fileSystem.exists(path)) return null
+    return runCatching {
+        sqlDriver.open(path.toString()).use { connection ->
+            connection.prepare("PRAGMA user_version").use { statement ->
+                if (statement.step()) statement.getInt(0) else null
+            }
+        }
+    }.onFailure { snapshotLogger.w(it) { "Failed to read the schema version of ${path.name}" } }
+        .getOrNull()
 }

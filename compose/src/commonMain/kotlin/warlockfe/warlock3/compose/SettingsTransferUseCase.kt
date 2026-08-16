@@ -22,7 +22,7 @@ class SettingsTransferUseCase(
             encodeDefaults = true
         }
 
-    /** Serialize the entire setup (accounts, connections, every character, global settings). */
+    /** Serialize the entire setup (connections, every character, global settings). */
     suspend fun exportAll(): String =
         json.encodeToString(WarlockExportFile.serializer(), WarlockExportFile.Full(exportRepository.getExport()))
 

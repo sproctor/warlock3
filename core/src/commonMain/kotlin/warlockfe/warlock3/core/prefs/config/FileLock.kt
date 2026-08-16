@@ -14,3 +14,17 @@ internal expect fun withFileLock(
     lockFile: Path,
     block: () -> Unit,
 )
+
+/**
+ * Like [withFileLock], but reports whether the lock was actually held, and runs [block] only when it
+ * was. Where [withFileLock] would rather write unlocked than drop a write, a caller about to do
+ * something destructive needs the opposite: it must be able to back off when it cannot prove it has
+ * the file to itself. Returns false without running [block] if the lock could not be taken.
+ *
+ * On single-process platforms (iOS) the caller is trivially the only one that can touch the file, so
+ * [block] runs and this returns true.
+ */
+internal expect fun tryWithFileLock(
+    lockFile: Path,
+    block: () -> Unit,
+): Boolean
