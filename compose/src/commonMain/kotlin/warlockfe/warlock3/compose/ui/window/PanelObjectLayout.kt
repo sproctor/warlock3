@@ -20,11 +20,12 @@ import warlockfe.warlock3.core.util.getIgnoringCase
  * Lays out the objects of a game panel (progress bars, labels, links, images, ...).
  *
  * A panel rarely gives absolute coordinates for everything; each object is positioned by one of a
- * handful of rules. Vertically (highest priority first): below a sibling it `topAnchor`s to, at an
- * explicit `top` offset inside its parent skin container, on the row of a `leftAnchor` sibling,
- * below the previous object, or on the previous object's row. Horizontally: right of a `leftAnchor`
- * sibling, centered/right-aligned via `align` ("n"/"ne"), to the right of the previous object, or at
- * an explicit `left` offset inside its parent skin.
+ * handful of rules. Vertically (highest priority first): below a sibling it `topAnchor`s to, at the
+ * panel edge its `align` anchors it to, at an explicit `top` offset inside its parent skin
+ * container, on the row of a `leftAnchor` sibling, below the previous object, or on the previous
+ * object's row. Horizontally: right of a `leftAnchor` sibling, at the panel edge its `align` anchors
+ * it to, to the right of the previous object, or at an explicit `left` offset inside its parent
+ * skin.
  *
  * Size and offsets come from the active skin where it defines them, falling back to what the server
  * sent. [scale] multiplies those pixel distances (see `toPx`), leaving percentage ones alone.
@@ -160,6 +161,7 @@ fun PanelObjectLayout(
                     topMargin = dataTop?.toPx(widthBasis, this, scale) ?: 0,
                     leftMargin = dataLeft?.toPx(widthBasis, this, scale) ?: 0,
                     parentSkinId = parentSkins.getIgnoringCase(data.id),
+                    anchor = data.align.toPanelAnchor(),
                 )
             }
 
@@ -187,96 +189,132 @@ fun PanelObjectLayout(
 
         for (i in itemInfos.indices) visit(i)
 
-        // Resolve each item's top-left. Walking in placementOrder guarantees the parent skin, the
-        // anchors and the data-order predecessor read below are already in `placements`.
-        val placements = HashMap<String, ItemPlacement>(itemInfos.size)
+        // Resolve each item's top-left against a panel [verticalBasis] tall. Walking in
+        // placementOrder guarantees the parent skin, the anchors and the data-order predecessor read
+        // below are already in `placements`.
+        fun place(verticalBasis: Int): HashMap<String, ItemPlacement> {
+            val placements = HashMap<String, ItemPlacement>(itemInfos.size)
 
-        for (index in placementOrder) {
-            val info = itemInfos[index]
-            val data = info.data
-            // The containing skin (for explicit offsets) and the previous object in data order (for
-            // the "flow after the previous object" rules).
-            val parentSkinPlacement = info.parentSkinId?.let { placements[it] }
-            val lastPlacement = if (index > 0) placements[itemInfos[index - 1].data.id] else null
+            for (index in placementOrder) {
+                val info = itemInfos[index]
+                val data = info.data
+                // The containing skin (for explicit offsets) and the previous object in data order (for
+                // the "flow after the previous object" rules).
+                val parentSkinPlacement = info.parentSkinId?.let { placements[it] }
+                val lastPlacement = if (index > 0) placements[itemInfos[index - 1].data.id] else null
 
-            // A "pure flow" object (no anchors, no explicit top/left, no centering) simply follows the
-            // previous object along its row. When such a row would overflow a bounded panel width, wrap
-            // to the next line (matching Wrayth) rather than running off the clipped edge - e.g. the
-            // row of "skin search grip activate left" links at the bottom of the combat panel.
-            val flowsAfterPrevious =
-                data.topAnchor == null && info.dataTop == null && data.leftAnchor == null &&
-                    info.dataLeft == null && data.align != "n" && data.align != "ne"
-            val wraps =
-                flowsAfterPrevious && constraints.hasBoundedWidth && lastPlacement != null &&
-                    lastPlacement.x > 0 &&
-                    lastPlacement.right + info.leftMargin + info.placeable.width > widthBasis
+                // A "pure flow" object (no anchors, no explicit top/left, no centering) simply follows the
+                // previous object along its row. When such a row would overflow a bounded panel width, wrap
+                // to the next line (matching Wrayth) rather than running off the clipped edge - e.g. the
+                // row of "skin search grip activate left" links at the bottom of the combat panel.
+                val flowsAfterPrevious =
+                    data.topAnchor == null && info.dataTop == null && data.leftAnchor == null &&
+                        info.dataLeft == null && info.anchor == null
+                val wraps =
+                    flowsAfterPrevious && constraints.hasBoundedWidth && lastPlacement != null &&
+                        lastPlacement.x > 0 &&
+                        lastPlacement.right + info.leftMargin + info.placeable.width > widthBasis
 
-            val y =
-                when {
-                    // Stacked under the bottom of the sibling we anchor to.
-                    data.topAnchor != null -> {
-                        (placements[data.topAnchor]?.bottom ?: 0) + info.topMargin
-                    }
-
-                    // Explicit top offset, measured from the top of the parent skin container.
-                    info.dataTop != null -> {
-                        (parentSkinPlacement?.y ?: 0) + info.topMargin
-                    }
-
-                    // Anchored horizontally only: share that sibling's row.
-                    data.leftAnchor != null -> {
-                        placements[data.leftAnchor]?.y ?: 0
-                    }
-
-                    // A left offset but no vertical hint: drop below the previous object.
-                    info.dataLeft != null -> {
-                        lastPlacement?.bottom ?: 0
-                    }
-
-                    // Wrapped to a new row: drop below the row we were flowing along.
-                    wraps -> {
-                        lastPlacement.bottom
-                    }
-
-                    // No vertical hint at all: stay on the previous object's row.
-                    else -> {
-                        lastPlacement?.y ?: 0
-                    }
-                }
-
-            val x =
-                if (data.leftAnchor != null) {
-                    // Just past the right edge of the sibling we anchor to.
-                    (placements[data.leftAnchor]?.right ?: 0) + info.leftMargin
-                } else {
-                    when (data.align) {
-                        // Centered across the panel width.
-                        "n" -> {
-                            (widthBasis - info.placeable.width) / 2 + info.leftMargin
+                val y =
+                    when {
+                        // Stacked under the bottom of the sibling we anchor to.
+                        data.topAnchor != null -> {
+                            (placements[data.topAnchor]?.bottom ?: 0) + info.topMargin
                         }
 
-                        // Pinned to the right edge.
-                        "ne" -> {
-                            widthBasis - info.placeable.width - info.leftMargin
+                        // Pinned to the panel edge `align` names, then offset by `top`.
+                        info.anchor != null -> {
+                            when (info.anchor.y) {
+                                AnchorY.Top -> (parentSkinPlacement?.y ?: 0)
+                                AnchorY.Middle -> (verticalBasis - info.placeable.height) / 2
+                                AnchorY.Bottom -> verticalBasis - info.placeable.height
+                            } + info.topMargin
                         }
 
+                        // Explicit top offset, measured from the top of the parent skin container.
+                        info.dataTop != null -> {
+                            (parentSkinPlacement?.y ?: 0) + info.topMargin
+                        }
+
+                        // Anchored horizontally only: share that sibling's row.
+                        data.leftAnchor != null -> {
+                            placements[data.leftAnchor]?.y ?: 0
+                        }
+
+                        // A left offset but no vertical hint: drop below the previous object.
+                        info.dataLeft != null -> {
+                            lastPlacement?.bottom ?: 0
+                        }
+
+                        // Wrapped to a new row: drop below the row we were flowing along.
+                        wraps -> {
+                            lastPlacement.bottom
+                        }
+
+                        // No vertical hint at all: stay on the previous object's row.
                         else -> {
-                            when {
-                                // Wrapped to a new row: start again at the panel's left edge.
-                                wraps -> info.leftMargin
-
-                                // No left offset: flow to the right of the previous object.
-                                info.dataLeft == null -> (lastPlacement?.right ?: 0) + info.leftMargin
-
-                                // Explicit left offset, measured from the parent skin's left edge.
-                                else -> (parentSkinPlacement?.x ?: 0) + info.leftMargin
-                            }
+                            lastPlacement?.y ?: 0
                         }
                     }
-                }
 
-            placements[data.id] = ItemPlacement(x = x, y = y, placeable = info.placeable)
+                val x =
+                    when {
+                        // Just past the right edge of the sibling we anchor to.
+                        data.leftAnchor != null -> {
+                            (placements[data.leftAnchor]?.right ?: 0) + info.leftMargin
+                        }
+
+                        // Pinned to the panel edge `align` names, then offset by `left`.
+                        info.anchor != null -> {
+                            when (info.anchor.x) {
+                                AnchorX.Left -> (parentSkinPlacement?.x ?: 0)
+                                AnchorX.Center -> (widthBasis - info.placeable.width) / 2
+                                AnchorX.Right -> widthBasis - info.placeable.width
+                            } + info.leftMargin
+                        }
+
+                        // Wrapped to a new row: start again at the panel's left edge.
+                        wraps -> {
+                            info.leftMargin
+                        }
+
+                        // No left offset: flow to the right of the previous object.
+                        info.dataLeft == null -> {
+                            (lastPlacement?.right ?: 0) + info.leftMargin
+                        }
+
+                        // Explicit left offset, measured from the parent skin's left edge.
+                        else -> {
+                            (parentSkinPlacement?.x ?: 0) + info.leftMargin
+                        }
+                    }
+
+                placements[data.id] = ItemPlacement(x = x, y = y, placeable = info.placeable)
+            }
+            return placements
         }
+
+        // Wrayth measures a bottom or middle anchor against a panel of fixed height, and clips what
+        // falls outside it. Ours scrolls instead, so when the panel has no height of its own - the
+        // desktop draws it in a scrolling column - the content it ends up with stands in for that
+        // height, which keeps a bottom-anchored row below the rest of the panel rather than folded
+        // back over it. Only items the anchor does not move contribute, so the basis cannot chase
+        // the items measured against it.
+        val placements =
+            place(heightBasis).let { first ->
+                if (itemInfos.none { it.anchor != null && it.anchor.y != AnchorY.Top }) return@let first
+                val flowBottom =
+                    itemInfos
+                        .filter { it.anchor == null || it.anchor.y == AnchorY.Top }
+                        .mapNotNull { first[it.data.id]?.bottom }
+                        .maxOrNull() ?: 0
+                val anchoredHeight =
+                    itemInfos
+                        .filter { it.anchor != null && it.anchor.y != AnchorY.Top }
+                        .maxOf { it.placeable.height }
+                val basis = maxOf(heightBasis, flowBottom, anchoredHeight)
+                if (basis == heightBasis) first else place(basis)
+            }
 
         // When unbounded, grow to wrap the placed content; otherwise fill the given constraints.
         val contentWidth = placements.values.maxOfOrNull { it.right } ?: 0
@@ -320,15 +358,52 @@ private class ItemInfo(
     val topMargin: Int,
     val leftMargin: Int,
     val parentSkinId: String?,
+    val anchor: PanelAnchor?,
 ) {
     // True when the placement formula will read lastPlacement (the data-order
     // predecessor's placement). Mirrors the branches in y/x computation.
     fun usesLastPlacement(): Boolean {
-        val needsForY = data.topAnchor == null && dataTop == null && data.leftAnchor == null
-        val needsForX = data.leftAnchor == null && data.align != "n" && data.align != "ne" && dataLeft == null
+        val needsForY = data.topAnchor == null && anchor == null && dataTop == null && data.leftAnchor == null
+        val needsForX = data.leftAnchor == null && anchor == null && dataLeft == null
         return needsForY || needsForX
     }
 }
+
+/**
+ * The point of the panel an object's `align` pins it to. Wrayth reads the attribute as a compass
+ * bearing and pins the object's box to that point of the panel, with `top`/`left` translating it
+ * from there - always down and right, whatever the bearing: `align='e' left='30'` pushes an object
+ * off the right edge and out of sight, while `align='s' top='-40'` lifts one 40px clear of the
+ * bottom. All of this was read off the real client in `utils/wrayth-lab`, along with the two
+ * spellings that are not bearings: `center` pins to the middle of the panel on both axes, and an
+ * absent (or empty) `align` leaves the object to the flow rules.
+ *
+ * Getting this wrong is what hid a dialog's Save button: a button the game pins to the bottom edge,
+ * as a settings dialog does, was placed by `top` alone, and the negative `top` such a button carries
+ * put it above the panel rather than above its bottom edge.
+ */
+private data class PanelAnchor(
+    val x: AnchorX,
+    val y: AnchorY,
+)
+
+private enum class AnchorX { Left, Center, Right }
+
+private enum class AnchorY { Top, Middle, Bottom }
+
+private fun String?.toPanelAnchor(): PanelAnchor? =
+    when (this?.lowercase()) {
+        "n" -> PanelAnchor(AnchorX.Center, AnchorY.Top)
+        "s" -> PanelAnchor(AnchorX.Center, AnchorY.Bottom)
+        "e" -> PanelAnchor(AnchorX.Right, AnchorY.Middle)
+        "w" -> PanelAnchor(AnchorX.Left, AnchorY.Middle)
+        "ne" -> PanelAnchor(AnchorX.Right, AnchorY.Top)
+        "nw" -> PanelAnchor(AnchorX.Left, AnchorY.Top)
+        "se" -> PanelAnchor(AnchorX.Right, AnchorY.Bottom)
+        "sw" -> PanelAnchor(AnchorX.Left, AnchorY.Bottom)
+        "center" -> PanelAnchor(AnchorX.Center, AnchorY.Middle)
+        else -> null
+    }
 
 /**
  * Resolves a panel distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a

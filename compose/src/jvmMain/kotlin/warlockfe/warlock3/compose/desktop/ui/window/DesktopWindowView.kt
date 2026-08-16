@@ -13,10 +13,12 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -63,6 +65,9 @@ import warlockfe.warlock3.core.client.WarlockMenuItem
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowType
+
+// The breathing room a game panel's widgets get inside their window.
+private val PANEL_PADDING = 8.dp
 
 private val titleSmallStyle =
     TextStyle(
@@ -207,21 +212,28 @@ fun DesktopWindowView(
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
         panelContent = { data, style, font, scale, onAction ->
-            WarlockScrollableColumn(
-                Modifier
-                    .fillMaxSize()
-                    .background(style.backgroundColor.toColor()),
-            ) {
-                val dataObjects by data.panelData.objects.collectAsState()
-                DesktopPanelContent(
-                    dataObjects = dataObjects,
-                    panelId = data.panelData.id,
-                    modifier = Modifier.padding(8.dp),
-                    onAction = onAction,
-                    style = style,
-                    font = font,
-                    scale = scale,
-                )
+            // The panel scrolls, so its content has no height of its own - but the game positions a
+            // widget the panel `align`s to the bottom or middle against the height it thinks the
+            // panel has, which is the height on screen. Hand that down as a minimum so those widgets
+            // land where the game meant them to, while taller content still grows and scrolls.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val visibleHeight = (maxHeight - PANEL_PADDING * 2).coerceAtLeast(0.dp)
+                WarlockScrollableColumn(
+                    Modifier
+                        .fillMaxSize()
+                        .background(style.backgroundColor.toColor()),
+                ) {
+                    val dataObjects by data.panelData.objects.collectAsState()
+                    DesktopPanelContent(
+                        dataObjects = dataObjects,
+                        panelId = data.panelData.id,
+                        modifier = Modifier.padding(PANEL_PADDING).heightIn(min = visibleHeight),
+                        onAction = onAction,
+                        style = style,
+                        font = font,
+                        scale = scale,
+                    )
+                }
             }
         },
     )
