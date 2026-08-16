@@ -21,6 +21,7 @@ import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.SplitOrientation
+import com.seanproctor.docking.model.TabPreference
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.persistence.DockingPersistence
 import com.seanproctor.docking.persistence.captureLayout
@@ -224,6 +225,12 @@ fun rememberGameDockState(
                     DockingSettings(
                         collapsedAnchorThickness = EMPTY_AREA_STRIP,
                         emptyAnchorVisibility = EmptyAnchorVisibility.WhileDragging,
+                        // Tabbed windows put their tabs along the top, in place of the title bar
+                        // rather than under the window: with the strip there, each tab already
+                        // names its window, and a title bar above it would say the same thing
+                        // twice. Top rather than TopAlways, so a window on its own keeps an
+                        // ordinary title bar and only a group of them shows tabs at all.
+                        defaultTabPreference = TabPreference.Top,
                     ),
                 initialLayout = gameDockLayout(),
             )
@@ -272,6 +279,12 @@ fun rememberGameDockState(
                     true
                 },
                 trailingActions = {
+                    windowsByName[name]?.let { currentTrailingActions(state, it) }
+                },
+                // A tabbed window has no title bar to carry them (the strip replaces it), so the
+                // strip carries the same buttons instead - drawn at its trailing edge for whichever
+                // tab is selected, which is the window they would have acted on anyway.
+                tabStripActions = {
                     windowsByName[name]?.let { currentTrailingActions(state, it) }
                 },
                 content = {
