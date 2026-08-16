@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.CONTRAST_CROSSOVER_LUMINANCE
+import warlockfe.warlock3.compose.util.defaultProgressBarColors
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.PanelObject
@@ -46,12 +47,15 @@ fun PanelProgressBar(
     textColorOverride: WarlockColor = WarlockColor.Unspecified,
 ) {
     val colorGroup = skinObject.getColorGroup()
+    // Three layers, most specific first: the user's per-bar override, then the skin entry the game
+    // named for this bar, then the skin's `progressBar` default for bars nobody named.
+    val defaults = defaultProgressBarColors()
     val backgroundColor =
-        backgroundColorOverride.toColor().takeOrElse { colorGroup.background }.takeOrElse { Color.DarkGray }
+        backgroundColorOverride.toColor().takeOrElse { colorGroup.background }.takeOrElse { defaults.background }
     val barColor =
-        barColorOverride.toColor().takeOrElse { colorGroup.bar }.takeOrElse { Color.Blue }
+        barColorOverride.toColor().takeOrElse { colorGroup.bar }.takeOrElse { defaults.bar }
     val textColor =
-        textColorOverride.toColor().takeOrElse { colorGroup.text }.takeOrElse { Color.White }
+        textColorOverride.toColor().takeOrElse { colorGroup.text }.takeOrElse { defaults.text }
     val percent = data.value.value
     val textMeasurer = rememberTextMeasurer()
     Canvas(modifier = modifier) {
