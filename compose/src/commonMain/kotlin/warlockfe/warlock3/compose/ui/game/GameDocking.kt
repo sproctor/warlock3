@@ -8,8 +8,10 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
@@ -21,6 +23,7 @@ import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.SplitOrientation
+import com.seanproctor.docking.model.TabPreference
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.persistence.DockingPersistence
 import com.seanproctor.docking.persistence.captureLayout
@@ -36,6 +39,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
@@ -45,6 +49,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.time.Duration.Companion.seconds
@@ -184,6 +189,7 @@ fun rememberGameDockState(
     viewModel: GameViewModel,
     trailingActions: @Composable (state: DockState, window: OpenGameWindow) -> Unit,
     windowContent: @Composable (window: OpenGameWindow) -> Unit,
+    tabActions: @Composable (window: OpenGameWindow, hasUnreadText: Boolean) -> Unit = { _, _ -> },
 ): DockState {
     val main by viewModel.mainWindowUiState.collectAsState()
     val windows by viewModel.windowUiStates.collectAsState()
@@ -211,6 +217,7 @@ fun rememberGameDockState(
 
     val currentTrailingActions by rememberUpdatedState(trailingActions)
     val currentWindowContent by rememberUpdatedState(windowContent)
+    val currentTabActions by rememberUpdatedState(tabActions)
 
     val state =
         remember {
@@ -224,6 +231,12 @@ fun rememberGameDockState(
                     DockingSettings(
                         collapsedAnchorThickness = EMPTY_AREA_STRIP,
                         emptyAnchorVisibility = EmptyAnchorVisibility.WhileDragging,
+                        // Tabbed windows put their tabs along the top, in place of the title bar
+                        // rather than under the window: with the strip there, each tab already
+                        // names its window, and a title bar above it would say the same thing
+                        // twice. Top rather than TopAlways, so a window on its own keeps an
+                        // ordinary title bar and only a group of them shows tabs at all.
+                        defaultTabPreference = TabPreference.Top,
                     ),
                 initialLayout = gameDockLayout(),
             )
@@ -273,6 +286,19 @@ fun rememberGameDockState(
                 },
                 trailingActions = {
                     windowsByName[name]?.let { currentTrailingActions(state, it) }
+                },
+                // A tabbed window has no title bar to carry them (the strip replaces it), so the
+                // strip carries the same buttons instead - drawn at its trailing edge for whichever
+                // tab is selected, which is the window they would have acted on anyway.
+                tabStripActions = {
+                    windowsByName[name]?.let { currentTrailingActions(state, it) }
+                },
+                // Drawn inside the tab itself, for every tab rather than just the selected one:
+                // this is where a window that is out of sight says it has something to show.
+                tabActions = {
+                    windowsByName[name]?.let { window ->
+                        currentTabActions(window, rememberHasUnreadText(state, window))
+                    }
                 },
                 content = {
                     windowsByName[name]?.let { currentWindowContent(it) }
@@ -487,6 +513,71 @@ internal fun closeEmptyDetachedWindows(state: DockState) {
         .filter { window -> window.root?.dockableIds().isNullOrEmpty() }
         .forEach { state.closeWindow(it.id) }
 }
+
+/**
+ * Whether [window] has had text arrive while it was hidden behind another tab.
+ *
+ * The flag latches: it goes true on the first line that lands while the tab is in the background and
+ * stays true until the tab is shown again. That is what keeps a busy stream off the tab strip - the
+ * collector runs in a coroutine rather than as a composition read, so a window taking a hundred
+ * lines a second recomposes the strip once, when the flag first flips, rather than once a line.
+ *
+ * A window that is on screen is never unread, whether it is a lone pane, one of several in a split,
+ * or the selected tab of a group: the user can see it, so there is nothing to announce. Only a
+ * stream can be unread; a panel is a fixed layout of widgets with no text arriving behind it.
+ */
+@Composable
+internal fun rememberHasUnreadText(
+    state: DockState,
+    window: OpenGameWindow,
+): Boolean {
+    val stream = (window.uiState.data as? StreamWindowData)?.stream ?: return false
+    val hidden = isHiddenTab(state, window.name)
+    var unread by remember(stream) { mutableStateOf(false) }
+    LaunchedEffect(stream, hidden) {
+        if (!hidden) {
+            // On screen: anything that arrived while it was hidden has now been seen.
+            unread = false
+            return@LaunchedEffect
+        }
+        stream.lines
+            .map { lines -> lines.lastOrNull()?.serialNumber }
+            .distinctUntilChanged()
+            // The buffer as it stands when the tab goes into the background is not news; only what
+            // arrives after that is.
+            .drop(1)
+            .collect { unread = true }
+    }
+    return unread
+}
+
+/**
+ * Whether [name] is a tab with another tab in front of it - open, but with nothing of it on screen.
+ *
+ * Only a tab group can hide a window. A window sharing a split has neighbours but is still visible,
+ * and a lone one plainly is, so neither counts.
+ */
+internal fun isHiddenTab(
+    state: DockState,
+    name: String,
+): Boolean {
+    val id = DockableId(name)
+    val root =
+        state.layout.windows
+            .firstNotNullOfOrNull { window ->
+                (window.maximized?.savedRoot ?: window.root)?.takeIf { it.containsDockable(id) }
+            } ?: return false
+    val tabs = root.tabsContaining(id) ?: return false
+    return tabs.selectedTab.dockableId != id
+}
+
+/** The tab group [id] is in, or null when it is not tabbed with anything. */
+private fun DockNode.tabsContaining(id: DockableId): DockNode.Tabs? =
+    when (this) {
+        is DockNode.Tabs -> takeIf { tabs.any { tab -> tab.dockableId == id } }
+        is DockNode.Split -> first.tabsContaining(id) ?: second.tabsContaining(id)
+        is DockNode.Leaf, is DockNode.Anchor -> null
+    }
 
 /**
  * Tears [name] off into its own OS window. A no-op where the platform has no floating windows, or

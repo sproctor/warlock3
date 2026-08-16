@@ -214,11 +214,18 @@ fun DesktopGameView(
                             DesktopDockedWindow(viewModel = viewModel, window = window)
                         }
                     }
+                val tabActions =
+                    remember {
+                        @Composable { _: OpenGameWindow, hasUnreadText: Boolean ->
+                            DesktopTabActivityDot(hasUnreadText)
+                        }
+                    }
                 val dockState =
                     rememberGameDockState(
                         viewModel = viewModel,
                         trailingActions = trailingActions,
                         windowContent = windowContent,
+                        tabActions = tabActions,
                     )
                 // Detached windows are opened from the application scope, which is above everything
                 // here; hand the state up so Main can host them. Cleared on the way out so a game

@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.desktop.ui.game
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopWindowView
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.generated.resources.close
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.OpenGameWindow
@@ -67,6 +69,30 @@ internal fun DesktopDockedWindow(
         showHeader = false,
         clearStream = { viewModel.clearStream(window.name) },
     )
+}
+
+/**
+ * The dot on a tab whose window has taken text since it was last on screen.
+ *
+ * Drawn inside the tab, beside its title, and only while the window is hidden behind another tab -
+ * a window you can see needs no telling. Small and dim on purpose: it marks a window as worth a
+ * look, and several of them at once should still read as a tab strip rather than an alarm.
+ */
+@Composable
+internal fun DesktopTabActivityDot(hasUnreadText: Boolean) {
+    // The slot is held open whether or not the dot is in it. A tab that grew when its window took
+    // text would shove the rest of the strip sideways, and the tab someone was reaching for would
+    // slide out from under the pointer exactly when a window started being busy.
+    Box(Modifier.padding(start = 6.dp).size(7.dp)) {
+        if (hasUnreadText) {
+            Image(
+                modifier = Modifier.fillMaxSize(),
+                painter = painterResource(Res.drawable.circle_filled),
+                colorFilter = ColorFilter.tint(gameChrome.accentSubtle),
+                contentDescription = "New text",
+            )
+        }
+    }
 }
 
 /**
