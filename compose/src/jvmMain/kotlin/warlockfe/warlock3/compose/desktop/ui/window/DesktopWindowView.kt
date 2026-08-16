@@ -3,7 +3,6 @@ package warlockfe.warlock3.compose.desktop.ui.window
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.interaction.HoverInteraction
@@ -31,14 +30,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -114,20 +111,9 @@ fun DesktopWindowView(
         modifier = modifier,
         defaultFontSize = JewelTheme.defaultTextStyle.fontSize,
         surface = { surfaceModifier, content ->
-            val frameShape = RoundedCornerShape(4.dp)
-            Box(
-                modifier =
-                    surfaceModifier
-                        // Clip so a body that paints its own background (panels, user styles) does not
-                        // overdraw the rounded corners.
-                        .clip(frameShape)
-                        .background(gameChrome.panel, frameShape)
-                        .border(
-                            Dp.Hairline,
-                            if (isSelected) gameChrome.borderStrong else gameChrome.border,
-                            frameShape,
-                        ),
-            ) {
+            // No frame of its own: the background, rounded corners and border are drawn around the
+            // whole dock pane by WarlockDockingRenderer, so they enclose the dock's header too.
+            Box(surfaceModifier) {
                 content()
             }
         },

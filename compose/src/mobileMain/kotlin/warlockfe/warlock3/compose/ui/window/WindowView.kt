@@ -88,7 +88,10 @@ fun WindowView(
         clearStream = clearStream,
         scrollEvents = scrollEvents,
         handledScrollEvent = handledScrollEvent,
-        modifier = modifier,
+        // The inset that used to live in the shared scaffold. Desktop draws its frame around the
+        // whole dock pane now and wants the body flush inside it, so the spacing belongs to
+        // whichever platform still wants it rather than to both.
+        modifier = modifier.padding(2.dp),
         defaultFontSize = MaterialTheme.typography.bodyMedium.fontSize,
         surface = { surfaceModifier, content ->
             Surface(
