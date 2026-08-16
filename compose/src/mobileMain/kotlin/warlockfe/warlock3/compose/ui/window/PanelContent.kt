@@ -30,20 +30,24 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import warlockfe.warlock3.compose.components.ColorPickerDialog
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.components.FontPickerDialog
+import warlockfe.warlock3.compose.components.PANEL_BASE_FONT_SIZE
 import warlockfe.warlock3.compose.model.SkinObject
+import warlockfe.warlock3.compose.util.LocalPanelFont
+import warlockfe.warlock3.compose.util.LocalPanelScale
+import warlockfe.warlock3.compose.util.LocalPanelTextStyle
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toAlignment
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.withFont
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.FontConfig
@@ -51,6 +55,14 @@ import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
+
+// The compact base every panel widget draws with before the panel font is merged over it.
+private val panelBaseStyle
+    @Composable
+    get() =
+        MaterialTheme.typography.labelSmall.copy(
+            fontSize = PANEL_BASE_FONT_SIZE.sp,
+        )
 
 @Composable
 fun PanelContent(
@@ -61,6 +73,9 @@ fun PanelContent(
     onAction: (WarlockAction) -> Unit,
     style: StyleDefinition,
     modifier: Modifier = Modifier,
+    // Per-window overrides of the character's panel font and scale; null falls back to the character's.
+    font: FontConfig? = null,
+    scale: Float? = null,
 ) {
     // Value-bearing widgets (dropdowns, spinners) publish their current value here keyed by id; other
     // widgets' commands reference them as %<id>% (e.g. "prep %dDBSpell0%", "quickstrike %uDEQuickstrike%").
@@ -74,10 +89,18 @@ fun PanelContent(
         onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
     }
     val execute: (String) -> Unit = { executeWidget(it, null) }
+    // Wrayth gives each widget type its own font out of the skin; we deliberately draw them all with
+    // one style, so there is a single knob here rather than a size hardcoded at every call site.
+    // Chrome (panelId == null) is not a window the user can configure, so it keeps the defaults: the
+    // status bar's vitals sit in a fixed-height row that a large scale would burst.
+    val effectiveFont = if (panelId != null) font ?: LocalPanelFont.current else null
+    val panelStyle = panelBaseStyle.withFont(effectiveFont)
+    val panelScale = if (panelId != null) scale ?: LocalPanelScale.current else DEFAULT_PANEL_SCALE
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
+        LocalPanelTextStyle provides panelStyle,
     ) {
-        PanelObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
+        PanelObjectLayout(dataObjects = dataObjects, modifier = modifier, scale = panelScale) { data, skinObject ->
             when (data) {
                 is PanelObject.Skin -> {
                     PanelSkin(data = data)
@@ -171,7 +194,7 @@ fun PanelContent(
                             modifier = Modifier.align(Alignment.Center),
                             text = data.value ?: "",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = LocalPanelTextStyle.current,
                             maxLines = 1,
                         )
                     }
@@ -188,7 +211,7 @@ fun PanelContent(
                             onClick = { data.cmd?.let(execute) },
                         )
                         data.text?.let {
-                            Text(it, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Text(it, style = LocalPanelTextStyle.current, maxLines = 1)
                         }
                     }
                 }
@@ -215,7 +238,7 @@ fun PanelContent(
                             },
                         )
                         data.text?.let {
-                            Text(it, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Text(it, style = LocalPanelTextStyle.current, maxLines = 1)
                         }
                     }
                 }
@@ -252,12 +275,12 @@ private fun DropDownBox(
     val currentLabel = data.optionFor(values[data.id])?.text ?: ""
     Box(modifier = Modifier.padding(2.dp)) {
         TextButton(onClick = { expanded = true }) {
-            Text(currentLabel, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            Text(currentLabel, style = LocalPanelTextStyle.current, maxLines = 1)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             data.options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.text) },
+                    text = { Text(option.text, style = LocalPanelTextStyle.current) },
                     onClick = {
                         expanded = false
                         values[data.id] = option.value
@@ -290,13 +313,13 @@ private fun UpDownEditBox(
         Text(
             "−",
             modifier = Modifier.clickable { step(-1) }.padding(horizontal = 6.dp),
-            style = MaterialTheme.typography.labelSmall,
+            style = LocalPanelTextStyle.current,
         )
-        Text(current.toString(), style = MaterialTheme.typography.labelSmall)
+        Text(current.toString(), style = LocalPanelTextStyle.current)
         Text(
             "+",
             modifier = Modifier.clickable { step(1) }.padding(horizontal = 6.dp),
-            style = MaterialTheme.typography.labelSmall,
+            style = LocalPanelTextStyle.current,
         )
     }
 }
@@ -322,13 +345,15 @@ private fun ProgressBarWithColorMenu(
     val barColor = setting?.barColor ?: WarlockColor.Unspecified
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
-    // Merge the saved font override (if any) onto the base label style.
-    val baseStyle = MaterialTheme.typography.labelSmall
+    // Merge this bar's saved font override (if any) over the panel style, so a bar the user has not
+    // touched still follows the panel font.
     val style =
-        baseStyle.copy(
-            fontFamily = setting?.fontFamily?.let { createFontFamily(it) } ?: baseStyle.fontFamily,
-            fontSize = setting?.fontSize?.sp ?: baseStyle.fontSize,
-            fontWeight = setting?.fontWeight?.let { FontWeight(it) } ?: baseStyle.fontWeight,
+        LocalPanelTextStyle.current.withFont(
+            FontConfig(
+                family = setting?.fontFamily,
+                size = setting?.fontSize,
+                weight = setting?.fontWeight,
+            ).takeUnless { it.isEmpty() },
         )
 
     var menuOpen by remember { mutableStateOf(false) }
@@ -447,7 +472,7 @@ private fun Label(
             modifier = Modifier.align(data.justify.toAlignment()),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = MaterialTheme.typography.labelSmall,
+            style = LocalPanelTextStyle.current,
             maxLines = 1,
         )
     }
@@ -472,7 +497,7 @@ private fun Link(
         Text(
             text = text ?: "",
             color = content,
-            style = MaterialTheme.typography.labelSmall,
+            style = LocalPanelTextStyle.current,
             maxLines = 1,
             textDecoration = TextDecoration.Underline,
         )

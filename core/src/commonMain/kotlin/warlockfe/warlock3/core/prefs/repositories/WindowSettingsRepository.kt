@@ -46,6 +46,7 @@ class WindowSettingsRepository(
                         backgroundColor = style.backgroundColor,
                         font = style.font,
                         monoFont = style.monoFont,
+                        scale = style.scale,
                         nameFilter = style.nameFilter,
                         hidden = style.hidden,
                         bold = style.bold,
@@ -190,6 +191,21 @@ class WindowSettingsRepository(
         store.mutate(characterId) { current ->
             val existing = current.windows[name] ?: WindowStyleConfig()
             current.copy(windows = current.windows + (name to existing.copy(monoFont = monoFont?.takeUnless { it.isEmpty() })))
+        }
+    }
+
+    /**
+     * Sets the per-window panel-scale override (null clears it, falling back to the character's panel
+     * scale). Only panel windows lay widgets out in game-supplied pixels, so it has no effect elsewhere.
+     */
+    suspend fun setScale(
+        characterId: String,
+        name: String,
+        scale: Float?,
+    ) {
+        store.mutate(characterId) { current ->
+            val existing = current.windows[name] ?: WindowStyleConfig()
+            current.copy(windows = current.windows + (name to existing.copy(scale = scale)))
         }
     }
 

@@ -18,6 +18,10 @@ data class BaseStyleExport(
     val underline: Boolean? = false,
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
+    // The panel-window font and pixel-geometry scale. Null for exports written before they existed,
+    // which import reads as "keep the target's".
+    val panelFont: FontConfig? = null,
+    val panelScale: Float? = null,
     // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
     val textColorRef: String? = null,
     val backgroundColorRef: String? = null,

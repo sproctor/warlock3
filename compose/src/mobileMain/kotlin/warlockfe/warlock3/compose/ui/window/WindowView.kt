@@ -170,7 +170,7 @@ fun WindowView(
         actionContextMenu = { offset, menu, onDismiss ->
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
-        panelContent = { data, style, onAction ->
+        panelContent = { data, style, font, scale, onAction ->
             ScrollableColumn(
                 Modifier
                     .fillMaxSize()
@@ -183,6 +183,8 @@ fun WindowView(
                     modifier = Modifier.padding(8.dp),
                     onAction = onAction,
                     style = style,
+                    font = font,
+                    scale = scale,
                 )
             }
         },

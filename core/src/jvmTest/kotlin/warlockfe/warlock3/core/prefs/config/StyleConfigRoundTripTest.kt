@@ -54,11 +54,19 @@ class StyleConfigRoundTripTest {
                             nameFilter = true,
                             italic = true,
                         ),
-                    "combat" to WindowStyleConfig(textColorRef = "creature", backgroundColorRef = "creatureBg"),
+                    // A panel window overriding the character's panel scale.
+                    "combat" to
+                        WindowStyleConfig(
+                            textColorRef = "creature",
+                            backgroundColorRef = "creatureBg",
+                            scale = 1.4f,
+                        ),
                 ),
             settings =
                 CharacterSettingsConfig(
                     defaultFont = FontConfig(family = "Helvetica", size = 15f, weight = 700),
+                    panelFont = FontConfig(family = "Verdana", size = 9f),
+                    panelScale = 1.2f,
                     defaultTextColor = WarlockColor(red = 220, green = 220, blue = 220),
                     defaultItalic = true,
                 ),
@@ -92,6 +100,27 @@ class StyleConfigRoundTripTest {
         assertEquals(null, preset.weight)
         assertEquals(null, preset.fontFamily)
         assertEquals(null, preset.fontSize)
+    }
+
+    @Test
+    fun `files written before the panel font and scale still parse`() {
+        // A settings/windows block from before the panel settings existed must still decode, with the
+        // new fields defaulting to "use the built-in default" (null) rather than failing the whole file.
+        val oldForm =
+            """
+            character = "global"
+
+            [settings]
+            defaultFont = { family = "Helvetica", size = 15.0 }
+
+            [windows.combat]
+            textColor = "default"
+            backgroundColor = "default"
+            """.trimIndent()
+        val decoded = toml.decodeFromString(CharacterConfig.serializer(), oldForm)
+        assertEquals(null, decoded.settings.panelFont)
+        assertEquals(null, decoded.settings.panelScale)
+        assertEquals(null, decoded.windows.getValue("combat").scale)
     }
 
     @Test

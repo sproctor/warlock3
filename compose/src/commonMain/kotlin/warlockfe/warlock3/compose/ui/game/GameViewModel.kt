@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.files.Path
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.ui.window.ComposePanelState
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.PanelWindowData
@@ -392,6 +393,17 @@ class GameViewModel(
         observePerCharacter { characterSettingsRepository.observeMonoFont(it) }
             .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
+    /** The character's panel font; used by panel widgets without a per-window override. */
+    val panelFont: StateFlow<FontConfig?> =
+        observePerCharacter { characterSettingsRepository.observePanelFont(it) }
+            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
+
+    /** The character's panel scale; multiplies pixel-sized panel geometry without a per-window override. */
+    val panelScale: StateFlow<Float> =
+        observePerCharacter { characterSettingsRepository.observePanelScale(it) }
+            .map { it ?: DEFAULT_PANEL_SCALE }
+            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = DEFAULT_PANEL_SCALE)
+
     private val runningScripts =
         scriptManager.runningScripts.stateIn(viewModelScope, SharingStarted.Eagerly, persistentMapOf())
 
@@ -614,6 +626,7 @@ class GameViewModel(
                                     style = entity.getStyle(colorPalette.value),
                                     font = entity.font,
                                     monoFont = entity.monoFont,
+                                    scale = entity.scale,
                                     nameFilter = entity.nameFilter,
                                     data = createWindowData(window?.windowType, entity.name),
                                 )
@@ -653,6 +666,7 @@ class GameViewModel(
                                 style = singleWindowSettings.getStyle(colorPalette.value),
                                 font = singleWindowSettings.font,
                                 monoFont = singleWindowSettings.monoFont,
+                                scale = singleWindowSettings.scale,
                                 nameFilter = singleWindowSettings.nameFilter,
                             )
                         }
@@ -669,6 +683,7 @@ class GameViewModel(
                                         style = singleWindowSettings.getStyle(colorPalette.value),
                                         font = singleWindowSettings.font,
                                         monoFont = singleWindowSettings.monoFont,
+                                        scale = singleWindowSettings.scale,
                                         nameFilter = singleWindowSettings.nameFilter,
                                     )
                                 mutableStates
@@ -1351,6 +1366,7 @@ class GameViewModel(
             style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
             font = entity?.font,
             monoFont = entity?.monoFont,
+            scale = entity?.scale,
             nameFilter = entity?.nameFilter ?: false,
             data = createWindowData(windowInfo?.windowType, name),
         )
@@ -1460,6 +1476,7 @@ class GameViewModel(
                 style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
                 font = entity?.font,
                 monoFont = entity?.monoFont,
+                scale = entity?.scale,
                 nameFilter = entity?.nameFilter ?: false,
                 data = createWindowData(windowInfo?.windowType, name),
             )

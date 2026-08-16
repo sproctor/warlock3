@@ -36,13 +36,18 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CheckboxRow
 import warlockfe.warlock3.compose.components.FontPickerDialog
+import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
+import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
+import warlockfe.warlock3.compose.components.PANEL_SCALE_STEP
 import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.components.fontLabel
+import warlockfe.warlock3.compose.components.formatPanelScale
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
 import warlockfe.warlock3.compose.util.LocalDarkTheme
+import warlockfe.warlock3.compose.util.LocalPanelScale
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.prefs.models.WindowSettings
@@ -57,6 +62,8 @@ import warlockfe.warlock3.core.text.resolveSourced
 import warlockfe.warlock3.core.text.sampleStyle
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.window.WindowInfo
+import warlockfe.warlock3.core.window.WindowType
+import kotlin.math.roundToInt
 
 /**
  * Per-window color/font settings for the selected character (mobile). See the desktop twin
@@ -132,6 +139,9 @@ fun WindowsSettingsSection(
             isOpen = name in openNames,
             canToggleShown = name != "main",
             nameFilterAvailable = titlesByName[name]?.nameFilterOption == true || settings?.nameFilter == true,
+            // Only panels lay widgets out in game-supplied pixels. Offline we have no window info, so
+            // keep the row for anyone who already set a scale rather than stranding their override.
+            scaleAvailable = titlesByName[name]?.windowType == WindowType.PANEL || settings?.scale != null,
             expanded = name in expanded,
             onToggleExpand = { if (name in expanded) expanded.remove(name) else expanded.add(name) },
             onSetVisible = { show ->
@@ -151,11 +161,13 @@ fun WindowsSettingsSection(
             onSaveFont = { font -> scope.launch { windowSettingRepository.setFont(characterId, name, font) } },
             onSaveMonoFont = { font -> scope.launch { windowSettingRepository.setMonoFont(characterId, name, font) } },
             onSaveNameFilter = { value -> scope.launch { windowSettingRepository.setNameFilter(characterId, name, value) } },
+            onSaveScale = { value -> scope.launch { windowSettingRepository.setScale(characterId, name, value) } },
             onRevert = {
                 scope.launch {
                     windowSettingRepository.setStyle(characterId, name, StyleDefinition())
                     windowSettingRepository.setFont(characterId, name, null)
                     windowSettingRepository.setMonoFont(characterId, name, null)
+                    windowSettingRepository.setScale(characterId, name, null)
                 }
             },
             onEditFont = { current, monoOnly, onSave -> editFont = Triple(current, monoOnly, onSave) },
@@ -262,6 +274,7 @@ private fun WindowRow(
     isOpen: Boolean,
     canToggleShown: Boolean,
     nameFilterAvailable: Boolean,
+    scaleAvailable: Boolean,
     expanded: Boolean,
     onToggleExpand: () -> Unit,
     onSetVisible: (Boolean) -> Unit,
@@ -269,6 +282,7 @@ private fun WindowRow(
     onSaveFont: (FontConfig?) -> Unit,
     onSaveMonoFont: (FontConfig?) -> Unit,
     onSaveNameFilter: (Boolean) -> Unit,
+    onSaveScale: (Float?) -> Unit,
     onRevert: () -> Unit,
     onEditFont: (FontConfig?, Boolean, (FontConfig?) -> Unit) -> Unit,
     modifier: Modifier = Modifier,
@@ -318,6 +332,9 @@ private fun WindowRow(
                 OutlinedButton(onClick = { onEditFont(settings?.monoFont, true) { onSaveMonoFont(it) } }) {
                     Text("Monospace font: ${settings?.monoFont.fontLabel()}")
                 }
+                if (scaleAvailable) {
+                    WindowScaleRow(scale = settings?.scale, onSave = onSaveScale)
+                }
                 if (nameFilterAvailable) {
                     CheckboxRow(
                         checked = settings?.nameFilter == true,
@@ -337,3 +354,26 @@ private fun windowRowLabel(
     name: String,
     title: String?,
 ): String = if (title != null && title.isNotBlank() && title != name) "$name ($title)" else name
+
+/** A panel window's scale override; null follows the character's panel scale. */
+@Composable
+private fun WindowScaleRow(
+    scale: Float?,
+    onSave: (Float?) -> Unit,
+) {
+    val current = scale ?: LocalPanelScale.current
+
+    fun step(delta: Float) {
+        val next = ((current + delta) * 10f).roundToInt() / 10f
+        onSave(next.coerceIn(MIN_PANEL_SCALE, MAX_PANEL_SCALE))
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Panel scale")
+        OutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }) { Text("-") }
+        Text(if (scale == null) "Default" else formatPanelScale(current))
+        OutlinedButton(onClick = { step(PANEL_SCALE_STEP) }) { Text("+") }
+        if (scale != null) {
+            OutlinedButton(onClick = { onSave(null) }) { Text("Use default") }
+        }
+    }
+}

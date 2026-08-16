@@ -117,7 +117,13 @@ internal fun WindowViewScaffold(
         content: @Composable () -> Unit,
     ) -> Unit,
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
-    panelContent: @Composable (data: PanelWindowData, style: StyleDefinition, onAction: (WarlockAction) -> Unit) -> Unit,
+    panelContent: @Composable (
+        data: PanelWindowData,
+        style: StyleDefinition,
+        font: FontConfig?,
+        scale: Float?,
+        onAction: (WarlockAction) -> Unit,
+    ) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val window by uiState.windowInfo
@@ -202,7 +208,12 @@ internal fun WindowViewScaffold(
                             }
                         },
                     ) {
-                        panelContent(data, uiState.style.mergeWith(defaultStyle)) { action ->
+                        panelContent(
+                            data,
+                            uiState.style.mergeWith(defaultStyle),
+                            uiState.font,
+                            uiState.scale,
+                        ) { action ->
                             openMenuId = currentOnActionClick(action)
                         }
                         if (menuData != null && menuData.id == openMenuId) {

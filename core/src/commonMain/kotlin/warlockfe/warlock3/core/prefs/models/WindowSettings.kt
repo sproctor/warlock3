@@ -18,6 +18,8 @@ data class WindowSettings(
     val backgroundColor: WarlockColor,
     val font: FontConfig?,
     val monoFont: FontConfig?,
+    // Panel windows only: overrides the character-wide panel scale. Null = use the character's.
+    val scale: Float? = null,
     val nameFilter: Boolean,
     // The user closed this window and has not asked for it back, so the game must not reopen it.
     val hidden: Boolean = false,

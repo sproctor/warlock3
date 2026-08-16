@@ -77,6 +77,40 @@ class StyleExportRoundTripTest {
         assertEquals(false, parsed.underline)
     }
 
+    @Test
+    fun oldBaseStyleExportWithoutPanelFieldsLoadsAsNull() {
+        // An export written before the panel settings existed must import as "keep the target's",
+        // which the merge/replace mappers read off these being null.
+        val full =
+            json.encodeToJsonElement(
+                BaseStyleExport.serializer(),
+                BaseStyleExport(textColor = red, panelFont = FontConfig(family = "Verdana"), panelScale = 1.4f),
+            ) as JsonObject
+        val legacy = JsonObject(full.filterKeys { it !in setOf("panelFont", "panelScale") })
+        val parsed = json.decodeFromJsonElement(BaseStyleExport.serializer(), legacy)
+        assertNull(parsed.panelFont)
+        assertNull(parsed.panelScale)
+    }
+
+    @Test
+    fun windowExportPanelScaleRoundTripsAndDefaultsToNull() {
+        val window =
+            WindowSettingsExport(
+                name = "combat",
+                width = null,
+                height = null,
+                location = null,
+                position = null,
+                textColor = red,
+                backgroundColor = blue,
+                scale = 1.4f,
+            )
+        val full = json.encodeToJsonElement(WindowSettingsExport.serializer(), window) as JsonObject
+        assertEquals(window, json.decodeFromJsonElement(WindowSettingsExport.serializer(), full))
+        val legacy = JsonObject(full.filterKeys { it != "scale" })
+        assertNull(json.decodeFromJsonElement(WindowSettingsExport.serializer(), legacy).scale)
+    }
+
     private fun characterExport(baseStyle: BaseStyleExport?) =
         CharacterExport(
             id = "gs4:tholan",
@@ -105,6 +139,8 @@ class StyleExportRoundTripTest {
                 underline = false,
                 font = FontConfig(family = "Menlo", size = 13f, weight = 700),
                 monoFont = FontConfig(family = "Courier", size = 12f, weight = null),
+                panelFont = FontConfig(family = "Verdana", size = 9f, weight = null),
+                panelScale = 1.4f,
             )
         val export = characterExport(base)
         val back = json.decodeFromString(CharacterExport.serializer(), json.encodeToString(CharacterExport.serializer(), export))
