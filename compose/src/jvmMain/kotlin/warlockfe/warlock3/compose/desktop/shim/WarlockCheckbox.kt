@@ -2,6 +2,8 @@ package warlockfe.warlock3.compose.desktop.shim
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Checkbox
 import org.jetbrains.jewel.ui.component.CheckboxRow
 
@@ -27,6 +29,7 @@ fun WarlockCheckboxRow(
     text: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    textStyle: TextStyle = JewelTheme.defaultTextStyle,
 ) {
     CheckboxRow(
         checked = checked,
@@ -34,5 +37,6 @@ fun WarlockCheckboxRow(
         text = text,
         modifier = modifier,
         enabled = enabled,
+        textStyle = textStyle,
     )
 }

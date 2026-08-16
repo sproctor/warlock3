@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.compose.util.LocalDarkTheme
@@ -60,6 +61,12 @@ fun DesktopWindowsView(
         characterSettingsRepository.observeBaseStyle(currentCharacter.id)
     }.collectAsState(StyleLayer())
     val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
+    // The panel scale a window's override falls back to. It has to come from the character being
+    // edited (which the selector above can change), not from LocalPanelScale - that belongs to the
+    // connected game's composition, which is a different character, or absent entirely.
+    val characterPanelScale by remember(currentCharacter.id) {
+        characterSettingsRepository.observePanelScale(currentCharacter.id)
+    }.collectAsState(null)
     val defaultStyle =
         remember(charBase, globalBase, skinDefault) {
             resolve(listOf(charBase, globalBase, skinDefault)).toStyleDefinition()
@@ -76,6 +83,7 @@ fun DesktopWindowsView(
         WarlockScrollableColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
             DesktopWindowsSettingsSection(
                 characterId = currentCharacter.id,
+                characterPanelScale = characterPanelScale ?: DEFAULT_PANEL_SCALE,
                 windowSettingRepository = windowSettingRepository,
                 defaultStyle = defaultStyle,
                 liveContext = windowLiveContext,

@@ -9,6 +9,7 @@ import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.core.client.DataDistance
@@ -26,12 +27,14 @@ import warlockfe.warlock3.core.util.getIgnoringCase
  * an explicit `left` offset inside its parent skin.
  *
  * Size and offsets come from the active skin where it defines them, falling back to what the server
- * sent. [content] is invoked once per object with the skin child that styles it (if any).
+ * sent. [scale] multiplies those pixel distances (see `toPx`), leaving percentage ones alone.
+ * [content] is invoked once per object with the skin child that styles it (if any).
  */
 @Composable
 fun PanelObjectLayout(
     dataObjects: List<PanelObject>,
     modifier: Modifier = Modifier,
+    scale: Float = DEFAULT_PANEL_SCALE,
     content: @Composable (data: PanelObject, skinObject: SkinObject?) -> Unit,
 ) {
     val skin = LocalSkin.current
@@ -113,9 +116,9 @@ fun PanelObjectLayout(
                 val heightSource =
                     (imageData?.height ?: skinObject?.height)?.let { DataDistance.Pixels(it) } ?: data.height
 
-                val targetWidth = widthSource?.toPx(widthBasis, this)
+                val targetWidth = widthSource?.toPx(widthBasis, this, scale)
                 val targetHeight =
-                    heightSource?.toPx(heightBasis, this)
+                    heightSource?.toPx(heightBasis, this, scale)
                         ?: progressBarHeightPx.takeIf { data is PanelObject.ProgressBar }
 
                 val childConstraints =
@@ -154,8 +157,8 @@ fun PanelObjectLayout(
                     placeable = placeable,
                     dataTop = dataTop,
                     dataLeft = dataLeft,
-                    topMargin = dataTop?.toPx(widthBasis, this) ?: 0,
-                    leftMargin = dataLeft?.toPx(widthBasis, this) ?: 0,
+                    topMargin = dataTop?.toPx(widthBasis, this, scale) ?: 0,
+                    leftMargin = dataLeft?.toPx(widthBasis, this, scale) ?: 0,
                     parentSkinId = parentSkins.getIgnoringCase(data.id),
                 )
             }
@@ -327,21 +330,22 @@ private class ItemInfo(
     }
 }
 
-// The server sizes and positions panels for Wrayth's compact pixel grid, and for the small font it
-// drew labels with. Treating those pixels as dp 1:1 leaves a box only just wide enough for Wrayth's
-// font, so our wider one gets clipped. Scaling them up buys that room back; positions, sizes and
-// margins scale together, so the layout stays proportional. 1.5 proved too generous.
-private const val PANEL_PIXEL_SCALE = 1.2f
-
 /**
  * Resolves a panel distance to pixels: a [DataDistance.Percent] is a fraction of [basis], while a
- * [DataDistance.Pixels] is treated as a (scaled) dp count (and so ignores [basis]).
+ * [DataDistance.Pixels] is treated as a dp count (and so ignores [basis]).
+ *
+ * [scale] applies to pixel distances only. The server sizes and positions panels for Wrayth's compact
+ * pixel grid, and for the small font it drew widgets with, so a box can be just wide enough there and
+ * too tight here. Raising the scale buys that room back with positions, sizes and margins growing
+ * together, which keeps the layout proportional. It deliberately leaves the font alone (that is the
+ * panel font's job) and percentage distances alone (those already track the panel).
  */
-private fun DataDistance.toPx(
+internal fun DataDistance.toPx(
     basis: Int,
     density: Density,
+    scale: Float,
 ): Int =
     when (this) {
         is DataDistance.Percent -> basis * value.value / 100
-        is DataDistance.Pixels -> with(density) { (value * PANEL_PIXEL_SCALE).dp.roundToPx() }
+        is DataDistance.Pixels -> with(density) { (value * scale).dp.roundToPx() }
     }

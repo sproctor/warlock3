@@ -26,7 +26,11 @@ private val roundtimeTextOnDark = Color(0xFFCF6259)
 private val roundtimeOnLight = Color(0xFFE03C31)
 private val castBarOnDark = Color(0xFF3F7CC5)
 private val castTextOnDark = Color(0xFF5B9BD6)
-private val castOnLight = Color(0xFF3030FF)
+
+// Both timers echo the vital they relate to: roundtime the health red, casttime the mana blue, each
+// a little less saturated than the vital itself. This is mana light with that same drop applied - it
+// replaces a fully saturated #3030FF, the one value in the pair that never got a light-theme pass.
+private val castOnLight = Color(0xFF3871B7)
 
 /**
  * The roundtime/casttime colors from the active skin's `roundtime` and `casttime` sections, resolved

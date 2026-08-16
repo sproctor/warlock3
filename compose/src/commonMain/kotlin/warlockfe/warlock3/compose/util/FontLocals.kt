@@ -1,6 +1,8 @@
 package warlockfe.warlock3.compose.util
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.text.TextStyle
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.core.text.FontConfig
 
 /**
@@ -23,3 +25,24 @@ val LocalDefaultFont = staticCompositionLocalOf<FontConfig?> { null }
  * previews and panel windows that render outside a stream.
  */
 val LocalMonoFont = staticCompositionLocalOf<FontConfig?> { null }
+
+/**
+ * The active character's panel font: the text style for widgets inside panel windows. Panels are
+ * chrome rather than prose, so they deliberately don't follow [LocalDefaultFont]. Null means the
+ * built-in compact base (PANEL_BASE_FONT_SIZE); an individual panel window may still override it.
+ */
+val LocalPanelFont = staticCompositionLocalOf<FontConfig?> { null }
+
+/**
+ * The active character's panel scale: the multiplier applied to the pixel-sized widget geometry the
+ * game sends for a panel. It never scales the font, and never widgets the game sized as a percentage
+ * of the panel. An individual panel window may override it.
+ */
+val LocalPanelScale = staticCompositionLocalOf { DEFAULT_PANEL_SCALE }
+
+/**
+ * The resolved text style every widget in the current panel draws with, published once by
+ * `PanelContent`/`DesktopPanelContent` so the widget composables share one knob instead of each
+ * hardcoding a size. Wrayth gives each widget type its own font; we deliberately use one.
+ */
+val LocalPanelTextStyle = staticCompositionLocalOf { TextStyle.Default }

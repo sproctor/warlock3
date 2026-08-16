@@ -27,6 +27,9 @@ data class WindowSettingsExport(
     val backgroundColor: WarlockColor,
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
+    // Panel windows only: overrides the character's panel scale. Null for exports written before it
+    // existed, and for windows that don't override.
+    val scale: Float? = null,
     val nameFilter: Boolean = false,
     // The user closed this window, so the game must not reopen it. Defaults false for exports written
     // before the flag existed.

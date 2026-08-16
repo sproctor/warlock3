@@ -33,6 +33,8 @@ import org.jetbrains.jewel.ui.component.styling.LinkStyle
 import org.jetbrains.jewel.ui.component.styling.LinkUnderlineBehavior
 import org.jetbrains.jewel.ui.theme.defaultButtonStyle
 import org.jetbrains.jewel.ui.theme.linkStyle
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
+import warlockfe.warlock3.compose.components.PANEL_BASE_FONT_SIZE
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
@@ -44,12 +46,15 @@ import warlockfe.warlock3.compose.ui.window.PanelButton
 import warlockfe.warlock3.compose.ui.window.PanelImage
 import warlockfe.warlock3.compose.ui.window.PanelObjectLayout
 import warlockfe.warlock3.compose.ui.window.PanelProgressBar
+import warlockfe.warlock3.compose.util.LocalPanelFont
+import warlockfe.warlock3.compose.util.LocalPanelScale
+import warlockfe.warlock3.compose.util.LocalPanelTextStyle
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
-import warlockfe.warlock3.compose.util.createFontFamily
 import warlockfe.warlock3.compose.util.getColorGroup
 import warlockfe.warlock3.compose.util.toAlignment
 import warlockfe.warlock3.compose.util.toColor
+import warlockfe.warlock3.compose.util.withFont
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.text.FontConfig
@@ -58,11 +63,12 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.getIgnoringCase
 import kotlin.io.encoding.Base64
 
-private val labelStyle
+// The compact base every panel widget draws with before the panel font is merged over it.
+private val panelBaseStyle
     @Composable
     get() =
         JewelTheme.defaultTextStyle.copy(
-            fontSize = 11.sp,
+            fontSize = PANEL_BASE_FONT_SIZE.sp,
             fontWeight = FontWeight.Medium,
         )
 
@@ -75,6 +81,9 @@ fun DesktopPanelContent(
     onAction: (WarlockAction) -> Unit,
     style: StyleDefinition,
     modifier: Modifier = Modifier,
+    // Per-window overrides of the character's panel font and scale; null falls back to the character's.
+    font: FontConfig? = null,
+    scale: Float? = null,
 ) {
     // Value-bearing widgets (dropdowns, spinners) publish their current value here keyed by id; other
     // widgets' commands reference them as %<id>% (e.g. "prep %dDBSpell0%", "quickstrike %uDEQuickstrike%").
@@ -88,10 +97,18 @@ fun DesktopPanelContent(
         onAction(WarlockAction.SendWidgetCommand(substitute(cmd, values), echo))
     }
     val execute: (String) -> Unit = { executeWidget(it, null) }
+    // Wrayth gives each widget type its own font out of the skin; we deliberately draw them all with
+    // one style, so there is a single knob here rather than a size hardcoded at every call site.
+    // Chrome (panelId == null) is not a window the user can configure, so it keeps the defaults: the
+    // status bar's vitals sit in a fixed-height row that a large scale would burst.
+    val effectiveFont = if (panelId != null) font ?: LocalPanelFont.current else null
+    val panelStyle = panelBaseStyle.withFont(effectiveFont)
+    val panelScale = if (panelId != null) scale ?: LocalPanelScale.current else DEFAULT_PANEL_SCALE
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
+        LocalPanelTextStyle provides panelStyle,
     ) {
-        PanelObjectLayout(dataObjects = dataObjects, modifier = modifier) { data, skinObject ->
+        PanelObjectLayout(dataObjects = dataObjects, modifier = modifier, scale = panelScale) { data, skinObject ->
             when (data) {
                 is PanelObject.Skin -> {
                     PanelSkin(data = data)
@@ -192,7 +209,7 @@ fun DesktopPanelContent(
                             modifier = Modifier.align(Alignment.Center),
                             text = data.value ?: "",
                             color = textColor,
-                            style = labelStyle,
+                            style = LocalPanelTextStyle.current,
                             maxLines = 1,
                         )
                     }
@@ -217,7 +234,7 @@ fun DesktopPanelContent(
                             },
                             modifier = Modifier.padding(2.dp),
                             itemLabelBuilder = { it.text },
-                            textStyle = labelStyle,
+                            textStyle = LocalPanelTextStyle.current,
                         )
                     }
                 }
@@ -227,6 +244,7 @@ fun DesktopPanelContent(
                         selected = data.selected,
                         onClick = { data.cmd?.let(execute) },
                         text = data.text ?: "",
+                        textStyle = LocalPanelTextStyle.current,
                     )
                 }
 
@@ -250,6 +268,7 @@ fun DesktopPanelContent(
                         },
                         text = data.text ?: "",
                         modifier = Modifier.padding(2.dp),
+                        textStyle = LocalPanelTextStyle.current,
                     )
                 }
 
@@ -291,13 +310,13 @@ private fun UpDownEditBox(
         Text(
             "−",
             modifier = Modifier.clickable { step(-1) }.padding(horizontal = 6.dp),
-            style = labelStyle,
+            style = LocalPanelTextStyle.current,
         )
-        Text(current.toString(), style = labelStyle)
+        Text(current.toString(), style = LocalPanelTextStyle.current)
         Text(
             "+",
             modifier = Modifier.clickable { step(1) }.padding(horizontal = 6.dp),
-            style = labelStyle,
+            style = LocalPanelTextStyle.current,
         )
     }
 }
@@ -318,12 +337,15 @@ private fun ProgressBarWithColorMenu(
     val barColor = setting?.barColor ?: WarlockColor.Unspecified
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
-    // Merge the saved font override (if any) onto the base label style.
+    // Merge this bar's saved font override (if any) over the panel style, so a bar the user has not
+    // touched still follows the panel font.
     val style =
-        labelStyle.copy(
-            fontFamily = setting?.fontFamily?.let { createFontFamily(it) } ?: labelStyle.fontFamily,
-            fontSize = setting?.fontSize?.sp ?: labelStyle.fontSize,
-            fontWeight = setting?.fontWeight?.let { FontWeight(it) } ?: labelStyle.fontWeight,
+        LocalPanelTextStyle.current.withFont(
+            FontConfig(
+                family = setting?.fontFamily,
+                size = setting?.fontSize,
+                weight = setting?.fontWeight,
+            ).takeUnless { it.isEmpty() },
         )
 
     var editingTarget by remember { mutableStateOf<ProgressBarColorTarget?>(null) }
@@ -408,7 +430,7 @@ private fun Label(
             modifier = Modifier.align(data.justify.toAlignment()),
             text = data.value ?: "",
             color = colorGroup.text,
-            style = labelStyle,
+            style = LocalPanelTextStyle.current,
             maxLines = 1,
         )
     }
@@ -440,7 +462,7 @@ private fun Link(
         modifier = Modifier.padding(horizontal = 6.dp),
         text = text ?: "",
         onClick = onClick,
-        textStyle = labelStyle,
+        textStyle = LocalPanelTextStyle.current,
         style =
             LinkStyle(
                 colors = colors,

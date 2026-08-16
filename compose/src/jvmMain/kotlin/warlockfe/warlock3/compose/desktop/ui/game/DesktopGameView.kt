@@ -67,6 +67,8 @@ import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
+import warlockfe.warlock3.compose.util.LocalPanelFont
+import warlockfe.warlock3.compose.util.LocalPanelScale
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.isSpecified
@@ -117,6 +119,8 @@ fun DesktopGameView(
         val baseStyle by viewModel.baseStyle.collectAsState()
         val defaultStyle = baseStyle.toStyleDefinition()
         val monoFont by viewModel.monoFont.collectAsState()
+        val panelFont by viewModel.panelFont.collectAsState()
+        val panelScale by viewModel.panelScale.collectAsState()
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val progressBarSettings by viewModel.progressBarSettings.collectAsState()
 
@@ -132,6 +136,8 @@ fun DesktopGameView(
             LocalBaseStyle provides defaultStyle,
             LocalDefaultFont provides baseStyle.toFontConfig(),
             LocalMonoFont provides monoFont,
+            LocalPanelFont provides panelFont,
+            LocalPanelScale provides panelScale,
         ) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {

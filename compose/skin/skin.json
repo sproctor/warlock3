@@ -78,13 +78,18 @@
       }
     }
   },
+  "progressBar": {
+    "color": "#FFFFFF",
+    "bar": { "light": "#546E8C", "dark": "#7C97B6" },
+    "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
+  },
   "roundtime": {
     "bar": { "light": "#E03C31", "dark": "#C5483F" },
     "color": { "light": "#E03C31", "dark": "#CF6259" }
   },
   "casttime": {
-    "bar": { "light": "#3030FF", "dark": "#3F7CC5" },
-    "color": { "light": "#3030FF", "dark": "#5B9BD6" }
+    "bar": { "light": "#3871B7", "dark": "#3F7CC5" },
+    "color": { "light": "#3871B7", "dark": "#5B9BD6" }
   },
   "InjuriesPanel": {
     "width": 80,

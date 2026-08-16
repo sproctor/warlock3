@@ -52,6 +52,8 @@ import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalMonoFont
+import warlockfe.warlock3.compose.util.LocalPanelFont
+import warlockfe.warlock3.compose.util.LocalPanelScale
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.MobileGameLayout
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
@@ -110,6 +112,8 @@ fun GameView(
                 val presets by viewModel.presets.collectAsState(emptyMap())
                 val baseStyle by viewModel.baseStyle.collectAsState()
                 val monoFont by viewModel.monoFont.collectAsState()
+                val panelFont by viewModel.panelFont.collectAsState()
+                val panelScale by viewModel.panelScale.collectAsState()
                 CompositionLocalProvider(
                     LocalProgressBarSettings provides
                         ProgressBarSettingsState(
@@ -122,6 +126,8 @@ fun GameView(
                     LocalBaseStyle provides baseStyle.toStyleDefinition(),
                     LocalDefaultFont provides baseStyle.toFontConfig(),
                     LocalMonoFont provides monoFont,
+                    LocalPanelFont provides panelFont,
+                    LocalPanelScale provides panelScale,
                 ) {
                     when (layout) {
                         MobileGameLayout.Phone -> {

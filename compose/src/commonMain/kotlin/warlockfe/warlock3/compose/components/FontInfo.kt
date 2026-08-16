@@ -71,6 +71,29 @@ internal const val MIN_FONT_SIZE = 6f
 internal const val MAX_FONT_SIZE = 72f
 internal const val FONT_SIZE_STEP = 1f
 
+// Panel windows render widget chrome (labels on buttons, checkboxes, dropdowns), not prose, so they
+// don't follow the character's default font: they get their own smaller base, which the panel font
+// setting overrides.
+internal const val PANEL_BASE_FONT_SIZE = 9f
+
+// The panel scale multiplies only the pixel geometry the game sends for a panel's widgets. 1.0 lays
+// them out at the pixel sizes Wrayth was built for; raising it buys room without touching the font.
+internal const val DEFAULT_PANEL_SCALE = 1f
+internal const val MIN_PANEL_SCALE = 0.5f
+internal const val MAX_PANEL_SCALE = 3f
+internal const val PANEL_SCALE_STEP = 0.1f
+
+// Panel scale is easy to mistake for a zoom, so say what it does and does not touch.
+internal const val PANEL_SCALE_HELP =
+    "Resizes panel widgets the game sizes in pixels. Widgets sized as a percentage of the panel, " +
+        "and the panel font, are unaffected."
+
+/** A compact scale readout: "1.2x". */
+internal fun formatPanelScale(scale: Float): String {
+    val rounded = (scale * 10f).roundToInt() / 10f
+    return "${rounded}x"
+}
+
 internal fun filterFontFamilies(
     families: List<FontFamilyInfo>,
     query: String,

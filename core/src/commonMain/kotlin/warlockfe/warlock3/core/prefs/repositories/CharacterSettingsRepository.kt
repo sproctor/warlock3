@@ -100,6 +100,15 @@ class CharacterSettingsRepository(
     /** The font used for monospace-flagged text (ASCII maps, tables, etc.). Null until the user picks one. */
     fun observeMonoFont(characterId: String): Flow<FontConfig?> = store.observe(characterId).map { it.settings.monoFont }
 
+    /** The font used for widgets in panel windows. Null until the user picks one. */
+    fun observePanelFont(characterId: String): Flow<FontConfig?> = store.observe(characterId).map { it.settings.panelFont }
+
+    /**
+     * The multiplier applied to the pixel-sized widget geometry in panel windows. Null until the user
+     * picks one; it never scales the font, nor widgets the game sized as a percentage of the panel.
+     */
+    fun observePanelScale(characterId: String): Flow<Float?> = store.observe(characterId).map { it.settings.panelScale }
+
     suspend fun saveDefaultFont(
         characterId: String,
         font: FontConfig?,
@@ -112,6 +121,20 @@ class CharacterSettingsRepository(
         font: FontConfig?,
     ) {
         store.mutate(characterId) { it.copy(settings = it.settings.copy(monoFont = font?.takeUnless { f -> f.isEmpty() })) }
+    }
+
+    suspend fun savePanelFont(
+        characterId: String,
+        font: FontConfig?,
+    ) {
+        store.mutate(characterId) { it.copy(settings = it.settings.copy(panelFont = font?.takeUnless { f -> f.isEmpty() })) }
+    }
+
+    suspend fun savePanelScale(
+        characterId: String,
+        scale: Float?,
+    ) {
+        store.mutate(characterId) { it.copy(settings = it.settings.copy(panelScale = scale)) }
     }
 
     /**

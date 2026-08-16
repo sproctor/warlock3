@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,14 +25,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.GENERIC_SAMPLE
+import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
+import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
+import warlockfe.warlock3.compose.components.PANEL_SCALE_HELP
+import warlockfe.warlock3.compose.components.PANEL_SCALE_STEP
 import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.components.StyleSample
 import warlockfe.warlock3.compose.components.TextStyleEditor
 import warlockfe.warlock3.compose.components.backgroundLabel
 import warlockfe.warlock3.compose.components.fontLabel
+import warlockfe.warlock3.compose.components.formatPanelScale
 import warlockfe.warlock3.compose.components.sampleFor
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.util.LocalDarkTheme
@@ -54,6 +61,7 @@ import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.styleEditorModel
 import warlockfe.warlock3.core.text.toLayer
+import kotlin.math.roundToInt
 
 /** An entry in the presets master list: the base "default text", or one of the named style presets. */
 private sealed interface PresetItem {
@@ -109,6 +117,8 @@ fun PresetsView(
     val charBase by remember(scopeId) { characterSettingsRepository.observeBaseStyle(scopeId) }.collectAsState(StyleLayer())
     val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
     val monoFont by remember(scopeId) { characterSettingsRepository.observeMonoFont(scopeId) }.collectAsState(null)
+    val panelFont by remember(scopeId) { characterSettingsRepository.observePanelFont(scopeId) }.collectAsState(null)
+    val panelScale by remember(scopeId) { characterSettingsRepository.observePanelScale(scopeId) }.collectAsState(null)
 
     // The skin's named-color palette, and the user layers with their skin-referenced colors resolved
     // against it (the ref is kept, so the editor can still show a color as skin-tracked).
@@ -197,9 +207,23 @@ fun PresetsView(
             // Base text and the monospace font stand apart from the named presets, so they sit above the
             // "Presets" heading rather than in the preset list.
             PresetListRow(PresetItem.Base, chipStyle(PresetItem.Base), windowBackground) { selectedItem = PresetItem.Base }
-            MonoFontRow(
-                monoFont = monoFont,
+            FontRow(
+                label = "Monospace font",
+                font = monoFont,
+                monospaceOnly = true,
                 onSave = { scope.launch { characterSettingsRepository.saveMonoFont(scopeId, it) } },
+            )
+            // Panel windows are widget chrome rather than prose, so they get their own font and their
+            // own geometry scale instead of following the base text style above.
+            FontRow(
+                label = "Panel font",
+                font = panelFont,
+                monospaceOnly = false,
+                onSave = { scope.launch { characterSettingsRepository.savePanelFont(scopeId, it) } },
+            )
+            PanelScaleRow(
+                scale = panelScale,
+                onSave = { scope.launch { characterSettingsRepository.savePanelScale(scopeId, it) } },
             )
             Spacer(Modifier.height(16.dp))
             Text("Presets", style = MaterialTheme.typography.titleMedium)
@@ -261,17 +285,19 @@ private fun PresetListRow(
     }
 }
 
-/** The character's monospace font, which stands apart from the style layers. */
+/** One of the character's standalone fonts (monospace, panel), which stand apart from the style layers. */
 @Composable
-private fun MonoFontRow(
-    monoFont: FontConfig?,
+private fun FontRow(
+    label: String,
+    font: FontConfig?,
+    monospaceOnly: Boolean,
     onSave: (FontConfig?) -> Unit,
 ) {
     var editing by remember { mutableStateOf(false) }
     if (editing) {
         FontPickerDialog(
-            current = monoFont,
-            monospaceOnly = true,
+            current = font,
+            monospaceOnly = monospaceOnly,
             onCloseRequest = { editing = false },
             onSaveClick = {
                 onSave(it.toFontConfig())
@@ -284,7 +310,42 @@ private fun MonoFontRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Monospace font", modifier = Modifier.width(120.dp))
-        OutlinedButton(onClick = { editing = true }) { Text(monoFont.fontLabel()) }
+        Text(label, modifier = Modifier.width(120.dp))
+        OutlinedButton(onClick = { editing = true }) { Text(font.fontLabel()) }
+    }
+}
+
+/**
+ * The character's panel scale. Panels are the only windows the game lays out in pixels, and it sizes
+ * those for Wrayth's grid, so this is the knob for buying room without changing the text size.
+ */
+@Composable
+private fun PanelScaleRow(
+    scale: Float?,
+    onSave: (Float?) -> Unit,
+) {
+    val current = scale ?: DEFAULT_PANEL_SCALE
+
+    fun step(delta: Float) {
+        val next = ((current + delta) * 10f).roundToInt() / 10f
+        onSave(next.coerceIn(MIN_PANEL_SCALE, MAX_PANEL_SCALE))
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Panel scale", modifier = Modifier.width(120.dp))
+            OutlinedButton(onClick = { step(-PANEL_SCALE_STEP) }) { Text("-") }
+            Text(formatPanelScale(current), modifier = Modifier.width(48.dp))
+            OutlinedButton(onClick = { step(PANEL_SCALE_STEP) }) { Text("+") }
+            OutlinedButton(onClick = { onSave(null) }) { Text("Reset") }
+        }
+        Text(
+            PANEL_SCALE_HELP,
+            modifier = Modifier.padding(start = 128.dp, top = 4.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

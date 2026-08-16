@@ -45,6 +45,28 @@ class SkinJsonTest {
     }
 
     @Test
+    fun progress_bar_default_entry_parses_all_three_colors() {
+        // The `progressBar` section colors every bar the skin does not name (anything beyond the six
+        // vitals). It carries a per-mode fill and track plus a single label color for both modes.
+        val skin =
+            json.decodeFromString<SkinObject>(
+                """
+                {
+                    "color": "#FFFFFF",
+                    "bar": { "light": "#546E8C", "dark": "#7C97B6" },
+                    "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
+                }
+                """.trimIndent(),
+            )
+
+        assertEquals("#546E8C", skin.bar.forMode(isDark = false))
+        assertEquals("#7C97B6", skin.bar.forMode(isDark = true))
+        assertEquals("#C6C6BE", skin.background.forMode(isDark = false))
+        assertEquals("#2C2F34", skin.background.forMode(isDark = true))
+        assertEquals("#FFFFFF", skin.color.forMode(isDark = true))
+    }
+
+    @Test
     fun skin_color_string_applies_to_both_modes() {
         val skin = json.decodeFromString<SkinObject>("""{ "background": "#222222" }""")
 

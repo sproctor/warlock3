@@ -19,6 +19,8 @@ data class WindowUiState(
     // Per-window font overrides; null falls back to the character default / monospace font.
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
+    // Panel windows only: overrides the character's panel scale; null falls back to it.
+    val scale: Float? = null,
     val data: WindowData?,
     val nameFilter: Boolean = false,
 )

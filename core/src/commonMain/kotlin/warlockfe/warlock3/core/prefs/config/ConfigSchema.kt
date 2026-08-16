@@ -162,6 +162,9 @@ data class WindowStyleConfig(
     val font: FontConfig? = null,
     @TomlInline
     val monoFont: FontConfig? = null,
+    // Panel windows only: overrides the character-wide panel scale for this window. Multiplies the
+    // pixel-sized widget geometry the game sends, never the font. Null = use the character's scale.
+    val scale: Float? = null,
     val nameFilter: Boolean = false,
     // Set when the user closes the window, and cleared when they ask for it back. It keeps a window
     // the user does not want from being reopened by the game, which announces its panels with an
@@ -193,6 +196,13 @@ data class CharacterSettingsConfig(
     val defaultFont: FontConfig? = null,
     @TomlInline
     val monoFont: FontConfig? = null,
+    // Panel windows (fixed-layout widgets) don't render prose, so they don't follow [defaultFont];
+    // they have their own compact font, and [panelScale] multiplies the pixel-sized widget geometry
+    // the game sends for them (never the font, and never percentage-sized widgets). Any panel window
+    // may override either per-window. Null = the built-in default.
+    @TomlInline
+    val panelFont: FontConfig? = null,
+    val panelScale: Float? = null,
     @Serializable(WarlockColorAsHexSerializer::class)
     val defaultTextColor: WarlockColor = WarlockColor.Unspecified,
     @Serializable(WarlockColorAsHexSerializer::class)
