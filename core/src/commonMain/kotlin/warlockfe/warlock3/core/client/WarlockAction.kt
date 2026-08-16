@@ -32,8 +32,8 @@ sealed class WarlockAction {
 
     // A closeButton dismissing the panel it sits in, named by [id] (the panel's id, which is also
     // the window's name). It carries its own [command] and [echo] rather than raising a separate
-    // SendWidgetCommand, because the real client sends the command and closes after: two actions
-    // would be two coroutines, and the panel's `_DBCLOSE` could reach the socket first.
+    // SendWidgetCommand, because the real client sends the command and closes after, and the two
+    // are not independent: a resident panel runs the command but is not closed.
     data class ClosePanel(
         val id: String,
         val command: String?,

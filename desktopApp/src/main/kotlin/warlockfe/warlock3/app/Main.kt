@@ -84,6 +84,10 @@ import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
+import warlockfe.warlock3.compose.desktop.ui.game.DesktopDockHost
+import warlockfe.warlock3.compose.desktop.ui.game.DetachedGameWindows
+import warlockfe.warlock3.compose.desktop.ui.game.LocalDesktopDockHost
+import warlockfe.warlock3.compose.desktop.ui.game.RegisterGameDockWindow
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.model.GameScreen
@@ -267,6 +271,11 @@ private class WarlockCommand : CliktCommand() {
                                     position = position,
                                 )
                             }
+                        // Where this window's game screen publishes its dock state. Detached game
+                        // windows are real OS windows, and the application scope is the only place
+                        // Compose opens one from, so they are hosted out here rather than by the
+                        // game screen that owns them.
+                        val dockHost = remember { DesktopDockHost() }
                         val subtitle by gameState.getTitle().collectAsState("loading")
                         val title = "Warlock - $subtitle"
                         val connectedScreen = gameState.screen as? GameScreen.ConnectedGameState
@@ -317,7 +326,9 @@ private class WarlockCommand : CliktCommand() {
                                 LocalWindowComponent provides window,
                                 LocalSkin provides skin,
                                 LocalTitleBarStyle provides titleBarStyle,
+                                LocalDesktopDockHost provides dockHost,
                             ) {
+                                RegisterGameDockWindow(dockHost)
                                 WarlockApp(
                                     title = title,
                                     warlockVersion = version ?: "Development",
@@ -384,6 +395,13 @@ private class WarlockCommand : CliktCommand() {
                                 }
                             }
                         }
+                        // The windows torn off this window's dock, alongside it rather than inside
+                        // it. Draws nothing until the user detaches something.
+                        DetachedGameWindows(
+                            dockHost = dockHost,
+                            viewModel = connectedScreen?.viewModel,
+                            skin = skin,
+                        )
                     }
                 }
             }

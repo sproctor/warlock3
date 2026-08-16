@@ -1269,7 +1269,6 @@ class GameViewModel(
      */
     fun openWindow(name: String) {
         if (!placeWindowUi(name)) return
-        notifyPanelVisibility(name, open = true)
         persistWindowOpen(name)
     }
 
@@ -1279,20 +1278,6 @@ class GameViewModel(
             client.characterId.value?.let { characterId ->
                 windowSettingsRepository.openWindow(characterId = characterId, name = name)
             }
-        }
-    }
-
-    /**
-     * Tells the server when the user shows or hides a dialog panel, as Wrayth does, so it knows
-     * whether sending that panel's updates is worthwhile.
-     */
-    private fun notifyPanelVisibility(
-        name: String,
-        open: Boolean,
-    ) {
-        if (windows.value.firstOrNull { it.name == name }?.windowType != WindowType.PANEL) return
-        viewModelScope.launch {
-            client.sendCommandDirect(if (open) "_DBOPEN $name" else "_DBCLOSE $name")
         }
     }
 
@@ -1386,13 +1371,12 @@ class GameViewModel(
      */
     fun closeWindow(name: String) {
         removeWindow(name = name, hide = true)
-        notifyPanelVisibility(name, open = false)
     }
 
     /**
-     * A panel's own `closeButton`. The button's command goes first and the dismissal follows, both
-     * in one coroutine: raised as two actions they would be two coroutines racing for the socket,
-     * and the panel's `_DBCLOSE` could be written ahead of the command that was meant to precede it.
+     * A panel's own `closeButton`. The button's command and the dismissal are one operation rather
+     * than two actions, because whether the panel closes depends on what the command found: the
+     * command always runs, and the close only follows for a non-resident panel.
      *
      * A resident panel is a permanent fixture of the character's layout, and the real client refuses
      * to close one rather than hiding it (it answers `_error Cannot close a resident dialog (<id>)`
