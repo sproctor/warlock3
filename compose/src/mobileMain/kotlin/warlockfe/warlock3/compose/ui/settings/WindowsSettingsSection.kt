@@ -47,7 +47,6 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.ui.window.toStyleLayer
 import warlockfe.warlock3.compose.util.LocalDarkTheme
-import warlockfe.warlock3.compose.util.LocalPanelScale
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.toColorPalette
 import warlockfe.warlock3.core.prefs.models.WindowSettings
@@ -76,6 +75,10 @@ import kotlin.math.roundToInt
 fun WindowsSettingsSection(
     characterId: String,
     windowSettingRepository: WindowSettingsRepository,
+    // The edited character's panel scale, which a window's override falls back to. Passed in
+    // rather than read from LocalPanelScale: that local carries the *connected* character's
+    // scale, and these settings can be edited for a different character, or with no game up.
+    characterPanelScale: Float,
     defaultStyle: StyleDefinition,
     liveContext: WindowSettingsLiveContext?,
     initialWindowTarget: String?,
@@ -142,6 +145,7 @@ fun WindowsSettingsSection(
             // Only panels lay widgets out in game-supplied pixels. Offline we have no window info, so
             // keep the row for anyone who already set a scale rather than stranding their override.
             scaleAvailable = titlesByName[name]?.windowType == WindowType.PANEL || settings?.scale != null,
+            characterPanelScale = characterPanelScale,
             expanded = name in expanded,
             onToggleExpand = { if (name in expanded) expanded.remove(name) else expanded.add(name) },
             onSetVisible = { show ->
@@ -275,6 +279,7 @@ private fun WindowRow(
     canToggleShown: Boolean,
     nameFilterAvailable: Boolean,
     scaleAvailable: Boolean,
+    characterPanelScale: Float,
     expanded: Boolean,
     onToggleExpand: () -> Unit,
     onSetVisible: (Boolean) -> Unit,
@@ -333,7 +338,11 @@ private fun WindowRow(
                     Text("Monospace font: ${settings?.monoFont.fontLabel()}")
                 }
                 if (scaleAvailable) {
-                    WindowScaleRow(scale = settings?.scale, onSave = onSaveScale)
+                    WindowScaleRow(
+                        scale = settings?.scale,
+                        characterScale = characterPanelScale,
+                        onSave = onSaveScale,
+                    )
                 }
                 if (nameFilterAvailable) {
                     CheckboxRow(
@@ -359,9 +368,10 @@ private fun windowRowLabel(
 @Composable
 private fun WindowScaleRow(
     scale: Float?,
+    characterScale: Float,
     onSave: (Float?) -> Unit,
 ) {
-    val current = scale ?: LocalPanelScale.current
+    val current = scale ?: characterScale
 
     fun step(delta: Float) {
         val next = ((current + delta) * 10f).roundToInt() / 10f

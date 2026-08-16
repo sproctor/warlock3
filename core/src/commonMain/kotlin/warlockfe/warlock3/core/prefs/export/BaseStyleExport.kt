@@ -18,8 +18,11 @@ data class BaseStyleExport(
     val underline: Boolean? = false,
     val font: FontConfig? = null,
     val monoFont: FontConfig? = null,
-    // The panel-window font and pixel-geometry scale. Null for exports written before they existed,
-    // which import reads as "keep the target's".
+    // The panel-window font and pixel-geometry scale. Null here means the same thing it means for the
+    // two fonts above, and is handled the same way: a MERGE import keeps whatever the target has, while
+    // a REPLACE import takes a present base wholesale and so clears them. Null cannot distinguish "this
+    // export predates the field" from "this character set no panel font" - only the whole block being
+    // absent carries "keep the target's", which is the distinction this class exists to draw.
     val panelFont: FontConfig? = null,
     val panelScale: Float? = null,
     // Skin-palette slot a color references (so it tracks the skin); null = the color above is a literal.
