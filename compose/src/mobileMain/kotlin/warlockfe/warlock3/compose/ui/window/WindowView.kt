@@ -3,9 +3,11 @@ package warlockfe.warlock3.compose.ui.window
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -46,6 +48,9 @@ import warlockfe.warlock3.core.client.WarlockMenuData
 import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowType
+
+// The breathing room a game panel's widgets get inside their window.
+private val PANEL_PADDING = 8.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -171,21 +176,35 @@ fun WindowView(
             ActionContextMenu(offset = offset, menuData = menu, onDismiss = onDismiss)
         },
         panelContent = { data, style, font, scale, onAction ->
-            ScrollableColumn(
-                Modifier
-                    .fillMaxSize()
-                    .background(style.backgroundColor.toColor()),
-            ) {
-                val dataObjects by data.panelData.objects.collectAsState()
-                PanelContent(
-                    dataObjects = dataObjects,
-                    panelId = data.panelData.id,
-                    modifier = Modifier.padding(8.dp),
-                    onAction = onAction,
-                    style = style,
-                    font = font,
-                    scale = scale,
-                )
+            // The panel scrolls, so its content has no height of its own - but the game positions a
+            // widget the panel `align`s to the bottom or middle against the height it thinks the
+            // panel has, which is the height on screen. Hand that down as a minimum so those widgets
+            // land where the game meant them to, while taller content still grows and scrolls.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                // A parent that imposes no height of its own leaves `maxHeight` infinite, which is no
+                // use as a minimum; the panel measures bottom anchors against its own content there.
+                val visibleHeight =
+                    if (constraints.hasBoundedHeight) {
+                        (maxHeight - PANEL_PADDING * 2).coerceAtLeast(0.dp)
+                    } else {
+                        0.dp
+                    }
+                ScrollableColumn(
+                    Modifier
+                        .fillMaxSize()
+                        .background(style.backgroundColor.toColor()),
+                ) {
+                    val dataObjects by data.panelData.objects.collectAsState()
+                    PanelContent(
+                        dataObjects = dataObjects,
+                        panelId = data.panelData.id,
+                        modifier = Modifier.padding(PANEL_PADDING).heightIn(min = visibleHeight),
+                        onAction = onAction,
+                        style = style,
+                        font = font,
+                        scale = scale,
+                    )
+                }
             }
         },
     )
