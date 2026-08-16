@@ -11,6 +11,7 @@ import com.seanproctor.docking.persistence.restoreLayout
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
+import com.seanproctor.docking.ui.platformDockCapabilities
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
@@ -62,7 +63,15 @@ class GameDockingTest {
                 state.registry.register(
                     DockableSpec(
                         id = id,
-                        options = DockableOptions(closable = name != MAIN_WINDOW_NAME, anchor = anchor),
+                        options =
+                            DockableOptions(
+                                closable = name != MAIN_WINDOW_NAME,
+                                // Mirrors production: detaching is gated on this, so a registrar
+                                // that left it at the default would let main float and would test
+                                // a rule the app does not have.
+                                floatable = name != MAIN_WINDOW_NAME && platformDockCapabilities.floatingWindows,
+                                anchor = anchor,
+                            ),
                         title = { name },
                         content = {},
                     ),
@@ -470,5 +479,146 @@ class GameDockingTest {
         applyRestoredLayout(state, null, announced, register(state))
         assertEquals(WindowLocation.LEFT.anchor, currentAnchorOf(state.layout.mainWindow.root!!, "thoughts"))
         assertEquals(WindowLocation.CENTER.anchor, anchorOfRoom(state))
+    }
+
+    // ----- Detached windows -----
+
+    // Every detaching test below is desktop-only behaviour. On a platform with no OS windows to
+    // detach into the capability is off, the menu item is never offered, and these would be
+    // asserting that nothing happens - which the merge test at the bottom covers instead.
+    private fun assumeFloatingWindows(): Boolean = platformDockCapabilities.floatingWindows
+
+    @Test
+    fun theMainWindowCannotBeDetached() {
+        val state = newState()
+        reconcile(state, announced, register(state))
+        assertFalse(
+            state.canFloat(DockableId(MAIN_WINDOW_NAME)),
+            "main is the fixed point the areas are measured against, so it must stay put",
+        )
+    }
+
+    @Test
+    fun detachingMovesAWindowOutOfTheMainWindow() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        reconcile(state, announced, register(state))
+        detachWindow(state, "room")
+
+        assertTrue(isDetached(state, "room"), "room should be in a window of its own")
+        assertTrue(state.isOpen(DockableId("room")), "detaching must not close the window")
+        assertEquals(1, state.layout.floatingWindows.size)
+        assertFalse(
+            state.layout.mainWindow.root!!
+                .containsDockable(DockableId("room")),
+            "a detached window is no longer in the main window's tree",
+        )
+        assertFalse(isDetached(state, "thoughts"), "the windows left behind stay docked")
+    }
+
+    // The area a detached window came from is held open by a placeholder, exactly as when the user
+    // closes the last window in it - so the column does not collapse and the window has somewhere
+    // to land when it comes back.
+    @Test
+    fun detachingTheLastWindowOfAnAreaLeavesItsSlotOpen() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        reconcile(state, announced, register(state))
+        detachWindow(state, "thoughts")
+        assertTrue(
+            state.layout.mainWindow.root!!
+                .holdsAnchor(WindowLocation.LEFT.anchor),
+            "the left column should still be there for the window to come back to",
+        )
+    }
+
+    @Test
+    fun reattachingPutsTheWindowBackInItsArea() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        reconcile(state, announced, register(state))
+        detachWindow(state, "thoughts")
+        redockIntoMainWindow(state, announced.getValue("thoughts"), announced)
+
+        assertFalse(isDetached(state, "thoughts"))
+        assertTrue(state.layout.floatingWindows.isEmpty(), "the emptied window should be gone")
+        assertEquals(
+            WindowLocation.LEFT.anchor,
+            currentAnchorOf(state.layout.mainWindow.root!!, "thoughts"),
+            "thoughts should come back to the left column it was announced for",
+        )
+    }
+
+    // reconcile docks anything the view model has open that the layout does not, and a detached
+    // window is docked - just not in the main window. Getting this wrong would drag every detached
+    // window home on the next open, close, or drop.
+    @Test
+    fun reconcileLeavesADetachedWindowWhereItIs() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        val registerWindow = register(state)
+        reconcile(state, announced, registerWindow)
+        detachWindow(state, "room")
+        val detached = state.layout
+
+        reconcile(state, announced, registerWindow)
+        assertEquals(detached, state.layout, "a reconcile pass should not reel a detached window back in")
+    }
+
+    // A window the game closes while it is detached is undocked like any other, and takes its empty
+    // window with it rather than leaving an empty frame on screen.
+    @Test
+    fun closingADetachedWindowInTheGameTakesTheWindowWithIt() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        val registerWindow = register(state)
+        reconcile(state, announced, registerWindow)
+        detachWindow(state, "room")
+
+        reconcile(
+            state,
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.CENTER,
+                "thoughts" to WindowLocation.LEFT,
+            ),
+            registerWindow,
+        )
+        assertFalse(state.isOpen(DockableId("room")))
+        assertTrue(state.layout.floatingWindows.isEmpty())
+    }
+
+    @Test
+    fun aDetachedArrangementSurvivesASaveAndRestore() {
+        if (!assumeFloatingWindows()) return
+        val saving = newState()
+        reconcile(saving, announced, register(saving))
+        detachWindow(saving, "room")
+        val saved = DockingPersistence.encode(saving.captureLayout())
+
+        val state = newState()
+        applyRestoredLayout(state, saved, announced, register(state))
+        assertTrue(isDetached(state, "room"), "room should come back detached")
+        assertTrue(state.isOpen(DockableId("thoughts")), "the docked windows come back too")
+    }
+
+    // The same saved layout opened where there are no OS windows to put a detached window in: its
+    // contents are grafted into the main window rather than dropped, so a character who detaches on
+    // the desktop does not lose the window on their phone.
+    @Test
+    fun aDetachedArrangementMergesWhereThereAreNoFloatingWindows() {
+        if (!assumeFloatingWindows()) return
+        val saving = newState()
+        reconcile(saving, announced, register(saving))
+        detachWindow(saving, "room")
+        val persisted = DockingPersistence.decode(DockingPersistence.encode(saving.captureLayout()))
+
+        val state = newState()
+        state.restoreLayout(persisted, mergeFloatingWindows = true)
+        assertTrue(state.layout.floatingWindows.isEmpty())
+        assertTrue(
+            state.layout.mainWindow.root!!
+                .containsDockable(DockableId("room")),
+            "room should be folded back into the main window rather than lost",
+        )
     }
 }

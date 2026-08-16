@@ -26,6 +26,10 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.close
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.OpenGameWindow
+import warlockfe.warlock3.compose.ui.game.detachWindow
+import warlockfe.warlock3.compose.ui.game.isDetached
+import warlockfe.warlock3.compose.ui.game.openGameWindows
+import warlockfe.warlock3.compose.ui.game.redockIntoMainWindow
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.core.window.WindowType
 
@@ -116,6 +120,32 @@ internal fun DesktopDockWindowActions(
                 },
             ) {
                 Text(if (state.isMaximized(id)) "Restore" else "Maximize")
+            }
+            // The menu route to what dragging a window clear of the dock already does. Offered for
+            // any window the dock will float, which is every one but main.
+            if (state.canFloat(id)) {
+                val detached = isDetached(state, window.name)
+                selectableItem(
+                    selected = false,
+                    onClick = {
+                        dismiss()
+                        if (detached) {
+                            redockIntoMainWindow(
+                                state = state,
+                                window = window,
+                                openWindows =
+                                    openGameWindows(
+                                        viewModel.mainWindowUiState.value,
+                                        viewModel.windowUiStates.value,
+                                    ),
+                            )
+                        } else {
+                            detachWindow(state, window.name)
+                        }
+                    },
+                ) {
+                    Text(if (detached) "Reattach window" else "Detach window")
+                }
             }
         }
         if (state.registry[id]?.options?.closable == true) {

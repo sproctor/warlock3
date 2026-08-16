@@ -21,6 +21,7 @@ import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.SplitOrientation
+import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.persistence.DockingPersistence
 import com.seanproctor.docking.persistence.captureLayout
 import com.seanproctor.docking.persistence.restoreLayout
@@ -30,6 +31,7 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingEvent
 import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
+import com.seanproctor.docking.ui.platformDockCapabilities
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
@@ -242,9 +244,15 @@ fun rememberGameDockState(
                 options =
                     DockableOptions(
                         closable = name != MAIN_WINDOW_NAME,
-                        // Floating OS windows need application-scope wiring the game screen does
-                        // not have yet; keep every window inside the main window for now.
-                        floatable = false,
+                        // Any window but main can be torn off into its own OS window, on a platform
+                        // that has OS windows to tear it into - mobile does not, and the library
+                        // gates its own drag-out gesture on the same capability flag.
+                        //
+                        // Main is excluded because it is the fixed point the areas are measured
+                        // against: currentAnchorOf reads a window's area from which side of main it
+                        // sits on, so floating main away would leave every other window reading as
+                        // the centre and scramble the arrangement on the next reconcile.
+                        floatable = name != MAIN_WINDOW_NAME && platformDockCapabilities.floatingWindows,
                         anchor = anchor,
                     ),
                 title = {
@@ -336,6 +344,34 @@ fun rememberGameDockState(
                     reconcile(state, liveOpenWindows(), ::registerWindow)
                 }
             }
+            // A detached window's own close button is the OS one, which drops the window's contents
+            // from the layout without going through the close veto the dock header's button does.
+            // The view model would still have them open, and the next reconcile pass would dock them
+            // straight back into the main window - closing a detached window would look like it
+            // jumped back into the dock. Route them through the view model instead, so it hides them
+            // exactly as closing a docked window does.
+            //
+            // A floating window also disappears when its last window is dragged back into the dock,
+            // which is indistinguishable from here. The still-docked check tells the two apart: a
+            // dragged-out window is somewhere else in the layout by the time it settles, a closed one
+            // is nowhere at all.
+            launch {
+                var detached = emptyMap<WindowId, List<DockableId>>()
+                snapshotFlow { state.layout }.collect { layout ->
+                    val current =
+                        layout.floatingWindows.associate { window ->
+                            window.id to
+                                listOfNotNull(window.root, window.maximized?.savedRoot)
+                                    .flatMap { it.dockableIds() }
+                        }
+                    (detached.keys - current.keys).forEach { closed ->
+                        detached[closed]
+                            ?.filterNot { state.isOpen(it) }
+                            ?.forEach { viewModel.closeWindow(it.value) }
+                    }
+                    detached = current
+                }
+            }
         }
     }
 
@@ -360,8 +396,16 @@ internal fun applyRestoredLayout(
 ) {
     if (saved != null) {
         runCatching { DockingPersistence.decode(saved) }
-            .onSuccess { state.restoreLayout(it, mergeFloatingWindows = true) }
-            .onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
+            .onSuccess {
+                state.restoreLayout(
+                    it,
+                    // Detached windows come back detached, at the size and screen position they
+                    // were left at - the layout JSON carries both. On a platform with no OS windows
+                    // to put them back in, their contents are grafted into the main window instead,
+                    // which is also how a layout detached on the desktop opens on a phone.
+                    mergeFloatingWindows = !platformDockCapabilities.floatingWindows,
+                )
+            }.onFailure { Logger.w(it) { "Discarding unreadable dock layout" } }
     }
     // A restore replaces the layout the builder made, so a character whose JSON was saved before
     // the areas were declared comes back without them - and would have nowhere to drop a window.
@@ -402,6 +446,14 @@ internal fun reconcile(
         val anchor =
             when {
                 name == MAIN_WINDOW_NAME -> null
+
+                // A detached window is alone in a window of its own, where the area it came from
+                // means nothing. Carrying the anchor there would have the library hold the area's
+                // slot open inside the detached window when the window leaves it - a placeholder
+                // for a column that is not there, keeping an empty OS window on screen. It takes
+                // its area back from the tree the moment it is docked in the main window again.
+                isDetached(state, name) -> null
+
                 else -> tree?.let { currentAnchorOf(it, name) } ?: window.location.anchor
             }
         registerWindow(name, anchor)
@@ -417,6 +469,72 @@ internal fun reconcile(
             state.dock(id, placement.target, placement.region, placement.proportion)
         }
     }
+    closeEmptyDetachedWindows(state)
+}
+
+/**
+ * Closes detached windows with no game window left in them.
+ *
+ * A window still carries its area anchor at the moment it is torn off, so the first window to leave
+ * a detached window can leave an area placeholder behind in it, and a window holding nothing but a
+ * placeholder is an empty frame on screen that the user cannot get anything back into. [reconcile]
+ * stops the anchor being carried once a window is detached, which heads this off for everything
+ * afterwards; this covers the gap before that pass has run - reattaching a window the instant it was
+ * detached, in particular.
+ */
+internal fun closeEmptyDetachedWindows(state: DockState) {
+    state.layout.floatingWindows
+        .filter { window -> window.root?.dockableIds().isNullOrEmpty() }
+        .forEach { state.closeWindow(it.id) }
+}
+
+/**
+ * Tears [name] off into its own OS window. A no-op where the platform has no floating windows, or
+ * for a window that is not floatable (main).
+ *
+ * The library sizes and places the new window itself when it is not told where to put one, which is
+ * what this wants: a window detached from a menu has no drag to take a position from, unlike one
+ * dragged out of the dock.
+ */
+internal fun detachWindow(
+    state: DockState,
+    name: String,
+) {
+    state.moveToNewWindow(DockableId(name))
+}
+
+/**
+ * Puts a detached window back into the main window, in the spot a window of its kind would open in.
+ *
+ * That is [defaultPlacement], the same rule [reconcile] uses for a window with no saved dock spot,
+ * so reattaching lands the window back in its announced area - filling the area's empty slot if the
+ * user left one, or stacking onto whatever is already there. A detached window sits in no area (it
+ * is not in the main window's tree to be measured against main at all), so there is no arrangement
+ * to preserve and the announced spot is the best answer available.
+ */
+internal fun redockIntoMainWindow(
+    state: DockState,
+    window: OpenGameWindow,
+    openWindows: Map<String, OpenGameWindow>,
+) {
+    val placement =
+        defaultPlacement(
+            name = window.name,
+            location = window.location,
+            layout = state.layout,
+            openWindows = openWindows,
+        )
+    state.dock(DockableId(window.name), placement.target, placement.region, placement.proportion)
+    closeEmptyDetachedWindows(state)
+}
+
+/** Whether [name] is currently in a detached window rather than the main one. */
+internal fun isDetached(
+    state: DockState,
+    name: String,
+): Boolean {
+    val window = state.windowOf(DockableId(name))
+    return window != null && window != WindowId.MAIN
 }
 
 /** Where [reconcile] puts a window with no saved dock spot. */
@@ -592,4 +710,4 @@ private fun DockNode.dockableIds(): List<DockableId> =
         is DockNode.Anchor -> emptyList()
     }
 
-private fun DockNode.containsDockable(id: DockableId): Boolean = id in dockableIds()
+internal fun DockNode.containsDockable(id: DockableId): Boolean = id in dockableIds()

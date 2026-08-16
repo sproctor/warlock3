@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,19 +61,9 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.MAIN_WINDOW_NAME
 import warlockfe.warlock3.compose.ui.game.OpenGameWindow
 import warlockfe.warlock3.compose.ui.game.rememberGameDockState
-import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
-import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
-import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.LocalBaseStyle
-import warlockfe.warlock3.compose.util.LocalDefaultFont
-import warlockfe.warlock3.compose.util.LocalMonoFont
-import warlockfe.warlock3.compose.util.LocalPanelFont
-import warlockfe.warlock3.compose.util.LocalPanelScale
-import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.isSpecified
-import warlockfe.warlock3.core.text.toFontConfig
-import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowType
 
@@ -115,34 +105,16 @@ fun DesktopGameView(
                     }
                 },
     ) {
-        val presets by viewModel.presets.collectAsState(emptyMap())
-        val baseStyle by viewModel.baseStyle.collectAsState()
-        val defaultStyle = baseStyle.toStyleDefinition()
-        val monoFont by viewModel.monoFont.collectAsState()
-        val panelFont by viewModel.panelFont.collectAsState()
-        val panelScale by viewModel.panelScale.collectAsState()
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
-        val progressBarSettings by viewModel.progressBarSettings.collectAsState()
 
-        CompositionLocalProvider(
-            LocalProgressBarSettings provides
-                ProgressBarSettingsState(
-                    settings = progressBarSettings,
-                    saveColors = viewModel::saveProgressBarColors,
-                    saveFont = viewModel::saveProgressBarFont,
-                ),
-            LocalWindowFindController provides viewModel.windowFindController,
-            LocalStyleMap provides presets,
-            LocalBaseStyle provides defaultStyle,
-            LocalDefaultFont provides baseStyle.toFontConfig(),
-            LocalMonoFont provides monoFont,
-            LocalPanelFont provides panelFont,
-            LocalPanelScale provides panelScale,
-        ) {
+        GameWindowStyles(viewModel) {
             Row(modifier = Modifier.weight(1f)) {
                 if (sideBarVisible) {
                     val windows by viewModel.residentWindows.collectAsState()
                     val scope = rememberCoroutineScope()
+                    // The same base style the window bodies get, read back out of the locals rather
+                    // than collected again: the sidebar follows the character's skin too.
+                    val defaultStyle = LocalBaseStyle.current
                     val sidebarBackground =
                         defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
                             ?: gameChrome.panelAlt
@@ -248,6 +220,16 @@ fun DesktopGameView(
                         trailingActions = trailingActions,
                         windowContent = windowContent,
                     )
+                // Detached windows are opened from the application scope, which is above everything
+                // here; hand the state up so Main can host them. Cleared on the way out so a game
+                // screen that has gone away cannot leave its windows on screen.
+                val dockHost = LocalDesktopDockHost.current
+                DisposableEffect(dockHost, dockState) {
+                    dockHost?.state = dockState
+                    onDispose {
+                        if (dockHost?.state === dockState) dockHost.state = null
+                    }
+                }
                 Box(Modifier.weight(1f).padding(2.dp)) {
                     JewelDocking {
                         DockArea(dockState, modifier = Modifier.fillMaxSize())
