@@ -49,10 +49,10 @@ import warlockfe.warlock3.core.macro.ScrollEvent
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.window.WindowType
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 // The breathing room a game panel's widgets get inside their window.
 private val PANEL_PADDING = 8.dp
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun WindowView(
     uiState: WindowUiState,
@@ -181,7 +181,14 @@ fun WindowView(
             // panel has, which is the height on screen. Hand that down as a minimum so those widgets
             // land where the game meant them to, while taller content still grows and scrolls.
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                val visibleHeight = (maxHeight - PANEL_PADDING * 2).coerceAtLeast(0.dp)
+                // A parent that imposes no height of its own leaves `maxHeight` infinite, which is no
+                // use as a minimum; the panel measures bottom anchors against its own content there.
+                val visibleHeight =
+                    if (constraints.hasBoundedHeight) {
+                        (maxHeight - PANEL_PADDING * 2).coerceAtLeast(0.dp)
+                    } else {
+                        0.dp
+                    }
                 ScrollableColumn(
                     Modifier
                         .fillMaxSize()

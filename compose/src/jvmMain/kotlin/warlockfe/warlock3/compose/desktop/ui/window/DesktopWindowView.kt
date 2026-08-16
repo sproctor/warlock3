@@ -217,7 +217,14 @@ fun DesktopWindowView(
             // panel has, which is the height on screen. Hand that down as a minimum so those widgets
             // land where the game meant them to, while taller content still grows and scrolls.
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                val visibleHeight = (maxHeight - PANEL_PADDING * 2).coerceAtLeast(0.dp)
+                // A parent that imposes no height of its own leaves `maxHeight` infinite, which is no
+                // use as a minimum; the panel measures bottom anchors against its own content there.
+                val visibleHeight =
+                    if (constraints.hasBoundedHeight) {
+                        (maxHeight - PANEL_PADDING * 2).coerceAtLeast(0.dp)
+                    } else {
+                        0.dp
+                    }
                 WarlockScrollableColumn(
                     Modifier
                         .fillMaxSize()

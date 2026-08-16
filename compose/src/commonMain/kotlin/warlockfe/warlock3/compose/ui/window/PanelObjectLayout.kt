@@ -294,23 +294,42 @@ fun PanelObjectLayout(
             return placements
         }
 
+        // True for an item a taller basis would move: one the basis positions directly, and one that
+        // reads such an item's placement - through an anchor, its parent skin, or by flowing after
+        // it. placementOrder puts everything an item reads before the item itself, so one pass
+        // settles the whole chain.
+        val movesWithBasis = BooleanArray(itemInfos.size)
+        for (index in placementOrder) {
+            val info = itemInfos[index]
+
+            fun moves(id: String?): Boolean = id?.let { indexById[it] }?.let { movesWithBasis[it] } == true
+
+            movesWithBasis[index] =
+                (info.anchor != null && info.anchor.y != AnchorY.Top) ||
+                moves(info.data.topAnchor) ||
+                moves(info.data.leftAnchor) ||
+                moves(info.parentSkinId) ||
+                (info.usesLastPlacement() && index > 0 && movesWithBasis[index - 1])
+        }
+
         // Wrayth measures a bottom or middle anchor against a panel of fixed height, and clips what
         // falls outside it. Ours scrolls instead, so when the panel has no height of its own - the
         // desktop draws it in a scrolling column - the content it ends up with stands in for that
         // height, which keeps a bottom-anchored row below the rest of the panel rather than folded
-        // back over it. Only items the anchor does not move contribute, so the basis cannot chase
-        // the items measured against it.
+        // back over it. The basis comes only from what a taller basis would not move, so it cannot
+        // chase the items measured against it, plus room for the tallest anchored item itself - a
+        // panel of nothing but anchored items would otherwise measure against nothing.
         val placements =
             place(heightBasis).let { first ->
-                if (itemInfos.none { it.anchor != null && it.anchor.y != AnchorY.Top }) return@let first
+                if (movesWithBasis.none { it }) return@let first
                 val flowBottom =
                     itemInfos
-                        .filter { it.anchor == null || it.anchor.y == AnchorY.Top }
+                        .filterIndexed { index, _ -> !movesWithBasis[index] }
                         .mapNotNull { first[it.data.id]?.bottom }
                         .maxOrNull() ?: 0
                 val anchoredHeight =
                     itemInfos
-                        .filter { it.anchor != null && it.anchor.y != AnchorY.Top }
+                        .filterIndexed { index, _ -> movesWithBasis[index] }
                         .maxOf { it.placeable.height }
                 val basis = maxOf(heightBasis, flowBottom, anchoredHeight)
                 if (basis == heightBasis) first else place(basis)
