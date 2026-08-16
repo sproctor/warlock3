@@ -2,6 +2,7 @@ package warlockfe.warlock3.compose.ui.game
 
 import androidx.compose.runtime.mutableStateOf
 import com.seanproctor.docking.model.AnchorId
+import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
@@ -16,6 +17,7 @@ import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation
 import warlockfe.warlock3.core.window.WindowType
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -152,8 +154,88 @@ class GameDockingTest {
                 layout = state.layout,
                 openWindows = windows,
             )
-        assertEquals(DockTarget.OnDockable(DockableId("thoughts")), second.target)
         assertEquals(DockRegion.South, second.region)
+        register(state)("logons", WindowLocation.LEFT.anchor)
+        state.dock(DockableId("logons"), second.target, second.region, second.proportion)
+        assertEquals(
+            DockRegion.South,
+            relativeRegion(state.layout.mainWindow.root!!, DockableId("logons"), DockableId("thoughts")),
+            "the second window of an area stacks below the first",
+        )
+    }
+
+    // Each window's share of the layout, multiplied down the split proportions.
+    private fun shares(
+        node: DockNode,
+        weight: Float = 1f,
+    ): Map<DockableId, Float> =
+        when (node) {
+            is DockNode.Leaf -> {
+                mapOf(node.dockableId to weight)
+            }
+
+            is DockNode.Tabs -> {
+                node.tabs.associate { it.dockableId to weight }
+            }
+
+            is DockNode.Anchor -> {
+                emptyMap()
+            }
+
+            is DockNode.Split -> {
+                shares(node.first, weight * node.proportion) +
+                    shares(node.second, weight * (1f - node.proportion))
+            }
+        }
+
+    // The game opens a character's windows one after another on connect. Each one takes a share of
+    // the area rather than half of whichever window opened last, so what the user ends up looking at
+    // is an evenly divided column - not one window at half the height, the next at a quarter, the
+    // next at an eighth.
+    @Test
+    fun windowsOpeningIntoAnAreaEndUpTheSameSize() {
+        val state = newState()
+        val registerWindow = register(state)
+        val column = listOf("thoughts", "logons", "deaths", "arrivals")
+        val opened = mutableListOf(MAIN_WINDOW_NAME to WindowLocation.CENTER)
+        column.forEach { name ->
+            opened += name to WindowLocation.LEFT
+            reconcile(state, openWindows(*opened.toTypedArray()), registerWindow)
+        }
+
+        val shares = shares(state.layout.mainWindow.root!!)
+        val sizes = column.map { shares.getValue(DockableId(it)) }
+        sizes.forEach { size ->
+            assertTrue(
+                abs(size - sizes.first()) < 0.001f,
+                "every window in the column should be the same size, got ${column.zip(sizes)}",
+            )
+        }
+    }
+
+    // The rule the sizes come from: a window joining an area takes one Nth of it, N counting the
+    // area's windows once it has joined.
+    @Test
+    fun aWindowJoiningAnAreaTakesOneNthOfIt() {
+        val state = newState()
+        val registerWindow = register(state)
+        val opened = mutableListOf(MAIN_WINDOW_NAME to WindowLocation.CENTER)
+        listOf("thoughts", "logons", "deaths").forEachIndexed { index, name ->
+            val joining = openWindows(*(opened + (name to WindowLocation.LEFT)).toTypedArray())
+            val placement =
+                defaultPlacement(
+                    name = name,
+                    location = WindowLocation.LEFT,
+                    layout = state.layout,
+                    openWindows = joining,
+                )
+            // The first fills the area's empty slot outright; the rest take a share of it.
+            if (index > 0) {
+                assertEquals(1f / (index + 1), placement.proportion, "window ${index + 1} of the column")
+            }
+            opened += name to WindowLocation.LEFT
+            reconcile(state, openWindows(*opened.toTypedArray()), registerWindow)
+        }
     }
 
     @Test
@@ -351,8 +433,14 @@ class GameDockingTest {
                         "combat" to WindowLocation.RIGHT,
                     ),
             )
-        assertEquals(DockTarget.OnDockable(DockableId("inv")), second.target)
         assertEquals(DockRegion.South, second.region)
+        registerWindow("combat", WindowLocation.RIGHT.anchor)
+        state.dock(DockableId("combat"), second.target, second.region, second.proportion)
+        assertEquals(
+            DockRegion.South,
+            relativeRegion(state.layout.mainWindow.root!!, DockableId("combat"), DockableId("inv")),
+            "the second right-column window stacks below the first",
+        )
     }
 
     @Test

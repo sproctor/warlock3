@@ -580,21 +580,37 @@ internal fun defaultPlacement(
         // Region and proportion are ignored for an anchor target: the placeholder names the slot.
         return DockPlacement(DockTarget.Anchor(anchor), DockRegion.Center, BAND_PROPORTION)
     }
-    val neighbor =
+    val neighbors =
         if (tree != null) {
-            openWindows.keys.lastOrNull { other ->
+            openWindows.keys.filter { other ->
                 other != name && other != MAIN_WINDOW_NAME && currentAnchorOf(tree, other) == anchor
             }
         } else {
-            null
+            emptyList()
         }
-    if (neighbor != null) {
+    if (tree != null && neighbors.isNotEmpty()) {
         val region =
             when (anchor) {
                 LEFT_ANCHOR, RIGHT_ANCHOR -> DockRegion.South
                 else -> DockRegion.East
             }
-        return DockPlacement(DockTarget.OnDockable(DockableId(neighbor)), region, 0.5f)
+        // One of N, where N counts the area's windows once this one has joined them. The library
+        // reads a proportion as the newcomer's share, so splitting the area as a whole hands it
+        // exactly that and leaves the rest of the area to divide what remains in the ratio it
+        // already had - which is what makes a column of windows opened this way come out even, and
+        // what keeps a column the user has since adjusted in the proportions they chose.
+        //
+        // Splitting the area's *last window* instead is what made the first window twice the size
+        // of the second, four times the third, and so on: each newcomer halved whatever it landed
+        // on rather than taking a share of the whole.
+        val share = 1f / (neighbors.size + 1)
+        val areaNode = tree.smallestNodeHolding(neighbors.map { DockableId(it) }.toSet())
+        if (areaNode != null) {
+            return DockPlacement(DockTarget.OnNode(mainWindow.id, areaNode.id), region, share)
+        }
+        // The area is scattered rather than sitting in a subtree of its own, so there is nothing to
+        // split as a whole. Stack on the last of them, still at the newcomer's proper share.
+        return DockPlacement(DockTarget.OnDockable(DockableId(neighbors.last())), region, share)
     }
     // Nothing in the area yet: open it with a split directly off the main text window (or the
     // window root when main is somehow absent, which the next reconcile pass heals).
@@ -711,3 +727,25 @@ private fun DockNode.dockableIds(): List<DockableId> =
     }
 
 internal fun DockNode.containsDockable(id: DockableId): Boolean = id in dockableIds()
+
+/**
+ * The smallest subtree holding exactly [ids] and nothing else, or null when no such subtree exists.
+ *
+ * This is how an area is addressed as a unit. The windows of an area normally sit together in one
+ * subtree - the left column is a subtree, the band above main is a subtree - so the newcomer can
+ * split that, take its share of the whole, and leave the windows already there dividing the rest
+ * between them as before.
+ *
+ * Exactly, because a subtree holding the area *and* something else is not the area: splitting the
+ * node that holds both a side column and the main text window would put the newcomer alongside the
+ * whole screen rather than in the column it asked for. A layout dragged into that shape has no area
+ * to split and the caller stacks instead.
+ */
+private fun DockNode.smallestNodeHolding(ids: Set<DockableId>): DockNode? {
+    if (ids.isEmpty() || !ids.all { containsDockable(it) }) return null
+    if (this is DockNode.Split) {
+        first.smallestNodeHolding(ids)?.let { return it }
+        second.smallestNodeHolding(ids)?.let { return it }
+    }
+    return takeIf { dockableIds().toSet() == ids }
+}
