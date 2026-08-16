@@ -135,7 +135,6 @@ internal fun WindowViewScaffold(
 
     surface(
         modifier
-            .padding(2.dp)
             .onLayoutRectChanged { bounds ->
                 viewportHeight = bounds.height
             }.onFocusChanged { focusState ->
@@ -390,7 +389,6 @@ private fun WindowViewContent(
                                 .forEach { measuredHeights.remove(it) }
                         }
                 }
-                val density = LocalDensity.current
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
                         modifier =

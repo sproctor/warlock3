@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.seanproctor.docking.jewel.JewelDocking
+import com.seanproctor.docking.spi.LocalDockingRenderer
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.ui.DockArea
 import kotlinx.coroutines.launch
@@ -237,9 +239,16 @@ fun DesktopGameView(
                         if (dockHost?.state === dockState) dockHost.state = null
                     }
                 }
+                // The game's own pane frame, over Jewel's chrome for everything else. Provided
+                // inside JewelDocking, which installs the Jewel renderer this one delegates to.
+                val selectedWindow = viewModel.selectedWindow.collectAsState()
+                val dockingRenderer =
+                    remember(selectedWindow) { WarlockDockingRenderer(selectedWindow) }
                 Box(Modifier.weight(1f).padding(2.dp)) {
                     JewelDocking {
-                        DockArea(dockState, modifier = Modifier.fillMaxSize())
+                        CompositionLocalProvider(LocalDockingRenderer provides dockingRenderer) {
+                            DockArea(dockState, modifier = Modifier.fillMaxSize())
+                        }
                     }
                 }
             }
