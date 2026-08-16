@@ -253,6 +253,46 @@ class DatabaseSnapshotTest {
         assertEquals("only-copy", read(Path(dir, "warlock-v17.db")))
     }
 
+    // Discarding the target means unlinking a file another instance may be migrating right now.
+    // Room guards its migration with an exclusive lock on "<database>.lck", and recovery takes that
+    // same lock; when it can't be had, the destructive half has to be skipped rather than guessed at.
+    @Test
+    fun incompleteTarget_isKeptWhileTheRoomMigrationLockIsHeld() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+        write(Path(dir, "warlock-v17.db"), "being-migrated-by-a-peer")
+
+        val lockFile = java.io.File(dir.toString(), "warlock-v17.db.lck")
+        java.io.RandomAccessFile(lockFile, "rw").use { raf ->
+            val held = raf.channel.lock()
+            try {
+                open(readSchemaVersion = { 10 })
+            } finally {
+                held.release()
+            }
+        }
+
+        assertEquals("being-migrated-by-a-peer", read(Path(dir, "warlock-v17.db")))
+    }
+
+    // Seeding still has to happen without the lock: it only ever writes when the target is absent,
+    // so there is nothing there for a peer to be using.
+    @Test
+    fun missingTarget_isStillSeededWhileTheLockIsHeld() {
+        write(Path(dir, "warlock-v10.db"), "v10-data")
+
+        val lockFile = java.io.File(dir.toString(), "warlock-v17.db.lck")
+        java.io.RandomAccessFile(lockFile, "rw").use { raf ->
+            val held = raf.channel.lock()
+            try {
+                open()
+            } finally {
+                held.release()
+            }
+        }
+
+        assertEquals("v10-data", read(Path(dir, "warlock-v17.db")))
+    }
+
     @Test
     fun unreadableTarget_isKept() {
         write(Path(dir, "warlock-v10.db"), "v10-data")

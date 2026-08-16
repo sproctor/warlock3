@@ -39,3 +39,40 @@ internal actual fun withFileLock(
         }
     }
 }
+
+internal actual fun tryWithFileLock(
+    lockFile: Path,
+    block: () -> Unit,
+): Boolean {
+    val file = File(lockFile.toString())
+    file.parentFile?.mkdirs()
+    val handle =
+        try {
+            RandomAccessFile(file, "rw")
+        } catch (e: Exception) {
+            Logger.w(e) { "Could not open lock file $lockFile" }
+            return false
+        }
+    return handle.use { raf ->
+        // Exclusive, and blocks until any other process holding the lock releases it. An
+        // OverlappingFileLockException (another thread in this JVM already holds it) lands here too
+        // and is reported as "not held", which is the safe answer for a destructive caller.
+        val lock =
+            try {
+                raf.channel.lock()
+            } catch (e: Exception) {
+                Logger.w(e) { "Could not acquire lock on $lockFile" }
+                return@use false
+            }
+        try {
+            block()
+        } finally {
+            try {
+                lock.release()
+            } catch (_: Exception) {
+                // Closing the channel via use{} releases the lock anyway.
+            }
+        }
+        true
+    }
+}

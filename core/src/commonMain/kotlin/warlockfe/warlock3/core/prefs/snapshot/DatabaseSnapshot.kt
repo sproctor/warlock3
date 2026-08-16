@@ -4,11 +4,21 @@ import co.touchlab.kermit.Logger
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
+import warlockfe.warlock3.core.prefs.config.tryWithFileLock
 
 private val logger = Logger.withTag("DatabaseSnapshot")
 
 private val snapshotPattern = Regex("""^warlock-v(\d+)\.db$""")
 private val sidecarSuffixes = listOf("-wal", "-shm")
+
+/**
+ * Suffix of the lock file Room takes around opening and migrating a database (its `FileLock` locks
+ * "not on the file itself but on a temporary file created with the same path but ending with
+ * `.lck`"). Sharing it is what lets snapshot recovery serialize against a migration in another
+ * process. If Room ever changes the convention this silently stops coordinating, which costs the
+ * extra safety but leaves behaviour no worse than not locking at all.
+ */
+private const val ROOM_LOCK_SUFFIX = ".lck"
 
 data class SnapshotInfo(
     val version: Int,
@@ -83,26 +93,30 @@ fun <T> openVersionedDatabase(
     migrateLegacyDatabase(directory, legacyFileName, currentVersion, fileSystem, checkpoint)
 
     val target = Path(directory, snapshotFileName(currentVersion))
-    discardIncompleteTarget(directory, target, currentVersion, fileSystem, readSchemaVersion)
 
-    val seedSource: SnapshotInfo? =
-        if (fileSystem.exists(target)) {
-            null
-        } else {
-            val candidate = findSeedCandidate(listSnapshots(directory, fileSystem), currentVersion)
-            when {
-                candidate == null -> {
-                    null
-                }
-
-                else -> {
-                    checkpoint(candidate.path)
-                    copySnapshot(candidate.path, target, fileSystem)
-                    logger.i { "Seeded ${target.name} from ${candidate.path.name}" }
-                    candidate
-                }
-            }
+    // Settle the target's fate under the very lock Room uses, because discarding it means unlinking
+    // a file another instance may be midway through migrating -- that instance would go on writing
+    // to an unlinked database and its settings would vanish. Room takes a cross-process lock on
+    // "<database>.lck" around the connection open that runs migrations
+    // (RoomConnectionManager.openLocked, with useFileLock set while the database is unconfigured),
+    // so holding it here gives us the only two outcomes we can live with: either a peer is migrating
+    // and we block until it is done -- after which the target reports the current schema and is left
+    // alone -- or no peer can begin until we have finished.
+    var seedSource: SnapshotInfo? = null
+    val locked =
+        tryWithFileLock(Path(directory, target.name + ROOM_LOCK_SUFFIX)) {
+            discardIncompleteTarget(directory, target, currentVersion, fileSystem, readSchemaVersion)
+            seedSource = seedTargetIfMissing(directory, target, currentVersion, fileSystem, checkpoint)
         }
+    if (!locked) {
+        // No lock means no way to tell a stale target from one being migrated right now, so the
+        // destructive half is skipped entirely. Seeding still runs: it only writes when there is
+        // nothing there to destroy. A stale target is left for a launch that can take the lock.
+        logger.w {
+            "Could not lock ${target.name} for recovery; leaving any incomplete target in place this launch"
+        }
+        seedSource = seedTargetIfMissing(directory, target, currentVersion, fileSystem, checkpoint)
+    }
     val targetExistedBeforeBuild = fileSystem.exists(target)
 
     val database =
@@ -122,6 +136,26 @@ fun <T> openVersionedDatabase(
     }
 
     return database
+}
+
+/**
+ * Copy the newest older snapshot into place when the target is missing, returning the snapshot it
+ * was seeded from (null when the target was already there, or when there is nothing to seed from and
+ * the platform builder will create it from scratch).
+ */
+private fun seedTargetIfMissing(
+    directory: Path,
+    target: Path,
+    currentVersion: Int,
+    fileSystem: FileSystem,
+    checkpoint: (databasePath: Path) -> Unit,
+): SnapshotInfo? {
+    if (fileSystem.exists(target)) return null
+    val candidate = findSeedCandidate(listSnapshots(directory, fileSystem), currentVersion) ?: return null
+    checkpoint(candidate.path)
+    copySnapshot(candidate.path, target, fileSystem)
+    logger.i { "Seeded ${target.name} from ${candidate.path.name}" }
+    return candidate
 }
 
 /**
