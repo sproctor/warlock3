@@ -23,6 +23,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.ui.window.DesktopWindowView
 import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.generated.resources.close
 import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.OpenGameWindow
@@ -66,6 +67,24 @@ internal fun DesktopDockedWindow(
         handledScrollEvent = viewModel::handledScrollEvent,
         showHeader = false,
         clearStream = { viewModel.clearStream(window.name) },
+    )
+}
+
+/**
+ * The dot on a tab whose window has taken text since it was last on screen.
+ *
+ * Drawn inside the tab, beside its title, and only while the window is hidden behind another tab -
+ * a window you can see needs no telling. Small and dim on purpose: it marks a window as worth a
+ * look, and several of them at once should still read as a tab strip rather than an alarm.
+ */
+@Composable
+internal fun DesktopTabActivityDot(hasUnreadText: Boolean) {
+    if (!hasUnreadText) return
+    Image(
+        modifier = Modifier.padding(start = 6.dp).size(7.dp),
+        painter = painterResource(Res.drawable.circle_filled),
+        colorFilter = ColorFilter.tint(gameChrome.accentSubtle),
+        contentDescription = "New text",
     )
 }
 
