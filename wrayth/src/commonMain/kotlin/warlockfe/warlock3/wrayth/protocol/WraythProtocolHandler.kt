@@ -17,6 +17,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.CliHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CloseButtonHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CloseDialogHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CmdButtonHandler
+import warlockfe.warlock3.wrayth.protocol.elements.CmdTimestampHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CmdlistHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CompDefHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CompassHandler
@@ -130,6 +131,7 @@ class WraythProtocolHandler {
             "closeDialog" to CloseDialogHandler(),
             "cmdButton" to CmdButtonHandler(),
             "cmdlist" to CmdlistHandler(),
+            "cmdtimestamp" to CmdTimestampHandler(),
             "compass" to CompassHandler(),
             "compDef" to CompDefHandler(),
             "component" to ComponentHandler(),
@@ -207,7 +209,6 @@ class WraythProtocolHandler {
             "vars" to IgnoredTagHandler(),
             "w" to IgnoredTagHandler(),
             // The rest arrive during play.
-            "cmdtimestamp" to IgnoredTagHandler(),
             "command" to IgnoredTagHandler(),
             "deleteContainer" to IgnoredTagHandler(),
             "endSetup" to IgnoredTagHandler(),

@@ -69,6 +69,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythCastTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythClearStreamEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCliEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCloseDialogEvent
+import warlockfe.warlock3.wrayth.protocol.WraythCmdTimestampEvent
 import warlockfe.warlock3.wrayth.protocol.WraythCompassEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
@@ -110,6 +111,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythTimeEvent
 import warlockfe.warlock3.wrayth.protocol.WraythUnhandledTagEvent
 import warlockfe.warlock3.wrayth.protocol.WraythUpdateVerbsEvent
 import warlockfe.warlock3.wrayth.util.CmdDefinition
+import warlockfe.warlock3.wrayth.util.CommandListStore
 import warlockfe.warlock3.wrayth.util.WraythCmd
 import warlockfe.warlock3.wrayth.util.WraythStreamWindow
 import warlockfe.warlock3.wrayth.util.resolve
@@ -127,6 +129,7 @@ class WraythClient(
     private val fileLogging: LoggingRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: WarlockSocket,
+    private val commandListStore: CommandListStore?,
 ) : WarlockClient {
     private val writeContext = ioDispatcher.limitedParallelism(1)
 
@@ -201,6 +204,10 @@ class WraythClient(
     private val cliCache = mutableListOf<CmdDefinition>()
 
     private var cliCoords = persistentMapOf<String, CmdDefinition>()
+
+    // The list `<updateverbs>` named, and the serial of the copy we hold, for `_menu update`.
+    private var verbListName: String? = null
+    private var commandListSerial: String? = null
 
     private val _menuData = MutableStateFlow(WarlockMenuData(0, emptyList()))
     override val menuData: StateFlow<WarlockMenuData> = _menuData.asStateFlow()
@@ -626,7 +633,28 @@ class WraythClient(
             }
 
             is WraythUpdateVerbsEvent -> {
-                sendCommandDirect("_menu update 1")
+                // Load before asking, so a server that answers "nothing new" leaves us with a full
+                // set of commands rather than none. Without a cached list the serial is 1, which is
+                // what the real client sends when it has only the list that shipped with it.
+                val listName = event.listName
+                verbListName = listName
+                // Only on the way in: this tag arrives more than once a session, and by the second
+                // time the list is already in hand and the file has nothing newer to say.
+                val cached = if (commandListSerial == null) listName?.let { commandListStore?.load(it) } else null
+                if (cached != null) {
+                    commandListSerial = cached.serial
+                    cliCoords =
+                        cliCoords.mutate { map ->
+                            cached.commands.forEach { map[it.coord] = it }
+                        }
+                }
+                sendCommandDirect("_menu update ${commandListSerial ?: "1"}")
+            }
+
+            is WraythCmdTimestampEvent -> {
+                // Arrives just after `</cmdlist>`, so the entries it names are already merged in.
+                commandListSerial = event.serial
+                verbListName?.let { commandListStore?.save(it, event.serial, cliCoords.values) }
             }
 
             is WraythStartCmdList -> {

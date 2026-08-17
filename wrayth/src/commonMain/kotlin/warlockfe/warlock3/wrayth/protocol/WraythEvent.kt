@@ -160,7 +160,21 @@ data class WraythUnhandledTagEvent(
     val tag: String,
 ) : WraythEvent
 
-data object WraythUpdateVerbsEvent : WraythEvent
+/**
+ * The server asking for the command list to be refreshed. [listName] is the `default` attribute, which
+ * names the list rather than the game - Wrayth files its own cache under a directory of that name.
+ */
+data class WraythUpdateVerbsEvent(
+    val listName: String?,
+) : WraythEvent
+
+/**
+ * The serial of the command list just sent, arriving right after `</cmdlist>`. Sending it back with the
+ * next `_menu update` is how a client says which list it already holds.
+ */
+data class WraythCmdTimestampEvent(
+    val serial: String,
+) : WraythEvent
 
 data object WraythStartCmdList : WraythEvent
 
