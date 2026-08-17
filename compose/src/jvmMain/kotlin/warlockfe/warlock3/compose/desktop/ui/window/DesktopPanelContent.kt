@@ -52,6 +52,7 @@ import warlockfe.warlock3.compose.util.LocalPanelTextStyle
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.getColorGroup
+import warlockfe.warlock3.compose.util.progressBarSkinFont
 import warlockfe.warlock3.compose.util.toAlignment
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.compose.util.withFont
@@ -337,16 +338,19 @@ private fun ProgressBarWithColorMenu(
     val barColor = setting?.barColor ?: WarlockColor.Unspecified
     val backgroundColor = setting?.backgroundColor ?: WarlockColor.Unspecified
     val textColor = setting?.textColor ?: WarlockColor.Unspecified
-    // Merge this bar's saved font override (if any) over the panel style, so a bar the user has not
-    // touched still follows the panel font.
+    // Three layers over the panel style, least specific first: what the skin says about this bar,
+    // then this bar's saved font override. A bar nobody has skinned or touched still follows the
+    // panel font.
     val style =
-        LocalPanelTextStyle.current.withFont(
-            FontConfig(
-                family = setting?.fontFamily,
-                size = setting?.fontSize,
-                weight = setting?.fontWeight,
-            ).takeUnless { it.isEmpty() },
-        )
+        LocalPanelTextStyle.current
+            .withFont(progressBarSkinFont(skinObject))
+            .withFont(
+                FontConfig(
+                    family = setting?.fontFamily,
+                    size = setting?.fontSize,
+                    weight = setting?.fontWeight,
+                ).takeUnless { it.isEmpty() },
+            )
 
     var editingTarget by remember { mutableStateOf<ProgressBarColorTarget?>(null) }
     var editingFont by remember { mutableStateOf(false) }

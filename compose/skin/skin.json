@@ -17,6 +17,7 @@
   "HealthBar": {
     "children": {
       "health": {
+        "fontSize": 11,
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
@@ -39,6 +40,7 @@
   "ManaBar": {
     "children": {
       "mana": {
+        "fontSize": 11,
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
@@ -50,6 +52,7 @@
   "StaminaBar": {
     "children": {
       "stamina": {
+        "fontSize": 11,
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
@@ -61,6 +64,7 @@
   "SpiritBar": {
     "children": {
       "spirit": {
+        "fontSize": 11,
         "top": 0,
         "left": 0,
         "color": "#FFFFFF",
@@ -72,6 +76,7 @@
   "ConcentrationBar": {
     "children": {
       "concentration": {
+        "fontSize": 11,
         "color": "#FFFFFF",
         "bar": { "light": "#109A88", "dark": "#22C7AE" },
         "background": { "light": "#C6C6BE", "dark": "#2C2F34" }
