@@ -88,8 +88,8 @@ class WraythProtocolHandler {
      * something is generating names rather than sending a vocabulary, and neither the warnings nor
      * the set are any use at that point.
      */
-    private fun warnOnUnknownTag(tagName: String) {
-        if (tagName in unknownReported) return
+    private fun warnOnUnknownTag(tagName: String): Boolean {
+        if (tagName in unknownReported) return false
         if (unknownReported.size >= MAX_UNKNOWN_TAGS_REPORTED) {
             if (!unknownOverflowReported) {
                 unknownOverflowReported = true
@@ -98,7 +98,7 @@ class WraythProtocolHandler {
                         "Something is generating tag names rather than sending a fixed set."
                 }
             }
-            return
+            return false
         }
         unknownReported.add(tagName)
         val miscased = elementListeners.keys.firstOrNull { it.equals(tagName, ignoreCase = true) }
@@ -107,6 +107,7 @@ class WraythProtocolHandler {
         } else {
             logger.w { "Ignoring <$tagName>: no handler for it. Add one, or an IgnoredTagHandler if it carries nothing we use." }
         }
+        return true
     }
 
     private val elementListeners: Map<String, ElementListener> =
@@ -219,6 +220,7 @@ class WraythProtocolHandler {
             "module" to IgnoredTagHandler(),
             "objectives" to IgnoredTagHandler(),
             "playerID" to IgnoredTagHandler(),
+            "pulse" to IgnoredTagHandler(),
             "roommeta" to IgnoredTagHandler(),
             "sep" to IgnoredTagHandler(),
             "switchQuickBar" to IgnoredTagHandler(),
@@ -272,8 +274,8 @@ class WraythProtocolHandler {
                             events.add(it)
                         }
                     } else {
-                        warnOnUnknownTag(tagName)
-                        events.add(WraythUnhandledTagEvent(content.name))
+                        val firstSighting = warnOnUnknownTag(tagName)
+                        events.add(WraythUnhandledTagEvent(content.name, firstSighting))
                     }
                 }
 

@@ -1,6 +1,7 @@
 package warlockfe.warlock3.wrayth.network
 
 import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
 import com.eygraber.uri.Uri
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
@@ -673,7 +674,17 @@ class WraythClient(
             }
 
             is WraythUnhandledTagEvent -> {
-                // debug("Unhandled tag: ${event.tag}")
+                // Once per tag name, and only when debug output is on: a tag we do not handle is
+                // usually harmless, but it is the first thing to look for when something the game
+                // sent did not show up, and it is invisible from inside the game otherwise.
+                if (event.firstSighting && logger.config.minSeverity <= Severity.Debug) {
+                    getMainStream().appendLine(
+                        StyledString(
+                            "unhandled tag: <${event.tag}>",
+                            WarlockStyle.Error,
+                        ),
+                    )
+                }
             }
 
             is WraythParseErrorEvent -> {
