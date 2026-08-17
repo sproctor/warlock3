@@ -98,6 +98,13 @@ These are the non-obvious bits, kept here because they cost real time to find:
   that client is configured for, `ON` or `OFF`, and arrives after the settings upload;
   it is the empty command above that unblocks the connection. What a real server does
   with the value is not something the bench can answer - its server is a stub.
+- **`<mode>` chooses the parser, and the default is raw.** With `mode` left out of the
+  bootstrap entirely, Wrayth prints what arrives as plain text: tags show up literally
+  on screen, `<pushBold/>` and friends do nothing, and the vitals and stream windows
+  never appear. Send `<mode id="GAME"/>` at any later point and it switches to the XML
+  parser mid-stream, from that tag on. `<mode id="CMGR"/>` switches back - the raw mode
+  is what character creation and book reading run in. So a client starts in raw mode and
+  waits to be told otherwise, which is why ours does too.
 - **Skin names are matched case-insensitively.** A widget names a skin entry with
   `<skin name='...'>`, and the real server and the real skin disagree about case:
   GS4 sends `name='healthBar'` (and `manaBar`, `staminaBar`, `spiritBar`) while

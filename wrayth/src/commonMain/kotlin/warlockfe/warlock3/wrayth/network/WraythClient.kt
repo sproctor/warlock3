@@ -211,7 +211,12 @@ class WraythClient(
 
     private val cachedMenuItems = mutableListOf<WarlockMenuItem>()
 
-    private var parseText = true
+    // Starts off, as Wrayth's does: the protocol is not on until a <mode> tag turns it on. A server
+    // sends <mode id="GAME"/> before anything else, so the raw reader below hands straight over.
+    private var parseText = false
+
+    // Half a line left over when raw mode handed back to the parser mid-line.
+    private var pendingLine = ""
 
     private var currentStream: TextStream? = null
 
@@ -292,12 +297,16 @@ class WraythClient(
                 try {
                     if (parseText) {
                         // This is the standard wrayth parser
-                        val line: String? = socket.readLine()
-                        if (line == null) {
+                        val rest: String? = socket.readLine()
+                        if (rest == null) {
                             // Connection closed by server
                             disconnected()
                             break
                         }
+                        // A handover out of raw mode can leave half a line behind, since it reads
+                        // whatever bytes had arrived rather than up to a newline.
+                        val line = pendingLine + rest
+                        pendingLine = ""
                         logComplete { line }
                         debug(line)
                         val events = protocolHandler.parseLine(line)
@@ -310,7 +319,25 @@ class WraythClient(
                         if (sections.size > 1) {
                             rawPrint(sections[0])
                             parseText = true
-                            protocolHandler.parseLine(sections[1])
+                            // Everything from the tag on is protocol, and there may be several
+                            // lines of it in the same read. Put each through the parser the loop
+                            // above uses - events and all, which this used to throw away - and
+                            // leave any half line for the next read to finish.
+                            val lines = sections[1].split(newLinePattern)
+                            var index = 0
+                            while (index < lines.lastIndex && parseText) {
+                                val line = lines[index]
+                                logComplete { line }
+                                debug(line)
+                                protocolHandler.parseLine(line).forEach { handleEvent(it) }
+                                index++
+                            }
+                            if (parseText) {
+                                pendingLine = lines.last()
+                            } else {
+                                // A mode tag handed straight back before the chunk ran out.
+                                rawPrint(lines.drop(index).joinToString("\n"))
+                            }
                         } else {
                             rawPrint(text)
                         }
