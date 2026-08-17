@@ -576,6 +576,55 @@ class GameDockingTest {
     // asserting that nothing happens - which the merge test at the bottom covers instead.
     private fun assumeFloatingWindows(): Boolean = platformDockCapabilities.floatingWindows
 
+    // The game asks for a window of its own with location='detach', and the real client gives it
+    // one. Before windows could be detached at all this was docked into the band with everything
+    // else; now the announcement is honoured.
+    @Test
+    fun aWindowAnnouncedDetachedOpensInItsOwnWindow() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        reconcile(
+            state,
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.CENTER,
+                "thoughts" to WindowLocation.LEFT,
+                "charsheet" to WindowLocation.DETACHED,
+            ),
+            register(state),
+        )
+
+        assertTrue(isDetached(state, "charsheet"), "a detached announcement should open detached")
+        assertFalse(
+            state.layout.mainWindow.root!!
+                .containsDockable(DockableId("charsheet")),
+            "and should not also be sitting in the main window",
+        )
+        assertFalse(isDetached(state, "thoughts"), "the windows announced for an area still dock")
+    }
+
+    // Only the default. Once the character has an arrangement, reconcile places nothing that is
+    // already in the layout, so a detached window they docked stays docked across a reconnect.
+    @Test
+    fun aDetachedWindowTheUserHasDockedStaysDocked() {
+        if (!assumeFloatingWindows()) return
+        val state = newState()
+        val registerWindow = register(state)
+        val windows =
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.CENTER,
+                "charsheet" to WindowLocation.DETACHED,
+            )
+        reconcile(state, windows, registerWindow)
+        // The user reattaches it, then the layout is saved and restored on the next connect.
+        redockIntoMainWindow(state, windows.getValue("charsheet"), windows)
+        val saved = DockingPersistence.encode(state.captureLayout())
+
+        val next = newState()
+        applyRestoredLayout(next, saved, windows, register(next))
+        assertFalse(isDetached(next, "charsheet"), "the arrangement wins over the announcement")
+        assertTrue(next.isOpen(DockableId("charsheet")))
+    }
+
     @Test
     fun theMainWindowCannotBeDetached() {
         val state = newState()
