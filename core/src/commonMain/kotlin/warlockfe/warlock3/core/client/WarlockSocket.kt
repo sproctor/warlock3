@@ -10,7 +10,9 @@ interface WarlockSocket {
 
     suspend fun readLine(): String?
 
-    suspend fun readAvailable(min: Int = 1): String
+    // Null once the peer has gone and there is nothing left to read, as with [readLine]. The end
+    // of a connection is where every connection is headed, not an error, so it is a return value.
+    suspend fun readAvailable(min: Int = 1): String?
 
     fun ready(): Boolean
 

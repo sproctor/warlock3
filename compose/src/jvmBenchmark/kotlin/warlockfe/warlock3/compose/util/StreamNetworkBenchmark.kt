@@ -174,7 +174,10 @@ private suspend fun runBenchmark(config: BenchConfig) {
             .map { index ->
                 val lines = realLog ?: syntheticLines(config.lines, config.windows, index)
                 totalLines += lines.size
-                server.enqueue(index, lines)
+                // The client starts in raw mode and parses nothing until a mode tag says to, the way
+                // Wrayth does, so the replay has to send one. Without it the whole run is raw text
+                // and never reaches the parser, the styles, the components, or the windows.
+                server.enqueue(index, listOf("<mode id=\"GAME\"/>") + lines)
                 appScope.async {
                     runConnection(
                         index = index,

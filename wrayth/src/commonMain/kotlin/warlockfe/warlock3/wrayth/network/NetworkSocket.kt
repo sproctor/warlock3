@@ -132,10 +132,11 @@ class NetworkSocket(
         }
     }
 
-    override suspend fun readAvailable(min: Int): String {
+    override suspend fun readAvailable(min: Int): String? {
         check(::receiveChannel.isInitialized) { "Socket not connected" }
         receiveChannel.awaitContent(min)
         val len = receiveChannel.readAvailable(buffer)
+        if (len < 0) return null
         return buffer.decodeWindows1252(0, len)
     }
 
@@ -172,7 +173,7 @@ private fun Buffer.readWindows1252(byteCount: Long): String {
 
     UnsafeBufferOperations.forEachSegment(this) { ctx, segment ->
         if (segment.size >= byteCount) {
-            var result = ""
+            var result: String
             ctx.withData(segment) { data, pos, limit ->
                 result = data.decodeWindows1252(pos, min(limit, pos + byteCount.toInt()))
                 skip(byteCount)
