@@ -136,8 +136,6 @@ class NetworkSocket(
         check(::receiveChannel.isInitialized) { "Socket not connected" }
         receiveChannel.awaitContent(min)
         val len = receiveChannel.readAvailable(buffer)
-        // -1 once the peer has gone away and the channel is drained. Handing that to the decoder
-        // asks it for a string of negative length, which it throws over.
         if (len < 0) return null
         return buffer.decodeWindows1252(0, len)
     }
@@ -175,7 +173,7 @@ private fun Buffer.readWindows1252(byteCount: Long): String {
 
     UnsafeBufferOperations.forEachSegment(this) { ctx, segment ->
         if (segment.size >= byteCount) {
-            var result = ""
+            var result: String
             ctx.withData(segment) { data, pos, limit ->
                 result = data.decodeWindows1252(pos, min(limit, pos + byteCount.toInt()))
                 skip(byteCount)
