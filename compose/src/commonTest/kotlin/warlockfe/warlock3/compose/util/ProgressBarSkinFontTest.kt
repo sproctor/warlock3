@@ -27,6 +27,20 @@ class ProgressBarSkinFontTest {
         )
     }
 
+    // Skins and the server disagree about case and always have - the game asks for `healthBar`
+    // while the skin calls it `HealthBar`, and the real client skins it anyway - so the shared entry
+    // is found whatever case it is written in.
+    @Test
+    fun theSharedEntryIsFoundWhateverCaseItIsWrittenIn() {
+        assertEquals(
+            FontConfig(family = "Shared", size = 9f, weight = 400),
+            progressBarSkinFont(
+                skinObject = SkinObject(),
+                skin = mapOf("PrOgReSsBaR" to SkinObject(fontFamily = "Shared", fontSize = 9f, fontWeight = 400)),
+            ),
+        )
+    }
+
     // And still say something different about one of them.
     @Test
     fun theBarsOwnEntryWinsOverTheSharedOne() {
