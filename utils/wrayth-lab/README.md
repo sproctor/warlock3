@@ -88,11 +88,15 @@ These are the non-obvious bits, kept here because they cost real time to find:
   `<skin name='...'>`, and the real server and the real skin disagree about case:
   GS4 sends `name='healthBar'` (and `manaBar`, `staminaBar`, `spiritBar`) while
   `storm.skn` defines `HealthBar`, `ManaBar`, `StaminaBar`, `SpiritBar`. Wrayth
-  colours those bars correctly all the same, so it cannot be matching exactly -
-  which is why our own skin lookups use `getIgnoringCase`. Verified by replaying
-  a real log's `minivitals` through the lab: with the `<skin>` elements the bars
-  come up red/blue/gold/silver, and without them they all fall back to the
-  `ProgressBar` default and come up uniformly blue.
+  colours those bars correctly all the same, which is why our own skin lookups use
+  `getIgnoringCase`. Sending `name='HeAlThBaR'` and `name='sTaMiNaBaR'` still gets
+  the health bar its red and the stamina bar its gold, so this is a case-insensitive
+  compare rather than some narrower tolerance.
+- **A skin name it cannot resolve is reported in the stream**, as
+  `* Did not find the skin object: <name>`, and the widgets in that `dialogData`
+  do not render at all - so one bad name takes the whole group with it. Handy as an
+  oracle: it says plainly whether a name matched, which is what makes a
+  deliberately-wrong name a usable control when testing what Wrayth accepts.
 - **`wine explorer /desktop=NAME,WxH` mangles arguments** when the program path
   contains spaces, and at least under GNOME/mutter the virtual desktop ignores
   the requested size and fills the screen. So `launch` runs Wrayth as a plain
