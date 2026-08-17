@@ -518,17 +518,8 @@ class WraythClient(
             }
 
             is WraythComponentDefinitionEvent -> {
-                // Should not happen on main stream, so don't clear prompt
-                // The placeholder keeps the style it was defined under, and later content substituted
-                // into it renders with that - which is what Wrayth does: a compDef inside a
-                // `<style id="roomName"/>` line shows its content on the room-name background even
-                // when the `<component>` that fills it arrives from an unstyled line.
-                //
-                // No styles here: bufferText applies currentStyle and then the stack, the same order
-                // it uses for the text either side of this on the line. Naming the stack here as well
-                // put it ahead of currentStyle in a first-set-wins list, so a placeholder resolved a
-                // style conflict the opposite way from its own neighbours (and any action on a pushed
-                // style was pushed twice).
+                // bufferText styles this the way it styles the text either side of it on the line,
+                // and content substituted in later renders with that.
                 bufferText(
                     text =
                         StyledString(

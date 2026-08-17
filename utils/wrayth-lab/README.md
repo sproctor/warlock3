@@ -136,6 +136,10 @@ These are the non-obvious bits, kept here because they cost real time to find:
     a plain line, or on a `<style>` line, fills fine. Reproduced on a freshly started
     client with no other state. No parse error is reported, so the line is accepted -
     it just never updates.
+  - **A `compDef` counts as output for prompt handling, even rendering nothing.** Two
+    `<prompt>`s with nothing between them collapse to one, and two with a `compDef`
+    between them both draw - same as if ordinary text had been sent. Useful as a
+    three-way control when checking prompt behaviour: nothing / text / `compDef`.
 - **`<style>` is connection state, not per-stream state.** A `<style id="roomName"/>` set
   between `<pushStream id='thoughts'/>` and `<popStream/>` is still in force for the next
   line written to main. So a client wanting to match Wrayth keeps one current style for
