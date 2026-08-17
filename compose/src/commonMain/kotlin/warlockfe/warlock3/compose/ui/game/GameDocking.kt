@@ -95,8 +95,11 @@ internal val WindowLocation.anchor: AnchorId
 
             WindowLocation.RIGHT -> RIGHT_ANCHOR
 
-            // We dock rather than float, so the locations the real client floats (and the chrome
-            // ones, which never reach the dock) share the band above main with the room window.
+            // The band above main takes everything that is not a side column: the centre, the
+            // chrome locations that never reach the dock, and a detached window for whenever it is
+            // docked rather than in a window of its own - on reattaching, or on a platform with no
+            // windows to detach into. Where it opens is a separate question from which area it
+            // belongs to once docked; see [opensDetached].
             WindowLocation.CENTER,
             WindowLocation.DETACHED,
             WindowLocation.STATBAR,
@@ -485,14 +488,18 @@ internal fun reconcile(
         registerWindow(name, anchor)
         val id = DockableId(name)
         if (!state.isOpen(id)) {
-            val placement =
-                defaultPlacement(
-                    name = name,
-                    location = window.location,
-                    layout = state.layout,
-                    openWindows = openWindows,
-                )
-            state.dock(id, placement.target, placement.region, placement.proportion)
+            if (opensDetached(window)) {
+                detachWindow(state, name)
+            } else {
+                val placement =
+                    defaultPlacement(
+                        name = name,
+                        location = window.location,
+                        layout = state.layout,
+                        openWindows = openWindows,
+                    )
+                state.dock(id, placement.target, placement.region, placement.proportion)
+            }
         }
     }
     closeEmptyDetachedWindows(state)
@@ -627,6 +634,27 @@ internal fun isDetached(
     val window = state.windowOf(DockableId(name))
     return window != null && window != WindowId.MAIN
 }
+
+/**
+ * Whether a window with no saved spot opens in a window of its own rather than docked.
+ *
+ * The game asks for this with `location='detach'`, and the real client honours it - its saved
+ * settings carry a detached window as `frame='float'` with its own size. We could not, until
+ * windows could be detached at all, so a detached window was docked into the band above main with
+ * everything else; now that it can have the window it asked for, it gets one.
+ *
+ * Only where the platform has OS windows to open, and never for main, which is the fixed point the
+ * areas are measured against. Everywhere else the announcement falls back to what it did before, the
+ * band above main, rather than being dropped.
+ *
+ * This is only the default. A character whose saved layout already knows the window is left where
+ * they put it - [reconcile] places nothing that is already in the layout - so detaching is what the
+ * game asks for on a window nobody has arranged yet, not something re-imposed on every connect.
+ */
+internal fun opensDetached(window: OpenGameWindow): Boolean =
+    window.location == WindowLocation.DETACHED &&
+        !window.isMain &&
+        platformDockCapabilities.floatingWindows
 
 /** Where [reconcile] puts a window with no saved dock spot. */
 internal data class DockPlacement(
