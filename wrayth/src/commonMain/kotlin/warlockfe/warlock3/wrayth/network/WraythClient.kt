@@ -518,15 +518,15 @@ class WraythClient(
             }
 
             is WraythComponentDefinitionEvent -> {
-                // Should not happen on main stream, so don't clear prompt
-                // TODO: Should currentStyle be used here? is it per stream?
+                // bufferText styles this the way it styles the text either side of it on the line,
+                // and content substituted in later renders with that.
                 bufferText(
                     text =
                         StyledString(
                             persistentListOf(
                                 StyledStringVariable(
                                     name = event.id,
-                                    styles = styleStack.toPersistentList(),
+                                    styles = persistentListOf(),
                                 ),
                             ),
                         ),
