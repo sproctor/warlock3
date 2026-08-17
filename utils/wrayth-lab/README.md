@@ -84,6 +84,19 @@ These are the non-obvious bits, kept here because they cost real time to find:
   handshake lines (the key, then
   `/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML`). With chat mode on, a
   typed command arrives as `<c>'look at dummy`.
+- **Skin names are matched case-insensitively.** A widget names a skin entry with
+  `<skin name='...'>`, and the real server and the real skin disagree about case:
+  GS4 sends `name='healthBar'` (and `manaBar`, `staminaBar`, `spiritBar`) while
+  `storm.skn` defines `HealthBar`, `ManaBar`, `StaminaBar`, `SpiritBar`. Wrayth
+  colours those bars correctly all the same, which is why our own skin lookups use
+  `getIgnoringCase`. Sending `name='HeAlThBaR'` and `name='sTaMiNaBaR'` still gets
+  the health bar its red and the stamina bar its gold, so this is a case-insensitive
+  compare rather than some narrower tolerance.
+- **A skin name it cannot resolve is reported in the stream**, as
+  `* Did not find the skin object: <name>`, and the widgets in that `dialogData`
+  do not render at all - so one bad name takes the whole group with it. Handy as an
+  oracle: it says plainly whether a name matched, which is what makes a
+  deliberately-wrong name a usable control when testing what Wrayth accepts.
 - **`wine explorer /desktop=NAME,WxH` mangles arguments** when the program path
   contains spaces, and at least under GNOME/mutter the virtual desktop ignores
   the requested size and fills the screen. So `launch` runs Wrayth as a plain
