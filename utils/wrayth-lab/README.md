@@ -84,6 +84,41 @@ These are the non-obvious bits, kept here because they cost real time to find:
   handshake lines (the key, then
   `/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML`). With chat mode on, a
   typed command arrives as `<c>'look at dummy`.
+- **The empty command Wrayth sends answers `settingsInfo`.** A connection hangs until
+  the client sends an empty command, and the handshake runs: the key, then
+  `/FE:WRAYTH /VERSION:... /XML`, then - once the server has sent `<settingsInfo .../>`
+  to a client whose parser is on - a burst of `<c>`, the client's whole settings upload
+  as `<db><settings>...`, and `<c>_STATE CHATMODE ON`. Narrowed by feeding elements one
+  at a time against an empty bootstrap: `mode` alone gets nothing back, `settingsInfo`
+  alone gets nothing back, `settingsInfo` after `mode` gets the burst. `playerId` is not
+  involved.
+
+  The "after `mode`" part is not an ordering rule of its own, and it is worth being
+  precise about, because reading one into it invites a client to track game mode and
+  gate on it for no reason. `settingsInfo` sent before any `<mode>` is not queued,
+  dropped, or refused - it is **never parsed**, because the parser is not on yet. The
+  screenshot is unambiguous: the tag lands in the Story window as literal text,
+  `<settingsInfo space_not_found="0" crc="0" instance="DR"/>`, the same as any other
+  raw-mode text. Sending `mode` afterwards does not make up for it because there is
+  nothing to make up for; re-sending `settingsInfo` works because that copy is the
+  first one the parser ever sees. See the `<mode>` note below - it is the whole
+  mechanism.
+- **`_STATE CHATMODE` is a report, not a handshake step.** It carries whichever mode
+  that client is configured for, `ON` or `OFF`, and arrives after the settings upload;
+  it is the empty command above that unblocks the connection. What a real server does
+  with the value is not something the bench can answer - its server is a stub.
+- **`<mode>` chooses the parser, and the default is raw.** With `mode` left out of the
+  bootstrap entirely, Wrayth prints what arrives as plain text: tags show up literally
+  on screen, `<pushBold/>` and friends do nothing, and the vitals and stream windows
+  never appear. Send `<mode id="GAME"/>` at any later point and it switches to the XML
+  parser mid-stream, from that tag on. `<mode id="CMGR"/>` switches back - the raw mode
+  is what character creation and book reading run in. So a client starts in raw mode and
+  waits to be told otherwise, which is why ours does too.
+
+  This one bit of state explains the handshake note above on its own. A client has no
+  need to know which mode the *game* is in, or to gate any particular tag on it: a tag
+  that arrives while the parser is off is text, and a tag that arrives while it is on is
+  a tag.
 - **Skin names are matched case-insensitively.** A widget names a skin entry with
   `<skin name='...'>`, and the real server and the real skin disagree about case:
   GS4 sends `name='healthBar'` (and `manaBar`, `staminaBar`, `spiritBar`) while

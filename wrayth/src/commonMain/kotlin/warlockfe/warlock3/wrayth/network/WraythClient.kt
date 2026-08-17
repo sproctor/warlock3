@@ -211,7 +211,13 @@ class WraythClient(
 
     private val cachedMenuItems = mutableListOf<WarlockMenuItem>()
 
-    private var parseText = true
+    // Starts off, as Wrayth's does: the protocol is not on until a <mode> tag turns it on. A server
+    // sends <mode id="GAME"/> before anything else, so the raw reader below hands straight over.
+    private var parseText = false
+
+    // Read from the socket but not consumed yet: what a read in raw mode took past the <mode> tag
+    // that ended it. Both branches of the read loop drain this before reading any more.
+    private var pendingText = ""
 
     private var currentStream: TextStream? = null
 
@@ -292,7 +298,19 @@ class WraythClient(
                 try {
                     if (parseText) {
                         // This is the standard wrayth parser
-                        val line: String? = socket.readLine()
+                        val line: String?
+                        if (pendingText.contains('\n')) {
+                            // Whole lines the handover left behind, taken one at a time.
+                            line = pendingText.substringBefore('\n').removeSuffix("\r")
+                            pendingText = pendingText.substringAfter('\n')
+                        } else {
+                            // What is left of it is half a line, since a raw read stops on
+                            // whatever bytes had arrived rather than on a newline. The socket
+                            // has the rest.
+                            val rest = socket.readLine()
+                            line = rest?.let { pendingText + it }
+                            pendingText = ""
+                        }
                         if (line == null) {
                             // Connection closed by server
                             disconnected()
@@ -304,13 +322,23 @@ class WraythClient(
                         events.forEach { handleEvent(it) }
                     } else {
                         // This is the strange mode to read books and create characters
-                        val text = socket.readAvailable()
+                        // A mode tag can hand back partway through the buffer, and what is left
+                        // of it is raw text again - ahead of anything still on the socket.
+                        val text =
+                            if (pendingText.isNotEmpty()) {
+                                pendingText.also { pendingText = "" }
+                            } else {
+                                socket.readAvailable()
+                            }
                         // check for <mode> tag
-                        val sections = text.split(modeRegex, limit = 2)
-                        if (sections.size > 1) {
-                            rawPrint(sections[0])
+                        val modeStart = text.indexOf("<mode")
+                        if (modeStart >= 0) {
+                            rawPrint(text.substring(0, modeStart))
                             parseText = true
-                            protocolHandler.parseLine(sections[1])
+                            // Everything from the tag on is protocol. Buffer it for the branch
+                            // above rather than parsing it here: it may hold several lines, and
+                            // the read can stop mid-line, in which case the next one finishes it.
+                            pendingText = text.substring(modeStart)
                         } else {
                             rawPrint(text)
                         }
@@ -448,11 +476,8 @@ class WraythClient(
 
                 // We don't actually handle server settings
 
-                // Not 100% where this belongs. connections hang until and empty command is sent
-                // This must be in response to either mode, playerId, or settingsInfo, so
-                // we put it here until someone discovers something else
+                // The connection hangs until an empty command is sent, matches Wrayth
                 sendCommandDirect("")
-                sendCommandDirect("_STATE CHATMODE OFF")
             }
 
             is WraythDialogDataEvent -> {
@@ -466,13 +491,6 @@ class WraythClient(
             }
 
             is WraythDialogObjectEvent -> {
-                // TODO: record this data somewhere
-                // val data = event.data
-                // if (data is PanelObject.ProgressBar) {
-                //    _properties.value = _properties.value +
-                // (data.id to data.value.value.toString()) +
-                //            ((data.id + "text") to (data.text ?: ""))
-                // }
                 dialogDataId?.let {
                     windowRegistry.getOrCreatePanel(it).setObject(event.data)
                 }
@@ -1054,10 +1072,6 @@ class WraythClient(
             .replace("@", cmdNoun ?: "")
             .replace("#", cmdId?.let { "#$it" } ?: "")
             .replace("%", eventNoun ?: "")
-
-    companion object {
-        private val modeRegex = Regex("(?=<mode)")
-    }
 }
 
 val TextStream?.isMainStream
