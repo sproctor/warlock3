@@ -39,17 +39,29 @@ class CommandListStore(
         return try {
             if (!SystemFileSystem.exists(path)) return null
             var serial: String? = null
+            var expectedCount: Int? = null
             val commands = mutableListOf<CmdDefinition>()
             SystemFileSystem.source(path).buffered().use { source ->
                 while (true) {
                     val line = source.readLine() ?: break
                     if (serial == null) {
                         serial = line.attribute("timestamp")
+                        expectedCount = line.attribute("count")?.toIntOrNull()
                     }
                     parseCli(line)?.let { commands.add(it) }
                 }
             }
-            serial?.let { CachedList(it, commands) }
+            if (serial == null) return null
+            // The header promises how many entries follow. A file that does not keep that promise is
+            // short, and a short list here is worse than none: its serial would tell the server we are
+            // up to date, and the commands missing from it would stay missing.
+            if (expectedCount != commands.size) {
+                logger.w {
+                    "Ignoring the cached command list for $listName: it says $expectedCount commands and has ${commands.size}."
+                }
+                return null
+            }
+            CachedList(serial, commands)
         } catch (e: Exception) {
             // A cache that cannot be read is only a slower login, so log it and move on.
             logger.w(e) { "Could not read the cached command list for $listName" }
@@ -63,10 +75,13 @@ class CommandListStore(
         serial: String,
         commands: Collection<CmdDefinition>,
     ) {
+        val path = pathFor(listName)
+        // Written beside the real file and moved over it, so an interrupted write leaves the previous
+        // list in place rather than a half of this one.
+        val partial = Path(path.parent!!, path.name + ".partial")
         try {
             SystemFileSystem.createDirectories(Path(baseDir, DIRECTORY))
-            val path = pathFor(listName)
-            SystemFileSystem.sink(path).buffered().use { sink ->
+            SystemFileSystem.sink(partial).buffered().use { sink ->
                 sink.writeString("<cmdlist timestamp=\"${serial.escaped()}\" count=\"${commands.size}\">\n")
                 commands.forEach { cmd ->
                     sink.writeString(
@@ -77,10 +92,13 @@ class CommandListStore(
                     )
                 }
                 sink.writeString("</cmdlist>\n")
+                sink.flush()
             }
+            SystemFileSystem.atomicMove(partial, path)
         } catch (e: Exception) {
             // Same again: failing to cache costs a re-send next time, nothing more.
             logger.w(e) { "Could not write the cached command list for $listName" }
+            runCatching { SystemFileSystem.delete(partial, mustExist = false) }
         }
     }
 

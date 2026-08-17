@@ -1,22 +1,33 @@
+import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import warlockfe.warlock3.wrayth.util.CmdDefinition
 import warlockfe.warlock3.wrayth.util.CommandListStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 class CommandListStoreTests {
-    private var counter = 0
-
-    private fun store(): CommandListStore {
-        // A directory of its own per store, so one test cannot read another's file.
-        val dir = Path(SystemTemporaryDirectory, "cmdlist-test-${counter++}-${this.hashCode()}")
+    // A directory of its own per store, so no test reads another's file - and none reads one left
+    // behind by an earlier run, which a per-instance counter does not give you, since the test
+    // framework builds a fresh instance per test and every one of them would start again at zero.
+    private fun tempDir(): Path {
+        val dir = Path(SystemTemporaryDirectory, "cmdlist-test-$RUN_ID-${counter++}")
         SystemFileSystem.createDirectories(dir)
-        return CommandListStore(dir.toString())
+        return dir
     }
+
+    companion object {
+        private val RUN_ID = Clock.System.now().toEpochMilliseconds()
+        private var counter = 0
+    }
+
+    private fun store(): CommandListStore = CommandListStore(tempDir().toString())
 
     private fun cmd(
         coord: String,
@@ -112,5 +123,82 @@ class CommandListStoreTests {
 
         assertEquals("5.1.1.1", store.load("GS4")?.serial)
         assertEquals(emptyList(), store.load("GS4")?.commands)
+    }
+
+    @Test
+    fun aTruncatedCacheIsRefusedRatherThanTrusted() {
+        // The nastiest shape this can take: a header carrying the serial, and only some of the
+        // commands it promises. Trusting it would tell the server we are up to date while the
+        // commands missing from it stayed missing, for as long as the serial did not change.
+        val dir = tempDir()
+        val store = CommandListStore(dir.toString())
+        store.save("GS4", "1.1.1.1", listOf(cmd("2524,1"), cmd("2524,2"), cmd("2524,3")))
+        val path = Path(dir, "cmdlists", "GS4.xml")
+        val whole = SystemFileSystem.source(path).buffered().use { it.readString() }
+        val truncated = whole.lineSequence().take(2).joinToString("\n") + "\n"
+        SystemFileSystem.sink(path).buffered().use { it.writeString(truncated) }
+
+        assertNull(store.load("GS4"))
+    }
+
+    @Test
+    fun aCacheWithNoCountIsRefused() {
+        val dir = tempDir()
+        val store = CommandListStore(dir.toString())
+        SystemFileSystem.createDirectories(Path(dir, "cmdlists"))
+        SystemFileSystem.sink(Path(dir, "cmdlists", "GS4.xml")).buffered().use {
+            it.writeString("<cmdlist timestamp=\"1.1.1.1\">\n</cmdlist>\n")
+        }
+
+        assertNull(store.load("GS4"))
+    }
+
+    @Test
+    fun anInterruptedWriteLeavesThePreviousListInPlace() {
+        // Tears the write for real: save() iterates the collection it is given, and this one stops
+        // partway. Writing straight to the cache file would leave the header and two entries of a
+        // list claiming four - which is exactly the shape load() must never be handed.
+        val dir = tempDir()
+        val store = CommandListStore(dir.toString())
+        store.save("GS4", "1.1.1.1", listOf(cmd("2524,1")))
+
+        store.save("GS4", "9.9.9.9", failingCollection(size = 4, failAfter = 2))
+
+        val loaded = store.load("GS4")
+        assertEquals("1.1.1.1", loaded?.serial)
+        assertEquals(listOf(cmd("2524,1")), loaded?.commands)
+    }
+
+    /** A collection that yields [failAfter] entries and then gives up, reporting [size] all along. */
+    private fun failingCollection(
+        size: Int,
+        failAfter: Int,
+    ) = object : AbstractCollection<CmdDefinition>() {
+        override val size = size
+
+        override fun iterator() =
+            object : Iterator<CmdDefinition> {
+                private var yielded = 0
+
+                override fun hasNext() = yielded < size
+
+                override fun next(): CmdDefinition {
+                    if (yielded >= failAfter) throw IllegalStateException("write interrupted")
+                    return cmd("2524,${yielded++}")
+                }
+            }
+    }
+
+    @Test
+    fun aSaveOverAnExistingListReplacesItWholesale() {
+        val dir = tempDir()
+        val store = CommandListStore(dir.toString())
+        store.save("GS4", "1.1.1.1", List(5) { cmd("2524,$it") })
+
+        store.save("GS4", "2.1.1.1", listOf(cmd("2524,99")))
+
+        val loaded = store.load("GS4")
+        assertEquals("2.1.1.1", loaded?.serial)
+        assertEquals(listOf(cmd("2524,99")), loaded?.commands)
     }
 }
