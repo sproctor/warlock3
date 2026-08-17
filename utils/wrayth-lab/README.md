@@ -84,6 +84,20 @@ These are the non-obvious bits, kept here because they cost real time to find:
   handshake lines (the key, then
   `/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML`). With chat mode on, a
   typed command arrives as `<c>'look at dummy`.
+- **The empty command Wrayth sends answers `settingsInfo`, and only in game mode.**
+  A connection hangs until the client sends an empty command, and the handshake runs:
+  the key, then `/FE:WRAYTH /VERSION:... /XML`, then - once the server has sent
+  `<mode id="GAME"/>` and `<settingsInfo .../>` - a burst of `<c>`, the client's whole
+  settings upload as `<db><settings>...`, and `<c>_STATE CHATMODE ON`. Narrowed by
+  feeding elements one at a time against an empty bootstrap: `mode` alone gets nothing
+  back, `settingsInfo` alone gets nothing back, `settingsInfo` after `mode` gets the
+  burst, and a `settingsInfo` that arrived before game mode is dropped rather than
+  remembered - sending `mode` afterwards does not make up for it, though re-sending
+  `settingsInfo` then does. `playerId` is not involved.
+- **`_STATE CHATMODE` is a report, not a handshake step.** It carries whichever mode
+  that client is configured for, `ON` or `OFF`, and arrives after the settings upload;
+  it is the empty command above that unblocks the connection. What a real server does
+  with the value is not something the bench can answer - its server is a stub.
 - **Skin names are matched case-insensitively.** A widget names a skin entry with
   `<skin name='...'>`, and the real server and the real skin disagree about case:
   GS4 sends `name='healthBar'` (and `manaBar`, `staminaBar`, `spiritBar`) while

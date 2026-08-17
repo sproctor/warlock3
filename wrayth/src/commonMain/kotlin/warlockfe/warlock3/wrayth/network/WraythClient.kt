@@ -448,11 +448,8 @@ class WraythClient(
 
                 // We don't actually handle server settings
 
-                // Not 100% where this belongs. connections hang until and empty command is sent
-                // This must be in response to either mode, playerId, or settingsInfo, so
-                // we put it here until someone discovers something else
+                // The connection hangs until an empty command is sent, matches Wrayth
                 sendCommandDirect("")
-                sendCommandDirect("_STATE CHATMODE OFF")
             }
 
             is WraythDialogDataEvent -> {
@@ -466,13 +463,6 @@ class WraythClient(
             }
 
             is WraythDialogObjectEvent -> {
-                // TODO: record this data somewhere
-                // val data = event.data
-                // if (data is PanelObject.ProgressBar) {
-                //    _properties.value = _properties.value +
-                // (data.id to data.value.value.toString()) +
-                //            ((data.id + "text") to (data.text ?: ""))
-                // }
                 dialogDataId?.let {
                     windowRegistry.getOrCreatePanel(it).setObject(event.data)
                 }
