@@ -196,8 +196,7 @@ class WraythClient(
 
     // Line state variables
     private var isPrompting = false
-    private var streamBuffer: StyledString? = null
-    private var elementBuffer: StyledString? = null
+    private val lineBuffer = LineBuffer()
 
     private val cliCache = mutableListOf<CmdDefinition>()
 
@@ -229,7 +228,6 @@ class WraythClient(
 
     private var dialogDataId: String? = null
     private val directions: HashSet<Direction> = hashSetOf()
-    private var componentId: String? = null
 
     private val _disconnected = MutableStateFlow(false)
     override val disconnected = _disconnected.asStateFlow()
@@ -368,7 +366,7 @@ class WraythClient(
             }
 
             is WraythStreamEvent -> {
-                componentId = null
+                lineBuffer.discardComponent()
                 flushBuffer(true)
                 currentStream = getStream(event.id ?: "main")
             }
@@ -430,7 +428,7 @@ class WraythClient(
             is WraythPromptEvent -> {
                 currentTypeAhead.update { max(0, it - 1) }
                 styleStack.clear()
-                componentId = null
+                lineBuffer.discardComponent()
                 currentStyle = null
                 currentStream = null
                 if (!isPrompting) {
@@ -536,31 +534,28 @@ class WraythClient(
                             ),
                         ),
                 )
-                componentId = event.id
-                elementBuffer = StyledString()
+                lineBuffer.openComponent(event.id)
             }
 
             is WraythComponentStartEvent -> {
-                componentId = event.id
-                elementBuffer = StyledString()
+                lineBuffer.openComponent(event.id)
             }
 
             WraythComponentEndEvent -> {
-                if (componentId != null) {
+                val closed = lineBuffer.closeComponent()
+                if (closed != null) {
+                    val (id, value) = closed
                     // Either replace the component in the map with the new value
                     //  or remove the component from the map (if we got an empty one)
                     componentsMutex.withLock {
                         components =
-                            if (elementBuffer?.substrings.isNullOrEmpty()) {
-                                components.removing(componentId!!)
+                            if (value.substrings.isEmpty()) {
+                                components.removing(id)
                             } else {
-                                components.putting(componentId!!, elementBuffer!!)
+                                components.putting(id, value)
                             }
                     }
-                    val newValue = elementBuffer ?: StyledString()
-                    windowRegistry.updateComponent(componentId!!, newValue)
-                    elementBuffer = null
-                    componentId = null
+                    windowRegistry.updateComponent(id, value)
                 } else {
                     // mismatched component tags?
                 }
@@ -810,11 +805,7 @@ class WraythClient(
         currentStyle?.let { styledText = styledText.applyStyle(it) }
         styleStack.forEach { styledText = styledText.applyStyle(it) }
         if (monospace) styledText = styledText.applyMonospace()
-        if (elementBuffer != null) {
-            elementBuffer = elementBuffer!!.plus(styledText)
-        } else {
-            streamBuffer = streamBuffer?.plus(styledText) ?: styledText
-        }
+        lineBuffer.append(styledText)
     }
 
     private suspend fun appendToStream(
@@ -860,13 +851,11 @@ class WraythClient(
         }
     }
 
-    // TODO: separate buffer into its own class
     private suspend fun flushBuffer(ignoreWhenBlank: Boolean) {
-        if (componentId == null) {
-            val styledText = streamBuffer ?: StyledString()
-            appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank)
-            streamBuffer = null
-        }
+        // Null while a component is still open: its content is not the line's, and the line is not
+        // finished until the component that interrupted it closes.
+        val styledText = lineBuffer.takeLine() ?: return
+        appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank)
     }
 
     override suspend fun sendCommand(line: String): SendCommandType =
