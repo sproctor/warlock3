@@ -19,7 +19,7 @@ class WarlockStreamSocket(
 
     override suspend fun readLine(): String? = reader.readLine()
 
-    override suspend fun readAvailable(min: Int): String = reader.readLine()
+    override suspend fun readAvailable(min: Int): String? = reader.readLine()
 
     override fun ready(): Boolean = reader.ready()
 

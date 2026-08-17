@@ -330,6 +330,11 @@ class WraythClient(
                             } else {
                                 socket.readAvailable()
                             }
+                        if (text == null) {
+                            // Connection closed by server
+                            disconnected()
+                            break
+                        }
                         // check for <mode> tag
                         val modeStart = text.indexOf("<mode")
                         if (modeStart >= 0) {

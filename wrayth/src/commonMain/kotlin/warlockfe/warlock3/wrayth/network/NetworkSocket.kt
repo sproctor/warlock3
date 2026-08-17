@@ -132,10 +132,13 @@ class NetworkSocket(
         }
     }
 
-    override suspend fun readAvailable(min: Int): String {
+    override suspend fun readAvailable(min: Int): String? {
         check(::receiveChannel.isInitialized) { "Socket not connected" }
         receiveChannel.awaitContent(min)
         val len = receiveChannel.readAvailable(buffer)
+        // -1 once the peer has gone away and the channel is drained. Handing that to the decoder
+        // asks it for a string of negative length, which it throws over.
+        if (len < 0) return null
         return buffer.decodeWindows1252(0, len)
     }
 
