@@ -119,6 +119,28 @@ These are the non-obvious bits, kept here because they cost real time to find:
   need to know which mode the *game* is in, or to gate any particular tag on it: a tag
   that arrives while the parser is off is text, and a tag that arrives while it is on is
   a tag.
+- **`<compDef>` on the main stream is a live placeholder, and it keeps the style it was
+  defined under.** `<compDef id='x'/>` in ordinary main-stream text reserves a spot that a
+  later `<component id='x'>…</component>` fills **in place**, rewriting a line that has
+  already scrolled by. The styling travels with the placeholder, not with the content: a
+  `compDef` on a `<style id="roomName"/>` line shows its content on the room-name
+  background even though the `<component>` that filled it came from an unstyled line.
+  Two things that surprised us:
+  - **A `<component>` whose placeholder does not exist yet is not retained.** Send the
+    `<component>` first and the later `compDef` renders empty and stays empty; send it
+    again afterwards and the spot fills. So this is a push to live placeholders, not a
+    store the client reads from.
+  - **A `compDef` inside a pushed style span never fills at all.** Inside
+    `<pushBold/>…<popBold/>` or `<preset id='…'>…</preset>` the spot renders empty and
+    stays empty however many `<component>` tags follow, while an identical `compDef` on
+    a plain line, or on a `<style>` line, fills fine. Reproduced on a freshly started
+    client with no other state. No parse error is reported, so the line is accepted -
+    it just never updates.
+- **`<style>` is connection state, not per-stream state.** A `<style id="roomName"/>` set
+  between `<pushStream id='thoughts'/>` and `<popStream/>` is still in force for the next
+  line written to main. So a client wanting to match Wrayth keeps one current style for
+  the connection rather than one per stream, and lets it persist across lines until
+  another `<style>` or a prompt clears it.
 - **Skin names are matched case-insensitively.** A widget names a skin entry with
   `<skin name='...'>`, and the real server and the real skin disagree about case:
   GS4 sends `name='healthBar'` (and `manaBar`, `staminaBar`, `spiritBar`) while

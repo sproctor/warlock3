@@ -519,14 +519,23 @@ class WraythClient(
 
             is WraythComponentDefinitionEvent -> {
                 // Should not happen on main stream, so don't clear prompt
-                // TODO: Should currentStyle be used here? is it per stream?
+                // The placeholder keeps the style it was defined under, and later content substituted
+                // into it renders with that - which is what Wrayth does: a compDef inside a
+                // `<style id="roomName"/>` line shows its content on the room-name background even
+                // when the `<component>` that fills it arrives from an unstyled line.
+                //
+                // No styles here: bufferText applies currentStyle and then the stack, the same order
+                // it uses for the text either side of this on the line. Naming the stack here as well
+                // put it ahead of currentStyle in a first-set-wins list, so a placeholder resolved a
+                // style conflict the opposite way from its own neighbours (and any action on a pushed
+                // style was pushed twice).
                 bufferText(
                     text =
                         StyledString(
                             persistentListOf(
                                 StyledStringVariable(
                                     name = event.id,
-                                    styles = styleStack.toPersistentList(),
+                                    styles = persistentListOf(),
                                 ),
                             ),
                         ),
