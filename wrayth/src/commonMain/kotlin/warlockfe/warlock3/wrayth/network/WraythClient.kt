@@ -331,14 +331,14 @@ class WraythClient(
                                 socket.readAvailable()
                             }
                         // check for <mode> tag
-                        val sections = text.split(modeRegex, limit = 2)
-                        if (sections.size > 1) {
-                            rawPrint(sections[0])
+                        val modeStart = text.indexOf("<mode")
+                        if (modeStart >= 0) {
+                            rawPrint(text.substring(0, modeStart))
                             parseText = true
                             // Everything from the tag on is protocol. Buffer it for the branch
                             // above rather than parsing it here: it may hold several lines, and
                             // the read can stop mid-line, in which case the next one finishes it.
-                            pendingText = sections[1]
+                            pendingText = text.substring(modeStart)
                         } else {
                             rawPrint(text)
                         }
@@ -1072,10 +1072,6 @@ class WraythClient(
             .replace("@", cmdNoun ?: "")
             .replace("#", cmdId?.let { "#$it" } ?: "")
             .replace("%", eventNoun ?: "")
-
-    companion object {
-        private val modeRegex = Regex("(?=<mode)")
-    }
 }
 
 val TextStream?.isMainStream
