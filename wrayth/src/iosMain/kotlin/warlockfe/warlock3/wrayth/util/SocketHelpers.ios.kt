@@ -37,6 +37,7 @@ import platform.CoreFoundation.CFArrayCreate
 import platform.CoreFoundation.CFDataCreate
 import platform.CoreFoundation.CFErrorRefVar
 import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.kCFTypeArrayCallBacks
 import platform.Security.SSLClose
 import platform.Security.SSLConnectionRef
 import platform.Security.SSLConnectionType
@@ -98,10 +99,12 @@ private val sslReadCallback =
                 dataLength.pointed.value = n.convert()
                 errSecSuccess
             }
+
             n == 0L -> {
                 dataLength.pointed.value = 0u
                 errSSLClosedGraceful
             }
+
             else -> {
                 dataLength.pointed.value = 0u
                 if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
@@ -125,6 +128,7 @@ private val sslWriteCallback =
                 dataLength.pointed.value = n.convert()
                 errSecSuccess
             }
+
             else -> {
                 dataLength.pointed.value = 0u
                 if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
@@ -175,14 +179,20 @@ private fun setupTLS(
     // Break on server auth so we can evaluate trust with our custom certificate
     SSLSetSessionOption(sslCtx, kSSLSessionOptionBreakOnServerAuth, true)
 
-    var status = SSLHandshake(sslCtx)
+    val firstStatus = SSLHandshake(sslCtx)
+    var status = firstStatus
     if (status == errSSLPeerAuthCompleted) {
         // Evaluate server trust with our custom CA certificate
         evaluateServerTrust(sslCtx, certificate)
         // Continue handshake after trust evaluation
         status = SSLHandshake(sslCtx)
     }
-    check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
+    // Report both statuses: -50 (errSecParam) on the *first* call means SecureTransport rejected the
+    // context setup, while -50 only on the second means the trust evaluation left it unusable. The
+    // two have completely different fixes, so never collapse them into one number.
+    check(status == errSecSuccess) {
+        "TLS handshake failed for $host (first=$firstStatus, final=$status)"
+    }
 
     return sslCtx to stableRef
 }
@@ -223,32 +233,41 @@ private fun evaluateServerTrust(
     CFRelease(cfData)
     checkNotNull(cert) { "SecCertificateCreateWithData failed" }
 
-    // Set as anchor certificate
-    val certArrayValues = allocArrayOf(cert as COpaquePointer)
-    val certCFArray = CFArrayCreate(null, certArrayValues.reinterpret(), 1, null)
-    SecTrustSetAnchorCertificates(trust, certCFArray)
-    // Also allow system anchors
-    SecTrustSetAnchorCertificatesOnly(trust, false)
+    val policy = checkNotNull(SecPolicyCreateBasicX509()) { "SecPolicyCreateBasicX509 failed" }
 
-    // Replace the SSL policy with a basic X.509 policy (no hostname check).
-    // Hostname verification is already handled by SSLSetPeerDomainName at the SSL layer;
-    // the self-signed CA cert doesn't have a SAN for the server hostname.
-    val policy = SecPolicyCreateBasicX509()
-    val policyValues = allocArrayOf(policy as COpaquePointer)
-    val policyArray = CFArrayCreate(null, policyValues.reinterpret(), 1, null)
-    SecTrustSetPolicies(trust, policyArray)
+    // kCFTypeArrayCallBacks rather than null: an array built with null callbacks does not retain
+    // what it holds, so releasing `cert` and `policy` below would leave `trust` referencing freed
+    // memory. That is a use-after-free which only misbehaves when the allocator happens to reuse the
+    // block -- precisely the kind of fault that appears to come and go between runs.
+    val certCFArray =
+        CFArrayCreate(null, allocArrayOf(cert as COpaquePointer).reinterpret(), 1, kCFTypeArrayCallBacks.ptr)
+    val policyArray =
+        CFArrayCreate(null, allocArrayOf(policy as COpaquePointer).reinterpret(), 1, kCFTypeArrayCallBacks.ptr)
 
-    // Evaluate trust
-    val errorPtr = alloc<CFErrorRefVar>()
-    val trusted = SecTrustEvaluateWithError(trust, errorPtr.ptr)
+    val trusted =
+        try {
+            // Set as anchor certificate, but also allow system anchors
+            SecTrustSetAnchorCertificates(trust, certCFArray)
+            SecTrustSetAnchorCertificatesOnly(trust, false)
 
-    val error = errorPtr.value
-    if (error != null) CFRelease(error)
-    CFRelease(policyArray)
-    CFRelease(policy)
-    CFRelease(certCFArray)
-    CFRelease(cert)
-    CFRelease(trust)
+            // Replace the SSL policy with a basic X.509 policy (no hostname check).
+            // Hostname verification is already handled by SSLSetPeerDomainName at the SSL layer;
+            // the self-signed CA cert doesn't have a SAN for the server hostname.
+            SecTrustSetPolicies(trust, policyArray)
+
+            val errorPtr = alloc<CFErrorRefVar>()
+            val result = SecTrustEvaluateWithError(trust, errorPtr.ptr)
+            errorPtr.value?.let { CFRelease(it) }
+            result
+        } finally {
+            // The arrays retain their members now, so these releases are correct however they are
+            // ordered, and they still run if the evaluation above throws.
+            CFRelease(policyArray)
+            CFRelease(policy)
+            CFRelease(certCFArray)
+            CFRelease(cert)
+            CFRelease(trust)
+        }
 
     check(trusted) { "Server certificate trust evaluation failed" }
 }
