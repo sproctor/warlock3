@@ -126,6 +126,12 @@ kotlin {
             dependencies {
                 implementation(libs.coil.network.okhttp)
                 implementation(libs.autolink)
+
+                // Crash reporting for desktop and Android. Deliberately NOT in commonMain: the
+                // Kotlin SDK's iOS cinterop carries `-framework Sentry`, which Xcode satisfies via
+                // SPM but Gradle cannot when it links the iOS test binary, breaking `check`. iOS
+                // starts the Cocoa SDK directly from iOSApp.swift instead.
+                implementation(libs.sentry.kotlin)
             }
         }
         jvmMain.dependencies {

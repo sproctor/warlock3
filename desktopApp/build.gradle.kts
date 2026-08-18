@@ -37,9 +37,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
 
-    // Logging and error reporting
+    // Logging. Crash reporting comes from :compose (see SentryInit.kt).
     implementation(libs.slf4j.simple)
-    implementation(libs.sentry.kotlin)
 
     // In-app updates
     implementation(libs.potassium.updater)

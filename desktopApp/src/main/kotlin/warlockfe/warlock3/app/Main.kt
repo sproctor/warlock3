@@ -53,7 +53,6 @@ import com.seanproctor.potassium.updater.UpdateInfo
 import com.seanproctor.potassium.updater.UpdateResult
 import com.seanproctor.potassium.updater.provider.GitHubProvider
 import io.github.vinceglb.filekit.FileKit
-import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.ensureActive
@@ -96,6 +95,7 @@ import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
+import warlockfe.warlock3.compose.util.initializeSentry
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -434,7 +434,7 @@ private class WarlockCommand : CliktCommand() {
 
     private fun configureLogging(): Logger {
         if (!isDev) {
-            version?.let { initializeSentry(it) }
+            version?.let { initializeSentry(platform = "desktop", version = it) }
         }
         if (debug || isDev) {
             System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
@@ -776,15 +776,6 @@ internal fun GameState.getTitle(): Flow<String> =
             flow { emit("Error") }
         }
     }
-
-fun initializeSentry(version: String) {
-    Sentry.init { options ->
-        with(options) {
-            dsn = "https://06169c08bd931ba4308dab95573400e2@o4508437273378816.ingest.us.sentry.io/4508437322727424"
-            release = "desktop@$version"
-        }
-    }
-}
 
 private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =
     Room.databaseBuilder<PrefsDatabase>(
