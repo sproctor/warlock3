@@ -645,10 +645,12 @@ sealed class WslValueExpression {
         val content: List<WslStringContent>,
     ) : WslValueExpression() {
         override fun getValue(context: WslContext): WslValue {
+            // `stringContent*` in the grammar takes zero or more, so "" has nothing to reduce.
             val value =
                 content
                     .map { it.getValue(context) }
-                    .reduce { acc, s -> acc + s }
+                    .reduceOrNull { acc, s -> acc + s }
+                    ?: ""
             return WslString(value)
         }
     }
