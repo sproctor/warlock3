@@ -158,6 +158,10 @@ data class WraythParseErrorEvent(
 
 data class WraythUnhandledTagEvent(
     val tag: String,
+    // True the once, for the first sighting of this tag name. The parser is already counting them,
+    // and already goes quiet past a few hundred distinct names, so a second tally here would only be
+    // a chance to disagree with it.
+    val firstSighting: Boolean = false,
 ) : WraythEvent
 
 /**
