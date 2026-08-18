@@ -254,6 +254,8 @@ private suspend fun runConnection(
             fileLogging = loggingRepository,
             ioDispatcher = ioDispatcher,
             socket = socket,
+            // No cache: every run should look like a first login, not like the one before it.
+            commandListStore = null,
         )
 
     // Representative eventFlow subscribers. The always-on GameViewModel-style collector runs on the

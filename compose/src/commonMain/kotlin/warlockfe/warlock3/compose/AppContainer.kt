@@ -75,6 +75,7 @@ import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
+import warlockfe.warlock3.wrayth.util.CommandListStore
 
 abstract class AppContainer(
     val database: PrefsDatabase,
@@ -100,6 +101,10 @@ abstract class AppContainer(
     // Client-wide settings and the connection/character registry live in their own TOML files
     // (client.toml, connections.toml), separate from the per-character files above.
     val clientConfigStore = ClientConfigStore(warlockDirs.configDir, fileSystem)
+
+    // Derived data, refetched from the server whenever it is missing, so it lives with the data
+    // rather than the configuration.
+    val commandListStore = CommandListStore(warlockDirs.dataDir)
 
     val variableRepository = VariableRepository(characterConfigStore)
     val characterRepository = CharacterRepository(clientConfigStore)
@@ -241,6 +246,7 @@ abstract class AppContainer(
                     fileLogging = loggingRepository,
                     ioDispatcher = ioDispatcher,
                     socket = socket,
+                    commandListStore = commandListStore,
                 )
         }
 

@@ -6,5 +6,5 @@ import warlockfe.warlock3.wrayth.protocol.WraythEvent
 import warlockfe.warlock3.wrayth.protocol.WraythUpdateVerbsEvent
 
 class UpdateVerbsHandler : BaseElementListener() {
-    override fun startElement(element: StartElement): WraythEvent? = WraythUpdateVerbsEvent
+    override fun startElement(element: StartElement): WraythEvent? = WraythUpdateVerbsEvent(element.attributes["default"])
 }
