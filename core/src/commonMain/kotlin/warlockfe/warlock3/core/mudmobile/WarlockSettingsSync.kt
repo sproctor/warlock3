@@ -2,7 +2,6 @@ package warlockfe.warlock3.core.mudmobile
 
 import co.touchlab.kermit.Logger
 import dev.eav.tomlkt.Toml
-import dev.eav.tomlkt.encodeToString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -160,7 +159,7 @@ class WarlockSettingsSync(
         var pulled = 0
         var deleted = 0
 
-        val allPaths = (base.keys + localHashes.keys + remoteHashes.keys).toSortedSet()
+        val allPaths = (base.keys + localHashes.keys + remoteHashes.keys).sorted()
         for (path in allPaths) {
             val localHash = localHashes[path]
             val remoteHash = remoteHashes[path]
@@ -403,7 +402,7 @@ class WarlockSettingsSync(
     private fun writeBaseHashes(hashes: Map<String, String>) {
         runCatching {
             if (fileSystem.metadataOrNull(rootDir) == null) fileSystem.createDirectories(rootDir)
-            val file = SyncStateFile(hashes.toSortedMap().map { SyncStateEntry(it.key, it.value) })
+            val file = SyncStateFile(hashes.entries.sortedBy { it.key }.map { SyncStateEntry(it.key, it.value) })
             val text = toml.encodeToString(SyncStateFile.serializer(), file)
             val tmp = Path(rootDir, statePath.name + ".tmp")
             fileSystem.sink(tmp).buffered().use { it.writeString(text) }

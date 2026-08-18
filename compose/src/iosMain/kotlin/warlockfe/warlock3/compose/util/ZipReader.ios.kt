@@ -1,6 +1,6 @@
 package warlockfe.warlock3.compose.util
 
-import dev.karmakrafts.kompress.Inflater
+import dev.karmakrafts.kompress.deflate.Inflater
 
 // iOS has no bundled zip facility. This is a minimal in-memory zip reader adapted from the
 // pure-Kotlin reader in kzip (MIT, Jonas Broeckmann; https://github.com/Jojo4GH/kzip/pull/6): it
@@ -67,7 +67,7 @@ actual fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
         entries[name] =
             when (method) {
                 METHOD_STORED -> data
-                METHOD_DEFLATED -> Inflater.inflate(data = data, raw = true)
+                METHOD_DEFLATED -> Inflater.decompress(data)
                 else -> throw IllegalArgumentException("Unsupported compression method $method for \"$name\"")
             }
     }
