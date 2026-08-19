@@ -978,18 +978,49 @@ class GameDockingTest {
         assertEquals(RememberedSpot(listOf("logons"), DockRegion.South, 0.5f), spots.spend("thoughts"))
     }
 
-    // Windows the game has stopped sending would otherwise accumulate a spot each, forever, and be
-    // re-serialized into the character's settings on every save.
+    // The debounced save runs a second after a close, when the window it was for is neither open
+    // (the view model dropped it) nor docked (reconcile undocked it). Bounding the map by liveness
+    // therefore deleted the spot of the very window just closed - every close a user might undo.
     @Test
-    fun pruningDropsSpotsForWindowsThatAreGone() {
+    fun aJustClosedWindowKeepsItsSpotThroughASave() {
+        val state = newState()
+        val registerWindow = register(state)
         val spots = DockSpotMemory()
-        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
-        spots.remember("ancient", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+        reconcile(state, column(), registerWindow, spots)
 
-        spots.prune(setOf("thoughts", "logons"))
+        reconcile(state, column().filterKeys { it != "logons" }, registerWindow, spots)
+        // The debounced collector's own save step, on a layout that no longer mentions the window.
+        val encoded = dockSpotsToSave(spots)
+        assertFalse(state.isOpen(DockableId("logons")), "the window under test has to actually be gone")
 
-        assertNotNull(spots.spend("thoughts"))
-        assertNull(spots.spend("ancient"))
+        assertNotNull(spots.peek("logons"), "the spot was dropped before it could be used")
+        assertTrue(encoded?.contains("logons") == true, "the spot was not saved")
+    }
+
+    // The whole cycle a user actually performs: close, let the save run, then reopen.
+    @Test
+    fun aWindowReopenedAfterASaveStillGoesBackWhereItWas() {
+        val state = newState()
+        val registerWindow = register(state)
+        val spots = DockSpotMemory()
+        reconcile(state, column(), registerWindow, spots)
+        val orderBefore = order(state)
+
+        reconcile(state, column().filterKeys { it != "logons" }, registerWindow, spots)
+        dockSpotsToSave(spots)
+        reconcile(state, column(), registerWindow, spots)
+
+        assertEquals(orderBefore, order(state))
+    }
+
+    // Bounded by count, so a client running for years cannot grow the blob forever.
+    @Test
+    fun theOldestSpotsAreForgottenOnceThereAreTooMany() {
+        val spots = DockSpotMemory()
+        repeat(200) { spots.remember("window$it", RememberedSpot(listOf("other"), DockRegion.South, 0.5f)) }
+
+        assertNull(spots.peek("window0"), "the oldest should have been dropped")
+        assertNotNull(spots.peek("window199"), "the newest must survive")
     }
 
     // Only a real change is worth a database write; drags and resizes move the layout but no spot.
@@ -1131,5 +1162,14 @@ class GameDockingTest {
         val restored = DockSpotMemory().apply { restore(spots.encode()) }
 
         assertEquals(spot, restored.spend("thoughts"))
+    }
+
+    @Test
+    fun anUnchangedSetOfSpotsIsNotWorthASave() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+
+        assertNotNull(dockSpotsToSave(spots))
+        assertNull(dockSpotsToSave(spots), "nothing moved, so there is nothing to write")
     }
 }

@@ -365,12 +365,7 @@ fun rememberGameDockState(
                     .debounce(1.seconds)
                     .collect {
                         viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
-                        // Spots only ever change as part of a close or a reopen, and both of those
-                        // move the layout, so this beat catches every change to them. Most layout
-                        // changes are drags and resizes, which change no spot at all, so only write
-                        // when something actually moved - the writer does not de-duplicate.
-                        spots.prune(liveOpenWindows().keys + dockedIds(state.layout).map { it.value })
-                        if (spots.isDirty()) viewModel.saveDockSpots(spots.encode())
+                        dockSpotsToSave(spots)?.let { viewModel.saveDockSpots(it) }
                     }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into
@@ -759,6 +754,21 @@ internal data class RememberedSpot(
 )
 
 /**
+ * What the debounced save should write for the spots, or null when nothing has moved.
+ *
+ * Spots only ever change as part of a close or a reopen, and both of those move the layout, so the
+ * same beat that saves the arrangement catches every change to them. Most layout changes are drags
+ * and resizes, which change no spot at all, and the writer does not de-duplicate, so an unchanged
+ * set is not worth a write.
+ *
+ * It takes the memory and nothing else on purpose. An earlier version bounded the map here against
+ * the windows that were open or docked - which are precisely the two things a window that has just
+ * been closed is not, so it deleted the spot of the window whose close the user was most likely to
+ * undo, one second after they closed it. There is no set of live windows to be tempted by here.
+ */
+internal fun dockSpotsToSave(spots: DockSpotMemory): String? = if (spots.isDirty()) spots.encode() else null
+
+/**
  * Where closed windows were, saved alongside the character's arrangement.
  *
  * Stored apart from the arrangement rather than folded into it, so an unreadable set of spots costs
@@ -779,10 +789,13 @@ internal class DockSpotMemory {
         name: String,
         spot: RememberedSpot?,
     ) {
-        if (spot != null && spots[name] != spot) {
-            spots[name] = spot
-            dirty = true
-        }
+        if (spot == null) return
+        if (spots[name] != spot) dirty = true
+        // Re-inserted rather than replaced, so the map runs least- to most-recently recorded and
+        // [trim] drops whichever nobody has touched in longest.
+        spots.remove(name)
+        spots[name] = spot
+        trim()
     }
 
     /** Drops [name]'s spot outright, for a window that is not coming back. */
@@ -827,11 +840,19 @@ internal class DockSpotMemory {
         }
     }
 
-    /** Drops spots for windows that no longer exist, so the set cannot grow without bound. */
-    fun prune(known: Set<String>) {
-        val gone = spots.keys - known
-        if (gone.isNotEmpty()) {
-            gone.forEach { spots.remove(it) }
+    /**
+     * Forgets the least recently recorded spots once there are more than [MAX_SPOTS] of them.
+     *
+     * Bounded by count rather than by which windows still exist, because a window that has just been
+     * closed exists nowhere: it is gone from the view model's open list and undocked from the layout
+     * in the same breath. Pruning against "open or docked" therefore deleted the spot of the very
+     * window that had just been closed, on the debounced save a second later - which is every close
+     * a user is likely to undo.
+     */
+    private fun trim() {
+        while (spots.size > MAX_SPOTS) {
+            val oldest = spots.keys.firstOrNull() ?: break
+            spots.remove(oldest)
             dirty = true
         }
     }
@@ -840,6 +861,10 @@ internal class DockSpotMemory {
         // Lenient on the way in: a field added by a later build must cost that one spot at worst,
         // and preferably nothing at all. The library's own persistence reads its layouts the same way.
         val json = Json { ignoreUnknownKeys = true }
+
+        // Far more than the windows a character has, so nothing is dropped in practice; this only
+        // stops a client that runs for years growing the saved blob without limit.
+        const val MAX_SPOTS = 128
     }
 }
 
