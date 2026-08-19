@@ -41,10 +41,11 @@ private suspend fun ByteReadChannel.readWindows1252LineTo(
             while (!exhausted()) {
                 when (val b = readByte()) {
                     CR -> {
-                        // Check if LF follows CR after awaiting
+                        // CR is only half a terminator until the next byte says otherwise, so wait
+                        // for one. There may be none - the peer can hang up on the CR - and the line
+                        // it ended is still a line either way.
                         awaitContent()
-                        val nextByte = peek(1) ?: return true
-                        if (nextByte[0] == LF) {
+                        if (peek(1)?.get(0) == LF) {
                             discard(1)
                         }
                         out.append(lineBuffer.readWindows1252String())

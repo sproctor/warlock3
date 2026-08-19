@@ -49,6 +49,17 @@ class Windows1252ChannelTests {
         }
 
     @Test
+    fun aLineTheStreamEndsRightAfterACarriageReturnIsStillReturned() =
+        runTest {
+            // CR is only half a terminator until the next byte says otherwise, and here there is no
+            // next byte: the peer hung up on the CR. The line before it is still a line.
+            val channel = channelOf("text\r")
+
+            assertEquals("text", channel.readWindows1252Line())
+            assertNull(channel.readWindows1252Line())
+        }
+
+    @Test
     fun highBytesDecodeAsWindows1252RatherThanLatin1() =
         runTest {
             // 0x97 and 0x92 are an em dash and a right quote in windows-1252; in latin-1 - which is
