@@ -1045,4 +1045,91 @@ class GameDockingTest {
 
         assertEquals(orderBefore, order(state))
     }
+
+    // --- The three the first review round left open ---
+
+    // A window that was the first of a strip came back last, because docking Center appends.
+    @Test
+    fun aTabbedWindowRejoinsTheStripAtItsOwnIndex() {
+        val state = newState()
+        val registerWindow = register(state)
+        val spots = DockSpotMemory()
+        val windows =
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.CENTER,
+                "thoughts" to WindowLocation.LEFT,
+                "logons" to WindowLocation.LEFT,
+                "deaths" to WindowLocation.LEFT,
+            )
+        reconcile(state, windows, registerWindow, spots)
+        // Gather the three into one strip, so "thoughts" is the first of three tabs.
+        state.dock(DockableId("logons"), DockTarget.OnDockable(DockableId("thoughts")), DockRegion.Center)
+        state.dock(DockableId("deaths"), DockTarget.OnDockable(DockableId("thoughts")), DockRegion.Center)
+        val stripBefore = tabOrder(state)
+        assertEquals("thoughts", stripBefore.first())
+
+        reconcile(state, windows.filterKeys { it != "thoughts" }, registerWindow, spots)
+        reconcile(state, windows, registerWindow, spots)
+
+        assertEquals(stripBefore, tabOrder(state))
+    }
+
+    private fun tabOrder(state: DockState): List<String> {
+        fun find(node: DockNode): DockNode.Tabs? =
+            when (node) {
+                is DockNode.Tabs -> node
+                is DockNode.Split -> find(node.first) ?: find(node.second)
+                else -> null
+            }
+        return find(state.layout.mainWindow.root!!)?.tabs?.map { it.dockableId.value } ?: emptyList()
+    }
+
+    // A window whose sibling was a subtree of two, one of which has since closed. Review round one
+    // read this as a bug - the old proportion applied to a smaller thing - but the space the closed
+    // window had was already handed to the ones remaining, so the survivors fill the same extent the
+    // group did and the old share of them is the size it had. Scaling to the survivors was tried, and
+    // made the window grow instead. This pins the behaviour so it is not "fixed" again.
+    @Test
+    fun aWindowComesBackTheRightSizeWhenOnlySomeNeighboursSurvive() {
+        val state = newState()
+        val registerWindow = register(state)
+        val spots = DockSpotMemory()
+        reconcile(state, column(), registerWindow, spots)
+        // deaths sits opposite the subtree holding thoughts and logons.
+        val spot = rememberedSpotOf(state, "deaths")!!
+        assertEquals(setOf("thoughts", "logons"), spot.siblings.toSet())
+
+        reconcile(state, column().filterKeys { it != "deaths" }, registerWindow, spots)
+        reconcile(state, column().filterKeys { it != "deaths" && it != "logons" }, registerWindow, spots)
+        reconcile(state, column().filterKeys { it != "logons" }, registerWindow, spots)
+
+        // Against the one surviving sibling, its share of that pair should still be the share it had
+        // of the pair it left - a half of what it is now beside, not a quarter.
+        val after = shares(state.layout.mainWindow.root!!)
+        val deaths = after[DockableId("deaths")]!!
+        val thoughts = after[DockableId("thoughts")]!!
+        assertEquals(
+            spot.proportion,
+            deaths / (deaths + thoughts),
+            absoluteTolerance = 0.02f,
+            message = "deaths came back at ${deaths / (deaths + thoughts)} of its pair, having had ${spot.proportion}",
+        )
+    }
+
+    @Test
+    fun tabIndexAndSharesSurviveTheRoundTrip() {
+        val spots = DockSpotMemory()
+        val spot =
+            RememberedSpot(
+                siblings = listOf("logons", "deaths"),
+                region = DockRegion.South,
+                proportion = 0.25f,
+                tabIndex = 2,
+            )
+        spots.remember("thoughts", spot)
+
+        val restored = DockSpotMemory().apply { restore(spots.encode()) }
+
+        assertEquals(spot, restored.spend("thoughts"))
+    }
 }

@@ -20,6 +20,7 @@ import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
+import com.seanproctor.docking.model.DockWindow
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.SplitOrientation
@@ -408,8 +409,7 @@ fun rememberGameDockState(
                     val current =
                         layout.floatingWindows.associate { window ->
                             window.id to
-                                listOfNotNull(window.root, window.maximized?.savedRoot)
-                                    .flatMap { it.dockableIds() }
+                                window.allTrees.flatMap { it.dockableIds() }
                         }
                     (detached.keys - current.keys).forEach { closed ->
                         detached[closed]
@@ -496,7 +496,7 @@ internal fun reconcile(
     leaving.forEach { state.undock(it) }
 
     val mainWindow = state.layout.mainWindow
-    val tree = mainWindow.maximized?.savedRoot ?: mainWindow.root
+    val tree = mainWindow.arrangement
     openWindows.forEach { (name, window) ->
         val anchor =
             when {
@@ -539,6 +539,9 @@ internal fun reconcile(
             detachWindow(state, name, spot?.bounds)
         } else {
             state.dock(DockableId(name), placement.target, placement.region, placement.proportion)
+            // Docking Center appends to the strip, so a window that was not last has to be moved
+            // back to its own place in it.
+            spot?.tabIndex?.let { restoreTabIndex(state, name, it) }
         }
         pending.remove(name)
     }
@@ -627,7 +630,7 @@ internal fun isHiddenTab(
     val root =
         state.layout.windows
             .firstNotNullOfOrNull { window ->
-                (window.maximized?.savedRoot ?: window.root)?.takeIf { it.containsDockable(id) }
+                window.arrangement?.takeIf { it.containsDockable(id) }
             } ?: return false
     val tabs = root.tabsContaining(id) ?: return false
     return tabs.selectedTab.dockableId != id
@@ -682,6 +685,23 @@ internal fun redockIntoMainWindow(
     closeEmptyDetachedWindows(state)
 }
 
+/**
+ * Puts a window that has just rejoined a tab strip back at the index it had. Docking appends, so
+ * without this a window that was first of four comes back fourth.
+ */
+private fun restoreTabIndex(
+    state: DockState,
+    name: String,
+    index: Int,
+) {
+    val id = DockableId(name)
+    val window = state.layout.windows.firstOrNull { it.containsDockable(id) } ?: return
+    val tabs = window.arrangement?.tabsContaining(id) ?: return
+    val from = tabs.tabs.indexOfFirst { it.dockableId == id }
+    val to = index.coerceIn(0, tabs.tabs.lastIndex)
+    if (from >= 0 && from != to) state.moveTab(tabs.id, from, to)
+}
+
 /** Whether [name] is currently in a detached window rather than the main one. */
 internal fun isDetached(
     state: DockState,
@@ -721,11 +741,9 @@ internal fun opensDetached(window: OpenGameWindow): Boolean =
  * it while those neighbours are all still docked and it goes back between the same windows at the
  * same size, wherever they have since been dragged to.
  *
- * Best effort, and two places it falls short of that, both better than the announced spot and
- * neither of them "where it was":
- *  - when only some of the neighbours survive, the proportion is applied to what is left of them, so
- *    a window that had a quarter of a column comes back with a quarter of the one window still there.
- *  - a window that was tabbed rejoins the strip at the end of it, not at the index it had.
+ * Best effort, and one place it falls short: the size is a share of the neighbours that are still
+ * there, so a window reopened next to fewer of them than it left is the size it would have been had
+ * it never gone - which is right, but is not the same as the size it was when it closed.
  *
  * [siblings] empty with [detached] set is the other case: it was alone in a window of its own, and
  * reopens in one, at [bounds].
@@ -736,6 +754,8 @@ internal data class RememberedSpot(
     val proportion: Float,
     val detached: Boolean = false,
     val bounds: WindowBounds? = null,
+    // Which tab it was, when it was one, so it rejoins the strip in its own place rather than at the end.
+    val tabIndex: Int? = null,
 )
 
 /**
@@ -838,6 +858,7 @@ internal data class StoredSpot(
     val y: Float? = null,
     val width: Float? = null,
     val height: Float? = null,
+    val tabIndex: Int? = null,
 ) {
     fun toSpot(): RememberedSpot? {
         val dockRegion = DockRegion.entries.firstOrNull { it.name == region } ?: return null
@@ -847,7 +868,7 @@ internal data class StoredSpot(
             } else {
                 null
             }
-        return RememberedSpot(siblings, dockRegion, proportion, detached, bounds)
+        return RememberedSpot(siblings, dockRegion, proportion, detached, bounds, tabIndex)
     }
 }
 
@@ -861,6 +882,7 @@ private fun RememberedSpot.toStored(): StoredSpot =
         y = bounds?.y,
         width = bounds?.width,
         height = bounds?.height,
+        tabIndex = tabIndex,
     )
 
 /**
@@ -877,13 +899,22 @@ internal fun rememberedSpotOf(
     // opening a second one on top of the first.
     val window = state.layout.windows.firstOrNull { it.containsDockable(id) } ?: return null
     val detached = window.id != WindowId.MAIN
-    val tree = window.maximized?.savedRoot ?: window.root
+    val tree = window.arrangement
     val neighbours =
         tree?.let {
             // Tabbed with others: back into the same strip beats any split it happens to sit in.
             it.tabsContaining(id)?.let { tabs ->
                 val others = tabs.tabs.map { tab -> tab.dockableId.value }.filter { other -> other != name }
-                if (others.isNotEmpty()) RememberedSpot(others, DockRegion.Center, 0.5f) else null
+                if (others.isNotEmpty()) {
+                    RememberedSpot(
+                        siblings = others,
+                        region = DockRegion.Center,
+                        proportion = 0.5f,
+                        tabIndex = tabs.tabs.indexOfFirst { tab -> tab.dockableId == id }.takeIf { index -> index >= 0 },
+                    )
+                } else {
+                    null
+                }
             } ?: it.splitSpotOf(id)
         }
     return when {
@@ -950,12 +981,30 @@ internal fun placementFromMemory(
         return DockPlacement(DockTarget.OnDockable(surviving.first()), DockRegion.Center, spot.proportion)
     }
     val node = tree.smallestNodeHolding(surviving.toSet()) ?: return null
+    // The proportion goes back unscaled even when only some of the siblings are left, which looks
+    // wrong and is not: the space a closed window had was already given to the ones that remain, so
+    // what survives fills the same extent the whole group did. Taking the old share of it puts the
+    // window back at the size it had. Scaling it to the survivors was tried and made the window grow.
     return DockPlacement(DockTarget.OnNode(window.id, node.id), spot.region, spot.proportion)
 }
 
-/** Whether this window's tree holds [id], maximized or not. */
-private fun com.seanproctor.docking.model.DockWindow.containsDockable(id: DockableId): Boolean =
-    listOfNotNull(root, maximized?.savedRoot).any { it.containsDockable(id) }
+/**
+ * The window's arrangement: the tree it would show if nothing were maximized. Maximizing swaps the
+ * real tree out for the maximized dockable alone and keeps the arrangement in `savedRoot`, so this is
+ * what to read when the question is where windows sit relative to one another.
+ */
+internal val DockWindow.arrangement: DockNode?
+    get() = maximized?.savedRoot ?: root
+
+/**
+ * Every tree the window holds - the live one and, while maximized, the arrangement underneath it.
+ * What to read when the question is merely whether a window is in here somewhere.
+ */
+internal val DockWindow.allTrees: List<DockNode>
+    get() = listOfNotNull(root, maximized?.savedRoot)
+
+/** Whether this window holds [id] in any of its trees. */
+internal fun DockWindow.containsDockable(id: DockableId): Boolean = allTrees.any { it.containsDockable(id) }
 
 /** Where [reconcile] puts a window with no saved dock spot. */
 internal data class DockPlacement(
@@ -993,7 +1042,7 @@ internal fun defaultPlacement(
         return DockPlacement(DockTarget.Root(), DockRegion.Center, BAND_PROPORTION)
     }
     val mainWindow = layout.mainWindow
-    val tree = mainWindow.maximized?.savedRoot ?: mainWindow.root
+    val tree = mainWindow.arrangement
     val mainId = DockableId(MAIN_WINDOW_NAME)
     val anchor = location.anchor
     if (tree != null && tree.holdsAnchor(anchor)) {
@@ -1134,8 +1183,7 @@ internal fun relativeRegion(
 private fun dockedIds(layout: DockLayout): List<DockableId> =
     layout.windows
         .flatMap { window ->
-            listOfNotNull(window.root, window.maximized?.savedRoot)
-                .flatMap { it.dockableIds() }
+            window.allTrees.flatMap { it.dockableIds() }
         }.distinct()
 
 private fun DockNode.dockableIds(): List<DockableId> =
