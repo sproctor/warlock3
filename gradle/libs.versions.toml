@@ -126,6 +126,8 @@ ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
 ktor-utils = { module = "io.ktor:ktor-utils", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.ref = "ktor" }
 lua-kmp = { group = "com.seanproctor", name = "lua-kmp", version.ref = "lua-kmp" }
 # Desktop audio output. The natives are added per build host (see core/build.gradle.kts).
 lwjgl-core = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl" }

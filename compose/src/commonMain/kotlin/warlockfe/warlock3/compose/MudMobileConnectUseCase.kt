@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose
 
 import co.touchlab.kermit.Logger
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -22,7 +23,7 @@ import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.util.sha256Hex
-import warlockfe.warlock3.wrayth.network.NetworkSocket
+import warlockfe.warlock3.wrayth.network.WarlockWebSocket
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -31,13 +32,16 @@ import kotlin.time.TimeSource
  *  1. Run Warlock's normal local SGE/EAccess login (password stays on this machine).
  *  2. Hash the resulting game key and register a hosted-Lich session with MUD Mobile
  *     (`POST /api/sessions`) — only the hash leaves the machine.
- *  3. Open the game socket to the router MUD Mobile returns (TLS) and send the usual Stormfront
- *     handshake, then hand off to a normal [GameScreen.ConnectedGameState].
+ *  3. Open a WebSocket to the router MUD Mobile returns and send the usual Stormfront handshake,
+ *     then hand off to a normal [GameScreen.ConnectedGameState].
  *
  * See docs/specs/mudmobile-integration.md.
  */
 class MudMobileConnectUseCase(
     private val api: MudMobileApi,
+    // The same client the API talks over; the game stream rides a WebSocket on it (see
+    // [WarlockWebSocket]), so it must have the WebSockets plugin installed.
+    private val httpClient: HttpClient,
     private val sgeClientFactory: SgeClientFactory,
     private val warlockClientFactory: WarlockClientFactory,
     private val windowRegistryFactory: WindowRegistryFactory,
@@ -141,8 +145,8 @@ class MudMobileConnectUseCase(
     }
 
     /**
-     * Open the game socket to the router and hand off to a [GameScreen.ConnectedGameState]. Used for
-     * both the initial connect and reconnects.
+     * Open the game connection to the router and hand off to a [GameScreen.ConnectedGameState]. Used
+     * for both the initial connect and reconnects.
      *
      * A reconnect re-dials this same router endpoint with the same game key - no SGE login and no new
      * session. The hosted session persists across a client disconnect, and the router still bridges
@@ -161,7 +165,7 @@ class MudMobileConnectUseCase(
             var createdClient: WarlockClient? = null
             try {
                 val streamRegistry = windowRegistryFactory.create()
-                val socket = NetworkSocket(ioDispatcher, secure = connect.tls)
+                val socket = WarlockWebSocket(httpClient, ioDispatcher, secure = connect.tls)
                 socket.connect(connect.host, connect.port)
                 val client =
                     warlockClientFactory.createClient(

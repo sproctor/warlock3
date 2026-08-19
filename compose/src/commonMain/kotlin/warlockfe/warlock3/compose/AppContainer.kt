@@ -7,6 +7,7 @@ import androidx.sqlite.execSQL
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.websocket.WebSockets
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -267,7 +268,13 @@ abstract class AppContainer(
         )
     }
 
-    val mudMobileHttpClient: HttpClient by lazy { HttpClient(CIO) }
+    val mudMobileHttpClient: HttpClient by lazy {
+        HttpClient(CIO) {
+            // The REST API rides this client, and so does the game stream: MUD Mobile's router
+            // speaks WebSocket, which is the one transport every platform we target can open.
+            install(WebSockets)
+        }
+    }
 
     val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
 
@@ -285,6 +292,7 @@ abstract class AppContainer(
     val mudMobileConnectUseCase by lazy {
         MudMobileConnectUseCase(
             api = mudMobileApi,
+            httpClient = mudMobileHttpClient,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
             windowRegistryFactory = windowRegistryFactory,
