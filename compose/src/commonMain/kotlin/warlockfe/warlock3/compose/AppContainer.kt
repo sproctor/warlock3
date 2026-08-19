@@ -7,6 +7,7 @@ import androidx.sqlite.execSQL
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.websocket.WebSockets
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -273,6 +274,13 @@ abstract class AppContainer(
             // The REST API rides this client, and so does the game stream: MUD Mobile's router
             // speaks WebSocket, which is the one transport every platform we target can open.
             install(WebSockets)
+            install(HttpTimeout) {
+                // A bound on the API calls, so a service that is down or mid-maintenance fails with
+                // something to show the user instead of sitting there. It does not touch the game
+                // stream: both this plugin and the CIO engine exempt WebSocket requests, which is
+                // what lets the router hold a connection through its cold boot.
+                requestTimeoutMillis = 15_000
+            }
         }
     }
 

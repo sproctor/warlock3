@@ -135,14 +135,14 @@ section).
    and interactive.
 2. **Connecting (direct login).** Triggered by pressing **Login** on a normal connection. The
    connection list is replaced by the status line ("Connecting...") and a **Cancel** button. On
-   success the app moves to the Game screen; on failure the status line shows the reason (or a
-   full-screen error appears for hard failures).
+   success the app moves to the Game screen; on failure the **Connection failed dialog**
+   (Section 7.7) reports the reason (a full-screen error still appears for hard failures).
 3. **MUD Mobile section busy.** Triggered by token validation, Refresh, or discovery. The MUD
    Mobile buttons are disabled and the inline message shows progress. The rest of the screen stays
    usable.
 4. **MUD Mobile connecting.** Triggered by logging in to a MUD Mobile connection. A modal
    **Connecting dialog** (Section 7.5) is shown over the Dashboard with live status and a Cancel
-   button.
+   button. A failure closes it and opens the **Connection failed dialog** (Section 7.7).
 
 ---
 
@@ -215,6 +215,14 @@ with the dismissive action on the left and the confirming action on the right.
     play.net account."
 - **Buttons:** dismiss / confirm.
 
+### 7.7 Connection failed
+- **Opened by:** a login attempt that finished by failing - direct or MUD Mobile.
+- **Body:** the reason, as reported by SGE or MUD Mobile (a bad password, "Couldn't start session:
+  ...", "A MUD Mobile subscription is required", a timeout when the service is down).
+- **Buttons:** OK. The dialog stays up until it is acknowledged: an attempt can sit for many
+  seconds against a service that is unreachable, and a line of text on the Dashboard behind a
+  connecting dialog that has just closed itself reads as nothing having happened.
+
 ---
 
 ## 8. Key flows
@@ -262,6 +270,7 @@ tone and clarity.
   "wlk_"." / "Open mudmobile.com" / Save
 - Errors: "That token was rejected. Check it and paste it again." / "Your MUD Mobile token is no
   longer valid. Reconnect your account." / "Couldn't reach MUD Mobile: <detail>"
+- Connection failed dialog: title "Connection failed", body is the reason, button "OK"
 - MUD Mobile row marker: "[MUD Mobile]"
 
 ---

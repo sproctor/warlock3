@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
@@ -67,18 +68,6 @@ class MudMobileConnectUseCase(
                 is AutoConnectResult.Success -> sge.credentials
             }
 
-        // Refresh the saved profile (idempotent upsert; keeps last-used current). Best-effort, and
-        // only possible when we know the EAccess character code.
-        connection.characterCode?.let { characterCode ->
-            api.createCharacter(
-                token = token,
-                account = connection.username,
-                game = connection.code,
-                characterCode = characterCode,
-                characterName = connection.character,
-            )
-        }
-
         // 2. Register the session. Only the key hash is sent — never the password or the raw key.
         onStatus("Starting your cloud session...")
         val keyHash = sha256Hex(credentials.key)
@@ -125,6 +114,23 @@ class MudMobileConnectUseCase(
                     return MudMobileConnectResult.Failure("Couldn't start session: ${result.message}")
                 }
             }
+
+        // Refresh the saved profile (idempotent upsert; keeps last-used current). Best-effort, and
+        // only possible when we know the EAccess character code. It comes after the session call
+        // rather than before it: it is a nicety for the character picker, so it should neither delay
+        // the failure when MUD Mobile is unreachable — the session call has already established
+        // whether it is — nor hold up the game if this one endpoint is the slow one.
+        connection.characterCode?.let { characterCode ->
+            withTimeoutOrNull(PROFILE_REFRESH_TIMEOUT) {
+                api.createCharacter(
+                    token = token,
+                    account = connection.username,
+                    game = connection.code,
+                    characterCode = characterCode,
+                    characterName = connection.character,
+                )
+            }
+        }
 
         // 3. Wait for the session to announce it's ready before dialing the router. (Per the spec
         // the session is already routable at this point, so we only wait briefly: a warning at
@@ -293,6 +299,7 @@ class MudMobileConnectUseCase(
     }
 
     private companion object {
+        val PROFILE_REFRESH_TIMEOUT = 5.seconds
         val WARN_AFTER = 25.seconds
         val FORCE_CONNECT_AFTER = 30.seconds
         val POLL_INTERVAL = 1.seconds

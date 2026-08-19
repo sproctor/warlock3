@@ -60,6 +60,13 @@ class DashboardViewModel(
     var message: String? by mutableStateOf(null)
         private set
 
+    // A connect attempt that finished by failing. Held until the user acknowledges it, because the
+    // attempt can sit for many seconds against a service that is down or unreachable, and by the
+    // time the connecting dialog closes on its own, a line of text on the dashboard behind it reads
+    // as nothing having happened at all.
+    var connectError: String? by mutableStateOf(null)
+        private set
+
     private var connectJob: Job? = null
 
     // --- MUD Mobile state ---
@@ -166,7 +173,8 @@ class DashboardViewModel(
                     sgeClient.close()
                     when (result) {
                         is AutoConnectResult.Failure -> {
-                            message = result.reason
+                            message = null
+                            connectError = result.reason
                         }
 
                         is AutoConnectResult.Success -> {
@@ -357,7 +365,7 @@ class DashboardViewModel(
                     clientSettingRepository.putLastConnectionId(connection.id)
                     val token = clientSettingRepository.getMudMobileToken()
                     if (token == null) {
-                        mudMobileMessage = "Connect your MUD Mobile account first."
+                        connectError = "Connect your MUD Mobile account first."
                         return@launch
                     }
                     // Remember the account password for next time.
@@ -376,20 +384,25 @@ class DashboardViewModel(
                             onSessionCreated = { mudMobileSessionId = it },
                         )
                     if (result is MudMobileConnectResult.Failure) {
-                        mudMobileMessage = result.message
+                        connectError = result.message
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     ensureActive()
                     logger.e(e) { "Error connecting to MUD Mobile" }
-                    mudMobileMessage = "Error: ${e.message}"
+                    connectError = "Error: ${e.message}"
                 } finally {
                     connectJob = null
                     mudMobileConnecting = false
                     mudMobileConnectStatus = null
                 }
             }
+    }
+
+    /** Acknowledge a failed connect attempt, closing its dialog. */
+    fun dismissConnectError() {
+        connectError = null
     }
 
     /** Cancel an in-progress MUD Mobile connect and tear down the half-created session. */
