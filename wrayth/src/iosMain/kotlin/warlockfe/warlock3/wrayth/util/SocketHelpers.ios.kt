@@ -158,7 +158,12 @@ private fun createAndConnectSocket(
         check(fd >= 0) { "socket() failed" }
         val connected = connect(fd, result.pointed.ai_addr, result.pointed.ai_addrlen)
         freeaddrinfo(result)
-        check(connected == 0) { "connect() failed to $host:$port" }
+        if (connected != 0) {
+            // The descriptor exists even though connect() failed; without this every failed
+            // connection attempt burns one until the process runs out.
+            close(fd)
+            error("connect() failed to $host:$port")
+        }
         fd
     }
 
@@ -175,26 +180,35 @@ private fun setupTLS(
         }
     val fdHolder = intArrayOf(fd)
     val stableRef = StableRef.create(fdHolder)
-    SSLSetConnection(sslCtx, stableRef.asCPointer())
-    SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
-    SSLSetPeerDomainName(sslCtx, host, host.length.convert())
 
-    // Break on server auth so we can evaluate trust with our custom certificate
-    SSLSetSessionOption(sslCtx, kSSLSessionOptionBreakOnServerAuth, true)
+    // Anything thrown below (a failed handshake is routine) must not strand the
+    // SecureTransport context or the stable ref the IO callbacks read the fd from.
+    try {
+        SSLSetConnection(sslCtx, stableRef.asCPointer())
+        SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
+        SSLSetPeerDomainName(sslCtx, host, host.length.convert())
 
-    val firstStatus = SSLHandshake(sslCtx)
-    var status = firstStatus
-    if (status == errSSLPeerAuthCompleted) {
-        // Evaluate server trust with our custom CA certificate
-        evaluateServerTrust(sslCtx, certificate)
-        // Continue handshake after trust evaluation
-        status = SSLHandshake(sslCtx)
-    }
-    // Report both statuses: -50 (errSecParam) on the *first* call means SecureTransport rejected the
-    // context setup, while -50 only on the second means the trust evaluation left it unusable. The
-    // two have completely different fixes, so never collapse them into one number.
-    check(status == errSecSuccess) {
-        "TLS handshake failed for $host (first=$firstStatus, final=$status)"
+        // Break on server auth so we can evaluate trust with our custom certificate
+        SSLSetSessionOption(sslCtx, kSSLSessionOptionBreakOnServerAuth, true)
+
+        val firstStatus = SSLHandshake(sslCtx)
+        var status = firstStatus
+        if (status == errSSLPeerAuthCompleted) {
+            // Evaluate server trust with our custom CA certificate
+            evaluateServerTrust(sslCtx, certificate)
+            // Continue handshake after trust evaluation
+            status = SSLHandshake(sslCtx)
+        }
+        // Report both statuses: -50 (errSecParam) on the *first* call means SecureTransport rejected the
+        // context setup, while -50 only on the second means the trust evaluation left it unusable. The
+        // two have completely different fixes, so never collapse them into one number.
+        check(status == errSecSuccess) {
+            "TLS handshake failed for $host (first=$firstStatus, final=$status)"
+        }
+    } catch (t: Throwable) {
+        CFRelease(sslCtx)
+        stableRef.dispose()
+        throw t
     }
 
     return sslCtx to stableRef
@@ -368,14 +382,23 @@ private fun setupDefaultTLS(
         }
     val fdHolder = intArrayOf(fd)
     val stableRef = StableRef.create(fdHolder)
-    SSLSetConnection(sslCtx, stableRef.asCPointer())
-    SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
-    SSLSetPeerDomainName(sslCtx, host, host.length.convert())
 
-    // No breakOnServerAuth: SecureTransport performs default system trust evaluation during the
-    // handshake, which is exactly what we want for a public CA-signed certificate.
-    val status = SSLHandshake(sslCtx)
-    check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
+    // Anything thrown below (a failed handshake is routine) must not strand the
+    // SecureTransport context or the stable ref the IO callbacks read the fd from.
+    try {
+        SSLSetConnection(sslCtx, stableRef.asCPointer())
+        SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
+        SSLSetPeerDomainName(sslCtx, host, host.length.convert())
+
+        // No breakOnServerAuth: SecureTransport performs default system trust evaluation during the
+        // handshake, which is exactly what we want for a public CA-signed certificate.
+        val status = SSLHandshake(sslCtx)
+        check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
+    } catch (t: Throwable) {
+        CFRelease(sslCtx)
+        stableRef.dispose()
+        throw t
+    }
 
     return sslCtx to stableRef
 }
@@ -389,7 +412,13 @@ actual suspend fun openDefaultTlsSocket(
     val (fd, sslCtx, stableRef) =
         kotlinx.coroutines.withContext(Dispatchers.IO) {
             val fd = createAndConnectSocket(host, port)
-            val (ctx, ref) = setupDefaultTLS(fd, host)
+            val (ctx, ref) =
+                try {
+                    setupDefaultTLS(fd, host)
+                } catch (t: Throwable) {
+                    close(fd)
+                    throw t
+                }
             Triple(fd, ctx, ref)
         }
 
@@ -452,6 +481,8 @@ actual suspend fun openDefaultTlsSocket(
                 scope.cancel()
                 SSLClose(sslCtx)
                 close(fd)
+                // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
+                CFRelease(sslCtx)
                 stableRef.dispose()
             }
         },
@@ -468,7 +499,13 @@ actual suspend fun openTLSSocket(
     val (fd, sslCtx, stableRef) =
         kotlinx.coroutines.withContext(Dispatchers.IO) {
             val fd = createAndConnectSocket(host, port)
-            val (ctx, ref) = setupTLS(fd, host, certificate)
+            val (ctx, ref) =
+                try {
+                    setupTLS(fd, host, certificate)
+                } catch (t: Throwable) {
+                    close(fd)
+                    throw t
+                }
             Triple(fd, ctx, ref)
         }
 
@@ -533,6 +570,8 @@ actual suspend fun openTLSSocket(
                 scope.cancel()
                 SSLClose(sslCtx)
                 close(fd)
+                // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
+                CFRelease(sslCtx)
                 stableRef.dispose()
             }
         },
