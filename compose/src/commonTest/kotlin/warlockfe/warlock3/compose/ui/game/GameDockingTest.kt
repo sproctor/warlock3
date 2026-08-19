@@ -21,6 +21,9 @@ import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GameDockingTest {
@@ -757,5 +760,100 @@ class GameDockingTest {
                 .containsDockable(DockableId("room")),
             "room should be folded back into the main window rather than lost",
         )
+    }
+
+    // --- Remembering where a closed window was ---
+
+    // Top to bottom down the column, which is what "where it was" means for a stacked area.
+    private fun orderedDockables(node: DockNode): List<String> =
+        when (node) {
+            is DockNode.Leaf -> listOf(node.dockableId.value)
+            is DockNode.Tabs -> node.tabs.map { it.dockableId.value }
+            is DockNode.Anchor -> emptyList()
+            is DockNode.Split -> orderedDockables(node.first) + orderedDockables(node.second)
+        }
+
+    private fun order(state: DockState): List<String> = orderedDockables(state.layout.mainWindow.root!!)
+
+    private fun column() =
+        openWindows(
+            MAIN_WINDOW_NAME to WindowLocation.CENTER,
+            "thoughts" to WindowLocation.LEFT,
+            "logons" to WindowLocation.LEFT,
+            "deaths" to WindowLocation.LEFT,
+        )
+
+    // The point of the whole thing: close a window out of the middle of an arranged column, reopen
+    // it, and it is back between the same two windows at the same size.
+    @Test
+    fun aReopenedWindowGoesBackWhereItWas() {
+        val state = newState()
+        val registerWindow = register(state)
+        val spots = DockSpotMemory()
+        reconcile(state, column(), registerWindow, spots)
+        val orderBefore = order(state)
+        val sizesBefore = shares(state.layout.mainWindow.root!!)
+
+        reconcile(state, column().filterKeys { it != "logons" }, registerWindow, spots)
+        reconcile(state, column(), registerWindow, spots)
+
+        assertEquals(orderBefore, order(state))
+        val after = shares(state.layout.mainWindow.root!!)
+        listOf("thoughts", "logons", "deaths").forEach { name ->
+            val id = DockableId(name)
+            assertEquals(sizesBefore[id]!!, after[id]!!, absoluteTolerance = 0.02f, message = "$name resized")
+        }
+    }
+
+    // Pins that the test above is testing something: with no memory carried across the calls, the
+    // reopened window is placed by its announced area and comes back at the end of the column.
+    @Test
+    fun withoutTheMemoryAReopenedWindowIsPlacedByItsAnnouncedArea() {
+        val state = newState()
+        val registerWindow = register(state)
+        reconcile(state, column(), registerWindow)
+        val orderBefore = order(state)
+
+        reconcile(state, column().filterKeys { it != "thoughts" }, registerWindow)
+        reconcile(state, column(), registerWindow)
+
+        assertNotEquals(orderBefore, order(state))
+    }
+
+    // Everything it sat beside has closed too, so there is nothing left to be next to. It should
+    // fall back to its announced area rather than throwing or landing somewhere arbitrary.
+    @Test
+    fun aWindowWhoseNeighboursAllClosedFallsBackToItsAnnouncedArea() {
+        val state = newState()
+        val registerWindow = register(state)
+        val spots = DockSpotMemory()
+        val announced =
+            openWindows(
+                MAIN_WINDOW_NAME to WindowLocation.CENTER,
+                "thoughts" to WindowLocation.LEFT,
+                "logons" to WindowLocation.LEFT,
+            )
+        reconcile(state, announced, registerWindow, spots)
+
+        reconcile(state, openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER), registerWindow, spots)
+        reconcile(state, announced, registerWindow, spots)
+
+        assertEquals(setOf(MAIN_WINDOW_NAME, "thoughts", "logons"), order(state).toSet())
+    }
+
+    // A spot is spent by the reopen that uses it, so a window moved afterwards is not yanked back to
+    // a stale one the next time it is closed and opened.
+    @Test
+    fun aSpotIsNotReusedAfterItHasBeenSpent() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+
+        assertNotNull(spots.take("thoughts"))
+        assertNull(spots.take("thoughts"))
+    }
+
+    @Test
+    fun aWindowThatIsNotDockedHasNoSpotToRemember() {
+        assertNull(rememberedSpotOf(newState(), "never-docked"))
     }
 }
