@@ -233,7 +233,11 @@ private suspend fun openNetworkSocket(
         try {
             while (isActive) {
                 val received = receiveChunk(connection) ?: break
+                // Written before the failure is raised: the channel autoflushes, so these bytes
+                // reach the reader even though cancelling below discards anything still buffered.
+                // ktor 3.5 has no close-with-cause that would preserve them outright.
                 if (received.bytes.isNotEmpty()) readChannel.writeFully(received.bytes)
+                received.failure?.let { throw it }
                 // The FIN can arrive with the last bytes rather than on its own; receiving again
                 // after that produces an error that looks like a failure rather than a clean end.
                 if (received.isComplete) break
@@ -353,6 +357,8 @@ private suspend fun awaitReady(
 private class Received(
     val bytes: ByteArray,
     val isComplete: Boolean,
+    /** Set when the receive failed but still delivered bytes; raise it only after writing them. */
+    val failure: IOException? = null,
 )
 
 /** One receive. Returns null at end of stream, and throws on error. */
@@ -360,25 +366,31 @@ private suspend fun receiveChunk(connection: nw_connection_t): Received? =
     suspendCancellableCoroutine { continuation ->
         nw_connection_receive(connection, 1u, RECEIVE_MAX) { content, _, isComplete, error ->
             if (continuation.isActive) {
+                // Content can accompany an error, so map it first and decide afterwards --
+                // checking the error alone would discard bytes that did arrive.
+                val bytes = content?.toByteArray()
                 when {
-                    error != null -> {
-                        // Not logged here: the read loop logs it with the cause attached.
+                    content != null && bytes == null -> {
+                        // Bytes arrived and could not be read out. Treating that as an empty
+                        // chunk would drop them and carry on as if nothing had happened.
                         continuation.resumeWithException(
-                            IOException("receive failed${error.describe()}"),
+                            IOException("could not map received data"),
                         )
                     }
 
-                    content != null -> {
-                        val bytes = content.toByteArray()
-                        if (bytes == null) {
-                            // Bytes arrived and could not be read out. Treating that as an empty
-                            // chunk would drop them and carry on as if nothing had happened.
-                            continuation.resumeWithException(
-                                IOException("could not map received data"),
-                            )
-                        } else {
-                            continuation.resume(Received(bytes, isComplete))
-                        }
+                    error != null -> {
+                        // Not logged here: the read loop logs it with the cause attached.
+                        continuation.resume(
+                            Received(
+                                bytes = bytes ?: ByteArray(0),
+                                isComplete = true,
+                                failure = IOException("receive failed${error.describe()}"),
+                            ),
+                        )
+                    }
+
+                    bytes != null -> {
+                        continuation.resume(Received(bytes, isComplete))
                     }
 
                     isComplete -> {
