@@ -84,7 +84,7 @@ jobs:
   ios:
     name: Build iOS app
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
 
@@ -108,11 +108,15 @@ jobs:
       # The whole chain the Gradle tasks alone do not cover: the Xcode build phase, the Compose
       # resource sync into the bundle, Swift Package resolution for Sentry, and linking the app.
       # Unsigned, so it needs no certificates.
+      #
+      # Release, not Debug: the Sentry startup in iOSApp.swift sits behind `#if !DEBUG`, so a Debug
+      # build never compiles it. That is not hypothetical -- a Sentry API change broke exactly that
+      # call and a Debug build stayed green.
       - name: Build the app with Xcode
         run: |
           xcodebuild -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
-            -configuration Debug \
+            -configuration Release \
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
             build

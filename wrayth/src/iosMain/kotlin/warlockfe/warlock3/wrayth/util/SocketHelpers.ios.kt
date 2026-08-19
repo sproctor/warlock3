@@ -34,6 +34,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import platform.CoreFoundation.CFArrayCreate
+import platform.CoreFoundation.CFArrayRef
 import platform.CoreFoundation.CFDataCreate
 import platform.CoreFoundation.CFErrorRefVar
 import platform.CoreFoundation.CFRelease
@@ -53,7 +54,9 @@ import platform.Security.SSLSetPeerDomainName
 import platform.Security.SSLSetSessionOption
 import platform.Security.SSLWrite
 import platform.Security.SecCertificateCreateWithData
+import platform.Security.SecCertificateRef
 import platform.Security.SecPolicyCreateBasicX509
+import platform.Security.SecPolicyRef
 import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustRefVar
 import platform.Security.SecTrustSetAnchorCertificates
@@ -217,35 +220,58 @@ private fun evaluateServerTrust(
     SSLCopyPeerTrust(sslCtx, trustPtr.ptr)
     val trust = checkNotNull(trustPtr.value) { "SSLCopyPeerTrust returned null" }
 
-    // Convert PEM to DER if needed, then create SecCertificate
-    val derData =
-        if (certificate.decodeToString().contains("-----BEGIN")) {
-            pemToDer(certificate)
-        } else {
-            certificate
-        }
-    val cfData =
-        derData.usePinned { pinned ->
-            CFDataCreate(null, pinned.addressOf(0).reinterpret(), derData.size.convert())
-        }
-    checkNotNull(cfData) { "CFDataCreate failed" }
-    val cert = SecCertificateCreateWithData(null, cfData)
-    CFRelease(cfData)
-    checkNotNull(cert) { "SecCertificateCreateWithData failed" }
-
-    val policy = checkNotNull(SecPolicyCreateBasicX509()) { "SecPolicyCreateBasicX509 failed" }
-
-    // kCFTypeArrayCallBacks rather than null: an array built with null callbacks does not retain
-    // what it holds, so releasing `cert` and `policy` below would leave `trust` referencing freed
-    // memory. That is a use-after-free which only misbehaves when the allocator happens to reuse the
-    // block -- precisely the kind of fault that appears to come and go between runs.
-    val certCFArray =
-        CFArrayCreate(null, allocArrayOf(cert as COpaquePointer).reinterpret(), 1, kCFTypeArrayCallBacks.ptr)
-    val policyArray =
-        CFArrayCreate(null, allocArrayOf(policy as COpaquePointer).reinterpret(), 1, kCFTypeArrayCallBacks.ptr)
+    // Everything below is acquired inside the try and released in the finally, in reverse order and
+    // only if it was actually acquired. A checkNotNull between two allocations would otherwise leak
+    // `trust` and whatever else had already been created.
+    var cert: SecCertificateRef? = null
+    var policy: SecPolicyRef? = null
+    var certCFArray: CFArrayRef? = null
+    var policyArray: CFArrayRef? = null
 
     val trusted =
         try {
+            // Convert PEM to DER if needed, then create SecCertificate
+            val derData =
+                if (certificate.decodeToString().contains("-----BEGIN")) {
+                    pemToDer(certificate)
+                } else {
+                    certificate
+                }
+            val cfData =
+                checkNotNull(
+                    derData.usePinned { pinned ->
+                        CFDataCreate(null, pinned.addressOf(0).reinterpret(), derData.size.convert())
+                    },
+                ) { "CFDataCreate failed" }
+            val certRef = SecCertificateCreateWithData(null, cfData)
+            CFRelease(cfData)
+            val certValue = checkNotNull(certRef) { "SecCertificateCreateWithData failed" }
+            cert = certValue
+
+            val policyValue =
+                checkNotNull(SecPolicyCreateBasicX509()) { "SecPolicyCreateBasicX509 failed" }
+            policy = policyValue
+
+            // kCFTypeArrayCallBacks rather than null: an array built with null callbacks does not
+            // retain what it holds, so releasing `cert` and `policy` below would leave `trust`
+            // referencing freed memory. That is a use-after-free which only misbehaves when the
+            // allocator happens to reuse the block -- precisely the kind of fault that appears to
+            // come and go between runs.
+            certCFArray =
+                CFArrayCreate(
+                    null,
+                    allocArrayOf(certValue as COpaquePointer).reinterpret(),
+                    1,
+                    kCFTypeArrayCallBacks.ptr,
+                )
+            policyArray =
+                CFArrayCreate(
+                    null,
+                    allocArrayOf(policyValue as COpaquePointer).reinterpret(),
+                    1,
+                    kCFTypeArrayCallBacks.ptr,
+                )
+
             // Set as anchor certificate, but also allow system anchors
             SecTrustSetAnchorCertificates(trust, certCFArray)
             SecTrustSetAnchorCertificatesOnly(trust, false)
@@ -260,12 +286,10 @@ private fun evaluateServerTrust(
             errorPtr.value?.let { CFRelease(it) }
             result
         } finally {
-            // The arrays retain their members now, so these releases are correct however they are
-            // ordered, and they still run if the evaluation above throws.
-            CFRelease(policyArray)
-            CFRelease(policy)
-            CFRelease(certCFArray)
-            CFRelease(cert)
+            policyArray?.let { CFRelease(it) }
+            certCFArray?.let { CFRelease(it) }
+            policy?.let { CFRelease(it) }
+            cert?.let { CFRelease(it) }
             CFRelease(trust)
         }
 

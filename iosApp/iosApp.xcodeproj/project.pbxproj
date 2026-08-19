@@ -161,7 +161,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT/..\"\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  # The IDE (IntelliJ/Android Studio) builds and embeds the framework itself, so the\n  # embedAndSign task is skipped -- but nothing else copies the Compose resources into\n  # the bundle, and the app crashes on the first Res.readBytes. Run just that task.\n  ./gradlew :compose:syncComposeResourcesForIos -PiosSkip=false\n  exit 0\nfi\n./gradlew :compose:embedAndSignAppleFrameworkForXcode -PiosSkip=false\n";
+			shellScript = "cd \"$SRCROOT/..\"\n# Without set -e a failed sync still reaches `exit 0`, Xcode calls the phase a success, and\n# the app ships with missing Compose resources -- the exact bug this branch fixes.\nset -e\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  # The IDE (IntelliJ/Android Studio) builds and embeds the framework itself, so the\n  # embedAndSign task is skipped -- but nothing else copies the Compose resources into\n  # the bundle, and the app crashes on the first Res.readBytes. Run just that task.\n  ./gradlew :compose:syncComposeResourcesForIos -PiosSkip=false\n  exit 0\nfi\n./gradlew :compose:embedAndSignAppleFrameworkForXcode -PiosSkip=false\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
