@@ -70,6 +70,7 @@ import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustSetAnchorCertificates
 import platform.Security.SecTrustSetAnchorCertificatesOnly
 import platform.Security.SecTrustSetPolicies
+import platform.Security.errSecSuccess
 import platform.Security.sec_protocol_options_set_tls_server_name
 import platform.Security.sec_protocol_options_set_verify_block
 import platform.Security.sec_trust_copy_ref
@@ -136,7 +137,10 @@ actual suspend fun openTLSSocket(
 ): TLSSocketConnection {
     val verifyQueue = dispatch_queue_create("warlockfe.warlock3.socket.verify", null)
     return openNetworkSocket(host, port, coroutineContext, useTls = true) { options ->
-        val secOptions = nw_tls_copy_sec_protocol_options(options)
+        val secOptions =
+            checkNotNull(nw_tls_copy_sec_protocol_options(options)) {
+                "nw_tls_copy_sec_protocol_options failed; refusing to connect without pinning"
+            }
         sec_protocol_options_set_verify_block(
             secOptions,
             { _, trust, complete -> complete?.invoke(trustsPinnedCertificate(trust, certificate)) },
@@ -165,13 +169,19 @@ private suspend fun openNetworkSocket(
     val stack = nw_parameters_copy_default_protocol_stack(parameters)
     nw_protocol_stack_set_transport_protocol(stack, nw_tcp_create_options())
     if (useTls) {
-        val tlsOptions = nw_tls_create_options()
+        // checkNotNull, not a null-safe skip: carrying on without these handles would mean no
+        // server name and, on the pinned path, no verify block -- a connection that looks fine
+        // while doing none of the checking it was asked for. Failing to connect is the safe
+        // outcome.
+        val tlsOptions = checkNotNull(nw_tls_create_options()) { "nw_tls_create_options failed" }
+        val secOptions =
+            checkNotNull(nw_tls_copy_sec_protocol_options(tlsOptions)) {
+                "nw_tls_copy_sec_protocol_options failed"
+            }
         // A hand-built stack gets no SNI: nw_parameters_create_secure_tcp derives the server name
         // from the endpoint, but nothing does that here, so it has to be set explicitly.
-        nw_tls_copy_sec_protocol_options(tlsOptions)?.let { secOptions ->
-            sec_protocol_options_set_tls_server_name(secOptions, host)
-        }
-        if (tlsOptions != null) configureTls(tlsOptions)
+        sec_protocol_options_set_tls_server_name(secOptions, host)
+        configureTls(tlsOptions)
         nw_protocol_stack_prepend_application_protocol(stack, tlsOptions)
     }
 
@@ -189,6 +199,7 @@ private suspend fun openNetworkSocket(
     // cancelling the caller would leave them running and the connection open.
     val ioJob = SupervisorJob(coroutineContext[Job])
     val scope = CoroutineScope(coroutineContext + ioJob)
+    val closed = AtomicBoolean(false)
 
     val readChannel = ByteChannel(autoFlush = true)
     scope.launch {
@@ -197,12 +208,19 @@ private suspend fun openNetworkSocket(
                 val chunk = receiveChunk(connection) ?: break
                 if (chunk.isNotEmpty()) readChannel.writeFully(chunk)
             }
-        } catch (_: CancellationException) {
-            // Closing the connection cancels this; not an error.
-        } catch (t: Throwable) {
-            logger.d(t) { "read loop for $host:$port ended" }
-        } finally {
             readChannel.close()
+        } catch (_: CancellationException) {
+            readChannel.close()
+        } catch (t: Throwable) {
+            if (closed.load()) {
+                // We cancelled the connection; the receive error is only that landing.
+                readChannel.close()
+            } else {
+                // Closing without a cause would reach the caller as a clean disconnect, and a
+                // dropped connection would be reported to the user as an ordinary logout.
+                logger.d(t) { "read loop for $host:$port failed" }
+                readChannel.cancel(t)
+            }
         }
     }
 
@@ -221,14 +239,20 @@ private suspend fun openNetworkSocket(
                 if (count <= 0) continue
                 sendChunk(connection, buffer.copyOf(count), queue, sendContext)
             }
+            writeChannel.close()
         } catch (_: CancellationException) {
-            // As above.
+            writeChannel.close()
         } catch (t: Throwable) {
-            logger.d(t) { "write loop for $host:$port ended" }
+            if (closed.load()) {
+                writeChannel.close()
+            } else {
+                // The producer keeps writing into a channel nobody drains and eventually suspends
+                // forever. Cancelling with the cause turns a silent hang into a reported failure.
+                logger.d(t) { "write loop for $host:$port failed" }
+                writeChannel.cancel(t)
+            }
         }
     }
-
-    val closed = AtomicBoolean(false)
 
     // Atomic: close() is reachable from more than one thread, and cancelling an nw_connection_t
     // twice is not something to rely on being harmless.
@@ -306,10 +330,24 @@ private suspend fun receiveChunk(connection: nw_connection_t): ByteArray? =
         nw_connection_receive(connection, 1u, RECEIVE_MAX) { content, _, isComplete, error ->
             if (continuation.isActive) {
                 when {
-                    error != null -> continuation.resume(null)
-                    content != null -> continuation.resume(content.toByteArray())
-                    isComplete -> continuation.resume(null)
-                    else -> continuation.resume(ByteArray(0))
+                    error != null -> {
+                        logger.d { "receive failed${error.describe()}" }
+                        continuation.resumeWithException(
+                            IllegalStateException("receive failed${error.describe()}"),
+                        )
+                    }
+
+                    content != null -> {
+                        continuation.resume(content.toByteArray())
+                    }
+
+                    isComplete -> {
+                        continuation.resume(null)
+                    }
+
+                    else -> {
+                        continuation.resume(ByteArray(0))
+                    }
                 }
             }
         }
@@ -425,9 +463,16 @@ private fun trustsPinnedCertificate(
                     kCFTypeArrayCallBacks.ptr,
                 )
 
-            SecTrustSetAnchorCertificates(trustRef, certArray)
-            SecTrustSetAnchorCertificatesOnly(trustRef, false)
-            SecTrustSetPolicies(trustRef, policyArray)
+            // Unchecked, a failing setter leaves SecTrustEvaluateWithError judging the chain
+            // against the default configuration, which can return true for a certificate that
+            // does not chain to the pinned one. Pinning would fail open, silently.
+            if (SecTrustSetAnchorCertificates(trustRef, certArray) != errSecSuccess ||
+                SecTrustSetAnchorCertificatesOnly(trustRef, false) != errSecSuccess ||
+                SecTrustSetPolicies(trustRef, policyArray) != errSecSuccess
+            ) {
+                logger.d { "could not configure pinned trust evaluation" }
+                return@memScoped false
+            }
 
             val errorPtr = alloc<CFErrorRefVar>()
             val trusted = SecTrustEvaluateWithError(trustRef, errorPtr.ptr)
