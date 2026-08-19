@@ -67,3 +67,7 @@ local.properties
 
 # work-around https://github.com/Splitties/refreshVersions/issues/640
 versions.properties
+
+# Isolated checkouts Claude Code makes for agents. The rest of .claude is shared
+# project config and stays tracked.
+.claude/worktrees/
