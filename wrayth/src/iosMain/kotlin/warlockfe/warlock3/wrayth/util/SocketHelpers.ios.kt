@@ -369,7 +369,16 @@ private suspend fun receiveChunk(connection: nw_connection_t): Received? =
                     }
 
                     content != null -> {
-                        continuation.resume(Received(content.toByteArray(), isComplete))
+                        val bytes = content.toByteArray()
+                        if (bytes == null) {
+                            // Bytes arrived and could not be read out. Treating that as an empty
+                            // chunk would drop them and carry on as if nothing had happened.
+                            continuation.resumeWithException(
+                                IOException("could not map received data"),
+                            )
+                        } else {
+                            continuation.resume(Received(bytes, isComplete))
+                        }
                     }
 
                     isComplete -> {
@@ -420,7 +429,7 @@ private fun ByteArray.toDispatchData(queue: dispatch_queue_t): dispatch_data_t =
         dispatch_data_create(pinned.addressOf(0), size.convert(), queue, null)
     }
 
-private fun dispatch_data_t.toByteArray(): ByteArray =
+private fun dispatch_data_t.toByteArray(): ByteArray? =
     memScoped {
         val bufferPtr = alloc<COpaquePointerVar>()
         val sizePtr = alloc<size_tVar>()
@@ -430,9 +439,10 @@ private fun dispatch_data_t.toByteArray(): ByteArray =
         if (mapped == null) {
             // create_map leaves the out parameters untouched when it fails, and they are
             // uninitialised memScoped memory: reading them would size an array from garbage and
-            // memcpy from a garbage pointer. Deliberately not a check() -- this runs inside an
-            // Objective-C block, where a throw terminates the process.
-            return@memScoped ByteArray(0)
+            // memcpy from a garbage pointer. Null rather than an empty array, because an empty
+            // array is a legitimate payload and this is lost data. Deliberately not a check() --
+            // this runs inside an Objective-C block, where a throw terminates the process.
+            return@memScoped null
         }
         val size = sizePtr.value.toInt()
         val bytes =
