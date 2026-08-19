@@ -4,5 +4,10 @@
     <dict>
         <key>CADisableMinimumFrameDurationOnPhone</key>
         <true/>
+        <!-- Warlock's only encryption is the platform TLS it uses to reach the game servers, which
+             falls under the standard exemption. Declaring it here stops App Store Connect asking
+             the export-compliance question on every single upload. -->
+        <key>ITSAppUsesNonExemptEncryption</key>
+        <false/>
     </dict>
 </plist>

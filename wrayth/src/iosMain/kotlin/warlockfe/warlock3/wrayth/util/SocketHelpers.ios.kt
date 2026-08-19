@@ -1,5 +1,5 @@
 @file:Suppress("DEPRECATION")
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, ExperimentalAtomicApi::class)
 
 package warlockfe.warlock3.wrayth.util
 
@@ -34,9 +34,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import platform.CoreFoundation.CFArrayCreate
+import platform.CoreFoundation.CFArrayRef
 import platform.CoreFoundation.CFDataCreate
 import platform.CoreFoundation.CFErrorRefVar
 import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.kCFTypeArrayCallBacks
 import platform.Security.SSLClose
 import platform.Security.SSLConnectionRef
 import platform.Security.SSLConnectionType
@@ -52,7 +54,9 @@ import platform.Security.SSLSetPeerDomainName
 import platform.Security.SSLSetSessionOption
 import platform.Security.SSLWrite
 import platform.Security.SecCertificateCreateWithData
+import platform.Security.SecCertificateRef
 import platform.Security.SecPolicyCreateBasicX509
+import platform.Security.SecPolicyRef
 import platform.Security.SecTrustEvaluateWithError
 import platform.Security.SecTrustRefVar
 import platform.Security.SecTrustSetAnchorCertificates
@@ -68,6 +72,7 @@ import platform.posix.AF_INET
 import platform.posix.EAGAIN
 import platform.posix.EWOULDBLOCK
 import platform.posix.IPPROTO_TCP
+import platform.posix.SHUT_RDWR
 import platform.posix.SOCK_STREAM
 import platform.posix.addrinfo
 import platform.posix.close
@@ -76,8 +81,11 @@ import platform.posix.errno
 import platform.posix.freeaddrinfo
 import platform.posix.getaddrinfo
 import platform.posix.read
+import platform.posix.shutdown
 import platform.posix.socket
 import platform.posix.write
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
 
 // SSL I/O callbacks are static (no captures); socket fd is stored via SSLSetConnection as a stable ref.
@@ -98,10 +106,12 @@ private val sslReadCallback =
                 dataLength.pointed.value = n.convert()
                 errSecSuccess
             }
+
             n == 0L -> {
                 dataLength.pointed.value = 0u
                 errSSLClosedGraceful
             }
+
             else -> {
                 dataLength.pointed.value = 0u
                 if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
@@ -125,6 +135,7 @@ private val sslWriteCallback =
                 dataLength.pointed.value = n.convert()
                 errSecSuccess
             }
+
             else -> {
                 dataLength.pointed.value = 0u
                 if (errno == EAGAIN || errno == EWOULDBLOCK) errSSLWouldBlock else errSSLClosedAbort
@@ -151,7 +162,12 @@ private fun createAndConnectSocket(
         check(fd >= 0) { "socket() failed" }
         val connected = connect(fd, result.pointed.ai_addr, result.pointed.ai_addrlen)
         freeaddrinfo(result)
-        check(connected == 0) { "connect() failed to $host:$port" }
+        if (connected != 0) {
+            // The descriptor exists even though connect() failed; without this every failed
+            // connection attempt burns one until the process runs out.
+            close(fd)
+            error("connect() failed to $host:$port")
+        }
         fd
     }
 
@@ -168,21 +184,36 @@ private fun setupTLS(
         }
     val fdHolder = intArrayOf(fd)
     val stableRef = StableRef.create(fdHolder)
-    SSLSetConnection(sslCtx, stableRef.asCPointer())
-    SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
-    SSLSetPeerDomainName(sslCtx, host, host.length.convert())
 
-    // Break on server auth so we can evaluate trust with our custom certificate
-    SSLSetSessionOption(sslCtx, kSSLSessionOptionBreakOnServerAuth, true)
+    // Anything thrown below (a failed handshake is routine) must not strand the
+    // SecureTransport context or the stable ref the IO callbacks read the fd from.
+    try {
+        SSLSetConnection(sslCtx, stableRef.asCPointer())
+        SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
+        SSLSetPeerDomainName(sslCtx, host, host.length.convert())
 
-    var status = SSLHandshake(sslCtx)
-    if (status == errSSLPeerAuthCompleted) {
-        // Evaluate server trust with our custom CA certificate
-        evaluateServerTrust(sslCtx, certificate)
-        // Continue handshake after trust evaluation
-        status = SSLHandshake(sslCtx)
+        // Break on server auth so we can evaluate trust with our custom certificate
+        SSLSetSessionOption(sslCtx, kSSLSessionOptionBreakOnServerAuth, true)
+
+        val firstStatus = SSLHandshake(sslCtx)
+        var status = firstStatus
+        if (status == errSSLPeerAuthCompleted) {
+            // Evaluate server trust with our custom CA certificate
+            evaluateServerTrust(sslCtx, certificate)
+            // Continue handshake after trust evaluation
+            status = SSLHandshake(sslCtx)
+        }
+        // Report both statuses: -50 (errSecParam) on the *first* call means SecureTransport rejected the
+        // context setup, while -50 only on the second means the trust evaluation left it unusable. The
+        // two have completely different fixes, so never collapse them into one number.
+        check(status == errSecSuccess) {
+            "TLS handshake failed for $host (first=$firstStatus, final=$status)"
+        }
+    } catch (t: Throwable) {
+        CFRelease(sslCtx)
+        stableRef.dispose()
+        throw t
     }
-    check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
 
     return sslCtx to stableRef
 }
@@ -207,48 +238,78 @@ private fun evaluateServerTrust(
     SSLCopyPeerTrust(sslCtx, trustPtr.ptr)
     val trust = checkNotNull(trustPtr.value) { "SSLCopyPeerTrust returned null" }
 
-    // Convert PEM to DER if needed, then create SecCertificate
-    val derData =
-        if (certificate.decodeToString().contains("-----BEGIN")) {
-            pemToDer(certificate)
-        } else {
-            certificate
+    // Everything below is acquired inside the try and released in the finally, in reverse order and
+    // only if it was actually acquired. A checkNotNull between two allocations would otherwise leak
+    // `trust` and whatever else had already been created.
+    var cert: SecCertificateRef? = null
+    var policy: SecPolicyRef? = null
+    var certCFArray: CFArrayRef? = null
+    var policyArray: CFArrayRef? = null
+
+    val trusted =
+        try {
+            // Convert PEM to DER if needed, then create SecCertificate
+            val derData =
+                if (certificate.decodeToString().contains("-----BEGIN")) {
+                    pemToDer(certificate)
+                } else {
+                    certificate
+                }
+            val cfData =
+                checkNotNull(
+                    derData.usePinned { pinned ->
+                        CFDataCreate(null, pinned.addressOf(0).reinterpret(), derData.size.convert())
+                    },
+                ) { "CFDataCreate failed" }
+            val certRef = SecCertificateCreateWithData(null, cfData)
+            CFRelease(cfData)
+            val certValue = checkNotNull(certRef) { "SecCertificateCreateWithData failed" }
+            cert = certValue
+
+            val policyValue =
+                checkNotNull(SecPolicyCreateBasicX509()) { "SecPolicyCreateBasicX509 failed" }
+            policy = policyValue
+
+            // kCFTypeArrayCallBacks rather than null: an array built with null callbacks does not
+            // retain what it holds, so releasing `cert` and `policy` below would leave `trust`
+            // referencing freed memory. That is a use-after-free which only misbehaves when the
+            // allocator happens to reuse the block -- precisely the kind of fault that appears to
+            // come and go between runs.
+            certCFArray =
+                CFArrayCreate(
+                    null,
+                    allocArrayOf(certValue as COpaquePointer).reinterpret(),
+                    1,
+                    kCFTypeArrayCallBacks.ptr,
+                )
+            policyArray =
+                CFArrayCreate(
+                    null,
+                    allocArrayOf(policyValue as COpaquePointer).reinterpret(),
+                    1,
+                    kCFTypeArrayCallBacks.ptr,
+                )
+
+            // Set as anchor certificate, but also allow system anchors
+            SecTrustSetAnchorCertificates(trust, certCFArray)
+            SecTrustSetAnchorCertificatesOnly(trust, false)
+
+            // Replace the SSL policy with a basic X.509 policy (no hostname check).
+            // Hostname verification is already handled by SSLSetPeerDomainName at the SSL layer;
+            // the self-signed CA cert doesn't have a SAN for the server hostname.
+            SecTrustSetPolicies(trust, policyArray)
+
+            val errorPtr = alloc<CFErrorRefVar>()
+            val result = SecTrustEvaluateWithError(trust, errorPtr.ptr)
+            errorPtr.value?.let { CFRelease(it) }
+            result
+        } finally {
+            policyArray?.let { CFRelease(it) }
+            certCFArray?.let { CFRelease(it) }
+            policy?.let { CFRelease(it) }
+            cert?.let { CFRelease(it) }
+            CFRelease(trust)
         }
-    val cfData =
-        derData.usePinned { pinned ->
-            CFDataCreate(null, pinned.addressOf(0).reinterpret(), derData.size.convert())
-        }
-    checkNotNull(cfData) { "CFDataCreate failed" }
-    val cert = SecCertificateCreateWithData(null, cfData)
-    CFRelease(cfData)
-    checkNotNull(cert) { "SecCertificateCreateWithData failed" }
-
-    // Set as anchor certificate
-    val certArrayValues = allocArrayOf(cert as COpaquePointer)
-    val certCFArray = CFArrayCreate(null, certArrayValues.reinterpret(), 1, null)
-    SecTrustSetAnchorCertificates(trust, certCFArray)
-    // Also allow system anchors
-    SecTrustSetAnchorCertificatesOnly(trust, false)
-
-    // Replace the SSL policy with a basic X.509 policy (no hostname check).
-    // Hostname verification is already handled by SSLSetPeerDomainName at the SSL layer;
-    // the self-signed CA cert doesn't have a SAN for the server hostname.
-    val policy = SecPolicyCreateBasicX509()
-    val policyValues = allocArrayOf(policy as COpaquePointer)
-    val policyArray = CFArrayCreate(null, policyValues.reinterpret(), 1, null)
-    SecTrustSetPolicies(trust, policyArray)
-
-    // Evaluate trust
-    val errorPtr = alloc<CFErrorRefVar>()
-    val trusted = SecTrustEvaluateWithError(trust, errorPtr.ptr)
-
-    val error = errorPtr.value
-    if (error != null) CFRelease(error)
-    CFRelease(policyArray)
-    CFRelease(policy)
-    CFRelease(certCFArray)
-    CFRelease(cert)
-    CFRelease(trust)
 
     check(trusted) { "Server certificate trust evaluation failed" }
 }
@@ -264,7 +325,8 @@ actual suspend fun openPlainSocket(
             createAndConnectSocket(host, port)
         }
 
-    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    val ioJob = SupervisorJob()
+    val scope = CoroutineScope(coroutineContext + ioJob)
 
     val readChannel = ByteChannel(autoFlush = true)
     scope.launch(Dispatchers.IO) {
@@ -299,15 +361,23 @@ actual suspend fun openPlainSocket(
         }
     }
 
-    var closed = false
+    // Atomic, not a plain flag: close() can be called from more than one thread, and a lost
+    // race would run the teardown twice -- a double CFRelease over-releases the context and a
+    // double dispose() crashes, so this is not merely a redundant cleanup.
+    val closed = AtomicBoolean(false)
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = {
-            if (!closed) {
-                closed = true
-                scope.cancel()
-                close(fd)
+            if (closed.compareAndSet(false, true)) {
+                // shutdown() rather than close(): it unblocks the blocking call each IO job is
+                // parked in, without freeing the descriptor number for another socket to reuse
+                // while those jobs still hold it.
+                shutdown(fd, SHUT_RDWR)
+                ioJob.cancel()
+                // cancel() does not wait, so the descriptor is closed only once both jobs have
+                // actually finished with it.
+                ioJob.invokeOnCompletion { close(fd) }
             }
         },
     )
@@ -325,14 +395,23 @@ private fun setupDefaultTLS(
         }
     val fdHolder = intArrayOf(fd)
     val stableRef = StableRef.create(fdHolder)
-    SSLSetConnection(sslCtx, stableRef.asCPointer())
-    SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
-    SSLSetPeerDomainName(sslCtx, host, host.length.convert())
 
-    // No breakOnServerAuth: SecureTransport performs default system trust evaluation during the
-    // handshake, which is exactly what we want for a public CA-signed certificate.
-    val status = SSLHandshake(sslCtx)
-    check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
+    // Anything thrown below (a failed handshake is routine) must not strand the
+    // SecureTransport context or the stable ref the IO callbacks read the fd from.
+    try {
+        SSLSetConnection(sslCtx, stableRef.asCPointer())
+        SSLSetIOFuncs(sslCtx, sslReadCallback, sslWriteCallback)
+        SSLSetPeerDomainName(sslCtx, host, host.length.convert())
+
+        // No breakOnServerAuth: SecureTransport performs default system trust evaluation during the
+        // handshake, which is exactly what we want for a public CA-signed certificate.
+        val status = SSLHandshake(sslCtx)
+        check(status == errSecSuccess) { "TLS handshake failed (status=$status)" }
+    } catch (t: Throwable) {
+        CFRelease(sslCtx)
+        stableRef.dispose()
+        throw t
+    }
 
     return sslCtx to stableRef
 }
@@ -346,11 +425,18 @@ actual suspend fun openDefaultTlsSocket(
     val (fd, sslCtx, stableRef) =
         kotlinx.coroutines.withContext(Dispatchers.IO) {
             val fd = createAndConnectSocket(host, port)
-            val (ctx, ref) = setupDefaultTLS(fd, host)
+            val (ctx, ref) =
+                try {
+                    setupDefaultTLS(fd, host)
+                } catch (t: Throwable) {
+                    close(fd)
+                    throw t
+                }
             Triple(fd, ctx, ref)
         }
 
-    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    val ioJob = SupervisorJob()
+    val scope = CoroutineScope(coroutineContext + ioJob)
 
     val readChannel = ByteChannel(autoFlush = true)
     scope.launch(Dispatchers.IO) {
@@ -399,17 +485,30 @@ actual suspend fun openDefaultTlsSocket(
         }
     }
 
-    var closed = false
+    // Atomic, not a plain flag: close() can be called from more than one thread, and a lost
+    // race would run the teardown twice -- a double CFRelease over-releases the context and a
+    // double dispose() crashes, so this is not merely a redundant cleanup.
+    val closed = AtomicBoolean(false)
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = {
-            if (!closed) {
-                closed = true
-                scope.cancel()
-                SSLClose(sslCtx)
-                close(fd)
-                stableRef.dispose()
+            if (closed.compareAndSet(false, true)) {
+                // shutdown() rather than close(): it unblocks the blocking call each IO job is
+                // parked in, without freeing the descriptor number for another socket to reuse
+                // while those jobs still hold it.
+                shutdown(fd, SHUT_RDWR)
+                ioJob.cancel()
+                // cancel() does not wait, and both jobs sit inside blocking SecureTransport calls.
+                // Releasing the context while one is still in SSLRead is a use-after-free, so the
+                // teardown runs only after both have finished.
+                ioJob.invokeOnCompletion {
+                    SSLClose(sslCtx)
+                    // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
+                    CFRelease(sslCtx)
+                    close(fd)
+                    stableRef.dispose()
+                }
             }
         },
     )
@@ -425,11 +524,18 @@ actual suspend fun openTLSSocket(
     val (fd, sslCtx, stableRef) =
         kotlinx.coroutines.withContext(Dispatchers.IO) {
             val fd = createAndConnectSocket(host, port)
-            val (ctx, ref) = setupTLS(fd, host, certificate)
+            val (ctx, ref) =
+                try {
+                    setupTLS(fd, host, certificate)
+                } catch (t: Throwable) {
+                    close(fd)
+                    throw t
+                }
             Triple(fd, ctx, ref)
         }
 
-    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    val ioJob = SupervisorJob()
+    val scope = CoroutineScope(coroutineContext + ioJob)
 
     // SSLRead → ByteChannel
     val readChannel = ByteChannel(autoFlush = true)
@@ -480,17 +586,30 @@ actual suspend fun openTLSSocket(
         }
     }
 
-    var closed = false
+    // Atomic, not a plain flag: close() can be called from more than one thread, and a lost
+    // race would run the teardown twice -- a double CFRelease over-releases the context and a
+    // double dispose() crashes, so this is not merely a redundant cleanup.
+    val closed = AtomicBoolean(false)
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = {
-            if (!closed) {
-                closed = true
-                scope.cancel()
-                SSLClose(sslCtx)
-                close(fd)
-                stableRef.dispose()
+            if (closed.compareAndSet(false, true)) {
+                // shutdown() rather than close(): it unblocks the blocking call each IO job is
+                // parked in, without freeing the descriptor number for another socket to reuse
+                // while those jobs still hold it.
+                shutdown(fd, SHUT_RDWR)
+                ioJob.cancel()
+                // cancel() does not wait, and both jobs sit inside blocking SecureTransport calls.
+                // Releasing the context while one is still in SSLRead is a use-after-free, so the
+                // teardown runs only after both have finished.
+                ioJob.invokeOnCompletion {
+                    SSLClose(sslCtx)
+                    // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
+                    CFRelease(sslCtx)
+                    close(fd)
+                    stableRef.dispose()
+                }
             }
         },
     )

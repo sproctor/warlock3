@@ -4,7 +4,11 @@ out
 gen
 
 # Xcode user data
-*.xcuserdata
+# Xcode per-user state. The old '*.xcuserdata' pattern matched nothing: the
+# directories are named 'xcuserdata' and '<user>.xcuserdatad'.
+xcuserdata/
+*.xcuserdatad/
+.DS_Store
 
 hs_err_pid*.log
 *.hprof

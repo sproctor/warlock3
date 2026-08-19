@@ -8,6 +8,7 @@ import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.android.di.AndroidAppContainer
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.openPrefsDatabase
+import warlockfe.warlock3.compose.util.initializeSentry
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.util.WarlockDirs
 
@@ -17,6 +18,12 @@ class WarlockApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Before anything else, so a crash during startup still gets reported. Debug builds are
+        // skipped: reports from someone's working tree are noise.
+        if (!BuildConfig.DEBUG) {
+            initializeSentry(platform = "android", version = BuildConfig.VERSION_NAME)
+        }
 
         val configDir = filesDir
         val warlockDirs =
