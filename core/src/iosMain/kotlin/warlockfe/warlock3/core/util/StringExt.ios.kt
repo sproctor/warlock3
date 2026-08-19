@@ -33,7 +33,11 @@ fun ByteArray.toNSData(
 @OptIn(BetaInteropApi::class)
 actual fun String.encodeWindows1252(): ByteArray {
     val nsString: NSString = NSString.create(this)!!
-    val nsData = nsString.dataUsingEncoding(NSWindowsCP1252StringEncoding)
+    // Lossy, because the alternative is not "no conversion" but "no text": dataUsingEncoding returns
+    // null for anything windows-1252 cannot represent, and a typed curly quote or emoji would take
+    // the whole line with it. Lossy substitutes a '?' per character, which is what the JVM and
+    // Android encoders do with the same input.
+    val nsData = nsString.dataUsingEncoding(NSWindowsCP1252StringEncoding, allowLossyConversion = true)
     return nsData?.toByteArray() ?: ByteArray(0)
 }
 
