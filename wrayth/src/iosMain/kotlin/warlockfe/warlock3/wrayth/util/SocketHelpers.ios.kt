@@ -332,7 +332,7 @@ private suspend fun awaitReady(
                 }
 
                 else -> {
-                    // waiting/preparing/invalid: nothing to do until one of the states above.
+                    // preparing/invalid: nothing to do until one of the states above.
                 }
             }
         }
@@ -362,7 +362,7 @@ private suspend fun receiveChunk(connection: nw_connection_t): Received? =
             if (continuation.isActive) {
                 when {
                     error != null -> {
-                        logger.d { "receive failed${error.describe()}" }
+                        // Not logged here: the read loop logs it with the cause attached.
                         continuation.resumeWithException(
                             IOException("receive failed${error.describe()}"),
                         )
@@ -427,6 +427,13 @@ private fun dispatch_data_t.toByteArray(): ByteArray =
         // A dispatch_data_t may be a rope of discontiguous regions; create_map flattens it and
         // returns an object that *owns* the contiguous buffer bufferPtr points at.
         val mapped = dispatch_data_create_map(this@toByteArray, bufferPtr.ptr, sizePtr.ptr)
+        if (mapped == null) {
+            // create_map leaves the out parameters untouched when it fails, and they are
+            // uninitialised memScoped memory: reading them would size an array from garbage and
+            // memcpy from a garbage pointer. Deliberately not a check() -- this runs inside an
+            // Objective-C block, where a throw terminates the process.
+            return@memScoped ByteArray(0)
+        }
         val size = sizePtr.value.toInt()
         val bytes =
             if (size == 0) {
@@ -438,11 +445,9 @@ private fun dispatch_data_t.toByteArray(): ByteArray =
                     }
                 }
             }
-        // `mapped` has to outlive the copy above: left unused, the runtime is free to collect it
-        // mid-memcpy and the buffer goes with it. Reading it here keeps it reachable. Deliberately
-        // not a check() -- this runs inside an Objective-C block, where a throw would terminate
-        // the process.
-        if (mapped != null) bytes else ByteArray(0)
+        // `mapped` owns the buffer copied above and has to outlive the copy; left unreferenced
+        // afterwards, the runtime is free to collect it mid-memcpy and the buffer goes with it.
+        mapped.let { bytes }
     }
 
 /**
