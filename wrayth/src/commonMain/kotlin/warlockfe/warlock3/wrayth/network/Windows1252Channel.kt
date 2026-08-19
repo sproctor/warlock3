@@ -41,10 +41,9 @@ private suspend fun ByteReadChannel.readWindows1252LineTo(
             while (!exhausted()) {
                 when (val b = readByte()) {
                     CR -> {
-                        // CR is only half a terminator until the next byte says otherwise, so wait
-                        // for one. There may be none - the peer can hang up on the CR - and the line
-                        // it ended is still a line either way.
-                        awaitContent()
+                        // CR is only half a terminator until the next byte says otherwise, so look
+                        // for one - peek waits for it to arrive. There may be none, since the peer
+                        // can hang up on the CR, and the line it ended is still a line either way.
                         if (peek(1)?.get(0) == LF) {
                             discard(1)
                         }

@@ -3,8 +3,10 @@ package warlockfe.warlock3.compose
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import warlockfe.warlock3.compose.model.GameScreen
@@ -115,28 +117,34 @@ class MudMobileConnectUseCase(
                 }
             }
 
-        // Refresh the saved profile (idempotent upsert; keeps last-used current). Best-effort, and
-        // only possible when we know the EAccess character code. It comes after the session call
-        // rather than before it: it is a nicety for the character picker, so it should neither delay
-        // the failure when MUD Mobile is unreachable — the session call has already established
-        // whether it is — nor hold up the game if this one endpoint is the slow one.
-        connection.characterCode?.let { characterCode ->
-            withTimeoutOrNull(PROFILE_REFRESH_TIMEOUT) {
-                api.createCharacter(
-                    token = token,
-                    account = connection.username,
-                    game = connection.code,
-                    characterCode = characterCode,
-                    characterName = connection.character,
-                )
-            }
-        }
-
         // 3. Wait for the session to announce it's ready before dialing the router. (Per the spec
         // the session is already routable at this point, so we only wait briefly: a warning at
         // WARN_AFTER, then connect regardless at FORCE_CONNECT_AFTER even without a ready signal.)
         onStatus("Waiting for the session to be ready...")
-        when (val readiness = awaitReady(token, sessionId, onStatus)) {
+        val readiness =
+            coroutineScope {
+                // Refresh the saved profile (idempotent upsert; keeps last-used current) alongside
+                // that wait rather than ahead of it: it is a nicety for the character picker, so it
+                // is not something to make the user wait on, and it is bounded in case this is the
+                // endpoint that is slow. Best-effort, and only possible when we know the character
+                // code. It also comes after the session call, so an unreachable service costs one
+                // timeout rather than two on the way to reporting the failure.
+                connection.characterCode?.let { characterCode ->
+                    launch {
+                        withTimeoutOrNull(PROFILE_REFRESH_TIMEOUT) {
+                            api.createCharacter(
+                                token = token,
+                                account = connection.username,
+                                game = connection.code,
+                                characterCode = characterCode,
+                                characterName = connection.character,
+                            )
+                        }
+                    }
+                }
+                awaitReady(token, sessionId, onStatus)
+            }
+        when (readiness) {
             ReadinessResult.Ready -> Unit
 
             // proceed to connect

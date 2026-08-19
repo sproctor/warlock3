@@ -275,10 +275,12 @@ abstract class AppContainer(
             // speaks WebSocket, which is the one transport every platform we target can open.
             install(WebSockets)
             install(HttpTimeout) {
-                // A bound on the API calls, so a service that is down or mid-maintenance fails with
-                // something to show the user instead of sitting there. It does not touch the game
-                // stream: both this plugin and the CIO engine exempt WebSocket requests, which is
-                // what lets the router hold a connection through its cold boot.
+                // The bound on the API calls, so a service that is down or mid-maintenance fails
+                // with something to show the user instead of sitting there. CIO defaults to the
+                // same 15s, but only the plugin's is a number: the engine's goes unreported, which
+                // is what left "request_timeout=unknown ms" in the log of a real outage. It does not
+                // touch the game stream either way - both the plugin and the engine exempt WebSocket
+                // requests, which is what lets the router hold a connection through its cold boot.
                 requestTimeoutMillis = 15_000
             }
         }

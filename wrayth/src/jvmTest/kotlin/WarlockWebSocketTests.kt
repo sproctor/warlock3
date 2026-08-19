@@ -11,10 +11,14 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.io.IOException
 import warlockfe.warlock3.wrayth.network.WarlockWebSocket
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import io.ktor.server.cio.CIO as ServerCIO
@@ -76,7 +80,7 @@ class WarlockWebSocketTests {
         withServer { socket, firstReceived ->
             socket.write("say —\n")
 
-            val frame = firstReceived.await()
+            val frame = withTimeout(AWAIT_TIMEOUT_MILLIS) { firstReceived.await() }
             assertTrue(frame is Frame.Binary, "the game stream is not UTF-8, so it must not be a text frame")
             // 0x97 is the em dash in windows-1252; UTF-8 would have made it three bytes.
             assertContentEquals(
@@ -117,11 +121,38 @@ class WarlockWebSocketTests {
         withServer(push = listOf("bye\r\n".encodeToByteArray()), keepOpen = false) { socket, _ ->
             assertEquals("bye", socket.readLine())
             assertNull(socket.readLine())
+        }
+    }
+
+    @Test
+    fun theServerHangingUpDoesNotReportTheSocketClosed() {
+        // A client reads until a read returns null and announces the disconnect there. It also loops
+        // on `while (!socket.isClosed)`, so a socket that called itself closed as soon as the stream
+        // ran dry would end that loop first and the disconnect would never be announced - no message,
+        // no reconnect banner, no teardown. Closed means we closed it, as it does for a TCP socket.
+        withServer(push = listOf("bye\r\n".encodeToByteArray()), keepOpen = false) { socket, _ ->
+            assertEquals("bye", socket.readLine())
+            assertNull(socket.readLine())
+            assertFalse(socket.isClosed, "the peer hanging up is not this socket being closed")
+
+            socket.close()
             assertTrue(socket.isClosed)
+        }
+    }
+
+    @Test
+    fun writingToAClosedSocketRaisesIoExceptionAsItDoesOnTcp() {
+        // WraythClient's write path catches IOException and reports the failed command; anything else
+        // escapes it and takes the caller down with it - which is what stopped a window from closing.
+        withServer { socket, _ ->
+            socket.close()
+
+            assertFailsWith<IOException> { socket.write("say hello\n") }
         }
     }
 
     private companion object {
         const val REQUEST_TIMEOUT_MILLIS = 250L
+        const val AWAIT_TIMEOUT_MILLIS = 10_000L
     }
 }

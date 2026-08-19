@@ -46,6 +46,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import sh.calvin.reorderable.ReorderableColumn
+import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
@@ -806,22 +807,14 @@ private fun ConnectionFailedDialog(
     message: String,
     onDismiss: () -> Unit,
 ) {
-    WarlockDialog(
+    WarlockAlertDialog(
         title = "Connection failed",
-        onCloseRequest = onDismiss,
+        text = message,
+        onDismissRequest = onDismiss,
+        confirmButton = { WarlockButton(onClick = onDismiss, text = "OK") },
         width = 420.dp,
         height = 220.dp,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(message)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                WarlockButton(onClick = onDismiss, text = "OK")
-            }
-        }
-    }
+    )
 }
 
 @Composable

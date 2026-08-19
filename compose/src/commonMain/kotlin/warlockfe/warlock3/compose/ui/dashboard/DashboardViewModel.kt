@@ -161,6 +161,9 @@ class DashboardViewModel(
         }
         if (busy) return
         busy = true
+        // The last attempt's failure is not this one's; clear it so its dialog cannot end up over a
+        // connect that is still running.
+        connectError = null
         connectJob?.cancel()
         connectJob =
             viewModelScope.launch {
@@ -356,6 +359,7 @@ class DashboardViewModel(
         mudMobileConnecting = true
         mudMobileConnectStatus = "Starting..."
         mudMobileMessage = null
+        connectError = null
         mudMobileSessionId = null
         connectJob?.cancel()
         connectJob =

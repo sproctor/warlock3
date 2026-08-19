@@ -13,10 +13,12 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.launch
+import kotlinx.io.IOException
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.util.encodeWindows1252
+import kotlin.concurrent.Volatile
 
 /**
  * A [WarlockSocket] that carries the game stream over a WebSocket instead of a raw TCP socket.
@@ -44,13 +46,21 @@ class WarlockWebSocket(
     // every frame's payload is appended here and read back exactly as a TCP stream is.
     private val receiveChannel = ByteChannel(autoFlush = true)
     private val buffer = ByteArray(4096)
+
+    // Written on whichever thread closes the socket and read from the frame pump and the client's
+    // read loop, so both are published rather than left to be seen whenever.
+    @Volatile
     private var session: DefaultClientWebSocketSession? = null
+
+    @Volatile
     private var closed = false
 
-    // The stream being over is what callers mean by closed, and that is the receive channel running
-    // dry after the pump closed it — not the session's job finishing, which lands a moment later.
+    // Only our own close counts, exactly as it does for a TCP socket. The peer going away is not
+    // reported here: a client reads until a read comes back null and calls its disconnected handler
+    // then, so a socket that reported itself closed the moment the stream ran dry would end that
+    // loop through its `while (!isClosed)` guard instead, and the disconnect would go unannounced.
     override val isClosed: Boolean
-        get() = closed || receiveChannel.isClosedForRead || session?.isActive == false
+        get() = closed
 
     override suspend fun connect(
         host: String,
@@ -93,28 +103,50 @@ class WarlockWebSocket(
         }
     }
 
-    override suspend fun readLine(): String? = receiveChannel.readWindows1252Line()
+    override suspend fun readLine(): String? {
+        checkConnected()
+        return receiveChannel.readWindows1252Line()
+    }
 
-    override suspend fun readAvailable(min: Int): String? = receiveChannel.readWindows1252Available(buffer, min)
+    override suspend fun readAvailable(min: Int): String? {
+        checkConnected()
+        return receiveChannel.readWindows1252Available(buffer, min)
+    }
 
-    override fun ready(): Boolean = receiveChannel.availableForRead > 0
+    override fun ready(): Boolean {
+        checkConnected()
+        return receiveChannel.availableForRead > 0
+    }
 
     override suspend fun write(text: String) {
         val session = checkNotNull(session) { "Socket not connected" }
-        // Binary, not text: we already hold windows-1252 bytes, and raw high bytes in a text frame
-        // are invalid UTF-8, which drops the connection mid-session.
-        session.send(Frame.Binary(fin = true, data = text.encodeWindows1252()))
-        session.flush()
+        // Writing to a socket that has gone away is an IOException here as it is on TCP, where the
+        // byte channel raises one. Callers already treat that as the connection being over; a raw
+        // channel exception would escape them instead.
+        if (closed) throw IOException("Socket is closed")
+        try {
+            // Binary, not text: we already hold windows-1252 bytes, and raw high bytes in a text
+            // frame are invalid UTF-8, which drops the connection mid-session.
+            session.send(Frame.Binary(fin = true, data = text.encodeWindows1252()))
+            session.flush()
+        } catch (e: ClosedSendChannelException) {
+            throw IOException("Socket is closed", e)
+        }
     }
 
     override fun close() {
         logger.d { "Closing connection" }
         closed = true
-        // Cancelling the session tears down the underlying connection; closing the channel wakes a
-        // reader that is waiting on bytes that are never coming now.
+        // Cancelling the session tears down the connection, which ends the pump. Waiting readers are
+        // woken by cancelling the channel rather than closing it: close() is a write-side operation
+        // that touches the same buffer the pump writes into, and this runs on whatever thread asked
+        // for the close. cancel() only trips an atomic, so the pump keeps sole ownership of the
+        // write side; with no cause it reads as a clean end of stream, so a waiting read returns
+        // null and the client disconnects the same way it does when the peer hangs up.
         session?.cancel()
-        session = null
-        receiveChannel.close()
+        receiveChannel.cancel(null)
         scope.cancel()
     }
+
+    private fun checkConnected() = checkNotNull(session) { "Socket not connected" }
 }
