@@ -72,6 +72,7 @@ import platform.posix.AF_INET
 import platform.posix.EAGAIN
 import platform.posix.EWOULDBLOCK
 import platform.posix.IPPROTO_TCP
+import platform.posix.SHUT_RDWR
 import platform.posix.SOCK_STREAM
 import platform.posix.addrinfo
 import platform.posix.close
@@ -80,6 +81,7 @@ import platform.posix.errno
 import platform.posix.freeaddrinfo
 import platform.posix.getaddrinfo
 import platform.posix.read
+import platform.posix.shutdown
 import platform.posix.socket
 import platform.posix.write
 import kotlin.coroutines.CoroutineContext
@@ -321,7 +323,8 @@ actual suspend fun openPlainSocket(
             createAndConnectSocket(host, port)
         }
 
-    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    val ioJob = SupervisorJob()
+    val scope = CoroutineScope(coroutineContext + ioJob)
 
     val readChannel = ByteChannel(autoFlush = true)
     scope.launch(Dispatchers.IO) {
@@ -363,8 +366,14 @@ actual suspend fun openPlainSocket(
         close = {
             if (!closed) {
                 closed = true
-                scope.cancel()
-                close(fd)
+                // shutdown() rather than close(): it unblocks the blocking call each IO job is
+                // parked in, without freeing the descriptor number for another socket to reuse
+                // while those jobs still hold it.
+                shutdown(fd, SHUT_RDWR)
+                ioJob.cancel()
+                // cancel() does not wait, so the descriptor is closed only once both jobs have
+                // actually finished with it.
+                ioJob.invokeOnCompletion { close(fd) }
             }
         },
     )
@@ -422,7 +431,8 @@ actual suspend fun openDefaultTlsSocket(
             Triple(fd, ctx, ref)
         }
 
-    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    val ioJob = SupervisorJob()
+    val scope = CoroutineScope(coroutineContext + ioJob)
 
     val readChannel = ByteChannel(autoFlush = true)
     scope.launch(Dispatchers.IO) {
@@ -478,12 +488,21 @@ actual suspend fun openDefaultTlsSocket(
         close = {
             if (!closed) {
                 closed = true
-                scope.cancel()
-                SSLClose(sslCtx)
-                close(fd)
-                // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
-                CFRelease(sslCtx)
-                stableRef.dispose()
+                // shutdown() rather than close(): it unblocks the blocking call each IO job is
+                // parked in, without freeing the descriptor number for another socket to reuse
+                // while those jobs still hold it.
+                shutdown(fd, SHUT_RDWR)
+                ioJob.cancel()
+                // cancel() does not wait, and both jobs sit inside blocking SecureTransport calls.
+                // Releasing the context while one is still in SSLRead is a use-after-free, so the
+                // teardown runs only after both have finished.
+                ioJob.invokeOnCompletion {
+                    SSLClose(sslCtx)
+                    // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
+                    CFRelease(sslCtx)
+                    close(fd)
+                    stableRef.dispose()
+                }
             }
         },
     )
@@ -509,7 +528,8 @@ actual suspend fun openTLSSocket(
             Triple(fd, ctx, ref)
         }
 
-    val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    val ioJob = SupervisorJob()
+    val scope = CoroutineScope(coroutineContext + ioJob)
 
     // SSLRead → ByteChannel
     val readChannel = ByteChannel(autoFlush = true)
@@ -567,12 +587,21 @@ actual suspend fun openTLSSocket(
         close = {
             if (!closed) {
                 closed = true
-                scope.cancel()
-                SSLClose(sslCtx)
-                close(fd)
-                // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
-                CFRelease(sslCtx)
-                stableRef.dispose()
+                // shutdown() rather than close(): it unblocks the blocking call each IO job is
+                // parked in, without freeing the descriptor number for another socket to reuse
+                // while those jobs still hold it.
+                shutdown(fd, SHUT_RDWR)
+                ioJob.cancel()
+                // cancel() does not wait, and both jobs sit inside blocking SecureTransport calls.
+                // Releasing the context while one is still in SSLRead is a use-after-free, so the
+                // teardown runs only after both have finished.
+                ioJob.invokeOnCompletion {
+                    SSLClose(sslCtx)
+                    // SSLCreateContext returns a +1 reference; SSLClose does not consume it.
+                    CFRelease(sslCtx)
+                    close(fd)
+                    stableRef.dispose()
+                }
             }
         },
     )
