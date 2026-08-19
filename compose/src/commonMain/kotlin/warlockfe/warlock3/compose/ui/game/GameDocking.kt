@@ -20,10 +20,12 @@ import com.seanproctor.docking.model.AnchorId
 import com.seanproctor.docking.model.DockLayout
 import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
+import com.seanproctor.docking.model.DockWindow
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
 import com.seanproctor.docking.model.SplitOrientation
 import com.seanproctor.docking.model.TabPreference
+import com.seanproctor.docking.model.WindowBounds
 import com.seanproctor.docking.model.WindowId
 import com.seanproctor.docking.persistence.DockingPersistence
 import com.seanproctor.docking.persistence.captureLayout
@@ -49,6 +51,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowLocation
@@ -209,6 +215,10 @@ fun rememberGameDockState(
     // Snapshot-state mirror read by the dockable specs' lambdas (title, actions, content), so a
     // registered dockable keeps rendering the live ui state without re-registration.
     val windowsByName = remember { mutableStateMapOf<String, OpenGameWindow>() }
+
+    // Where windows were when they were closed, so reopening puts them back. Held here rather than
+    // inside reconcile so it outlives the pass that filled it.
+    val spots = remember { DockSpotMemory() }
     SideEffect {
         windowsByName.keys.retainAll(openWindows.keys)
         openWindows.forEach { (name, window) ->
@@ -345,13 +355,17 @@ fun rememberGameDockState(
                     Logger.w { "Window restore still running after $CHARACTER_WAIT; docking against it" }
                 }
                 val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
-                applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow)
+                // Before the restore, so the reconcile inside it can already put a window the
+                // character closed in an earlier session back where they left it.
+                spots.restore(runCatching { viewModel.loadDockSpots() }.getOrNull())
+                applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow, spots)
                 restoreFinished.complete(Unit)
                 snapshotFlow { state.layout }
                     .drop(1)
                     .debounce(1.seconds)
                     .collect {
                         viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
+                        dockSpotsToSave(spots)?.let { viewModel.saveDockSpots(it) }
                     }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into
@@ -360,7 +374,7 @@ fun rememberGameDockState(
             // after the timeout reconciles again above.
             launch {
                 withTimeoutOrNull(CHARACTER_WAIT) { restoreFinished.await() }
-                reconcile(state, liveOpenWindows(), ::registerWindow)
+                reconcile(state, liveOpenWindows(), ::registerWindow, spots)
                 merge(
                     snapshotFlow { currentOpenWindows.value }.map { },
                     // A drop can re-dock a window the game closed mid-drag; a Docked event is the
@@ -370,7 +384,7 @@ fun rememberGameDockState(
                         .filter { !it.isTemporary }
                         .map { },
                 ).collect {
-                    reconcile(state, liveOpenWindows(), ::registerWindow)
+                    reconcile(state, liveOpenWindows(), ::registerWindow, spots)
                 }
             }
             // A detached window's own close button is the OS one, which drops the window's contents
@@ -390,8 +404,7 @@ fun rememberGameDockState(
                     val current =
                         layout.floatingWindows.associate { window ->
                             window.id to
-                                listOfNotNull(window.root, window.maximized?.savedRoot)
-                                    .flatMap { it.dockableIds() }
+                                window.allTrees.flatMap { it.dockableIds() }
                         }
                     (detached.keys - current.keys).forEach { closed ->
                         detached[closed]
@@ -422,6 +435,7 @@ internal fun applyRestoredLayout(
     saved: String?,
     openWindows: Map<String, OpenGameWindow>,
     registerWindow: (String, AnchorId?) -> Unit,
+    spots: DockSpotMemory,
 ) {
     if (saved != null) {
         runCatching { DockingPersistence.decode(saved) }
@@ -447,7 +461,7 @@ internal fun applyRestoredLayout(
     // closed right now; reconcile immediately so they never render as placeholders. This also
     // re-docks anything a late restore displaced, when the bounded wait in the bridge gave up and
     // laid windows out first.
-    reconcile(state, openWindows, registerWindow)
+    reconcile(state, openWindows, registerWindow, spots)
 }
 
 /**
@@ -465,12 +479,19 @@ internal fun reconcile(
     state: DockState,
     openWindows: Map<String, OpenGameWindow>,
     registerWindow: (String, AnchorId?) -> Unit,
+    spots: DockSpotMemory,
 ) {
-    dockedIds(state.layout)
-        .filter { it.value != MAIN_WINDOW_NAME && it.value !in openWindows }
-        .forEach { state.undock(it) }
+    val leaving = dockedIds(state.layout).filter { it.value != MAIN_WINDOW_NAME && it.value !in openWindows }
+    // Every spot is read off the tree as it stands before any of them leaves it. Undocking as we
+    // went had the second window of a pair record its neighbours from a tree the first had already
+    // been taken out of, so both ended up describing an arrangement that never existed.
+    leaving.associate { it.value to rememberedSpotOf(state, it.value) }.forEach { (name, spot) ->
+        spots.remember(name, spot)
+    }
+    leaving.forEach { state.undock(it) }
+
     val mainWindow = state.layout.mainWindow
-    val tree = mainWindow.maximized?.savedRoot ?: mainWindow.root
+    val tree = mainWindow.arrangement
     openWindows.forEach { (name, window) ->
         val anchor =
             when {
@@ -486,20 +507,52 @@ internal fun reconcile(
                 else -> tree?.let { currentAnchorOf(it, name) } ?: window.location.anchor
             }
         registerWindow(name, anchor)
-        val id = DockableId(name)
-        if (!state.isOpen(id)) {
-            if (opensDetached(window)) {
-                detachWindow(state, name)
-            } else {
-                val placement =
-                    defaultPlacement(
-                        name = name,
-                        location = window.location,
-                        layout = state.layout,
-                        openWindows = openWindows,
-                    )
-                state.dock(id, placement.target, placement.region, placement.proportion)
-            }
+    }
+
+    val pending = openWindows.filterKeys { !state.isOpen(DockableId(it)) }.toMutableMap()
+    // Windows are put back by their remembered spots first, and in whatever order those become
+    // usable: closing a pair and reopening it leaves each of them waiting on the other, and the one
+    // that can be placed goes first so the other has something to be placed against. A spot is only
+    // spent when it is used, so a window that never gets its chance this pass keeps it for the next.
+    while (true) {
+        val placeable =
+            pending.keys.firstNotNullOfOrNull { name ->
+                spots.peek(name)?.let { spot ->
+                    when {
+                        // Company it can rejoin comes first; a new window is for one that was alone.
+                        placementFromMemory(spot, state.layout) != null -> name to placementFromMemory(spot, state.layout)
+
+                        spot.detached && platformDockCapabilities.floatingWindows -> name to null
+
+                        else -> null
+                    }
+                }
+            } ?: break
+        val (name, placement) = placeable
+        val spot = spots.spend(name)
+        if (placement == null) {
+            detachWindow(state, name, spot?.bounds)
+        } else {
+            state.dock(DockableId(name), placement.target, placement.region, placement.proportion)
+            // Docking Center appends to the strip, so a window that was not last has to be moved
+            // back to its own place in it.
+            spot?.tabIndex?.let { restoreTabIndex(state, name, it) }
+        }
+        pending.remove(name)
+    }
+
+    pending.forEach { (name, window) ->
+        if (opensDetached(window)) {
+            detachWindow(state, name)
+        } else {
+            val placement =
+                defaultPlacement(
+                    name = name,
+                    location = window.location,
+                    layout = state.layout,
+                    openWindows = openWindows,
+                )
+            state.dock(DockableId(name), placement.target, placement.region, placement.proportion)
         }
     }
     closeEmptyDetachedWindows(state)
@@ -572,7 +625,7 @@ internal fun isHiddenTab(
     val root =
         state.layout.windows
             .firstNotNullOfOrNull { window ->
-                (window.maximized?.savedRoot ?: window.root)?.takeIf { it.containsDockable(id) }
+                window.arrangement?.takeIf { it.containsDockable(id) }
             } ?: return false
     val tabs = root.tabsContaining(id) ?: return false
     return tabs.selectedTab.dockableId != id
@@ -597,8 +650,9 @@ private fun DockNode.tabsContaining(id: DockableId): DockNode.Tabs? =
 internal fun detachWindow(
     state: DockState,
     name: String,
+    bounds: WindowBounds? = null,
 ) {
-    state.moveToNewWindow(DockableId(name))
+    state.moveToNewWindow(DockableId(name), bounds)
 }
 
 /**
@@ -624,6 +678,23 @@ internal fun redockIntoMainWindow(
         )
     state.dock(DockableId(window.name), placement.target, placement.region, placement.proportion)
     closeEmptyDetachedWindows(state)
+}
+
+/**
+ * Puts a window that has just rejoined a tab strip back at the index it had. Docking appends, so
+ * without this a window that was first of four comes back fourth.
+ */
+private fun restoreTabIndex(
+    state: DockState,
+    name: String,
+    index: Int,
+) {
+    val id = DockableId(name)
+    val window = state.layout.windows.firstOrNull { it.containsDockable(id) } ?: return
+    val tabs = window.arrangement?.tabsContaining(id) ?: return
+    val from = tabs.tabs.indexOfFirst { it.dockableId == id }
+    val to = index.coerceIn(0, tabs.tabs.lastIndex)
+    if (from >= 0 && from != to) state.moveTab(tabs.id, from, to)
 }
 
 /** Whether [name] is currently in a detached window rather than the main one. */
@@ -655,6 +726,310 @@ internal fun opensDetached(window: OpenGameWindow): Boolean =
     window.location == WindowLocation.DETACHED &&
         !window.isMain &&
         platformDockCapabilities.floatingWindows
+
+/**
+ * Where a window sat when it was closed, so that reopening can put it back there.
+ *
+ * The spot is described by its *neighbours* rather than by coordinates, because coordinates do not
+ * survive the rest of the layout moving underneath them. What is remembered is which windows it was
+ * split away from (or tabbed with), which side of them it was on, and how much of them it had. Reopen
+ * it while those neighbours are all still docked and it goes back between the same windows at the
+ * same size, wherever they have since been dragged to.
+ *
+ * Best effort, and one place it falls short: the size is a share of the neighbours that are still
+ * there, so a window reopened next to fewer of them than it left is the size it would have been had
+ * it never gone - which is right, but is not the same as the size it was when it closed.
+ *
+ * [siblings] empty with [detached] set is the other case: it was alone in a window of its own, and
+ * reopens in one, at [bounds].
+ */
+internal data class RememberedSpot(
+    val siblings: List<String>,
+    val region: DockRegion,
+    val proportion: Float,
+    val detached: Boolean = false,
+    val bounds: WindowBounds? = null,
+    // Which tab it was, when it was one, so it rejoins the strip in its own place rather than at the end.
+    val tabIndex: Int? = null,
+)
+
+/**
+ * What the debounced save should write for the spots, or null when nothing has moved.
+ *
+ * Spots only ever change as part of a close or a reopen, and both of those move the layout, so the
+ * same beat that saves the arrangement catches every change to them. Most layout changes are drags
+ * and resizes, which change no spot at all, and the writer does not de-duplicate, so an unchanged
+ * set is not worth a write.
+ *
+ * It takes the memory and nothing else on purpose. An earlier version bounded the map here against
+ * the windows that were open or docked - which are precisely the two things a window that has just
+ * been closed is not, so it deleted the spot of the window whose close the user was most likely to
+ * undo, one second after they closed it. There is no set of live windows to be tempted by here.
+ */
+internal fun dockSpotsToSave(spots: DockSpotMemory): String? = if (spots.isDirty()) spots.encode() else null
+
+/**
+ * Where closed windows were, saved alongside the character's arrangement.
+ *
+ * Stored apart from the arrangement rather than folded into it, so an unreadable set of spots costs
+ * only the memory, and every layout already saved still reads. The arrangement records where the
+ * *open* windows are; this records the rest, so a window closed a fortnight ago still comes back
+ * where its owner left it rather than where the game first put it.
+ */
+internal class DockSpotMemory {
+    private val spots = mutableMapOf<String, RememberedSpot>()
+    private var dirty = false
+
+    /**
+     * Records where [name] was. A null [spot] means "nothing worth recording", which is not the same
+     * as "forget what we knew": a window undocked from somewhere unrecognisable - or one the restore
+     * pass sweeps up before it has been placed - keeps the spot it already had rather than losing it.
+     */
+    fun remember(
+        name: String,
+        spot: RememberedSpot?,
+    ) {
+        if (spot == null) return
+        if (spots[name] != spot) dirty = true
+        // Re-inserted rather than replaced, so the map runs least- to most-recently recorded and
+        // [trim] drops whichever nobody has touched in longest.
+        spots.remove(name)
+        spots[name] = spot
+        trim()
+    }
+
+    /** Drops [name]'s spot outright, for a window that is not coming back. */
+    fun forget(name: String) {
+        if (spots.remove(name) != null) dirty = true
+    }
+
+    /** Whether anything has changed since the last [encode]. */
+    fun isDirty(): Boolean = dirty
+
+    /** Looks without spending. A spot survives a pass that could not use it. */
+    fun peek(name: String): RememberedSpot? = spots[name]
+
+    /** Spends a spot: it is good for the reopen that follows the close it came from, and no more. */
+    fun spend(name: String): RememberedSpot? = spots.remove(name)?.also { dirty = true }
+
+    fun encode(): String {
+        dirty = false
+        return json.encodeToString(spots.mapValues { it.value.toStored() })
+    }
+
+    /**
+     * Reads [saved] in, keeping anything already recorded this session - a window closed while the
+     * character was still being identified would otherwise have its spot wiped by the restore that
+     * follows. Read entry by entry, so one unreadable spot costs only itself.
+     */
+    fun restore(saved: String?) {
+        if (saved.isNullOrBlank()) return
+        val entries =
+            runCatching { json.decodeFromString<Map<String, JsonElement>>(saved) }
+                .onFailure { Logger.w(it) { "Discarding unreadable dock spots" } }
+                .getOrNull() ?: return
+        entries.forEach { (name, element) ->
+            if (name in spots) return@forEach
+            runCatching { json.decodeFromJsonElement<StoredSpot>(element).toSpot() }
+                .onSuccess { spot ->
+                    spot?.let {
+                        spots[name] = it
+                        dirty = true
+                    }
+                }.onFailure { Logger.w(it) { "Discarding unreadable dock spot for $name" } }
+        }
+    }
+
+    /**
+     * Forgets the least recently recorded spots once there are more than [MAX_SPOTS] of them.
+     *
+     * Bounded by count rather than by which windows still exist, because a window that has just been
+     * closed exists nowhere: it is gone from the view model's open list and undocked from the layout
+     * in the same breath. Pruning against "open or docked" therefore deleted the spot of the very
+     * window that had just been closed, on the debounced save a second later - which is every close
+     * a user is likely to undo.
+     */
+    private fun trim() {
+        while (spots.size > MAX_SPOTS) {
+            val oldest = spots.keys.firstOrNull() ?: break
+            spots.remove(oldest)
+            dirty = true
+        }
+    }
+
+    private companion object {
+        // Lenient on the way in: a field added by a later build must cost that one spot at worst,
+        // and preferably nothing at all. The library's own persistence reads its layouts the same way.
+        val json = Json { ignoreUnknownKeys = true }
+
+        // Far more than the windows a character has, so nothing is dropped in practice; this only
+        // stops a client that runs for years growing the saved blob without limit.
+        const val MAX_SPOTS = 128
+    }
+}
+
+/**
+ * [RememberedSpot] as it is written to disk. A shape of our own rather than the library's types
+ * annotated, so a rename there cannot quietly invalidate what characters have saved; [DockRegion] is
+ * stored by name and anything unrecognised reads back as no spot at all.
+ */
+@Serializable
+internal data class StoredSpot(
+    val siblings: List<String> = emptyList(),
+    val region: String,
+    val proportion: Float,
+    val detached: Boolean = false,
+    val x: Float? = null,
+    val y: Float? = null,
+    val width: Float? = null,
+    val height: Float? = null,
+    val tabIndex: Int? = null,
+) {
+    fun toSpot(): RememberedSpot? {
+        val dockRegion = DockRegion.entries.firstOrNull { it.name == region } ?: return null
+        val bounds =
+            if (x != null && y != null && width != null && height != null) {
+                WindowBounds(x, y, width, height)
+            } else {
+                null
+            }
+        return RememberedSpot(siblings, dockRegion, proportion, detached, bounds, tabIndex)
+    }
+}
+
+private fun RememberedSpot.toStored(): StoredSpot =
+    StoredSpot(
+        siblings = siblings,
+        region = region.name,
+        proportion = proportion,
+        detached = detached,
+        x = bounds?.x,
+        y = bounds?.y,
+        width = bounds?.width,
+        height = bounds?.height,
+        tabIndex = tabIndex,
+    )
+
+/**
+ * Where [name] is sitting right now, in the terms [RememberedSpot] keeps, or null when there is
+ * nothing worth remembering - it is alone in the layout, or not docked at all.
+ */
+internal fun rememberedSpotOf(
+    state: DockState,
+    name: String,
+): RememberedSpot? {
+    val id = DockableId(name)
+    // Whichever window it is in, not just the main one: a window torn off with company remembers
+    // that company, so reopening puts it back beside them in the same torn-off window rather than
+    // opening a second one on top of the first.
+    val window = state.layout.windows.firstOrNull { it.containsDockable(id) } ?: return null
+    val detached = window.id != WindowId.MAIN
+    val tree = window.arrangement
+    val neighbours =
+        tree?.let {
+            // Tabbed with others: back into the same strip beats any split it happens to sit in.
+            it.tabsContaining(id)?.let { tabs ->
+                val others = tabs.tabs.map { tab -> tab.dockableId.value }.filter { other -> other != name }
+                if (others.isNotEmpty()) {
+                    RememberedSpot(
+                        siblings = others,
+                        region = DockRegion.Center,
+                        proportion = 0.5f,
+                        tabIndex = tabs.tabs.indexOfFirst { tab -> tab.dockableId == id }.takeIf { index -> index >= 0 },
+                    )
+                } else {
+                    null
+                }
+            } ?: it.splitSpotOf(id)
+        }
+    return when {
+        neighbours != null -> neighbours.copy(detached = detached, bounds = window.bounds.takeIf { detached })
+
+        // Alone in a window of its own: the window itself is the thing to remember.
+        detached -> RememberedSpot(emptyList(), DockRegion.Center, 0.5f, detached = true, bounds = window.bounds)
+
+        else -> null
+    }
+}
+
+/** The split this leaf is a direct child of, described from the leaf's side of it. */
+private fun DockNode.splitSpotOf(id: DockableId): RememberedSpot? {
+    if (this !is DockNode.Split) return null
+    val firstIsIt = first.let { it is DockNode.Leaf && it.dockableId == id }
+    val secondIsIt = second.let { it is DockNode.Leaf && it.dockableId == id }
+    return when {
+        firstIsIt -> {
+            RememberedSpot(
+                siblings = second.dockableIds().map { it.value },
+                region = if (orientation == SplitOrientation.Horizontal) DockRegion.West else DockRegion.North,
+                proportion = proportion,
+            )
+        }
+
+        secondIsIt -> {
+            RememberedSpot(
+                siblings = first.dockableIds().map { it.value },
+                region = if (orientation == SplitOrientation.Horizontal) DockRegion.East else DockRegion.South,
+                proportion = 1f - proportion,
+            )
+        }
+
+        else -> {
+            first.splitSpotOf(id) ?: second.splitSpotOf(id)
+        }
+    }
+}
+
+/**
+ * Turns a remembered spot back into a placement, or null when it cannot be honoured right now -
+ * every neighbour has since been closed, or none of them is in a live tree yet, so there is nothing
+ * to sit beside. The caller keeps the spot in that case and tries again, which is what lets a pair
+ * of windows closed together be reopened together.
+ */
+internal fun placementFromMemory(
+    spot: RememberedSpot,
+    layout: DockLayout,
+): DockPlacement? {
+    if (spot.siblings.isEmpty()) return null
+    // The live tree only. A target naming something that is only in a window's pre-maximize tree
+    // cannot be resolved when the dock comes to apply it, and an unresolvable target is dropped
+    // silently - the window would simply not appear.
+    val window =
+        layout.windows.firstOrNull { candidate ->
+            candidate.root?.let { root -> spot.siblings.any { root.containsDockable(DockableId(it)) } } == true
+        } ?: return null
+    val tree = window.root ?: return null
+    val surviving = spot.siblings.map { DockableId(it) }.filter { tree.containsDockable(it) }
+    if (surviving.isEmpty()) return null
+    // Back into the tab strip: docking Center onto a member is what appends a tab.
+    if (spot.region == DockRegion.Center) {
+        return DockPlacement(DockTarget.OnDockable(surviving.first()), DockRegion.Center, spot.proportion)
+    }
+    val node = tree.smallestNodeHolding(surviving.toSet()) ?: return null
+    // The proportion goes back unscaled even when only some of the siblings are left, which looks
+    // wrong and is not: the space a closed window had was already given to the ones that remain, so
+    // what survives fills the same extent the whole group did. Taking the old share of it puts the
+    // window back at the size it had. Scaling it to the survivors was tried and made the window grow.
+    return DockPlacement(DockTarget.OnNode(window.id, node.id), spot.region, spot.proportion)
+}
+
+/**
+ * The window's arrangement: the tree it would show if nothing were maximized. Maximizing swaps the
+ * real tree out for the maximized dockable alone and keeps the arrangement in `savedRoot`, so this is
+ * what to read when the question is where windows sit relative to one another.
+ */
+internal val DockWindow.arrangement: DockNode?
+    get() = maximized?.savedRoot ?: root
+
+/**
+ * Every tree the window holds - the live one and, while maximized, the arrangement underneath it.
+ * What to read when the question is merely whether a window is in here somewhere.
+ */
+internal val DockWindow.allTrees: List<DockNode>
+    get() = listOfNotNull(root, maximized?.savedRoot)
+
+/** Whether this window holds [id] in any of its trees. */
+internal fun DockWindow.containsDockable(id: DockableId): Boolean = allTrees.any { it.containsDockable(id) }
 
 /** Where [reconcile] puts a window with no saved dock spot. */
 internal data class DockPlacement(
@@ -692,7 +1067,7 @@ internal fun defaultPlacement(
         return DockPlacement(DockTarget.Root(), DockRegion.Center, BAND_PROPORTION)
     }
     val mainWindow = layout.mainWindow
-    val tree = mainWindow.maximized?.savedRoot ?: mainWindow.root
+    val tree = mainWindow.arrangement
     val mainId = DockableId(MAIN_WINDOW_NAME)
     val anchor = location.anchor
     if (tree != null && tree.holdsAnchor(anchor)) {
@@ -833,8 +1208,7 @@ internal fun relativeRegion(
 private fun dockedIds(layout: DockLayout): List<DockableId> =
     layout.windows
         .flatMap { window ->
-            listOfNotNull(window.root, window.maximized?.savedRoot)
-                .flatMap { it.dockableIds() }
+            window.allTrees.flatMap { it.dockableIds() }
         }.distinct()
 
 private fun DockNode.dockableIds(): List<DockableId> =
