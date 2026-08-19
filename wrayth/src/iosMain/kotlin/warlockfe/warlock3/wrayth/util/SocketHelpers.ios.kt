@@ -27,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.io.IOException
 import platform.CoreFoundation.CFArrayCreate
 import platform.CoreFoundation.CFArrayRef
 import platform.CoreFoundation.CFDataCreate
@@ -43,6 +44,7 @@ import platform.Network.nw_connection_start
 import platform.Network.nw_connection_state_cancelled
 import platform.Network.nw_connection_state_failed
 import platform.Network.nw_connection_state_ready
+import platform.Network.nw_connection_state_waiting
 import platform.Network.nw_connection_t
 import platform.Network.nw_content_context_create
 import platform.Network.nw_content_context_t
@@ -192,7 +194,15 @@ private suspend fun openNetworkSocket(
         }
     nw_connection_set_queue(connection, queue)
 
-    awaitReady(connection, host, port)
+    try {
+        awaitReady(connection, host, port)
+    } catch (t: Throwable) {
+        // A failed connection still holds resources, and its state handler is still installed.
+        // Nothing else can cancel it: closeConnection is only reachable through the
+        // TLSSocketConnection this function never gets to return.
+        nw_connection_cancel(connection)
+        throw t
+    }
 
     // Parented to the caller's job. `coroutineContext + job` *replaces* whatever Job the context
     // carried, so a parentless SupervisorJob would quietly detach these loops from the caller:
@@ -201,12 +211,32 @@ private suspend fun openNetworkSocket(
     val scope = CoroutineScope(coroutineContext + ioJob)
     val closed = AtomicBoolean(false)
 
+    // Atomic: close() is reachable from more than one thread, and cancelling an nw_connection_t
+    // twice is not something to rely on being harmless.
+    fun closeConnection() {
+        if (closed.compareAndSet(false, true)) {
+            // Cancelling the connection makes any outstanding receive and send complete with an
+            // error, which ends both loops. There is nothing to release by hand afterwards.
+            nw_connection_cancel(connection)
+            ioJob.cancel()
+        }
+    }
+
+    // Covers the caller's job being cancelled out from under us, which stops the loops but would
+    // otherwise leave the connection itself open. It does not cover the loops simply finishing:
+    // ioJob is a SupervisorJob nobody completes, so it stays active after its children end. The
+    // read loop calls closeConnection directly for that case.
+    ioJob.invokeOnCompletion { closeConnection() }
+
     val readChannel = ByteChannel(autoFlush = true)
     scope.launch {
         try {
             while (isActive) {
-                val chunk = receiveChunk(connection) ?: break
-                if (chunk.isNotEmpty()) readChannel.writeFully(chunk)
+                val received = receiveChunk(connection) ?: break
+                if (received.bytes.isNotEmpty()) readChannel.writeFully(received.bytes)
+                // The FIN can arrive with the last bytes rather than on its own; receiving again
+                // after that produces an error that looks like a failure rather than a clean end.
+                if (received.isComplete) break
             }
             readChannel.close()
         } catch (_: CancellationException) {
@@ -221,6 +251,10 @@ private suspend fun openNetworkSocket(
                 logger.d(t) { "read loop for $host:$port failed" }
                 readChannel.cancel(t)
             }
+        } finally {
+            // End of stream means the connection is finished, so stop the write loop and cancel
+            // the connection rather than leaving both parked forever.
+            closeConnection()
         }
     }
 
@@ -254,22 +288,6 @@ private suspend fun openNetworkSocket(
         }
     }
 
-    // Atomic: close() is reachable from more than one thread, and cancelling an nw_connection_t
-    // twice is not something to rely on being harmless.
-    fun closeConnection() {
-        if (closed.compareAndSet(false, true)) {
-            // Cancelling the connection makes any outstanding receive and send complete with an
-            // error, which ends both loops. There is nothing to release by hand afterwards.
-            nw_connection_cancel(connection)
-            ioJob.cancel()
-        }
-    }
-
-    // Cancelling the caller stops the loops but would otherwise leave the connection itself open,
-    // since only close() cancels it. Completion covers both routes: an explicit close (where this
-    // is already a no-op) and the caller's job being cancelled out from under us.
-    ioJob.invokeOnCompletion { closeConnection() }
-
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
@@ -290,10 +308,17 @@ private suspend fun awaitReady(
                     if (continuation.isActive) continuation.resume(Unit)
                 }
 
-                nw_connection_state_failed -> {
+                // `waiting` is not transient for our purposes: Network.framework has failed to
+                // establish a path (refused, no route, DNS) and will retry indefinitely. The
+                // previous implementation failed the connect() immediately, and callers rely on
+                // that -- SgeClientImpl turns a thrown connect into "false", and the proxy path
+                // has a deadline that only advances when connect throws.
+                nw_connection_state_waiting,
+                nw_connection_state_failed,
+                -> {
                     if (continuation.isActive) {
                         continuation.resumeWithException(
-                            IllegalStateException("connection to $host:$port failed${error.describe()}"),
+                            IOException("connection to $host:$port failed${error.describe()}"),
                         )
                     }
                 }
@@ -324,8 +349,14 @@ private suspend fun awaitReady(
     }
 }
 
-/** One receive. Returns null at end of stream or on error, which ends the read loop. */
-private suspend fun receiveChunk(connection: nw_connection_t): ByteArray? =
+/** A single receive: the bytes, plus whether the peer signalled end of stream with them. */
+private class Received(
+    val bytes: ByteArray,
+    val isComplete: Boolean,
+)
+
+/** One receive. Returns null at end of stream, and throws on error. */
+private suspend fun receiveChunk(connection: nw_connection_t): Received? =
     suspendCancellableCoroutine { continuation ->
         nw_connection_receive(connection, 1u, RECEIVE_MAX) { content, _, isComplete, error ->
             if (continuation.isActive) {
@@ -333,12 +364,12 @@ private suspend fun receiveChunk(connection: nw_connection_t): ByteArray? =
                     error != null -> {
                         logger.d { "receive failed${error.describe()}" }
                         continuation.resumeWithException(
-                            IllegalStateException("receive failed${error.describe()}"),
+                            IOException("receive failed${error.describe()}"),
                         )
                     }
 
                     content != null -> {
-                        continuation.resume(content.toByteArray())
+                        continuation.resume(Received(content.toByteArray(), isComplete))
                     }
 
                     isComplete -> {
@@ -346,7 +377,7 @@ private suspend fun receiveChunk(connection: nw_connection_t): ByteArray? =
                     }
 
                     else -> {
-                        continuation.resume(ByteArray(0))
+                        continuation.resume(Received(ByteArray(0), false))
                     }
                 }
             }
@@ -369,7 +400,7 @@ private suspend fun sendChunk(
                 if (continuation.isActive) {
                     if (error != null) {
                         continuation.resumeWithException(
-                            IllegalStateException("send failed${error.describe()}"),
+                            IOException("send failed${error.describe()}"),
                         )
                     } else {
                         continuation.resume(Unit)
@@ -407,10 +438,11 @@ private fun dispatch_data_t.toByteArray(): ByteArray =
                     }
                 }
             }
-        // `mapped` has to outlive the copy above. Reading it here is what keeps it reachable --
-        // left unused, the runtime is free to collect it mid-memcpy and the buffer goes with it.
-        check(mapped != null || size == 0) { "dispatch_data_create_map returned null for $size bytes" }
-        bytes
+        // `mapped` has to outlive the copy above: left unused, the runtime is free to collect it
+        // mid-memcpy and the buffer goes with it. Reading it here keeps it reachable. Deliberately
+        // not a check() -- this runs inside an Objective-C block, where a throw would terminate
+        // the process.
+        if (mapped != null) bytes else ByteArray(0)
     }
 
 /**
@@ -420,6 +452,19 @@ private fun dispatch_data_t.toByteArray(): ByteArray =
  * host.
  */
 private fun trustsPinnedCertificate(
+    trust: sec_trust_t,
+    certificate: ByteArray,
+): Boolean =
+    // This runs inside an Objective-C block, where an escaping Kotlin exception terminates the
+    // process rather than failing the handshake. Base64.decode rejects malformed PEM and
+    // addressOf(0) rejects an empty array, so both are reachable with a bad certificate.
+    runCatching { evaluatePinnedTrust(trust, certificate) }
+        .getOrElse {
+            logger.d(it) { "pinned trust evaluation failed" }
+            false
+        }
+
+private fun evaluatePinnedTrust(
     trust: sec_trust_t,
     certificate: ByteArray,
 ): Boolean {
