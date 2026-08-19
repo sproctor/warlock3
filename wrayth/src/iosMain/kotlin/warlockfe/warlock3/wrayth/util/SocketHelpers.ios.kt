@@ -1,5 +1,5 @@
 @file:Suppress("DEPRECATION")
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, ExperimentalAtomicApi::class)
 
 package warlockfe.warlock3.wrayth.util
 
@@ -84,6 +84,8 @@ import platform.posix.read
 import platform.posix.shutdown
 import platform.posix.socket
 import platform.posix.write
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
 
 // SSL I/O callbacks are static (no captures); socket fd is stored via SSLSetConnection as a stable ref.
@@ -359,13 +361,15 @@ actual suspend fun openPlainSocket(
         }
     }
 
-    var closed = false
+    // Atomic, not a plain flag: close() can be called from more than one thread, and a lost
+    // race would run the teardown twice -- a double CFRelease over-releases the context and a
+    // double dispose() crashes, so this is not merely a redundant cleanup.
+    val closed = AtomicBoolean(false)
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = {
-            if (!closed) {
-                closed = true
+            if (closed.compareAndSet(false, true)) {
                 // shutdown() rather than close(): it unblocks the blocking call each IO job is
                 // parked in, without freeing the descriptor number for another socket to reuse
                 // while those jobs still hold it.
@@ -481,13 +485,15 @@ actual suspend fun openDefaultTlsSocket(
         }
     }
 
-    var closed = false
+    // Atomic, not a plain flag: close() can be called from more than one thread, and a lost
+    // race would run the teardown twice -- a double CFRelease over-releases the context and a
+    // double dispose() crashes, so this is not merely a redundant cleanup.
+    val closed = AtomicBoolean(false)
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = {
-            if (!closed) {
-                closed = true
+            if (closed.compareAndSet(false, true)) {
                 // shutdown() rather than close(): it unblocks the blocking call each IO job is
                 // parked in, without freeing the descriptor number for another socket to reuse
                 // while those jobs still hold it.
@@ -580,13 +586,15 @@ actual suspend fun openTLSSocket(
         }
     }
 
-    var closed = false
+    // Atomic, not a plain flag: close() can be called from more than one thread, and a lost
+    // race would run the teardown twice -- a double CFRelease over-releases the context and a
+    // double dispose() crashes, so this is not merely a redundant cleanup.
+    val closed = AtomicBoolean(false)
     return TLSSocketConnection(
         readChannel = readChannel,
         writeChannel = writeChannel,
         close = {
-            if (!closed) {
-                closed = true
+            if (closed.compareAndSet(false, true)) {
                 // shutdown() rather than close(): it unblocks the blocking call each IO job is
                 // parked in, without freeing the descriptor number for another socket to reuse
                 // while those jobs still hold it.
