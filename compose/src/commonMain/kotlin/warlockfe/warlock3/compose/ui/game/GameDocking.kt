@@ -718,11 +718,17 @@ internal fun opensDetached(window: OpenGameWindow): Boolean =
  * The spot is described by its *neighbours* rather than by coordinates, because coordinates do not
  * survive the rest of the layout moving underneath them. What is remembered is which windows it was
  * split away from (or tabbed with), which side of them it was on, and how much of them it had. Reopen
- * it while any of those neighbours are still docked and it goes back between the same windows, at the
+ * it while those neighbours are all still docked and it goes back between the same windows at the
  * same size, wherever they have since been dragged to.
  *
- * [siblings] empty with [detached] set is the other case: it was in a window of its own, and reopens
- * in one, at [bounds].
+ * Best effort, and two places it falls short of that, both better than the announced spot and
+ * neither of them "where it was":
+ *  - when only some of the neighbours survive, the proportion is applied to what is left of them, so
+ *    a window that had a quarter of a column comes back with a quarter of the one window still there.
+ *  - a window that was tabbed rejoins the strip at the end of it, not at the index it had.
+ *
+ * [siblings] empty with [detached] set is the other case: it was alone in a window of its own, and
+ * reopens in one, at [bounds].
  */
 internal data class RememberedSpot(
     val siblings: List<String>,
@@ -919,9 +925,10 @@ private fun DockNode.splitSpotOf(id: DockableId): RememberedSpot? {
 }
 
 /**
- * Turns a remembered spot back into a placement, or null when too much of it has gone - every
- * neighbour it was next to has since been closed, so there is nothing left to sit beside and the
- * announced spot is the better answer.
+ * Turns a remembered spot back into a placement, or null when it cannot be honoured right now -
+ * every neighbour has since been closed, or none of them is in a live tree yet, so there is nothing
+ * to sit beside. The caller keeps the spot in that case and tries again, which is what lets a pair
+ * of windows closed together be reopened together.
  */
 internal fun placementFromMemory(
     spot: RememberedSpot,
