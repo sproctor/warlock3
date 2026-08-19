@@ -50,6 +50,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowLocation
@@ -350,6 +352,9 @@ fun rememberGameDockState(
                     Logger.w { "Window restore still running after $CHARACTER_WAIT; docking against it" }
                 }
                 val saved = runCatching { viewModel.loadDockLayout() }.getOrNull()
+                // Before the restore, so the reconcile inside it can already put a window the
+                // character closed in an earlier session back where they left it.
+                spots.restore(runCatching { viewModel.loadDockSpots() }.getOrNull())
                 applyRestoredLayout(state, saved, liveOpenWindows(), ::registerWindow, spots)
                 restoreFinished.complete(Unit)
                 snapshotFlow { state.layout }
@@ -357,6 +362,9 @@ fun rememberGameDockState(
                     .debounce(1.seconds)
                     .collect {
                         viewModel.saveDockLayout(DockingPersistence.encode(state.captureLayout()))
+                        // Spots only ever change as part of a close or a reopen, and both of those
+                        // move the layout, so this beat catches every change to them.
+                        viewModel.saveDockSpots(spots.encode())
                     }
             }
             // Hold the first layout pass for the restore, so early windows do not flash into
@@ -705,12 +713,12 @@ internal data class RememberedSpot(
 )
 
 /**
- * Where closed windows were, for the length of the session.
+ * Where closed windows were, saved alongside the character's arrangement.
  *
- * Deliberately not persisted: the saved arrangement records where the *open* windows are, and a
- * window that is closed when the client quits comes back in its announced spot, as it always has.
- * This is for the close-and-reopen cycle within a session, which is the one that happens constantly
- * - toggling a panel from the Windows menu and finding it back where you left it.
+ * Stored apart from the arrangement rather than folded into it, so an unreadable set of spots costs
+ * only the memory, and every layout already saved still reads. The arrangement records where the
+ * *open* windows are; this records the rest, so a window closed a fortnight ago still comes back
+ * where its owner left it rather than where the game first put it.
  */
 internal class DockSpotMemory {
     private val spots = mutableMapOf<String, RememberedSpot>()
@@ -724,7 +732,58 @@ internal class DockSpotMemory {
 
     /** Reads and clears: a spot is good for the reopen that follows the close it came from. */
     fun take(name: String): RememberedSpot? = spots.remove(name)
+
+    fun encode(): String = Json.encodeToString(spots.mapValues { it.value.toStored() })
+
+    /** Replaces the contents with [saved]. Anything unreadable is dropped, which only costs memory. */
+    fun restore(saved: String?) {
+        spots.clear()
+        if (saved.isNullOrBlank()) return
+        runCatching { Json.decodeFromString<Map<String, StoredSpot>>(saved) }
+            .onSuccess { stored -> stored.forEach { (name, spot) -> spot.toSpot()?.let { spots[name] = it } } }
+            .onFailure { Logger.w(it) { "Discarding unreadable dock spots" } }
+    }
 }
+
+/**
+ * [RememberedSpot] as it is written to disk. A shape of our own rather than the library's types
+ * annotated, so a rename there cannot quietly invalidate what characters have saved; [DockRegion] is
+ * stored by name and anything unrecognised reads back as no spot at all.
+ */
+@Serializable
+internal data class StoredSpot(
+    val siblings: List<String> = emptyList(),
+    val region: String,
+    val proportion: Float,
+    val detached: Boolean = false,
+    val x: Float? = null,
+    val y: Float? = null,
+    val width: Float? = null,
+    val height: Float? = null,
+) {
+    fun toSpot(): RememberedSpot? {
+        val dockRegion = DockRegion.entries.firstOrNull { it.name == region } ?: return null
+        val bounds =
+            if (x != null && y != null && width != null && height != null) {
+                WindowBounds(x, y, width, height)
+            } else {
+                null
+            }
+        return RememberedSpot(siblings, dockRegion, proportion, detached, bounds)
+    }
+}
+
+private fun RememberedSpot.toStored(): StoredSpot =
+    StoredSpot(
+        siblings = siblings,
+        region = region.name,
+        proportion = proportion,
+        detached = detached,
+        x = bounds?.x,
+        y = bounds?.y,
+        width = bounds?.width,
+        height = bounds?.height,
+    )
 
 /**
  * Where [name] is sitting right now, in the terms [RememberedSpot] keeps, or null when there is

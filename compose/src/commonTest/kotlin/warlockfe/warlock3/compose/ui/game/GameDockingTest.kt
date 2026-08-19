@@ -6,6 +6,7 @@ import com.seanproctor.docking.model.DockNode
 import com.seanproctor.docking.model.DockRegion
 import com.seanproctor.docking.model.DockableId
 import com.seanproctor.docking.model.DockableOptions
+import com.seanproctor.docking.model.WindowBounds
 import com.seanproctor.docking.persistence.DockingPersistence
 import com.seanproctor.docking.persistence.captureLayout
 import com.seanproctor.docking.persistence.restoreLayout
@@ -855,5 +856,81 @@ class GameDockingTest {
     @Test
     fun aWindowThatIsNotDockedHasNoSpotToRemember() {
         assertNull(rememberedSpotOf(newState(), "never-docked"))
+    }
+
+    // --- Spots surviving a restart ---
+
+    // The point of persisting: close a window, quit, come back, reopen it, and it is still where it
+    // was. The second session is a fresh DockState and a fresh memory, restored from what was saved.
+    @Test
+    fun aSpotSurvivesIntoTheNextSession() {
+        val first = newState()
+        val firstSpots = DockSpotMemory()
+        reconcile(first, column(), register(first), firstSpots)
+        val orderBefore = order(first)
+        reconcile(first, column().filterKeys { it != "logons" }, register(first), firstSpots)
+        val savedLayout = DockingPersistence.encode(first.captureLayout())
+        val savedSpots = firstSpots.encode()
+
+        val next = newState()
+        val nextSpots = DockSpotMemory()
+        nextSpots.restore(savedSpots)
+        applyRestoredLayout(next, savedLayout, column().filterKeys { it != "logons" }, register(next), nextSpots)
+        reconcile(next, column(), register(next), nextSpots)
+
+        assertEquals(orderBefore, order(next))
+    }
+
+    @Test
+    fun spotsSurviveTheirOwnRoundTrip() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons", "deaths"), DockRegion.South, 0.25f))
+        spots.remember(
+            "room",
+            RememberedSpot(emptyList(), DockRegion.Center, 0.5f, detached = true, bounds = WindowBounds(1f, 2f, 3f, 4f)),
+        )
+
+        val restored = DockSpotMemory().apply { restore(spots.encode()) }
+
+        assertEquals(RememberedSpot(listOf("logons", "deaths"), DockRegion.South, 0.25f), restored.take("thoughts"))
+        assertEquals(
+            RememberedSpot(emptyList(), DockRegion.Center, 0.5f, detached = true, bounds = WindowBounds(1f, 2f, 3f, 4f)),
+            restored.take("room"),
+        )
+    }
+
+    // A character whose saved spots are unreadable loses only the spots - they still get their
+    // arrangement, and windows open where they always did.
+    @Test
+    fun unreadableSpotsAreDiscardedRatherThanThrown() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+
+        spots.restore("{not json")
+
+        assertNull(spots.take("thoughts"))
+    }
+
+    @Test
+    fun noSavedSpotsIsNotAnError() {
+        val spots = DockSpotMemory()
+        spots.restore(null)
+        spots.restore("")
+        assertNull(spots.take("thoughts"))
+    }
+
+    // A region name this build does not know (an older client reading a newer save) drops that one
+    // spot rather than the whole set.
+    @Test
+    fun anUnknownRegionDropsOnlyItsOwnSpot() {
+        val spots = DockSpotMemory()
+
+        spots.restore(
+            """{"thoughts":{"region":"Sideways","proportion":0.5},""" +
+                """"logons":{"siblings":["deaths"],"region":"South","proportion":0.25}}""",
+        )
+
+        assertNull(spots.take("thoughts"))
+        assertEquals(RememberedSpot(listOf("deaths"), DockRegion.South, 0.25f), spots.take("logons"))
     }
 }

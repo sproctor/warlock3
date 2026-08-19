@@ -129,6 +129,10 @@ const val TABLET_WINDOW_LOCATION_KEY = "tabletWindowLocation"
 // every layout change; a window it does not know yet docks at its game-announced location.
 const val DOCK_LAYOUT_KEY = "dockLayout"
 
+// Where windows were when they were closed. Separate from the arrangement rather than folded
+// into it, so an unreadable one costs only the memory and every layout already saved still reads.
+const val DOCK_SPOTS_KEY = "dockSpots"
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
     private val windowSettingsRepository: WindowSettingsRepository,
@@ -1489,6 +1493,12 @@ class GameViewModel(
             characterSettingsRepository.get(characterId, DOCK_LAYOUT_KEY)
         }
 
+    /** The character's saved closed-window spots, or null when none have been saved yet. */
+    suspend fun loadDockSpots(): String? =
+        client.characterId.value?.let { characterId ->
+            characterSettingsRepository.get(characterId, DOCK_SPOTS_KEY)
+        }
+
     // The dock layout is auto-saved, so two writes that finished out of order would leave the older
     // arrangement stored with nothing to correct it. Both writers - the bridge's debounced save and
     // the flush in [close] - go through one [LatestValueWriter], which keeps the newest layout the
@@ -1503,12 +1513,27 @@ class GameViewModel(
         }
     }
 
+    // Saved on the same beat as the arrangement, and for the same reason: out-of-order writes would
+    // leave the older set stored with nothing to correct it.
+    private val dockSpotsWriter = LatestValueWriter(::writeDockSpots)
+
+    private suspend fun writeDockSpots(spots: String) {
+        client.characterId.value?.let { characterId ->
+            characterSettingsRepository.save(characterId, DOCK_SPOTS_KEY, spots)
+        }
+    }
+
     /**
      * Persists the docking-layout JSON. Layout churn is debounced by the caller, which collects
      * sequentially and awaits this, so saves never pile up behind one another.
      */
     suspend fun saveDockLayout(layout: String) {
         dockLayoutWriter.write(layout)
+    }
+
+    /** Persists where closed windows were, so reopening puts them back in a later session too. */
+    suspend fun saveDockSpots(spots: String) {
+        dockSpotsWriter.write(spots)
     }
 
     /** Shared handling for a clickable game-text action (command link or menu). */
@@ -1650,6 +1675,7 @@ class GameViewModel(
         // from the composition because callers await close() before tearing the window down (and,
         // on the last window, before exiting the process), so the write is ordered ahead of both.
         dockLayoutWriter.flush()
+        dockSpotsWriter.flush()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.
