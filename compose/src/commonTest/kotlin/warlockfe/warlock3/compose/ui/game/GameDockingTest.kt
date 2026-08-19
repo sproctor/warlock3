@@ -95,7 +95,7 @@ class GameDockingTest {
                 "logons" to WindowLocation.LEFT,
                 "room" to WindowLocation.CENTER,
             )
-        reconcile(state, windows, register(state))
+        reconcile(state, windows, register(state), DockSpotMemory())
         windows.keys.forEach { name ->
             assertTrue(state.isOpen(DockableId(name)), "$name should be docked")
         }
@@ -109,9 +109,9 @@ class GameDockingTest {
                 MAIN_WINDOW_NAME to WindowLocation.CENTER,
                 "thoughts" to WindowLocation.LEFT,
             )
-        reconcile(state, before, register(state))
+        reconcile(state, before, register(state), DockSpotMemory())
         val after = openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER)
-        reconcile(state, after, register(state))
+        reconcile(state, after, register(state), DockSpotMemory())
         assertFalse(state.isOpen(DockableId("thoughts")))
         assertTrue(state.isOpen(DockableId(MAIN_WINDOW_NAME)))
     }
@@ -124,9 +124,9 @@ class GameDockingTest {
                 MAIN_WINDOW_NAME to WindowLocation.CENTER,
                 "thoughts" to WindowLocation.LEFT,
             )
-        reconcile(state, windows, register(state))
+        reconcile(state, windows, register(state), DockSpotMemory())
         val arranged = state.layout
-        reconcile(state, windows, register(state))
+        reconcile(state, windows, register(state), DockSpotMemory())
         assertEquals(arranged, state.layout)
     }
 
@@ -204,7 +204,7 @@ class GameDockingTest {
         val opened = mutableListOf(MAIN_WINDOW_NAME to WindowLocation.CENTER)
         column.forEach { name ->
             opened += name to WindowLocation.LEFT
-            reconcile(state, openWindows(*opened.toTypedArray()), registerWindow)
+            reconcile(state, openWindows(*opened.toTypedArray()), registerWindow, DockSpotMemory())
         }
 
         val shares = shares(state.layout.mainWindow.root!!)
@@ -238,7 +238,7 @@ class GameDockingTest {
                 assertEquals(1f / (index + 1), placement.proportion, "window ${index + 1} of the column")
             }
             opened += name to WindowLocation.LEFT
-            reconcile(state, openWindows(*opened.toTypedArray()), registerWindow)
+            reconcile(state, openWindows(*opened.toTypedArray()), registerWindow, DockSpotMemory())
         }
     }
 
@@ -248,12 +248,17 @@ class GameDockingTest {
         val registerWindow = register(state)
         val mainId = DockableId(MAIN_WINDOW_NAME)
         val left = WindowLocation.LEFT.anchor
-        reconcile(state, openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER, "thoughts" to WindowLocation.LEFT), registerWindow)
+        reconcile(
+            state,
+            openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER, "thoughts" to WindowLocation.LEFT),
+            registerWindow,
+            DockSpotMemory(),
+        )
         assertEquals(DockRegion.West, relativeRegion(state.layout.mainWindow.root!!, DockableId("thoughts"), mainId))
 
         // The user closes the only window in the left column. The column is what the anchor buys us:
         // without it the split would collapse and the area would be gone.
-        reconcile(state, openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER), registerWindow)
+        reconcile(state, openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER), registerWindow, DockSpotMemory())
         assertTrue(
             state.layout.mainWindow.root!!
                 .holdsAnchor(left),
@@ -261,7 +266,12 @@ class GameDockingTest {
         )
 
         // The next left window drops into that slot rather than opening a second column.
-        reconcile(state, openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER, "logons" to WindowLocation.LEFT), registerWindow)
+        reconcile(
+            state,
+            openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER, "logons" to WindowLocation.LEFT),
+            registerWindow,
+            DockSpotMemory(),
+        )
         assertEquals(DockRegion.West, relativeRegion(state.layout.mainWindow.root!!, DockableId("logons"), mainId))
         assertFalse(
             state.layout.mainWindow.root!!
@@ -277,12 +287,12 @@ class GameDockingTest {
         val thoughtsId = DockableId("thoughts")
         // The announcement says left, and stays saying left for the whole test.
         val announced = openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER, "thoughts" to WindowLocation.LEFT)
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         assertEquals(WindowLocation.LEFT.anchor, state.registry[thoughtsId]?.options?.anchor)
 
         // The user drags it into the right column; the drop, not the announcement, decides the area.
         state.dock(thoughtsId, DockTarget.Root(), DockRegion.East)
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         assertEquals(WindowLocation.RIGHT.anchor, state.registry[thoughtsId]?.options?.anchor)
 
         // The left column it came from stays open. A move undocks before it re-docks, so vacating
@@ -303,6 +313,7 @@ class GameDockingTest {
                 "logons" to WindowLocation.LEFT,
             ),
             registerWindow,
+            DockSpotMemory(),
         )
         val root = state.layout.mainWindow.root!!
         assertFalse(root.holdsAnchor(WindowLocation.LEFT.anchor), "the placeholder should have been replaced")
@@ -345,7 +356,7 @@ class GameDockingTest {
             )
         assertEquals(DockTarget.Anchor(WindowLocation.CENTER.anchor), placement.target)
         // Which is where the band was declared: above the main text window.
-        reconcile(state, windows, register(state))
+        reconcile(state, windows, register(state), DockSpotMemory())
         assertEquals(
             DockRegion.North,
             relativeRegion(state.layout.mainWindow.root!!, DockableId("room"), DockableId(MAIN_WINDOW_NAME)),
@@ -364,6 +375,7 @@ class GameDockingTest {
                 "room" to WindowLocation.CENTER,
             ),
             registerWindow,
+            DockSpotMemory(),
         )
         val roomId = DockableId("room")
         assertEquals(DockRegion.North, relativeRegion(state.layout.mainWindow.root!!, roomId, mainId))
@@ -382,6 +394,7 @@ class GameDockingTest {
                 "atmospherics" to WindowLocation.CENTER,
             ),
             registerWindow,
+            DockSpotMemory(),
         )
         assertEquals(
             DockRegion.North,
@@ -403,6 +416,7 @@ class GameDockingTest {
                 "room" to WindowLocation.CENTER,
             ),
             registerWindow,
+            DockSpotMemory(),
         )
         val windows =
             openWindows(
@@ -418,7 +432,7 @@ class GameDockingTest {
                 openWindows = windows,
             )
         assertEquals(DockTarget.Anchor(WindowLocation.RIGHT.anchor), placement.target)
-        reconcile(state, windows, registerWindow)
+        reconcile(state, windows, registerWindow, DockSpotMemory())
         val tree = state.layout.mainWindow.root!!
         // Right of the main window and of the center band alike.
         assertEquals(DockRegion.East, relativeRegion(tree, DockableId("inv"), mainId))
@@ -459,6 +473,7 @@ class GameDockingTest {
                 "inv" to WindowLocation.RIGHT,
             ),
             registerWindow,
+            DockSpotMemory(),
         )
         // The user drags the right-seeded window above main. The centre area is declared and
         // still empty, so the next centre window fills it rather than joining the dragged-in
@@ -482,7 +497,7 @@ class GameDockingTest {
 
         // Once the area has something in it, the next one stacks onto that, wherever the user
         // has since moved it.
-        reconcile(state, windows, registerWindow)
+        reconcile(state, windows, registerWindow, DockSpotMemory())
         val next =
             defaultPlacement(
                 name = "atmospherics",
@@ -504,9 +519,9 @@ class GameDockingTest {
     private fun savedArrangement(announced: Map<String, OpenGameWindow>): String {
         val state = newState()
         val registerWindow = register(state)
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         state.dock(DockableId("room"), DockTarget.OnDockable(DockableId("thoughts")), DockRegion.South)
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         assertEquals(
             WindowLocation.LEFT.anchor,
             currentAnchorOf(state.layout.mainWindow.root!!, "room"),
@@ -527,7 +542,7 @@ class GameDockingTest {
     @Test
     fun aRestoreAppliedAgainstTheRestoredWindowsKeepsTheArrangement() {
         val state = newState()
-        applyRestoredLayout(state, savedArrangement(announced), announced, register(state))
+        applyRestoredLayout(state, savedArrangement(announced), announced, register(state), DockSpotMemory())
         assertEquals(
             WindowLocation.LEFT.anchor,
             anchorOfRoom(state),
@@ -544,9 +559,9 @@ class GameDockingTest {
     fun aRestoreAppliedBeforeTheWindowsAreRestoredLosesTheArrangement() {
         val state = newState()
         val onlyMain = openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER)
-        applyRestoredLayout(state, savedArrangement(announced), onlyMain, register(state))
+        applyRestoredLayout(state, savedArrangement(announced), onlyMain, register(state), DockSpotMemory())
         // The windows arrive a moment later and fall back to their game-announced spots.
-        reconcile(state, announced, register(state))
+        reconcile(state, announced, register(state), DockSpotMemory())
         assertEquals(
             WindowLocation.CENTER.anchor,
             anchorOfRoom(state),
@@ -557,7 +572,7 @@ class GameDockingTest {
     @Test
     fun anUnreadableSavedLayoutFallsBackToTheDefaults() {
         val state = newState()
-        applyRestoredLayout(state, "{not json", announced, register(state))
+        applyRestoredLayout(state, "{not json", announced, register(state), DockSpotMemory())
         // The areas are still there and every window is docked, rather than the connect failing.
         announced.keys.forEach { name ->
             assertTrue(state.isOpen(DockableId(name)), "$name should be docked")
@@ -568,7 +583,7 @@ class GameDockingTest {
     @Test
     fun aCharacterWithNoSavedLayoutGetsTheAnnouncedSpots() {
         val state = newState()
-        applyRestoredLayout(state, null, announced, register(state))
+        applyRestoredLayout(state, null, announced, register(state), DockSpotMemory())
         assertEquals(WindowLocation.LEFT.anchor, currentAnchorOf(state.layout.mainWindow.root!!, "thoughts"))
         assertEquals(WindowLocation.CENTER.anchor, anchorOfRoom(state))
     }
@@ -595,6 +610,7 @@ class GameDockingTest {
                 "charsheet" to WindowLocation.DETACHED,
             ),
             register(state),
+            DockSpotMemory(),
         )
 
         assertTrue(isDetached(state, "charsheet"), "a detached announcement should open detached")
@@ -618,13 +634,13 @@ class GameDockingTest {
                 MAIN_WINDOW_NAME to WindowLocation.CENTER,
                 "charsheet" to WindowLocation.DETACHED,
             )
-        reconcile(state, windows, registerWindow)
+        reconcile(state, windows, registerWindow, DockSpotMemory())
         // The user reattaches it, then the layout is saved and restored on the next connect.
         redockIntoMainWindow(state, windows.getValue("charsheet"), windows)
         val saved = DockingPersistence.encode(state.captureLayout())
 
         val next = newState()
-        applyRestoredLayout(next, saved, windows, register(next))
+        applyRestoredLayout(next, saved, windows, register(next), DockSpotMemory())
         assertFalse(isDetached(next, "charsheet"), "the arrangement wins over the announcement")
         assertTrue(next.isOpen(DockableId("charsheet")))
     }
@@ -632,7 +648,7 @@ class GameDockingTest {
     @Test
     fun theMainWindowCannotBeDetached() {
         val state = newState()
-        reconcile(state, announced, register(state))
+        reconcile(state, announced, register(state), DockSpotMemory())
         assertFalse(
             state.canFloat(DockableId(MAIN_WINDOW_NAME)),
             "main is the fixed point the areas are measured against, so it must stay put",
@@ -643,7 +659,7 @@ class GameDockingTest {
     fun detachingMovesAWindowOutOfTheMainWindow() {
         if (!assumeFloatingWindows()) return
         val state = newState()
-        reconcile(state, announced, register(state))
+        reconcile(state, announced, register(state), DockSpotMemory())
         detachWindow(state, "room")
 
         assertTrue(isDetached(state, "room"), "room should be in a window of its own")
@@ -664,7 +680,7 @@ class GameDockingTest {
     fun detachingTheLastWindowOfAnAreaLeavesItsSlotOpen() {
         if (!assumeFloatingWindows()) return
         val state = newState()
-        reconcile(state, announced, register(state))
+        reconcile(state, announced, register(state), DockSpotMemory())
         detachWindow(state, "thoughts")
         assertTrue(
             state.layout.mainWindow.root!!
@@ -677,7 +693,7 @@ class GameDockingTest {
     fun reattachingPutsTheWindowBackInItsArea() {
         if (!assumeFloatingWindows()) return
         val state = newState()
-        reconcile(state, announced, register(state))
+        reconcile(state, announced, register(state), DockSpotMemory())
         detachWindow(state, "thoughts")
         redockIntoMainWindow(state, announced.getValue("thoughts"), announced)
 
@@ -698,11 +714,11 @@ class GameDockingTest {
         if (!assumeFloatingWindows()) return
         val state = newState()
         val registerWindow = register(state)
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         detachWindow(state, "room")
         val detached = state.layout
 
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         assertEquals(detached, state.layout, "a reconcile pass should not reel a detached window back in")
     }
 
@@ -713,7 +729,7 @@ class GameDockingTest {
         if (!assumeFloatingWindows()) return
         val state = newState()
         val registerWindow = register(state)
-        reconcile(state, announced, registerWindow)
+        reconcile(state, announced, registerWindow, DockSpotMemory())
         detachWindow(state, "room")
 
         reconcile(
@@ -723,6 +739,7 @@ class GameDockingTest {
                 "thoughts" to WindowLocation.LEFT,
             ),
             registerWindow,
+            DockSpotMemory(),
         )
         assertFalse(state.isOpen(DockableId("room")))
         assertTrue(state.layout.floatingWindows.isEmpty())
@@ -732,12 +749,12 @@ class GameDockingTest {
     fun aDetachedArrangementSurvivesASaveAndRestore() {
         if (!assumeFloatingWindows()) return
         val saving = newState()
-        reconcile(saving, announced, register(saving))
+        reconcile(saving, announced, register(saving), DockSpotMemory())
         detachWindow(saving, "room")
         val saved = DockingPersistence.encode(saving.captureLayout())
 
         val state = newState()
-        applyRestoredLayout(state, saved, announced, register(state))
+        applyRestoredLayout(state, saved, announced, register(state), DockSpotMemory())
         assertTrue(isDetached(state, "room"), "room should come back detached")
         assertTrue(state.isOpen(DockableId("thoughts")), "the docked windows come back too")
     }
@@ -749,7 +766,7 @@ class GameDockingTest {
     fun aDetachedArrangementMergesWhereThereAreNoFloatingWindows() {
         if (!assumeFloatingWindows()) return
         val saving = newState()
-        reconcile(saving, announced, register(saving))
+        reconcile(saving, announced, register(saving), DockSpotMemory())
         detachWindow(saving, "room")
         val persisted = DockingPersistence.decode(DockingPersistence.encode(saving.captureLayout()))
 
@@ -812,11 +829,11 @@ class GameDockingTest {
     fun withoutTheMemoryAReopenedWindowIsPlacedByItsAnnouncedArea() {
         val state = newState()
         val registerWindow = register(state)
-        reconcile(state, column(), registerWindow)
+        reconcile(state, column(), registerWindow, DockSpotMemory())
         val orderBefore = order(state)
 
-        reconcile(state, column().filterKeys { it != "thoughts" }, registerWindow)
-        reconcile(state, column(), registerWindow)
+        reconcile(state, column().filterKeys { it != "thoughts" }, registerWindow, DockSpotMemory())
+        reconcile(state, column(), registerWindow, DockSpotMemory())
 
         assertNotEquals(orderBefore, order(state))
     }
@@ -839,7 +856,10 @@ class GameDockingTest {
         reconcile(state, openWindows(MAIN_WINDOW_NAME to WindowLocation.CENTER), registerWindow, spots)
         reconcile(state, announced, registerWindow, spots)
 
-        assertEquals(setOf(MAIN_WINDOW_NAME, "thoughts", "logons"), order(state).toSet())
+        // The announced-area arrangement, not merely the same three names in some order.
+        val fresh = newState()
+        reconcile(fresh, announced, register(fresh), DockSpotMemory())
+        assertEquals(order(fresh), order(state))
     }
 
     // A spot is spent by the reopen that uses it, so a window moved afterwards is not yanked back to
@@ -849,8 +869,8 @@ class GameDockingTest {
         val spots = DockSpotMemory()
         spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
 
-        assertNotNull(spots.take("thoughts"))
-        assertNull(spots.take("thoughts"))
+        assertNotNull(spots.spend("thoughts"))
+        assertNull(spots.spend("thoughts"))
     }
 
     @Test
@@ -892,23 +912,98 @@ class GameDockingTest {
 
         val restored = DockSpotMemory().apply { restore(spots.encode()) }
 
-        assertEquals(RememberedSpot(listOf("logons", "deaths"), DockRegion.South, 0.25f), restored.take("thoughts"))
+        assertEquals(RememberedSpot(listOf("logons", "deaths"), DockRegion.South, 0.25f), restored.spend("thoughts"))
         assertEquals(
             RememberedSpot(emptyList(), DockRegion.Center, 0.5f, detached = true, bounds = WindowBounds(1f, 2f, 3f, 4f)),
-            restored.take("room"),
+            restored.spend("room"),
         )
     }
 
-    // A character whose saved spots are unreadable loses only the spots - they still get their
-    // arrangement, and windows open where they always did.
+    // A character whose saved spots are unreadable loses the saved ones, and nothing else: whatever
+    // this session has already recorded stays.
     @Test
-    fun unreadableSpotsAreDiscardedRatherThanThrown() {
+    fun unreadableSpotsAreDiscardedWithoutDisturbingThisSession() {
         val spots = DockSpotMemory()
         spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
 
         spots.restore("{not json")
 
-        assertNull(spots.take("thoughts"))
+        assertEquals(RememberedSpot(listOf("logons"), DockRegion.South, 0.5f), spots.spend("thoughts"))
+    }
+
+    // A window closed while the character was still being identified: the restore that follows must
+    // not wipe the spot just recorded for it.
+    @Test
+    fun aSpotRecordedBeforeTheRestoreSurvivesIt() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("deaths"), DockRegion.North, 0.4f))
+
+        spots.restore("""{"thoughts":{"siblings":["logons"],"region":"South","proportion":0.9}}""")
+
+        assertEquals(RememberedSpot(listOf("deaths"), DockRegion.North, 0.4f), spots.spend("thoughts"))
+    }
+
+    // A field written by a later build must cost at most its own spot, and preferably nothing.
+    @Test
+    fun anUnknownFieldDoesNotDiscardTheSpot() {
+        val spots = DockSpotMemory()
+
+        spots.restore("""{"logons":{"siblings":["deaths"],"region":"South","proportion":0.25,"futureField":7}}""")
+
+        assertEquals(RememberedSpot(listOf("deaths"), DockRegion.South, 0.25f), spots.spend("logons"))
+    }
+
+    // One unreadable entry must not take the readable ones with it.
+    @Test
+    fun oneUnreadableEntryDoesNotTakeTheOthers() {
+        val spots = DockSpotMemory()
+
+        spots.restore(
+            """{"thoughts":{"region":12345,"proportion":"nonsense"},""" +
+                """"logons":{"siblings":["deaths"],"region":"South","proportion":0.25}}""",
+        )
+
+        assertNull(spots.spend("thoughts"))
+        assertEquals(RememberedSpot(listOf("deaths"), DockRegion.South, 0.25f), spots.spend("logons"))
+    }
+
+    // "Nothing worth recording now" is not "forget what we knew".
+    @Test
+    fun rememberingNothingKeepsWhatWasAlreadyKnown() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+
+        spots.remember("thoughts", null)
+
+        assertEquals(RememberedSpot(listOf("logons"), DockRegion.South, 0.5f), spots.spend("thoughts"))
+    }
+
+    // Windows the game has stopped sending would otherwise accumulate a spot each, forever, and be
+    // re-serialized into the character's settings on every save.
+    @Test
+    fun pruningDropsSpotsForWindowsThatAreGone() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+        spots.remember("ancient", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+
+        spots.prune(setOf("thoughts", "logons"))
+
+        assertNotNull(spots.spend("thoughts"))
+        assertNull(spots.spend("ancient"))
+    }
+
+    // Only a real change is worth a database write; drags and resizes move the layout but no spot.
+    @Test
+    fun encodingIsOnlyAskedForWhenSomethingMoved() {
+        val spots = DockSpotMemory()
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+        assertTrue(spots.isDirty())
+
+        spots.encode()
+
+        assertFalse(spots.isDirty())
+        spots.remember("thoughts", RememberedSpot(listOf("logons"), DockRegion.South, 0.5f))
+        assertFalse(spots.isDirty(), "re-recording an identical spot is not a change")
     }
 
     @Test
@@ -916,7 +1011,7 @@ class GameDockingTest {
         val spots = DockSpotMemory()
         spots.restore(null)
         spots.restore("")
-        assertNull(spots.take("thoughts"))
+        assertNull(spots.spend("thoughts"))
     }
 
     // A region name this build does not know (an older client reading a newer save) drops that one
@@ -930,7 +1025,24 @@ class GameDockingTest {
                 """"logons":{"siblings":["deaths"],"region":"South","proportion":0.25}}""",
         )
 
-        assertNull(spots.take("thoughts"))
-        assertEquals(RememberedSpot(listOf("deaths"), DockRegion.South, 0.25f), spots.take("logons"))
+        assertNull(spots.spend("thoughts"))
+        assertEquals(RememberedSpot(listOf("deaths"), DockRegion.South, 0.25f), spots.spend("logons"))
+    }
+
+    // Closing two windows at once and reopening them both. Reported by review: the capture loop ran
+    // against a tree earlier iterations had already changed, and a spot was spent even when it could
+    // not be used, so both windows lost their places for good.
+    @Test
+    fun twoWindowsClosedTogetherBothComeBack() {
+        val state = newState()
+        val registerWindow = register(state)
+        val spots = DockSpotMemory()
+        reconcile(state, column(), registerWindow, spots)
+        val orderBefore = order(state)
+
+        reconcile(state, column().filterKeys { it != "logons" && it != "deaths" }, registerWindow, spots)
+        reconcile(state, column(), registerWindow, spots)
+
+        assertEquals(orderBefore, order(state))
     }
 }
