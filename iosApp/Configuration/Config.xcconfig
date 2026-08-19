@@ -5,3 +5,10 @@ PRODUCT_BUNDLE_IDENTIFIER=warlockfe.warlock3
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
+
+// What the Kotlin framework is built as. It follows the Xcode configuration, so a Release build of
+// the app links a Release framework, and nothing changes for a developer or an archive. CI passes
+// Debug on the xcodebuild command line: it builds the app Release for the Swift half - the Sentry
+// startup sits behind `#if !DEBUG` - but an optimized Kotlin framework proves nothing there, and
+// linking it takes about three quarters of the job.
+KOTLIN_FRAMEWORK_CONFIGURATION = $(CONFIGURATION)

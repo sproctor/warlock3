@@ -77,14 +77,14 @@ jobs:
             **/build/test-results/**
           if-no-files-found: ignore
 
-  # The Linux job above builds with -PiosSkip=true, because it cannot compile Apple targets. That
-  # left the iOS build unexercised, and it rotted: JVM-only calls reached commonMain, the Xcode
-  # build phase stopped passing -PiosSkip=false, and the IDE build path silently shipped an app
-  # with no Compose resources. This job is what catches that class of breakage.
-  ios:
-    name: Build iOS app
+  # Runs the shared commonTest suites against the Kotlin/Native target, which the Linux job only
+  # ever runs on the JVM. Separate from the app build below rather than a step in it: the two share
+  # no outputs - one compiles for the simulator, the other for a device - so sequencing them only
+  # added their times together.
+  ios-tests:
+    name: Run iOS tests
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -100,26 +100,8 @@ jobs:
         with:
           cache-provider: basic
 
-      # Runs the shared commonTest suites against the Kotlin/Native target, which the Linux job
-      # only ever runs on the JVM.
       - name: iOS tests
         run: ./gradlew iosSimulatorArm64Test -PiosSkip=false -PlintSkip=true --stacktrace
-
-      # The whole chain the Gradle tasks alone do not cover: the Xcode build phase, the Compose
-      # resource sync into the bundle, Swift Package resolution for Sentry, and linking the app.
-      # Unsigned, so it needs no certificates.
-      #
-      # Release, not Debug: the Sentry startup in iOSApp.swift sits behind `#if !DEBUG`, so a Debug
-      # build never compiles it. That is not hypothetical -- a Sentry API change broke exactly that
-      # call and a Debug build stayed green.
-      - name: Build the app with Xcode
-        run: |
-          xcodebuild -project iosApp/iosApp.xcodeproj \
-            -scheme iosApp \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            build
 
       - name: Upload iOS test reports
         if: always()
@@ -131,3 +113,51 @@ jobs:
             **/build/reports/tests/**
             **/build/test-results/**
           if-no-files-found: ignore
+
+  # The Linux job above builds with -PiosSkip=true, because it cannot compile Apple targets. That
+  # left the iOS build unexercised, and it rotted: JVM-only calls reached commonMain, the Xcode
+  # build phase stopped passing -PiosSkip=false, and the IDE build path silently shipped an app
+  # with no Compose resources. This job is what catches that class of breakage.
+  ios:
+    name: Build iOS app
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JBR
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'jetbrains'
+          java-version: '25'
+
+      # See the note on cache-provider in the build job.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # The whole chain the Gradle tasks alone do not cover: the Xcode build phase, the Compose
+      # resource sync into the bundle, Swift Package resolution for Sentry, and linking the app.
+      # Unsigned, so it needs no certificates.
+      #
+      # Release, not Debug: the Sentry startup in iOSApp.swift sits behind `#if !DEBUG`, so a Debug
+      # build never compiles it. That is not hypothetical -- a Sentry API change broke exactly that
+      # call and a Debug build stayed green.
+      #
+      # The Kotlin framework is the exception, via KOTLIN_FRAMEWORK_CONFIGURATION (see
+      # Config.xcconfig). Linking it optimized took about three quarters of this job - 18 of its 27
+      # minutes - and proves nothing about the Swift half that Release is here for. What is left is
+      # everything this job was added to catch: that commonMain still compiles for iOS, that the
+      # build phase runs, that the resources land, and that the app links. Release-only Kotlin/Native
+      # link failures are what this gives up; no workflow builds those, so they surface when the app
+      # is archived in Xcode, which follows the app's configuration like any other local build.
+      - name: Build the app with Xcode
+        run: |
+          xcodebuild -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            KOTLIN_FRAMEWORK_CONFIGURATION=Debug \
+            build
