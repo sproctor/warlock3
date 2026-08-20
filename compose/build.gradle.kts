@@ -76,7 +76,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core"))
-            implementation(project(":wrayth")) // TODO: remove when abstracting DI
+            // The concrete client + scripting implementations that AppContainer wires up.
+            // TODO: remove when abstracting DI
+            implementation(project(":wrayth"))
+            implementation(project(":scripting"))
 
             implementation(libs.kotlinx.serialization.json)
 
@@ -148,11 +151,6 @@ kotlin {
             // does not pull the platform icons jar, so the SVG resources have to be added
             // explicitly or every IntelliJ-icon-keyed Icon renders as a magenta placeholder.
             implementation(libs.intellij.platform.icons)
-        }
-        if (!skipIos) {
-            iosMain.dependencies {
-                implementation(project(":scripting"))
-            }
         }
     }
 

@@ -112,8 +112,6 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":compose"))
-    implementation(project(":wrayth"))
-    implementation(project(":scripting"))
 
     implementation(libs.kotlinx.serialization.json)
 

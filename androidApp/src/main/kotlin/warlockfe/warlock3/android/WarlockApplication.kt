@@ -5,11 +5,13 @@ import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import warlockfe.warlock3.android.di.AndroidAppContainer
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.initializeSentry
+import warlockfe.warlock3.core.client.JavaProxy
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.util.AndroidSoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 
 class WarlockApplication : Application() {
@@ -44,7 +46,14 @@ class WarlockApplication : Application() {
             )
 
         // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
-        appContainer = AndroidAppContainer(database, warlockDirs, SystemFileSystem)
+        appContainer =
+            AppContainer(
+                database = database,
+                warlockDirs = warlockDirs,
+                fileSystem = SystemFileSystem,
+                soundPlayer = AndroidSoundPlayer(),
+                warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
+            )
     }
 
     private fun getPrefsDatabaseBuilder(filename: String): RoomDatabase.Builder<PrefsDatabase> =

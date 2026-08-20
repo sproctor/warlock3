@@ -77,9 +77,9 @@ import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
 import org.jetbrains.jewel.window.utils.DesktopPlatform
 import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
-import warlockfe.warlock3.app.di.JvmAppContainer
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
+import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
@@ -96,6 +96,8 @@ import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.initializeSentry
+import warlockfe.warlock3.core.client.JavaProxy
+import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -105,6 +107,7 @@ import warlockfe.warlock3.core.sge.AutoConnectResult
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.parseSalCredentials
+import warlockfe.warlock3.core.util.DesktopSoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.wrayth.network.NetworkSocket
 import java.awt.Dimension
@@ -474,7 +477,7 @@ private class WarlockCommand : CliktCommand() {
             null
         }
 
-    private fun buildAppContainer(logger: Logger): JvmAppContainer {
+    private fun buildAppContainer(logger: Logger): AppContainer {
         val appDirs =
             AppDirs {
                 appName = "warlock"
@@ -501,7 +504,13 @@ private class WarlockCommand : CliktCommand() {
                 builderFactory = ::getPrefsDatabaseBuilder,
             )
 
-        return JvmAppContainer(database, warlockDirs, SystemFileSystem)
+        return AppContainer(
+            database = database,
+            warlockDirs = warlockDirs,
+            fileSystem = SystemFileSystem,
+            soundPlayer = DesktopSoundPlayer(warlockDirs),
+            warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
+        )
     }
 
     /**
@@ -510,7 +519,7 @@ private class WarlockCommand : CliktCommand() {
      * Each `--input` file gets its own window/[GameState]; every other launch mode produces a single window.
      */
     private fun createInitialGameStates(
-        appContainer: JvmAppContainer,
+        appContainer: AppContainer,
         credentials: SimuGameCredentials?,
         sgeSettings: SgeSettings,
         logger: Logger,
@@ -559,7 +568,7 @@ private class WarlockCommand : CliktCommand() {
 
     /** Build a [GameState] connected to a freshly created socket, blocking until the connection is established. */
     private fun connectSocketGameState(
-        appContainer: JvmAppContainer,
+        appContainer: AppContainer,
         key: String,
         logger: Logger,
         createSocket: suspend () -> WarlockSocket,
@@ -591,7 +600,7 @@ private class WarlockCommand : CliktCommand() {
 
     /** Build a [GameState] auto-connected to the named CLI connection via SGE. */
     private fun createAutoConnectGameState(
-        appContainer: JvmAppContainer,
+        appContainer: AppContainer,
         sgeSettings: SgeSettings,
     ): GameState =
         GameState().apply {
