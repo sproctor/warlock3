@@ -125,24 +125,27 @@ class MudMobileConnectUseCase(
             coroutineScope {
                 // Refresh the saved profile (idempotent upsert; keeps last-used current) alongside
                 // that wait rather than ahead of it: it is a nicety for the character picker, so it
-                // is not something to make the user wait on, and it is bounded in case this is the
-                // endpoint that is slow. Best-effort, and only possible when we know the character
-                // code. It also comes after the session call, so an unreachable service costs one
-                // timeout rather than two on the way to reporting the failure.
-                connection.characterCode?.let { characterCode ->
-                    launch {
-                        withTimeoutOrNull(PROFILE_REFRESH_TIMEOUT) {
-                            api.createCharacter(
-                                token = token,
-                                account = connection.username,
-                                game = connection.code,
-                                characterCode = characterCode,
-                                characterName = connection.character,
-                            )
+                // is not something to make the user wait on. Best-effort, and only possible when we
+                // know the character code. It also comes after the session call, so an unreachable
+                // service costs one timeout rather than two on the way to reporting the failure.
+                val profileRefresh =
+                    connection.characterCode?.let { characterCode ->
+                        launch {
+                            withTimeoutOrNull(PROFILE_REFRESH_TIMEOUT) {
+                                api.createCharacter(
+                                    token = token,
+                                    account = connection.username,
+                                    game = connection.code,
+                                    characterCode = characterCode,
+                                    characterName = connection.character,
+                                )
+                            }
                         }
                     }
-                }
-                awaitReady(token, sessionId, onStatus)
+                // Dropped if the wait ends first, rather than held onto: this scope joins its
+                // children, so an unfinished refresh would go back to being time the user spends
+                // watching a dialog. It is a refresh of a record that already exists.
+                awaitReady(token, sessionId, onStatus).also { profileRefresh?.cancel() }
             }
         when (readiness) {
             ReadinessResult.Ready -> Unit
