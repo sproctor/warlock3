@@ -80,6 +80,13 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
         // ciphertext would be handed back as though it were the file's content.
         require(flags and FLAG_ENCRYPTED == 0) { "Encrypted entry \"$name\" is not supported" }
 
+        // Nothing was compressed, so the two sizes have to agree. Enforcing that is what lets the
+        // budget below count uncompressedSize for every entry, including the stored ones whose
+        // returned bytes are measured by compressedSize.
+        require(method != METHOD_STORED || compressedSize.toLong() == uncompressedSize) {
+            "Stored entry \"$name\" declares mismatched compressed and uncompressed sizes"
+        }
+
         // Checked against what the directory declares, before inflating anything, so an archive
         // that expands enormously is refused rather than decompressed and then measured.
         totalUncompressed += uncompressedSize

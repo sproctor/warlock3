@@ -214,6 +214,22 @@ class SkinZipLoaderTest {
     }
 
     @Test
+    fun stored_entry_whose_sizes_disagree_is_rejected() {
+        // A stored entry is returned as compressedSize bytes, so a small declared uncompressed size
+        // would otherwise let it slip past the budget that counts uncompressedSize.
+        val zip = storedZipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        val centralDirectory = zip.centralDirectoryOffset()
+        zip.putU32(centralDirectory + 24, 4L) // uncompressed size, no longer matching compressed
+
+        val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+
+        assertEquals(
+            """Stored entry "skin.json" declares mismatched compressed and uncompressed sizes""",
+            error.message,
+        )
+    }
+
+    @Test
     fun entry_that_inflates_past_its_declared_size_is_rejected() {
         val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1, "left": 2, "width": 3 } }""".toByteArray()))
         val centralDirectory = zip.centralDirectoryOffset()
