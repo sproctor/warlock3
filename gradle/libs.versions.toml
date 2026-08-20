@@ -67,7 +67,7 @@ ksp = "2.3.11"
 ktlint-gradle = "14.2.0"
 ktlint-compose-rules = "0.6.4"
 ktor = "3.5.2"
-lua-kmp = "0.1.0"
+lua-kmp = "0.1.1"
 lwjgl = "3.4.2"
 # Also arrives transitively via Coil; pinned here because ZipReader depends on it directly.
 okio = "3.17.0"
