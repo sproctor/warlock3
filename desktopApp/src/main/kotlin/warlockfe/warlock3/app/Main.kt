@@ -287,7 +287,11 @@ private class WarlockCommand : CliktCommand() {
                             scope.launch {
                                 val screen = gameState.screen
                                 if (screen is GameScreen.ConnectedGameState) {
-                                    screen.viewModel.close()
+                                    try {
+                                        screen.viewModel.close()
+                                    } catch (_: Throwable) {
+                                        // Ignore failures
+                                    }
                                 }
                                 games.remove(gameState)
                                 if (games.isEmpty()) {

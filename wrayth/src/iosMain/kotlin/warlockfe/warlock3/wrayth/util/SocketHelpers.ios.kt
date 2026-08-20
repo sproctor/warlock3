@@ -120,16 +120,6 @@ actual suspend fun openPlainSocket(
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection = openNetworkSocket(host, port, coroutineContext, useTls = false)
 
-actual suspend fun openDefaultTlsSocket(
-    selectorManager: SelectorManager,
-    host: String,
-    port: Int,
-    coroutineContext: CoroutineContext,
-): TLSSocketConnection =
-    // No TLS configuration of our own, so the system evaluates the chain against its own trust
-    // store -- which is what the MUD Mobile edge needs; it presents an ordinary public certificate.
-    openNetworkSocket(host, port, coroutineContext, useTls = true)
-
 actual suspend fun openTLSSocket(
     selectorManager: SelectorManager,
     host: String,

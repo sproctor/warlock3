@@ -23,16 +23,16 @@ instead of directly to play.net - with no manual `.sal` editing.
 5. keyHash = sha256_hex(key)
 6. POST https://mudmobile.com/api/sessions           (Bearer wlk_…)            → {sessionId, connect:{host,port,tls}}
    body: {game, character, gamehost, gameport, keyHash}
-7. Open a TLS socket to connect.host:connect.port and send the SAME game key
-   as the first line (exactly the handshake Warlock already sends to play.net).
+7. Open a WebSocket to wss://connect.host:connect.port/ and send the SAME game key
+   as the first message (exactly the handshake Warlock already sends to play.net).
    The router matches sha256(key) → bridges you to Lich → the game. DONE.
 8. (optional) DELETE /api/sessions/{sessionId} when the user disconnects.
 ```
 
 The single behavioral change versus a normal play.net connection: **substitute the
-destination host/port** (from step 6's response) for the real gamehost/gameport, and wrap
-the socket in TLS. The key line and everything after it is byte-for-byte identical to a
-normal connection.
+destination host/port** (from step 6's response) for the real gamehost/gameport, and carry
+the stream over a WebSocket. The key line and everything after it is byte-for-byte
+identical to a normal connection.
 
 ---
 
@@ -46,7 +46,7 @@ normal connection.
 | **keyHash** | `sha256(key)` as lowercase hex (64 chars). MUD Mobile only ever sees this hash, never the key. |
 | **Character profile** | A `{account, game, characterCode, characterName}` record the user saved in MUD Mobile. Lets Warlock pre-populate a character picker. |
 | **Game code** | EAccess game identifier: `DR`, `DRX`, `DRF` (DragonRealms / Platinum / Fallen), `GS3`, `GSX`, `GSF` (GemStone IV / Platinum / Shattered). |
-| **Router** | MUD Mobile's single public TCP endpoint (`play.mudmobile.com`). You connect here, not to play.net. |
+| **Router** | MUD Mobile's single public endpoint (`play.mudmobile.com`), speaking raw TCP and WebSocket on the same port. You connect here, not to play.net. |
 | **Session** | One booted cloud Lich instance, created by `POST /api/sessions`, identified by `sessionId`. |
 
 ---
@@ -60,12 +60,12 @@ These mirror MUD Mobile's own non-negotiable rules. Warlock must uphold the clie
    the device-token path, by design.
 2. **Never send the raw game key to the MUD Mobile HTTP API.** The API only accepts
    `keyHash = sha256(key)`. The raw key is transmitted *only* as the first line of the game
-   TCP stream to the router (same as you'd send it to play.net), where it's forwarded
+   stream to the router (same as you'd send it to play.net), where it's forwarded
    byte-for-byte to Lich.
 3. **Store the device token securely** (OS keychain / credential store if available). Treat
    it like a password; it grants the ability to start billable sessions on the user's account.
 4. **Use TLS for the router connection** when `connect.tls` is true (it is, on the default
-   port 443). Don't fall back to plaintext silently.
+   port 443) - i.e. `wss://`, not `ws://`. Don't fall back to plaintext silently.
 
 ---
 
@@ -380,11 +380,23 @@ key you later send on the wire, so don't trim/transform the key differently in t
 
 After `POST /api/sessions` returns `connect`:
 
-1. **Open a socket** to `connect.host:connect.port`. If `connect.tls` is true (default,
-   port 443), perform a standard TLS handshake first (SNI = `connect.host`; it's a normal
-   CA-valid cert, terminated at MUD Mobile's edge - verify it normally).
-   - A plaintext endpoint also exists on the same host at **port 7000** if you ever need it,
-     but prefer the TLS endpoint the API hands you.
+The router serves two transports on the same port: raw TCP for native clients, and WebSocket
+for everyone else. **Warlock uses the WebSocket**, because it is the one transport all of
+Desktop, Android, and iOS can open with the same code, and the protocol above it is
+identical either way.
+
+1. **Open a WebSocket** to `wss://connect.host:connect.port/` (`ws://` when `connect.tls` is
+   false - a plaintext endpoint also exists on the same host at **port 7000**). TLS is the
+   normal kind: a public CA-valid cert terminated at MUD Mobile's edge, verified normally.
+   - Frames are a transport detail, **never a message boundary** - the game is one byte
+     stream, and the router accumulates your key line across frames until it sees `\n`.
+   - **Send binary frames, and expect binary frames.** The stream is windows-1252, which is
+     not valid UTF-8; a text frame is UTF-8 by definition, so raw high bytes in one get the
+     connection closed with 1007 mid-session. (The router does transcode text frames it
+     receives, for browsers that type commands, but downstream is always binary.)
+   - **Answer the router's pings.** It pings every 25s and terminates a connection that
+     misses two consecutive pongs, to reclaim the machine and concurrency slot a half-open
+     connection would otherwise pin. Every mainstream client library pongs automatically.
 2. **Send your normal Stormfront handshake as the first thing** - i.e. the game **key** line
    followed by your usual `/FE:` / version lines, exactly as Warlock sends to play.net. You
    do **not** need to change how you frame the key; the router is built to tolerate Warlock's
@@ -394,13 +406,15 @@ After `POST /api/sessions` returns `connect`:
      framing is handled). It hashes *that token*, not the whole line.
    - It then forwards the entire buffered first line (key + handshake) and everything after
      it **byte-for-byte** to Lich. Nothing in the stream is rewritten.
-3. **Send the key promptly.** The router drops connections that send no first line within
-   **15 seconds**.
+3. **Send the key promptly**, with its trailing `\n`. The router drops connections that send
+   no first line within **15 seconds**, and a first frame with no newline costs a 300ms
+   grace before it synthesises one.
 4. **Connect once and be patient - do NOT add a reconnect loop.** The cloud machine
    cold-boots in ~25–60s. The router *holds your connection* and retries dialing the machine
    internally for up to ~60–90s, so a patient client rides the boot transparently. A
    client-side reconnect loop will fight this and create duplicate/again-failing attempts.
-   Set your connect/read timeout generously (≥ 90s for the initial bridge).
+   Set your connect/read timeout generously (≥ 90s for the initial bridge), and turn off
+   whatever auto-reconnect your WebSocket wrapper does by default.
 5. Once bridged, it's a normal game session: Lich ↔ play.net, streamed through to Warlock.
    Scripts and settings the user stored in MUD Mobile are already synced into the machine.
 
@@ -447,10 +461,10 @@ conn = resp.json().connect            # { host, port, tls }
 sessionId = resp.json().sessionId
 
 # 4. Connect to the router and play (no reconnect loop; timeout ≥ 90s)
-sock = conn.tls ? tls_connect(conn.host, conn.port, verify=true, sni=conn.host)
-                : tcp_connect(conn.host, conn.port)
-sock.write(stormfront_handshake(sge.key))     # SAME bytes you'd send play.net
-bridge(sock, warlock_game_io)                 # normal play from here
+scheme = conn.tls ? "wss" : "ws"
+sock = websocket_connect(scheme + "://" + conn.host + ":" + conn.port + "/")
+sock.send_binary(stormfront_handshake(sge.key))   # SAME bytes you'd send play.net
+bridge(sock, warlock_game_io)                     # normal play from here
 
 # 5. On user disconnect (optional, frees the slot immediately)
 DELETE "https://mudmobile.com/api/sessions/" + sessionId
@@ -488,8 +502,8 @@ wire protocol, the gamehost allowlist - already exists and is documented above a
 - [ ] Pick a character, enter password, local SGE succeeds, key obtained.
 - [ ] `POST /api/sessions` returns `connect`; verify the password and raw key were **never**
       sent to mudmobile.com (only `keyHash`).
-- [ ] TLS connect to `connect.host:connect.port`, send the key line, ride the cold boot
-      (≥90s timeout, no reconnect loop), reach the game.
+- [ ] `wss://` connect to `connect.host:connect.port`, send the key line as a binary frame,
+      ride the cold boot (≥90s timeout, no reconnect loop), reach the game.
 - [ ] 402 (no subscription) and 409 (at concurrency limit) render sensible UI.
 - [ ] `DELETE /api/sessions/{id}` on disconnect frees the slot.
 ```

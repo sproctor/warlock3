@@ -225,6 +225,16 @@ fun DashboardView(
         )
     }
 
+    // A failed attempt is reported here rather than only as a line on the dashboard, and stays up
+    // until it is acknowledged, so a connect that dies while the user is looking elsewhere is not
+    // mistaken for one that is still running.
+    viewModel.connectError?.let { error ->
+        ConnectionFailedDialog(
+            message = error,
+            onDismiss = { viewModel.dismissConnectError() },
+        )
+    }
+
     // Unified connecting overlay: shown for both a direct login and a MUD Mobile login.
     if (viewModel.busy || viewModel.mudMobileConnecting) {
         val status = if (viewModel.mudMobileConnecting) viewModel.mudMobileConnectStatus else viewModel.message
@@ -676,6 +686,23 @@ private fun RevealPasswordField(
             trailingIcon = toggle,
         )
     }
+}
+
+@Composable
+private fun ConnectionFailedDialog(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Connection failed") },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        },
+    )
 }
 
 @Composable

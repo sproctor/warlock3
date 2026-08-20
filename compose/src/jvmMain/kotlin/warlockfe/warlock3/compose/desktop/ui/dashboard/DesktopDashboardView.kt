@@ -46,6 +46,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import sh.calvin.reorderable.ReorderableColumn
+import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
@@ -607,6 +608,16 @@ private fun DashboardDialogs(
         )
     }
 
+    // A failed attempt is reported here rather than only as a line on the dashboard, and stays up
+    // until it is acknowledged, so a connect that dies while the user is looking elsewhere is not
+    // mistaken for one that is still running.
+    viewModel.connectError?.let { error ->
+        ConnectionFailedDialog(
+            message = error,
+            onDismiss = { viewModel.dismissConnectError() },
+        )
+    }
+
     // Unified connecting dialog: shown for both a direct login and a MUD Mobile login.
     if (viewModel.busy || viewModel.mudMobileConnecting) {
         val status =
@@ -789,6 +800,21 @@ private fun ConnectionPasswordDialog(
             }
         }
     }
+}
+
+@Composable
+private fun ConnectionFailedDialog(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    WarlockAlertDialog(
+        title = "Connection failed",
+        text = message,
+        onDismissRequest = onDismiss,
+        confirmButton = { WarlockButton(onClick = onDismiss, text = "OK") },
+        width = 420.dp,
+        height = 220.dp,
+    )
 }
 
 @Composable

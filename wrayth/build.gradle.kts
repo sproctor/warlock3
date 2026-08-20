@@ -112,6 +112,7 @@ kotlin {
                 implementation(libs.kotlinx.serialization.core)
                 implementation(libs.xmlutil.serialization)
                 api(libs.antlr.kotlin.runtime)
+                implementation(libs.ktor.client.core)
                 implementation(libs.ktor.network)
                 implementation(libs.ktor.network.tls)
             }
@@ -119,6 +120,13 @@ kotlin {
 
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
+
+        // A real WebSocket server to test the MUD Mobile transport against; JVM-only, test-only.
+        jvmTest.dependencies {
+            implementation(libs.ktor.server.cio)
+            implementation(libs.ktor.server.websockets)
         }
 
         getByName("jvmBenchmark").dependencies {

@@ -1688,11 +1688,22 @@ class GameViewModel(
 
     /** Tear down this game's client and window registry without touching any reconnect in flight. */
     private suspend fun closeClient() {
-        if (!client.disconnected.value) {
-            client.sendCommandDirect("quit")
+        // The quit is a goodbye to the server, not part of the teardown: whether it lands or not,
+        // the client and the registry still have to go, and the caller still has somewhere to be
+        // afterwards - the dashboard, or a window that wants to close. Only cancellation carries on
+        // past here, and the teardown has run by then either way.
+        try {
+            if (!client.disconnected.value) {
+                client.sendCommandDirect("quit")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.d(e) { "Couldn't send the parting quit" }
+        } finally {
+            client.close()
+            windowRegistry.close()
         }
-        client.close()
-        windowRegistry.close()
     }
 
     /**

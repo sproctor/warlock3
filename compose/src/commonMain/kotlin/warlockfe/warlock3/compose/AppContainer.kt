@@ -7,6 +7,8 @@ import androidx.sqlite.execSQL
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.websocket.WebSockets
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -267,7 +269,22 @@ abstract class AppContainer(
         )
     }
 
-    val mudMobileHttpClient: HttpClient by lazy { HttpClient(CIO) }
+    val mudMobileHttpClient: HttpClient by lazy {
+        HttpClient(CIO) {
+            // The REST API rides this client, and so does the game stream: MUD Mobile's router
+            // speaks WebSocket, which is the one transport every platform we target can open.
+            install(WebSockets)
+            install(HttpTimeout) {
+                // The bound on the API calls, so a service that is down or mid-maintenance fails
+                // with something to show the user instead of sitting there. CIO defaults to the
+                // same 15s, but only the plugin's is a number: the engine's goes unreported, which
+                // is what left "request_timeout=unknown ms" in the log of a real outage. It does not
+                // touch the game stream either way - both the plugin and the engine exempt WebSocket
+                // requests, which is what lets the router hold a connection through its cold boot.
+                requestTimeoutMillis = 15_000
+            }
+        }
+    }
 
     val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
 
@@ -285,6 +302,7 @@ abstract class AppContainer(
     val mudMobileConnectUseCase by lazy {
         MudMobileConnectUseCase(
             api = mudMobileApi,
+            httpClient = mudMobileHttpClient,
             sgeClientFactory = sgeClientFactory,
             warlockClientFactory = warlockClientFactory,
             windowRegistryFactory = windowRegistryFactory,
