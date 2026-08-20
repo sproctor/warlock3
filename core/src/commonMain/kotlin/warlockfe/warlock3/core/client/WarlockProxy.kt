@@ -9,7 +9,7 @@ interface WarlockProxy : AutoCloseable {
 
     override fun close()
 
-    interface Factory {
+    fun interface Factory {
         fun create(command: String): WarlockProxy
     }
 }

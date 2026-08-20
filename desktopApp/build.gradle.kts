@@ -16,7 +16,6 @@ plugins {
 dependencies {
     implementation(project(":core"))
     implementation(project(":wrayth"))
-    implementation(project(":scripting"))
     implementation(project(":compose"))
 
     implementation(compose.desktop.currentOs)

@@ -5,7 +5,6 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
-import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import platform.Foundation.NSDocumentDirectory
@@ -14,14 +13,9 @@ import platform.Foundation.NSLibraryDirectory
 import platform.Foundation.NSUserDomainMask
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
-import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
-import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
-import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
-import warlockfe.warlock3.scripting.lua.LuaEngine
-import warlockfe.warlock3.scripting.wsl.WslEngine
 
 @OptIn(ExperimentalForeignApi::class)
 object IosAppContainerProvider {
@@ -55,7 +49,13 @@ object IosAppContainerProvider {
             )
 
         // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
-        IosAppContainer(database, warlockDirs, SystemFileSystem)
+        AppContainer(
+            database = database,
+            warlockDirs = warlockDirs,
+            fileSystem = SystemFileSystem,
+            soundPlayer = IosSoundPlayer(),
+            warlockProxyFactory = WarlockProxy.Factory { IosProxy(it) },
+        )
     }
 
     val sgeSettings: SgeSettings by lazy {
@@ -88,39 +88,4 @@ private class IosProxy(
     override val stdErr: Flow<String> = emptyFlow()
 
     override fun close() {}
-}
-
-class IosAppContainer(
-    database: PrefsDatabase,
-    warlockDirs: WarlockDirs,
-    fileSystem: FileSystem,
-) : AppContainer(
-        database = database,
-        warlockDirs = warlockDirs,
-        fileSystem = fileSystem,
-    ) {
-    override val soundPlayer: SoundPlayer = IosSoundPlayer()
-
-    override val scriptEngineRepository =
-        WarlockScriptEngineRepositoryImpl(
-            engines =
-                listOf(
-                    WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
-                    LuaEngine(variableRepository, fileSystem),
-                ),
-            scriptDirRepository = scriptDirRepository,
-            fileSystem = fileSystem,
-        )
-
-    override val scriptManagerFactory: ScriptManagerFactory =
-        ScriptManagerFactoryImpl(
-            fileSystem = fileSystem,
-            scriptEngineRepository = scriptEngineRepository,
-            externalScope = externalScope,
-        )
-
-    override val warlockProxyFactory: WarlockProxy.Factory =
-        object : WarlockProxy.Factory {
-            override fun create(command: String): WarlockProxy = IosProxy(command)
-        }
 }

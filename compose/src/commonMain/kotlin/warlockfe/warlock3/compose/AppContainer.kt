@@ -68,22 +68,32 @@ import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.prefs.snapshot.openVersionedDatabase
 import warlockfe.warlock3.core.script.ScriptManagerFactory
-import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
 import warlockfe.warlock3.core.window.WindowRegistry
+import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
+import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
+import warlockfe.warlock3.scripting.lua.LuaEngine
+import warlockfe.warlock3.scripting.wsl.WslEngine
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
 import warlockfe.warlock3.wrayth.util.CommandListStore
 
-abstract class AppContainer(
+/**
+ * The app-wide dependency graph, shared by every platform. The two genuinely platform-specific
+ * pieces -- how sound is played and how a proxy subprocess is launched -- are injected by the
+ * platform entry points; everything else is wired identically everywhere.
+ */
+class AppContainer(
     val database: PrefsDatabase,
     private val warlockDirs: WarlockDirs,
     private val fileSystem: FileSystem,
+    private val soundPlayer: SoundPlayer,
+    private val warlockProxyFactory: WarlockProxy.Factory,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)
@@ -201,10 +211,23 @@ abstract class AppContainer(
         }
     }
 
-    abstract val scriptEngineRepository: WarlockScriptEngineRepository
-    abstract val scriptManagerFactory: ScriptManagerFactory
+    private val scriptEngineRepository =
+        WarlockScriptEngineRepositoryImpl(
+            engines =
+                listOf(
+                    WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
+                    LuaEngine(variableRepository, fileSystem),
+                ),
+            scriptDirRepository = scriptDirRepository,
+            fileSystem = fileSystem,
+        )
 
-    abstract val soundPlayer: SoundPlayer
+    private val scriptManagerFactory: ScriptManagerFactory =
+        ScriptManagerFactoryImpl(
+            fileSystem = fileSystem,
+            scriptEngineRepository = scriptEngineRepository,
+            externalScope = externalScope,
+        )
 
     val wraythImporter =
         WraythImporter(
@@ -252,8 +275,6 @@ abstract class AppContainer(
                     commandListStore = commandListStore,
                 )
         }
-
-    abstract val warlockProxyFactory: WarlockProxy.Factory
 
     val windowRegistryFactory by lazy {
         WindowRegistryFactory(
