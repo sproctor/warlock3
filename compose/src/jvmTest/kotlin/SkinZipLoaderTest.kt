@@ -6,6 +6,7 @@ import java.util.zip.ZipOutputStream
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class SkinZipLoaderTest {
@@ -36,6 +37,49 @@ class SkinZipLoaderTest {
             }
         }
         return out.toByteArray()
+    }
+
+    private fun zipWithComment(
+        entries: Map<String, ByteArray>,
+        comment: String,
+    ): ByteArray {
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.setComment(comment)
+            entries.forEach { (name, bytes) ->
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        return out.toByteArray()
+    }
+
+    /** Offset of the first central directory header, whose fields the tests below tamper with. */
+    private fun ByteArray.centralDirectoryOffset(): Int =
+        indices.first { i ->
+            i + 4 <= size &&
+                this[i] == 0x50.toByte() &&
+                this[i + 1] == 0x4B.toByte() &&
+                this[i + 2] == 0x01.toByte() &&
+                this[i + 3] == 0x02.toByte()
+        }
+
+    private fun ByteArray.putU16(
+        offset: Int,
+        value: Int,
+    ) {
+        this[offset] = (value and 0xFF).toByte()
+        this[offset + 1] = ((value shr 8) and 0xFF).toByte()
+    }
+
+    private fun ByteArray.putU32(
+        offset: Int,
+        value: Long,
+    ) {
+        for (byte in 0..3) {
+            this[offset + byte] = ((value shr (8 * byte)) and 0xFF).toByte()
+        }
     }
 
     @Test
@@ -133,6 +177,51 @@ class SkinZipLoaderTest {
         val skin = SkinLoader.parse(zip)
 
         assertEquals(Base64.encode(imageBytes), skin["injury1"]?.image?.data)
+    }
+
+    @Test
+    fun eocd_signature_inside_the_archive_comment_is_not_mistaken_for_the_real_one() {
+        // The reader scans backwards from the end, so a comment carrying these four bytes is found
+        // before the actual End Of Central Directory record. Padding puts it far enough from the
+        // end to fall inside the search window.
+        val skinJson = """{ "injury1": { "top": 7 } }"""
+        val zip = zipWithComment(mapOf("skin.json" to skinJson.toByteArray()), "PK" + "x".repeat(40))
+
+        val skin = SkinLoader.parse(zip)
+
+        assertEquals(7, skin["injury1"]?.top)
+    }
+
+    @Test
+    fun encrypted_entry_is_rejected_rather_than_returned_as_ciphertext() {
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        // java.util.zip cannot write an encrypted entry, so set the flag the reader checks.
+        val centralDirectory = zip.centralDirectoryOffset()
+        zip.putU16(centralDirectory + 8, 1)
+
+        val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+
+        assertEquals("""Encrypted entry "skin.json" is not supported""", error.message)
+    }
+
+    @Test
+    fun entry_declaring_a_huge_expansion_is_rejected_before_inflating() {
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        val centralDirectory = zip.centralDirectoryOffset()
+        zip.putU32(centralDirectory + 24, 0x7FFFFFF0L) // uncompressed size
+
+        assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+    }
+
+    @Test
+    fun entry_that_inflates_past_its_declared_size_is_rejected() {
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1, "left": 2, "width": 3 } }""".toByteArray()))
+        val centralDirectory = zip.centralDirectoryOffset()
+        zip.putU32(centralDirectory + 24, 4L) // uncompressed size, far below the truth
+
+        val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+
+        assertEquals("""Entry "skin.json" inflates past its declared size""", error.message)
     }
 
     @Test

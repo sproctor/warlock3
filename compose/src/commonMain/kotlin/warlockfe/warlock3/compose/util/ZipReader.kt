@@ -19,6 +19,12 @@ private const val CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50L
 private const val LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50L
 private const val METHOD_STORED = 0
 private const val METHOD_DEFLATED = 8
+private const val FLAG_ENCRYPTED = 1
+
+// A skin is a manifest plus a handful of images; the bundled one is ~210KB. This ceiling is here
+// only so that a hostile archive cannot exhaust memory, since the user can point the skin setting
+// at any file they have picked up.
+private const val MAX_UNCOMPRESSED_BYTES = 128L * 1024 * 1024
 
 /**
  * Reads the entries of a zip archive held entirely in memory, returning a map of entry name to its
@@ -39,7 +45,9 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
     var eocd = -1
     val searchFloor = maxOf(0, bytes.size - (0xFFFF + 22))
     for (i in bytes.size - 22 downTo searchFloor) {
-        if (u32(i) == EOCD_SIGNATURE) {
+        // A comment can contain these four bytes itself, so a signature alone is not enough:
+        // accept a candidate only when the comment length it declares reaches the end of the file.
+        if (u32(i) == EOCD_SIGNATURE && i + 22 + u16(i + 20) == bytes.size) {
             eocd = i
             break
         }
@@ -50,12 +58,15 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
     var cursor = u32(eocd + 16).toInt() // central directory offset
 
     val entries = LinkedHashMap<String, ByteArray>()
+    var totalUncompressed = 0L
     repeat(totalEntries) {
         require(u32(cursor) == CENTRAL_DIRECTORY_SIGNATURE) {
             "Invalid central directory header signature at $cursor"
         }
+        val flags = u16(cursor + 8)
         val method = u16(cursor + 10)
         val compressedSize = u32(cursor + 20).toInt()
+        val uncompressedSize = u32(cursor + 24)
         val nameLength = u16(cursor + 28)
         val extraLength = u16(cursor + 30)
         val commentLength = u16(cursor + 32)
@@ -64,6 +75,17 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
         cursor += 46 + nameLength + extraLength + commentLength
 
         if (name.endsWith("/")) return@repeat
+
+        // Bit 0 of the general purpose flags marks an encrypted entry. Without this check its
+        // ciphertext would be handed back as though it were the file's content.
+        require(flags and FLAG_ENCRYPTED == 0) { "Encrypted entry \"$name\" is not supported" }
+
+        // Checked against what the directory declares, before inflating anything, so an archive
+        // that expands enormously is refused rather than decompressed and then measured.
+        totalUncompressed += uncompressedSize
+        require(totalUncompressed <= MAX_UNCOMPRESSED_BYTES) {
+            "Zip expands to more than $MAX_UNCOMPRESSED_BYTES bytes"
+        }
 
         // The central directory's name/extra lengths can differ from the local header's, so read the
         // local header to locate the actual start of the entry's data.
@@ -78,18 +100,28 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
         entries[name] =
             when (method) {
                 METHOD_STORED -> data
-                METHOD_DEFLATED -> inflate(data)
+                METHOD_DEFLATED -> inflate(data, uncompressedSize, name)
                 else -> throw IllegalArgumentException("Unsupported compression method $method for \"$name\"")
             }
     }
     return entries
 }
 
-/** Inflates a zip entry's raw DEFLATE stream, which carries no zlib header — hence `nowrap`. */
-private fun inflate(data: ByteArray): ByteArray {
+/**
+ * Inflates a zip entry's raw DEFLATE stream, which carries no zlib header — hence `nowrap`. Reads
+ * exactly the [expectedSize] the central directory declared, so the entry cannot expand past it.
+ */
+private fun inflate(
+    data: ByteArray,
+    expectedSize: Long,
+    name: String,
+): ByteArray {
     val inflater = Inflater(true)
     try {
-        return InflaterSource(Buffer().apply { write(data) }, inflater).buffer().readByteArray()
+        val source = InflaterSource(Buffer().apply { write(data) }, inflater).buffer()
+        val inflated = source.readByteArray(expectedSize)
+        require(source.exhausted()) { "Entry \"$name\" inflates past its declared size" }
+        return inflated
     } finally {
         inflater.end()
     }
