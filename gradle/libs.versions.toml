@@ -56,7 +56,6 @@ kotlinx-collections-immutable = "0.5.1"
 kotlinx-coroutines =  "1.11.0"
 kotlinx-datetime = "0.8.0"
 ##            ⬆ = "0.8.0-0.6.x-compat"
-kompress = "2.3.1"
 kotlinx-io = "0.9.1"
 kotlinx-serialization = "1.11.0"
 # As of 2.11.0, androidx lifecycle libs are multiplatform
@@ -70,6 +69,8 @@ ktlint-compose-rules = "0.6.4"
 ktor = "3.5.2"
 lua-kmp = "0.1.0"
 lwjgl = "3.4.2"
+# Also arrives transitively via Coil; pinned here because ZipReader depends on it directly.
+okio = "3.17.0"
 potassium = "0.5.0"
 room = "3.0.1"
 sentryKotlin = "0.27.0"
@@ -117,7 +118,6 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
-kompress-core = { group = "dev.karmakrafts.kompress", name = "kompress-core", version.ref = "kompress" }
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -132,6 +132,7 @@ lwjgl-core = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl" }
 lwjgl-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl" }
 # AndroidX versions still contain stubs for desktop, so we can't migrate yet
 navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 potassium-updater = { module = "com.seanproctor:potassium-updater", version.ref = "potassium" }
 room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
