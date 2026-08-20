@@ -65,6 +65,16 @@ class SkinZipLoaderTest {
                 this[i + 3] == 0x02.toByte()
         }
 
+    /** Offset of the first local file header, which the tests below tamper with. */
+    private fun ByteArray.localHeaderOffset(): Int =
+        indices.first { i ->
+            i + 4 <= size &&
+                this[i] == 0x50.toByte() &&
+                this[i + 1] == 0x4B.toByte() &&
+                this[i + 2] == 0x03.toByte() &&
+                this[i + 3] == 0x04.toByte()
+        }
+
     private fun ByteArray.putU16(
         offset: Int,
         value: Int,
@@ -238,6 +248,52 @@ class SkinZipLoaderTest {
         val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
 
         assertEquals("""Entry "skin.json" inflates past its declared size""", error.message)
+    }
+
+    @Test
+    fun entry_encrypted_only_in_its_local_header_is_rejected() {
+        // The flags live in both headers. An archive that clears the bit centrally and sets it
+        // locally would otherwise have its ciphertext returned as content.
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        zip.putU16(zip.localHeaderOffset() + 6, 1)
+
+        val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+
+        assertEquals("""Encrypted entry "skin.json" is not supported""", error.message)
+    }
+
+    @Test
+    fun unsupported_compression_method_is_rejected_before_its_data_is_copied() {
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        zip.putU16(zip.centralDirectoryOffset() + 10, 99)
+        // Oversized too, so the method has to be rejected first for this to report the method at
+        // all: copying the payload before looking at the method fails on the range instead.
+        zip.putU32(zip.centralDirectoryOffset() + 20, 0x7FFFFFF0L)
+
+        val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+
+        assertEquals("""Unsupported compression method 99 for "skin.json"""", error.message)
+    }
+
+    @Test
+    fun entry_pointing_past_the_end_of_the_archive_is_rejected() {
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        // A local header offset near the 32-bit ceiling, which must be refused rather than wrapped
+        // into a negative index.
+        zip.putU32(zip.centralDirectoryOffset() + 42, 0xFFFFFFF0L)
+
+        val error = assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
+
+        assertEquals("""Invalid local file header for "skin.json"""", error.message)
+    }
+
+    @Test
+    fun central_directory_pointing_past_the_end_of_the_archive_is_rejected() {
+        val zip = zipOf(mapOf("skin.json" to """{ "injury1": { "top": 1 } }""".toByteArray()))
+        val eocd = zip.size - 22
+        zip.putU32(eocd + 16, 0xFFFFFFF0L) // central directory offset
+
+        assertFailsWith<IllegalArgumentException> { SkinLoader.parse(zip) }
     }
 
     @Test

@@ -55,24 +55,32 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
     require(eocd >= 0) { "Not a ZIP file (EOCD not found)" }
 
     val totalEntries = u16(eocd + 10)
-    var cursor = u32(eocd + 16).toInt() // central directory offset
+    var cursor = u32(eocd + 16) // central directory offset
 
+    // Every offset and length below is a number the archive chose, so each is range checked before
+    // it indexes anything. They stay Long until those checks pass: a field near 0xFFFFFFFF would
+    // otherwise wrap to a negative Int and turn a rejectable archive into an indexing accident.
     val entries = LinkedHashMap<String, ByteArray>()
     var totalUncompressed = 0L
     repeat(totalEntries) {
-        require(u32(cursor) == CENTRAL_DIRECTORY_SIGNATURE) {
-            "Invalid central directory header signature at $cursor"
+        require(cursor + 46 <= bytes.size) { "Central directory header at $cursor runs past the end" }
+        val header = cursor.toInt()
+        require(u32(header) == CENTRAL_DIRECTORY_SIGNATURE) {
+            "Invalid central directory header signature at $header"
         }
-        val flags = u16(cursor + 8)
-        val method = u16(cursor + 10)
-        val compressedSize = u32(cursor + 20).toInt()
-        val uncompressedSize = u32(cursor + 24)
-        val nameLength = u16(cursor + 28)
-        val extraLength = u16(cursor + 30)
-        val commentLength = u16(cursor + 32)
-        val localHeaderOffset = u32(cursor + 42).toInt()
-        val name = bytes.decodeToString(cursor + 46, cursor + 46 + nameLength)
-        cursor += 46 + nameLength + extraLength + commentLength
+        val flags = u16(header + 8)
+        val method = u16(header + 10)
+        val compressedSize = u32(header + 20)
+        val uncompressedSize = u32(header + 24)
+        val nameLength = u16(header + 28)
+        val extraLength = u16(header + 30)
+        val commentLength = u16(header + 32)
+        val localHeaderOffset = u32(header + 42)
+        require(header + 46L + nameLength + extraLength + commentLength <= bytes.size) {
+            "Central directory entry at $header runs past the end"
+        }
+        val name = bytes.decodeToString(header + 46, header + 46 + nameLength)
+        cursor = header + 46L + nameLength + extraLength + commentLength
 
         if (name.endsWith("/")) return@repeat
 
@@ -80,10 +88,15 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
         // ciphertext would be handed back as though it were the file's content.
         require(flags and FLAG_ENCRYPTED == 0) { "Encrypted entry \"$name\" is not supported" }
 
+        // Refused here rather than after the entry's bytes have been copied out.
+        require(method == METHOD_STORED || method == METHOD_DEFLATED) {
+            "Unsupported compression method $method for \"$name\""
+        }
+
         // Nothing was compressed, so the two sizes have to agree. Enforcing that is what lets the
         // budget below count uncompressedSize for every entry, including the stored ones whose
         // returned bytes are measured by compressedSize.
-        require(method != METHOD_STORED || compressedSize.toLong() == uncompressedSize) {
+        require(method != METHOD_STORED || compressedSize == uncompressedSize) {
             "Stored entry \"$name\" declares mismatched compressed and uncompressed sizes"
         }
 
@@ -96,20 +109,25 @@ fun readZipEntries(bytes: ByteArray): Map<String, ByteArray> {
 
         // The central directory's name/extra lengths can differ from the local header's, so read the
         // local header to locate the actual start of the entry's data.
-        require(u32(localHeaderOffset) == LOCAL_FILE_HEADER_SIGNATURE) {
+        require(localHeaderOffset + 30 <= bytes.size) { "Invalid local file header for \"$name\"" }
+        val localHeader = localHeaderOffset.toInt()
+        require(u32(localHeader) == LOCAL_FILE_HEADER_SIGNATURE) {
             "Invalid local file header for \"$name\""
         }
-        val localNameLength = u16(localHeaderOffset + 26)
-        val localExtraLength = u16(localHeaderOffset + 28)
-        val dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength
-        val data = bytes.copyOfRange(dataStart, dataStart + compressedSize)
 
-        entries[name] =
-            when (method) {
-                METHOD_STORED -> data
-                METHOD_DEFLATED -> inflate(data, uncompressedSize, name)
-                else -> throw IllegalArgumentException("Unsupported compression method $method for \"$name\"")
-            }
+        // The flags appear in both headers, and only the central directory's were checked above.
+        require(u16(localHeader + 6) and FLAG_ENCRYPTED == 0) {
+            "Encrypted entry \"$name\" is not supported"
+        }
+
+        val localNameLength = u16(localHeader + 26)
+        val localExtraLength = u16(localHeader + 28)
+        val dataStart = localHeader + 30L + localNameLength + localExtraLength
+        require(dataStart + compressedSize <= bytes.size) { "Entry \"$name\" runs past the end" }
+        val start = dataStart.toInt()
+        val data = bytes.copyOfRange(start, start + compressedSize.toInt())
+
+        entries[name] = if (method == METHOD_STORED) data else inflate(data, uncompressedSize, name)
     }
     return entries
 }
