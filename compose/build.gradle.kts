@@ -102,6 +102,11 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.room.runtime)
             implementation(libs.reorderable)
+            // DEFLATE for the shared in-memory zip reader (see ZipReader.kt). Okio's Inflater is
+            // java.util.zip on JVM/Android and platform.zlib on iOS, so both get native zlib from
+            // one common call. Note its zlib APIs are JVM+Native only: adding a js/wasm target
+            // would make them invisible to commonMain.
+            implementation(libs.okio)
         }
         getByName(if (skipIos) "androidMain" else "mobileMain") {
             dependencies {
@@ -147,8 +152,6 @@ kotlin {
         if (!skipIos) {
             iosMain.dependencies {
                 implementation(project(":scripting"))
-                // Pure-Kotlin DEFLATE for the iOS in-memory zip reader (see ZipReader.ios.kt).
-                implementation(libs.kompress.core)
             }
         }
     }
@@ -219,8 +222,7 @@ tasks.register<JavaExec>("streamNetworkBenchmark") {
 
 // The default skin is authored as a directory (skin.json + referenced images) under skin/ and
 // packaged into a zip at build time, instead of committing a binary zip. Reproducible so it doesn't
-// churn between builds. The zip readers on every platform (java.util.zip on JVM/Android, kompress on
-// iOS) handle DEFLATE, so the archive is compressed.
+// churn between builds. The shared zip reader handles DEFLATE, so the archive is compressed.
 val packageDefaultSkin by tasks.registering(Zip::class) {
     description = "Creates skin zip from skin files"
     from(layout.projectDirectory.dir("skin"))
