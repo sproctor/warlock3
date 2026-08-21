@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
@@ -122,8 +123,12 @@ fun WarlockApp(
                                     },
                                 )
                             },
-                        ) {
-                            DashboardView(viewModel = viewModel, connectToSGE = connectToSge)
+                        ) { contentPadding ->
+                            DashboardView(
+                                viewModel = viewModel,
+                                connectToSGE = connectToSge,
+                                modifier = Modifier.padding(contentPadding),
+                            )
                         }
                     },
                     wizardContent = { viewModel, onCancel ->
@@ -157,7 +162,7 @@ private fun WarlockTopBar(showSettings: () -> Unit) {
             IconButton(onClick = showSettings) {
                 Icon(
                     painter = painterResource(Res.drawable.settings_filled),
-                    contentDescription = null,
+                    contentDescription = "Settings",
                 )
             }
         },

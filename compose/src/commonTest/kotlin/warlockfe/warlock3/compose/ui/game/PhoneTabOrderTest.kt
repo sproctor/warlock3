@@ -61,6 +61,15 @@ class PhoneTabOrderTest {
     }
 
     @Test
+    fun repeatedNamesAreDropped() {
+        // The strip keys its items by name, so a repeat would crash it rather than degrade.
+        assertEquals(
+            PhoneTabOrder.Explicit(listOf("main", "thoughts")),
+            decodePhoneTabOrder("[\"main\",\"thoughts\",\"main\"]"),
+        )
+    }
+
+    @Test
     fun orderRoundTrips() {
         val names = listOf("main", "thoughts", "a name, with a comma")
         assertEquals(PhoneTabOrder.Explicit(names), decodePhoneTabOrder(encodePhoneTabOrder(names)))

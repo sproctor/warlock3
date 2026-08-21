@@ -13,6 +13,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +66,12 @@ fun PhoneGameView(
     // Derived rather than held locally: the view model already owns the selection, and a tab can
     // leave the strip under us. Coercing here is what keeps a removed tab from leaving a blank body.
     val currentTab = if (selectedWindow in tabs) selectedWindow else MAIN_WINDOW_NAME
+    // The strip falls back to main whenever the selection leaves it - a tab that was removed, or a
+    // window the game closed. Put the view model back in step, or find-in-window and the selected
+    // styling go on pointing at a window that is no longer on screen.
+    LaunchedEffect(currentTab, selectedWindow) {
+        if (selectedWindow != currentTab) viewModel.selectWindow(currentTab)
+    }
 
     Column(modifier) {
         GameTopBar(

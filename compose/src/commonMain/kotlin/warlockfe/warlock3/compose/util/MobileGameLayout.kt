@@ -17,7 +17,7 @@ enum class MobileGameLayout(
     companion object {
         fun fromWidth(width: Dp): MobileGameLayout =
             when {
-                width > Large.breakpoint -> Large
+                width >= Large.breakpoint -> Large
                 else -> Phone
             }
     }

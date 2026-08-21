@@ -1503,7 +1503,11 @@ class GameViewModel(
      * announced this session is missing from the strip but must survive the edit.
      */
     private fun editPhoneTabs(transform: (List<String>) -> List<String>) {
-        val current = (savedPhoneTabOrder.value as? PhoneTabOrder.Explicit)?.names ?: phoneTabs.value
+        val order = savedPhoneTabOrder.value
+        // Settings have not answered yet, so the strip is showing a placeholder. Editing against it
+        // would write [main] over the order this character already has saved.
+        if (order is PhoneTabOrder.Loading) return
+        val current = (order as? PhoneTabOrder.Explicit)?.names ?: phoneTabs.value
         val next = transform(current)
         if (next == current) return
         savedPhoneTabOrder.value = PhoneTabOrder.Explicit(next)

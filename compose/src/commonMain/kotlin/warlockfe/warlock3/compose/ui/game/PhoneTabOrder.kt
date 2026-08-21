@@ -46,7 +46,9 @@ internal fun decodePhoneTabOrder(raw: String?): PhoneTabOrder =
     } else {
         runCatching { phoneTabJson.decodeFromString<List<String>>(raw) }
             .fold(
-                onSuccess = { PhoneTabOrder.Explicit(it) },
+                // Deduplicated because the strip keys its items by name: a repeat in a
+                // hand-edited or otherwise damaged blob would crash it rather than degrade.
+                onSuccess = { PhoneTabOrder.Explicit(it.distinct()) },
                 onFailure = { PhoneTabOrder.Auto },
             )
     }
