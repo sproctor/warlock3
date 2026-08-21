@@ -1204,7 +1204,10 @@ class GameViewModel(
         if (selection.collapsed) return
         val cut = entryTextState.text.substring(selection.min, selection.max)
         val entry = clipEntryOf(cut) ?: return
-        windowSelectionController.clipboard?.setClipEntry(entry)
+        // The clipboard comes from a window's composition, so it can still be missing. Nothing is
+        // deleted until the text is somewhere the user can get it back from.
+        val clipboard = windowSelectionController.clipboard ?: return
+        clipboard.setClipEntry(entry)
         entryTextState.edit { replace(selection.min, selection.max, "") }
     }
 

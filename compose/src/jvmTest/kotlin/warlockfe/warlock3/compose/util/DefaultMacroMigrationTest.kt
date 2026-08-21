@@ -143,6 +143,7 @@ class DefaultMacroMigrationTest {
             val actions = macros.associate { it.keyCombo to it.action }
             assertEquals("{Copy}", actions[MacroKeyCombo(Key.C.keyCode, ctrl = true)])
             assertEquals("{Paste}", actions[MacroKeyCombo(Key.V.keyCode, ctrl = true)])
+            assertEquals("{Cut}", actions[MacroKeyCombo(Key.X.keyCode, ctrl = true)])
             assertEquals("{SelectAll}", actions[MacroKeyCombo(Key.A.keyCode, ctrl = true)])
             // Nothing from an older wave comes back for a user who had already passed that version.
             assertFalse(ctrlR in actions.keys, "an older default the user deleted stays deleted")
@@ -164,11 +165,12 @@ class DefaultMacroMigrationTest {
             repo.seedAndMigrateDefaultMacros(settings)
 
             val macros = repo.observeGlobalMacros().first()
-            assertEquals("\\xassess\\r", macros.first { it.keyCombo == ctrlC }.action, "user binding wins")
-            assertTrue(
-                macros.any { it.keyCombo == MacroKeyCombo(Key.V.keyCode, ctrl = true) },
-                "the other new defaults are still added",
-            )
+            val actions = macros.associate { it.keyCombo to it.action }
+            assertEquals("\\xassess\\r", actions[ctrlC], "user binding wins")
+            // The rest of the wave still lands.
+            assertEquals("{Paste}", actions[MacroKeyCombo(Key.V.keyCode, ctrl = true)])
+            assertEquals("{Cut}", actions[MacroKeyCombo(Key.X.keyCode, ctrl = true)])
+            assertEquals("{SelectAll}", actions[MacroKeyCombo(Key.A.keyCode, ctrl = true)])
         }
 
     @Test
