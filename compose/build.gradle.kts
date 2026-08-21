@@ -123,6 +123,12 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
+        jvmTest.dependencies {
+            // The host's Skia/desktop runtime, for the tests that drive a real ImageComposeScene
+            // (the library compilation doesn't bundle the skiko native lib).
+            implementation(compose.desktop.currentOs)
+        }
+
         getByName("jvmBenchmark").dependencies {
             implementation(libs.kotlinx.benchmark.runtime)
             // The host's Skia/desktop runtime, so TextMeasurer-based text-layout benchmarks can run
