@@ -27,6 +27,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -335,7 +336,15 @@ private fun WindowViewContent(
     }
 
     Box(modifier.fillMaxSize()) {
-        val state = rememberSelectionState()
+        // Keyed, because the phone runs every tab through this one call site: without it the state
+        // carries over to the next window still anchored in the previous one's rows, which are gone
+        // the moment the tab changes, and the next drag is the crash the effect below exists to
+        // prevent. A fresh state has nothing to leave behind, and the ordering works out - the
+        // container reads it while composing, above the list, so the manager has dropped the old
+        // anchors before the rows carrying them are disposed. Clearing the old state instead would
+        // land after that same composition. Desktop gives each window its own call site, so the key
+        // never changes there.
+        val state = key(windowName) { rememberSelectionState() }
         // Register with the controller so {copy} and {selectall} can act on this window when it is
         // the selected one; the clipboard comes from here because it is a composition local.
         val selectionController = LocalWindowSelectionController.current

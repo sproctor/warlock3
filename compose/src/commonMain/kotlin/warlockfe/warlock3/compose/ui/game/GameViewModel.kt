@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
+import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
@@ -1173,16 +1174,43 @@ class GameViewModel(
      */
     val windowSelectionController = WindowSelectionController()
 
+    /**
+     * Puts [text] on the platform clipboard, reporting whether it got there. The clipboard comes
+     * from a window's composition, so there may not be one yet.
+     */
+    private suspend fun copyToClipboard(text: String): Boolean {
+        val entry = clipEntryOf(text) ?: return false
+        val clipboard = windowSelectionController.clipboard ?: return false
+        clipboard.setClipEntry(entry)
+        return true
+    }
+
     override suspend fun copySelection() {
+        // The entry comes first while it holds focus. These macros run in onPreviewKeyEvent and
+        // consume the key, so nothing else will copy from the entry - and forwarding to the window
+        // would copy nothing anyway: a SelectionContainer releases its selection the moment focus
+        // leaves it, which is what taking focus into the entry does. The two are never both live.
+        if (entryFocused.value) {
+            val selection = entryTextState.selection
+            if (!selection.collapsed) {
+                copyToClipboard(entryTextState.text.substring(selection.min, selection.max))
+                return
+            }
+        }
         val texts = windowSelectionController.stateFor(selectedWindow.value)?.selectedTexts.orEmpty()
         if (texts.isEmpty()) return
         // One entry per selected text composable, which for a stream is one per line. Compose's own
         // copy puts a newline between them, so this is what ctrl-c in the window already produces.
-        val entry = clipEntryOf(texts.joinToString("\n")) ?: return
-        windowSelectionController.clipboard?.setClipEntry(entry)
+        copyToClipboard(texts.joinToString("\n"))
     }
 
     override fun selectAll() {
+        // Focus decides, as it does for copy: ctrl-a in a focused text field selects that field
+        // everywhere else, and the macro consuming the key is the only thing left to do it here.
+        if (entryFocused.value) {
+            entryTextState.edit { selectAll() }
+            return
+        }
         // Only what is composed: a lazy list's off-screen lines are not selectable, which the
         // Compose API documents and we cannot work around from here.
         windowSelectionController.stateFor(selectedWindow.value)?.selectAll()
@@ -1203,11 +1231,8 @@ class GameViewModel(
         val selection = entryTextState.selection
         if (selection.collapsed) return
         val cut = entryTextState.text.substring(selection.min, selection.max)
-        val entry = clipEntryOf(cut) ?: return
-        // The clipboard comes from a window's composition, so it can still be missing. Nothing is
-        // deleted until the text is somewhere the user can get it back from.
-        val clipboard = windowSelectionController.clipboard ?: return
-        clipboard.setClipEntry(entry)
+        // Nothing is deleted until the text is somewhere the user can get it back from.
+        if (!copyToClipboard(cut)) return
         entryTextState.edit { replace(selection.min, selection.max, "") }
     }
 
