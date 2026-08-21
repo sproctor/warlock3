@@ -51,7 +51,6 @@ fun PhoneGameView(
     modifier: Modifier = Modifier,
 ) {
     val character by viewModel.character.collectAsState(null)
-    val mainWindow by viewModel.mainWindowUiState.collectAsState()
     val tabbableWindows by viewModel.tabbableWindows.collectAsState()
     val tabs by viewModel.phoneTabs.collectAsState()
     val defaultStyle = LocalBaseStyle.current.toStyleDefinition()
@@ -76,7 +75,7 @@ fun PhoneGameView(
     Column(modifier) {
         GameTopBar(
             title = character?.name ?: "Warlock",
-            subtitle = mainWindow.windowInfo.value?.subtitle,
+            subtitle = character?.gameCode,
             onMenu = { scope.launch { railState.expand() } },
             onSettings = openSettings,
             onDashboard = navigateToDashboard,
