@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
+import warlockfe.warlock3.compose.ui.window.LocalWindowSelectionController
 import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.LocalPanelDefaults
@@ -43,6 +44,7 @@ fun GameWindowStyles(
                 saveFont = viewModel::saveProgressBarFont,
             ),
         LocalWindowFindController provides viewModel.windowFindController,
+        LocalWindowSelectionController provides viewModel.windowSelectionController,
         LocalStyleMap provides presets,
         LocalBaseStyle provides baseStyle,
         LocalPanelDefaults provides panelDefaults,

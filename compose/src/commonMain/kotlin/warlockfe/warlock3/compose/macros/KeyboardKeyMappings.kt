@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.macros
 
 import androidx.compose.ui.input.key.Key
-import warlockfe.warlock3.compose.util.NumPadDotFix
 
 /**
  * Comprehensive mapping of string codes to androidx.compose.ui.input.key.Key constants
@@ -105,7 +104,7 @@ object KeyboardKeyMappings {
             "NUMPAD_MULTIPLY" to Key.NumPadMultiply,
             "NUMPAD_SUBTRACT" to Key.NumPadSubtract,
             "NUMPAD_ADD" to Key.NumPadAdd,
-            "NUMPAD_DOT" to Key.NumPadDotFix,
+            "NUMPAD_DOT" to Key.NumPadDot,
             "NUMPAD_COMMA" to Key.NumPadComma,
             "NUMPAD_ENTER" to Key.NumPadEnter,
             "NUMPAD_EQUALS" to Key.NumPadEquals,

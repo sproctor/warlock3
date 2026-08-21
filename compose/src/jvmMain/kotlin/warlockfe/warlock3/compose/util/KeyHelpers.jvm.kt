@@ -32,6 +32,3 @@ private val numPadPrefixKeys =
 actual fun Key.getLabel(): String =
     (if (nativeKeyLocation == KEY_LOCATION_NUMPAD && numPadPrefixKeys.contains(nativeKeyCode)) "NumPad " else "") +
         KeyEvent.getKeyText(nativeKeyCode)
-
-actual val Key.Companion.NumPadDotFix: Key
-    get() = Key(KeyEvent.VK_DECIMAL, KEY_LOCATION_NUMPAD)

@@ -264,9 +264,20 @@ class ComposeTextStream(
     // Trim the buffer down to the cap. Callers append first, then trim, so this evicts the oldest
     // lines until at most [effectiveMaxLines] remain.
     private fun removeLines() {
+        // While a selection is up, trimming is what breaks it: Compose pins a selected lazy item so
+        // scrolling cannot dispose it, but nothing saves a row whose line has left the buffer. The
+        // SelectionManager keeps holding the anchor's selectable id, and the next drag event looks
+        // that id up in a map built from the live selectables and throws NoSuchElementException,
+        // which reaches the UI thread's uncaught handler and takes the app down.
+        //
+        // So hold the trim while a drag could be in flight - a pointer is down over the view - and
+        // not merely while something is selected. A selection nobody is touching cannot be mid-drag,
+        // and it is the common case: someone selected a line and moved on. The budget below is a
+        // backstop for a pointer held down and abandoned, nothing more.
         val cap = effectiveMaxLines(maxLines)
+        val limit = if (selectionDragActive) cap + SELECTION_HOLD_SLACK else cap
         var evicted = false
-        while (finishedLines.size > cap) {
+        while (finishedLines.size > limit) {
             finishedLines.removeAt(0)
             cacheLines.removeAt(0)
             removedLines++
@@ -568,6 +579,34 @@ class ComposeTextStream(
         }
     }
 
+    /**
+     * Whether a pointer is down over this stream's view, so a selection drag may be in flight. Set
+     * from the composition; see [removeLines] for why the buffer stops trimming while it is true.
+     */
+    private var selectionDragActive = false
+
+    /**
+     * Drops the hold without suspending, for a view being torn down. The stream outlives its view,
+     * so a window closed mid-selection must not leave the buffer held open for the rest of the
+     * session.
+     */
+    fun releaseSelectionDrag() {
+        scope.launch { setSelectionDragActive(false) }
+    }
+
+    suspend fun setSelectionDragActive(held: Boolean) {
+        workQueue.submit("selection") {
+            if (selectionDragActive == held) return@submit
+            selectionDragActive = held
+            // Catch up on whatever the hold deferred, so releasing a selection does not leave the
+            // buffer over its cap until the next line happens to arrive.
+            if (!held) {
+                removeLines()
+                linesUpdated()
+            }
+        }
+    }
+
     suspend fun setMaxLines(maxLines: Int) {
         workQueue.submit("maxlines") {
             this@ComposeTextStream.maxLines = maxLines
@@ -779,6 +818,12 @@ data class CachedLine(
  * preference, and lines past it are dropped without saying anything.
  */
 private const val HARD_MAX_LINES = 1_000_000
+
+// How far over the scrollback cap the buffer may run while the user holds a selection. Sized for a
+// drag - seconds, and a fast stream is a few hundred lines a minute - not for a selection left up
+// and forgotten, which is the common case and not worth the memory. Small enough that the hold is
+// invisible next to any real scrollback.
+private const val SELECTION_HOLD_SLACK = 200
 
 /**
  * How much room to give the line buffers to start with.

@@ -65,10 +65,13 @@ import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowData
 import warlockfe.warlock3.compose.ui.window.WindowFindController
 import warlockfe.warlock3.compose.ui.window.WindowFindUiState
+import warlockfe.warlock3.compose.ui.window.WindowSelectionController
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.LatestValueWriter
+import warlockfe.warlock3.compose.util.clipEntryOf
 import warlockfe.warlock3.compose.util.openUrl
+import warlockfe.warlock3.compose.util.plainText
 import warlockfe.warlock3.core.client.ClientCloseWindowEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
@@ -1162,6 +1165,60 @@ class GameViewModel(
 
     override fun findPrev() {
         if (findStateFlow.value == null) openFind() else findStep(-1)
+    }
+
+    /**
+     * The selections of the open windows, so [copySelection] and [selectAll] can reach the one the
+     * user is looking at. Populated by the window views; see [WindowSelectionController].
+     */
+    val windowSelectionController = WindowSelectionController()
+
+    override suspend fun copySelection() {
+        val texts = windowSelectionController.stateFor(selectedWindow.value)?.selectedTexts.orEmpty()
+        if (texts.isEmpty()) return
+        // One entry per selected text composable, which for a stream is one per line. Compose's own
+        // copy puts a newline between them, so this is what ctrl-c in the window already produces.
+        val entry = clipEntryOf(texts.joinToString("\n")) ?: return
+        windowSelectionController.clipboard?.setClipEntry(entry)
+    }
+
+    override fun selectAll() {
+        // Only what is composed: a lazy list's off-screen lines are not selectable, which the
+        // Compose API documents and we cannot work around from here.
+        windowSelectionController.stateFor(selectedWindow.value)?.selectAll()
+    }
+
+    private val entryFocused = MutableStateFlow(false)
+
+    /** Reported by the entry composables, so {cut} can tell whether the entry is the user's target. */
+    fun setEntryFocused(focused: Boolean) {
+        entryFocused.value = focused
+    }
+
+    override suspend fun cutEntrySelection() {
+        // Unlike copy, this one never leaves the entry. Cutting from a window would mean deleting
+        // game text, and a cut aimed at an unfocused entry should do nothing rather than quietly
+        // remove whatever happened to be selected there.
+        if (!entryFocused.value) return
+        val selection = entryTextState.selection
+        if (selection.collapsed) return
+        val cut = entryTextState.text.substring(selection.min, selection.max)
+        val entry = clipEntryOf(cut) ?: return
+        windowSelectionController.clipboard?.setClipEntry(entry)
+        entryTextState.edit { replace(selection.min, selection.max, "") }
+    }
+
+    override suspend fun pasteIntoEntry() {
+        val text =
+            windowSelectionController.clipboard
+                ?.getClipEntry()
+                ?.plainText()
+                ?.takeIf { it.isNotEmpty() }
+                ?: return
+        entryTextState.edit {
+            // Replaces the selection when there is one, inserts at the cursor when there is not.
+            replace(selection.min, selection.max, text)
+        }
     }
 
     // Open the find overlay over the currently selected window. No-op if that window has no text

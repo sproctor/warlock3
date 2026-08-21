@@ -30,6 +30,21 @@ object MacroCommands {
             MacroCommand("historysearchexit") {
                 it.historySearchExit()
             },
+            // {copy} and {paste} carry the meanings the old client gave them, where they were bound
+            // to ctrl-c and ctrl-v by default: copy takes the focused window's selection, and paste
+            // goes to the command entry rather than to any window.
+            MacroCommand("copy") {
+                it.copySelection()
+            },
+            MacroCommand("paste") {
+                it.pasteIntoEntry()
+            },
+            MacroCommand("cut") {
+                it.cutEntrySelection()
+            },
+            MacroCommand("selectall") {
+                it.selectAll()
+            },
             MacroCommand("findnext") {
                 it.findNext()
             },

@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.rememberSelectionState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +47,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -331,8 +333,49 @@ private fun WindowViewContent(
         }
     }
 
-    Box(modifier.fillMaxSize()) {
-        SelectionContainer {
+    var pointerDown by remember { mutableStateOf(false) }
+    Box(
+        modifier
+            .fillMaxSize()
+            // Watches on the Initial pass and never consumes, so the selection's own gesture
+            // handling below is untouched.
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        pointerDown = event.changes.any { it.pressed }
+                    }
+                }
+            },
+    ) {
+        val state = rememberSelectionState()
+        // Register with the controller so {copy} and {selectall} can act on this window when it is
+        // the selected one; the clipboard comes from here because it is a composition local.
+        val selectionController = LocalWindowSelectionController.current
+        val clipboard = LocalClipboard.current
+        DisposableEffect(selectionController, windowName, state, clipboard) {
+            selectionController.clipboard = clipboard
+            selectionController.register(windowName, state)
+            onDispose { selectionController.unregister(windowName) }
+        }
+        // Trimming the buffer out from under a drag is what takes the app down: the SelectionManager
+        // keeps the anchor's selectable id, the evicted row unregisters it, and the next drag event
+        // throws looking it up. The window that a pointer is down over is the only one that can be
+        // mid-drag, so that - not "something is selected" - is what holds the trim. A selection left
+        // up and forgotten holds nothing, which is the common case and not worth the memory.
+        LaunchedEffect(stream, pointerDown) {
+            stream.setSelectionDragActive(pointerDown)
+        }
+        // The effect above is cancelled when this window goes away, which would leave a stream held
+        // if the view went while a pointer was down. A stream outlives its view, so release on exit.
+        DisposableEffect(stream) {
+            onDispose {
+                stream.releaseSelectionDrag()
+            }
+        }
+        SelectionContainer(
+            state = state,
+        ) {
             BoxWithConstraints(
                 Modifier
                     .fillMaxSize()
