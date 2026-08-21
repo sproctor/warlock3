@@ -60,7 +60,7 @@ fun WindowsView(
     }.collectAsState(StyleLayer())
     val globalBase by remember { characterSettingsRepository.observeBaseStyle(GLOBAL_CHARACTER_ID) }.collectAsState(StyleLayer())
     // The panel scale a window's override falls back to. It has to come from the character being
-    // edited (which the selector above can change), not from LocalPanelScale - that belongs to the
+    // edited (which the selector above can change), not from LocalPanelDefaults - that belongs to the
     // connected game's composition, which is a different character, or absent entirely.
     val characterPanelScale by remember(currentCharacter.id) {
         characterSettingsRepository.observePanelScale(currentCharacter.id)

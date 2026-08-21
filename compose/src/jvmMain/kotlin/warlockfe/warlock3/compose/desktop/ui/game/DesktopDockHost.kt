@@ -15,6 +15,7 @@ import com.seanproctor.docking.jewel.JewelDocking
 import com.seanproctor.docking.state.DockState
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.game.GameWindowStyles
 import warlockfe.warlock3.compose.util.LocalSkin
 
 /**

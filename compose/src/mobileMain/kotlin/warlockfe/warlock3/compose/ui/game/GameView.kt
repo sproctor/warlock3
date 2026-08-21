@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -21,22 +20,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isAltPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.components.CompassButtonColors
@@ -45,28 +35,16 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
-import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
-import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.PanelContent
-import warlockfe.warlock3.compose.ui.window.ProgressBarSettingsState
 import warlockfe.warlock3.compose.util.LocalBaseStyle
-import warlockfe.warlock3.compose.util.LocalDefaultFont
-import warlockfe.warlock3.compose.util.LocalMonoFont
-import warlockfe.warlock3.compose.util.LocalPanelFont
-import warlockfe.warlock3.compose.util.LocalPanelScale
-import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.MobileGameLayout
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
-import warlockfe.warlock3.compose.util.WindowWidthSizeClass
-import warlockfe.warlock3.compose.util.gameLayout
-import warlockfe.warlock3.core.text.toFontConfig
 import warlockfe.warlock3.core.text.toStyleDefinition
 
 /**
- * The mobile game screen. Responsive across Material 3 width size classes: a [PhoneGameView] (all
- * windows in tabs) at Compact/Medium widths, a [TabletGameView] (main + a tabbed pane) at Expanded,
- * and the drag-and-drop [LargeGameView] at Large/Extra-large. The disconnected banner, macro-error
- * dialog and key-to-focus routing are shared across all three.
+ * The mobile game screen. Responsive across Material 3 width size classes: a [PhoneGameView] (the
+ * windows the user has picked, as tabs) at Compact/Medium widths, and the drag-and-drop
+ * [LargeGameView] at Expanded and wider. The macro-error dialog, reconnecting dialog and
+ * key-to-focus routing are shared by both.
  */
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -74,61 +52,15 @@ fun GameView(
     viewModel: GameViewModel,
     navigateToDashboard: () -> Unit,
     openSettings: () -> Unit,
-    openDrawer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val entryFocusRequester = remember { FocusRequester() }
-    // On JVM, KeyDown is followed by an Unknown/KEY_TYPED event
-    var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
-    Surface(
-        modifier =
-            modifier.onPreviewKeyEvent { event ->
-                if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
-                    ignoreNextUnknownKeyEvent = false
-                    return@onPreviewKeyEvent true
-                }
-                ignoreNextUnknownKeyEvent = false
-                // The find bar handles its own keys while it's focused; step aside so it can.
-                if (viewModel.windowFindController.focused.value) {
-                    return@onPreviewKeyEvent false
-                }
-                viewModel.handleKeyPress(event).also {
-                    ignoreNextUnknownKeyEvent = it
-                    if (!it &&
-                        event.type == KeyEventType.KeyDown &&
-                        !event.isAltPressed &&
-                        !event.isCtrlPressed &&
-                        !event.isMetaPressed
-                    ) {
-                        entryFocusRequester.requestFocus()
-                    }
-                }
-            },
-    ) {
+    val handleKey = rememberGameKeyHandler(viewModel, entryFocusRequester)
+    Surface(modifier = modifier.onPreviewKeyEvent(handleKey)) {
         BoxWithConstraints {
-            val layout = WindowWidthSizeClass.fromWidth(maxWidth).gameLayout()
+            val layout = MobileGameLayout.fromWidth(maxWidth)
             Column(Modifier.fillMaxSize()) {
-                val progressBarSettings by viewModel.progressBarSettings.collectAsState()
-                val presets by viewModel.presets.collectAsState(emptyMap())
-                val baseStyle by viewModel.baseStyle.collectAsState()
-                val monoFont by viewModel.monoFont.collectAsState()
-                val panelFont by viewModel.panelFont.collectAsState()
-                val panelScale by viewModel.panelScale.collectAsState()
-                CompositionLocalProvider(
-                    LocalProgressBarSettings provides
-                        ProgressBarSettingsState(
-                            settings = progressBarSettings,
-                            saveColors = viewModel::saveProgressBarColors,
-                            saveFont = viewModel::saveProgressBarFont,
-                        ),
-                    LocalWindowFindController provides viewModel.windowFindController,
-                    LocalStyleMap provides presets,
-                    LocalBaseStyle provides baseStyle.toStyleDefinition(),
-                    LocalDefaultFont provides baseStyle.toFontConfig(),
-                    LocalMonoFont provides monoFont,
-                    LocalPanelFont provides panelFont,
-                    LocalPanelScale provides panelScale,
-                ) {
+                GameWindowStyles(viewModel) {
                     when (layout) {
                         MobileGameLayout.Phone -> {
                             PhoneGameView(
@@ -136,17 +68,6 @@ fun GameView(
                                 entryFocusRequester = entryFocusRequester,
                                 navigateToDashboard = navigateToDashboard,
                                 openSettings = openSettings,
-                                openDrawer = openDrawer,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-
-                        MobileGameLayout.Tablet -> {
-                            TabletGameView(
-                                viewModel = viewModel,
-                                entryFocusRequester = entryFocusRequester,
-                                openSettings = openSettings,
-                                navigateToDashboard = navigateToDashboard,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -216,7 +137,7 @@ fun GameBottomBar(
     onReconnect: (() -> Unit)? = null,
     onDashboard: (() -> Unit)? = null,
 ) {
-    val style = LocalBaseStyle.current
+    val style = LocalBaseStyle.current.toStyleDefinition()
     Row(
         modifier =
             modifier

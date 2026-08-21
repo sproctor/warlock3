@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,9 +51,8 @@ import warlockfe.warlock3.core.window.WindowType
 // The breathing room a game panel's widgets get inside their window.
 private val PANEL_PADDING = 8.dp
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun WindowView(
+actual fun WindowView(
     uiState: WindowUiState,
     canHide: Boolean,
     defaultStyle: StyleDefinition,
@@ -67,11 +65,9 @@ fun WindowView(
     onSelect: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
-    modifier: Modifier = Modifier,
-    headerModifier: Modifier = Modifier,
-    // False when the window sits in a dock area, whose header (title, drag handle, actions)
-    // replaces the window's own.
-    showHeader: Boolean = true,
+    modifier: Modifier,
+    headerModifier: Modifier,
+    showHeader: Boolean,
     clearStream: () -> Unit,
 ) {
     WindowViewScaffold(

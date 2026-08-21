@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 
 // Settings screens repeated these label-plus-control rows inline a dozen times. The control takes
 // `onCheckedChange = null` / `onClick = null` because the surrounding row owns the toggle/select
-// semantics (so tapping the label works too). These mirror the desktop shim/WarlockCheckboxRow and
-// WarlockRadioButtonRow helpers.
+// semantics (so tapping the label works too). These mirror Jewel's CheckboxRow and RadioButtonRow,
+// which the desktop screens use directly.
 
 /** A label and a Material [Switch] in a single [toggleable] row. */
 @Composable

@@ -76,7 +76,7 @@ fun WindowsSettingsSection(
     characterId: String,
     windowSettingRepository: WindowSettingsRepository,
     // The edited character's panel scale, which a window's override falls back to. Passed in
-    // rather than read from LocalPanelScale: that local carries the *connected* character's
+    // rather than read from LocalPanelDefaults: that local carries the *connected* character's
     // scale, and these settings can be edited for a different character, or with no game up.
     characterPanelScale: Float,
     defaultStyle: StyleDefinition,

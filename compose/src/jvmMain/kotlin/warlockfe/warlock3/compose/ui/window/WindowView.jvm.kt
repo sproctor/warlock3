@@ -1,19 +1,15 @@
-package warlockfe.warlock3.compose.desktop.ui.window
+package warlockfe.warlock3.compose.ui.window
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.defaultScrollbarStyle
-import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +17,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,8 +25,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -48,13 +41,11 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.separator
-import org.jetbrains.jewel.ui.theme.menuStyle
+import warlockfe.warlock3.compose.desktop.shim.WarlockNavMenuItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
-import warlockfe.warlock3.compose.ui.window.WindowHeader
-import warlockfe.warlock3.compose.ui.window.WindowUiState
-import warlockfe.warlock3.compose.ui.window.WindowViewScaffold
-import warlockfe.warlock3.compose.ui.window.scrollbarSkinColors
+import warlockfe.warlock3.compose.desktop.ui.window.DesktopPanelContent
+import warlockfe.warlock3.compose.desktop.ui.window.MeasuredScrollbarAdapter
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -74,7 +65,7 @@ private val titleSmallStyle =
     )
 
 @Composable
-fun DesktopWindowView(
+actual fun WindowView(
     uiState: WindowUiState,
     canHide: Boolean,
     defaultStyle: StyleDefinition,
@@ -87,11 +78,9 @@ fun DesktopWindowView(
     onSelect: () -> Unit,
     scrollEvents: List<ScrollEvent>,
     handledScrollEvent: (ScrollEvent) -> Unit,
-    modifier: Modifier = Modifier,
-    headerModifier: Modifier = Modifier,
-    // False when the window sits in a dock area, whose header (title, drag handle, actions)
-    // replaces the window's own.
-    showHeader: Boolean = true,
+    modifier: Modifier,
+    headerModifier: Modifier,
+    showHeader: Boolean,
     clearStream: () -> Unit,
 ) {
     WindowViewScaffold(
@@ -327,7 +316,7 @@ private fun ActionContextMenu(
         // the whole menu on click, which would dismiss the popup instead of drilling in/out.
         if (path.isNotEmpty()) {
             passiveItem {
-                NavMenuItem(
+                WarlockNavMenuItem(
                     label = path.last().label,
                     leading = "\u2190",
                     onClick = { path = path.dropLast(1) },
@@ -353,7 +342,7 @@ private fun ActionContextMenu(
 
                 is MenuCategoryNode -> {
                     passiveItem {
-                        NavMenuItem(
+                        WarlockNavMenuItem(
                             label = node.label,
                             trailing = "\u203A",
                             onClick = { path = path + node },
@@ -361,68 +350,6 @@ private fun ActionContextMenu(
                     }
                 }
             }
-        }
-    }
-}
-
-/** A menu row that navigates within the popup (drill in/out) without closing it. */
-@Composable
-private fun NavMenuItem(
-    label: String,
-    onClick: () -> Unit,
-    leading: String? = null,
-    trailing: String? = null,
-) {
-    val style = JewelTheme.menuStyle
-    val itemColors = style.colors.itemColors
-    val itemMetrics = style.metrics.itemMetrics
-    val interactionSource = remember { MutableInteractionSource() }
-    val hovered by interactionSource.collectIsHoveredAsState()
-    val pressed by interactionSource.collectIsPressedAsState()
-    // Jewel's selectableItem highlights while focused and grabs focus on hover; take focus on hover
-    // here too so the previously hovered selectable item doesn't stay highlighted.
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(interactionSource) {
-        interactionSource.interactions.collect { interaction ->
-            if (interaction is HoverInteraction.Enter) {
-                focusRequester.requestFocus()
-            }
-        }
-    }
-    val background =
-        when {
-            pressed -> itemColors.backgroundPressed
-            hovered -> itemColors.backgroundHovered
-            else -> itemColors.background
-        }
-    val contentColor =
-        when {
-            pressed -> itemColors.contentPressed
-            hovered -> itemColors.contentHovered
-            else -> itemColors.content
-        }
-    androidx.compose.foundation.layout.Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester)
-                .background(background, RoundedCornerShape(itemMetrics.selectionCornerSize))
-                .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-                .defaultMinSize(minHeight = itemMetrics.minHeight)
-                .padding(itemMetrics.contentPadding),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (leading != null) {
-            Text(text = leading, color = contentColor)
-        }
-        Text(
-            modifier = Modifier.weight(1f),
-            text = label,
-            color = contentColor,
-        )
-        if (trailing != null) {
-            Text(text = trailing, color = contentColor)
         }
     }
 }

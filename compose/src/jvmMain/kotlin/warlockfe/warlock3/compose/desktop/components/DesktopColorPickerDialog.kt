@@ -35,6 +35,7 @@ import com.github.skydoves.colorpicker.compose.HsvColorPicker
 import com.github.skydoves.colorpicker.compose.rememberColorPickerController
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.util.toArgbHexString
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
@@ -152,7 +153,7 @@ fun DesktopColorPickerButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    WarlockOutlinedButton(modifier = modifier, onClick = onClick) {
+    OutlinedButton(modifier = modifier, onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text, maxLines = 1)
             Spacer(Modifier.width(8.dp))

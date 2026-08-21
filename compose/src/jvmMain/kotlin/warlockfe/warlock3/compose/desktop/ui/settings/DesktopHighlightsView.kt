@@ -33,16 +33,16 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CheckboxRow
+import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import sh.calvin.reorderable.ReorderableColumn
 import warlockfe.warlock3.compose.components.StyleChip
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -229,12 +229,12 @@ private fun DesktopEditHighlightDialog(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                WarlockRadioButtonRow(
+                RadioButtonRow(
                     selected = !isRegex,
                     onClick = { isRegex = false },
                     text = "Text highlight",
                 )
-                WarlockRadioButtonRow(
+                RadioButtonRow(
                     selected = isRegex,
                     onClick = { isRegex = true },
                     text = "Regex highlight",
@@ -288,18 +288,18 @@ private fun DesktopEditHighlightDialog(
 
             if (!isRegex) {
                 val style = styles[0]
-                WarlockCheckboxRow(
+                CheckboxRow(
                     checked = style.entireLine == true,
                     onCheckedChange = { styles[0] = style.copy(entireLine = it) },
                     text = "Highlight entire line",
                 )
-                WarlockCheckboxRow(
+                CheckboxRow(
                     checked = matchPartialWord,
                     onCheckedChange = { matchPartialWord = it },
                     text = "Match partial words",
                 )
             }
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = ignoreCase,
                 onCheckedChange = { ignoreCase = it },
                 text = "Ignore case",

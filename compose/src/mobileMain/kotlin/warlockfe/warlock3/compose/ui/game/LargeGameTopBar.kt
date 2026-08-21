@@ -37,13 +37,13 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.generated.resources.more_vert
 import warlockfe.warlock3.compose.generated.resources.settings_filled
+import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 
 /**
  * The Large-layout top app bar, modelled on the Material 3 desktop pane in the design: a menu button
  * that toggles the window list, the character name + game/room subtitle, a connection status pill,
  * a settings button, and an overflow menu.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LargeGameTopBar(
     title: String,
@@ -61,7 +61,7 @@ fun LargeGameTopBar(
         modifier = modifier,
         navigationIcon = {
             IconButton(onClick = onMenu) {
-                Icon(painter = painterResource(Res.drawable.menu), contentDescription = "Toggle window list")
+                Icon(painter = painterResource(Res.drawable.space_dashboard_filled), contentDescription = "Toggle window list")
             }
         },
         title = {

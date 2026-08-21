@@ -34,12 +34,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CheckboxRow
+import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
@@ -117,7 +117,7 @@ fun DesktopGeneralSettingsView(
             val markLinks by clientSettingRepository
                 .observeMarkLinks()
                 .collectAsState(initial = true)
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = markLinks,
                 onCheckedChange = {
                     scope.launch {
@@ -132,7 +132,7 @@ fun DesktopGeneralSettingsView(
             val showImages by clientSettingRepository
                 .observeShowImages()
                 .collectAsState(initial = true)
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = showImages,
                 onCheckedChange = {
                     scope.launch {
@@ -147,7 +147,7 @@ fun DesktopGeneralSettingsView(
             val suppressPrompts by clientSettingRepository
                 .observeSuppressPrompts()
                 .collectAsState(initial = false)
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = suppressPrompts,
                 onCheckedChange = {
                     scope.launch {
@@ -162,7 +162,7 @@ fun DesktopGeneralSettingsView(
             val autoConnectLastConnection by clientSettingRepository
                 .observeAutoConnectLastConnection()
                 .collectAsState(initial = false)
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = autoConnectLastConnection,
                 onCheckedChange = {
                     scope.launch {
@@ -291,7 +291,7 @@ fun DesktopGeneralSettingsView(
             Text("Select theme")
             Column {
                 ThemeSetting.entries.forEach { entry ->
-                    WarlockRadioButtonRow(
+                    RadioButtonRow(
                         selected = currentTheme == entry,
                         onClick = {
                             scope.launch { clientSettingRepository.putTheme(entry) }
@@ -309,7 +309,7 @@ fun DesktopGeneralSettingsView(
             Text("Release channel to check for updates")
             Column {
                 ReleaseChannelSetting.entries.forEach { entry ->
-                    WarlockRadioButtonRow(
+                    RadioButtonRow(
                         selected = currentReleaseChannel == entry,
                         onClick = {
                             scope.launch { clientSettingRepository.putReleaseChannel(entry) }
@@ -380,7 +380,7 @@ fun DesktopGeneralSettingsView(
                 Text("Select logging style")
                 Column {
                     LogType.entries.forEach { entry ->
-                        WarlockRadioButtonRow(
+                        RadioButtonRow(
                             selected = loggingSettings!!.type == entry,
                             onClick = {
                                 scope.launch { clientSettingRepository.putLoggingType(entry) }
@@ -390,7 +390,7 @@ fun DesktopGeneralSettingsView(
                     }
                 }
 
-                WarlockCheckboxRow(
+                CheckboxRow(
                     checked = loggingSettings!!.logTimestamps,
                     onCheckedChange = {
                         scope.launch { clientSettingRepository.putLoggingTimestamps(it) }

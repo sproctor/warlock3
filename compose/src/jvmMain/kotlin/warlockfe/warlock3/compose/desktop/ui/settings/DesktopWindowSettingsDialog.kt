@@ -14,13 +14,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerButton
 import warlockfe.warlock3.compose.desktop.components.DesktopColorPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.util.toColor
@@ -114,7 +114,7 @@ fun DesktopWindowSettingsDialog(
                 )
             }
             if (nameFilterOption) {
-                WarlockCheckboxRow(
+                CheckboxRow(
                     checked = nameFilter,
                     onCheckedChange = { saveNameFilter(it) },
                     text = "Only show lines with names in list",

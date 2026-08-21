@@ -47,6 +47,7 @@ import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.text.toWarlockColor
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowType
 
@@ -65,21 +66,15 @@ fun LargeGameView(
 ) {
     var windowListVisible by remember { mutableStateOf(false) }
     Column(modifier) {
-        val mainWindow = viewModel.mainWindowUiState.collectAsState()
         val defaultStyle = LocalBaseStyle.current
+        val baseBackground = defaultStyle.background.toWarlockColor()
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
         val character by viewModel.character.collectAsState(null)
         val disconnected by viewModel.disconnected.collectAsState()
 
         LargeGameTopBar(
             title = character?.name ?: "Warlock",
-            subtitle =
-                listOfNotNull(
-                    character?.gameCode?.takeIf { it.isNotBlank() },
-                    mainWindow.value.windowInfo.value
-                        ?.subtitle
-                        ?.takeIf { it.isNotBlank() },
-                ).joinToString(separator = " - ").ifBlank { null },
+            subtitle = character?.gameCode?.takeIf { it.isNotBlank() },
             connected = !disconnected,
             canReconnect = viewModel.canReconnect,
             onReconnect = viewModel::reconnect,
@@ -99,7 +94,7 @@ fun LargeGameView(
                         .width(240.dp)
                         .background(
                             color =
-                                defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
+                                baseBackground.takeIf { it.isSpecified() }?.toColor()
                                     ?: MaterialTheme.colorScheme.surface,
                             shape = MaterialTheme.shapes.extraSmall,
                         ).border(
@@ -177,7 +172,13 @@ fun LargeGameView(
             val windowContent =
                 remember(viewModel) {
                     @Composable { window: OpenGameWindow ->
-                        MobileDockedWindow(viewModel = viewModel, window = window)
+                        DockedWindow(viewModel = viewModel, window = window)
+                    }
+                }
+            val tabActions =
+                remember {
+                    @Composable { _: OpenGameWindow, hasUnreadText: Boolean ->
+                        TabActivityDot(hasUnreadText, MaterialTheme.colorScheme.primary)
                     }
                 }
             val dockState =
@@ -185,6 +186,7 @@ fun LargeGameView(
                     viewModel = viewModel,
                     trailingActions = trailingActions,
                     windowContent = windowContent,
+                    tabActions = tabActions,
                 )
             Box(Modifier.weight(1f)) {
                 Material3Docking {

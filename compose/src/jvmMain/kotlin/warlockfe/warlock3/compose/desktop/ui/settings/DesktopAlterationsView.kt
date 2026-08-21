@@ -22,9 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
@@ -155,7 +155,7 @@ private fun DesktopEditAlterationDialog(
             WarlockTextField(state = replacement, modifier = Modifier.fillMaxWidth())
             Text("Apply alteration to stream (leave blank for any)")
             WarlockTextField(state = sourceStream, modifier = Modifier.fillMaxWidth())
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = ignoreCase,
                 onCheckedChange = { ignoreCase = it },
                 text = "Ignore case",

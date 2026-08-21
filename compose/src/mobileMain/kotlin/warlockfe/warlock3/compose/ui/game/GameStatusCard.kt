@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import warlockfe.warlock3.compose.ui.window.PanelContent
 import warlockfe.warlock3.compose.util.LocalBaseStyle
+import warlockfe.warlock3.core.text.toStyleDefinition
 
 /**
  * The phone status card: vitals (the game-provided minivitals bars), the hands, and the active
@@ -25,7 +26,7 @@ fun GameStatusCard(
     viewModel: GameViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val style = LocalBaseStyle.current
+    val style = LocalBaseStyle.current.toStyleDefinition()
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),

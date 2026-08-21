@@ -46,6 +46,8 @@ intellij = "262.9437.136"
 ##    ⬆ = "262.9437.185"
 ##    ⬆ = "262.9437.195"
 ##    ⬆ = "262.9437.214"
+##    ⬆ = "262.9437.286"
+##    ⬆ = "262.9437.288"
 # IJ repo gets pre-released versions and refreshVersions can't properly filter it.
 # Usable versions are here: https://central.sonatype.com/artifact/org.jetbrains.jewel/jewel-int-ui-standalone/versions
 jewel = "0.39.1-262.9437.29"
@@ -67,10 +69,9 @@ ksp = "2.3.11"
 ktlint-gradle = "14.2.0"
 ktlint-compose-rules = "0.6.4"
 ktor = "3.5.2"
-lua-kmp = "0.1.0"
+lua-kmp = "0.1.1"
 lwjgl = "3.4.2"
-# Also arrives transitively via Coil; pinned here because ZipReader depends on it directly.
-okio = "3.17.0"
+okio = "3.18.1"
 potassium = "0.5.0"
 room = "3.0.1"
 sentryKotlin = "0.27.0"
@@ -135,8 +136,8 @@ lwjgl-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl" }
 # AndroidX versions still contain stubs for desktop, so we can't migrate yet
 navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
-reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 potassium-updater = { module = "com.seanproctor:potassium-updater", version.ref = "potassium" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
 room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
 sentry-kotlin = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKotlin" }

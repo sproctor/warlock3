@@ -19,9 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
@@ -103,7 +103,7 @@ fun DesktopConnectionSettingsDialog(
                     "\"{home}\" is replaced by the user home directory.",
             )
 
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = proxyEnabled,
                 onCheckedChange = { proxyEnabled = it },
                 text = "Enable proxy",
