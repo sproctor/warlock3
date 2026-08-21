@@ -19,6 +19,7 @@ import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.util.HighlightIndex
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.presetColorPalette
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -260,6 +261,10 @@ class WindowRegistryImpl(
                     globalBase.resolveRefs(palette),
                     globalLegacy?.toLayer(),
                     skin["default"]?.toLayer(),
+                    // Bottom of the cascade, so it shows only when no skin is loaded at all. Above
+                    // the skin it could never lose, which is what left the story window
+                    // light-on-dark under a light theme.
+                    SAFE_DEFAULT_STYLE.toLayer(),
                 ),
             )
         }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = ResolvedStyle())
