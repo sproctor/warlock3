@@ -16,6 +16,12 @@ permissions:
 
 env:
   GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  # Nothing here runs or packages the desktop app, so it does not need JetBrains Runtime - and
+  # asking for one made every job depend on setup-java's JBR lookup, an unauthenticated GitHub API
+  # call rate-limited per runner IP that was failing roughly a quarter of the time. Set as an
+  # ORG_GRADLE_PROJECT_ env var rather than a -P flag so it also reaches the Gradle that the Xcode
+  # build phase starts, which this workflow does not invoke directly.
+  ORG_GRADLE_PROJECT_jbrSkip: "true"
 
 jobs:
   build:
@@ -27,11 +33,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up JBR
+      - name: Set up Java
         uses: actions/setup-java@v5
         with:
-          distribution: 'jetbrains'
-          java-version: '25'
+          distribution: 'temurin'
+          java-version: '21'
 
       # cache-provider: basic is required, not a tuning knob. v6 extracted caching into
       # gradle-actions-caching, a proprietary component outside the action's MIT license whose
@@ -97,11 +103,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up JBR
+      - name: Set up Java
         uses: actions/setup-java@v5
         with:
-          distribution: 'jetbrains'
-          java-version: '25'
+          distribution: 'temurin'
+          java-version: '21'
 
       # See the note on cache-provider in the build job.
       - name: Setup Gradle
@@ -136,11 +142,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up JBR
+      - name: Set up Java
         uses: actions/setup-java@v5
         with:
-          distribution: 'jetbrains'
-          java-version: '25'
+          distribution: 'temurin'
+          java-version: '21'
 
       # See the note on cache-provider in the build job.
       - name: Setup Gradle

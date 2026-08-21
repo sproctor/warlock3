@@ -84,15 +84,25 @@ tasks.withType<AbstractComposeHotRun>().configureEach {
     javaLauncher = jbrRuntime
 }
 
+// Potassium's javaHome is a plain String, so reading it resolves the JBR toolchain during
+// configuration - on every build that configures this project, whether or not it will ever run or
+// package the app. That made a JBR install a prerequisite for merely compiling, so CI had to fetch
+// one for all three jobs, and setup-java resolves JBR through an unauthenticated GitHub API call
+// that is rate-limited per runner IP. CI passes -PjbrSkip=true and builds under Temurin instead;
+// nothing it runs packages the app. Anything that does package needs a real JBR, so leave it unset.
+val skipJbr = (findProperty("jbrSkip") as? String)?.toBoolean() == true
+
 potassium {
     mainClass = "warlockfe.warlock3.app.MainKt"
 
     // Run + package under JBR 25 even though the rest of the build uses
     // Temurin 21 (see toolchain config above).
-    javaHome =
-        jbrRuntime
-            .get()
-            .metadata.installationPath.asFile.absolutePath
+    if (!skipJbr) {
+        javaHome =
+            jbrRuntime
+                .get()
+                .metadata.installationPath.asFile.absolutePath
+    }
 
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
