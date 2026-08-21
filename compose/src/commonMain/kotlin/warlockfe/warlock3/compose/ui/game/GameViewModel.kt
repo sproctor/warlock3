@@ -68,7 +68,6 @@ import warlockfe.warlock3.compose.ui.window.WindowFindUiState
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.LatestValueWriter
-import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.core.client.ClientCloseWindowEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
@@ -500,7 +499,9 @@ class GameViewModel(
             WindowUiState(
                 name = "main",
                 windowInfo = mutableStateOf(windows.value.firstOrNull { it.name == "main" }),
-                style = SAFE_DEFAULT_STYLE,
+                // Unspecified, not a concrete style: a window with nothing saved has to inherit the
+                // base style, and mergeWith keeps whatever this one specifies.
+                style = StyleDefinition(),
                 data =
                     StreamWindowData(
                         stream = windowRegistry.getOrCreateStream("main") as ComposeTextStream,
@@ -1336,7 +1337,7 @@ class GameViewModel(
         return WindowUiState(
             name = name,
             windowInfo = mutableStateOf(windowInfo),
-            style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
+            style = entity?.getStyle(colorPalette.value) ?: StyleDefinition(),
             font = entity?.font,
             monoFont = entity?.monoFont,
             scale = entity?.scale,
@@ -1445,7 +1446,7 @@ class GameViewModel(
             WindowUiState(
                 name = name,
                 windowInfo = mutableStateOf(windowInfo),
-                style = entity?.getStyle(colorPalette.value) ?: SAFE_DEFAULT_STYLE,
+                style = entity?.getStyle(colorPalette.value) ?: StyleDefinition(),
                 font = entity?.font,
                 monoFont = entity?.monoFont,
                 scale = entity?.scale,

@@ -19,6 +19,7 @@ import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.util.HighlightIndex
+import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
 import warlockfe.warlock3.compose.util.presetColorPalette
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
@@ -252,16 +253,7 @@ class WindowRegistryImpl(
             presetRepository.observeGlobal().map { it["default"] },
             skinPresets,
         ) { charBase, charLegacy, globalBase, globalLegacy, skin ->
-            val palette = skin.presetColorPalette()
-            resolve(
-                listOfNotNull(
-                    charBase.resolveRefs(palette),
-                    charLegacy?.toLayer(),
-                    globalBase.resolveRefs(palette),
-                    globalLegacy?.toLayer(),
-                    skin["default"]?.toLayer(),
-                ),
-            )
+            resolveBaseStyle(charBase, charLegacy, globalBase, globalLegacy, skin)
         }.stateIn(scope = this.scope, started = SharingStarted.Eagerly, initialValue = ResolvedStyle())
 
     // The effective monospace font for a given window: its per-window override if set, otherwise the
@@ -374,4 +366,32 @@ class WindowRegistryFactory(
             windowSettingsRepository = windowSettingsRepository,
             skinPresets = skinPresets,
         )
+}
+
+/**
+ * The base ("default text") style cascade, most specific first: the character's own base, then the
+ * legacy character "default" preset, then the same pair for global, then the skin's own default.
+ *
+ * [SAFE_DEFAULT_STYLE] sits at the bottom, below the skin. It exists only so text stays legible
+ * when no skin is loaded at all; anywhere higher and a skin's default could never win, which is
+ * what once left the story window light-on-dark under a light theme.
+ */
+internal fun resolveBaseStyle(
+    charBase: StyleLayer,
+    charLegacy: StyleDefinition?,
+    globalBase: StyleLayer,
+    globalLegacy: StyleDefinition?,
+    skin: Map<String, StyleDefinition>,
+): ResolvedStyle {
+    val palette = skin.presetColorPalette()
+    return resolve(
+        listOfNotNull(
+            charBase.resolveRefs(palette),
+            charLegacy?.toLayer(),
+            globalBase.resolveRefs(palette),
+            globalLegacy?.toLayer(),
+            skin["default"]?.toLayer(),
+            SAFE_DEFAULT_STYLE.toLayer(),
+        ),
+    )
 }
