@@ -3,6 +3,7 @@ import com.seanproctor.potassium.dsl.MacOSTargetFormat
 import com.seanproctor.potassium.dsl.ReleaseChannel
 import com.seanproctor.potassium.dsl.ReleaseType
 import com.seanproctor.potassium.dsl.WindowsTargetFormat
+import com.seanproctor.potassium.tasks.AbstractPotassiumTask
 import org.jetbrains.compose.reload.gradle.AbstractComposeHotRun
 
 plugins {
@@ -76,6 +77,16 @@ val jbrRuntime =
         vendor = JvmVendorSpec.JETBRAINS
     }
 
+// Potassium's javaHome is a plain String, so reading it resolves the JBR toolchain during
+// configuration - on every build that configures this project, whether or not it will ever run or
+// package the app. That made a JBR install a prerequisite for merely compiling, so CI had to fetch
+// one for all three jobs, and setup-java resolves JBR through a GitHub API call that goes out
+// unauthenticated unless GITHUB_TOKEN is in the environment, rate-limited per runner IP.
+//
+// CI sets ORG_GRADLE_PROJECT_jbrSkip (not -PjbrSkip, which would not reach the Gradle that the
+// Xcode build phase starts) and builds under Temurin instead. Nothing it runs packages the app.
+val skipJbr = (findProperty("jbrSkip") as? String)?.toBoolean() == true
+
 // Compose Hot Reload launches the app itself, and defaults to whatever JetBrains Runtime it
 // finds rather than the one the app is built against - which lands on JBR 21 here and dies with
 // "JewelTheme has been compiled by a more recent version of the Java Runtime (class file 69.0)".
@@ -84,13 +95,21 @@ tasks.withType<AbstractComposeHotRun>().configureEach {
     javaLauncher = jbrRuntime
 }
 
-// Potassium's javaHome is a plain String, so reading it resolves the JBR toolchain during
-// configuration - on every build that configures this project, whether or not it will ever run or
-// package the app. That made a JBR install a prerequisite for merely compiling, so CI had to fetch
-// one for all three jobs, and setup-java resolves JBR through an unauthenticated GitHub API call
-// that is rate-limited per runner IP. CI passes -PjbrSkip=true and builds under Temurin instead;
-// nothing it runs packages the app. Anything that does package needs a real JBR, so leave it unset.
-val skipJbr = (findProperty("jbrSkip") as? String)?.toBoolean() == true
+// Left unset, potassium's javaHome silently falls back to the JVM Gradle is running on, so a
+// packaging task under this flag would build an installer around Temurin 21 for an app compiled to
+// class file 69 and die on launch for every user - the v3.1.0-beta.21 failure. Refuse instead of
+// shipping that, since the flag exists only so builds that never touch the app can skip the JBR.
+if (skipJbr) {
+    tasks.withType<AbstractPotassiumTask>().configureEach {
+        doFirst {
+            error(
+                "$name runs or packages the desktop app, which must happen under JBR 25, but " +
+                    "jbrSkip left potassium's javaHome unset. Drop -PjbrSkip / " +
+                    "ORG_GRADLE_PROJECT_jbrSkip for anything that runs or packages the app.",
+            )
+        }
+    }
+}
 
 potassium {
     mainClass = "warlockfe.warlock3.app.MainKt"
