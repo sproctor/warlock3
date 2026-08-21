@@ -39,8 +39,7 @@ import warlockfe.warlock3.compose.components.DEFAULT_PANEL_SCALE
 import warlockfe.warlock3.compose.components.FontPickerDialog
 import warlockfe.warlock3.compose.components.PANEL_BASE_FONT_SIZE
 import warlockfe.warlock3.compose.model.SkinObject
-import warlockfe.warlock3.compose.util.LocalPanelFont
-import warlockfe.warlock3.compose.util.LocalPanelScale
+import warlockfe.warlock3.compose.util.LocalPanelDefaults
 import warlockfe.warlock3.compose.util.LocalPanelTextStyle
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalStyleMap
@@ -94,9 +93,10 @@ fun PanelContent(
     // one style, so there is a single knob here rather than a size hardcoded at every call site.
     // Chrome (panelId == null) is not a window the user can configure, so it keeps the defaults: the
     // status bar's vitals sit in a fixed-height row that a large scale would burst.
-    val effectiveFont = if (panelId != null) font ?: LocalPanelFont.current else null
+    val panelDefaults = LocalPanelDefaults.current
+    val effectiveFont = if (panelId != null) font ?: panelDefaults.font else null
     val panelStyle = panelBaseStyle.withFont(effectiveFont)
-    val panelScale = if (panelId != null) scale ?: LocalPanelScale.current else DEFAULT_PANEL_SCALE
+    val panelScale = if (panelId != null) scale ?: panelDefaults.scale else DEFAULT_PANEL_SCALE
     CompositionLocalProvider(
         LocalContentColor provides style.textColor.toColor(),
         LocalPanelTextStyle provides panelStyle,

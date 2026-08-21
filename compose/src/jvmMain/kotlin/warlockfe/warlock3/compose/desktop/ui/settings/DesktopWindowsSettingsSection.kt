@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.MAX_PANEL_SCALE
 import warlockfe.warlock3.compose.components.MIN_PANEL_SCALE
@@ -40,7 +41,6 @@ import warlockfe.warlock3.compose.components.toFontConfig
 import warlockfe.warlock3.compose.desktop.components.DesktopFontPickerDialog
 import warlockfe.warlock3.compose.desktop.components.DesktopTextStyleEditor
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockTextField
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -77,7 +77,7 @@ fun DesktopWindowsSettingsSection(
     characterId: String,
     windowSettingRepository: WindowSettingsRepository,
     // The edited character's panel scale, which a window's override falls back to. Passed in
-    // rather than read from LocalPanelScale: that local carries the *connected* character's
+    // rather than read from LocalPanelDefaults: that local carries the *connected* character's
     // scale, and these settings can be edited for a different character, or with no game up.
     characterPanelScale: Float,
     defaultStyle: StyleDefinition,
@@ -345,7 +345,7 @@ private fun DesktopWindowRow(
                     )
                 }
                 if (nameFilterAvailable) {
-                    WarlockCheckboxRow(
+                    CheckboxRow(
                         checked = settings?.nameFilter == true,
                         onCheckedChange = onSaveNameFilter,
                         text = "Only show lines with names in list",

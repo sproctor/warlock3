@@ -20,11 +20,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
-import warlockfe.warlock3.compose.desktop.shim.WarlockRadioButtonRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopSettingsCharacterSelector
 import warlockfe.warlock3.core.client.GameCharacter
@@ -70,12 +70,12 @@ fun ImportCharacterDialog(
                     onSelect = { target = it },
                 )
                 Column {
-                    WarlockRadioButtonRow(
+                    RadioButtonRow(
                         selected = mode == ImportMode.MERGE,
                         onClick = { mode = ImportMode.MERGE },
                         text = "Merge (keep existing settings, add/overwrite imported ones)",
                     )
-                    WarlockRadioButtonRow(
+                    RadioButtonRow(
                         selected = mode == ImportMode.REPLACE,
                         onClick = { mode = ImportMode.REPLACE },
                         text = "Replace (clear the character's settings first)",
@@ -143,19 +143,19 @@ fun ImportFullDialog(
                             }
                         Text(label)
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            WarlockRadioButtonRow(
+                            RadioButtonRow(
                                 selected = choice == CharacterChoice.MERGE,
                                 onClick = { choices[character.id] = CharacterChoice.MERGE },
                                 text = if (existing) "Merge" else "Create",
                             )
                             if (existing) {
-                                WarlockRadioButtonRow(
+                                RadioButtonRow(
                                     selected = choice == CharacterChoice.REPLACE,
                                     onClick = { choices[character.id] = CharacterChoice.REPLACE },
                                     text = "Replace",
                                 )
                             }
-                            WarlockRadioButtonRow(
+                            RadioButtonRow(
                                 selected = choice == CharacterChoice.SKIP,
                                 onClick = { choices[character.id] = CharacterChoice.SKIP },
                                 text = "Skip",

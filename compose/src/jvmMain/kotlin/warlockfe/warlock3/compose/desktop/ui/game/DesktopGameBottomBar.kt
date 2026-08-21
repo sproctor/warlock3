@@ -29,6 +29,7 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.IndicatorPalette
 import warlockfe.warlock3.compose.ui.game.IndicatorView
 import warlockfe.warlock3.compose.util.LocalBaseStyle
+import warlockfe.warlock3.core.text.toStyleDefinition
 
 @Suppress("ktlint:compose:vm-forwarding-check")
 @Composable
@@ -37,7 +38,7 @@ fun DesktopGameBottomBar(
     entryFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    val style = LocalBaseStyle.current
+    val style = LocalBaseStyle.current.toStyleDefinition()
     Column(
         modifier
             .fillMaxWidth()
@@ -45,7 +46,6 @@ fun DesktopGameBottomBar(
     ) {
         // Hairline separating the control bar from the work area above it.
         Box(Modifier.fillMaxWidth().height(1.dp).background(gameChrome.border))
-        // BoxWithConstraints {
         val density = LocalDensity.current
         // The compass fills the height the rest of the control-bar content (the left column)
         // establishes and scales its width to match, instead of forcing a fixed height onto the

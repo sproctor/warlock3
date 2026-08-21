@@ -1,7 +1,6 @@
 package warlockfe.warlock3.compose.desktop.shim
 
 import androidx.compose.foundation.text.input.OutputTransformation
-import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,6 +30,3 @@ fun WarlockSecureTextField(
         placeholder = placeholder?.let { @Composable { Text(it) } },
     )
 }
-
-@Suppress("UnusedReceiverParameter")
-private fun TextFieldBuffer.placeholderUnused() = Unit

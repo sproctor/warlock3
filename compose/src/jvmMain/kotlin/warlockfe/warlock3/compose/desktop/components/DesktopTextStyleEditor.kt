@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.components.GENERIC_SAMPLE
 import warlockfe.warlock3.compose.components.StyleChip
@@ -24,7 +25,6 @@ import warlockfe.warlock3.compose.components.StyleSample
 import warlockfe.warlock3.compose.components.backgroundLabel
 import warlockfe.warlock3.compose.components.fontLabel
 import warlockfe.warlock3.compose.components.fontWeightOptions
-import warlockfe.warlock3.compose.desktop.shim.WarlockCheckboxRow
 import warlockfe.warlock3.compose.desktop.shim.WarlockDropdownSelect
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.util.toColor
@@ -170,7 +170,7 @@ fun DesktopTextStyleEditor(
         }
 
         AttributeRow("Italic", sourced.italic.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Italic)) }) {
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = sample.italic,
                 onCheckedChange = { edit(StyleEdit.SetItalic(it)) },
                 text = "Italic",
@@ -178,7 +178,7 @@ fun DesktopTextStyleEditor(
         }
 
         AttributeRow("Underline", sourced.underline.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Underline)) }) {
-            WarlockCheckboxRow(
+            CheckboxRow(
                 checked = sample.underline,
                 onCheckedChange = { edit(StyleEdit.SetUnderline(it)) },
                 text = "Underline",
@@ -192,7 +192,7 @@ fun DesktopTextStyleEditor(
                 editScope,
                 onReset = { edit(StyleEdit.Reset(StyleAttribute.EntireLine)) },
             ) {
-                WarlockCheckboxRow(
+                CheckboxRow(
                     checked = sample.entireLine,
                     onCheckedChange = { edit(StyleEdit.SetEntireLine(it)) },
                     text = "Highlight entire line",
@@ -202,7 +202,7 @@ fun DesktopTextStyleEditor(
 
         if (showMonospace) {
             AttributeRow("Monospace", sourced.monospace.source, editScope, onReset = { edit(StyleEdit.Reset(StyleAttribute.Monospace)) }) {
-                WarlockCheckboxRow(
+                CheckboxRow(
                     checked = sample.monospace,
                     onCheckedChange = { edit(StyleEdit.SetMonospace(it)) },
                     text = "Monospace",

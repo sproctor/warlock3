@@ -94,9 +94,6 @@ class CharacterSettingsRepository(
 
     // --- Default fonts: the character's TOML settings ---
 
-    /** The font used for all normal (non-monospace) game text. Null until the user picks one. */
-    fun observeDefaultFont(characterId: String): Flow<FontConfig?> = store.observe(characterId).map { it.settings.defaultFont }
-
     /** The font used for monospace-flagged text (ASCII maps, tables, etc.). Null until the user picks one. */
     fun observeMonoFont(characterId: String): Flow<FontConfig?> = store.observe(characterId).map { it.settings.monoFont }
 
@@ -108,13 +105,6 @@ class CharacterSettingsRepository(
      * picks one; it never scales the font, nor widgets the game sized as a percentage of the panel.
      */
     fun observePanelScale(characterId: String): Flow<Float?> = store.observe(characterId).map { it.settings.panelScale }
-
-    suspend fun saveDefaultFont(
-        characterId: String,
-        font: FontConfig?,
-    ) {
-        store.mutate(characterId) { it.copy(settings = it.settings.copy(defaultFont = font?.takeUnless { f -> f.isEmpty() })) }
-    }
 
     suspend fun saveMonoFont(
         characterId: String,

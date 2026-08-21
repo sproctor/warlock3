@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,14 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.generated.resources.more_vert
+import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 
 /**
- * The phone game-screen top app bar: a menu (drawer) button, the character name + room subtitle,
- * and an overflow menu with Settings and Go to dashboard.
+ * The phone game-screen top app bar: a window-list button, the character name + room subtitle, and
+ * an overflow menu with Settings and Go to dashboard.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameTopBar(
     title: String,
@@ -64,7 +62,10 @@ fun GameTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onMenu) {
-                Icon(painter = painterResource(Res.drawable.menu), contentDescription = "Menu")
+                Icon(
+                    painter = painterResource(Res.drawable.space_dashboard_filled),
+                    contentDescription = "Windows",
+                )
             }
         },
         actions = {

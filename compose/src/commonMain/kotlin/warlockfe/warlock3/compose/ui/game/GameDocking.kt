@@ -1,5 +1,10 @@
 package warlockfe.warlock3.compose.ui.game
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -13,6 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.seanproctor.docking.layout.dockLayout
@@ -55,8 +63,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
+import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.generated.resources.Res
+import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowUiState
+import warlockfe.warlock3.compose.ui.window.WindowView
+import warlockfe.warlock3.compose.util.LocalBaseStyle
+import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.time.Duration.Companion.seconds
 
@@ -421,6 +435,42 @@ fun rememberGameDockState(
 }
 
 /**
+ * A game window's body inside the dock area. Headerless: the dock header carries the title, the
+ * drag handle, and the platform's window actions. Reads its inputs from the view model here (rather
+ * than capturing them at the call site) so the content lambda registered with the dock state stays
+ * one stable instance.
+ */
+@Suppress("ktlint:compose:vm-forwarding-check")
+@Composable
+internal fun DockedWindow(
+    viewModel: GameViewModel,
+    window: OpenGameWindow,
+) {
+    val defaultStyle = LocalBaseStyle.current.toStyleDefinition()
+    val menuData by viewModel.menuData.collectAsState()
+    val openWindows by viewModel.openWindows.collectAsState(emptyList())
+    val selectedWindow by viewModel.selectedWindow.collectAsState()
+    val scrollEvents by viewModel.scrollEvents.collectAsState()
+    WindowView(
+        modifier = Modifier.fillMaxSize(),
+        uiState = window.uiState,
+        canHide = !window.isMain,
+        defaultStyle = defaultStyle,
+        isSelected = selectedWindow == window.name,
+        openWindows = openWindows,
+        menuData = menuData,
+        onActionClick = viewModel::onWindowAction,
+        onCloseClick = { viewModel.closeWindow(window.name) },
+        onOpenWindowSettings = { viewModel.requestEditWindowSettings(window.name) },
+        onSelect = { viewModel.selectWindow(window.name) },
+        scrollEvents = scrollEvents,
+        handledScrollEvent = viewModel::handledScrollEvent,
+        showHeader = false,
+        clearStream = { viewModel.clearStream(window.name) },
+    )
+}
+
+/**
  * Puts the character's saved arrangement back: decodes [saved] over the layout, restores any area
  * it does not carry, and reconciles the result against [openWindows].
  *
@@ -609,6 +659,34 @@ internal fun rememberHasUnreadText(
             .collect { unread = true }
     }
     return unread
+}
+
+/**
+ * The dot on a tab whose window has taken text since it was last on screen.
+ *
+ * Drawn inside the tab, beside its title, and only while the window is hidden behind another tab -
+ * a window you can see needs no telling. Small and dim on purpose: it marks a window as worth a
+ * look, and several of them at once should still read as a tab strip rather than an alarm, which is
+ * what [tint] should be chosen for.
+ */
+@Composable
+internal fun TabActivityDot(
+    hasUnreadText: Boolean,
+    tint: Color,
+) {
+    // The slot is held open whether or not the dot is in it. A tab that grew when its window took
+    // text would shove the rest of the strip sideways, and the tab someone was reaching for would
+    // slide out from under the pointer exactly when a window started being busy.
+    Box(Modifier.padding(start = 6.dp).size(7.dp)) {
+        if (hasUnreadText) {
+            Image(
+                modifier = Modifier.fillMaxSize(),
+                painter = painterResource(Res.drawable.circle_filled),
+                colorFilter = ColorFilter.tint(tint),
+                contentDescription = "New text",
+            )
+        }
+    }
 }
 
 /**

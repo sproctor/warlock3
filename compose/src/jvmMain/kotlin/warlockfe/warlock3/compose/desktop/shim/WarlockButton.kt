@@ -9,21 +9,6 @@ import org.jetbrains.jewel.ui.component.Text
 @Composable
 fun WarlockButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    DefaultButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        content = content,
-    )
-}
-
-@Composable
-fun WarlockButton(
-    onClick: () -> Unit,
     text: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -35,21 +20,6 @@ fun WarlockButton(
     ) {
         Text(text)
     }
-}
-
-@Composable
-fun WarlockOutlinedButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        content = content,
-    )
 }
 
 @Composable

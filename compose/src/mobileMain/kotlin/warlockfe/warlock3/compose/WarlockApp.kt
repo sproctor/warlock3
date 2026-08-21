@@ -5,38 +5,28 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.components.ScrollableColumn
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.ui.dashboard.DashboardView
@@ -50,7 +40,6 @@ import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.sge.SgeSettings
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WarlockApp(
     appContainer: AppContainer,
@@ -105,109 +94,69 @@ fun WarlockApp(
             }
         }
 
-        val drawerState = rememberDrawerState(DrawerValue.Closed)
-        val scope = rememberCoroutineScope()
-
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            modifier = modifier,
-            drawerContent = {
-                ModalDrawerSheet {
-                    DrawerContent(
-                        openSettings = {
-                            scope.launch { drawerState.close() }
-                            settingsInitialPage = null
-                            settingsWindowTarget = null
-                            showSettings = true
-                        },
-                    )
-                }
-            },
-        ) {
-            if (showSettings) {
-                SettingsScreen(
-                    appContainer = appContainer,
-                    currentCharacter = currentCharacter,
-                    onClose = { showSettings = false },
-                    initialPage = settingsInitialPage,
-                    initialWindowTarget = settingsWindowTarget,
-                    windowLiveContext = windowLiveContext,
-                )
-            } else {
-                Scaffold(
-                    topBar = {
-                        // The connected game is chromeless; settings are reached from its bottom bar.
-                        if (gameState.screen !is GameScreen.ConnectedGameState) {
-                            WarlockTopBar(openDrawer = { scope.launch { drawerState.open() } })
-                        }
-                    },
-                ) { padding ->
-                    Box(Modifier.padding(padding)) {
-                        MainScreen(
-                            sgeViewModelFactory = appContainer.sgeViewModelFactory,
-                            dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
-                            gameState = gameState,
-                            updateCurrentCharacter = { currentCharacter = it },
-                            sgeSettings = sgeSettings,
-                            dashboardContent = { viewModel, connectToSge ->
-                                DashboardView(viewModel = viewModel, connectToSGE = connectToSge)
-                            },
-                            wizardContent = { viewModel, onCancel ->
-                                SgeWizard(viewModel = viewModel, onCancel = onCancel)
-                            },
-                            gameContent = { viewModel, navigateToDashboard ->
-                                GameView(
-                                    viewModel = viewModel,
-                                    navigateToDashboard = navigateToDashboard,
-                                    openSettings = {
+        if (showSettings) {
+            SettingsScreen(
+                appContainer = appContainer,
+                currentCharacter = currentCharacter,
+                onClose = { showSettings = false },
+                initialPage = settingsInitialPage,
+                initialWindowTarget = settingsWindowTarget,
+                windowLiveContext = windowLiveContext,
+            )
+        } else {
+            Box(modifier.safeDrawingPadding()) {
+                MainScreen(
+                    sgeViewModelFactory = appContainer.sgeViewModelFactory,
+                    dashboardViewModelFactory = appContainer.dashboardViewModelFactory,
+                    gameState = gameState,
+                    updateCurrentCharacter = { currentCharacter = it },
+                    sgeSettings = sgeSettings,
+                    dashboardContent = { viewModel, connectToSge ->
+                        Scaffold(
+                            topBar = {
+                                WarlockTopBar(
+                                    showSettings = {
                                         settingsInitialPage = null
                                         settingsWindowTarget = null
                                         showSettings = true
                                     },
-                                    openDrawer = { scope.launch { drawerState.open() } },
                                 )
                             },
-                            errorContent = { message, onDismiss ->
-                                ErrorScreen(message = message, onDismiss = onDismiss)
+                        ) {
+                            DashboardView(viewModel = viewModel, connectToSGE = connectToSge)
+                        }
+                    },
+                    wizardContent = { viewModel, onCancel ->
+                        SgeWizard(viewModel = viewModel, onCancel = onCancel)
+                    },
+                    gameContent = { viewModel, navigateToDashboard ->
+                        GameView(
+                            viewModel = viewModel,
+                            navigateToDashboard = navigateToDashboard,
+                            openSettings = {
+                                settingsInitialPage = null
+                                settingsWindowTarget = null
+                                showSettings = true
                             },
                         )
-                    }
-                }
+                    },
+                    errorContent = { message, onDismiss ->
+                        ErrorScreen(message = message, onDismiss = onDismiss)
+                    },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun DrawerContent(
-    openSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    ScrollableColumn(modifier) {
-        NavigationDrawerItem(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            label = { Text("Settings") },
-            icon = {
-                Icon(
-                    painter = painterResource(Res.drawable.settings_filled),
-                    contentDescription = null,
-                )
-            },
-            onClick = openSettings,
-            selected = false,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WarlockTopBar(openDrawer: () -> Unit) {
+private fun WarlockTopBar(showSettings: () -> Unit) {
     TopAppBar(
         title = { Text(text = "Warlock", maxLines = 1) },
-        navigationIcon = {
-            IconButton(onClick = openDrawer) {
+        actions = {
+            IconButton(onClick = showSettings) {
                 Icon(
-                    painter = painterResource(Res.drawable.menu),
+                    painter = painterResource(Res.drawable.settings_filled),
                     contentDescription = null,
                 )
             }

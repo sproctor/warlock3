@@ -72,7 +72,6 @@ fun SgeWizard(
             }
 
             is SgeViewState.SgeConnectingToGame -> {
-                Unit
             } // TODO: implement?
         }
     }

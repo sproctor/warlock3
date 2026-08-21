@@ -47,7 +47,6 @@ import warlockfe.warlock3.compose.ui.game.GameViewModel
 import warlockfe.warlock3.compose.ui.game.HistorySearchState
 import warlockfe.warlock3.compose.ui.game.countdownSeconds
 import warlockfe.warlock3.compose.util.LocalBaseStyle
-import warlockfe.warlock3.compose.util.LocalDefaultFont
 import warlockfe.warlock3.compose.util.LocalStyleMap
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
@@ -57,6 +56,8 @@ import warlockfe.warlock3.compose.util.timeBarColors
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.text.toFontConfig
+import warlockfe.warlock3.core.text.toStyleDefinition
 import kotlin.math.min
 
 @Suppress("ktlint:compose:vm-forwarding-check")
@@ -77,7 +78,7 @@ fun DesktopWarlockEntry(
             getCurrentTime = viewModel::getCurrentTime,
         )
     val presets = LocalStyleMap.current
-    val defaultStyle = LocalBaseStyle.current
+    val defaultStyle = LocalBaseStyle.current.toStyleDefinition()
     val style = presets.resolvedStyle("entry")
     val historySearch by viewModel.historySearch.collectAsState()
     DesktopWarlockEntryContent(
@@ -129,7 +130,7 @@ fun DesktopWarlockEntryContent(
             DesktopRoundTimeBar(backgroundColor, roundTime, castTime)
 
             val defaultTextStyle = JewelTheme.defaultTextStyle
-            val entryFont = LocalDefaultFont.current
+            val entryFont = LocalBaseStyle.current.toFontConfig()
             val textStyle =
                 remember(usableStyle, entryFont) {
                     val fontSize = (entryFont?.size ?: 16f).sp

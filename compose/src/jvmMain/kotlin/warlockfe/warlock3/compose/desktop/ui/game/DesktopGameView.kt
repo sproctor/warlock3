@@ -32,13 +32,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isAltPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isMetaPressed
-import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -59,13 +53,18 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right
 import warlockfe.warlock3.compose.generated.resources.circle
 import warlockfe.warlock3.compose.generated.resources.circle_filled
+import warlockfe.warlock3.compose.ui.game.DockedWindow
 import warlockfe.warlock3.compose.ui.game.GameViewModel
+import warlockfe.warlock3.compose.ui.game.GameWindowStyles
 import warlockfe.warlock3.compose.ui.game.MAIN_WINDOW_NAME
 import warlockfe.warlock3.compose.ui.game.OpenGameWindow
+import warlockfe.warlock3.compose.ui.game.TabActivityDot
 import warlockfe.warlock3.compose.ui.game.rememberGameDockState
+import warlockfe.warlock3.compose.ui.game.rememberGameKeyHandler
 import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.text.toWarlockColor
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowType
 
@@ -77,35 +76,14 @@ fun DesktopGameView(
     modifier: Modifier = Modifier,
 ) {
     val entryFocusRequester = remember { FocusRequester() }
-    var ignoreNextUnknownKeyEvent by remember { mutableStateOf(false) }
+    val handleKey = rememberGameKeyHandler(viewModel, entryFocusRequester)
 
     Column(
         modifier =
             modifier
                 .fillMaxSize()
                 .background(gameChrome.appBackground)
-                .onPreviewKeyEvent { event ->
-                    if (ignoreNextUnknownKeyEvent && event.type == KeyEventType.Unknown) {
-                        ignoreNextUnknownKeyEvent = false
-                        return@onPreviewKeyEvent true
-                    }
-                    ignoreNextUnknownKeyEvent = false
-                    // The find bar handles its own keys while it's focused; step aside so it can.
-                    if (viewModel.windowFindController.focused.value) {
-                        return@onPreviewKeyEvent false
-                    }
-                    viewModel.handleKeyPress(event).also {
-                        ignoreNextUnknownKeyEvent = it
-                        if (!it &&
-                            event.type == KeyEventType.KeyDown &&
-                            !event.isAltPressed &&
-                            !event.isCtrlPressed &&
-                            !event.isMetaPressed
-                        ) {
-                            entryFocusRequester.requestFocus()
-                        }
-                    }
-                },
+                .onPreviewKeyEvent(handleKey),
     ) {
         val openWindows by viewModel.openWindows.collectAsState(emptyList())
 
@@ -117,8 +95,9 @@ fun DesktopGameView(
                     // The same base style the window bodies get, read back out of the locals rather
                     // than collected again: the sidebar follows the character's skin too.
                     val defaultStyle = LocalBaseStyle.current
+                    val baseBackground = defaultStyle.background.toWarlockColor()
                     val sidebarBackground =
-                        defaultStyle.backgroundColor.takeIf { it.isSpecified() }?.toColor()
+                        baseBackground.takeIf { it.isSpecified() }?.toColor()
                             ?: gameChrome.panelAlt
                     val sidebarTextColor =
                         defaultStyle.textColor.takeIf { it.isSpecified() }?.toColor()
@@ -213,13 +192,13 @@ fun DesktopGameView(
                 val windowContent =
                     remember(viewModel) {
                         @Composable { window: OpenGameWindow ->
-                            DesktopDockedWindow(viewModel = viewModel, window = window)
+                            DockedWindow(viewModel = viewModel, window = window)
                         }
                     }
                 val tabActions =
                     remember {
                         @Composable { _: OpenGameWindow, hasUnreadText: Boolean ->
-                            DesktopTabActivityDot(hasUnreadText)
+                            TabActivityDot(hasUnreadText, gameChrome.accentSubtle)
                         }
                     }
                 val dockState =

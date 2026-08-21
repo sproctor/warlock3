@@ -19,10 +19,16 @@ fun DesktopConfirmationDialog(
         text = text,
         onDismissRequest = onDismiss,
         confirmButton = {
-            WarlockButton(onClick = onConfirm) { Text("Confirm") }
+            WarlockButton(
+                text = "Confirm",
+                onClick = onConfirm,
+            )
         },
         dismissButton = {
-            WarlockOutlinedButton(onClick = onDismiss) { Text("Cancel") }
+            WarlockOutlinedButton(
+                text = "Cancel",
+                onClick = onDismiss,
+            )
         },
     )
 }

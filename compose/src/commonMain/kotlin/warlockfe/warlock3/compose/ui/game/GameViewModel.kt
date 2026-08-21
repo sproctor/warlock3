@@ -122,9 +122,6 @@ import kotlin.time.Instant
 
 const val CLIENT_COMMAND_PREFIX = '/'
 
-// Per-character setting key for the tablet layout's secondary (non-main) tabbed pane location.
-const val TABLET_WINDOW_LOCATION_KEY = "tabletWindowLocation"
-
 // The compose-docking layout JSON for this character, one blob per character. Written debounced on
 // every layout change; a window it does not know yet docks at its game-announced location.
 const val DOCK_LAYOUT_KEY = "dockLayout"
@@ -132,6 +129,11 @@ const val DOCK_LAYOUT_KEY = "dockLayout"
 // Where windows were when they were closed. Separate from the arrangement rather than folded
 // into it, so an unreadable one costs only the memory and every layout already saved still reads.
 const val DOCK_SPOTS_KEY = "dockSpots"
+
+// The phone tab strip's own ordered window list, one blob per character. Deliberately separate from
+// the WindowSettings "open" flag that feeds the docking layout: the phone picks its own tabs, and
+// adding one must not rearrange a dock the user is not looking at.
+const val PHONE_TAB_ORDER_KEY = "phoneTabOrder"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModel(
@@ -307,6 +309,32 @@ class GameViewModel(
                 initialValue = emptyList(),
             )
 
+    /** The windows that may become a phone tab. */
+    val tabbableWindows =
+        windows
+            .map { it.tabbable() }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
+
+    private val savedPhoneTabOrder = MutableStateFlow<PhoneTabOrder>(PhoneTabOrder.Loading)
+
+    /**
+     * The phone tab strip's window names, in order. Always holds the main window.
+     *
+     * Eagerly started because the mutators below read its value: an add or a drag in the first
+     * frames of a session has to see the real list, not the initial one.
+     */
+    val phoneTabs =
+        combine(savedPhoneTabOrder, tabbableWindows, ::reconcilePhoneTabs)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.Eagerly,
+                initialValue = listOf(MAIN_WINDOW_NAME),
+            )
+
     // The connected character's id, used by the settings dialog to decide whether its live window
     // info (titles, hidden-window list) applies to the character being edited.
     val connectedCharacterId: StateFlow<String?> get() = client.characterId
@@ -332,14 +360,6 @@ class GameViewModel(
             started = SharingStarted.Eagerly,
             initialValue = ".",
         )
-
-    val topHeight = observeCharacterInt("topHeight")
-
-    val bottomHeight = observeCharacterInt("bottomHeight")
-
-    val leftWidth = observeCharacterInt("leftWidth")
-
-    val rightWidth = observeCharacterInt("rightWidth")
 
     private val macros =
         client.characterId
@@ -386,16 +406,6 @@ class GameViewModel(
     // The skin's named-color palette, so a window's skin-referenced text/background color resolves
     // (see WindowSettings.getStyle) instead of staying stuck at its last-saved literal.
     private val colorPalette = windowRegistry.colorPalette
-
-    /** The character's default (normal) font; used as the base text style for windows without an override. */
-    val defaultFont: StateFlow<FontConfig?> =
-        observePerCharacter { characterSettingsRepository.observeDefaultFont(it) }
-            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
-
-    /** The character's monospace font; used for monospace-flagged text without a per-window override. */
-    val monoFont: StateFlow<FontConfig?> =
-        observePerCharacter { characterSettingsRepository.observeMonoFont(it) }
-            .stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
 
     /** The character's panel font; used by panel widgets without a per-window override. */
     val panelFont: StateFlow<FontConfig?> =
@@ -530,15 +540,6 @@ class GameViewModel(
             if (characterId != null) block(characterId) else flow {}
         }
 
-    /** Observe a per-character integer setting stored as a string, falling back to [default]. */
-    private fun observeCharacterInt(
-        key: String,
-        default: Int = 200,
-    ): Flow<Int> =
-        observePerCharacter { characterId ->
-            characterSettingsRepository.observe(characterId = characterId, key = key).map { it?.toIntOrNull() ?: default }
-        }
-
     /** Build the [WindowData] for a window of the given [windowType], or null if it carries none. */
     private fun createWindowData(
         windowType: WindowType?,
@@ -555,6 +556,7 @@ class GameViewModel(
         trackHistorySize()
         loadCommandHistoryOnConnect()
         restoreWindowLayoutOnConnect()
+        loadPhoneTabOrderOnConnect()
         applyWindowSettingsChanges()
         handleClientEvents()
         trackMaxTypeAhead()
@@ -1246,24 +1248,6 @@ class GameViewModel(
             meta = event.isMetaPressed,
         )
 
-    fun setLocationSize(
-        location: PaneLocation,
-        size: Int,
-    ) {
-        client.characterId.value?.let { characterId ->
-            viewModelScope.launch {
-                val key =
-                    when (location) {
-                        PaneLocation.LEFT -> "leftWidth"
-                        PaneLocation.RIGHT -> "rightWidth"
-                        PaneLocation.TOP -> "topHeight"
-                        PaneLocation.BOTTOM -> "bottomHeight"
-                    }
-                characterSettingsRepository.save(characterId, key, size.toString())
-            }
-        }
-    }
-
     /**
      * The user opening a window. Its dock comes from the docking layout JSON when it is in there,
      * else from the game-announced location (see the bridge in GameDocking.kt); this only puts the
@@ -1471,22 +1455,6 @@ class GameViewModel(
         }
     }
 
-    /** The tablet layout's secondary (non-main) tabbed pane location; defaults to the right. */
-    fun observeTabletWindowLocation(): Flow<PaneLocation> =
-        observePerCharacter { characterId ->
-            characterSettingsRepository.observe(characterId, TABLET_WINDOW_LOCATION_KEY).map { value ->
-                value?.let { runCatching { PaneLocation.valueOf(it) }.getOrNull() } ?: PaneLocation.RIGHT
-            }
-        }
-
-    fun setTabletWindowLocation(location: PaneLocation) {
-        viewModelScope.launch {
-            client.characterId.value?.let { characterId ->
-                characterSettingsRepository.save(characterId, TABLET_WINDOW_LOCATION_KEY, location.name)
-            }
-        }
-    }
-
     /** The character's saved docking-layout JSON, or null when none has been saved yet. */
     suspend fun loadDockLayout(): String? =
         client.characterId.value?.let { characterId ->
@@ -1498,6 +1466,59 @@ class GameViewModel(
         client.characterId.value?.let { characterId ->
             characterSettingsRepository.get(characterId, DOCK_SPOTS_KEY)
         }
+
+    private fun loadPhoneTabOrderOnConnect() {
+        observePerCharacter { characterId ->
+            characterSettingsRepository.observe(characterId, PHONE_TAB_ORDER_KEY)
+        }.onEach { raw -> savedPhoneTabOrder.value = decodePhoneTabOrder(raw) }
+            .launchIn(viewModelScope)
+    }
+
+    /** Puts [name] in the phone tab strip. Does nothing if it is already there. */
+    fun addPhoneTab(name: String) = editPhoneTabs { if (name in it) it else it + name }
+
+    /** Takes [name] out of the phone tab strip. The main window cannot be removed. */
+    fun removePhoneTab(name: String) {
+        if (name == MAIN_WINDOW_NAME) return
+        editPhoneTabs { it - name }
+    }
+
+    /** Moves a phone tab, with [from] and [to] as positions in the strip the user can see. */
+    fun movePhoneTab(
+        from: Int,
+        to: Int,
+    ) {
+        val shown = phoneTabs.value
+        if (from == to || from !in shown.indices || to !in shown.indices) return
+        editPhoneTabs { saved ->
+            moveInSavedOrder(saved, moved = shown[from], anchor = shown[to], forward = to > from)
+        }
+    }
+
+    /**
+     * The one way the tab list changes, and where an [PhoneTabOrder.Auto] list becomes the user's
+     * own: the first edit freezes what is on screen, so nothing they could see silently drops out.
+     *
+     * [transform] is handed the *saved* order, not the displayed one. A window the game has not
+     * announced this session is missing from the strip but must survive the edit.
+     */
+    private fun editPhoneTabs(transform: (List<String>) -> List<String>) {
+        val current = (savedPhoneTabOrder.value as? PhoneTabOrder.Explicit)?.names ?: phoneTabs.value
+        val next = transform(current)
+        if (next == current) return
+        savedPhoneTabOrder.value = PhoneTabOrder.Explicit(next)
+        viewModelScope.launch { phoneTabOrderWriter.write(encodePhoneTabOrder(next)) }
+    }
+
+    // Reordering fires on every step of a drag, so the same out-of-order hazard applies here as to
+    // the dock layout below.
+    private val phoneTabOrderWriter = LatestValueWriter(::writePhoneTabOrder)
+
+    private suspend fun writePhoneTabOrder(order: String) {
+        client.characterId.value?.let { characterId ->
+            characterSettingsRepository.save(characterId, PHONE_TAB_ORDER_KEY, order)
+        }
+    }
 
     // The dock layout is auto-saved, so two writes that finished out of order would leave the older
     // arrangement stored with nothing to correct it. Both writers - the bridge's debounced save and
@@ -1676,6 +1697,7 @@ class GameViewModel(
         // on the last window, before exiting the process), so the write is ordered ahead of both.
         dockLayoutWriter.flush()
         dockSpotsWriter.flush()
+        phoneTabOrderWriter.flush()
         // If a reconnect is still in flight (e.g. the user returned to the dashboard while it was
         // running), cancel it first so the in-progress attempt is unwound: cancellation runs the
         // connect use case's finally blocks, which close any half-opened client/socket so nothing leaks.
