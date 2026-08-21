@@ -372,6 +372,12 @@ private fun WindowViewContent(
                     remember(generation) {
                         mutableStateMapOf<Long, Int>()
                     }
+                // Serial numbers of the rows composed right now, maintained by the rows
+                // themselves. The selection effect below uses it to tell a trim that reaches the
+                // composed rows from one falling off the far side of the scrollback. Not snapshot
+                // state: nothing composes from it, and the effect that reads it runs on the thread
+                // the rows update it from.
+                val composedSerials = remember { mutableSetOf<Long>() }
                 val currentLines = rememberUpdatedState(lines)
                 val currentOpenWindows = rememberUpdatedState(openWindows)
                 val heightModel =
@@ -405,13 +411,21 @@ private fun WindowViewContent(
                                 .forEach { measuredHeights.remove(it) }
                         }
                 }
-                // A trim takes the app down if a selection is left pointing into it. Compose pins a
-                // selected lazy item so scrolling cannot dispose it, but nothing saves a row whose
-                // line has left the buffer: the SelectionManager keeps the anchor as a selectable
-                // id and looks it up in a map built from the live selectables, so the next drag
-                // event throws NoSuchElementException out of getDirectionById and the uncaught
-                // handler kills the client. The buffer cannot wait for a selection - it has to stay
-                // bounded - so the selection is what gives way.
+                // A trim takes the app down if a selection is left pointing into it. Compose pins
+                // a selected lazy item so scrolling cannot dispose it, but nothing saves a row
+                // whose line has left the buffer: the SelectionManager keeps the anchor as a
+                // selectable id and looks it up in a map built from the live selectables, so the
+                // next drag event throws NoSuchElementException out of getDirectionById and the
+                // uncaught handler kills the client. The buffer cannot wait for a selection - it
+                // has to stay bounded - so the selection is what gives way.
+                //
+                // Only when the trim actually reaches it, though, and that same pinning is what
+                // makes the cheap test for it sound: every row a selection touches is pinned, so it
+                // is still composed, and a trim that stops short of the composed rows cannot have
+                // taken one. Sitting at the foot of a full scrollback - where a line is evicted for
+                // every line that arrives - the rows coming off the front are thousands behind the
+                // composed ones, so a selection there lives instead of dying on the next line of
+                // game text.
                 //
                 // clear() is enough to unwind even a drag in flight: the lookup only happens for a
                 // previous selection's anchors, so with none, appendSelectableInfo takes the
@@ -423,9 +437,15 @@ private fun WindowViewContent(
                 // frame that recomposes, so the clear lands before the rows it covers are disposed.
                 LaunchedEffect(state) {
                     snapshotFlow { currentLines.value.firstOrNull()?.serialNumber }
-                        .filterNotNull()
                         .drop(1)
-                        .collect { state.clear() }
+                        .collect { oldest ->
+                            // A cleared stream reports no oldest serial at all, which is every row
+                            // going at once rather than nothing going.
+                            val cutoff = oldest ?: Long.MAX_VALUE
+                            if (composedSerials.any { it < cutoff }) {
+                                state.clear()
+                            }
+                        }
                 }
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
@@ -460,6 +480,12 @@ private fun WindowViewContent(
                                     // for a shown text line (hence the unreachable elvis below).
                                     if (lines.rendersContent(index, openWindows)) {
                                         val lineText = line.text ?: return@items
+                                        // This row is a selectable for as long as it is composed,
+                                        // so it is what the selection effect above watches for.
+                                        DisposableEffect(line.serialNumber) {
+                                            composedSerials.add(line.serialNumber)
+                                            onDispose { composedSerials.remove(line.serialNumber) }
+                                        }
                                         var positionInParent by remember { mutableStateOf(Offset.Zero) }
                                         Box(
                                             modifier =
