@@ -644,61 +644,6 @@ class ComposeTextStreamTest {
             }
         }
 
-    // Trimming a line out from under a drag leaves Compose's SelectionManager holding a selectable
-    // id that no longer exists, and its next drag event throws looking it up. The buffer holds off
-    // while a pointer is down over the view.
-    @Test
-    fun aDragInFlightDefersTrimming() =
-        runBlocking {
-            withFixture(maxLines = 4) { f ->
-                f.stream.setSelectionDragActive(true)
-                repeat(40) { i ->
-                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
-                }
-                f.drain()
-
-                assertEquals(40, f.stream.memoryUsage().bufferedLines, "nothing is evicted under a selection")
-            }
-        }
-
-    @Test
-    fun endingTheDragTrimsWhatTheHoldDeferred() =
-        runBlocking {
-            withFixture(maxLines = 4) { f ->
-                f.stream.setSelectionDragActive(true)
-                repeat(40) { i ->
-                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
-                }
-                f.drain()
-
-                // Back to the cap immediately, rather than waiting for the next line to arrive.
-                f.stream.setSelectionDragActive(false)
-                f.drain()
-
-                assertEquals(4, f.stream.memoryUsage().bufferedLines)
-            }
-        }
-
-    // A backstop for a pointer held down and abandoned. Nothing else should ever reach it: a real
-    // drag is seconds, and a selection left up holds nothing at all.
-    @Test
-    fun theHoldStopsAtItsSlackBudget() =
-        runBlocking {
-            withFixture(maxLines = 4) { f ->
-                f.stream.setSelectionDragActive(true)
-                repeat(400) { i ->
-                    f.stream.appendLine(text("line$i"), ignoreWhenBlank = false, showWhenClosed = null)
-                }
-                f.drain()
-
-                assertEquals(
-                    204,
-                    f.stream.memoryUsage().bufferedLines,
-                    "the buffer settles at the cap plus the slack, not at everything appended",
-                )
-            }
-        }
-
     // The component index used to outlive the lines that registered it, growing for the life of the
     // connection on any stream carrying components. It is now pruned with the buffer.
     @Test

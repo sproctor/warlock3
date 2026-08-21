@@ -71,6 +71,7 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.yield
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
@@ -333,21 +334,7 @@ private fun WindowViewContent(
         }
     }
 
-    var pointerDown by remember { mutableStateOf(false) }
-    Box(
-        modifier
-            .fillMaxSize()
-            // Watches on the Initial pass and never consumes, so the selection's own gesture
-            // handling below is untouched.
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        pointerDown = event.changes.any { it.pressed }
-                    }
-                }
-            },
-    ) {
+    Box(modifier.fillMaxSize()) {
         val state = rememberSelectionState()
         // Register with the controller so {copy} and {selectall} can act on this window when it is
         // the selected one; the clipboard comes from here because it is a composition local.
@@ -357,21 +344,6 @@ private fun WindowViewContent(
             selectionController.clipboard = clipboard
             selectionController.register(windowName, state)
             onDispose { selectionController.unregister(windowName) }
-        }
-        // Trimming the buffer out from under a drag is what takes the app down: the SelectionManager
-        // keeps the anchor's selectable id, the evicted row unregisters it, and the next drag event
-        // throws looking it up. The window that a pointer is down over is the only one that can be
-        // mid-drag, so that - not "something is selected" - is what holds the trim. A selection left
-        // up and forgotten holds nothing, which is the common case and not worth the memory.
-        LaunchedEffect(stream, pointerDown) {
-            stream.setSelectionDragActive(pointerDown)
-        }
-        // The effect above is cancelled when this window goes away, which would leave a stream held
-        // if the view went while a pointer was down. A stream outlives its view, so release on exit.
-        DisposableEffect(stream) {
-            onDispose {
-                stream.releaseSelectionDrag()
-            }
         }
         SelectionContainer(
             state = state,
@@ -432,6 +404,28 @@ private fun WindowViewContent(
                                 .filter { it < oldest }
                                 .forEach { measuredHeights.remove(it) }
                         }
+                }
+                // A trim takes the app down if a selection is left pointing into it. Compose pins a
+                // selected lazy item so scrolling cannot dispose it, but nothing saves a row whose
+                // line has left the buffer: the SelectionManager keeps the anchor as a selectable
+                // id and looks it up in a map built from the live selectables, so the next drag
+                // event throws NoSuchElementException out of getDirectionById and the uncaught
+                // handler kills the client. The buffer cannot wait for a selection - it has to stay
+                // bounded - so the selection is what gives way.
+                //
+                // clear() is enough to unwind even a drag in flight: the lookup only happens for a
+                // previous selection's anchors, so with none, appendSelectableInfo takes the
+                // direction from the drag position and the drag re-anchors where the pointer is.
+                //
+                // Off the same oldest-serial signal as the heights above, so it wakes only when
+                // lines were really dropped, and dropping the first emission keeps a restored
+                // selection through the initial composition. Continuations are drained ahead of the
+                // frame that recomposes, so the clear lands before the rows it covers are disposed.
+                LaunchedEffect(state) {
+                    snapshotFlow { currentLines.value.firstOrNull()?.serialNumber }
+                        .filterNotNull()
+                        .drop(1)
+                        .collect { state.clear() }
                 }
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
