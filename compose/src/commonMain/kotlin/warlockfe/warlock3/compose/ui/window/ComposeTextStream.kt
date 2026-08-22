@@ -188,8 +188,11 @@ class ComposeTextStream(
             partialLine = null
             componentLocations.clear()
             components.clear()
-            // Serial number is intentionally not reset
-            removedLines = 0L
+            // Serial numbers deliberately keep counting. They are how the view tells a line that is
+            // gone from a different line: a restart would put a fresh line below rows still
+            // composed from the old buffer, which is what the selection clear and the height cache
+            // both test against.
+            removedLines = nextSerialNumber
             cacheLines.clear()
             linesUpdated()
         }
