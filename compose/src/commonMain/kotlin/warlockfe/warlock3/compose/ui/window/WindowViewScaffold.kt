@@ -46,7 +46,6 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
@@ -58,7 +57,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -71,9 +69,10 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
 import warlockfe.warlock3.compose.util.LocalBaseStyle
@@ -88,14 +87,11 @@ import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.toFontConfig
 import warlockfe.warlock3.core.window.ClientBackgroundImage
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * Platform-agnostic window view. Holds the structure shared by the desktop and mobile clients (the
- * frame, header, stream/panel dispatch, the text/image render loop, and keyboard scroll handling).
- * The pieces that genuinely differ between toolkits (the surrounding surface, the header chrome, the
- * scrollbar, the action context menu, the settings dialog, and panel content) are supplied by the
- * caller as slots so each platform can render them with its own component library.
+ * Platform-agnostic window view: the frame, header, stream/panel dispatch, render loop and scroll
+ * handling shared by desktop and mobile. What differs between toolkits - surface, header chrome,
+ * scrollbar, context menu, panel content - comes in as slots.
  */
 @Composable
 internal fun WindowViewScaffold(
@@ -146,10 +142,8 @@ internal fun WindowViewScaffold(
                     onSelect()
                 }
             }.pointerInput(Unit) {
-                // Select this window on any press inside it, not only when the text grabs focus
-                // (via the selection container) and bubbles up to onFocusChanged. Observe in the
-                // Initial pass without consuming so text selection, links, and header buttons still
-                // receive the event.
+                // Initial pass and never consumed, so text selection, links and header buttons
+                // still see the press.
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -191,11 +185,8 @@ internal fun WindowViewScaffold(
                 }
 
                 is PanelWindowData -> {
-                    // Panel widgets (menuLink/menuImage) open the same server-driven context menu
-                    // as links in stream text: the widget's action returns a menu id, and the popup
-                    // renders once the server's menu response arrives under that id. The click
-                    // position is observed in the Initial pass (before the widget consumes the
-                    // press) so the popup can anchor where the user clicked.
+                    // Panel widgets open the same server-driven menu as stream links: the action
+                    // returns a menu id, and the popup anchors where the press landed.
                     var clickOffset by remember { mutableStateOf<Offset?>(null) }
                     var openMenuId by remember { mutableStateOf<Int?>(null) }
                     val currentOnActionClick by rememberUpdatedState(onActionClick)
@@ -312,9 +303,6 @@ private fun WindowViewContent(
         }
 
     val lines = stream.lines.collectAsState(emptyList()).value
-    // Bumped when the buffer is cleared (serial numbers restart from 0); keys the measured-height
-    // cache below so it is discarded on clear instead of feeding stale heights to reused serials.
-    val generation by stream.generation.collectAsState()
 
     val findController = LocalWindowFindController.current
     val findUiState by findController.state.collectAsState()
@@ -335,17 +323,10 @@ private fun WindowViewContent(
     }
 
     Box(modifier.fillMaxSize()) {
-        // Keyed, because the phone runs every tab through this one call site: without it the state
-        // carries over to the next window still anchored in the previous one's rows, which are gone
-        // the moment the tab changes, and the next drag is the crash the effect below exists to
-        // prevent. A fresh state has nothing to leave behind, and the ordering works out - the
-        // container reads it while composing, above the list, so the manager has dropped the old
-        // anchors before the rows carrying them are disposed. Clearing the old state instead would
-        // land after that same composition. Desktop gives each window its own call site, so the key
-        // never changes there.
+        // Keyed because the phone runs every tab through this one call site: a shared state would
+        // carry a selection into the next window, anchored in rows that are already gone.
         val state = key(windowName) { rememberSelectionState() }
-        // Register with the controller so {copy} and {selectall} can act on this window when it is
-        // the selected one; the clipboard comes from here because it is a composition local.
+        // So {copy} and {selectall} can reach this window. The clipboard is a composition local.
         val selectionController = LocalWindowSelectionController.current
         val clipboard = LocalClipboard.current
         DisposableEffect(selectionController, windowName, state, clipboard) {
@@ -370,21 +351,11 @@ private fun WindowViewContent(
                         modifier = Modifier.align(image.backgroundAlignment()),
                     )
                 }
-                // Heights are cached as rows render (see onSizeChanged below) and deliberately kept
-                // across width and style changes. A resize leaves them stale by whatever the re-wrap
-                // changed, which is approximately right and self-corrects the moment a line renders
-                // again - far better than discarding everything and having no estimate at all.
-                // Keyed on the generation alone, so the cache is dropped only when the buffer is
-                // cleared and serial numbers restart.
-                val measuredHeights =
-                    remember(generation) {
-                        mutableStateMapOf<Long, Int>()
-                    }
-                // Serial numbers of the rows composed right now, maintained by the rows
-                // themselves. The selection effect below uses it to tell a trim that reaches the
-                // composed rows from one falling off the far side of the scrollback. Not snapshot
-                // state: nothing composes from it, and the effect that reads it runs on the thread
-                // the rows update it from.
+                // Kept across width and style changes: a stale height is approximately right and
+                // self-corrects when the line renders again, which beats having no estimate.
+                val measuredHeights = remember { mutableStateMapOf<Long, Int>() }
+                // Serials of the rows composed right now, kept by the rows themselves for the
+                // selection effect below. Not snapshot state: nothing composes from it.
                 val composedSerials = remember { mutableSetOf<Long>() }
                 val currentLines = rememberUpdatedState(lines)
                 val currentOpenWindows = rememberUpdatedState(openWindows)
@@ -402,14 +373,8 @@ private fun WindowViewContent(
                             measuredHeights = measuredHeights,
                         )
                     }
-                // Drop heights for lines trimmed off the front of the scrollback. Serial numbers
-                // only ever increase and the buffer trims from the front, so everything below the
-                // oldest live line is gone for good. Without this the map grows an entry per line
-                // ever rendered - unbounded over a session - and those stale values keep skewing
-                // the average the scroll model uses for lines it has no height for.
-                //
-                // Driven by the oldest serial rather than the line list, so it wakes only when a
-                // trim actually happened instead of on every appended line.
+                // Drop heights for lines that have left the buffer: otherwise the map grows an
+                // entry per line ever rendered, and stale values skew the scroll model's average.
                 LaunchedEffect(measuredHeights) {
                     snapshotFlow { currentLines.value.firstOrNull()?.serialNumber }
                         .filterNotNull()
@@ -419,42 +384,25 @@ private fun WindowViewContent(
                                 .forEach { measuredHeights.remove(it) }
                         }
                 }
-                // A trim takes the app down if a selection is left pointing into it. Compose pins
-                // a selected lazy item so scrolling cannot dispose it, but nothing saves a row
-                // whose line has left the buffer: the SelectionManager keeps the anchor as a
-                // selectable id and looks it up in a map built from the live selectables, so the
-                // next drag event throws NoSuchElementException out of getDirectionById and the
-                // uncaught handler kills the client. The buffer cannot wait for a selection - it
-                // has to stay bounded - so the selection is what gives way.
-                //
-                // Only when the trim actually reaches it, though, and that same pinning is what
-                // makes the cheap test for it sound: every row a selection touches is pinned, so it
-                // is still composed, and a trim that stops short of the composed rows cannot have
-                // taken one. Sitting at the foot of a full scrollback - where a line is evicted for
-                // every line that arrives - the rows coming off the front are thousands behind the
-                // composed ones, so a selection there lives instead of dying on the next line of
-                // game text.
-                //
-                // clear() is enough to unwind even a drag in flight: the lookup only happens for a
-                // previous selection's anchors, so with none, appendSelectableInfo takes the
-                // direction from the drag position and the drag re-anchors where the pointer is.
-                //
-                // Read off the stream rather than the composed list, unlike the heights above,
-                // because this one has to run *before* the composition that drops those rows: the
-                // rows are what report themselves composed, and the trim that takes them is only
-                // observable through a composition-written mirror after it has already happened.
-                // The stream's flows are written outside composition, so an emission and the
-                // collectAsState write above land in the same dispatcher flush, and the frame that
-                // recomposes and then disposes the rows comes after it.
+                // A trim that takes a selected row leaves the SelectionManager holding a dead
+                // selectable id, and the next drag throws out of getDirectionById. The buffer stays
+                // bounded, so the selection gives way - but only when the trim reaches a composed
+                // row, which is sound because Compose pins every row a selection touches. Read off
+                // the stream rather than the composed list: this has to run before the composition
+                // that disposes those rows, and a mirror written during composition is observable
+                // only after it.
                 LaunchedEffect(state, stream) {
-                    bufferChanges(stream.lines, stream.generation).collect { change ->
-                        // A restart took every line at once, whatever the serials came back as -
-                        // see [BufferChange] for why the serials cannot answer that on their own.
-                        val cutoff = change.oldestSerial ?: Long.MAX_VALUE
-                        if (change.restarted || composedSerials.any { it < cutoff }) {
-                            state.clear()
+                    stream.lines
+                        .map { it.firstOrNull()?.serialNumber }
+                        .distinctUntilChanged()
+                        .drop(1)
+                        .collect { oldest ->
+                            // No oldest serial means the buffer emptied: every row went at once.
+                            val cutoff = oldest ?: Long.MAX_VALUE
+                            if (composedSerials.any { it < cutoff }) {
+                                state.clear()
+                            }
                         }
-                    }
                 }
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
@@ -468,14 +416,10 @@ private fun WindowViewContent(
                                 },
                         state = scrollState,
                     ) {
-                        // Recycled item keys. Compose caches one CachedItemContent per distinct item
-                        // key in LazyLayoutItemContentFactory and never evicts an entry, so keying
-                        // rows by a serial number - which only ever counts up - retains one entry
-                        // (plus its boxed key) per line ever displayed, for the window's lifetime.
-                        // Measured at ~45k entries a minute under a heavy stream, growing linearly
-                        // while the line buffer itself stayed flat. Keys only need to be unique
-                        // among the rows present at once, so folding them into a bounded space caps
-                        // the cache instead. See [lazyItemKeyModulus] for why the bound is safe.
+                        // Compose never evicts LazyLayoutItemContentFactory's per-key cache, so
+                        // ever-increasing serials retained an entry per line displayed - ~45k a
+                        // minute under a heavy stream. Keys only have to be unique among the rows
+                        // present at once; see [lazyItemKeyModulus].
                         val keyModulus = lazyItemKeyModulus(lines.serialSpan())
                         items(
                             count = lines.size,
@@ -483,14 +427,11 @@ private fun WindowViewContent(
                         ) { index ->
                             when (val line = lines[index]) {
                                 is StreamTextLine -> {
-                                    // rendersContent is the single source of truth for whether a line
-                                    // paints a row; the scroll model keys its heights off the same
-                                    // predicate, so the two cannot drift. It guarantees non-null text
-                                    // for a shown text line (hence the unreachable elvis below).
+                                    // The single source of truth for whether a line paints a row -
+                                    // the scroll model keys its heights off it too - and it
+                                    // guarantees non-null text when it does.
                                     if (lines.rendersContent(index, openWindows)) {
                                         val lineText = line.text ?: return@items
-                                        // This row is a selectable for as long as it is composed,
-                                        // so it is what the selection effect above watches for.
                                         DisposableEffect(line.serialNumber) {
                                             composedSerials.add(line.serialNumber)
                                             onDispose { composedSerials.remove(line.serialNumber) }
@@ -500,8 +441,7 @@ private fun WindowViewContent(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    // Record this row's real laid-out height. Fires
-                                                    // only on a size change, so no per-frame work.
+                                                    // Fires only on a size change.
                                                     .recordRowHeight(line.serialNumber, measuredHeights)
                                                     .onGloballyPositioned {
                                                         positionInParent = it.positionInParent()
