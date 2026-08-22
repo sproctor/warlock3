@@ -71,6 +71,7 @@ import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.LatestValueWriter
 import warlockfe.warlock3.compose.util.clipEntryOf
+import warlockfe.warlock3.compose.util.insertReplacingSelection
 import warlockfe.warlock3.compose.util.openUrl
 import warlockfe.warlock3.compose.util.plainText
 import warlockfe.warlock3.core.client.ClientCloseWindowEvent
@@ -1083,12 +1084,7 @@ class GameViewModel(
     }
 
     fun entryInsert(text: String) {
-        entryTextState.edit {
-            if (selection.length > 0) {
-                delete(selection.min, selection.max)
-            }
-            insert(selection.min, text)
-        }
+        entryTextState.insertReplacingSelection(text)
     }
 
     override fun historyPrev() {
@@ -1243,10 +1239,9 @@ class GameViewModel(
                 ?.plainText()
                 ?.takeIf { it.isNotEmpty() }
                 ?: return
-        entryTextState.edit {
-            // Replaces the selection when there is one, inserts at the cursor when there is not.
-            replace(selection.min, selection.max, text)
-        }
+        // Replaces the selection when there is one, inserts at the caret when there is not, and
+        // leaves the caret after the text either way - so pasting twice gives you both.
+        entryInsert(text)
     }
 
     // Open the find overlay over the currently selected window. No-op if that window has no text
