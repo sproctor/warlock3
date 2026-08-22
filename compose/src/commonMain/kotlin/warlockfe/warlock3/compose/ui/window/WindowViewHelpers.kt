@@ -30,6 +30,10 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
 import warlockfe.warlock3.core.window.BackgroundImageMode
 import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment
@@ -263,3 +267,41 @@ internal fun Modifier.recordRowHeight(
 internal val streamRowStartPadding = 4.dp
 internal val streamRowEndPadding = 8.dp
 internal val streamImageRowHeight = 80.dp
+
+/**
+ * A change to what a stream's buffer holds: the oldest serial still in it, and whether the buffer
+ * restarted - was cleared - since the previous value.
+ *
+ * [restarted] is not a nicety. [ComposeTextStream.clear] empties the buffer *and* restarts the
+ * serial numbers, and the flow it publishes on conflates, so a clear and the next line to arrive
+ * can reach a collector as a single value whose oldest serial is 0: no empty buffer is ever seen,
+ * and on a window that had not filled yet - where the oldest serial was already 0 - the serial does
+ * not change at all. The generation is the only thing that says every line the collector knew about
+ * is gone.
+ */
+internal data class BufferChange(
+    val oldestSerial: Long?,
+    val restarted: Boolean,
+)
+
+/**
+ * Emits one [BufferChange] per published buffer state, starting from the first *change*: the value
+ * a collector arrives to is what the view already composed against, not news.
+ */
+internal fun bufferChanges(
+    lines: Flow<List<StreamLine>>,
+    generations: Flow<Int>,
+): Flow<BufferChange> =
+    flow {
+        var previous: Pair<Int, Long?>? = null
+        combine(lines, generations) { published, generation ->
+            generation to published.firstOrNull()?.serialNumber
+        }.distinctUntilChanged()
+            .collect { current ->
+                val last = previous
+                previous = current
+                if (last != null) {
+                    emit(BufferChange(oldestSerial = current.second, restarted = current.first != last.first))
+                }
+            }
+    }

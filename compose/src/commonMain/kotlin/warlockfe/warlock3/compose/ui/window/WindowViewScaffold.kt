@@ -72,10 +72,7 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.yield
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
@@ -446,23 +443,18 @@ private fun WindowViewContent(
                 // because this one has to run *before* the composition that drops those rows: the
                 // rows are what report themselves composed, and the trim that takes them is only
                 // observable through a composition-written mirror after it has already happened.
-                // The stream's flow is written outside composition, so its emission and the
+                // The stream's flows are written outside composition, so an emission and the
                 // collectAsState write above land in the same dispatcher flush, and the frame that
-                // recomposes and then disposes the rows comes after it. Dropping the first emission
-                // keeps a restored selection through the initial composition.
+                // recomposes and then disposes the rows comes after it.
                 LaunchedEffect(state, stream) {
-                    stream.lines
-                        .map { it.firstOrNull()?.serialNumber }
-                        .distinctUntilChanged()
-                        .drop(1)
-                        .collect { oldest ->
-                            // A cleared stream reports no oldest serial at all, which is every row
-                            // going at once rather than nothing going.
-                            val cutoff = oldest ?: Long.MAX_VALUE
-                            if (composedSerials.any { it < cutoff }) {
-                                state.clear()
-                            }
+                    bufferChanges(stream.lines, stream.generation).collect { change ->
+                        // A restart took every line at once, whatever the serials came back as -
+                        // see [BufferChange] for why the serials cannot answer that on their own.
+                        val cutoff = change.oldestSerial ?: Long.MAX_VALUE
+                        if (change.restarted || composedSerials.any { it < cutoff }) {
+                            state.clear()
                         }
+                    }
                 }
                 listContainer(scrollState, heightModel) {
                     LazyColumn(
