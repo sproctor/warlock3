@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -86,6 +87,7 @@ fun DesktopWarlockEntry(
         defaultStyle = defaultStyle,
         state = viewModel.entryTextState,
         entryFocusRequester = entryFocusRequester,
+        onFocusChange = viewModel::setEntryFocused,
         roundTime = roundTime,
         castTime = castTime,
         sendCommand = viewModel::submit,
@@ -101,6 +103,7 @@ fun DesktopWarlockEntryContent(
     defaultStyle: StyleDefinition,
     state: TextFieldState,
     entryFocusRequester: FocusRequester,
+    onFocusChange: (Boolean) -> Unit,
     sendCommand: () -> Unit,
     roundTime: Int,
     castTime: Int,
@@ -153,6 +156,7 @@ fun DesktopWarlockEntryContent(
                         .padding(5.dp)
                         .align(Alignment.CenterStart)
                         .focusRequester(entryFocusRequester)
+                        .onFocusChanged { onFocusChange(it.isFocused) }
                         .fillMaxWidth()
                         .appendTextContextMenuComponents {
                             separator()

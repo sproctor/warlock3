@@ -7,7 +7,7 @@ import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 
 // Bump this and tag new entries in [defaultGlobalMacros] with the new number whenever defaults are
 // added, so existing users get them on upgrade (see [seedAndMigrateDefaultMacros]).
-const val MACRO_DEFAULTS_VERSION = 3
+const val MACRO_DEFAULTS_VERSION = 4
 
 data class DefaultMacro(
     val keyCombo: MacroKeyCombo,
@@ -30,8 +30,7 @@ val defaultGlobalMacros: List<DefaultMacro> =
         DefaultMacro(MacroKeyCombo(Key.NumPad8.keyCode), "\\xn\\r\\?", 1),
         DefaultMacro(MacroKeyCombo(Key.NumPad9.keyCode), "\\xne\\r\\?", 1),
         DefaultMacro(MacroKeyCombo(Key.NumPad0.keyCode), "\\xdown\\r\\?", 1),
-        // remove work-around when this fix lands: https://youtrack.jetbrains.com/issue/CMP-4211
-        DefaultMacro(MacroKeyCombo(Key.NumPadDotFix.keyCode), "\\xup\\r\\?", 1),
+        DefaultMacro(MacroKeyCombo(Key.NumPadDot.keyCode), "\\xup\\r\\?", 1),
         DefaultMacro(MacroKeyCombo(Key.Escape.keyCode), "{StopScript}", 1),
         DefaultMacro(MacroKeyCombo(Key.Escape.keyCode, shift = true), "{PauseScript}", 1),
         DefaultMacro(MacroKeyCombo(Key.NumPadEnter.keyCode), "{ReturnOrRepeatLast}", 1),
@@ -47,6 +46,13 @@ val defaultGlobalMacros: List<DefaultMacro> =
         DefaultMacro(MacroKeyCombo(Key.R.keyCode, ctrl = true, shift = true), "{HistorySearchExit}", 2),
         DefaultMacro(MacroKeyCombo(Key.F.keyCode, ctrl = true), "{FindNext}", 3),
         DefaultMacro(MacroKeyCombo(Key.F.keyCode, ctrl = true, shift = true), "{FindPrev}", 3),
+        // These were removed here once, when the macros behind them could only reach the command
+        // entry that the platform already handles; SelectionContainer finally added a usable state,
+        // which allows us to implement them as intended.
+        DefaultMacro(MacroKeyCombo(Key.C.keyCode, ctrl = true), "{Copy}", 4),
+        DefaultMacro(MacroKeyCombo(Key.V.keyCode, ctrl = true), "{Paste}", 4),
+        DefaultMacro(MacroKeyCombo(Key.X.keyCode, ctrl = true), "{Cut}", 4),
+        DefaultMacro(MacroKeyCombo(Key.A.keyCode, ctrl = true), "{SelectAll}", 4),
     )
 
 /** Seeds the full current default set, but only when no global macros exist (used by reset-to-defaults). */

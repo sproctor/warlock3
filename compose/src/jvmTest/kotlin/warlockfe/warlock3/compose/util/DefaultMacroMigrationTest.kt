@@ -124,6 +124,55 @@ class DefaultMacroMigrationTest {
             assertTrue(macros.any { it.keyCombo == ctrlShiftR }, "the other new default is still added")
         }
 
+    // A user already on the previous version gets only the newly introduced bindings, not a
+    // re-seeding of everything they have pruned since.
+    @Test
+    fun upgradeFromPreviousVersion_addsOnlyTheNewWindowMacros() =
+        runBlocking {
+            val characterStore = CharacterConfigStore(configDir, fs).also { it.load() }
+            val clientStore = ClientConfigStore(configDir, fs).also { it.load() }
+            val repo = newMacroRepo(characterStore)
+            val settings = newClientSettings(clientStore)
+
+            repo.put("global", MacroKeyCombo(Key.DirectionUp.keyCode), "{HistoryPrev}")
+            settings.putMacroDefaultsVersion(MACRO_DEFAULTS_VERSION - 1)
+
+            repo.seedAndMigrateDefaultMacros(settings)
+
+            val macros = repo.observeGlobalMacros().first()
+            val actions = macros.associate { it.keyCombo to it.action }
+            assertEquals("{Copy}", actions[MacroKeyCombo(Key.C.keyCode, ctrl = true)])
+            assertEquals("{Paste}", actions[MacroKeyCombo(Key.V.keyCode, ctrl = true)])
+            assertEquals("{Cut}", actions[MacroKeyCombo(Key.X.keyCode, ctrl = true)])
+            assertEquals("{SelectAll}", actions[MacroKeyCombo(Key.A.keyCode, ctrl = true)])
+            // Nothing from an older wave comes back for a user who had already passed that version.
+            assertFalse(ctrlR in actions.keys, "an older default the user deleted stays deleted")
+        }
+
+    // Someone who has already bound ctrl-c themselves keeps it.
+    @Test
+    fun upgradeDoesNotDisturbAnExistingCtrlCBinding() =
+        runBlocking {
+            val characterStore = CharacterConfigStore(configDir, fs).also { it.load() }
+            val clientStore = ClientConfigStore(configDir, fs).also { it.load() }
+            val repo = newMacroRepo(characterStore)
+            val settings = newClientSettings(clientStore)
+
+            val ctrlC = MacroKeyCombo(Key.C.keyCode, ctrl = true)
+            repo.put("global", ctrlC, "\\xassess\\r")
+            settings.putMacroDefaultsVersion(MACRO_DEFAULTS_VERSION - 1)
+
+            repo.seedAndMigrateDefaultMacros(settings)
+
+            val macros = repo.observeGlobalMacros().first()
+            val actions = macros.associate { it.keyCombo to it.action }
+            assertEquals("\\xassess\\r", actions[ctrlC], "user binding wins")
+            // The rest of the wave still lands.
+            assertEquals("{Paste}", actions[MacroKeyCombo(Key.V.keyCode, ctrl = true)])
+            assertEquals("{Cut}", actions[MacroKeyCombo(Key.X.keyCode, ctrl = true)])
+            assertEquals("{SelectAll}", actions[MacroKeyCombo(Key.A.keyCode, ctrl = true)])
+        }
+
     @Test
     fun markerAtLatest_deletedNewDefaultNotReadded() =
         runBlocking {

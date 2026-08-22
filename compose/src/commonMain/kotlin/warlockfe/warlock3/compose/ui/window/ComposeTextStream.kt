@@ -48,7 +48,6 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.TimeSource
 
-@OptIn(ExperimentalTime::class)
 class ComposeTextStream(
     override val id: String,
     private var maxLines: Int,
@@ -92,12 +91,6 @@ class ComposeTextStream(
 
     private var nextSerialNumber = 0L
     private var removedLines = 0L
-
-    // Bumped on clear(), where nextSerialNumber restarts from 0. Anything keyed by serial number (the
-    // scrollbar's measured-height cache) observes this to drop state that would otherwise collide with
-    // the reused low serial numbers.
-    private val _generation = MutableStateFlow(0)
-    val generation: StateFlow<Int> = _generation
 
     // Set when the displayed lines changed but the new snapshot has not been emitted yet; the work
     // queue coalesces this into a single publish per drain batch (see publishLines/flush).
@@ -194,9 +187,11 @@ class ComposeTextStream(
             partialLine = null
             componentLocations.clear()
             components.clear()
-            nextSerialNumber = 0L
-            removedLines = 0L
-            _generation.value += 1
+            // Serial numbers deliberately keep counting. They are how the view tells a line that is
+            // gone from a different line: a restart would put a fresh line below rows still
+            // composed from the old buffer, which is what the selection clear and the height cache
+            // both test against.
+            removedLines = nextSerialNumber
             cacheLines.clear()
             linesUpdated()
         }
@@ -263,6 +258,10 @@ class ComposeTextStream(
 
     // Trim the buffer down to the cap. Callers append first, then trim, so this evicts the oldest
     // lines until at most [effectiveMaxLines] remain.
+    //
+    // Nothing here defers to a selection anchored in the lines being dropped: the buffer has to stay
+    // bounded, so the selection is what gives way. The view drops it when the front of the buffer
+    // moves - see the selection effect in WindowViewScaffold for why it has to.
     private fun removeLines() {
         val cap = effectiveMaxLines(maxLines)
         var evicted = false

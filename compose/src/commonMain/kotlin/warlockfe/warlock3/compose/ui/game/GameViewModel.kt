@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.insert
+import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
@@ -65,10 +66,14 @@ import warlockfe.warlock3.compose.ui.window.StreamWindowData
 import warlockfe.warlock3.compose.ui.window.WindowData
 import warlockfe.warlock3.compose.ui.window.WindowFindController
 import warlockfe.warlock3.compose.ui.window.WindowFindUiState
+import warlockfe.warlock3.compose.ui.window.WindowSelectionController
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.LatestValueWriter
+import warlockfe.warlock3.compose.util.clipEntryOf
+import warlockfe.warlock3.compose.util.insertReplacingSelection
 import warlockfe.warlock3.compose.util.openUrl
+import warlockfe.warlock3.compose.util.plainText
 import warlockfe.warlock3.core.client.ClientCloseWindowEvent
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientOpenUrlEvent
@@ -1079,12 +1084,7 @@ class GameViewModel(
     }
 
     fun entryInsert(text: String) {
-        entryTextState.edit {
-            if (selection.length > 0) {
-                delete(selection.min, selection.max)
-            }
-            insert(selection.min, text)
-        }
+        entryTextState.insertReplacingSelection(text)
     }
 
     override fun historyPrev() {
@@ -1162,6 +1162,86 @@ class GameViewModel(
 
     override fun findPrev() {
         if (findStateFlow.value == null) openFind() else findStep(-1)
+    }
+
+    /**
+     * The selections of the open windows, so [copySelection] and [selectAll] can reach the one the
+     * user is looking at. Populated by the window views; see [WindowSelectionController].
+     */
+    val windowSelectionController = WindowSelectionController()
+
+    /**
+     * Puts [text] on the platform clipboard, reporting whether it got there. The clipboard comes
+     * from a window's composition, so there may not be one yet.
+     */
+    private suspend fun copyToClipboard(text: String): Boolean {
+        val entry = clipEntryOf(text) ?: return false
+        val clipboard = windowSelectionController.clipboard ?: return false
+        clipboard.setClipEntry(entry)
+        return true
+    }
+
+    override suspend fun copySelection() {
+        // The entry comes first while it holds focus. These macros run in onPreviewKeyEvent and
+        // consume the key, so nothing else will copy from the entry - and forwarding to the window
+        // would copy nothing anyway: a SelectionContainer releases its selection the moment focus
+        // leaves it, which is what taking focus into the entry does. The two are never both live.
+        if (entryFocused.value) {
+            val selection = entryTextState.selection
+            if (!selection.collapsed) {
+                copyToClipboard(entryTextState.text.substring(selection.min, selection.max))
+                return
+            }
+        }
+        val texts = windowSelectionController.stateFor(selectedWindow.value)?.selectedTexts.orEmpty()
+        if (texts.isEmpty()) return
+        // One entry per selected text composable, which for a stream is one per line. Compose's own
+        // copy puts a newline between them, so this is what ctrl-c in the window already produces.
+        copyToClipboard(texts.joinToString("\n"))
+    }
+
+    override fun selectAll() {
+        // Focus decides, as it does for copy: ctrl-a in a focused text field selects that field
+        // everywhere else, and the macro consuming the key is the only thing left to do it here.
+        if (entryFocused.value) {
+            entryTextState.edit { selectAll() }
+            return
+        }
+        // Only what is composed: a lazy list's off-screen lines are not selectable, which the
+        // Compose API documents and we cannot work around from here.
+        windowSelectionController.stateFor(selectedWindow.value)?.selectAll()
+    }
+
+    private val entryFocused = MutableStateFlow(false)
+
+    /** Reported by the entry composables, so {cut} can tell whether the entry is the user's target. */
+    fun setEntryFocused(focused: Boolean) {
+        entryFocused.value = focused
+    }
+
+    override suspend fun cutEntrySelection() {
+        // Unlike copy, this one never leaves the entry. Cutting from a window would mean deleting
+        // game text, and a cut aimed at an unfocused entry should do nothing rather than quietly
+        // remove whatever happened to be selected there.
+        if (!entryFocused.value) return
+        val selection = entryTextState.selection
+        if (selection.collapsed) return
+        val cut = entryTextState.text.substring(selection.min, selection.max)
+        // Nothing is deleted until the text is somewhere the user can get it back from.
+        if (!copyToClipboard(cut)) return
+        entryTextState.edit { replace(selection.min, selection.max, "") }
+    }
+
+    override suspend fun pasteIntoEntry() {
+        val text =
+            windowSelectionController.clipboard
+                ?.getClipEntry()
+                ?.plainText()
+                ?.takeIf { it.isNotEmpty() }
+                ?: return
+        // Replaces the selection when there is one, inserts at the caret when there is not, and
+        // leaves the caret after the text either way - so pasting twice gives you both.
+        entryInsert(text)
     }
 
     // Open the find overlay over the currently selected window. No-op if that window has no text
