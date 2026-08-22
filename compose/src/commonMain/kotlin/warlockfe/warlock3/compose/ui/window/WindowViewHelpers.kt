@@ -30,10 +30,6 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.core.window.BackgroundImageHorizontalAlignment
 import warlockfe.warlock3.core.window.BackgroundImageMode
 import warlockfe.warlock3.core.window.BackgroundImageVerticalAlignment

@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,7 +33,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import warlockfe.warlock3.compose.generated.resources.Res
-import warlockfe.warlock3.compose.generated.resources.menu
 import warlockfe.warlock3.compose.generated.resources.more_vert
 import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled

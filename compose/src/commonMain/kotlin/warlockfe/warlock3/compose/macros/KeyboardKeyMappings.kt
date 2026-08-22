@@ -222,27 +222,7 @@ object KeyboardKeyMappings {
     val reverseKeyCodeMap = keyCodeMap.entries.associate { (k, v) -> v to k }
 
     /**
-     * Get Key from string code
-     */
-    fun getKey(code: String): Key? = keyMap[code]
-
-    /**
      * Get string code from Key
      */
     fun getCode(key: Key): String? = reverseKeyMap[key]
-
-    /**
-     * Check if a string code is valid
-     */
-    fun isValidCode(code: String): Boolean = code in keyMap
-
-    /**
-     * Get all available key codes
-     */
-    fun getAllCodes(): Set<String> = keyMap.keys
-
-    /**
-     * Get all available Keys
-     */
-    fun getAllKeys(): Set<Key> = keyMap.values.toSet()
 }

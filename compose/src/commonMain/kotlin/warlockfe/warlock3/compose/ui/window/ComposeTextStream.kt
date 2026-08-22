@@ -48,7 +48,6 @@ import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlin.time.TimeSource
 
-@OptIn(ExperimentalTime::class)
 class ComposeTextStream(
     override val id: String,
     private var maxLines: Int,

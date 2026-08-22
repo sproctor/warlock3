@@ -68,7 +68,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.SystemFileSystem
-import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.HorizontalProgressBar
@@ -97,7 +96,6 @@ import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.initializeSentry
 import warlockfe.warlock3.core.client.JavaProxy
-import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.ThemeSetting
@@ -509,7 +507,7 @@ private class WarlockCommand : CliktCommand() {
             warlockDirs = warlockDirs,
             fileSystem = SystemFileSystem,
             soundPlayer = DesktopSoundPlayer(warlockDirs),
-            warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
+            warlockProxyFactory = { JavaProxy(it) },
         )
     }
 
@@ -654,7 +652,6 @@ private class WarlockCommand : CliktCommand() {
     }
 }
 
-@OptIn(ExperimentalResourceApi::class)
 fun main(args: Array<String>) =
     WarlockCommand()
         .versionOption(version ?: "Development")
