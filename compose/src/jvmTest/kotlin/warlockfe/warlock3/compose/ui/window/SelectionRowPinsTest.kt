@@ -3,10 +3,12 @@ package warlockfe.warlock3.compose.ui.window
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.BasicText
@@ -15,6 +17,7 @@ import androidx.compose.foundation.text.selection.SelectionState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
@@ -24,6 +27,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerButtons
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.PinnableContainer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -117,6 +121,66 @@ class SelectionRowPinsTest {
             assertEquals(emptyList(), s.failures)
         }
 
+    /**
+     * Pins from an earlier press must not outlive the selection they guarded: left in place, they
+     * hold the window's oldest composed rows, and the buffer trim walking through them would clear
+     * whatever selection is live by then - one anchored in rows that are all still composed.
+     */
+    @Test
+    fun aNewSelectionLetsGoOfAnEarlierClicksPinsSoATrimCannotClearIt() =
+        scene { s ->
+            s.pointer(PointerEventType.Press, Offset(10f, 5f))
+            s.pointer(PointerEventType.Release, Offset(10f, 5f), buttons = PointerButtons())
+            s.scrollBy(1500f)
+            assertTrue(0L in s.composed, "the click's rows are held while it could still be extended")
+
+            // A fresh selection elsewhere: the click's pins are stale now, and its rows go.
+            s.pointer(PointerEventType.Press, Offset(10f, 60f))
+            s.pointer(PointerEventType.Move, Offset(10f, 100f))
+            assertFalse(0L in s.composed, "the earlier click's rows should have been let go")
+            val texts = s.selectedTexts()
+            assertTrue(texts.isNotEmpty())
+
+            // The trim walks through the old rows without touching the live selection.
+            s.lines.value = s.lines.value.drop(20)
+            s.render()
+            assertEquals(texts, s.selectedTexts(), "the trim took nothing the selection is anchored in")
+            assertEquals(emptyList(), s.failures)
+        }
+
+    /**
+     * The stand-in scrollbar consumes its presses the way the real one consumes its drags. Such a
+     * press is not a fresh selection: it must leave a live selection and the pins guarding it
+     * alone. And when nothing is anchored anywhere, the pins it took itself go at its release -
+     * without that, a scrollbar press in an unfocused window would pin a viewport of rows with no
+     * release path at all.
+     */
+    @Test
+    fun aConsumedPressLeavesTheSelectionAloneAndItsOwnPinsGoAtRelease() =
+        scene { s ->
+            // A selection, then a scrollbar drag: selection and pins both stay.
+            s.pointer(PointerEventType.Press, Offset(10f, 5f))
+            s.pointer(PointerEventType.Move, Offset(10f, 40f))
+            s.pointer(PointerEventType.Release, Offset(10f, 40f), buttons = PointerButtons())
+            val texts = s.selectedTexts()
+            assertTrue(texts.isNotEmpty())
+            s.pointer(PointerEventType.Press, Offset(290f, 60f))
+            s.pointer(PointerEventType.Move, Offset(290f, 120f))
+            s.pointer(PointerEventType.Release, Offset(290f, 120f), buttons = PointerButtons())
+            assertEquals(texts, s.selectedTexts(), "a scrollbar drag should not disturb the selection")
+            assertTrue(s.pinned.isNotEmpty(), "or the pins guarding it")
+
+            // Nothing anchored: the press pins while it is down, the release lets go.
+            s.call { s.otherFocus.requestFocus() }
+            s.render()
+            assertTrue(s.pinned.isEmpty())
+            s.pointer(PointerEventType.Press, Offset(290f, 60f))
+            assertTrue(s.pinned.isNotEmpty(), "a press guards whatever it might touch while it is down")
+            s.pointer(PointerEventType.Release, Offset(290f, 60f), buttons = PointerButtons())
+            assertTrue(s.pinned.isEmpty(), "nothing anchored, so the release lets the rows go")
+            assertEquals(emptyList(), s.failures)
+        }
+
     @Test
     fun thePinsAreReleasedOnceTheSelectionIsGone() =
         scene { s ->
@@ -136,7 +200,7 @@ class SelectionRowPinsTest {
 
     @Test
     fun bookkeepingPinsEachRowOnceAndReleasesItOnce() {
-        val pins = SelectionRowPins(SelectionState())
+        val pins = SelectionRowPins(SelectionState()) { emptySet() }
         val containers = (1L..3L).associateWith { FakeContainer() }
         containers.forEach { (serial, container) -> pins.rowComposed(serial, container) }
 
@@ -167,6 +231,51 @@ class SelectionRowPinsTest {
         assertTrue(containers.values.all { it.pins == 0 })
     }
 
+    @Test
+    fun aReplacedSelectionKeepsTheVisibleRowsAndRetiresTheRest() {
+        var visible = setOf<Long>()
+        val pins = SelectionRowPins(SelectionState()) { visible }
+        val containers = (1L..4L).associateWith { FakeContainer() }
+        listOf(1L, 2L, 3L).forEach { pins.rowComposed(it, containers.getValue(it)) }
+        pins.pinComposedRows()
+        // Composed since the pins were taken, like a row the scroll just brought in.
+        pins.rowComposed(4L, containers.getValue(4L))
+
+        visible = setOf(2L, 4L)
+        pins.selectionReplaced()
+        assertEquals(setOf(2L, 4L), pins.pinnedSerials, "in view stays pinned or gets pinned; the rest goes")
+        assertEquals(0, containers.getValue(1L).pins)
+        assertEquals(1, containers.getValue(2L).pins)
+
+        // The rows let go are still composed until the next measure, and must not be resurrected
+        // by the broad pin a selection change runs - or the release would never stick.
+        pins.pinComposedRows()
+        assertEquals(setOf(2L, 4L), pins.pinnedSerials)
+        // Their disposal is nobody's anchor leaving.
+        assertFalse(pins.rowDisposed(3L))
+        // But a row composed afresh is an ordinary row again.
+        pins.rowComposed(1L, containers.getValue(1L))
+        pins.pinComposedRows()
+        assertTrue(1L in pins.pinnedSerials)
+    }
+
+    @Test
+    fun nothingAnchoredMeansNothingHeld() {
+        val pins = SelectionRowPins(SelectionState()) { emptySet() }
+        val container = FakeContainer()
+        pins.rowComposed(1L, container)
+        pins.pinComposedRows()
+
+        // Focused: a collapsed click's anchor may live here, so the rows are kept.
+        pins.containerFocused = true
+        pins.releaseUnlessAnchored()
+        assertEquals(1, container.pins)
+
+        pins.containerFocused = false
+        pins.releaseUnlessAnchored()
+        assertEquals(0, container.pins)
+    }
+
     private class FakeContainer : PinnableContainer {
         var pins = 0
 
@@ -188,11 +297,17 @@ class SelectionRowPinsTest {
         val otherFocus: FocusRequester,
         val failures: MutableList<Throwable>,
         private val composedRows: MutableSet<Long>,
+        private val rowPins: () -> SelectionRowPins,
     ) {
         val composed: Set<Long>
             get() = call { composedRows.toSet() }
 
+        val pinned: Set<Long>
+            get() = call { rowPins().pinnedSerials.toSet() }
+
         fun <T> call(block: () -> T): T = composeThread.submit(Callable(block)).get()
+
+        fun selectedTexts(): List<String> = call { state.selectedTexts.map { it.text } }
 
         fun render() =
             call {
@@ -223,9 +338,10 @@ class SelectionRowPinsTest {
 
     /**
      * 200 one-line rows in a 200px viewport, about a dozen of them composed, shaped like the
-     * window's: fixed height, start padding, and a blank line among the text. Confined to one thread
-     * like the AWT event thread the app composes on, with a second focusable so focus can leave
-     * the container.
+     * window's: fixed height, start padding, a blank line among the text, and a strip down the
+     * right edge that consumes its presses, standing in for the desktop scrollbar. Confined to one
+     * thread like the AWT event thread the app composes on, with a second focusable so focus can
+     * leave the container.
      */
     @OptIn(ExperimentalComposeUiApi::class)
     private fun scene(block: (Scene) -> Unit) {
@@ -237,6 +353,7 @@ class SelectionRowPinsTest {
             val scrollState = LazyListState()
             val state = SelectionState()
             val otherFocus = FocusRequester()
+            val pinsHolder = arrayOfNulls<SelectionRowPins>(1)
             val dispatcher = composeThread.asCoroutineDispatcher()
             val scene =
                 composeThread
@@ -253,32 +370,57 @@ class SelectionRowPinsTest {
                             )
                         },
                     ).get()
-            val s = Scene(composeThread, scene, state, lines, scrollState, otherFocus, failures, composedRows)
+            val s =
+                Scene(composeThread, scene, state, lines, scrollState, otherFocus, failures, composedRows) {
+                    checkNotNull(pinsHolder[0])
+                }
             try {
                 s.call {
                     scene.setContent {
                         val current by lines.collectAsState()
                         Column {
                             Box(Modifier.size(1.dp).focusRequester(otherFocus).focusable())
-                            val rowPins = rememberSelectionRowPins(state)
+                            val rowPins =
+                                rememberSelectionRowPins(state) {
+                                    scrollState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? Long }
+                                }
+                            pinsHolder[0] = rowPins
                             SelectionContainer(state = state, modifier = Modifier.pinSelectionRows(rowPins)) {
-                                LazyColumn(Modifier.fillMaxWidth(), state = scrollState) {
-                                    items(count = current.size, key = { index -> current[index] }) { index ->
-                                        val serial = current[index]
-                                        rowPins.PinnedRow(serial)
-                                        DisposableEffect(serial) {
-                                            composedRows += serial
-                                            onDispose { composedRows -= serial }
-                                        }
-                                        Box(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .height(ROW_HEIGHT.dp)
-                                                .padding(horizontal = 4.dp),
-                                        ) {
-                                            BasicText(text = if (serial == BLANK_ROW.toLong()) "" else "line $serial")
+                                Box {
+                                    LazyColumn(Modifier.fillMaxWidth(), state = scrollState) {
+                                        items(count = current.size, key = { index -> current[index] }) { index ->
+                                            val serial = current[index]
+                                            rowPins.PinnedRow(serial)
+                                            DisposableEffect(serial) {
+                                                composedRows += serial
+                                                onDispose { composedRows -= serial }
+                                            }
+                                            Box(
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .height(ROW_HEIGHT.dp)
+                                                    .padding(horizontal = 4.dp),
+                                            ) {
+                                                BasicText(text = if (serial == BLANK_ROW.toLong()) "" else "line $serial")
+                                            }
                                         }
                                     }
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.TopEnd)
+                                            .fillMaxHeight()
+                                            .width(20.dp)
+                                            .pointerInput(Unit) {
+                                                awaitPointerEventScope {
+                                                    while (true) {
+                                                        val event = awaitPointerEvent()
+                                                        if (event.type == PointerEventType.Press) {
+                                                            event.changes.forEach { it.consume() }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                    )
                                 }
                             }
                         }

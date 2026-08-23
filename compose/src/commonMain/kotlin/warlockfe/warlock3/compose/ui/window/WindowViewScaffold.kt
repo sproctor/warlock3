@@ -42,8 +42,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.layout.positionInParent
@@ -76,6 +74,7 @@ import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.compose.util.SettingsContextMenuItemKey
 import warlockfe.warlock3.compose.util.addItem
 import warlockfe.warlock3.compose.util.createFontFamily
+import warlockfe.warlock3.compose.util.onPress
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -138,17 +137,10 @@ internal fun WindowViewScaffold(
                 if (focusState.hasFocus) {
                     onSelect()
                 }
-            }.pointerInput(Unit) {
+            }.onPress(PointerEventPass.Initial) {
                 // Initial pass and never consumed, so text selection, links and header buttons
                 // still see the press.
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        if (event.type == PointerEventType.Press) {
-                            currentOnSelect()
-                        }
-                    }
-                }
+                currentOnSelect()
             }.semantics {
                 paneTitle = title
             },
@@ -188,15 +180,8 @@ internal fun WindowViewScaffold(
                     var openMenuId by remember { mutableStateOf<Int?>(null) }
                     val currentOnActionClick by rememberUpdatedState(onActionClick)
                     Box(
-                        Modifier.pointerInput(Unit) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    if (event.type == PointerEventType.Press) {
-                                        clickOffset = event.changes.firstOrNull()?.position
-                                    }
-                                }
-                            }
+                        Modifier.onPress(PointerEventPass.Initial) { event ->
+                            clickOffset = event.changes.firstOrNull()?.position
                         },
                     ) {
                         panelContent(
@@ -325,8 +310,17 @@ private fun WindowViewContent(
         val state = key(windowName) { rememberSelectionState() }
         // Keeps the rows a selection may be anchored in composed while it lives, and drops the
         // selection when one of them goes anyway; see [SelectionRowPins] for why Compose's own
-        // pinning is not enough.
-        val rowPins = rememberSelectionRowPins(state)
+        // pinning is not enough. The viewport is read through the item keys rather than indices:
+        // layoutInfo dates from the last measure, and a trim since then would shift every index,
+        // while the keys ride out a trim by construction.
+        val rowPins =
+            rememberSelectionRowPins(state) {
+                val keyModulus = lazyItemKeyModulus(lines.serialSpan())
+                val visibleKeys = scrollState.layoutInfo.visibleItemsInfo.mapTo(mutableSetOf()) { it.key }
+                lines.mapNotNull { line ->
+                    line.serialNumber.takeIf { (it % keyModulus) in visibleKeys }
+                }
+            }
         // So {copy} and {selectall} can reach this window. The clipboard is a composition local.
         val selectionController = LocalWindowSelectionController.current
         val clipboard = LocalClipboard.current
@@ -436,20 +430,15 @@ private fun WindowViewContent(
                                             BasicText(
                                                 modifier =
                                                     Modifier
-                                                        .pointerInput(Unit) {
-                                                            awaitPointerEventScope {
-                                                                while (true) {
-                                                                    val event = awaitPointerEvent()
-                                                                    if (event.type == PointerEventType.Press) {
-                                                                        Logger.d { "Click: $event" }
-                                                                        clickOffset =
-                                                                            event.changes
-                                                                                .firstOrNull()
-                                                                                ?.position
-                                                                                ?.let { it + positionInParent }
-                                                                    }
-                                                                }
-                                                            }
+                                                        // Main pass, unlike the window's other press
+                                                        // observers: this one always ran there.
+                                                        .onPress(PointerEventPass.Main) { event ->
+                                                            Logger.d { "Click: $event" }
+                                                            clickOffset =
+                                                                event.changes
+                                                                    .firstOrNull()
+                                                                    ?.position
+                                                                    ?.let { it + positionInParent }
                                                         },
                                                 text =
                                                     if (activeFind != null) {
