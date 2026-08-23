@@ -69,10 +69,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import coil3.size.Size
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.compose.util.ClearContextMenuItemKey
 import warlockfe.warlock3.compose.util.CloseContextMenuItemKey
 import warlockfe.warlock3.compose.util.LocalBaseStyle
@@ -326,16 +323,28 @@ private fun WindowViewContent(
         // Keyed because the phone runs every tab through this one call site: a shared state would
         // carry a selection into the next window, anchored in rows that are already gone.
         val state = key(windowName) { rememberSelectionState() }
+        // Keeps the rows a selection may be anchored in composed while it lives, and drops the
+        // selection when one of them goes anyway; see [SelectionRowPins] for why Compose's own
+        // pinning is not enough.
+        val rowPins = rememberSelectionRowPins(state)
         // So {copy} and {selectall} can reach this window. The clipboard is a composition local.
         val selectionController = LocalWindowSelectionController.current
         val clipboard = LocalClipboard.current
-        DisposableEffect(selectionController, windowName, state, clipboard) {
+        DisposableEffect(selectionController, windowName, state, rowPins, clipboard) {
             selectionController.clipboard = clipboard
-            selectionController.register(windowName, state)
+            selectionController.register(
+                windowName,
+                object : WindowSelection {
+                    override val selectedTexts get() = state.selectedTexts
+
+                    override fun selectAll() = rowPins.selectAll()
+                },
+            )
             onDispose { selectionController.unregister(windowName) }
         }
         SelectionContainer(
             state = state,
+            modifier = Modifier.pinSelectionRows(rowPins),
         ) {
             BoxWithConstraints(
                 Modifier
@@ -354,9 +363,6 @@ private fun WindowViewContent(
                 // Kept across width and style changes: a stale height is approximately right and
                 // self-corrects when the line renders again, which beats having no estimate.
                 val measuredHeights = remember { mutableStateMapOf<Long, Int>() }
-                // Serials of the rows composed right now, kept by the rows themselves for the
-                // selection effect below. Not snapshot state: nothing composes from it.
-                val composedSerials = remember { mutableSetOf<Long>() }
                 val currentLines = rememberUpdatedState(lines)
                 val currentOpenWindows = rememberUpdatedState(openWindows)
                 val heightModel =
@@ -382,26 +388,6 @@ private fun WindowViewContent(
                             measuredHeights.keys
                                 .filter { it < oldest }
                                 .forEach { measuredHeights.remove(it) }
-                        }
-                }
-                // A trim that takes a selected row leaves the SelectionManager holding a dead
-                // selectable id, and the next drag throws out of getDirectionById. The buffer stays
-                // bounded, so the selection gives way - but only when the trim reaches a composed
-                // row, which is sound because Compose pins every row a selection touches. Read off
-                // the stream rather than the composed list: this has to run before the composition
-                // that disposes those rows, and a mirror written during composition is observable
-                // only after it.
-                LaunchedEffect(state, stream) {
-                    stream.lines
-                        .map { it.firstOrNull()?.serialNumber }
-                        .distinctUntilChanged()
-                        .drop(1)
-                        .collect { oldest ->
-                            // No oldest serial means the buffer emptied: every row went at once.
-                            val cutoff = oldest ?: Long.MAX_VALUE
-                            if (composedSerials.any { it < cutoff }) {
-                                state.clear()
-                            }
                         }
                 }
                 listContainer(scrollState, heightModel) {
@@ -432,10 +418,7 @@ private fun WindowViewContent(
                                     // guarantees non-null text when it does.
                                     if (lines.rendersContent(index, openWindows)) {
                                         val lineText = line.text ?: return@items
-                                        DisposableEffect(line.serialNumber) {
-                                            composedSerials.add(line.serialNumber)
-                                            onDispose { composedSerials.remove(line.serialNumber) }
-                                        }
+                                        rowPins.PinnedRow(line.serialNumber)
                                         var positionInParent by remember { mutableStateOf(Offset.Zero) }
                                         Box(
                                             modifier =
