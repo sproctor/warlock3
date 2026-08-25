@@ -1,19 +1,30 @@
 package warlockfe.warlock3.compose.ui.window
 
-import androidx.compose.foundation.text.selection.SelectionState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.text.AnnotatedString
+
+/**
+ * What a window exposes of its text selection: enough for the `{copy}` and `{selectall}` macros.
+ */
+interface WindowSelection {
+    /** The selected text, one entry per selected row, as Compose's own copy would join them. */
+    val selectedTexts: List<AnnotatedString>
+
+    /** Selects every composed row - which is all a lazy list offers. */
+    fun selectAll()
+}
 
 /**
  * The text selection of each open window, so the `{copy}` and `{selectall}` macros can act on the
  * window the user is looking at.
  *
- * A [SelectionState] belongs to one `SelectionContainer` and is created inside the window's
- * composition, so nothing outside it can reach one. Each window view registers itself here while it
- * is composed, and the view model looks up whichever window is selected when a macro fires.
+ * A selection belongs to one `SelectionContainer` and is created inside the window's composition,
+ * so nothing outside it can reach one. Each window view registers itself here while it is composed,
+ * and the view model looks up whichever window is selected when a macro fires.
  */
 class WindowSelectionController {
-    private val states = mutableMapOf<String, SelectionState>()
+    private val selections = mutableMapOf<String, WindowSelection>()
 
     /**
      * The platform clipboard, supplied by the composition because it is a composition local. Text
@@ -24,16 +35,16 @@ class WindowSelectionController {
 
     fun register(
         windowName: String,
-        state: SelectionState,
+        selection: WindowSelection,
     ) {
-        states[windowName] = state
+        selections[windowName] = selection
     }
 
     fun unregister(windowName: String) {
-        states.remove(windowName)
+        selections.remove(windowName)
     }
 
-    fun stateFor(windowName: String?): SelectionState? = windowName?.let { states[it] }
+    fun selectionFor(windowName: String?): WindowSelection? = windowName?.let { selections[it] }
 }
 
 /**

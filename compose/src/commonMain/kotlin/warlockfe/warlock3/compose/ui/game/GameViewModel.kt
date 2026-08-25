@@ -1193,7 +1193,7 @@ class GameViewModel(
                 return
             }
         }
-        val texts = windowSelectionController.stateFor(selectedWindow.value)?.selectedTexts.orEmpty()
+        val texts = windowSelectionController.selectionFor(selectedWindow.value)?.selectedTexts.orEmpty()
         if (texts.isEmpty()) return
         // One entry per selected text composable, which for a stream is one per line. Compose's own
         // copy puts a newline between them, so this is what ctrl-c in the window already produces.
@@ -1209,7 +1209,7 @@ class GameViewModel(
         }
         // Only what is composed: a lazy list's off-screen lines are not selectable, which the
         // Compose API documents and we cannot work around from here.
-        windowSelectionController.stateFor(selectedWindow.value)?.selectAll()
+        windowSelectionController.selectionFor(selectedWindow.value)?.selectAll()
     }
 
     private val entryFocused = MutableStateFlow(false)
