@@ -129,11 +129,21 @@ internal class SelectionRowPins(
      */
     fun selectionReplaced() {
         val visible = visibleRows().toSet()
+        if (visible.isEmpty()) {
+            // Nothing resolvable - the list has no measure to report yet. Guard whatever is
+            // composed rather than guessing: a viewport over-held for one gesture is bounded,
+            // a fresh anchor unpinned is the crash.
+            pinComposedRows()
+            return
+        }
         pinned.keys.filter { it !in visible }.forEach { serial ->
             pinned.remove(serial)?.release()
             retired += serial
         }
         visible.forEach { serial ->
+            // In view means resolvable, so a retirement no longer applies; without this a row
+            // pinned here would still be blocked from re-pinning after the next release.
+            retired.remove(serial)
             if (serial in composed && serial !in pinned) {
                 pinned[serial] = composed.getValue(serial)?.pin()
             }

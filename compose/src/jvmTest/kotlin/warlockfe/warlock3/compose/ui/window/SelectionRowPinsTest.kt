@@ -260,6 +260,50 @@ class SelectionRowPinsTest {
     }
 
     @Test
+    fun aRetiredRowBackInViewIsAnOrdinaryRowAgain() {
+        var visible = setOf<Long>()
+        val pins = SelectionRowPins(SelectionState()) { visible }
+        val containers = (1L..2L).associateWith { FakeContainer() }
+        containers.forEach { (serial, container) -> pins.rowComposed(serial, container) }
+        pins.pinComposedRows()
+
+        visible = setOf(1L)
+        pins.selectionReplaced()
+        assertEquals(setOf(1L), pins.pinnedSerials)
+
+        // The viewport reaches the retired row before its disposal got to it: it is resolvable
+        // again, so the retirement must lift with the pin - pinned and retired stay disjoint.
+        visible = setOf(2L)
+        pins.selectionReplaced()
+        assertEquals(setOf(2L), pins.pinnedSerials)
+        assertEquals(1, containers.getValue(2L).pins)
+        pins.releaseAll()
+        pins.pinComposedRows()
+        assertTrue(2L in pins.pinnedSerials, "the row is pinnable again after a release")
+    }
+
+    @Test
+    fun anUnresolvableViewportFallsBackToGuardingEverythingComposed() {
+        var visible = setOf<Long>()
+        val pins = SelectionRowPins(SelectionState()) { visible }
+        val containers = (1L..2L).associateWith { FakeContainer() }
+        containers.forEach { (serial, container) -> pins.rowComposed(serial, container) }
+
+        // No measure to report a viewport from: guard what is composed rather than retire it all,
+        // or the press that triggered this would leave its own anchor unpinned.
+        pins.selectionReplaced()
+        assertEquals(setOf(1L, 2L), pins.pinnedSerials)
+
+        // And the fallback honors an earlier retirement rather than resurrecting it.
+        visible = setOf(2L)
+        pins.selectionReplaced()
+        visible = setOf()
+        pins.selectionReplaced()
+        assertEquals(setOf(2L), pins.pinnedSerials)
+        assertEquals(0, containers.getValue(1L).pins)
+    }
+
+    @Test
     fun nothingAnchoredMeansNothingHeld() {
         val pins = SelectionRowPins(SelectionState()) { emptySet() }
         val container = FakeContainer()
@@ -382,7 +426,9 @@ class SelectionRowPinsTest {
                             Box(Modifier.size(1.dp).focusRequester(otherFocus).focusable())
                             val rowPins =
                                 rememberSelectionRowPins(state) {
-                                    scrollState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? Long }
+                                    scrollState.layoutInfo.visibleItemsInfo.mapNotNull { item ->
+                                        current.getOrNull(item.index)
+                                    }
                                 }
                             pinsHolder[0] = rowPins
                             SelectionContainer(state = state, modifier = Modifier.pinSelectionRows(rowPins)) {

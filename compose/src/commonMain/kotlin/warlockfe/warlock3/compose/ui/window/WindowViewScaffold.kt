@@ -310,15 +310,14 @@ private fun WindowViewContent(
         val state = key(windowName) { rememberSelectionState() }
         // Keeps the rows a selection may be anchored in composed while it lives, and drops the
         // selection when one of them goes anyway; see [SelectionRowPins] for why Compose's own
-        // pinning is not enough. The viewport is read through the item keys rather than indices:
-        // layoutInfo dates from the last measure, and a trim since then would shift every index,
-        // while the keys ride out a trim by construction.
+        // pinning is not enough. The indices line up because this lambda is replaced on every
+        // recomposition: the lines it reads are the ones the last measure laid out, and a trim
+        // that has arrived since sits in the flow until a recomposition that also re-measures
+        // before the next pointer event reaches anyone.
         val rowPins =
             rememberSelectionRowPins(state) {
-                val keyModulus = lazyItemKeyModulus(lines.serialSpan())
-                val visibleKeys = scrollState.layoutInfo.visibleItemsInfo.mapTo(mutableSetOf()) { it.key }
-                lines.mapNotNull { line ->
-                    line.serialNumber.takeIf { (it % keyModulus) in visibleKeys }
+                scrollState.layoutInfo.visibleItemsInfo.mapNotNull { item ->
+                    lines.getOrNull(item.index)?.serialNumber
                 }
             }
         // So {copy} and {selectall} can reach this window. The clipboard is a composition local.
