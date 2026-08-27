@@ -60,9 +60,9 @@ class IgnoreExportImportTest {
 
     private fun newRepository() =
         ExportRepository(
-            accountDao = UnusedAccountDao,
+            accountDao = UnusedIgnoreAccountDao,
             characterSettingDao = EmptyCharacterSettingDao,
-            clientSettingDao = UnusedClientSettingDao,
+            clientSettingDao = UnusedIgnoreClientSettingDao,
             scriptDirDao = EmptyScriptDirDao,
             windowSettingsDao = EmptyWindowSettingsDao,
             characterConfigStore = store,
@@ -142,7 +142,7 @@ class IgnoreExportImportTest {
         }
 }
 
-private object UnusedAccountDao : AccountDao {
+private object UnusedIgnoreAccountDao : AccountDao {
     override suspend fun getAll() = error("unused")
 
     override fun observeAll(): Flow<List<warlockfe.warlock3.core.prefs.models.AccountEntity>> = error("unused")
@@ -156,7 +156,7 @@ private object UnusedAccountDao : AccountDao {
     override suspend fun delete(username: String) = error("unused")
 }
 
-private object UnusedClientSettingDao : ClientSettingDao {
+private object UnusedIgnoreClientSettingDao : ClientSettingDao {
     override suspend fun getAll() = error("unused")
 
     override suspend fun getByKey(key: String): String? = error("unused")
