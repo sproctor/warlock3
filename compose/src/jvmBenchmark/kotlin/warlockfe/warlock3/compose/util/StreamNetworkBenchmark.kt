@@ -333,6 +333,7 @@ private class BenchWindowRegistry(
     // the constant [baseStyle]: the parse/render path being measured does not depend on the palette.
     override val colorPalette: StateFlow<Map<String, WarlockColor>> = MutableStateFlow(emptyMap())
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())
+    private val ignores = MutableStateFlow<List<warlockfe.warlock3.compose.model.ViewIgnore>>(emptyList())
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())
     private val monoFont = MutableStateFlow<warlockfe.warlock3.core.text.FontConfig?>(null)
     private val streams = ConcurrentHashMap<String, ComposeTextStream>()
@@ -360,6 +361,7 @@ private class BenchWindowRegistry(
                     suppressPrompts = false,
                     highlights = highlights,
                     names = names,
+                    ignores = ignores,
                     alterations = alterations,
                     presets = presets,
                     monoFont = monoFont,

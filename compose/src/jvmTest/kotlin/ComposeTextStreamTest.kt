@@ -4,13 +4,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import warlockfe.warlock3.compose.model.LiteralHighlight
+import warlockfe.warlock3.compose.model.LiteralIgnore
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.model.ViewIgnore
 import warlockfe.warlock3.compose.ui.window.ComposeTextStream
 import warlockfe.warlock3.compose.ui.window.StreamImageLine
 import warlockfe.warlock3.compose.ui.window.StreamLine
@@ -20,6 +23,7 @@ import warlockfe.warlock3.compose.ui.window.effectiveMaxLines
 import warlockfe.warlock3.compose.ui.window.initialBufferCapacity
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
+import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
@@ -59,7 +63,11 @@ class ComposeTextStreamTest {
         names: List<ViewHighlight> = emptyList(),
         presets: StateFlow<Map<String, StyleLayer>> = MutableStateFlow(emptyMap()),
         highlights: StateFlow<HighlightIndex> = MutableStateFlow(HighlightIndex(emptyList())),
+        // MutableStateFlow (not a plain list) so tests can change the ignore list mid-test and observe
+        // the retroactive re-filter.
+        val ignores: MutableStateFlow<List<ViewIgnore>> = MutableStateFlow(emptyList()),
         alterations: StateFlow<List<CompiledAlteration>> = MutableStateFlow(emptyList()),
+        soundPlayer: SoundPlayer = SilentSoundPlayer,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         private val workQueue = StreamWorkQueue(scope)
@@ -74,10 +82,11 @@ class ComposeTextStreamTest {
                 suppressPrompts = suppressPrompts,
                 highlights = highlights,
                 names = MutableStateFlow(names),
+                ignores = ignores,
                 alterations = alterations,
                 presets = presets,
                 monoFont = MutableStateFlow(null),
-                soundPlayer = SilentSoundPlayer,
+                soundPlayer = soundPlayer,
                 workQueue = workQueue,
                 scope = scope,
             )
@@ -165,10 +174,12 @@ class ComposeTextStreamTest {
         names: List<ViewHighlight> = emptyList(),
         presets: StateFlow<Map<String, StyleLayer>> = MutableStateFlow(emptyMap()),
         highlights: StateFlow<HighlightIndex> = MutableStateFlow(HighlightIndex(emptyList())),
+        ignores: MutableStateFlow<List<ViewIgnore>> = MutableStateFlow(emptyList()),
         alterations: StateFlow<List<CompiledAlteration>> = MutableStateFlow(emptyList()),
+        soundPlayer: SoundPlayer = SilentSoundPlayer,
         block: (Fixture) -> Unit,
     ) {
-        val fixture = Fixture(maxLines, suppressPrompts, showImages, names, presets, highlights, alterations)
+        val fixture = Fixture(maxLines, suppressPrompts, showImages, names, presets, highlights, ignores, alterations, soundPlayer)
         try {
             block(fixture)
         } finally {
@@ -331,6 +342,100 @@ class ComposeTextStreamTest {
 
                 f.stream.setNameFilter(false)
                 assertEquals(2, f.awaitLines { it.size == 2 }.size)
+            }
+        }
+
+    @Test
+    fun ignoredLinesAreHiddenAtAppendTime() =
+        runBlocking {
+            val ignores =
+                MutableStateFlow<List<ViewIgnore>>(
+                    listOf(LiteralIgnore(literal = "orc", mode = IgnoreMatchMode.CONTAINS, ignoreCase = true)),
+                )
+            withFixture(ignores = ignores) { f ->
+                f.stream.appendLine(text("an orc appears"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.stream.appendLine(text("nothing here"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+
+                // The matching line is hidden from the view but keeps its place in the buffer: the
+                // shown neighbor still carries its original serial.
+                assertEquals(listOf("nothing here"), f.stream.lines.value.texts())
+                assertEquals(listOf(1L), f.stream.lines.value.serials())
+            }
+        }
+
+    @Test
+    fun changingIgnoresHidesAndRestoresRetroactively() =
+        runBlocking {
+            withFixture { f ->
+                f.stream.appendLine(text("an orc appears"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.stream.appendLine(text("nothing here"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+                assertEquals(2, f.stream.lines.value.size)
+
+                f.ignores.value = listOf(LiteralIgnore(literal = "orc", mode = IgnoreMatchMode.CONTAINS, ignoreCase = true))
+                assertEquals(listOf("nothing here"), f.awaitLines { it.size == 1 }.texts())
+
+                // Removing the ignore restores the hidden line, in serial order.
+                f.ignores.value = emptyList()
+                assertEquals(listOf("an orc appears", "nothing here"), f.awaitLines { it.size == 2 }.texts())
+            }
+        }
+
+    @Test
+    fun componentUpdateReevaluatesIgnores() =
+        runBlocking {
+            val ignores =
+                MutableStateFlow<List<ViewIgnore>>(
+                    listOf(LiteralIgnore(literal = "hidden", mode = IgnoreMatchMode.CONTAINS, ignoreCase = false)),
+                )
+            withFixture(ignores = ignores) { f ->
+                f.stream.appendLine(lineWithComponent("status: ", "flag"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+                assertEquals(listOf("status: "), f.stream.lines.value.texts())
+
+                // A component update that makes the rendered text match hides the line...
+                f.stream.updateComponent("flag", text("hidden"))
+                assertEquals(0, f.awaitLines { it.isEmpty() }.size)
+
+                // ...and one that stops it matching brings the line back.
+                f.stream.updateComponent("flag", text("ok"))
+                assertEquals(listOf("status: ok"), f.awaitLines { it.size == 1 }.texts())
+            }
+        }
+
+    @Test
+    fun ignoredLineStillPlaysHighlightSound() =
+        runBlocking {
+            // Ignores are display-only: a line hidden by an ignore still triggers highlight sounds, so
+            // an ignore plus a sound-carrying highlight works as a pure audio alert.
+            val played = java.util.concurrent.CopyOnWriteArrayList<String>()
+            val recorder =
+                object : SoundPlayer {
+                    override suspend fun playSound(filename: String): String? {
+                        played.add(filename)
+                        return null
+                    }
+                }
+            val beeper = LiteralHighlight(literal = "orc", matchPartialWord = true, ignoreCase = true, style = null, sound = "beep.wav")
+            val ignores =
+                MutableStateFlow<List<ViewIgnore>>(
+                    listOf(LiteralIgnore(literal = "orc", mode = IgnoreMatchMode.CONTAINS, ignoreCase = true)),
+                )
+            withFixture(
+                highlights = MutableStateFlow(HighlightIndex(listOf(beeper))),
+                ignores = ignores,
+                soundPlayer = recorder,
+            ) { f ->
+                f.stream.appendLine(text("an orc appears"), ignoreWhenBlank = false, showWhenClosed = null)
+                f.drain()
+
+                assertEquals(0, f.stream.lines.value.size)
+                // The sound is played through scope.launch, so wait for it rather than assert directly.
+                withTimeout(5.seconds) {
+                    while (played.isEmpty()) delay(10)
+                }
+                assertEquals(listOf("beep.wav"), played.toList())
             }
         }
 

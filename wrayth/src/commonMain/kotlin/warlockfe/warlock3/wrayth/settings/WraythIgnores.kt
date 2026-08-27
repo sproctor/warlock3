@@ -1,0 +1,17 @@
+package warlockfe.warlock3.wrayth.settings
+
+import kotlinx.serialization.Serializable
+import nl.adaptivity.xmlutil.serialization.XmlSerialName
+
+/**
+ * The `<ignores disable="n">` section of a Wrayth settings file. Entries are the same `<h>` element
+ * the highlight sections use. [disable] is the dialog's master "Disable" checkbox; we have no
+ * equivalent toggle, so it is parsed (to keep the decode robust) but not imported.
+ */
+@Serializable
+@XmlSerialName("ignores")
+data class WraythIgnores(
+    val disable: String? = null,
+    @XmlSerialName("h")
+    val entries: List<WraythHighlight> = emptyList(),
+)
