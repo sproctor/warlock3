@@ -121,6 +121,14 @@ arm64/intel, then publishes them as a GitHub release. An Android job builds an
 AAB and uploads to the Play internal track, gated on the `PUBLISH_ANDROID` repo
 variable.
 
+The in-app updater (`potassium-updater`) is fed by YAML manifests that are
+distributed as assets on each GitHub release, alongside the binaries: `latest.yml`,
+`latest-mac.yml`, `latest-linux.yml`, `latest-linux-arm64.yml` on stable
+releases, and `beta*.yml` equivalents on beta prereleases (the channel is
+derived from the tag, see the `potassium { }` block). Anything that consumes
+releases (the updater, the website download page) reads these manifests or the
+release assets directly from GitHub.
+
 **Verify the packaged app, not just CI.** `check` compiles and tests against
 Gradle's resolved classpath, which is not the classpath the shipped app runs on:
 the packaged `lib/` directory can contain jars Gradle deduplicated away. A
