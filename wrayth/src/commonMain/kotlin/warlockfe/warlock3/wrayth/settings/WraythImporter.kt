@@ -55,7 +55,16 @@ class WraythImporter(
             settings.ignores.forEach { ignore ->
                 ignoreRepository.save(characterId, ignore)
             }
-            messages.add("Imported ${settings.ignores.size} ignores")
+            val skippedIgnores =
+                wraythSettings.ignores
+                    ?.takeIf { it.disable == "y" }
+                    ?.entries
+                    ?.size ?: 0
+            if (skippedIgnores > 0) {
+                messages.add("Skipped $skippedIgnores ignores (the ignore list is disabled in Wrayth)")
+            } else {
+                messages.add("Imported ${settings.ignores.size} ignores")
+            }
             macroRepository.importMacros(settings.macros)
             messages.add("Imported ${settings.macros.size} macros")
             if (settings.ignoredMacros.isNotEmpty()) {
@@ -109,19 +118,24 @@ class WraythImporter(
             // word/case semantics verified against the real client (see WraythHighlight): word="y" is
             // "Match Partial Word(s)" (absent = whole word), case="y" is "Ignore Case" (absent =
             // case-sensitive). 1.0.1.28 doesn't persist either flag for ignores, so entries are
-            // usually bare, but the attributes are honored when present. The section's disable=
-            // master switch has no Warlock equivalent and is not imported. Wrayth has no entire-line
-            // ignore, so LINE never comes from an import.
+            // usually bare, but the attributes are honored when present. Warlock has no master ignore
+            // toggle, so a section the user disabled in Wrayth imports as nothing rather than as
+            // active rules that would hide lines the source client displayed. Wrayth has no
+            // entire-line ignore, so LINE never comes from an import.
             ignores =
-                settings.ignores?.entries.orEmpty().mapNotNull { entry ->
-                    entry.text?.let { text ->
-                        Ignore(
-                            id = Uuid.random(),
-                            pattern = text,
-                            isRegex = false,
-                            matchMode = if (entry.word == "y") IgnoreMatchMode.CONTAINS else IgnoreMatchMode.WORD,
-                            ignoreCase = entry.case == "y",
-                        )
+                if (settings.ignores?.disable == "y") {
+                    emptyList()
+                } else {
+                    settings.ignores?.entries.orEmpty().mapNotNull { entry ->
+                        entry.text?.let { text ->
+                            Ignore(
+                                id = Uuid.random(),
+                                pattern = text,
+                                isRegex = false,
+                                matchMode = if (entry.word == "y") IgnoreMatchMode.CONTAINS else IgnoreMatchMode.WORD,
+                                ignoreCase = entry.case == "y",
+                            )
+                        }
                     }
                 },
             names =

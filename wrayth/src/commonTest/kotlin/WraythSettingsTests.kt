@@ -153,25 +153,27 @@ class WraythSettingsTests {
         </settings>
         """.trimIndent()
 
+    private fun importer(): WraythImporter =
+        WraythImporter(
+            highlightRepository = FakeHighlightRepository(),
+            nameRepository = FakeNameRepository(),
+            ignoreRepository =
+                IgnoreRepository(
+                    CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
+                ),
+            macroRepository =
+                MacroRepository(
+                    FakeMacroDao(),
+                    CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
+                    emptyMap(),
+                    emptyMap(),
+                ),
+            fileSystem = SystemFileSystem,
+        )
+
     @Test
     fun testSettings() {
-        val importer =
-            WraythImporter(
-                highlightRepository = FakeHighlightRepository(),
-                nameRepository = FakeNameRepository(),
-                ignoreRepository =
-                    IgnoreRepository(
-                        CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
-                    ),
-                macroRepository =
-                    MacroRepository(
-                        FakeMacroDao(),
-                        CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
-                        emptyMap(),
-                        emptyMap(),
-                    ),
-                fileSystem = SystemFileSystem,
-            )
+        val importer = importer()
         val wraythSettings = importer.importString(exampleXml)
         val settings = importer.translateSettings(wraythSettings, "test")
         assertEquals(
@@ -201,6 +203,15 @@ class WraythSettingsTests {
     }
 
     @Test
+    fun testDisabledIgnoresAreNotImported() {
+        // A section the user disabled in Wrayth must not import as active rules.
+        val importer = importer()
+        val disabledXml = exampleXml.replace("disable=\"n\"", "disable=\"y\"")
+        val settings = importer.translateSettings(importer.importString(disabledXml), "test")
+        assertEquals(emptyList(), settings.ignores)
+    }
+
+    @Test
     fun testSettingsWithoutIgnores() {
         // Very old settings files have no <ignores> section at all; the decode must still succeed.
         val xml =
@@ -218,23 +229,7 @@ class WraythSettingsTests {
             </macros>
             </settings>
             """.trimIndent()
-        val importer =
-            WraythImporter(
-                highlightRepository = FakeHighlightRepository(),
-                nameRepository = FakeNameRepository(),
-                ignoreRepository =
-                    IgnoreRepository(
-                        CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
-                    ),
-                macroRepository =
-                    MacroRepository(
-                        FakeMacroDao(),
-                        CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
-                        emptyMap(),
-                        emptyMap(),
-                    ),
-                fileSystem = SystemFileSystem,
-            )
+        val importer = importer()
         val settings = importer.translateSettings(importer.importString(xml), "test")
         assertEquals(emptyList(), settings.ignores)
     }

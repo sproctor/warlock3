@@ -40,6 +40,7 @@ import warlockfe.warlock3.compose.generated.resources.add
 import warlockfe.warlock3.compose.generated.resources.delete
 import warlockfe.warlock3.compose.generated.resources.edit
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.models.Ignore
 import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
 import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
@@ -53,7 +54,7 @@ fun IgnoresView(
     modifier: Modifier = Modifier,
 ) {
     var selectedCharacter by remember(currentCharacter) { mutableStateOf(currentCharacter) }
-    val currentCharacterId = selectedCharacter?.id ?: "global"
+    val currentCharacterId = selectedCharacter?.id ?: GLOBAL_CHARACTER_ID
     val ignores by ignoreRepository
         .observeByCharacter(currentCharacterId)
         .collectAsState(emptyList())

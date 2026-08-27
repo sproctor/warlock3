@@ -120,6 +120,8 @@ class IgnoreExportImportTest {
             repository.importCharacter(export, "gs4:target", ImportMode.MERGE)
 
             val merged = IgnoreRepository(store).observeByCharacter("gs4:target").first()
+            // Size first: associate would collapse a surviving duplicate "spam" and hide a failed de-dupe.
+            assertEquals(3, merged.size)
             assertEquals(
                 mapOf("kept" to IgnoreMatchMode.CONTAINS, "spam" to IgnoreMatchMode.LINE, "other" to IgnoreMatchMode.CONTAINS),
                 merged.associate { it.pattern to it.matchMode },
