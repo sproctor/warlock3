@@ -11,5 +11,4 @@ import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
  * A key the table does not name falls back to its code rather than to a constant placeholder, so
  * two different unmapped bindings still read as two different bindings in the editor.
  */
-actual fun Key.getLabel(): String =
-    KeyboardKeyMappings.getCode(this)?.let(::keyCodeLabel) ?: "Key 0x${keyCode.toString(16)}"
+actual fun Key.getLabel(): String = KeyboardKeyMappings.getCode(this)?.let(::keyCodeLabel) ?: "Key 0x${keyCode.toString(16)}"

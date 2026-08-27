@@ -131,7 +131,11 @@ class IgnoreExportImportTest {
         runBlocking {
             store.load()
             IgnoreRepository(store).save("gs4:tholan", ignore("spam"))
-            val full = json.encodeToJsonElement(CharacterExport.serializer(), newRepository().getCharacterExport("gs4:tholan")) as JsonObject
+            val full =
+                json.encodeToJsonElement(
+                    CharacterExport.serializer(),
+                    newRepository().getCharacterExport("gs4:tholan"),
+                ) as JsonObject
             val legacy = JsonObject(full.filterKeys { it != "ignores" })
             val parsed = json.decodeFromJsonElement(CharacterExport.serializer(), legacy)
             assertEquals(emptyList(), parsed.ignores)

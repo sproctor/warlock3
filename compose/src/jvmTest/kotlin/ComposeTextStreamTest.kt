@@ -359,8 +359,16 @@ class ComposeTextStreamTest {
 
                 // The matching line is hidden from the view but keeps its place in the buffer: the
                 // shown neighbor still carries its original serial.
-                assertEquals(listOf("nothing here"), f.stream.lines.value.texts())
-                assertEquals(listOf(1L), f.stream.lines.value.serials())
+                assertEquals(
+                    listOf("nothing here"),
+                    f.stream.lines.value
+                        .texts(),
+                )
+                assertEquals(
+                    listOf(1L),
+                    f.stream.lines.value
+                        .serials(),
+                )
             }
         }
 
@@ -392,7 +400,11 @@ class ComposeTextStreamTest {
             withFixture(ignores = ignores) { f ->
                 f.stream.appendLine(lineWithComponent("status: ", "flag"), ignoreWhenBlank = false, showWhenClosed = null)
                 f.drain()
-                assertEquals(listOf("status: "), f.stream.lines.value.texts())
+                assertEquals(
+                    listOf("status: "),
+                    f.stream.lines.value
+                        .texts(),
+                )
 
                 // A component update that makes the rendered text match hides the line...
                 f.stream.updateComponent("flag", text("hidden"))
