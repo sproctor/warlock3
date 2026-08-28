@@ -31,13 +31,22 @@ data class LiteralHighlight(
 
     override fun containsMatchIn(text: String): Boolean {
         if (matchPartialWord) return text.contains(literal, ignoreCase = ignoreCase)
-        var idx = text.indexOf(literal, startIndex = 0, ignoreCase = ignoreCase)
-        while (idx >= 0) {
-            if (isWordBoundary(text, idx, idx + literal.length)) return true
-            idx = text.indexOf(literal, startIndex = idx + 1, ignoreCase = ignoreCase)
-        }
-        return false
+        return containsWholeWord(text, literal, ignoreCase)
     }
+}
+
+// Shared by highlights and ignores so their whole-word semantics can never drift apart.
+internal fun containsWholeWord(
+    text: String,
+    literal: String,
+    ignoreCase: Boolean,
+): Boolean {
+    var idx = text.indexOf(literal, startIndex = 0, ignoreCase = ignoreCase)
+    while (idx >= 0) {
+        if (isWordBoundary(text, idx, idx + literal.length)) return true
+        idx = text.indexOf(literal, startIndex = idx + 1, ignoreCase = ignoreCase)
+    }
+    return false
 }
 
 data class RegexHighlight(

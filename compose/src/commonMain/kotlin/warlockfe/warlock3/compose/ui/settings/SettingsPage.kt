@@ -14,6 +14,7 @@ import warlockfe.warlock3.compose.generated.resources.space_dashboard
 import warlockfe.warlock3.compose.generated.resources.space_dashboard_filled
 import warlockfe.warlock3.compose.generated.resources.star_shine
 import warlockfe.warlock3.compose.generated.resources.visibility_filled
+import warlockfe.warlock3.compose.generated.resources.visibility_off_filled
 
 // Sections the settings pages are grouped under in the nav. General has a blank title so it renders
 // on its own with no section header.
@@ -36,6 +37,7 @@ enum class SettingsPage(
     Windows("Windows", SettingsGroup.Appearance, Res.drawable.space_dashboard_filled),
     Highlights("Highlights", SettingsGroup.Appearance, Res.drawable.star_shine),
     Names("Names", SettingsGroup.Appearance, Res.drawable.visibility_filled),
+    Ignores("Ignores", SettingsGroup.Appearance, Res.drawable.visibility_off_filled),
     Alterations("Alterations", SettingsGroup.Appearance, Res.drawable.edit),
     Actions("Actions", SettingsGroup.Game, Res.drawable.front_hand),
     Macros("Macros", SettingsGroup.Game, Res.drawable.space_dashboard),

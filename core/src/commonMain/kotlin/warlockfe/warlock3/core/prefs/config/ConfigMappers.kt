@@ -5,6 +5,8 @@ import warlockfe.warlock3.core.prefs.models.Action
 import warlockfe.warlock3.core.prefs.models.AliasEntity
 import warlockfe.warlock3.core.prefs.models.AlterationEntity
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.models.Ignore
+import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
@@ -110,6 +112,24 @@ internal fun NameEntity.toConfig(): NameConfig =
         weight = fontWeight,
         fontFamily = fontFamily,
         fontSize = fontSize,
+    )
+
+internal fun IgnoreConfig.toIgnore(): Ignore =
+    Ignore(
+        id = id.toUuidOrRandom(),
+        pattern = pattern,
+        isRegex = isRegex,
+        matchMode = IgnoreMatchMode.fromString(mode),
+        ignoreCase = ignoreCase,
+    )
+
+internal fun Ignore.toConfig(): IgnoreConfig =
+    IgnoreConfig(
+        id = id.toString(),
+        pattern = pattern,
+        isRegex = isRegex,
+        mode = matchMode.name.lowercase(),
+        ignoreCase = ignoreCase,
     )
 
 internal fun AliasConfig.toEntity(characterId: String): AliasEntity =

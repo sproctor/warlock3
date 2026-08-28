@@ -9,8 +9,11 @@ import nl.adaptivity.xmlutil.serialization.XML
 import warlockfe.warlock3.core.macro.MacroCommands
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.models.Ignore
+import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
 import warlockfe.warlock3.core.prefs.models.MacroEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.text.StyleDefinition
@@ -23,6 +26,7 @@ import kotlin.uuid.Uuid
 class WraythImporter(
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
+    private val ignoreRepository: IgnoreRepository,
     private val macroRepository: MacroRepository,
     private val fileSystem: FileSystem,
 ) {
@@ -48,6 +52,19 @@ class WraythImporter(
                 nameRepository.save(characterId, name)
             }
             messages.add("Imported ${settings.names.size} names")
+            settings.ignores.forEach { ignore ->
+                ignoreRepository.save(characterId, ignore)
+            }
+            val skippedIgnores =
+                wraythSettings.ignores
+                    ?.takeIf { it.disable == "y" }
+                    ?.entries
+                    ?.size ?: 0
+            if (skippedIgnores > 0) {
+                messages.add("Skipped $skippedIgnores ignores (the ignore list is disabled in Wrayth)")
+            } else {
+                messages.add("Imported ${settings.ignores.size} ignores")
+            }
             macroRepository.importMacros(settings.macros)
             messages.add("Imported ${settings.macros.size} macros")
             if (settings.ignoredMacros.isNotEmpty()) {
@@ -91,10 +108,34 @@ class WraythImporter(
                                         ).toLayer(),
                                 ),
                             isRegex = false,
-                            matchPartialWord = true,
-                            ignoreCase = false,
+                            // See WraythHighlight for the verified attribute semantics.
+                            matchPartialWord = highlight.word == "y",
+                            ignoreCase = highlight.case == "y",
                             sound = highlight.sound,
                         )
+                    }
+                },
+            // word/case semantics verified against the real client (see WraythHighlight): word="y" is
+            // "Match Partial Word(s)" (absent = whole word), case="y" is "Ignore Case" (absent =
+            // case-sensitive). 1.0.1.28 doesn't persist either flag for ignores, so entries are
+            // usually bare, but the attributes are honored when present. Warlock has no master ignore
+            // toggle, so a section the user disabled in Wrayth imports as nothing rather than as
+            // active rules that would hide lines the source client displayed. Wrayth has no
+            // entire-line ignore, so LINE never comes from an import.
+            ignores =
+                if (settings.ignores?.disable == "y") {
+                    emptyList()
+                } else {
+                    settings.ignores?.entries.orEmpty().mapNotNull { entry ->
+                        entry.text?.let { text ->
+                            Ignore(
+                                id = Uuid.random(),
+                                pattern = text,
+                                isRegex = false,
+                                matchMode = if (entry.word == "y") IgnoreMatchMode.CONTAINS else IgnoreMatchMode.WORD,
+                                ignoreCase = entry.case == "y",
+                            )
+                        }
                     }
                 },
             names =
@@ -196,6 +237,7 @@ private fun String?.toWarlockColor(colors: Map<String, String>): WarlockColor {
 
 internal data class WarlockSettings(
     val highlights: List<Highlight>,
+    val ignores: List<Ignore>,
     val names: List<NameConfig>,
     val macros: List<MacroEntity>,
     val ignoredMacros: List<WraythMacro>,
