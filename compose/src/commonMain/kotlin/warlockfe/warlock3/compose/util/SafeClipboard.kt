@@ -19,12 +19,17 @@ import kotlin.time.Duration.Companion.milliseconds
  * Windows lets one process hold the clipboard open at a time and AWT does not wait its turn: while
  * something else has it - another app's copy, a clipboard manager's poll, a remote desktop session
  * syncing it - `setContents` throws `IllegalStateException: cannot open system clipboard`. Compose
- * copies from a coroutine with nothing to catch that (`SelectionContainer`, every text field), so
- * it reaches the uncaught handler and takes the app down, which is what DESKTOP-2G was.
+ * copies from a coroutine with nothing to catch that (`SelectionContainer`, every text field), so it
+ * reached the uncaught handler instead: a fatal crash report and a copy that silently did nothing,
+ * which is what DESKTOP-2G was.
  *
  * Whoever holds the lock is normally finishing a clipboard operation of their own, so a retry a
  * moment later usually gets it. A copy that never lands is logged and dropped: the user is no worse
- * off than with the copy that failed, minus the crash.
+ * off than with the copy that failed, minus the crash. Our own callers, who cannot see that through
+ * [setClipEntry], ask [trySetClipEntry] instead.
+ *
+ * Nothing here is platform-specific, but [ProvideSafeClipboard] is only applied over the desktop
+ * windows: this is an AWT failure mode, and the mobile clipboards do not share it.
  */
 class SafeClipboard(
     private val delegate: Clipboard,
@@ -34,8 +39,21 @@ class SafeClipboard(
     override suspend fun getClipEntry(): ClipEntry? = retrying("read") { delegate.getClipEntry() }
 
     override suspend fun setClipEntry(clipEntry: ClipEntry?) {
-        retrying("write") { delegate.setClipEntry(clipEntry) }
+        trySetClipEntry(clipEntry)
     }
+
+    /**
+     * Puts [clipEntry] on the clipboard, reporting whether it got there.
+     *
+     * [setClipEntry] cannot say: it returns nothing, and by the time it does this class has already
+     * absorbed the failure. A cut deletes what it copied, and a caller that tells the user the copy
+     * worked should only do so when it did.
+     */
+    suspend fun trySetClipEntry(clipEntry: ClipEntry?): Boolean =
+        retrying("write") {
+            delegate.setClipEntry(clipEntry)
+            true
+        } == true
 
     // Compose's own desktop code still reads this one - the context menu asks the native clipboard
     // whether it holds text - and the interface's default implementation throws.
@@ -75,11 +93,11 @@ class SafeClipboard(
 }
 
 /** Wraps [this] unless it already is one, so nested providers don't multiply the retries. */
-fun Clipboard.asSafeClipboard(): Clipboard = this as? SafeClipboard ?: SafeClipboard(this)
+fun Clipboard.asSafeClipboard(): SafeClipboard = this as? SafeClipboard ?: SafeClipboard(this)
 
 /** The scene's clipboard, wrapped so a busy system clipboard cannot crash the app. */
 @Composable
-fun rememberSafeClipboard(): Clipboard {
+fun rememberSafeClipboard(): SafeClipboard {
     val clipboard = LocalClipboard.current
     return remember(clipboard) { clipboard.asSafeClipboard() }
 }

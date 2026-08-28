@@ -70,6 +70,7 @@ import warlockfe.warlock3.compose.ui.window.WindowSelectionController
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.compose.ui.window.getStyle
 import warlockfe.warlock3.compose.util.LatestValueWriter
+import warlockfe.warlock3.compose.util.SafeClipboard
 import warlockfe.warlock3.compose.util.clipEntryOf
 import warlockfe.warlock3.compose.util.insertReplacingSelection
 import warlockfe.warlock3.compose.util.openUrl
@@ -1177,6 +1178,9 @@ class GameViewModel(
     private suspend fun copyToClipboard(text: String): Boolean {
         val entry = clipEntryOf(text) ?: return false
         val clipboard = windowSelectionController.clipboard ?: return false
+        // A SafeClipboard has swallowed a failed write by the time setClipEntry returns, so ask it
+        // for the outcome rather than assume one: {cut} deletes what this copies.
+        if (clipboard is SafeClipboard) return clipboard.trySetClipEntry(entry)
         clipboard.setClipEntry(entry)
         return true
     }

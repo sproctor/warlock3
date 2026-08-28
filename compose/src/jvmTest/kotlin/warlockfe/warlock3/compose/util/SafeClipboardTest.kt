@@ -20,6 +20,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.test.runTest
 import java.io.IOException
 import java.util.concurrent.Callable
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -27,6 +28,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -59,6 +61,24 @@ class SafeClipboardTest {
 
             assertEquals(3, fake.writes)
             assertNull(fake.entry)
+        }
+
+    @Test
+    fun aWriteThatLandsIsReportedToCallersThatAsk() =
+        runTest {
+            val fake = FakeClipboard(failures = 2)
+
+            // What {cut} checks before it deletes the text it copied, and what the memory dialog
+            // says it did.
+            assertTrue(SafeClipboard(fake).trySetClipEntry(clipEntryOf("copy me")))
+        }
+
+    @Test
+    fun aDroppedWriteIsReportedToCallersThatAsk() =
+        runTest {
+            val fake = FakeClipboard(failures = Int.MAX_VALUE)
+
+            assertFalse(SafeClipboard(fake, attempts = 2).trySetClipEntry(clipEntryOf("copy me")))
         }
 
     @Test
@@ -133,7 +153,8 @@ class SafeClipboardTest {
     fun aSelectionContainerCopySurvivesABusyClipboard() {
         val composeThread = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "compose-test") }
         try {
-            val failures = mutableListOf<Throwable>()
+            // Written from the compose thread's two handlers, read from this one.
+            val failures = CopyOnWriteArrayList<Throwable>()
             val copied = CountDownLatch(1)
             val clipboard = FakeClipboard(failures = 2, onWrite = { copied.countDown() })
             val state = SelectionState()
