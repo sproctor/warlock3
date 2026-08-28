@@ -37,6 +37,7 @@ import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.ui.settings.SettingsGroup
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
+import warlockfe.warlock3.compose.util.ProvideSafeClipboard
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
@@ -87,67 +88,71 @@ fun DesktopSettingsDialog(
     ) {
         var page: SettingsPage by remember { mutableStateOf(initialPage) }
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(JewelTheme.globalColors.panelBackground),
-        ) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier =
-                        Modifier
-                            // 180 fits the longest label plus its leading icon
-                            .width(180.dp)
-                            .fillMaxHeight()
-                            .padding(vertical = 8.dp),
-                ) {
-                    SettingsGroup.entries.forEach { group ->
-                        if (group.title.isNotEmpty()) {
-                            Text(
-                                text = group.title,
-                                style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Bold),
-                                modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 2.dp),
-                            )
-                        }
-                        SettingsPage.entries.filter { it.group == group }.forEach { entry ->
-                            SettingsNavItem(
-                                label = entry.title,
-                                icon = entry.icon,
-                                selected = page == entry,
-                                onClick = { page = entry },
-                            )
+        // A dialog is its own Compose scene, so it provides its own clipboard and does not inherit
+        // the safe one the app window is running under; see [SafeClipboard].
+        ProvideSafeClipboard {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(JewelTheme.globalColors.panelBackground),
+            ) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier =
+                            Modifier
+                                // 180 fits the longest label plus its leading icon
+                                .width(180.dp)
+                                .fillMaxHeight()
+                                .padding(vertical = 8.dp),
+                    ) {
+                        SettingsGroup.entries.forEach { group ->
+                            if (group.title.isNotEmpty()) {
+                                Text(
+                                    text = group.title,
+                                    style = JewelTheme.defaultTextStyle.copy(fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 2.dp),
+                                )
+                            }
+                            SettingsPage.entries.filter { it.group == group }.forEach { entry ->
+                                SettingsNavItem(
+                                    label = entry.title,
+                                    icon = entry.icon,
+                                    selected = page == entry,
+                                    onClick = { page = entry },
+                                )
+                            }
                         }
                     }
-                }
-                Divider(orientation = Orientation.Vertical, modifier = Modifier.fillMaxHeight())
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                ) {
-                    DesktopSettingsContent(
-                        page = page,
-                        currentCharacter = currentCharacter,
-                        characterSettingsRepository = characterSettingsRepository,
-                        characterRepository = characterRepository,
-                        scriptDirRepository = scriptDirRepository,
-                        variableRepository = variableRepository,
-                        macroRepository = macroRepository,
-                        highlightRepository = highlightRepository,
-                        nameRepository = nameRepository,
-                        ignoreRepository = ignoreRepository,
-                        presetRepository = presetRepository,
-                        aliasRepository = aliasRepository,
-                        actionRepository = actionRepository,
-                        alterationRepository = alterationRepository,
-                        clientSettingRepository = clientSettingRepository,
-                        accountRepository = accountRepository,
-                        windowSettingRepository = windowSettingRepository,
-                        initialWindowTarget = initialWindowTarget,
-                        windowLiveContext = windowLiveContext,
-                    )
+                    Divider(orientation = Orientation.Vertical, modifier = Modifier.fillMaxHeight())
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                    ) {
+                        DesktopSettingsContent(
+                            page = page,
+                            currentCharacter = currentCharacter,
+                            characterSettingsRepository = characterSettingsRepository,
+                            characterRepository = characterRepository,
+                            scriptDirRepository = scriptDirRepository,
+                            variableRepository = variableRepository,
+                            macroRepository = macroRepository,
+                            highlightRepository = highlightRepository,
+                            nameRepository = nameRepository,
+                            ignoreRepository = ignoreRepository,
+                            presetRepository = presetRepository,
+                            aliasRepository = aliasRepository,
+                            actionRepository = actionRepository,
+                            alterationRepository = alterationRepository,
+                            clientSettingRepository = clientSettingRepository,
+                            accountRepository = accountRepository,
+                            windowSettingRepository = windowSettingRepository,
+                            initialWindowTarget = initialWindowTarget,
+                            windowLiveContext = windowLiveContext,
+                        )
+                    }
                 }
             }
         }

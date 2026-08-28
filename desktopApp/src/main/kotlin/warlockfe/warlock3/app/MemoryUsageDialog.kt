@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
@@ -39,10 +40,9 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.util.clipEntryOf
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
 import warlockfe.warlock3.core.window.WindowMemoryUsage
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.io.File
 import java.lang.management.ManagementFactory
 import kotlin.time.Duration.Companion.seconds
@@ -100,6 +100,8 @@ fun MemoryUsageDialog(
         width = 760.dp,
         height = 600.dp,
     ) {
+        // The dialog's own clipboard, which WarlockDialog has already made safe to write to.
+        val clipboard = LocalClipboard.current
         Column(Modifier.fillMaxSize()) {
             val snapshot = report
             if (snapshot == null) {
@@ -147,8 +149,13 @@ fun MemoryUsageDialog(
                 WarlockOutlinedButton(
                     onClick = {
                         val text = report?.toText() ?: return@WarlockOutlinedButton
-                        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-                        status = "Report copied to the clipboard."
+                        // Through the window's clipboard rather than AWT's: the dialog is running
+                        // under a [SafeClipboard], and a busy system clipboard used to throw out of
+                        // here straight into the uncaught handler.
+                        scope.launch {
+                            clipEntryOf(text)?.let { entry -> clipboard.setClipEntry(entry) }
+                            status = "Report copied to the clipboard."
+                        }
                     },
                     text = "Copy report",
                     enabled = report != null && !busy,
