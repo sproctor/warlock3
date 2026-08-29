@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -95,6 +96,7 @@ import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.initializeSentry
+import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
@@ -332,6 +334,9 @@ private class WarlockCommand : CliktCommand() {
                                 LocalSkin provides skin,
                                 LocalTitleBarStyle provides titleBarStyle,
                                 LocalDesktopDockHost provides dockHost,
+                                // A copy that cannot open the system clipboard must not take the
+                                // app down with it; see [SafeClipboard].
+                                LocalClipboard provides rememberSafeClipboard(),
                             ) {
                                 RegisterGameDockWindow(dockHost)
                                 WarlockApp(

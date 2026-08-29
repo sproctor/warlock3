@@ -62,6 +62,7 @@ import warlockfe.warlock3.compose.ui.game.TabActivityDot
 import warlockfe.warlock3.compose.ui.game.rememberGameDockState
 import warlockfe.warlock3.compose.ui.game.rememberGameKeyHandler
 import warlockfe.warlock3.compose.util.LocalBaseStyle
+import warlockfe.warlock3.compose.util.ProvideSafeClipboard
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.text.toWarlockColor
@@ -192,7 +193,12 @@ fun DesktopGameView(
                 val windowContent =
                     remember(viewModel) {
                         @Composable { window: OpenGameWindow ->
-                            DockedWindow(viewModel = viewModel, window = window)
+                            // Here rather than around the game screen because a detached window is
+                            // its own Compose scene, opened from the application scope, and provides
+                            // its own clipboard: this lambda is the only part of it that is ours.
+                            ProvideSafeClipboard {
+                                DockedWindow(viewModel = viewModel, window = window)
+                            }
                         }
                     }
                 val tabActions =
