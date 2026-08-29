@@ -61,6 +61,13 @@ class ClientSettingRepository(
         putBoolean("ignoreUpdates", value)
     }
 
+    /** Whether the user declined the AppImage "add to your applications" offer; never re-ask. */
+    suspend fun getIgnoreAppImageIntegration(): Boolean = getBoolean("ignoreAppImageIntegration") ?: false
+
+    suspend fun putIgnoreAppImageIntegration(value: Boolean) {
+        putBoolean("ignoreAppImageIntegration", value)
+    }
+
     // --- User-editable application settings: client.toml ---
 
     fun observeTheme(): Flow<ThemeSetting> =
