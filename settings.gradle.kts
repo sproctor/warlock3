@@ -14,7 +14,13 @@ pluginManagement {
         gradlePluginPortal()
         google()
         mavenCentral()
-        // mavenLocal()
+        // An unreleased potassium build is consumed from the local Maven cache (published with
+        // `GITHUB_REF=refs/tags/v<version> ./gradlew publishToMavenLocal -PGROUP=com.seanproctor
+        // -PID=com.seanproctor.potassium` in that repo). Filtered like the mavenLocal block
+        // below; the broader regex also admits the plugin marker's group, which is the plugin id.
+        mavenLocal {
+            content { includeGroupByRegex("com\\.seanproctor.*") }
+        }
     }
 }
 
