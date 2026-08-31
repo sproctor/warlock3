@@ -14,13 +14,7 @@ pluginManagement {
         gradlePluginPortal()
         google()
         mavenCentral()
-        // An unreleased potassium build is consumed from the local Maven cache (published with
-        // `GITHUB_REF=refs/tags/v<version> ./gradlew publishToMavenLocal -PGROUP=com.seanproctor
-        // -PID=com.seanproctor.potassium` in that repo). Filtered like the mavenLocal block
-        // below; the broader regex also admits the plugin marker's group, which is the plugin id.
-        mavenLocal {
-            content { includeGroupByRegex("com\\.seanproctor.*") }
-        }
+        // mavenLocal()
     }
 }
 
@@ -42,14 +36,7 @@ dependencyResolutionManagement {
         maven("https://www.jetbrains.com/intellij-repository/releases") {
             content { includeGroupByRegex("com\\.jetbrains\\.intellij\\..*") }
         }
-        // compose-docking is developed alongside this app, so an unreleased build of it is
-        // consumed from the local Maven cache (`./gradlew publishToMavenLocal` in that repo).
-        // Filtered to those artifacts for the same reason as the repository above: an
-        // unfiltered mavenLocal can shadow any dependency with whatever happens to be in
-        // ~/.m2, which is exactly the failure mode the note above describes.
-        mavenLocal {
-            content { includeGroupByRegex("com\\.seanproctor") }
-        }
+        // mavenLocal()
     }
 }
 
