@@ -11,6 +11,7 @@ import java.nio.file.ClosedWatchServiceException
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.ENTRY_CREATE
 import java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY
 import java.nio.file.StandardWatchEventKinds.OVERFLOW
@@ -18,7 +19,8 @@ import java.nio.file.WatchKey
 
 internal actual fun watchConfigChanges(rootDir: String): Flow<String> =
     callbackFlow {
-        val root = Path.of(rootDir)
+        // Paths.get, not Path.of: the latter is Java 11 and only reached Android in API 34.
+        val root = Paths.get(rootDir)
         runCatching { Files.createDirectories(root) }
         val watchService = FileSystems.getDefault().newWatchService()
         val keys = HashMap<WatchKey, Path>()
