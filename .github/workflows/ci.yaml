@@ -125,8 +125,12 @@ jobs:
         with:
           cache-provider: basic
 
+      # lintAndroidMain (every KMP module) plus the app's lint, rather than the `lint` umbrella:
+      # that also runs each module's lintJvm, which compiles the JVM targets the build job
+      # already compiles and has no Android context to check against. Time is the whole
+      # reason this job exists apart from `check`.
       - name: Android lint
-        run: ./gradlew lint -PiosSkip=true --stacktrace
+        run: ./gradlew lintAndroidMain :androidApp:lint -PiosSkip=true --stacktrace
 
       # Still runs when lint fails, so one push reports both.
       - name: Android tests
