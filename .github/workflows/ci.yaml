@@ -100,9 +100,10 @@ jobs:
   # the build job drops lint with -PlintSkip=true, so it lives here.
   #
   # The tests are the commonTest suites of the KMP modules compiled against the Android target
-  # and run on the host JVM (testAndroidHostTest), plus the app's unit tests. They exercise the
-  # androidMain actuals rather than the jvmMain ones, but they run on the host JDK, so they
-  # cannot catch an API-level problem like the one above - that is lint's job.
+  # and run on the host JVM (testAndroidHostTest). They exercise the androidMain actuals rather
+  # than the jvmMain ones, but they run on the host JDK, so they cannot catch an API-level
+  # problem like the one above - that is lint's job. The app's own unit tests stay with `check`
+  # in the build job, which already runs them.
   android:
     name: Android lint and tests
     runs-on: ubuntu-latest
@@ -130,7 +131,7 @@ jobs:
       # Still runs when lint fails, so one push reports both.
       - name: Android tests
         if: ${{ !cancelled() }}
-        run: ./gradlew testAndroidHostTest :androidApp:testDebugUnitTest -PiosSkip=true --stacktrace
+        run: ./gradlew testAndroidHostTest -PiosSkip=true --stacktrace
 
       - name: Upload lint and test reports
         if: always()
