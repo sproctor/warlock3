@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.prefs.InMemoryWindowSettingsDao
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import java.nio.file.Files
@@ -38,12 +39,12 @@ class WindowHiddenStateTest {
 
     private suspend fun newStore(): CharacterConfigStore = CharacterConfigStore(dir.toString(), SystemFileSystem).also { it.load() }
 
-    private suspend fun newRepository(dao: WindowSettingsDao) = WindowSettingsRepository(dao, newStore())
+    private suspend fun newRepository(dao: WindowSettingsDao) = WindowSettingsRepository(dao, newStore(), SettingsProblems(dir.toString()))
 
     private fun repositoryOn(
         dao: WindowSettingsDao,
         store: CharacterConfigStore,
-    ) = WindowSettingsRepository(dao, store)
+    ) = WindowSettingsRepository(dao, store, SettingsProblems(dir.toString()))
 
     private suspend fun WindowSettingsDao.isOpen(name: String): Boolean = getByName(character, name)?.open == true
 

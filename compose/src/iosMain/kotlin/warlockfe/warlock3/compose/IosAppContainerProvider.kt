@@ -41,12 +41,17 @@ object IosAppContainerProvider {
         val dbDir = "$libraryPath/Application Support/warlock"
         NSFileManager.defaultManager.createDirectoryAtPath(dbDir, true, null, null)
 
+        // A database that cannot be opened throws SettingsUnreadableException, which is left to
+        // propagate rather than started around: coming up with empty settings would save them over
+        // the real ones.
         val database =
-            openPrefsDatabase(
-                directory = Path(dbDir),
-                fileSystem = SystemFileSystem,
-                builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
-            )
+            runBlocking {
+                openPrefsDatabase(
+                    directory = Path(dbDir),
+                    fileSystem = SystemFileSystem,
+                    builderFactory = { filename -> Room.databaseBuilder<PrefsDatabase>(name = filename) },
+                )
+            }
 
         // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
         AppContainer(

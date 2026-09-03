@@ -1,16 +1,17 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.dao.ScriptDirDao
 import warlockfe.warlock3.core.prefs.models.ScriptDirEntity
+import warlockfe.warlock3.core.prefs.persistToDatabase
 import warlockfe.warlock3.core.util.WarlockDirs
 
 class ScriptDirRepository(
     private val scriptDirDao: ScriptDirDao,
     private val warlockDirs: WarlockDirs,
+    private val settingsProblems: SettingsProblems,
 ) {
     fun observeScriptDirs(characterId: String): Flow<List<String>> = scriptDirDao.observeByCharacter(characterId)
 
@@ -25,7 +26,7 @@ class ScriptDirRepository(
         characterId: String,
         path: String,
     ) {
-        withContext(NonCancellable) {
+        persistToDatabase(settingsProblems, "your script folders") {
             scriptDirDao.save(
                 ScriptDirEntity(characterId = characterId, path = path),
             )
@@ -36,7 +37,7 @@ class ScriptDirRepository(
         characterId: String,
         path: String,
     ) {
-        withContext(NonCancellable) {
+        persistToDatabase(settingsProblems, "your script folders") {
             scriptDirDao.delete(
                 characterId = characterId,
                 path = path,

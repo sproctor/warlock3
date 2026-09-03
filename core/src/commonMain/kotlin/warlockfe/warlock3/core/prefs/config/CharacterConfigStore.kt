@@ -18,6 +18,9 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.readString
+import warlockfe.warlock3.core.prefs.SettingsProblem
+import warlockfe.warlock3.core.prefs.SettingsUnreadableException
+import warlockfe.warlock3.core.prefs.describeForUser
 import warlockfe.warlock3.core.text.Background
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleLayer
@@ -89,7 +92,7 @@ class CharacterConfigStore(
         val loaded = mutableMapOf<String, CharacterConfig>()
         for (dir in listCharacterDirs()) {
             val characterId = characterIdFromDir(dir)
-            val (config, sectionTemplates) = readCharacterDir(dir, characterId)
+            val (config, sectionTemplates) = readCharacterDir(dir, characterId, failOnUnreadable = true)
             loaded[characterId] = config
             templates[characterId] = sectionTemplates.toMutableMap()
         }
@@ -288,9 +291,17 @@ class CharacterConfigStore(
 
     // --- per-section read/write ---
 
+    /**
+     * Every section file the character's directory holds. [failOnUnreadable] is what the startup
+     * read passes: a file that is there but cannot be read must not be mistaken for one that is not
+     * there, because that reads as a character with no highlights and the next save writes that
+     * emptiness over them (see [SettingsUnreadableException]). The write path has no launch left to
+     * abort, so it keeps the older log-and-carry-on behavior.
+     */
     private fun readCharacterDir(
         dir: Path,
         characterId: String,
+        failOnUnreadable: Boolean = false,
     ): Pair<CharacterConfig, Map<Section, TomlTable>> {
         var config = CharacterConfig(character = characterId)
         val sectionTemplates = mutableMapOf<Section, TomlTable>()
@@ -303,6 +314,15 @@ class CharacterConfigStore(
                     val element = toml.parseToTomlTable(text)
                     element to section.decodeInto(toml, element, config)
                 }.onFailure {
+                    if (failOnUnreadable) {
+                        throw SettingsUnreadableException(
+                            SettingsProblem.unreadable(
+                                what = "${section.fileName} for $characterId",
+                                reason = it.describeForUser(),
+                                settingsLocation = dir.toString(),
+                            ),
+                        )
+                    }
                     Logger.e(it) { "Failed to read config file $path; ignoring it" }
                 }.getOrNull() ?: continue
             sectionTemplates[section] = read.first
