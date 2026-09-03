@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Applies to every module: lint reads lint.xml from the module directory and each parent. -->
+<lint>
+    <!-- Room's KSP output calls androidx-internal APIs by design. Lint cannot tell it is
+         generated, because KSP registers its output as an ordinary source directory, so the
+         check reported 1339 errors against DAO implementations and nothing against our code. -->
+    <issue id="RestrictedApi">
+        <ignore regexp="[/\\]build[/\\]generated[/\\]" />
+    </issue>
+</lint>

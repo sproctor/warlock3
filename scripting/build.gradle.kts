@@ -2,6 +2,7 @@ import com.strumenta.antlrkotlin.gradle.AntlrKotlinTask
 
 plugins {
     alias(libs.plugins.android.kmp.library)
+    alias(libs.plugins.android.lint)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.antlr.kotlin)
 }
@@ -49,6 +50,8 @@ kotlin {
             libs.versions.minSdk
                 .get()
                 .toInt()
+        // Run commonTest against the Android target too, on the host JVM (testAndroidHostTest).
+        withHostTest {}
     }
     jvm()
     if (!skipIos) {
@@ -101,4 +104,10 @@ kotlin {
         optIn.add("kotlin.concurrent.atomics.ExperimentalAtomicApi")
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
+}
+
+// The Android artifact of lua-kmp carries libluakmp.so for Android ABIs only, so the Lua tests
+// cannot load it on the host JVM. They still run on the JVM target (jvmTest) and on iOS.
+tasks.withType<Test>().matching { it.name == "testAndroidHostTest" }.configureEach {
+    filter { excludeTestsMatching("warlockfe.warlock3.scripting.lua.*") }
 }

@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.compose)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.android.kmp.library)
+    alias(libs.plugins.android.lint)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.allopen)
     alias(libs.plugins.kotlinx.benchmark)
@@ -40,6 +41,8 @@ kotlin {
             libs.versions.minSdk
                 .get()
                 .toInt()
+        // Run commonTest against the Android target too, on the host JVM (testAndroidHostTest).
+        withHostTest {}
         androidResources.enable = true
     }
     if (!skipIos) {
