@@ -99,9 +99,10 @@ internal class TomlFileStore<T>(
      * older log-and-carry-on behavior.
      */
     private fun readFile(failOnUnreadable: Boolean = false): Pair<TomlTable, T>? {
-        if (fileSystem.metadataOrNull(path) == null) return null
         return runCatching {
-            val text = fileSystem.source(path).buffered().use { it.readString() }
+            // Absence is decided by the parent's listing, not by stat'ing the file: see
+            // [readTextOrNullIfAbsent]. A file that is there but unreadable throws out of here.
+            val text = fileSystem.readTextOrNullIfAbsent(path) ?: return null
             val element = toml.parseToTomlTable(text)
             element to toml.decodeFromTomlElement(serializer, element)
         }.onFailure {

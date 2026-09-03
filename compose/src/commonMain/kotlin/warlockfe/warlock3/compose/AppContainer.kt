@@ -177,6 +177,11 @@ class AppContainer(
     private val initializeMutex = Mutex()
     private var initialized = false
 
+    // Declared above the init block below, not beside [initialize] where it is used: property
+    // initializers and init blocks run in textual order, so a `= null` sitting after the block
+    // would race the coroutine it starts and could erase the very exception that stops the launch.
+    private var unreadable: SettingsUnreadableException? = null
+
     init {
         // Kick initialization off eagerly so reactive consumers get data without having to ask;
         // callers that read config synchronously at startup should still call [initialize] to await
@@ -194,54 +199,76 @@ class AppContainer(
      * return. Callers that read config at startup should call this first so they don't observe empty
      * stores before the migration has populated them.
      *
-     * Throws [SettingsUnreadableException] -- on this call and every later one -- when a config file
-     * is on disk but could not be read, so the entry point can tell the user and stop rather than
-     * come up with empty settings and save them over the real ones.
+     * Throws [SettingsUnreadableException] -- on this call and every later one -- when the config
+     * files could not be read, so the entry point can tell the user and stop rather than come up
+     * with empty settings and save them over the real ones.
      */
     suspend fun initialize() {
         initializeMutex.withLock {
             if (!initialized) {
+                initialized = true
+                // Reading the config files is the fatal step, and *any* failure of it counts, not
+                // only the SettingsUnreadableException the stores raise for a file they could
+                // identify as damaged. Everything downstream reads absent data as "nothing saved
+                // yet", so a load that failed for a reason we did not anticipate would come up empty
+                // and then save that over the real settings -- and kotlinx-io is not always specific
+                // about why a read failed. Stopping is the safe default; guessing is not.
                 runCatching {
                     characterConfigStore.load()
                     clientConfigStore.load()
-                    ConfigMigration(
-                        store = characterConfigStore,
-                        clientConfigStore = clientConfigStore,
-                        characterDao = database.characterDao(),
-                        highlightDao = database.highlightDao(),
-                        nameDao = database.nameDao(),
-                        variableDao = database.variableDao(),
-                        aliasDao = database.aliasDao(),
-                        alterationDao = database.alterationDao(),
-                        presetStyleDao = database.presetStyleDao(),
-                        progressBarSettingDao = database.progressBarSettingDao(),
-                        windowSettingsDao = database.windowSettingsDao(),
-                        characterSettingDao = database.characterSettingDao(),
-                        clientSettingDao = database.clientSettingDao(),
-                        connectionDao = database.connectionDao(),
-                        macroRepository = macroRepository,
-                        fileSystem = fileSystem,
-                        configDirectory = warlockDirs.configDir,
-                    ).migrateIfNeeded()
-                    // Seed default global macros on first run and merge in newly added defaults on
-                    // upgrade, after migration so any migrated macros win.
-                    macroRepository.seedAndMigrateDefaultMacros(clientSettings)
-                }.onFailure {
-                    // Kept rather than rethrown here, so the eager init above and the entry point's
-                    // own call both see it however they arrive.
-                    if (it is SettingsUnreadableException) unreadable = it
-                    Logger.e(it) { "Failed to initialize config stores" }
+                }.onFailure { failure ->
+                    unreadable =
+                        failure as? SettingsUnreadableException
+                            ?: SettingsUnreadableException(
+                                SettingsProblem.unreadable(
+                                    what = "your settings",
+                                    reason = failure.describeForUser(),
+                                    settingsLocation = warlockDirs.configDir,
+                                ),
+                            )
+                    Logger.e(failure) { "Failed to read the config files" }
                 }
-                // Pick up external edits and writes from other app instances for the app's lifetime.
-                characterConfigStore.startWatching(externalScope)
-                clientConfigStore.startWatching(externalScope)
-                initialized = true
+                // The rest is best-effort: a migration or a macro seed that fails leaves the user's
+                // settings as they were, so it is logged rather than fatal. Skipped entirely when the
+                // config could not be read, since the app is about to stop anyway and these would be
+                // working from data that is not the user's.
+                if (unreadable == null) {
+                    runCatching {
+                        ConfigMigration(
+                            store = characterConfigStore,
+                            clientConfigStore = clientConfigStore,
+                            characterDao = database.characterDao(),
+                            highlightDao = database.highlightDao(),
+                            nameDao = database.nameDao(),
+                            variableDao = database.variableDao(),
+                            aliasDao = database.aliasDao(),
+                            alterationDao = database.alterationDao(),
+                            presetStyleDao = database.presetStyleDao(),
+                            progressBarSettingDao = database.progressBarSettingDao(),
+                            windowSettingsDao = database.windowSettingsDao(),
+                            characterSettingDao = database.characterSettingDao(),
+                            clientSettingDao = database.clientSettingDao(),
+                            connectionDao = database.connectionDao(),
+                            macroRepository = macroRepository,
+                            fileSystem = fileSystem,
+                            configDirectory = warlockDirs.configDir,
+                        ).migrateIfNeeded()
+                        // Seed default global macros on first run and merge in newly added defaults
+                        // on upgrade, after migration so any migrated macros win.
+                        macroRepository.seedAndMigrateDefaultMacros(clientSettings)
+                    }.onFailure {
+                        Logger.e(it) { "Failed to initialize config stores" }
+                    }
+                    // Pick up external edits and writes from other app instances for the app's life.
+                    characterConfigStore.startWatching(externalScope)
+                    clientConfigStore.startWatching(externalScope)
+                }
             }
+            // Read under the lock the writer above holds, so every caller sees it however they
+            // arrive -- the eager init in the constructor, or the entry point that can act on it.
+            unreadable?.let { throw it }
         }
-        unreadable?.let { throw it }
     }
-
-    private var unreadable: SettingsUnreadableException? = null
 
     private val scriptEngineRepository =
         WarlockScriptEngineRepositoryImpl(

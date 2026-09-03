@@ -6,6 +6,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
 import kotlinx.io.writeString
+import org.junit.Assume.assumeTrue
 import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import java.nio.file.Files
 import kotlin.io.path.deleteRecursively
@@ -41,7 +42,10 @@ class UnreadableConfigTest {
             .of(dir.toString())
             .toFile()
             .walkBottomUp()
-            .forEach { it.setReadable(true) }
+            .forEach {
+                it.setReadable(true)
+                if (it.isDirectory) it.setExecutable(true)
+            }
         java.nio.file.Path
             .of(dir.toString())
             .deleteRecursively()
@@ -55,6 +59,18 @@ class UnreadableConfigTest {
         fs.sink(path).buffered().use { it.writeString(text) }
     }
 
+    /**
+     * Deny reads on [path] and confirm it took. `setReadable(false)` is a request, not a guarantee:
+     * root reads whatever it likes, and a filesystem that does not enforce POSIX modes ignores it
+     * outright. Either way the store would load fine and the assertion below would fail for a
+     * reason that has nothing to do with the code under test, so the test is skipped instead.
+     */
+    private fun denyReads(path: Path) {
+        java.io.File(path.toString()).setReadable(false)
+        val stillReadable = runCatching { fs.source(path).buffered().use { it.readByteArray() } }.isSuccess
+        assumeTrue("filesystem does not enforce the unreadable mode (running as root?)", !stillReadable)
+    }
+
     private fun highlightsFor(character: String) = Path(Path(Path(dir, "characters"), character), "highlights.toml")
 
     @Test
@@ -62,7 +78,7 @@ class UnreadableConfigTest {
         runBlocking {
             val path = highlightsFor("global")
             write(path, "[[highlight]]\npattern = \"kobold\"\n")
-            java.io.File(path.toString()).setReadable(false)
+            denyReads(path)
 
             val thrown = assertFailsWith<SettingsUnreadableException> { CharacterConfigStore(dir.toString(), fs).load() }
 
@@ -91,11 +107,30 @@ class UnreadableConfigTest {
         runBlocking {
             val path = Path(dir, "client.toml")
             write(path, "theme = \"DARK\"\n")
-            java.io.File(path.toString()).setReadable(false)
+            denyReads(path)
 
             val thrown = assertFailsWith<SettingsUnreadableException> { ClientConfigStore(dir.toString(), fs).load() }
 
             assertContains(thrown.problem.headline, "client.toml")
+        }
+
+    /**
+     * The case a stat check cannot see. A directory that lists but cannot be searched reports every
+     * child as missing, so `metadataOrNull` on the file answers "not there" and the character's
+     * settings would be silently replaced by defaults.
+     */
+    @Test
+    fun aCharacterDirectoryWeCannotSearchStopsTheLoad() =
+        runBlocking {
+            val path = highlightsFor("global")
+            write(path, "[[highlight]]\npattern = \"kobold\"\n")
+            java.io.File(path.parent.toString()).setExecutable(false)
+            val stillReadable = runCatching { fs.source(path).buffered().use { it.readByteArray() } }.isSuccess
+            assumeTrue("filesystem does not enforce directory search permission", !stillReadable)
+
+            val thrown = assertFailsWith<SettingsUnreadableException> { CharacterConfigStore(dir.toString(), fs).load() }
+
+            assertContains(thrown.problem.headline, "highlights.toml")
         }
 
     @Test

@@ -85,6 +85,12 @@ class SettingsUnreadableException(
  * *every* save -- every resize, every window toggle -- so without it, dismissing the report would
  * only summon the next one. Once the user has seen it, nothing more is said until a save succeeds
  * again, which is also what makes a problem that comes back get reported again.
+ *
+ * What that silence must not do is outlive the trouble it was for. A report can sit on screen while
+ * saving recovers, and the user may dismiss it minutes later, long after the episode it described
+ * ended; silencing then would swallow the next real failure. [recovered] records a save that worked
+ * while the report was still up, and dismissing a report that has already been overtaken that way
+ * silences nothing.
  */
 class SettingsProblems(
     private val settingsLocation: String,
@@ -95,6 +101,7 @@ class SettingsProblems(
     val current: StateFlow<SettingsProblem?> = _current.asStateFlow()
 
     private val silenced = MutableStateFlow(false)
+    private val recovered = MutableStateFlow(false)
 
     fun recordSaveFailure(
         what: String,
@@ -116,12 +123,16 @@ class SettingsProblems(
     /** A save worked, so whatever went wrong is over and the next failure is worth reporting again. */
     fun recordSuccess() {
         if (silenced.value) silenced.value = false
+        // Noted, rather than clearing the report off the screen: the user asked to see it and has
+        // not said they are done with it. It only decides what dismissing it means.
+        if (_current.value != null) recovered.value = true
     }
 
-    /** The user has read it. Stay quiet until saving works again. */
+    /** The user has read it. Stay quiet until saving works again -- unless it already has. */
     fun dismiss() {
+        silenced.value = !recovered.value
+        recovered.value = false
         _current.value = null
-        silenced.value = true
     }
 }
 

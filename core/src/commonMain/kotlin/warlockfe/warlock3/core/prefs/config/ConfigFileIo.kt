@@ -3,9 +3,11 @@ package warlockfe.warlock3.core.prefs.config
 import dev.eav.tomlkt.Toml
 import dev.eav.tomlkt.TomlElement
 import dev.eav.tomlkt.encodeToString
+import kotlinx.io.IOException
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
+import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.KSerializer
 
@@ -47,3 +49,38 @@ internal fun <T> Toml.encodeWithTemplate(
     } else {
         encodeToString(serializer, value)
     }
+
+/**
+ * The names [dir] directly contains, or an empty set when there is no such directory.
+ *
+ * Used instead of `metadataOrNull(Path(dir, name))` to decide whether a settings file is there,
+ * because that call cannot tell "not there" from "cannot look": stat on a child of a directory we
+ * are not allowed to search returns null exactly as it does for a file that never existed. Nor can
+ * the open discriminate -- kotlinx-io reports both as `FileNotFoundException`, separated only by a
+ * message ("No such file or directory" against "Permission denied") in one language. A listing
+ * answers the question directly, and closes the stat-then-open race besides.
+ *
+ * One case it cannot answer either: a directory that cannot be entered at all lists as empty rather
+ * than failing, so it is indistinguishable from an empty one. That leaves such a directory looking
+ * like a fresh install -- but a directory that denies reads denies writes too, so the settings under
+ * it cannot then be overwritten, and the save failure is reported in its own right.
+ */
+internal fun FileSystem.entryNames(dir: Path): Set<String> =
+    try {
+        list(dir).mapTo(mutableSetOf()) { it.name }
+    } catch (_: IOException) {
+        emptySet()
+    }
+
+/**
+ * The text of [path], or null when the file genuinely is not there -- see [entryNames] for how that
+ * is told apart from a file we are not allowed to read.
+ *
+ * Throws when the file is there but cannot be read, which is what lets a startup read stop the app
+ * rather than mistake damaged settings for a fresh install.
+ */
+internal fun FileSystem.readTextOrNullIfAbsent(path: Path): String? {
+    val parent = path.parent ?: return null
+    if (path.name !in entryNames(parent)) return null
+    return source(path).buffered().use { it.readString() }
+}

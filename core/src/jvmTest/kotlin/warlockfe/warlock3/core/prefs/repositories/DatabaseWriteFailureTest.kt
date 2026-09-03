@@ -29,6 +29,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -189,6 +190,35 @@ class DatabaseWriteFailureTest {
             repository.putWidth(1282)
 
             assertEquals("Warlock could not save your application settings.", problems.current.value?.headline)
+        }
+
+    /**
+     * A report can sit on screen while saving recovers, and be dismissed long after the episode it
+     * described ended. Silencing on that dismissal would swallow the next real failure.
+     */
+    @Test
+    fun dismissingAReportSavingHasAlreadyOutrunSilencesNothing() =
+        runBlocking {
+            val dao = SwitchableClientSettingDao(failing = true)
+            val problems = SettingsProblems(dir.toString())
+            val repository = clientSettings(dao, problems)
+
+            repository.putWidth(1280)
+            assertNotNull(problems.current.value)
+
+            // Saving recovers while the report is still up, and only then does the user dismiss it.
+            dao.failing = false
+            repository.putWidth(1281)
+            problems.dismiss()
+
+            dao.failing = true
+            repository.putWidth(1282)
+
+            assertEquals(
+                "Warlock could not save your application settings.",
+                problems.current.value?.headline,
+                "a failure after the reported episode ended must still be reported",
+            )
         }
 
     /** What the user reads has to say what broke and where their settings live. */

@@ -4,6 +4,7 @@ import androidx.room3.Room
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import org.junit.Assume.assumeTrue
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -54,6 +55,12 @@ class PrefsDatabaseOpenFailureTest {
             // Room takes a cross-process lock on "<database>.lck" while it opens, so a directory it
             // cannot create files in fails the same way the read-only volume did.
             dir.toFile().setWritable(false)
+            // `setWritable(false)` is a request, not a guarantee: root writes wherever it likes, and
+            // a filesystem that does not enforce POSIX modes ignores it. Either way the open would
+            // succeed and the assertion below would fail for a reason unrelated to the code under
+            // test, so probe the denial and skip instead.
+            val stillWritable = runCatching { Files.createFile(dir.resolve("probe")) }.isSuccess
+            assumeTrue("filesystem does not enforce the read-only mode (running as root?)", !stillWritable)
 
             val thrown = assertFailsWith<SettingsUnreadableException> { open() }
 
