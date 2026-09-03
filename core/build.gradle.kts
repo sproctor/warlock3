@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kmp.library)
+    alias(libs.plugins.android.lint)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room.schema)
     alias(libs.plugins.antlr.kotlin)
@@ -75,6 +76,8 @@ kotlin {
             libs.versions.minSdk
                 .get()
                 .toInt()
+        // Run commonTest against the Android target too, on the host JVM (testAndroidHostTest).
+        withHostTest {}
     }
     if (!skipIos) {
         listOf(
