@@ -8,8 +8,11 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.prefs.models.Highlight
+import warlockfe.warlock3.core.prefs.models.Ignore
+import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
 import warlockfe.warlock3.core.prefs.models.VariableEntity
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.text.StyleLayer
@@ -248,6 +251,93 @@ class CharacterConfigStoreTest {
             reloaded.load()
             val again = HighlightRepositoryImpl(reloaded).observeByCharacter("gs4:tholan").first().single()
             assertEquals(highlight.id, again.id)
+        }
+
+    @Test
+    fun ignore_roundTrips() =
+        runBlocking {
+            val store = newStore()
+            store.load()
+            val repo = IgnoreRepository(store)
+            val ignore =
+                Ignore(
+                    id = Uuid.random(),
+                    pattern = "you notice nothing",
+                    isRegex = false,
+                    matchMode = IgnoreMatchMode.LINE,
+                    ignoreCase = true,
+                )
+            repo.save("gs4:tholan", ignore)
+
+            // Stored in its own ignores.toml with the mode as a readable string.
+            val file = Path(Path(Path(Path(configDir, "characters"), "gs4"), "tholan"), "ignores.toml")
+            val text = readFile(file)
+            assertTrue(text.contains("mode = \"line\""), "expected readable mode string in file, was:\n$text")
+
+            val reloaded = newStore()
+            reloaded.load()
+            val result = IgnoreRepository(reloaded).observeByCharacter("gs4:tholan").first().single()
+            assertEquals(ignore, result)
+        }
+
+    @Test
+    fun ignore_observeForCharacter_mergesGlobalAndCharacter() =
+        runBlocking {
+            val store = newStore()
+            store.load()
+            val repo = IgnoreRepository(store)
+            repo.save(
+                GLOBAL_CHARACTER_ID,
+                Ignore(Uuid.random(), "global spam", isRegex = false, matchMode = IgnoreMatchMode.CONTAINS, ignoreCase = false),
+            )
+            repo.save(
+                "gs4:tholan",
+                Ignore(Uuid.random(), "character spam", isRegex = false, matchMode = IgnoreMatchMode.WORD, ignoreCase = true),
+            )
+
+            val merged =
+                repo
+                    .observeForCharacter("gs4:tholan")
+                    .first()
+                    .map { it.pattern }
+                    .toSet()
+            assertEquals(setOf("global spam", "character spam"), merged)
+        }
+
+    @Test
+    fun ignore_samePatternDifferentModes_bothKept() =
+        runBlocking {
+            // Unlike highlights, the upsert keys on id only: the same pattern with different match
+            // modes is two legitimate ignores.
+            val store = newStore()
+            store.load()
+            val repo = IgnoreRepository(store)
+            repo.save("gs4:tholan", Ignore(Uuid.random(), "spam", isRegex = false, matchMode = IgnoreMatchMode.WORD, ignoreCase = false))
+            repo.save("gs4:tholan", Ignore(Uuid.random(), "spam", isRegex = false, matchMode = IgnoreMatchMode.LINE, ignoreCase = true))
+
+            assertEquals(2, repo.observeByCharacter("gs4:tholan").first().size)
+        }
+
+    @Test
+    fun ignore_handAuthoredUnknownMode_decodesAsContains() =
+        runBlocking {
+            val charDir = Path(Path(Path(configDir, "characters"), "gs4"), "tholan")
+            fs.createDirectories(charDir)
+            fs.sink(Path(charDir, "ignores.toml")).buffered().use {
+                it.writeString(
+                    """
+                    [[ignores]]
+                    pattern = "spam"
+                    mode = "bogus"
+                    """.trimIndent(),
+                )
+            }
+
+            val store = newStore()
+            store.load()
+            val ignore = IgnoreRepository(store).observeByCharacter("gs4:tholan").first().single()
+            assertEquals("spam", ignore.pattern)
+            assertEquals(IgnoreMatchMode.CONTAINS, ignore.matchMode)
         }
 
     @Test

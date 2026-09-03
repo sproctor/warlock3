@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,9 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
+import com.seanproctor.potassium.updater.AppImageIntegration
+import com.seanproctor.potassium.updater.AppImageIntegrationResult
+import com.seanproctor.potassium.updater.AppImageIntegrationStatus
 import com.seanproctor.potassium.updater.PotassiumUpdater
 import com.seanproctor.potassium.updater.UpdateInfo
 import com.seanproctor.potassium.updater.UpdateResult
@@ -95,6 +99,7 @@ import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
 import warlockfe.warlock3.compose.util.initializeSentry
+import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
@@ -262,6 +267,42 @@ private class WarlockCommand : CliktCommand() {
                     )
                 }
 
+                // When running as an AppImage, offer to install its menu entry and icon: GNOME
+                // resolves an app's icon only through installed .desktop entries (it ignores the
+                // icon a window sets on itself), so without this the dock shows a generic icon.
+                // Offered once; a stale entry (the image moved or was updated) is already broken,
+                // so it is refreshed without asking again.
+                val appImageIntegration = remember { AppImageIntegration() }
+                var showIntegrationDialog by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    withContext(Dispatchers.IO) {
+                        when (appImageIntegration.status()) {
+                            AppImageIntegrationStatus.NotIntegrated -> {
+                                if (!clientSettings.getIgnoreAppImageIntegration()) {
+                                    showIntegrationDialog = true
+                                }
+                            }
+
+                            is AppImageIntegrationStatus.Stale -> {
+                                val result = appImageIntegration.integrate()
+                                if (result is AppImageIntegrationResult.Failed) {
+                                    logger.e(result.cause) { "AppImage integration refresh failed: ${result.reason}" }
+                                }
+                            }
+
+                            else -> {}
+                        }
+                    }
+                }
+                if (showIntegrationDialog) {
+                    AppImageIntegrationDialog(
+                        integration = appImageIntegration,
+                        clientSettings = clientSettings,
+                        logger = logger,
+                        onDismiss = { showIntegrationDialog = false },
+                    )
+                }
+
                 games.forEach { gameState ->
                     key(gameState) {
                         val windowState =
@@ -332,6 +373,9 @@ private class WarlockCommand : CliktCommand() {
                                 LocalSkin provides skin,
                                 LocalTitleBarStyle provides titleBarStyle,
                                 LocalDesktopDockHost provides dockHost,
+                                // A copy that cannot open the system clipboard must not take the
+                                // app down with it; see [SafeClipboard].
+                                LocalClipboard provides rememberSafeClipboard(),
                             ) {
                                 RegisterGameDockWindow(dockHost)
                                 WarlockApp(
@@ -660,6 +704,82 @@ fun main(args: Array<String>) =
         // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than
         // abort startup on an unknown option.
         .main(args.filterNot { it == "--no-sandbox" })
+
+@Composable
+private fun AppImageIntegrationDialog(
+    integration: AppImageIntegration,
+    clientSettings: ClientSettingRepository,
+    logger: Logger,
+    onDismiss: () -> Unit,
+) {
+    var error: String? by remember { mutableStateOf(null) }
+    val scope = rememberCoroutineScope()
+
+    DialogWindow(
+        onCloseRequest = onDismiss,
+        title = "Add Warlock to your applications?",
+        icon = painterResource(Res.drawable.app_icon),
+        state = rememberDialogState(width = 440.dp, height = 240.dp),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(8.dp),
+        ) {
+            Text(
+                "Warlock is running from an AppImage, which the desktop cannot show in menus " +
+                    "or the dock with the right icon until a launcher entry is installed.",
+            )
+            Spacer(Modifier.padding(top = 8.dp))
+            Text(
+                "Add a menu entry and icon for this AppImage? If the file moves or is " +
+                    "updated later, the entry is repaired automatically.",
+            )
+            error?.let {
+                Spacer(Modifier.padding(top = 8.dp))
+                Text("Adding the entry failed: $it")
+            }
+            Spacer(Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth()) {
+                Spacer(Modifier.weight(1f))
+                WarlockOutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            clientSettings.putIgnoreAppImageIntegration(true)
+                            onDismiss()
+                        }
+                    },
+                    text = "Don't ask again",
+                )
+                Spacer(Modifier.padding(horizontal = 4.dp))
+                WarlockOutlinedButton(
+                    onClick = onDismiss,
+                    text = "Not now",
+                )
+                Spacer(Modifier.padding(horizontal = 4.dp))
+                WarlockButton(
+                    onClick = {
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) { integration.integrate() }
+                            when (result) {
+                                is AppImageIntegrationResult.Integrated -> {
+                                    onDismiss()
+                                }
+
+                                is AppImageIntegrationResult.Failed -> {
+                                    logger.e(result.cause) { "AppImage integration failed: ${result.reason}" }
+                                    error = result.reason
+                                }
+                            }
+                        }
+                    },
+                    text = "Add",
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun UpdateDialog(

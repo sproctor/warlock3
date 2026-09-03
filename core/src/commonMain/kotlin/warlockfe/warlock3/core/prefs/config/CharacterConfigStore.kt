@@ -387,6 +387,17 @@ private enum class Section(
             config.copy(names = toml.decodeFromTomlElement(NamesFile.serializer(), element).names)
         },
     ),
+    IGNORES(
+        fileName = "ignores.toml",
+        get = { it.ignores },
+        clear = { it.copy(ignores = emptyList()) },
+        encode = { toml, config, template ->
+            toml.encodeWithTemplate(IgnoresFile.serializer(), IgnoresFile(config.ignores), template)
+        },
+        decodeInto = { toml, element, config ->
+            config.copy(ignores = toml.decodeFromTomlElement(IgnoresFile.serializer(), element).ignores)
+        },
+    ),
     ALIASES(
         fileName = "aliases.toml",
         get = { it.aliases },
@@ -491,7 +502,8 @@ private enum class Section(
 }
 
 // Sections whose entries carry an `id` that may be generated on load.
-private val ID_SECTIONS = listOf(Section.HIGHLIGHTS, Section.NAMES, Section.ALIASES, Section.ALTERATIONS, Section.ACTIONS)
+private val ID_SECTIONS =
+    listOf(Section.HIGHLIGHTS, Section.NAMES, Section.IGNORES, Section.ALIASES, Section.ALTERATIONS, Section.ACTIONS)
 
 // Identity for comment carry-over: match array entries (highlights, names, ...) by their `id` so a
 // comment follows its entry when the list is reordered. Entries without an id fall back to position.
@@ -574,6 +586,7 @@ private fun CharacterConfig.withGeneratedIds(): Pair<CharacterConfig, Boolean> {
     return copy(
         highlights = highlights.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
         names = names.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
+        ignores = ignores.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
         aliases = aliases.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
         alterations = alterations.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),
         actions = actions.fillMissingIds({ it.id }, { item, id -> item.copy(id = id) }),

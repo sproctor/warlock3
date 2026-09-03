@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.CompassStyle
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import warlockfe.warlock3.core.prefs.ThemeSetting
+import warlockfe.warlock3.core.prefs.config.ClientConfig
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -60,6 +61,13 @@ class ClientSettingRepository(
         putBoolean("ignoreUpdates", value)
     }
 
+    /** Whether the user declined the AppImage "add to your applications" offer; never re-ask. */
+    suspend fun getIgnoreAppImageIntegration(): Boolean = getBoolean("ignoreAppImageIntegration") ?: false
+
+    suspend fun putIgnoreAppImageIntegration(value: Boolean) {
+        putBoolean("ignoreAppImageIntegration", value)
+    }
+
     // --- User-editable application settings: client.toml ---
 
     fun observeTheme(): Flow<ThemeSetting> =
@@ -87,14 +95,17 @@ class ClientSettingRepository(
 
     fun observeSkinFile(): Flow<String?> = clientConfigStore.observeClient().map { it.skinFile }
 
-    fun observeLogSettings(): Flow<LogSettings> =
-        clientConfigStore.observeClient().map { config ->
-            LogSettings(
-                basePath = config.logPath ?: warlockDirs.logDir,
-                type = config.logType?.let { runCatching { LogType.valueOf(it) }.getOrNull() } ?: LogType.SIMPLE,
-                logTimestamps = config.logTimestamps,
-            )
-        }
+    fun observeLogSettings(): Flow<LogSettings> = clientConfigStore.observeClient().map { it.toLogSettings() }
+
+    /** The settings as they stand right now, for callers that can't wait for the flow to emit. */
+    fun getLogSettings(): LogSettings = clientConfigStore.currentClient().toLogSettings()
+
+    private fun ClientConfig.toLogSettings(): LogSettings =
+        LogSettings(
+            basePath = logPath ?: warlockDirs.logDir,
+            type = logType?.let { runCatching { LogType.valueOf(it) }.getOrNull() } ?: LogType.SIMPLE,
+            logTimestamps = logTimestamps,
+        )
 
     fun observeMaxScrollLines(): Flow<Int> = clientConfigStore.observeClient().map { it.scrollback ?: DEFAULT_MAX_SCROLL_LINES }
 

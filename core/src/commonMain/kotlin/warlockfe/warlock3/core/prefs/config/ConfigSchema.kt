@@ -60,6 +60,7 @@ data class CharacterConfig(
     val character: String = "",
     val highlights: List<HighlightConfig> = emptyList(),
     val names: List<NameConfig> = emptyList(),
+    val ignores: List<IgnoreConfig> = emptyList(),
     val aliases: List<AliasConfig> = emptyList(),
     val alterations: List<AlterationConfig> = emptyList(),
     // The pool of user-defined action buttons, and the ids of the actions shown on the game-screen
@@ -99,6 +100,16 @@ data class ActionConfig(
     val script: String? = null,
     @TomlComment("Ids of the child actions shown when this group is pressed. Omit for a leaf.")
     val children: List<String> = emptyList(),
+)
+
+@Serializable
+data class IgnoreConfig(
+    val id: String? = null,
+    val pattern: String = "",
+    val isRegex: Boolean = false,
+    @TomlComment("Text match mode: \"contains\", \"word\" (whole word), or \"line\" (entire line). Ignored for regex.")
+    val mode: String = "contains",
+    val ignoreCase: Boolean = false,
 )
 
 @Serializable
@@ -227,6 +238,11 @@ internal data class HighlightsFile(
 @Serializable
 internal data class NamesFile(
     val names: List<NameConfig> = emptyList(),
+)
+
+@Serializable
+internal data class IgnoresFile(
+    val ignores: List<IgnoreConfig> = emptyList(),
 )
 
 @Serializable

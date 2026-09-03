@@ -12,6 +12,7 @@ import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
@@ -31,6 +32,7 @@ fun SettingsContent(
     macroRepository: MacroRepository,
     highlightRepository: HighlightRepositoryImpl,
     nameRepository: NameRepositoryImpl,
+    ignoreRepository: IgnoreRepository,
     presetRepository: PresetRepository,
     aliasRepository: AliasRepository,
     actionRepository: ActionRepository,
@@ -87,6 +89,14 @@ fun SettingsContent(
                 allCharacters = characters,
                 nameRepository = nameRepository,
                 characterSettingsRepository = characterSettingsRepository,
+            )
+        }
+
+        SettingsPage.Ignores -> {
+            IgnoresView(
+                currentCharacter = currentCharacter,
+                allCharacters = characters,
+                ignoreRepository = ignoreRepository,
             )
         }
 

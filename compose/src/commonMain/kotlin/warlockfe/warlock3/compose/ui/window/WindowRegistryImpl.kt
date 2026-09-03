@@ -15,8 +15,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import warlockfe.warlock3.compose.model.LiteralHighlight
+import warlockfe.warlock3.compose.model.LiteralIgnore
 import warlockfe.warlock3.compose.model.RegexHighlight
+import warlockfe.warlock3.compose.model.RegexIgnore
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.model.ViewIgnore
 import warlockfe.warlock3.compose.ui.settings.toStyleLayer
 import warlockfe.warlock3.compose.util.HighlightIndex
 import warlockfe.warlock3.compose.util.SAFE_DEFAULT_STYLE
@@ -26,6 +29,7 @@ import warlockfe.warlock3.core.prefs.repositories.AlterationRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepository
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepository
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
@@ -54,6 +58,7 @@ class WindowRegistryImpl(
     settingRepository: ClientSettingRepository,
     highlightRepository: HighlightRepository,
     nameRepository: NameRepository,
+    ignoreRepository: IgnoreRepository,
     alterationRepository: AlterationRepository,
     presetRepository: PresetRepository,
     private val characterSettingsRepository: CharacterSettingsRepository,
@@ -203,6 +208,42 @@ class WindowRegistryImpl(
                 initialValue = HighlightIndex(emptyList()),
             )
 
+    // Compiled once per config change here (not per line): regexes are built in the flow, invalid ones
+    // and blank literals silently dropped, matching how highlights are compiled above.
+    private val ignores: StateFlow<List<ViewIgnore>> =
+        characterId
+            .flatMapLatest { characterId ->
+                ignoreRepository.observeForCharacter(characterId).map { list ->
+                    list.mapNotNull { ignore ->
+                        if (ignore.isRegex) {
+                            try {
+                                RegexIgnore(
+                                    regex =
+                                        Regex(
+                                            pattern = ignore.pattern,
+                                            options = if (ignore.ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet(),
+                                        ),
+                                )
+                            } catch (_: Exception) {
+                                null
+                            }
+                        } else if (ignore.pattern.isBlank()) {
+                            null
+                        } else {
+                            LiteralIgnore(
+                                literal = ignore.pattern,
+                                mode = ignore.matchMode,
+                                ignoreCase = ignore.ignoreCase,
+                            )
+                        }
+                    }
+                }
+            }.stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = emptyList(),
+            )
+
     private val alterations: StateFlow<List<CompiledAlteration>> =
         characterId
             .flatMapLatest { characterId ->
@@ -278,6 +319,7 @@ class WindowRegistryImpl(
                 maxLines = maxLines.value,
                 highlights = highlights,
                 names = names,
+                ignores = ignores,
                 alterations = alterations,
                 presets = presets,
                 monoFont = monoFontFor(name),
@@ -348,6 +390,7 @@ class WindowRegistryFactory(
     private val settingRepository: ClientSettingRepository,
     private val highlightRepository: HighlightRepository,
     private val nameRepository: NameRepository,
+    private val ignoreRepository: IgnoreRepository,
     private val alterationRepository: AlterationRepository,
     private val presetRepository: PresetRepository,
     private val characterSettingsRepository: CharacterSettingsRepository,
@@ -360,6 +403,7 @@ class WindowRegistryFactory(
             settingRepository = settingRepository,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
+            ignoreRepository = ignoreRepository,
             alterationRepository = alterationRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,

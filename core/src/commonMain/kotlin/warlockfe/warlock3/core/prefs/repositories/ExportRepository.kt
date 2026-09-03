@@ -10,6 +10,7 @@ import warlockfe.warlock3.core.prefs.config.ConnectionConfig
 import warlockfe.warlock3.core.prefs.config.GLOBAL_CHARACTER_ID
 import warlockfe.warlock3.core.prefs.config.HighlightConfig
 import warlockfe.warlock3.core.prefs.config.HighlightStyleConfig
+import warlockfe.warlock3.core.prefs.config.IgnoreConfig
 import warlockfe.warlock3.core.prefs.config.NameConfig
 import warlockfe.warlock3.core.prefs.config.PresetStyleConfig
 import warlockfe.warlock3.core.prefs.config.WindowStyleConfig
@@ -24,6 +25,7 @@ import warlockfe.warlock3.core.prefs.export.BaseStyleExport
 import warlockfe.warlock3.core.prefs.export.CharacterExport
 import warlockfe.warlock3.core.prefs.export.ConnectionExport
 import warlockfe.warlock3.core.prefs.export.HighlightExport
+import warlockfe.warlock3.core.prefs.export.IgnoreExport
 import warlockfe.warlock3.core.prefs.export.MacroExport
 import warlockfe.warlock3.core.prefs.export.NameExport
 import warlockfe.warlock3.core.prefs.export.PresetStyleExport
@@ -185,6 +187,15 @@ class ExportRepository(
                                         backgroundColorRef = style.backgroundColorRef,
                                     )
                             },
+                    )
+                },
+            ignores =
+                config.ignores.map {
+                    IgnoreExport(
+                        pattern = it.pattern,
+                        isRegex = it.isRegex,
+                        mode = it.mode,
+                        ignoreCase = it.ignoreCase,
                     )
                 },
             macros = config.macros.map { (key, value) -> MacroExport(key = key, value = value) },
@@ -450,6 +461,16 @@ class ExportRepository(
                     keepOriginal = it.keepOriginal,
                 )
             }
+        val importedIgnores =
+            data.ignores.map {
+                IgnoreConfig(
+                    id = Uuid.random().toString(),
+                    pattern = it.pattern,
+                    isRegex = it.isRegex,
+                    mode = it.mode,
+                    ignoreCase = it.ignoreCase,
+                )
+            }
         val importedMacros = data.macros.associate { it.key to it.value }
         // "default" was folded out of the preset map into the base style before this PR's export/import
         // gained a dedicated baseStyle field; drop it from the imported presets unconditionally (it's
@@ -523,6 +544,7 @@ class ExportRepository(
                 current.copy(
                     highlights = importedHighlights,
                     names = importedNames,
+                    ignores = importedIgnores,
                     variables = data.variables,
                     aliases = importedAliases,
                     alterations = importedAlterations,
@@ -537,11 +559,13 @@ class ExportRepository(
             } else {
                 val importedPatterns = importedHighlights.mapTo(mutableSetOf()) { it.pattern }
                 val importedTexts = importedNames.mapTo(mutableSetOf()) { it.text }
+                val importedIgnorePatterns = importedIgnores.mapTo(mutableSetOf()) { it.pattern }
                 val importedAliasPatterns = importedAliases.mapTo(mutableSetOf()) { it.pattern }
                 val importedAlterationPatterns = importedAlterations.mapTo(mutableSetOf()) { it.pattern }
                 current.copy(
                     highlights = current.highlights.filterNot { it.pattern in importedPatterns } + importedHighlights,
                     names = current.names.filterNot { it.text in importedTexts } + importedNames,
+                    ignores = current.ignores.filterNot { it.pattern in importedIgnorePatterns } + importedIgnores,
                     variables = current.variables + data.variables,
                     aliases = current.aliases.filterNot { it.pattern in importedAliasPatterns } + importedAliases,
                     alterations =
