@@ -1,5 +1,7 @@
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
+import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toWarlockColor
@@ -18,6 +20,11 @@ class WraythSettingsTests {
         <names>
         <h text="Someone" color="#ff00fb"/>
         </names>
+        <ignores disable="n">
+        <h text="some random crap"/>
+        <h text="partial" word="y"/>
+        <h text="nocase" case="y"/>
+        </ignores>
         <palette>
         <i id="0" color="#FFFF90"/>
         <i id="1" color="#FFD2A1"/>
@@ -146,21 +153,27 @@ class WraythSettingsTests {
         </settings>
         """.trimIndent()
 
+    private fun importer(): WraythImporter =
+        WraythImporter(
+            highlightRepository = FakeHighlightRepository(),
+            nameRepository = FakeNameRepository(),
+            ignoreRepository =
+                IgnoreRepository(
+                    CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
+                ),
+            macroRepository =
+                MacroRepository(
+                    FakeMacroDao(),
+                    CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
+                    emptyMap(),
+                    emptyMap(),
+                ),
+            fileSystem = SystemFileSystem,
+        )
+
     @Test
     fun testSettings() {
-        val importer =
-            WraythImporter(
-                highlightRepository = FakeHighlightRepository(),
-                nameRepository = FakeNameRepository(),
-                macroRepository =
-                    MacroRepository(
-                        FakeMacroDao(),
-                        CharacterConfigStore("build/tmp/wrayth-importer-test", SystemFileSystem),
-                        emptyMap(),
-                        emptyMap(),
-                    ),
-                fileSystem = SystemFileSystem,
-            )
+        val importer = importer()
         val wraythSettings = importer.importString(exampleXml)
         val settings = importer.translateSettings(wraythSettings, "test")
         assertEquals(
@@ -176,5 +189,48 @@ class WraythSettingsTests {
                 .first()
                 .macros.size,
         )
+        // Highlight word/case attributes: absent = whole word, case-sensitive (see WraythHighlight).
+        assertEquals(false, settings.highlights[0].matchPartialWord)
+        assertEquals(false, settings.highlights[0].ignoreCase)
+        // Ignores: bare entry = whole word + case-sensitive; word="y" = anywhere; case="y" = ignore case.
+        assertEquals(3, settings.ignores.size)
+        assertEquals("some random crap", settings.ignores[0].pattern)
+        assertEquals(IgnoreMatchMode.WORD, settings.ignores[0].matchMode)
+        assertEquals(false, settings.ignores[0].ignoreCase)
+        assertEquals(IgnoreMatchMode.CONTAINS, settings.ignores[1].matchMode)
+        assertEquals(IgnoreMatchMode.WORD, settings.ignores[2].matchMode)
+        assertEquals(true, settings.ignores[2].ignoreCase)
+    }
+
+    @Test
+    fun testDisabledIgnoresAreNotImported() {
+        // A section the user disabled in Wrayth must not import as active rules.
+        val importer = importer()
+        val disabledXml = exampleXml.replace("disable=\"n\"", "disable=\"y\"")
+        val settings = importer.translateSettings(importer.importString(disabledXml), "test")
+        assertEquals(emptyList(), settings.ignores)
+    }
+
+    @Test
+    fun testSettingsWithoutIgnores() {
+        // Very old settings files have no <ignores> section at all; the decode must still succeed.
+        val xml =
+            """
+            <settings client="1.0.1.28">
+            <strings>
+            <h text="something" color="@0"/>
+            </strings>
+            <names>
+            </names>
+            <palette>
+            <i id="0" color="#FFFF90"/>
+            </palette>
+            <macros>
+            </macros>
+            </settings>
+            """.trimIndent()
+        val importer = importer()
+        val settings = importer.translateSettings(importer.importString(xml), "test")
+        assertEquals(emptyList(), settings.ignores)
     }
 }

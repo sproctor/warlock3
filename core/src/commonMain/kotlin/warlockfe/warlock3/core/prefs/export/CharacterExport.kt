@@ -16,6 +16,8 @@ data class CharacterExport(
     val aliases: List<AliasExport>,
     val alterations: List<AlterationExport>,
     val highlights: List<HighlightExport>,
+    // Default keeps exports written before ignores existed decoding.
+    val ignores: List<IgnoreExport> = emptyList(),
     val macros: List<MacroExport>,
     val names: List<NameExport>,
     val presets: List<PresetStyleExport>,

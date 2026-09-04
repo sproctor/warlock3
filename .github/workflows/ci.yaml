@@ -76,8 +76,10 @@ jobs:
           fi
           echo "potassium actions and catalog agree on $version"
 
+      # Lint and the Android-target test suites have their own job below; -x prunes the host
+      # tests and everything only they need, so they do not run twice per push.
       - name: Checks
-        run: ./gradlew check -PiosSkip=true -PlintSkip=true --stacktrace
+        run: ./gradlew check -PiosSkip=true -PlintSkip=true -x testAndroidHostTest --stacktrace
 
       - name: Upload test reports
         if: always()
@@ -86,6 +88,63 @@ jobs:
           name: test-reports
           retention-days: 3
           path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+          if-no-files-found: ignore
+
+  # Android Lint plus the test suites compiled for the Android target. Lint is the one check
+  # that knows which Java APIs Android lacks: Path.of is Java 11 but only reached Android in
+  # API 34, and v3.1.0 shipped it in a shared JVM+Android source set and crashed on launch on
+  # every device before Android 14, with ktlint, the compiler and every test green. The KMP
+  # modules only get lint tasks once com.android.lint is applied (see their build files), and
+  # the build job drops lint with -PlintSkip=true, so it lives here.
+  #
+  # The tests are the commonTest suites of the KMP modules compiled against the Android target
+  # and run on the host JVM (testAndroidHostTest). They exercise the androidMain actuals rather
+  # than the jvmMain ones, but they run on the host JDK, so they cannot catch an API-level
+  # problem like the one above - that is lint's job. The app's own unit tests stay with `check`
+  # in the build job, which already runs them.
+  android:
+    name: Android lint and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # See the note on cache-provider in the build job.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      # lintAndroidMain (every KMP module) plus the app's lint, rather than the `lint` umbrella:
+      # that also runs each module's lintJvm, which compiles the JVM targets the build job
+      # already compiles and has no Android context to check against. Time is the whole
+      # reason this job exists apart from `check`.
+      - name: Android lint
+        run: ./gradlew lintAndroidMain :androidApp:lint -PiosSkip=true --stacktrace
+
+      # Still runs when lint fails, so one push reports both.
+      - name: Android tests
+        if: ${{ !cancelled() }}
+        run: ./gradlew testAndroidHostTest -PiosSkip=true --stacktrace
+
+      - name: Upload lint and test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-reports
+          retention-days: 3
+          path: |
+            **/build/reports/lint-results*.html
             **/build/reports/tests/**
             **/build/test-results/**
           if-no-files-found: ignore

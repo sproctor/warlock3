@@ -39,10 +39,10 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockScrollableColumn
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
+import warlockfe.warlock3.compose.util.clipEntryOf
 import warlockfe.warlock3.compose.util.createPlatformDialogSettings
+import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.window.WindowMemoryUsage
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.io.File
 import java.lang.management.ManagementFactory
 import kotlin.time.Duration.Companion.seconds
@@ -100,6 +100,8 @@ fun MemoryUsageDialog(
         width = 760.dp,
         height = 600.dp,
     ) {
+        // The dialog's own clipboard, which WarlockDialog has already made safe to write to.
+        val clipboard = rememberSafeClipboard()
         Column(Modifier.fillMaxSize()) {
             val snapshot = report
             if (snapshot == null) {
@@ -147,8 +149,18 @@ fun MemoryUsageDialog(
                 WarlockOutlinedButton(
                     onClick = {
                         val text = report?.toText() ?: return@WarlockOutlinedButton
-                        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-                        status = "Report copied to the clipboard."
+                        // Through the window's clipboard rather than AWT's: a busy system clipboard
+                        // used to throw out of here straight into the uncaught handler. Says so only
+                        // when the write actually landed, since the retries can run out.
+                        scope.launch {
+                            val entry = clipEntryOf(text)
+                            status =
+                                if (entry != null && clipboard.trySetClipEntry(entry)) {
+                                    "Report copied to the clipboard."
+                                } else {
+                                    "Could not copy the report to the clipboard."
+                                }
+                        }
                     },
                     text = "Copy report",
                     enabled = report != null && !busy,

@@ -63,6 +63,7 @@ import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ExportRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
@@ -146,6 +147,7 @@ class AppContainer(
     val accountRepository = AccountRepository(database.accountDao(), settingsProblems)
     val highlightRepository = HighlightRepositoryImpl(characterConfigStore)
     val nameRepository = NameRepositoryImpl(characterConfigStore)
+    val ignoreRepository = IgnoreRepository(characterConfigStore)
     val presetRepository = PresetRepository(characterConfigStore)
     val progressBarSettingRepository = ProgressBarSettingRepository(characterConfigStore)
     val clientSettings =
@@ -292,6 +294,7 @@ class AppContainer(
         WraythImporter(
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
+            ignoreRepository = ignoreRepository,
             macroRepository = macroRepository,
             fileSystem = fileSystem,
         )
@@ -341,6 +344,7 @@ class AppContainer(
             soundPlayer = soundPlayer,
             highlightRepository = highlightRepository,
             nameRepository = nameRepository,
+            ignoreRepository = ignoreRepository,
             presetRepository = presetRepository,
             characterSettingsRepository = characterSettingsRepository,
             windowSettingsRepository = windowSettingRepository,

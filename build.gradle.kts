@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.kmp.library) apply false
+    alias(libs.plugins.android.lint) apply false
     alias(libs.plugins.compose) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.compose.hot.reload) apply false
@@ -54,9 +55,11 @@ subprojects {
 val Project.libs: org.gradle.accessors.dm.LibrariesForLibs
     get() = extensions.getByType()
 
-// CI passes -PlintSkip=true to drop Android Lint from the `check` graph — its model
-// generation + analyze tasks cost ~50s and most of what it catches in this Kotlin-only
-// Compose project is already covered by ktlint or the Kotlin compiler.
+// CI's main job passes -PlintSkip=true to drop Android Lint from the `check` graph — its model
+// generation + analyze tasks cost ~50s — and the `android` job in ci.yaml runs `lint` on its
+// own. Lint is the only check that knows which Java APIs Android lacks: Path.of shipped in
+// v3.1.0 and crashed every device before Android 14 while ktlint, the compiler and every
+// test stayed green.
 if ((findProperty("lintSkip") as? String)?.toBoolean() == true) {
     allprojects {
         afterEvaluate {

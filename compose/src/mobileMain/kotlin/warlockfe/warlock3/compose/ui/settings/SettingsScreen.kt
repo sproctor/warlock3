@@ -108,6 +108,7 @@ fun SettingsScreen(
                     macroRepository = appContainer.macroRepository,
                     highlightRepository = appContainer.highlightRepository,
                     nameRepository = appContainer.nameRepository,
+                    ignoreRepository = appContainer.ignoreRepository,
                     presetRepository = appContainer.presetRepository,
                     aliasRepository = appContainer.aliasRepository,
                     actionRepository = appContainer.actionRepository,

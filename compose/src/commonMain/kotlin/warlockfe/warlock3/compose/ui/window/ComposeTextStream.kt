@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.RegexHighlight
 import warlockfe.warlock3.compose.model.ViewHighlight
+import warlockfe.warlock3.compose.model.ViewIgnore
 import warlockfe.warlock3.compose.model.wordTokensOf
 import warlockfe.warlock3.compose.util.AnnotatedStringHighlightResult
 import warlockfe.warlock3.compose.util.HighlightIndex
@@ -57,6 +58,7 @@ class ComposeTextStream(
     private var suppressPrompts: Boolean,
     private val highlights: StateFlow<HighlightIndex>,
     private val names: StateFlow<List<ViewHighlight>>,
+    private val ignores: StateFlow<List<ViewIgnore>>,
     private val alterations: StateFlow<List<CompiledAlteration>>,
     private val presets: StateFlow<Map<String, StyleLayer>>,
     // The effective monospace font for this window (per-window override or the character default);
@@ -118,6 +120,16 @@ class ComposeTextStream(
                     workQueue.submit("namefilter") {
                         linesUpdated()
                     }
+                }
+            }.launchIn(scope)
+
+        // Re-filter displayed lines whenever the ignore list changes. Only a re-filter, not a
+        // re-render: ignores decide whether a line shows, never how it renders, so they stay out of
+        // the merge() below. Lines stay in the buffer, so editing an ignore restores hidden lines.
+        ignores
+            .onEach {
+                workQueue.submit("ignorefilter") {
+                    linesUpdated()
                 }
             }.launchIn(scope)
 
@@ -706,12 +718,23 @@ class ComposeTextStream(
 
     private fun linePassesFilter(line: StreamLine): Boolean =
         (!nameFilter || lineMatchesName(line)) &&
-            (!suppressPrompts || (line as? StreamTextLine)?.isPrompt != true)
+            (!suppressPrompts || (line as? StreamTextLine)?.isPrompt != true) &&
+            !lineIsIgnored(line)
 
     private fun lineMatchesName(line: StreamLine): Boolean {
         val text = (line as? StreamTextLine)?.text?.text ?: return false
         if (text.isEmpty()) return false
         return names.value.any { it.containsMatchIn(text) }
+    }
+
+    // Display-only: an ignored line stays in the buffer and still reaches scripts, logs, and highlight
+    // sounds (pairing an ignore with a sound-carrying highlight is a deliberate way to turn a line into
+    // a pure audio cue) — it is only kept out of the view.
+    private fun lineIsIgnored(line: StreamLine): Boolean {
+        val active = ignores.value
+        if (active.isEmpty()) return false
+        val text = (line as? StreamTextLine)?.text?.text ?: return false
+        return active.any { it.matches(text) }
     }
 
     override fun showTimestamps(value: Boolean) {

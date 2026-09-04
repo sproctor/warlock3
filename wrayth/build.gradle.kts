@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kmp.library)
+    alias(libs.plugins.android.lint)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.antlr.kotlin)
     alias(libs.plugins.kotlin.allopen)
@@ -70,6 +71,8 @@ kotlin {
             libs.versions.minSdk
                 .get()
                 .toInt()
+        // Run commonTest against the Android target too, on the host JVM (testAndroidHostTest).
+        withHostTest {}
     }
 
     if (!skipIos) {

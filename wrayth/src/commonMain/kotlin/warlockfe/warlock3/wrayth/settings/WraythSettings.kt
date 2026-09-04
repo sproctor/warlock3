@@ -12,6 +12,8 @@ data class WraythSettings(
     val strings: List<WraythHighlight>,
     @XmlChildrenName("names")
     val names: List<WraythHighlight>,
+    // Absent in very old settings files.
+    val ignores: WraythIgnores? = null,
     @XmlChildrenName("palette")
     val palette: List<WraythColor>,
     @XmlChildrenName("keys")

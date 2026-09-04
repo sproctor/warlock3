@@ -21,6 +21,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
+import warlockfe.warlock3.compose.util.ProvideSafeClipboard
 
 @Suppress("ktlint:compose:modifier-missing-check")
 @Composable
@@ -38,14 +39,18 @@ fun WarlockDialog(
         icon = painterResource(Res.drawable.app_icon),
         state = rememberDialogState(width = width, height = height),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(JewelTheme.globalColors.panelBackground)
-                    .padding(16.dp),
-        ) {
-            content()
+        // A dialog is its own Compose scene, so it provides its own clipboard and does not inherit
+        // the safe one the app window is running under; see [SafeClipboard].
+        ProvideSafeClipboard {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(JewelTheme.globalColors.panelBackground)
+                        .padding(16.dp),
+            ) {
+                content()
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.CharacterSettingsRepository
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.HighlightRepositoryImpl
+import warlockfe.warlock3.core.prefs.repositories.IgnoreRepository
 import warlockfe.warlock3.core.prefs.repositories.MacroRepository
 import warlockfe.warlock3.core.prefs.repositories.NameRepositoryImpl
 import warlockfe.warlock3.core.prefs.repositories.PresetRepository
@@ -29,6 +30,7 @@ fun SettingsDialog(
     presetRepository: PresetRepository,
     highlightRepository: HighlightRepositoryImpl,
     nameRepository: NameRepositoryImpl,
+    ignoreRepository: IgnoreRepository,
     alterationRepository: AlterationRepository,
     characterSettingsRepository: CharacterSettingsRepository,
     aliasRepository: AliasRepository,
@@ -50,6 +52,7 @@ fun SettingsDialog(
         presetRepository = presetRepository,
         highlightRepository = highlightRepository,
         nameRepository = nameRepository,
+        ignoreRepository = ignoreRepository,
         alterationRepository = alterationRepository,
         characterSettingsRepository = characterSettingsRepository,
         aliasRepository = aliasRepository,
