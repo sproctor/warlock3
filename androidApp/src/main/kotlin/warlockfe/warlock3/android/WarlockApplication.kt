@@ -3,6 +3,7 @@ package warlockfe.warlock3.android
 import android.app.Application
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.AppContainer
@@ -38,12 +39,17 @@ class WarlockApplication : Application() {
         configDir.mkdirs()
 
         val databaseDirectory = Path(getDatabasePath("placeholder").parentFile!!.absolutePath)
+        // A database that cannot be opened throws SettingsUnreadableException, which is left to
+        // propagate: an uncaught exception out of onCreate is how an Android app declines to start,
+        // and starting anyway would mean saving empty settings over the real ones.
         val database =
-            openPrefsDatabase(
-                directory = databaseDirectory,
-                fileSystem = SystemFileSystem,
-                builderFactory = ::getPrefsDatabaseBuilder,
-            )
+            runBlocking {
+                openPrefsDatabase(
+                    directory = databaseDirectory,
+                    fileSystem = SystemFileSystem,
+                    builderFactory = ::getPrefsDatabaseBuilder,
+                )
+            }
 
         // AppContainer loads config, runs the DB->TOML migration, and seeds default macros on init.
         appContainer =

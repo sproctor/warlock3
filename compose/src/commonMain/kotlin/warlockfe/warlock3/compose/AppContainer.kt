@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.websocket.WebSockets
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,9 +44,13 @@ import warlockfe.warlock3.core.prefs.MIGRATION_14_16
 import warlockfe.warlock3.core.prefs.MIGRATION_20_21
 import warlockfe.warlock3.core.prefs.PREFS_DATABASE_VERSION
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.prefs.SettingsProblem
+import warlockfe.warlock3.core.prefs.SettingsProblems
+import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.config.ConfigMigration
+import warlockfe.warlock3.core.prefs.describeForUser
 import warlockfe.warlock3.core.prefs.repositories.AccountRepository
 import warlockfe.warlock3.core.prefs.repositories.ActionRepository
 import warlockfe.warlock3.core.prefs.repositories.AliasRepository
@@ -120,9 +125,18 @@ class AppContainer(
     // rather than the configuration.
     val commandListStore = CommandListStore(warlockDirs.dataDir)
 
+    /**
+     * Where a failed settings *write* goes, so the app can tell the user their changes are being
+     * dropped. The app shell observes [SettingsProblems.current] and shows what is in it; nothing
+     * else needs to know that saving can fail. A settings store that cannot be *read* is a different
+     * matter and never gets here: it stops the launch (see [SettingsUnreadableException]).
+     */
+    val settingsProblems = SettingsProblems(warlockDirs.configDir)
+
     val variableRepository = VariableRepository(characterConfigStore)
     val characterRepository = CharacterRepository(clientConfigStore)
-    val windowSettingRepository = WindowSettingsRepository(database.windowSettingsDao(), characterConfigStore)
+    val windowSettingRepository =
+        WindowSettingsRepository(database.windowSettingsDao(), characterConfigStore, settingsProblems)
     val macroRepository =
         MacroRepository(
             database.macroDao(),
@@ -130,23 +144,26 @@ class AppContainer(
             KeyboardKeyMappings.keyCodeMap,
             KeyboardKeyMappings.reverseKeyCodeMap,
         )
-    val accountRepository = AccountRepository(database.accountDao())
+    val accountRepository = AccountRepository(database.accountDao(), settingsProblems)
     val highlightRepository = HighlightRepositoryImpl(characterConfigStore)
     val nameRepository = NameRepositoryImpl(characterConfigStore)
     val ignoreRepository = IgnoreRepository(characterConfigStore)
     val presetRepository = PresetRepository(characterConfigStore)
     val progressBarSettingRepository = ProgressBarSettingRepository(characterConfigStore)
-    val clientSettings = ClientSettingRepository(database.clientSettingDao(), clientConfigStore, warlockDirs)
+    val clientSettings =
+        ClientSettingRepository(database.clientSettingDao(), clientConfigStore, warlockDirs, settingsProblems)
     val loggingRepository = LoggingRepository(clientSettings, externalScope)
     val scriptDirRepository =
         ScriptDirRepository(
             scriptDirDao = database.scriptDirDao(),
             warlockDirs = warlockDirs,
+            settingsProblems = settingsProblems,
         )
     val characterSettingsRepository =
         CharacterSettingsRepository(
             characterSettingsQueries = database.characterSettingDao(),
             store = characterConfigStore,
+            settingsProblems = settingsProblems,
         )
     val connectionRepository =
         ConnectionRepository(
@@ -162,10 +179,19 @@ class AppContainer(
     private val initializeMutex = Mutex()
     private var initialized = false
 
+    // Declared above the init block below, not beside [initialize] where it is used: property
+    // initializers and init blocks run in textual order, so a `= null` sitting after the block
+    // would race the coroutine it starts and could erase the very exception that stops the launch.
+    private var unreadable: SettingsUnreadableException? = null
+
     init {
         // Kick initialization off eagerly so reactive consumers get data without having to ask;
-        // callers that read config synchronously at startup should still call [initialize] to await it.
-        externalScope.launch { initialize() }
+        // callers that read config synchronously at startup should still call [initialize] to await
+        // it. Nothing here throws into [externalScope]: a settings store that could not be read is
+        // remembered by [initialize] and handed to whoever calls it next, which is the entry point
+        // that can act on it. Letting it out here would only reach the uncaught handler, which is
+        // the very thing that made DESKTOP-3X and 3Y useless to the people they happened to.
+        externalScope.launch { runCatching { initialize() } }
     }
 
     /**
@@ -174,42 +200,88 @@ class AppContainer(
      * than once (and from multiple places): the work runs exactly once and later calls just await /
      * return. Callers that read config at startup should call this first so they don't observe empty
      * stores before the migration has populated them.
+     *
+     * Throws [SettingsUnreadableException] -- on this call and every later one -- when the config
+     * files could not be read, so the entry point can tell the user and stop rather than come up
+     * with empty settings and save them over the real ones.
      */
     suspend fun initialize() {
         initializeMutex.withLock {
-            if (initialized) return
-            runCatching {
-                characterConfigStore.load()
-                clientConfigStore.load()
-                ConfigMigration(
-                    store = characterConfigStore,
-                    clientConfigStore = clientConfigStore,
-                    characterDao = database.characterDao(),
-                    highlightDao = database.highlightDao(),
-                    nameDao = database.nameDao(),
-                    variableDao = database.variableDao(),
-                    aliasDao = database.aliasDao(),
-                    alterationDao = database.alterationDao(),
-                    presetStyleDao = database.presetStyleDao(),
-                    progressBarSettingDao = database.progressBarSettingDao(),
-                    windowSettingsDao = database.windowSettingsDao(),
-                    characterSettingDao = database.characterSettingDao(),
-                    clientSettingDao = database.clientSettingDao(),
-                    connectionDao = database.connectionDao(),
-                    macroRepository = macroRepository,
-                    fileSystem = fileSystem,
-                    configDirectory = warlockDirs.configDir,
-                ).migrateIfNeeded()
-                // Seed default global macros on first run and merge in newly added defaults on
-                // upgrade, after migration so any migrated macros win.
-                macroRepository.seedAndMigrateDefaultMacros(clientSettings)
-            }.onFailure {
-                Logger.e(it) { "Failed to initialize config stores" }
+            if (!initialized) {
+                initialized = true
+                // Reading the config files is the fatal step, and *any* failure of it counts, not
+                // only the SettingsUnreadableException the stores raise for a file they could
+                // identify as damaged. Everything downstream reads absent data as "nothing saved
+                // yet", so a load that failed for a reason we did not anticipate would come up empty
+                // and then save that over the real settings -- and kotlinx-io is not always specific
+                // about why a read failed. Stopping is the safe default; guessing is not.
+                try {
+                    characterConfigStore.load()
+                    clientConfigStore.load()
+                } catch (e: CancellationException) {
+                    // Cancellation is not a settings failure and must not be recorded as one, which
+                    // is why this is a try/catch and not a runCatching: the caller went away, the
+                    // files are fine, and reporting "Warlock could not read your settings" would
+                    // close the app over nothing. Undoing the flag matters more than the rethrow --
+                    // left set, the next caller would skip the load it never actually did and come
+                    // up with empty stores and no error at all, which is the one outcome everything
+                    // here exists to prevent.
+                    initialized = false
+                    throw e
+                } catch (e: Throwable) {
+                    unreadable =
+                        e as? SettingsUnreadableException
+                            ?: SettingsUnreadableException(
+                                SettingsProblem.unreadable(
+                                    what = "your settings",
+                                    reason = e.describeForUser(),
+                                    settingsLocation = warlockDirs.configDir,
+                                ),
+                            )
+                    Logger.e(e) { "Failed to read the config files" }
+                }
+                // The rest is best-effort: a migration or a macro seed that fails leaves the user's
+                // settings as they were, so it is logged rather than fatal. Skipped entirely when the
+                // config could not be read, since the app is about to stop anyway and these would be
+                // working from data that is not the user's.
+                if (unreadable == null) {
+                    runCatching {
+                        ConfigMigration(
+                            store = characterConfigStore,
+                            clientConfigStore = clientConfigStore,
+                            characterDao = database.characterDao(),
+                            highlightDao = database.highlightDao(),
+                            nameDao = database.nameDao(),
+                            variableDao = database.variableDao(),
+                            aliasDao = database.aliasDao(),
+                            alterationDao = database.alterationDao(),
+                            presetStyleDao = database.presetStyleDao(),
+                            progressBarSettingDao = database.progressBarSettingDao(),
+                            windowSettingsDao = database.windowSettingsDao(),
+                            characterSettingDao = database.characterSettingDao(),
+                            clientSettingDao = database.clientSettingDao(),
+                            connectionDao = database.connectionDao(),
+                            macroRepository = macroRepository,
+                            fileSystem = fileSystem,
+                            configDirectory = warlockDirs.configDir,
+                        ).migrateIfNeeded()
+                        // Seed default global macros on first run and merge in newly added defaults
+                        // on upgrade, after migration so any migrated macros win.
+                        macroRepository.seedAndMigrateDefaultMacros(clientSettings)
+                    }.onFailure {
+                        // Cancellation is not a migration failure either; it just means the caller
+                        // went away, and logging it as one is noise in the report of a real problem.
+                        if (it is CancellationException) throw it
+                        Logger.e(it) { "Failed to initialize config stores" }
+                    }
+                    // Pick up external edits and writes from other app instances for the app's life.
+                    characterConfigStore.startWatching(externalScope)
+                    clientConfigStore.startWatching(externalScope)
+                }
             }
-            // Pick up external edits and writes from other app instances for the app's lifetime.
-            characterConfigStore.startWatching(externalScope)
-            clientConfigStore.startWatching(externalScope)
-            initialized = true
+            // Read under the lock the writer above holds, so every caller sees it however they
+            // arrive -- the eager init in the constructor, or the entry point that can act on it.
+            unreadable?.let { throw it }
         }
     }
 
@@ -404,27 +476,61 @@ class AppContainer(
  * strategy. Platform entry points call this with a factory that produces a platform-correct
  * [RoomDatabase.Builder] (Android needs a Context, JVM/iOS do not). The legacy single-file
  * name was `prefs.db`; on first launch after this change it is renamed to `warlock-vN.db`.
+ *
+ * Throws [SettingsUnreadableException] when the database cannot be opened, so the caller can tell
+ * the user and stop. Carrying on is not an option worth having: every store treats missing data as
+ * "nothing saved yet", so an app that started anyway would come up with empty settings and then
+ * write them over a database that was only unreachable, not empty. Issue DESKTOP-3Y is what this
+ * replaces -- a user whose volume had gone read-only, so Room could not create the `.lck` file it
+ * locks while opening, and the `IllegalStateException` came out of the first query on the main
+ * thread before a window ever appeared, telling them nothing.
+ *
+ * The check is a real query rather than a guess about the filesystem, because Room builds lazily:
+ * `build()` does no I/O, and the file is opened, migrated and locked by whatever touches it first.
+ * Probing here is what moves that moment somewhere it can be handled and reported.
  */
-fun openPrefsDatabase(
+suspend fun openPrefsDatabase(
     directory: Path,
     fileSystem: FileSystem,
     builderFactory: (databaseFilePath: String) -> RoomDatabase.Builder<PrefsDatabase>,
 ): PrefsDatabase {
     val sqlDriver = BundledSQLiteDriver()
-    return openVersionedDatabase(
-        directory = directory,
-        fileSystem = fileSystem,
-        currentVersion = PREFS_DATABASE_VERSION,
-        legacyFileName = "prefs.db",
-        buildDatabase = { dbPath ->
-            builderFactory(dbPath.toString())
-                .setDriver(sqlDriver)
-                .addMigrations(MIGRATION_10_11, MIGRATION_14_16, MIGRATION_20_21)
-                .build()
-        },
-        checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem, sqlDriver) },
-        readSchemaVersion = { dbPath -> readSchemaVersion(dbPath, fileSystem, sqlDriver) },
-    )
+    // Held so the catch can close a database that was built before the failure. The snapshot work
+    // can throw too -- creating the directory, seeding from an older snapshot -- and on the
+    // read-only volume this is written for, that is just as fatal as the open itself.
+    var built: PrefsDatabase? = null
+    try {
+        val database =
+            openVersionedDatabase(
+                directory = directory,
+                fileSystem = fileSystem,
+                currentVersion = PREFS_DATABASE_VERSION,
+                legacyFileName = "prefs.db",
+                buildDatabase = { dbPath ->
+                    builderFactory(dbPath.toString())
+                        .setDriver(sqlDriver)
+                        .addMigrations(MIGRATION_10_11, MIGRATION_14_16, MIGRATION_20_21)
+                        .build()
+                },
+                checkpoint = { dbPath -> checkpointDatabase(dbPath, fileSystem, sqlDriver) },
+                readSchemaVersion = { dbPath -> readSchemaVersion(dbPath, fileSystem, sqlDriver) },
+            ).also { built = it }
+        // Any read will do; this one opens the file, runs pending migrations and takes Room's lock.
+        database.clientSettingDao().getAll()
+        return database
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        snapshotLogger.e(e) { "Could not open the preferences database" }
+        runCatching { built?.close() }
+        throw SettingsUnreadableException(
+            SettingsProblem.unreadable(
+                what = "your settings database",
+                reason = e.describeForUser(),
+                settingsLocation = directory.toString(),
+            ),
+        )
+    }
 }
 
 private val snapshotLogger = Logger.withTag("DatabaseSnapshot")

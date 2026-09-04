@@ -15,6 +15,9 @@ import kotlinx.io.files.Path
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.KSerializer
+import warlockfe.warlock3.core.prefs.SettingsProblem
+import warlockfe.warlock3.core.prefs.SettingsUnreadableException
+import warlockfe.warlock3.core.prefs.describeForUser
 
 /**
  * The file-persistence core shared by the config stores, for a single TOML file holding one
@@ -48,7 +51,7 @@ internal class TomlFileStore<T>(
     fun current(): T = state.value
 
     suspend fun load() {
-        val read = readFile() ?: return
+        val read = readFile(failOnUnreadable = true) ?: return
         template = read.first
         val (normalized, changed) = normalize(read.second)
         state.value = normalized
@@ -88,13 +91,31 @@ internal class TomlFileStore<T>(
         }
     }
 
-    private fun readFile(): Pair<TomlTable, T>? {
-        if (fileSystem.metadataOrNull(path) == null) return null
+    /**
+     * The file's contents, or null when there is no file. [failOnUnreadable] is what the startup
+     * read passes: a file that is there but cannot be read must not be mistaken for one that is not
+     * there, because that reads as a fresh install and the next save writes defaults over it (see
+     * [SettingsUnreadableException]). The write path has no launch left to abort, so it keeps the
+     * older log-and-carry-on behavior.
+     */
+    private fun readFile(failOnUnreadable: Boolean = false): Pair<TomlTable, T>? {
         return runCatching {
-            val text = fileSystem.source(path).buffered().use { it.readString() }
+            // Absence is decided by the parent's listing, not by stat'ing the file: see
+            // [readTextOrNullIfAbsent]. A file that is there but unreadable throws out of here, as
+            // does a parent directory that is there but could not be listed.
+            val text = fileSystem.readTextOrNullIfAbsent(path, failOnUnreadable) ?: return null
             val element = toml.parseToTomlTable(text)
             element to toml.decodeFromTomlElement(serializer, element)
         }.onFailure {
+            if (failOnUnreadable) {
+                throw SettingsUnreadableException(
+                    SettingsProblem.unreadable(
+                        what = path.name,
+                        reason = it.describeForUser(),
+                        settingsLocation = (path.parent ?: path).toString(),
+                    ),
+                )
+            }
             Logger.e(it) { "Failed to read config file $path; ignoring it" }
         }.getOrNull()
     }

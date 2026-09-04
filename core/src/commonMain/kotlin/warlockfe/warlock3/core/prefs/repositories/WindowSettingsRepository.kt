@@ -5,10 +5,12 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.WindowStyleConfig
 import warlockfe.warlock3.core.prefs.dao.WindowSettingsDao
 import warlockfe.warlock3.core.prefs.models.WindowSettings
+import warlockfe.warlock3.core.prefs.persistToDatabase
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleDefinition
 import warlockfe.warlock3.core.text.StyleLayer
@@ -25,6 +27,7 @@ import warlockfe.warlock3.core.text.toWarlockColor
 class WindowSettingsRepository(
     private val windowSettingsDao: WindowSettingsDao,
     private val store: CharacterConfigStore,
+    private val settingsProblems: SettingsProblems,
 ) {
     fun observeWindowSettings(characterId: String): Flow<List<WindowSettings>> =
         combine(
@@ -80,7 +83,12 @@ class WindowSettingsRepository(
         name: String,
     ) {
         withContext(NonCancellable) {
-            windowSettingsDao.closeWindow(characterId, name)
+            // Each store records its half independently and neither throws (see
+            // CharacterConfigStore.persistSection and [persistToDatabase]), so a disk that refuses
+            // one of them does not also cost the user the other.
+            persistToDatabase(settingsProblems, "your window layout") {
+                windowSettingsDao.closeWindow(characterId, name)
+            }
             setHidden(characterId = characterId, name = name, hidden = true)
         }
     }
@@ -93,7 +101,7 @@ class WindowSettingsRepository(
         characterId: String,
         name: String,
     ) {
-        withContext(NonCancellable) {
+        persistToDatabase(settingsProblems, "your window layout") {
             windowSettingsDao.closeWindow(characterId, name)
         }
     }
@@ -108,7 +116,9 @@ class WindowSettingsRepository(
         name: String,
     ) {
         withContext(NonCancellable) {
-            windowSettingsDao.openWindow(characterId = characterId, name = name)
+            persistToDatabase(settingsProblems, "your window layout") {
+                windowSettingsDao.openWindow(characterId = characterId, name = name)
+            }
             setHidden(characterId = characterId, name = name, hidden = false)
         }
     }

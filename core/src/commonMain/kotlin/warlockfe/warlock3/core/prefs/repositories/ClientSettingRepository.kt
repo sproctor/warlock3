@@ -1,16 +1,16 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import warlockfe.warlock3.core.prefs.CompassStyle
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.config.ClientConfig
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
+import warlockfe.warlock3.core.prefs.persistToDatabase
 import warlockfe.warlock3.core.util.LogSettings
 import warlockfe.warlock3.core.util.LogType
 import warlockfe.warlock3.core.util.WarlockDirs
@@ -25,6 +25,7 @@ class ClientSettingRepository(
     private val clientSettingDao: ClientSettingDao,
     private val clientConfigStore: ClientConfigStore,
     private val warlockDirs: WarlockDirs,
+    private val settingsProblems: SettingsProblems,
 ) {
     // --- Machine state / geometry: SQLite ---
 
@@ -224,7 +225,7 @@ class ClientSettingRepository(
         key: String,
         value: String?,
     ) {
-        withContext(NonCancellable) {
+        persistToDatabase(settingsProblems, "your application settings") {
             clientSettingDao.save(ClientSettingEntity(key, value))
         }
     }

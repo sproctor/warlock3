@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
 import warlockfe.warlock3.core.prefs.models.ClientSettingEntity
@@ -102,6 +103,7 @@ class LoggingRepositoryTest {
                     configDir = configDir,
                     logDir = logDir,
                 ),
+            settingsProblems = SettingsProblems(configDir),
         )
 
     /** Log lines carry a leading timestamp by default, so only the tail of the line is compared. */
