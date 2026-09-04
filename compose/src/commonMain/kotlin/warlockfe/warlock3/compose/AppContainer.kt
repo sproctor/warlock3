@@ -215,20 +215,30 @@ class AppContainer(
                 // yet", so a load that failed for a reason we did not anticipate would come up empty
                 // and then save that over the real settings -- and kotlinx-io is not always specific
                 // about why a read failed. Stopping is the safe default; guessing is not.
-                runCatching {
+                try {
                     characterConfigStore.load()
                     clientConfigStore.load()
-                }.onFailure { failure ->
+                } catch (e: CancellationException) {
+                    // Cancellation is not a settings failure and must not be recorded as one, which
+                    // is why this is a try/catch and not a runCatching: the caller went away, the
+                    // files are fine, and reporting "Warlock could not read your settings" would
+                    // close the app over nothing. Undoing the flag matters more than the rethrow --
+                    // left set, the next caller would skip the load it never actually did and come
+                    // up with empty stores and no error at all, which is the one outcome everything
+                    // here exists to prevent.
+                    initialized = false
+                    throw e
+                } catch (e: Throwable) {
                     unreadable =
-                        failure as? SettingsUnreadableException
+                        e as? SettingsUnreadableException
                             ?: SettingsUnreadableException(
                                 SettingsProblem.unreadable(
                                     what = "your settings",
-                                    reason = failure.describeForUser(),
+                                    reason = e.describeForUser(),
                                     settingsLocation = warlockDirs.configDir,
                                 ),
                             )
-                    Logger.e(failure) { "Failed to read the config files" }
+                    Logger.e(e) { "Failed to read the config files" }
                 }
                 // The rest is best-effort: a migration or a macro seed that fails leaves the user's
                 // settings as they were, so it is logged rather than fatal. Skipped entirely when the
@@ -259,6 +269,9 @@ class AppContainer(
                         // on upgrade, after migration so any migrated macros win.
                         macroRepository.seedAndMigrateDefaultMacros(clientSettings)
                     }.onFailure {
+                        // Cancellation is not a migration failure either; it just means the caller
+                        // went away, and logging it as one is noise in the report of a real problem.
+                        if (it is CancellationException) throw it
                         Logger.e(it) { "Failed to initialize config stores" }
                     }
                     // Pick up external edits and writes from other app instances for the app's life.
