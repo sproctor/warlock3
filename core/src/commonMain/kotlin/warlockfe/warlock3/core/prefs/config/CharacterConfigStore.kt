@@ -253,9 +253,12 @@ class CharacterConfigStore(
 
     // A character dir is one that directly contains at least one section file. Decided from the
     // listing for the same reason [readCharacterDir] is: a directory we may not search reports every
-    // child as missing, which would drop the character silently.
+    // child as missing, which would drop the character silently. Only [load] walks these, so a
+    // directory that cannot be listed is always allowed to stop the launch.
     private fun isCharacterDir(dir: Path): Boolean =
-        fileSystem.entryNames(dir).let { names -> Section.entries.any { it.fileName in names } }
+        fileSystem
+            .entryNames(dir, failOnUnreadable = true)
+            .let { names -> Section.entries.any { it.fileName in names } }
 
     // Character ids look like "gs4:tholan"; lay them out as characters/<gameCode>/<name>/ so the files
     // are easy to browse. The id isn't stored in the files; it's derived from the directory layout.
@@ -309,8 +312,20 @@ class CharacterConfigStore(
         var config = CharacterConfig(character = characterId)
         val sectionTemplates = mutableMapOf<Section, TomlTable>()
         // Listed once, and used to decide which sections are there: stat'ing each file cannot tell
-        // a missing one from one in a directory we may not search (see [entryNames]).
-        val present = fileSystem.entryNames(dir)
+        // a missing one from one in a directory we may not search (see [entryNames]). A directory
+        // that is there but unlistable is the character's settings, not the absence of them, so at
+        // startup it stops the launch the same way an unreadable section file does.
+        val present =
+            runCatching { fileSystem.entryNames(dir, failOnUnreadable) }
+                .getOrElse {
+                    throw SettingsUnreadableException(
+                        SettingsProblem.unreadable(
+                            what = "the settings folder for $characterId",
+                            reason = it.describeForUser(),
+                            settingsLocation = dir.toString(),
+                        ),
+                    )
+                }
         for (section in Section.entries) {
             val path = Path(dir, section.fileName)
             if (section.fileName !in present) continue

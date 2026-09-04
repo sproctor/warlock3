@@ -133,6 +133,21 @@ class UnreadableConfigTest {
             assertContains(thrown.problem.headline, "highlights.toml")
         }
 
+    /**
+     * A settings folder that is not a folder. Listing it fails with something other than "no such
+     * directory", which must not be folded in with a fresh install: there is something at that path
+     * and we could not read it, so the launch stops rather than defaulting and saving over it.
+     */
+    @Test
+    fun aConfigDirectoryThatIsAFileStopsTheLoad() =
+        runBlocking {
+            val notADirectory = Path(dir.toString(), "notadir")
+            write(notADirectory, "this is a file\n")
+
+            assertFailsWith<SettingsUnreadableException> { ClientConfigStore(notADirectory.toString(), fs).load() }
+            Unit
+        }
+
     @Test
     fun aMissingFileIsStillJustAFreshInstall() =
         runBlocking {
