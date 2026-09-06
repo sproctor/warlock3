@@ -4,12 +4,15 @@ import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -22,16 +25,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
+import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberDialogState
+import androidx.compose.ui.window.rememberWindowState
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import ca.gosyer.appdirs.AppDirs
@@ -83,6 +89,7 @@ import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 import warlockfe.warlock3.compose.desktop.theme.WarlockDesktopTheme
@@ -103,6 +110,8 @@ import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockSocket
 import warlockfe.warlock3.core.prefs.PrefsDatabase
+import warlockfe.warlock3.core.prefs.SettingsProblem
+import warlockfe.warlock3.core.prefs.SettingsUnreadableException
 import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
@@ -170,17 +179,24 @@ private class WarlockCommand : CliktCommand() {
 
         val credentials = parseCredentials(logger)
 
-        val appContainer = buildAppContainer(logger)
-
-        appContainer.observeSkin(logger) { path ->
-            File(path).takeIf { it.exists() }?.readBytes()
-        }
-
-        // Load config files + run the DB->TOML migration + seed default macros before any startup
-        // reads below (window size, release channel, auto-connect) touch the config stores.
-        runBlocking {
-            appContainer.initialize()
-        }
+        // Settings that are on disk but unreadable stop the launch here rather than further in.
+        // Every store treats missing data as "nothing saved yet", so starting anyway would mean
+        // coming up with empty settings and then saving them over settings that were only
+        // unreachable, not gone.
+        val appContainer =
+            try {
+                buildAppContainer(logger).also { container ->
+                    container.observeSkin(logger) { path ->
+                        File(path).takeIf { it.exists() }?.readBytes()
+                    }
+                    // Load config files + run the DB->TOML migration + seed default macros before
+                    // any startup reads below (window size, release channel, auto-connect) touch
+                    // the config stores.
+                    runBlocking { container.initialize() }
+                }
+            } catch (e: SettingsUnreadableException) {
+                reportUnreadableSettingsAndExit(e.problem, logger)
+            }
         val simuCert = runBlocking { Res.readBytes("files/simu.pem") }
 
         val clientSettings = appContainer.clientSettings
@@ -264,6 +280,25 @@ private class WarlockCommand : CliktCommand() {
                         clientSettings = clientSettings,
                         logger = logger,
                         onDismiss = { showUpdateDialog = false },
+                    )
+                }
+
+                // App-wide, and rendered once out here rather than per game window: the failure is
+                // the whole app's (every window shares one database), so a user with three windows
+                // open should be told once, not three times.
+                val settingsProblem by appContainer.settingsProblems.current.collectAsState()
+                settingsProblem?.let { problem ->
+                    WarlockAlertDialog(
+                        title = "Settings problem",
+                        text = problem.message,
+                        onDismissRequest = { appContainer.settingsProblems.dismiss() },
+                        confirmButton = {
+                            WarlockButton(
+                                onClick = { appContainer.settingsProblems.dismiss() },
+                                text = "OK",
+                            )
+                        },
+                        height = 260.dp,
                     )
                 }
 
@@ -481,6 +516,57 @@ private class WarlockCommand : CliktCommand() {
         }
     }
 
+    /**
+     * Show the user why Warlock will not start, then stop.
+     *
+     * A window rather than only a line on stderr, because someone who launched Warlock from a
+     * desktop icon or a `.sal` file association never sees stderr, and this is the one failure where
+     * there is nothing else to show them -- DESKTOP-3Y was exactly that, an app that vanished on
+     * launch and reported the reason only to a service the user cannot read.
+     */
+    private fun reportUnreadableSettingsAndExit(
+        problem: SettingsProblem,
+        logger: Logger,
+    ): Nothing {
+        logger.e { problem.message }
+        System.err.println(problem.message)
+        application {
+            WarlockDesktopTheme(isDark = isSystemInDarkTheme()) {
+                // A top-level window rather than the WarlockAlertDialog used everywhere else. That
+                // one is a DialogWindow, and a dialog with no application window to own it draws
+                // nothing at all while `application` keeps waiting for a window to close -- which
+                // leaves the app hung and invisible, a worse version of the failure being reported.
+                Window(
+                    onCloseRequest = ::exitApplication,
+                    title = "Warlock cannot start",
+                    state = rememberWindowState(size = DpSize(520.dp, 280.dp)),
+                    resizable = false,
+                    icon = painterResource(Res.drawable.app_icon),
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(JewelTheme.globalColors.panelBackground)
+                                .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = problem.message,
+                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        )
+                        WarlockButton(
+                            onClick = ::exitApplication,
+                            text = "Quit",
+                            modifier = Modifier.align(Alignment.End),
+                        )
+                    }
+                }
+            }
+        }
+        exitProcess(1)
+    }
+
     private fun configureLogging(): Logger {
         if (!isDev) {
             version?.let { initializeSentry(platform = "desktop", version = it) }
@@ -540,11 +626,13 @@ private class WarlockCommand : CliktCommand() {
 
         println("Loading preferences from $configDir")
         val database =
-            openPrefsDatabase(
-                directory = databaseDirectory,
-                fileSystem = SystemFileSystem,
-                builderFactory = ::getPrefsDatabaseBuilder,
-            )
+            runBlocking {
+                openPrefsDatabase(
+                    directory = databaseDirectory,
+                    fileSystem = SystemFileSystem,
+                    builderFactory = ::getPrefsDatabaseBuilder,
+                )
+            }
 
         return AppContainer(
             database = database,

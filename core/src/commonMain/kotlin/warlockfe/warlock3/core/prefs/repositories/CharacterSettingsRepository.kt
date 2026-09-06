@@ -1,14 +1,14 @@
 package warlockfe.warlock3.core.prefs.repositories
 
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.applyBaseStyle
 import warlockfe.warlock3.core.prefs.config.toBaseStyleLayer
 import warlockfe.warlock3.core.prefs.dao.CharacterSettingDao
 import warlockfe.warlock3.core.prefs.models.CharacterSettingEntity
+import warlockfe.warlock3.core.prefs.persistToDatabase
 import warlockfe.warlock3.core.text.FontConfig
 import warlockfe.warlock3.core.text.StyleLayer
 
@@ -36,6 +36,7 @@ data class MainWindowBounds(
 class CharacterSettingsRepository(
     private val characterSettingsQueries: CharacterSettingDao,
     private val store: CharacterConfigStore,
+    private val settingsProblems: SettingsProblems,
 ) {
     suspend fun save(
         characterId: String,
@@ -52,7 +53,7 @@ class CharacterSettingsRepository(
             }
 
             else -> {
-                withContext(NonCancellable) {
+                persistToDatabase(settingsProblems, "this character's settings") {
                     characterSettingsQueries.save(
                         CharacterSettingEntity(characterId = characterId, key = key, value = value),
                     )

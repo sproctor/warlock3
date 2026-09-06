@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.core.macro.MacroKeyCombo
+import warlockfe.warlock3.core.prefs.SettingsProblems
 import warlockfe.warlock3.core.prefs.config.CharacterConfigStore
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.dao.ClientSettingDao
@@ -51,7 +52,7 @@ class DefaultMacroMigrationTest {
         MacroRepository(StubMacroDao, store, KeyboardKeyMappings.keyCodeMap, KeyboardKeyMappings.reverseKeyCodeMap)
 
     private fun newClientSettings(store: ClientConfigStore) =
-        ClientSettingRepository(StubClientSettingDao, store, WarlockDirs("", "", configDir, ""))
+        ClientSettingRepository(StubClientSettingDao, store, WarlockDirs("", "", configDir, ""), SettingsProblems(configDir))
 
     private val ctrlR = MacroKeyCombo(Key.R.keyCode, ctrl = true)
     private val ctrlShiftR = MacroKeyCombo(Key.R.keyCode, ctrl = true, shift = true)
