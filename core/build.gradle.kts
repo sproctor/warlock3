@@ -132,11 +132,24 @@ kotlin {
                 implementation(libs.antlr.kotlin.runtime)
             }
         }
+        getByName("commonJvmAndroidMain") {
+            dependencies {
+                // Not for our own logging (that is Kermit): this source set carries the slf4j
+                // provider that routes ktor's and dbus-java's logging into Kermit. See
+                // KermitSlf4jProvider.
+                implementation(libs.slf4j.api)
+            }
+        }
         jvmMain {
             dependencies {
                 // Desktop audio output (DesktopSoundPlayer); the matching natives are added below.
                 implementation(libs.lwjgl.core)
                 implementation(libs.lwjgl.openal)
+            }
+        }
+        getByName("commonJvmAndroidTest") {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
         jvmTest {
