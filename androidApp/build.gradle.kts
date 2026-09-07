@@ -124,9 +124,6 @@ dependencies {
     // Splash screen compatibility pre-android 12
     implementation(libs.androidx.core.splashscreen)
 
-    implementation(libs.slf4j.api)
-    implementation(libs.slf4j.android)
-
     implementation(libs.filekit.dialogs)
 
     // Leak detection
