@@ -85,7 +85,6 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.window.DecoratedWindow
 import org.jetbrains.jewel.window.styling.LocalTitleBarStyle
 import org.jetbrains.jewel.window.utils.DesktopPlatform
-import org.slf4j.simple.SimpleLogger.DEFAULT_LOG_LEVEL_KEY
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
@@ -571,8 +570,9 @@ private class WarlockCommand : CliktCommand() {
         if (!isDev) {
             version?.let { initializeSentry(platform = "desktop", version = it) }
         }
+        // This governs third-party logging too: libraries that log through slf4j (ktor, and
+        // dbus-java behind the file dialogs on Linux) are routed into Kermit by KermitSlf4jProvider.
         if (debug || isDev) {
-            System.setProperty(DEFAULT_LOG_LEVEL_KEY, "DEBUG")
             Logger.setMinSeverity(Severity.Debug)
         } else {
             Logger.setMinSeverity(Severity.Info)
