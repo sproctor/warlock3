@@ -56,7 +56,7 @@ kotlin {
     jvm {
         // A separate compilation so benchmark code (and the kotlinx-benchmark runtime) stays out of the
         // published library. Sources live in src/jvmBenchmark/kotlin; it can see the main classpath.
-        val main by compilations.getting
+        val main = compilations.getByName("main")
         compilations.create("benchmark") {
             associateWith(main)
         }

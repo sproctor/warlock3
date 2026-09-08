@@ -26,7 +26,7 @@ kotlin {
     jvm {
         // Separate compilation so benchmark code + the kotlinx-benchmark runtime stay out of the
         // published library. Sources live in src/jvmBenchmark/kotlin; it can see the main classpath.
-        val main by compilations.getting
+        val main = compilations.getByName("main")
         compilations.create("benchmark") {
             associateWith(main)
         }
@@ -230,7 +230,7 @@ tasks.register<JavaExec>("streamNetworkBenchmark") {
 // The default skin is authored as a directory (skin.json + referenced images) under skin/ and
 // packaged into a zip at build time, instead of committing a binary zip. Reproducible so it doesn't
 // churn between builds. The shared zip reader handles DEFLATE, so the archive is compressed.
-val packageDefaultSkin by tasks.registering(Zip::class) {
+val packageDefaultSkin = tasks.register<Zip>("packageDefaultSkin") {
     description = "Creates skin zip from skin files"
     from(layout.projectDirectory.dir("skin"))
     archiveFileName.set("skin.zip")
