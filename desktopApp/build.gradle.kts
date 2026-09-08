@@ -126,6 +126,13 @@ potassium {
     // SQLite calls a restricted method
     jvmArgs += "--enable-native-access=ALL-UNNAMED"
 
+    // Jewel 0.40.0's IntUiTheme unconditionally initializes its macOS platform services, whose
+    // static init pries open sun.awt via sun.misc.Unsafe on every OS, and JDK 24+ prints a one-time
+    // "terminally deprecated method in sun.misc.Unsafe" warning for it. Upstream removed the Unsafe
+    // path (JEWEL-1388, in builds 262.10938+), so this only silences the warning until we pick up
+    // the release that carries it. TODO: remove when Jewel 0.41 ships.
+    jvmArgs += "--sun-misc-unsafe-memory-access=allow"
+
     // Opt-in GC + safepoint logging for diagnosing stream-render stalls:
     //   ./gradlew :desktopApp:run -PgcLog
     // Writes per-pid logs (so multiple connections/processes don't collide) under the build dir with
