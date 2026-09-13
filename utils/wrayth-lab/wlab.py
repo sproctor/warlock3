@@ -331,6 +331,13 @@ class Server:
                 sock = self.client
                 self.client = None
             if sock is not None:
+                # The game thread is still blocked in recv() on this socket, so a bare close() only
+                # drops our reference and no FIN goes out until that thread finishes. shutdown()
+                # sends the FIN now, so the client sees the disconnect and recv() returns.
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
                 try:
                     sock.close()
                 except OSError:
