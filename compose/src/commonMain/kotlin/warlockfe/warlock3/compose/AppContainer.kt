@@ -84,6 +84,7 @@ import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 import warlockfe.warlock3.scripting.lua.LuaEngine
 import warlockfe.warlock3.scripting.wsl.WslEngine
+import warlockfe.warlock3.telnet.network.TelnetClientFactory
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
@@ -351,6 +352,14 @@ class AppContainer(
                 )
         }
 
+    val telnetClientFactory by lazy {
+        TelnetClientFactory(
+            characterRepository = characterRepository,
+            loggingRepository = loggingRepository,
+            ioDispatcher = ioDispatcher,
+        )
+    }
+
     val windowRegistryFactory by lazy {
         WindowRegistryFactory(
             settingRepository = clientSettings,
@@ -427,6 +436,16 @@ class AppContainer(
             mudMobileConnectUseCase = mudMobileConnectUseCase,
             mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
             warlockSettingsSync = warlockSettingsSync,
+            connectToTelnetUseCase = connectToTelnetUseCase,
+        )
+    }
+
+    val connectToTelnetUseCase by lazy {
+        ConnectToTelnetUseCase(
+            windowRegistryFactory = windowRegistryFactory,
+            telnetClientFactory = telnetClientFactory,
+            gameViewModelFactory = gameViewModelFactory,
+            ioDispatcher = ioDispatcher,
         )
     }
 

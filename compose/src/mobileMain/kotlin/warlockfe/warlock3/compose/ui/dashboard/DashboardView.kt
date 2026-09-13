@@ -85,6 +85,7 @@ fun DashboardView(
 
     var showTokenDialog by remember { mutableStateOf(false) }
     var showAddCharacterDialog by remember { mutableStateOf(false) }
+    var showNewTelnetDialog by remember { mutableStateOf(false) }
     var passwordPrompt: StoredConnection? by remember { mutableStateOf(null) }
     var editConnection: StoredConnection? by remember { mutableStateOf(null) }
     var deleteConnection: StoredConnection? by remember { mutableStateOf(null) }
@@ -96,6 +97,7 @@ fun DashboardView(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
                 createEnabled = !viewModel.busy,
                 onCreate = connectToSGE,
+                onCreateTelnet = { showNewTelnetDialog = true },
                 onConnectMudMobile = { showTokenDialog = true },
             )
         } else {
@@ -115,6 +117,13 @@ fun DashboardView(
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                     Text(text = "Create a new connection")
                 }
+                OutlinedButton(
+                    onClick = { showNewTelnetDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !viewModel.busy,
+                ) {
+                    Text(text = "Add a telnet MUD")
+                }
 
                 MudMobileControls(
                     viewModel = viewModel,
@@ -133,8 +142,8 @@ fun DashboardView(
                     mudMobileConnected = mudMobileConnected,
                     onLogin = { connection ->
                         // Prompt to set the account password when none is saved, rather than attempting
-                        // a doomed empty-password login.
-                        if (connection.password.isNullOrBlank()) {
+                        // a doomed empty-password login. A telnet MUD asks for its own.
+                        if (connection.needsPasswordPrompt()) {
                             passwordPrompt = connection
                         } else {
                             viewModel.connect(connection)
@@ -185,7 +194,29 @@ fun DashboardView(
         )
     }
 
+    if (showNewTelnetDialog) {
+        TelnetConnectionDialog(
+            existing = null,
+            onSave = { form, connectNow ->
+                viewModel.createTelnetConnection(form, connectNow = connectNow)
+                showNewTelnetDialog = false
+            },
+            onDismiss = { showNewTelnetDialog = false },
+        )
+    }
+
     editConnection?.let { connection ->
+        if (connection.isTelnet) {
+            TelnetConnectionDialog(
+                existing = connection,
+                onSave = { form, _ ->
+                    viewModel.updateTelnetConnection(connection.id, form)
+                    editConnection = null
+                },
+                onDismiss = { editConnection = null },
+            )
+            return@let
+        }
         ConnectionSettingsDialog(
             name = connection.name,
             windowTitle = connection.windowTitle,
@@ -251,6 +282,7 @@ fun DashboardView(
 private fun FirstRunPanel(
     createEnabled: Boolean,
     onCreate: () -> Unit,
+    onCreateTelnet: () -> Unit,
     onConnectMudMobile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -260,7 +292,7 @@ private fun FirstRunPanel(
     ) {
         Text("Welcome to Warlock", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "No connections yet. Get into a game one of two ways:",
+            "No connections yet. Get into a game one of three ways:",
             style = MaterialTheme.typography.bodyLarge,
         )
         OutlinedCard(modifier = Modifier.fillMaxWidth()) {
@@ -291,6 +323,18 @@ private fun FirstRunPanel(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MudMobileAccent),
                 ) {
                     Text("Connect to MUD Mobile")
+                }
+            }
+        }
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Telnet MUD", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Any other MUD, by host and port.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedButton(onClick = onCreateTelnet, enabled = createEnabled) {
+                    Text("Add a telnet MUD")
                 }
             }
         }

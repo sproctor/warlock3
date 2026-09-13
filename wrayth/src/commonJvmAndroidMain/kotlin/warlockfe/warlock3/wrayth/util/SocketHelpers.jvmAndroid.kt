@@ -32,7 +32,7 @@ actual suspend fun openTLSSocket(
     selectorManager: SelectorManager,
     host: String,
     port: Int,
-    certificate: ByteArray,
+    certificate: ByteArray?,
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection {
     val socket =
@@ -40,14 +40,21 @@ actual suspend fun openTLSSocket(
             .tcp()
             .connect(host, port)
             .tls(coroutineContext = coroutineContext) {
-                val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
-                keyStore.load(null)
-                val certFactory = CertificateFactory.getInstance("X.509")
-                val cert = certFactory.generateCertificate(certificate.inputStream())
-                keyStore.setCertificateEntry("ca", cert)
-                val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-                tmf.init(keyStore)
-                trustManager = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
+                if (certificate == null) {
+                    // The default trust manager (the platform's CA store) does the checking; the
+                    // server name is what it checks the certificate against, and what goes out as
+                    // SNI.
+                    serverName = host
+                } else {
+                    val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                    keyStore.load(null)
+                    val certFactory = CertificateFactory.getInstance("X.509")
+                    val cert = certFactory.generateCertificate(certificate.inputStream())
+                    keyStore.setCertificateEntry("ca", cert)
+                    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+                    tmf.init(keyStore)
+                    trustManager = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
+                }
             }
     return TLSSocketConnection(
         readChannel = socket.openReadChannel(),

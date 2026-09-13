@@ -411,4 +411,10 @@ data class ConnectionConfig(
     @TomlComment("Played through MUD Mobile's hosted Lich rather than directly to play.net.")
     val mudMobile: Boolean = false,
     val characterCode: String? = null,
+    @TomlComment("\"sge\" (a Simutronics game, the default) or \"telnet\" (any MUD reachable by host and port).")
+    val protocol: String? = null,
+    @TomlComment("Telnet connections: the server to dial, and whether to wrap the connection in TLS.")
+    val host: String? = null,
+    val port: Int? = null,
+    val tls: Boolean = false,
 )

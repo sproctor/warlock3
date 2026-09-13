@@ -9,6 +9,7 @@ import warlockfe.warlock3.core.prefs.models.Ignore
 import warlockfe.warlock3.core.prefs.models.IgnoreMatchMode
 import warlockfe.warlock3.core.prefs.models.NameEntity
 import warlockfe.warlock3.core.prefs.models.ProgressBarSettingEntity
+import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.StoredConnection
 import warlockfe.warlock3.core.text.FontConfig
@@ -298,4 +299,8 @@ internal fun ConnectionConfig.toStoredConnection(password: String?): StoredConne
             ),
         mudMobile = mudMobile,
         characterCode = characterCode,
+        protocol = ConnectionProtocol.fromConfig(protocol),
+        host = host,
+        port = port,
+        tls = tls,
     )

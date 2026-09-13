@@ -2,6 +2,7 @@ rootProject.name = "warlock3"
 
 include(":core")
 include(":wrayth")
+include(":telnet")
 include(":compose")
 include(":scripting")
 
