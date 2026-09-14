@@ -28,6 +28,7 @@ import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
@@ -49,6 +50,8 @@ import warlockfe.warlock3.telnet.ansi.AnsiSpan
 import warlockfe.warlock3.telnet.ansi.toWarlockStyles
 import warlockfe.warlock3.telnet.gmcp.GmcpHandler
 import warlockfe.warlock3.telnet.gmcp.GmcpUpdate
+import warlockfe.warlock3.telnet.gmcp.VitalBar
+import warlockfe.warlock3.telnet.gmcp.vitalsPanelObjects
 import warlockfe.warlock3.telnet.protocol.StreamingTextDecoder
 import warlockfe.warlock3.telnet.protocol.TelnetDecoder
 import warlockfe.warlock3.telnet.protocol.TelnetEvent
@@ -67,7 +70,7 @@ import kotlin.time.Instant
  * `Client.GUI` as it would send Mudlet an interface package, which is offered up as [mudScript]
  * unless the connection was made with [acceptScripts] off. As a [ScriptableClient] the client
  * lets such a script set the roundtime and cast time, which nothing in a telnet stream states,
- * and flash a window's background.
+ * the hands and the vitals bars, and flash a window's background.
  *
  * What a MUD does not tell us, the saved connection does. Wrayth names the game and the character
  * in its `<app>` tag; here [gameCode] and [character] come from the connection the user made, and
@@ -117,7 +120,8 @@ class TelnetClient(
     override val leftHand: StateFlow<String?> = _leftHand.asStateFlow()
     private val _rightHand = MutableStateFlow<String?>(null)
     override val rightHand: StateFlow<String?> = _rightHand.asStateFlow()
-    override val spellHand: StateFlow<String?> = MutableStateFlow(null)
+    private val _spellHand = MutableStateFlow<String?>(null)
+    override val spellHand: StateFlow<String?> = _spellHand.asStateFlow()
     override val indicators: StateFlow<Set<String>> = MutableStateFlow(emptySet())
     override val menuData: StateFlow<WarlockMenuData> = MutableStateFlow(WarlockMenuData(0, emptyList()))
 
@@ -129,6 +133,14 @@ class TelnetClient(
 
     private val _mudScript = MutableStateFlow<MudScriptOffer?>(null)
     override val mudScript: StateFlow<MudScriptOffer?> = _mudScript.asStateFlow()
+
+    private val _handsShown = MutableStateFlow(true)
+    override val handsShown: StateFlow<Boolean> = _handsShown.asStateFlow()
+
+    // The bars a script has set, in the order it first set them. Guarded by [vitalsMutex] with
+    // the panel they are drawn to, since a script and the GMCP handler may both be writing it.
+    private val vitalsMutex = Mutex()
+    private val scriptVitals = LinkedHashMap<String, VitalBar>()
 
     private val telnet = TelnetDecoder()
 
@@ -233,7 +245,7 @@ class TelnetClient(
             }
 
             is GmcpUpdate.Vitals -> {
-                showVitals(update.objects)
+                vitalsMutex.withLock { showVitals(update.objects) }
             }
 
             is GmcpUpdate.Hands -> {
@@ -261,6 +273,40 @@ class TelnetClient(
 
     override fun setCastTime(endSeconds: Long?) {
         _castTimeEnd.value = endSeconds
+    }
+
+    override fun setLeftHand(item: String?) {
+        _leftHand.value = item
+    }
+
+    override fun setRightHand(item: String?) {
+        _rightHand.value = item
+    }
+
+    override fun setSpellHand(spell: String?) {
+        _spellHand.value = spell
+    }
+
+    override fun showHands(shown: Boolean) {
+        _handsShown.value = shown
+    }
+
+    override suspend fun setVital(
+        id: String,
+        percent: Int,
+        text: String?,
+    ) {
+        vitalsMutex.withLock {
+            scriptVitals[id] = VitalBar(id, Percentage(percent.coerceIn(0, 100)), text ?: id)
+            showVitals(vitalsPanelObjects(scriptVitals.values))
+        }
+    }
+
+    override suspend fun clearVitals() {
+        vitalsMutex.withLock {
+            scriptVitals.clear()
+            showVitals(emptyList())
+        }
     }
 
     override fun flashBackground(
@@ -579,8 +625,7 @@ class TelnetClient(
     )
 
     private companion object {
-        // Named as GS4 names its vitals panel, so any per-panel settings a user has carry over.
-        const val VITALS_PANEL = "minivitals"
+        const val VITALS_PANEL = "vitals"
 
         // How long a line may hang before it is taken for a prompt. Long enough for the rest of a
         // line the network split to arrive, short enough that the input line lands on a prompt

@@ -430,6 +430,41 @@ class LuaScriptInstanceTest {
     }
 
     @Test
+    fun handsAndVitalsCanBeSetAndRead() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                setLeftHand("a lantern")
+                setRightHand("a sword")
+                setSpellHand("Fireball")
+                local left, right, spell = getHands()
+                echo(left .. "|" .. right .. "|" .. spell)
+                setRightHand(nil)
+                setSpellHand("")
+                local _, right2, spell2 = getHands()
+                echo(tostring(right2) .. "|" .. tostring(spell2))
+                showHands(false)
+                setVital("health", 49.6, "HP 50/100")
+                setVital("mana", 100)
+                clearVitals()
+                setVital("stamina", 10, "Moves 1/10")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertContains(client.printedText(), "a lantern|a sword|Fireball")
+        // nil and "" both empty a hand.
+        assertContains(client.printedText(), "nil|nil")
+        assertEquals("a lantern", client.leftHand.value)
+        assertFalse(client.handsShown.value)
+        assertEquals(mapOf<String, Pair<Int, String?>>("stamina" to (10 to "Moves 1/10")), client.vitals)
+        assertFalse(client.printedText().any { it.contains("Script error") }, client.printedText().toString())
+    }
+
+    @Test
     fun theStatusFunctionsNeedATelnetConnection() {
         val client = runScript("""setRoundTime(3)""")
         assertTrue(

@@ -12,6 +12,38 @@ class FakeScriptableClient :
     FakeWarlockClient(),
     ScriptableClient {
     override val mudScript = MutableStateFlow<MudScriptOffer?>(null)
+    override val handsShown = MutableStateFlow(true)
+
+    /** The vitals as last set: id to (percent, text). */
+    val vitals = LinkedHashMap<String, Pair<Int, String?>>()
+
+    override fun setLeftHand(item: String?) {
+        leftHand.value = item
+    }
+
+    override fun setRightHand(item: String?) {
+        rightHand.value = item
+    }
+
+    override fun setSpellHand(spell: String?) {
+        spellHand.value = spell
+    }
+
+    override fun showHands(shown: Boolean) {
+        handsShown.value = shown
+    }
+
+    override suspend fun setVital(
+        id: String,
+        percent: Int,
+        text: String?,
+    ) {
+        vitals[id] = percent to text
+    }
+
+    override suspend fun clearVitals() {
+        vitals.clear()
+    }
 
     val sentGmcp = mutableListOf<Pair<String, String>>()
     val flashes = mutableListOf<List<Any>>()

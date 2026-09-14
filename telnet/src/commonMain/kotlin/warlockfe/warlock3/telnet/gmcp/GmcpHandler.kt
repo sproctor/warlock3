@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import warlockfe.warlock3.core.client.DataDistance
 import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
@@ -180,41 +179,7 @@ class GmcpHandler {
                 Bar(kind.id, current, max)
             }
         if (bars.isEmpty()) return null
-        val width = 100 / bars.size
-        return GmcpUpdate.Vitals(
-            bars.flatMapIndexed { index, bar ->
-                val left = DataDistance.Percent(Percentage(index * width))
-                val size = DataDistance.Percent(Percentage(width))
-                listOf(
-                    PanelObject.Skin(
-                        id = "${bar.id}Skin",
-                        name = "${bar.id}Bar",
-                        controls = listOf(bar.id),
-                        left = left,
-                        top = TOP,
-                        width = size,
-                        height = FULL,
-                        align = null,
-                        topAnchor = null,
-                        leftAnchor = null,
-                        tooltip = null,
-                    ),
-                    PanelObject.ProgressBar(
-                        id = bar.id,
-                        value = bar.percent,
-                        text = bar.text,
-                        left = left,
-                        top = TOP,
-                        width = size,
-                        height = FULL,
-                        align = null,
-                        topAnchor = null,
-                        leftAnchor = null,
-                        tooltip = null,
-                    ),
-                )
-            },
-        )
+        return GmcpUpdate.Vitals(vitalsPanelObjects(bars.map { VitalBar(it.id, it.percent, it.text) }))
     }
 
     private class Bar(
@@ -243,9 +208,6 @@ class GmcpHandler {
     )
 
     private companion object {
-        val TOP = DataDistance.Percent(Percentage(0))
-        val FULL = DataDistance.Percent(Percentage(100))
-
         // The bars, in GS4's order, and the names the various code bases give each. The ids are
         // GS4's so a user's per-bar colours and a GS4 skin's bar entries apply to a MUD too.
         val VITALS =

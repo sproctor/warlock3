@@ -99,6 +99,38 @@ Both take a number of seconds from now. A script's `put()` waits for the
 roundtime to pass before sending, so setting it makes the player's own scripts
 behave as they do on a Simutronics game.
 
+### The hands
+
+```lua
+setLeftHand("a lantern")   -- nil or "" empties a hand
+setRightHand("a sword")
+setSpellHand("Fireball")   -- the spell readied
+local left, right, spell = getHands()
+showHands(false)           -- hide the hands block altogether; true shows it again
+```
+
+Warlock fills the hands itself from `Char.Items` when the game sends its
+inventory with `l`/`L` attributes; these are for a game that says it some
+other way, or has no hands to show.
+
+### The vitals bars
+
+```lua
+setVital("health", 50, "HP 50/100")   -- id, how full (0 to 100), and the text on the bar
+setVital("mana", 30)                  -- the text is the id when not given
+clearVitals()                          -- take every bar down
+```
+
+Bars sit side by side in the order they were first set; setting one again
+updates it in place. The ids `health`, `mana`, `stamina` and `spirit` get
+the colours a player has chosen for those bars and a GS4 skin's bar art; any
+other id draws a plain bar. Warlock builds these bars itself from
+`Char.Vitals` when the keys are ones it knows (`hp`/`maxhp`, `mp`, `mana`,
+`ep`, `moves`, and so on); a game with its own names, or its own idea of
+what to show, can build them with these instead. Take an argument at a time
+rather than a table: a table handed to any of these functions stays pinned in
+the interpreter for the session, and vitals arrive constantly.
+
 ### Flashing a window
 
 ```lua

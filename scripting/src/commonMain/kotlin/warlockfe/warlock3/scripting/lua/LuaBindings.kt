@@ -25,6 +25,7 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.util.toWarlockColor
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -131,6 +132,40 @@ internal class LuaBindings(
         }
         bind("setCastTime") { args ->
             scriptable("setCastTime").setCastTime(endOf(args.firstOrNull()))
+            emptyList()
+        }
+        bind("setLeftHand") { args ->
+            scriptable("setLeftHand").setLeftHand(args.firstOrNull()?.asString()?.takeIf { it.isNotEmpty() })
+            emptyList()
+        }
+        bind("setRightHand") { args ->
+            scriptable("setRightHand").setRightHand(args.firstOrNull()?.asString()?.takeIf { it.isNotEmpty() })
+            emptyList()
+        }
+        bind("setSpellHand") { args ->
+            scriptable("setSpellHand").setSpellHand(args.firstOrNull()?.asString()?.takeIf { it.isNotEmpty() })
+            emptyList()
+        }
+        bind("getHands") {
+            listOf(client.leftHand.value, client.rightHand.value, client.spellHand.value).map { it?.let(LuaValue::Str) ?: LuaValue.Nil }
+        }
+        bind("showHands") { args ->
+            scriptable("showHands").showHands((args.firstOrNull() as? LuaValue.Bool)?.value ?: true)
+            emptyList()
+        }
+        bind("setVital") { args ->
+            val id =
+                args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalArgumentException("setVital needs the bar's id, like \"health\"")
+            val percent = args.getOrNull(1)?.asNumber() ?: throw IllegalArgumentException("setVital needs how full the bar is, 0 to 100")
+            val text = args.getOrNull(2)?.asString()
+            val target = scriptable("setVital")
+            blocking { target.setVital(id, percent.roundToInt(), text) }
+            emptyList()
+        }
+        bind("clearVitals") {
+            val target = scriptable("clearVitals")
+            blocking { target.clearVitals() }
             emptyList()
         }
         bind("flashBackground") { args ->

@@ -24,6 +24,34 @@ interface ScriptableClient {
     /** Sets when the cast time ends, in seconds since the epoch, or clears it. */
     fun setCastTime(endSeconds: Long?)
 
+    /** Sets what the left hand holds, or empties it. */
+    fun setLeftHand(item: String?)
+
+    /** Sets what the right hand holds, or empties it. */
+    fun setRightHand(item: String?)
+
+    /** Sets the spell readied, or clears it. */
+    fun setSpellHand(spell: String?)
+
+    /** Whether the hands (and spell) are shown at all; a MUD without them can hide the block. */
+    val handsShown: StateFlow<Boolean>
+
+    fun showHands(shown: Boolean)
+
+    /**
+     * Sets a bar in the vitals panel, adding it after the others if it is new: [percent] is how
+     * full it is, [text] what is written on it (its [id] when null). GS4's ids - `health`, `mana`,
+     * `stamina`, `spirit` - get GS4's colours and a skin's bar art.
+     */
+    suspend fun setVital(
+        id: String,
+        percent: Int,
+        text: String?,
+    )
+
+    /** Removes every bar from the vitals panel. */
+    suspend fun clearVitals()
+
     /**
      * Shows the background of the window named [window] as [color] for [total], fading to it over
      * the first [fadeIn] of that and back over the last [fadeOut]. The fades must fit in the total.

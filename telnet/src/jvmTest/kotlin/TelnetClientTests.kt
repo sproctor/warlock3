@@ -290,7 +290,7 @@ class TelnetClientTests {
             send(TelnetDecoder.gmcpMessage("Char.Vitals", """{"hp":"50","maxhp":"100","mp":"10","maxmp":"40"}"""))
             val bars =
                 await("vitals") {
-                    registry.panels["minivitals"]
+                    registry.panels["vitals"]
                         ?.objects
                         ?.filterIsInstance<PanelObject.ProgressBar>()
                         ?.takeIf { it.isNotEmpty() }
@@ -298,7 +298,7 @@ class TelnetClientTests {
             assertEquals(listOf("health 50/100", "mana 10/40"), bars.map { it.text })
             assertEquals(listOf(50, 25), bars.map { it.value.value })
             // The panel is announced for the status bar, which is where the vitals are drawn.
-            val info = client.windowInfo.value.first { it.name == "minivitals" }
+            val info = client.windowInfo.value.first { it.name == "vitals" }
             assertEquals(WindowLocation.STATBAR, info.location)
 
             send(
@@ -344,6 +344,38 @@ class TelnetClientTests {
                 BackgroundFlash(WarlockColor("#400000"), 1.5.seconds, 0.5.seconds, 0.25.seconds, 0L),
                 registry.backgroundFlashes.value["main"],
             )
+        }
+
+    @Test
+    fun aScriptCanSetTheHandsAndTheVitals() =
+        runBlocking<Unit> {
+            client.setLeftHand("a lantern")
+            client.setRightHand("a sword")
+            client.setSpellHand("Fireball")
+            assertEquals(
+                listOf("a lantern", "a sword", "Fireball"),
+                listOf(client.leftHand.value, client.rightHand.value, client.spellHand.value),
+            )
+            assertTrue(client.handsShown.value)
+            client.showHands(false)
+            assertTrue(!client.handsShown.value)
+
+            client.setVital("health", 50, "HP 50/100")
+            client.setVital("mana", 150, null)
+            client.setVital("health", 25, "HP 25/100")
+            val bars = registry.panels["vitals"]!!.objects.filterIsInstance<PanelObject.ProgressBar>()
+            // In the order first set, the newer value replacing the old, the fullness kept to 0..100.
+            assertEquals(listOf("HP 25/100", "mana"), bars.map { it.text })
+            assertEquals(listOf(25, 100), bars.map { it.value.value })
+            assertEquals(
+                WindowLocation.STATBAR,
+                client.windowInfo.value
+                    .first { it.name == "vitals" }
+                    .location,
+            )
+
+            client.clearVitals()
+            assertEquals(emptyList(), registry.panels["vitals"]!!.objects)
         }
 
     @Test

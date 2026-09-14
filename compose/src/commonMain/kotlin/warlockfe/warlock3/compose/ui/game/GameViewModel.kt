@@ -199,9 +199,9 @@ class GameViewModel(
 
     /**
      * The widgets of whichever panel the game put in the status bar, which we draw as chrome rather
-     * than as a window. The game names the panel (`minivitals` in both GS4 and DR) but the name is
-     * not the contract: `location='statBar'` is, so we follow the location and stay right if a game
-     * ever calls its vitals panel something else. Empty until one is announced.
+     * than as a window. The game names the panel (`minivitals` in both GS4 and DR, `vitals` on a
+     * telnet MUD) but the name is not the contract: `location='statBar'` is, so we follow the
+     * location. Empty until one is announced.
      */
     val vitalBars: StateFlow<List<PanelObject>> =
         client.windowInfo
@@ -220,6 +220,9 @@ class GameViewModel(
     val leftHand = client.leftHand
     val rightHand = client.rightHand
     val spellHand = client.spellHand
+
+    /** Whether to draw the hands at all: a MUD's script may hide them, a Simutronics game always has them. */
+    val handsShown: StateFlow<Boolean> = (client as? ScriptableClient)?.handsShown ?: MutableStateFlow(true)
 
     private val _macroError = MutableStateFlow<String?>(null)
     val macroError = _macroError.asStateFlow()
