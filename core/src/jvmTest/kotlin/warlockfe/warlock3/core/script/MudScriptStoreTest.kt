@@ -101,15 +101,30 @@ class MudScriptStoreTest {
         }
 
     @Test
-    fun nothingIsFetchedFromThisMachineOrItsNetwork() =
+    fun thisMachineIsFetchedFromForTestingOverPlainHttpToo() =
+        runBlocking {
+            val local =
+                listOf(
+                    "http://localhost:8080/warlock.lua",
+                    "https://LOCALHOST:8443/warlock.lua",
+                    "http://dev.localhost/warlock.lua",
+                    "http://127.0.0.1/warlock.lua",
+                    "https://127.1.2.3/x.lua",
+                    "http://[::1]:8080/x.lua",
+                )
+            // Each its own version, so none is served from the last one's copy on disk.
+            local.forEachIndexed { index, url ->
+                val load = store().load("mud.example:bob", MudScriptOffer("$index", url = url))
+                assertIs<MudScriptLoad.Loaded>(load, url)
+            }
+            assertEquals(local, fetched)
+        }
+
+    @Test
+    fun nothingIsFetchedFromTheNetworkThisMachineIsOn() =
         runBlocking {
             val bad =
                 listOf(
-                    "https://localhost/warlock.lua",
-                    "https://LOCALHOST:8443/warlock.lua",
-                    "https://router.localhost/warlock.lua",
-                    "https://127.0.0.1/warlock.lua",
-                    "https://127.1.2.3/x.lua",
                     "https://10.0.0.5/x.lua",
                     "https://172.16.0.1/x.lua",
                     "https://172.31.255.255/x.lua",
@@ -118,11 +133,9 @@ class MudScriptStoreTest {
                     "https://100.64.0.1/x.lua",
                     "https://0.0.0.0/x.lua",
                     "https://224.0.0.1/x.lua",
-                    "https://[::1]/x.lua",
                     "https://[::]/x.lua",
                     "https://[fd12::1]/x.lua",
                     "https://[fe80::1]/x.lua",
-                    "https://[::ffff:127.0.0.1]/x.lua",
                     "https://2130706433/x.lua",
                     "https://0x7f000001/x.lua",
                 )

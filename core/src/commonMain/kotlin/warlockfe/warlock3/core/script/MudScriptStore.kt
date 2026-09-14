@@ -52,8 +52,10 @@ fun interface MudScriptFetcher {
  * so that a script is never on disk under another version's number.
  *
  * What is fetched is code the MUD chose, so it is fetched only over `https`, and never from the
- * user's own machine or network: a URL whose host is a loopback, private, link-local or otherwise
- * reserved address is refused (see [unsafeHostReason]). A URL that names a Mudlet package
+ * network the user's machine is on: a URL whose host is a private, link-local or otherwise
+ * reserved address is refused (see [unsafeHostReason]). The user's own machine is the exception,
+ * for testing a MUD and its script locally: a loopback host is fetched from, over plain `http`
+ * too. A URL that names a Mudlet package
  * (`.mpackage`, `.zip`, `.xml`, `.trigger`) is passed over: a game that sends every client the
  * same `Client.GUI` message is offering Mudlet's interface, which is not Lua we can run.
  */
@@ -143,36 +145,58 @@ class MudScriptStore(
         const val SCRIPT_FILE = "mud-script.lua"
         const val VERSION_HEADER = "-- Warlock: the script the MUD sent, version "
         private val MUDLET_EXTENSIONS = listOf(".mpackage", ".zip", ".xml", ".trigger")
+        private val SCHEME = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://")
 
         /** Why [url] must not be fetched, or null when it may be. */
         fun unsafeUrlReason(url: String): String? {
+            // Ktor's parser takes anything, reading "not a url" as a path on localhost; a URL
+            // says its scheme.
+            if (!SCHEME.containsMatchIn(url)) return "that is not a URL"
             val parsed = runCatching { Url(url) }.getOrNull() ?: return "that is not a URL"
-            if (!parsed.protocol.name.equals("https", ignoreCase = true)) {
-                return "only https URLs are fetched, since what is fetched is run"
+            val host = hostName(parsed.host)
+            if (host.isEmpty()) return "the URL has no host"
+            val scheme = parsed.protocol.name.lowercase()
+            if (scheme != "https" && scheme != "http") return "only https URLs are fetched, since what is fetched is run"
+            // This machine is the developer's: a MUD and its script under test, served locally.
+            if (isLoopback(host)) return null
+            if (scheme != "https") return "only https URLs are fetched, since what is fetched is run"
+            return unsafeHostReason(host)
+        }
+
+        /** Whether [host] is this machine: `localhost`, a name under it, or a loopback address. */
+        fun isLoopback(host: String): Boolean {
+            val name = hostName(host)
+            if (name == "localhost" || name.endsWith(".localhost")) return true
+            ipv4Octets(name)?.let { return it[0] == 127 }
+            if (':' in name) {
+                val mapped = name.substringAfterLast(':')
+                if ('.' in mapped) return ipv4Octets(mapped)?.let { it[0] == 127 } == true
+                return name == "::1"
             }
-            return unsafeHostReason(parsed.host)
+            return false
         }
 
         /**
          * Why a fetch must not go to [host], or null when it may: a script is fetched from the
-         * MUD's web site, never from this machine or the network it is on. Only what the host
-         * name itself says is checked - a name that resolves to a private address is not caught.
+         * MUD's web site, never from the network this machine is on. Only what the host name
+         * itself says is checked - a name that resolves to a private address is not caught.
          */
         fun unsafeHostReason(host: String): String? {
-            val name =
-                host
-                    .trim()
-                    .removePrefix("[")
-                    .removeSuffix("]")
-                    .lowercase()
+            val name = hostName(host)
             if (name.isEmpty()) return "the URL has no host"
-            if (name == "localhost" || name.endsWith(".localhost")) return "the host is this machine"
             ipv4Octets(name)?.let { return unsafeIpv4Reason(it) }
             if (':' in name) return unsafeIpv6Reason(name)
             // A bare number, decimal or hex, is an IPv4 address in disguise (2130706433 is 127.0.0.1).
             if (name.all { it.isDigit() } || name.startsWith("0x")) return "the host is a numeric address"
             return null
         }
+
+        private fun hostName(host: String): String =
+            host
+                .trim()
+                .removePrefix("[")
+                .removeSuffix("]")
+                .lowercase()
 
         private fun ipv4Octets(name: String): List<Int>? {
             val parts = name.split('.')

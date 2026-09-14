@@ -32,9 +32,11 @@ without a fetch; a different version is fetched afresh. So bump the version
 whenever the script changes.
 
 Since what is fetched is run, the URL must be `https`, redirects are not
-followed, the script may be at most 1 MiB, and a URL naming a loopback,
-private, link-local or otherwise reserved address (or `localhost`) is
-refused. The player is told when a fetch is refused or fails.
+followed, the script may be at most 1 MiB, and a URL naming a private,
+link-local or otherwise reserved address is refused. The one exception is
+the player's own machine: `localhost` or a loopback address is fetched from,
+over plain `http` too, so a MUD and its script can be tested locally. The
+player is told when a fetch is refused or fails.
 
 Two other forms are accepted. The script itself can be sent in place of a URL,
 which is never kept, so it is fetched from you every login:
