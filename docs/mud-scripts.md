@@ -99,6 +99,19 @@ Both take a number of seconds from now. A script's `put()` waits for the
 roundtime to pass before sending, so setting it makes the player's own scripts
 behave as they do on a Simutronics game.
 
+### Flashing a window
+
+```lua
+flashBackground("#400000")             -- fade the main window's background to dark red and back, over a second
+flashBackground("#002040", 0.5)        -- over half a second
+flashBackground("#400000", 1, "combat") -- another window, by name
+```
+
+The colour is `#rrggbb`; the fade goes to it over the first half of the time
+and back to the window's own background over the second half. A flash asked
+while one is playing starts from the colour on screen, so a run of hits does
+not jump.
+
 ### Talking GMCP
 
 Warlock asks for the `Char`, `Char.Items` and `Room` packages at negotiation.
@@ -149,5 +162,9 @@ end)
 
 onLine("^You are stunned for (%d+) seconds", function(seconds)
     setRoundTime(tonumber(seconds))
+end)
+
+onLine("^You are hit for (%d+) damage", function(damage)
+    flashBackground(tonumber(damage) > 50 and "#600000" or "#300000", 0.4)
 end)
 ```

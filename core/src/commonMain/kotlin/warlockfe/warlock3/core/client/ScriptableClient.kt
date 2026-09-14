@@ -1,6 +1,8 @@
 package warlockfe.warlock3.core.client
 
 import kotlinx.coroutines.flow.StateFlow
+import warlockfe.warlock3.core.text.WarlockColor
+import kotlin.time.Duration
 
 /**
  * The parts of a client a script may drive. A Simutronics game states these in its protocol (the
@@ -21,6 +23,13 @@ interface ScriptableClient {
 
     /** Sets when the cast time ends, in seconds since the epoch, or clears it. */
     fun setCastTime(endSeconds: Long?)
+
+    /** Fades the background of the window named [window] to [color] and back over [duration]. */
+    fun flashBackground(
+        window: String,
+        color: WarlockColor,
+        duration: Duration,
+    )
 
     /**
      * Sends a GMCP message to the server: the package and message name (`Core.Supports.Add`) and

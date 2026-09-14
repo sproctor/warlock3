@@ -438,6 +438,9 @@ class GameViewModel(
 
     val runningScriptCount: Int get() = runningScripts.value.size
 
+    /** The background flashes scripts have asked of windows; the windows' views play them. */
+    val backgroundFlashes = windowRegistry.backgroundFlashes
+
     val roundTimeEnd =
         client.roundTimeEnd
             .map { roundTime ->

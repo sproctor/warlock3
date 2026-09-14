@@ -36,6 +36,7 @@ import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.prefs.repositories.CharacterRepository
 import warlockfe.warlock3.core.prefs.repositories.LoggingRepository
 import warlockfe.warlock3.core.text.StyledString
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.util.replaceOrAdd
 import warlockfe.warlock3.core.window.TextStream
@@ -52,6 +53,7 @@ import warlockfe.warlock3.telnet.protocol.StreamingTextDecoder
 import warlockfe.warlock3.telnet.protocol.TelnetDecoder
 import warlockfe.warlock3.telnet.protocol.TelnetEvent
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
@@ -64,7 +66,8 @@ import kotlin.time.Instant
  * GMCP message is passed on as a [ClientGmcpEvent], and a MUD may send the script itself, by
  * `Client.GUI` as it would send Mudlet an interface package, which is offered up as [mudScript]
  * unless the connection was made with [acceptScripts] off. As a [ScriptableClient] the client
- * lets such a script set the roundtime and cast time, which nothing in a telnet stream states.
+ * lets such a script set the roundtime and cast time, which nothing in a telnet stream states,
+ * and flash a window's background.
  *
  * What a MUD does not tell us, the saved connection does. Wrayth names the game and the character
  * in its `<app>` tag; here [gameCode] and [character] come from the connection the user made, and
@@ -258,6 +261,14 @@ class TelnetClient(
 
     override fun setCastTime(endSeconds: Long?) {
         _castTimeEnd.value = endSeconds
+    }
+
+    override fun flashBackground(
+        window: String,
+        color: WarlockColor,
+        duration: Duration,
+    ) {
+        windowRegistry.flashBackground(window, color, duration)
     }
 
     override suspend fun sendGmcp(

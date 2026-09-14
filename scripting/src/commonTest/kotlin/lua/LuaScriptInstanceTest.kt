@@ -17,6 +17,7 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.scripting.wsl.FakeScriptManager
 import warlockfe.warlock3.scripting.wsl.FakeWarlockClient
 import warlockfe.warlock3.scripting.wsl.newTestConfigStore
@@ -394,6 +395,34 @@ class LuaScriptInstanceTest {
         // A Lua table's keys come in no particular order.
         assertEquals("Obj", client.sentGmcp[3].first)
         assertEquals(Json.parseToJsonElement("""{"n":1,"ok":true}"""), Json.parseToJsonElement(client.sentGmcp[3].second))
+    }
+
+    @Test
+    fun flashBackgroundNamesTheColourTheTimeAndTheWindow() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                flashBackground("#400000")
+                flashBackground("#004000", 0.25, "combat")
+                flashBackground("#000040", 0)
+                flashBackground("red")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        // A second and the main window unless said otherwise; no time, no flash; and a colour is
+        // given as #rrggbb.
+        assertEquals(
+            listOf(
+                Triple("main", WarlockColor("#400000"), 1.seconds),
+                Triple("combat", WarlockColor("#004000"), 0.25.seconds),
+            ),
+            client.flashes,
+        )
+        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("not a colour") }, client.printedText().toString())
     }
 
     @Test

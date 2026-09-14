@@ -23,6 +23,8 @@ import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.util.toWarlockColor
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -129,6 +131,19 @@ internal class LuaBindings(
         }
         bind("setCastTime") { args ->
             scriptable("setCastTime").setCastTime(endOf(args.firstOrNull()))
+            emptyList()
+        }
+        bind("flashBackground") { args ->
+            val colorText =
+                args.firstOrNull()?.asString() ?: throw IllegalArgumentException("flashBackground needs a colour, like \"#400000\"")
+            val color =
+                colorText.toWarlockColor()?.takeIf { it.isSpecified() }
+                    ?: throw IllegalArgumentException("flashBackground: \"$colorText\" is not a colour; use \"#rrggbb\"")
+            val seconds = args.getOrNull(1)?.asNumber() ?: 1.0
+            val window = args.getOrNull(2)?.asString() ?: "main"
+            if (seconds > 0.0) {
+                scriptable("flashBackground").flashBackground(window, color, seconds.seconds)
+            }
             emptyList()
         }
         bind("sendGmcp") { args ->

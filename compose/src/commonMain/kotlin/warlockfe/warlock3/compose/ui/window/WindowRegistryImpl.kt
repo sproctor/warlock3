@@ -8,12 +8,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import warlockfe.warlock3.compose.model.LiteralHighlight
 import warlockfe.warlock3.compose.model.LiteralIgnore
 import warlockfe.warlock3.compose.model.RegexHighlight
@@ -44,6 +46,7 @@ import warlockfe.warlock3.core.text.resolve
 import warlockfe.warlock3.core.text.resolveRefs
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
+import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowMemoryUsage
@@ -51,6 +54,7 @@ import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.wrayth.util.CompiledAlteration
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class, ExperimentalAtomicApi::class)
 class WindowRegistryImpl(
@@ -374,6 +378,18 @@ class WindowRegistryImpl(
             streams = streams.load().values.map { it.memoryUsage() },
             panelCount = panels.load().size,
         )
+
+    private val _backgroundFlashes = MutableStateFlow<Map<String, BackgroundFlash>>(emptyMap())
+    override val backgroundFlashes: StateFlow<Map<String, BackgroundFlash>> = _backgroundFlashes.asStateFlow()
+    private var flashSerial = 0L
+
+    override fun flashBackground(
+        window: String,
+        color: WarlockColor,
+        duration: Duration,
+    ) {
+        _backgroundFlashes.update { it + (window to BackgroundFlash(color, duration, ++flashSerial)) }
+    }
 
     override fun setCharacterId(characterId: String) {
         this.characterId.value = characterId

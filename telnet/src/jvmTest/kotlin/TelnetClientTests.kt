@@ -47,6 +47,7 @@ import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.StyledStringSubstring
 import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowLocation
@@ -64,6 +65,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -337,6 +339,8 @@ class TelnetClientTests {
             client.setCastTime(1235L)
             assertEquals(1234L, client.roundTimeEnd.value)
             assertEquals(1235L, client.castTimeEnd.value)
+            client.flashBackground("main", WarlockColor("#400000"), 1.5.seconds)
+            assertEquals(BackgroundFlash(WarlockColor("#400000"), 1.5.seconds, 0L), registry.backgroundFlashes.value["main"])
         }
 
     @Test
@@ -459,6 +463,15 @@ private class FakeWindowRegistry : WindowRegistry {
     override val presets: StateFlow<Map<String, StyleLayer>> = MutableStateFlow(emptyMap())
     override val baseStyle: StateFlow<ResolvedStyle> get() = error("unused")
     override val colorPalette: StateFlow<Map<String, WarlockColor>> = MutableStateFlow(emptyMap())
+    override val backgroundFlashes = MutableStateFlow<Map<String, BackgroundFlash>>(emptyMap())
+
+    override fun flashBackground(
+        window: String,
+        color: WarlockColor,
+        duration: Duration,
+    ) {
+        backgroundFlashes.value += window to BackgroundFlash(color, duration, backgroundFlashes.value.size.toLong())
+    }
 
     override fun getOrCreateStream(name: String): TextStream = synchronized(streams) { streams.getOrPut(name) { FakeTextStream(name) } }
 
