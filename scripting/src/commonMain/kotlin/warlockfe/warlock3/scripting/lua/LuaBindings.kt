@@ -5,6 +5,7 @@ import com.seanproctor.lua.LuaException
 import com.seanproctor.lua.LuaState
 import com.seanproctor.lua.LuaValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -48,8 +49,13 @@ internal class LuaBindings(
     // Same threshold the JS engine used: only log() calls at this level or above reach the client.
     private val loggingLevel = 30
 
-    // Set once the script registers a handler; the script then outlives its last line.
-    private var hasHandlers = false
+    // Made when the script registers its first handler, from which moment events are gathered
+    // for it, so that nothing that arrives while the rest of the script runs is lost; the script
+    // then outlives its last line to serve them. The script's thread may be busy in a handler
+    // while events arrive; the oldest go if it falls that far behind, since a line handler is
+    // reading a live stream, not a log.
+    private var events: Channel<ScriptEvent>? = null
+    private var feeder: Job? = null
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
@@ -214,7 +220,7 @@ internal class LuaBindings(
             emptyList()
         }
         lua.register("__keepAlive") {
-            hasHandlers = true
+            startGathering()
             emptyList()
         }
         lua.eval(WARLOCK_BOOTSTRAP, "=(warlock)")
@@ -224,18 +230,11 @@ internal class LuaBindings(
         lua.setGlobal("__dispatchLine", LuaValue.Nil)
     }
 
-    /**
-     * Keeps the script alive to serve the handlers it registered, if it registered any: each line
-     * of game text and each GMCP message is passed to the bootstrap's dispatchers on this thread.
-     * Returns when the connection closes; stopping the script unwinds out of here instead.
-     */
-    fun serveHandlers() {
-        if (!hasHandlers) return
-        logger.d { "serving handlers" }
-        // The script's thread may be busy in a handler while events arrive; the oldest go if it
-        // falls that far behind, since a line handler is reading a live stream, not a log.
+    private fun startGathering() {
+        if (events != null) return
         val events = Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        val feeder =
+        this.events = events
+        feeder =
             instance.scope.launch {
                 launch {
                     client.eventFlow.collect { event ->
@@ -250,6 +249,17 @@ internal class LuaBindings(
                 client.disconnected.first { it }
                 events.close()
             }
+    }
+
+    /**
+     * Keeps the script alive to serve the handlers it registered, if it registered any: each line
+     * of game text and each GMCP message gathered since the first was registered is passed to the
+     * bootstrap's dispatchers on this thread. Returns when the connection closes; stopping the
+     * script unwinds out of here instead.
+     */
+    fun serveHandlers() {
+        val events = events ?: return
+        logger.d { "serving handlers" }
         try {
             while (true) {
                 val event = blocking { events.receiveCatching() }.getOrNull() ?: break
@@ -257,7 +267,7 @@ internal class LuaBindings(
                 dispatch(event)
             }
         } finally {
-            feeder.cancel()
+            feeder?.cancel()
         }
     }
 

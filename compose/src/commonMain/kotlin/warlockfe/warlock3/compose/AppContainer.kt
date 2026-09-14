@@ -397,12 +397,21 @@ class AppContainer(
 
     val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
 
-    /** Keeps the scripts MUDs send, fetching them by the same client as the MUD Mobile API. */
+    /**
+     * Keeps the scripts MUDs send. They are fetched by a client of their own, which does not
+     * follow redirects: the store checks where a script is fetched from (never this machine or
+     * its network), and a redirect would go somewhere it has not checked.
+     */
     val mudScriptStore by lazy {
+        val httpClient =
+            HttpClient(CIO) {
+                followRedirects = false
+                install(HttpTimeout) { requestTimeoutMillis = 15_000 }
+            }
         MudScriptStore(
             characterConfigStore = characterConfigStore,
             fileSystem = fileSystem,
-            fetcher = HttpMudScriptFetcher(mudMobileHttpClient),
+            fetcher = HttpMudScriptFetcher(httpClient),
         )
     }
 

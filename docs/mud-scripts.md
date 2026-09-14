@@ -26,10 +26,15 @@ ignored, and a Lua file sent to Mudlet fails to install):
 Client.GUI {"version": "3", "url": "https://mud.example/clients/warlock.lua"}
 ```
 
-Warlock fetches the URL (`http` or `https`, up to 1 MiB), keeps the script
-beside the character's settings with its version, and runs it. On later logins
-the same version runs from that copy without a fetch; a different version is
-fetched afresh. So bump the version whenever the script changes.
+Warlock fetches the URL, keeps the script beside the character's settings with
+its version, and runs it. On later logins the same version runs from that copy
+without a fetch; a different version is fetched afresh. So bump the version
+whenever the script changes.
+
+Since what is fetched is run, the URL must be `https`, redirects are not
+followed, the script may be at most 1 MiB, and a URL naming a loopback,
+private, link-local or otherwise reserved address (or `localhost`) is
+refused. The player is told when a fetch is refused or fails.
 
 Two other forms are accepted. The script itself can be sent in place of a URL,
 which is never kept, so it is fetched from you every login:

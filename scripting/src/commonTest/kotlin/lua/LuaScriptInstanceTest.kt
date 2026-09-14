@@ -403,4 +403,37 @@ class LuaScriptInstanceTest {
             client.printedText().toString(),
         )
     }
+
+    @Test
+    fun anEventDuringTheRestOfTheScriptIsNotLost() {
+        val client = FakeWarlockClient()
+        val instance =
+            createInlineInstance(
+                """
+                onLine(function(line) echo("got " .. line) end)
+                echo("registered")
+                pause(2)
+                echo("done")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            withTimeout(10.seconds) {
+                while (!client.printedText().contains("registered")) delay(20.milliseconds)
+            }
+            // Sent only while the script is still in its pause: gathered from the moment the
+            // handler was registered, it is served once the script reaches its last line.
+            repeat(20) {
+                client.emit(ClientTextEvent("early"))
+                delay(50.milliseconds)
+            }
+            assertFalse(client.printedText().contains("done"))
+            withTimeout(10.seconds) {
+                while (!client.printedText().contains("got early")) delay(20.milliseconds)
+            }
+            assertContains(client.printedText(), "done")
+            instance.stop()
+            instance.awaitStopped(10.seconds)
+        }
+    }
 }
