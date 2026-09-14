@@ -421,17 +421,22 @@ class LuaScriptInstanceTest {
             withTimeout(10.seconds) {
                 while (!client.printedText().contains("registered")) delay(20.milliseconds)
             }
-            // Sent only while the script is still in its pause: gathered from the moment the
-            // handler was registered, it is served once the script reaches its last line.
-            repeat(20) {
-                client.emit(ClientTextEvent("early"))
-                delay(50.milliseconds)
+            // Sent while the script is still in its pause, and no longer once it says the pause
+            // is over: gathered from the moment the handler was registered, the event is served
+            // once the script reaches its last line. (No wall-clock assumption: a slow machine
+            // only lengthens the pause.)
+            var sent = 0
+            withTimeout(10.seconds) {
+                while (!client.printedText().contains("done")) {
+                    client.emit(ClientTextEvent("early"))
+                    sent++
+                    delay(20.milliseconds)
+                }
             }
-            assertFalse(client.printedText().contains("done"))
+            assertTrue(sent > 0)
             withTimeout(10.seconds) {
                 while (!client.printedText().contains("got early")) delay(20.milliseconds)
             }
-            assertContains(client.printedText(), "done")
             instance.stop()
             instance.awaitStopped(10.seconds)
         }
