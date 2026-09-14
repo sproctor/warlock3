@@ -73,6 +73,8 @@ import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.prefs.snapshot.openVersionedDatabase
+import warlockfe.warlock3.core.script.HttpMudScriptFetcher
+import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -327,6 +329,7 @@ class AppContainer(
             clientSettingRepository = clientSettings,
             commandHistoryRepository = commandHistoryRepository,
             connectionRepository = connectionRepository,
+            mudScriptStore = mudScriptStore,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -393,6 +396,15 @@ class AppContainer(
     }
 
     val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
+
+    /** Keeps the scripts MUDs send, fetching them by the same client as the MUD Mobile API. */
+    val mudScriptStore by lazy {
+        MudScriptStore(
+            characterConfigStore = characterConfigStore,
+            fileSystem = fileSystem,
+            fetcher = HttpMudScriptFetcher(mudMobileHttpClient),
+        )
+    }
 
     // Backs up / syncs the per-character TOML settings to the user's MUD Mobile account.
     val warlockSettingsSync by lazy {

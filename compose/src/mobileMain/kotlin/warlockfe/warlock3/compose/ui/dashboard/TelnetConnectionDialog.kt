@@ -45,6 +45,7 @@ fun TelnetConnectionDialog(
     val characterState = rememberTextFieldState(existing?.character ?: "")
     val windowTitleState = rememberTextFieldState(existing?.windowTitle ?: "")
     var tls by remember { mutableStateOf(address?.tls ?: false) }
+    var acceptScripts by remember { mutableStateOf(existing?.acceptScripts ?: true) }
     var error: String? by remember { mutableStateOf(null) }
 
     fun submit(connectNow: Boolean) {
@@ -55,6 +56,7 @@ fun TelnetConnectionDialog(
             tls = tls,
             character = characterState.text.toString(),
             windowTitle = windowTitleState.text.toString(),
+            acceptScripts = acceptScripts,
         ).onSuccess { onSave(it, connectNow) }
             .onFailure { error = it.message }
     }
@@ -109,6 +111,10 @@ fun TelnetConnectionDialog(
                     placeholder = { Text("Leave blank to use the character name") },
                     lineLimits = TextFieldLineLimits.SingleLine,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = acceptScripts, onCheckedChange = { acceptScripts = it })
+                    Text("Run the script the MUD sends, if it sends one")
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },

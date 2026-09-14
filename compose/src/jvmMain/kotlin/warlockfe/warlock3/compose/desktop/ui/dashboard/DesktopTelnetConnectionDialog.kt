@@ -45,13 +45,14 @@ fun DesktopTelnetConnectionDialog(
     val characterState = rememberTextFieldState(existing?.character ?: "")
     val windowTitleState = rememberTextFieldState(existing?.windowTitle ?: "")
     var tls by remember { mutableStateOf(address?.tls ?: false) }
+    var acceptScripts by remember { mutableStateOf(existing?.acceptScripts ?: true) }
     var error: String? by remember { mutableStateOf(null) }
 
     WarlockDialog(
         title = if (existing == null) "New telnet connection" else "Telnet connection settings",
         onCloseRequest = onDismiss,
         width = 520.dp,
-        height = 520.dp,
+        height = 560.dp,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -104,6 +105,12 @@ fun DesktopTelnetConnectionDialog(
                 placeholder = "Leave blank to use the character name",
             )
 
+            CheckboxRow(
+                checked = acceptScripts,
+                onCheckedChange = { acceptScripts = it },
+                text = "Run the script the MUD sends, if it sends one (Lua, over GMCP)",
+            )
+
             error?.let { Text(it, color = JewelTheme.globalColors.text.error) }
 
             Row(
@@ -118,6 +125,7 @@ fun DesktopTelnetConnectionDialog(
                         tls = tls,
                         character = characterState.text.toString(),
                         windowTitle = windowTitleState.text.toString(),
+                        acceptScripts = acceptScripts,
                     ).onSuccess { onSave(it, connectNow) }
                         .onFailure { error = it.message }
                 }

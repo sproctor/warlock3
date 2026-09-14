@@ -85,6 +85,10 @@ class TelnetDecoder {
     private val serverOptions = HashSet<Int>()
     private val clientOptions = HashSet<Int>()
 
+    /** Whether the server negotiated GMCP, and so will take a GMCP message from us. */
+    val gmcpNegotiated: Boolean
+        get() = GMCP in serverOptions
+
     // Which answer to the server's next TTYPE SEND: the client name, then the terminal, then the
     // MTTS capabilities, and the last one again as the sign that the list is done.
     private var terminalTypeIndex = 0

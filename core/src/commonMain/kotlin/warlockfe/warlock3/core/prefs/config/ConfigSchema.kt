@@ -417,4 +417,6 @@ data class ConnectionConfig(
     val host: String? = null,
     val port: Int? = null,
     val tls: Boolean = false,
+    @TomlComment("Telnet connections: run the script the MUD sends over GMCP (Client.GUI), if it sends one.")
+    val acceptScripts: Boolean = true,
 )

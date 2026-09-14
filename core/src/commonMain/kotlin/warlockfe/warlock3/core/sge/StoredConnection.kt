@@ -20,6 +20,8 @@ data class StoredConnection(
     val host: String? = null,
     val port: Int? = null,
     val tls: Boolean = false,
+    // Telnet connections only: whether to run the script the MUD offers over GMCP, if it does.
+    val acceptScripts: Boolean = true,
 ) {
     /** The telnet address of this connection, or null when it is not a telnet connection. */
     val telnetAddress: TelnetAddress?

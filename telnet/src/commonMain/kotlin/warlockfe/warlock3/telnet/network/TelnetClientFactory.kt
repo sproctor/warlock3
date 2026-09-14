@@ -15,10 +15,12 @@ class TelnetClientFactory(
         socket: TelnetSocket,
         gameCode: String,
         character: String,
+        acceptScripts: Boolean,
     ): TelnetClient =
         TelnetClient(
             gameCode = gameCode,
             character = character,
+            acceptScripts = acceptScripts,
             characterRepository = characterRepository,
             windowRegistry = windowRegistry,
             fileLogging = loggingRepository,

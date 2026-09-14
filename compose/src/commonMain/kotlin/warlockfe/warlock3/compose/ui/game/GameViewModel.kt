@@ -82,6 +82,7 @@ import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
@@ -109,6 +110,8 @@ import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.SCRIPT_COMMAND_PREFIX_KEY
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
+import warlockfe.warlock3.core.script.MudScriptLoad
+import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.Alias
@@ -126,6 +129,9 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 const val CLIENT_COMMAND_PREFIX = '/'
+
+/** The name the MUD's script runs under, so a new version replaces the last and `/kill` can find it. */
+const val MUD_SCRIPT_NAME = "mud-script"
 
 // The compose-docking layout JSON for this character, one blob per character. Written debounced on
 // every layout change; a window it does not know yet docks at its game-announced location.
@@ -156,6 +162,7 @@ class GameViewModel(
     private val clientSettingRepository: ClientSettingRepository,
     private val commandHistoryRepository: CommandHistoryRepository,
     private val connectionRepository: ConnectionRepository,
+    private val mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
     private val reconnectAction: (suspend () -> Unit)? = null,
 ) : ViewModel(),
@@ -569,6 +576,36 @@ class GameViewModel(
         trackMaxTypeAhead()
         publishRunningScripts()
         trackHistorySearchQuery()
+        runTheMudsScript()
+    }
+
+    /**
+     * Runs the script a MUD offers over GMCP, when the connection is one that can be offered one
+     * (see [ScriptableClient]) and the user has not declined. The offer is a state, not an event,
+     * so one made while the connection was still being set up is not missed; a new version
+     * offered mid-session replaces the running script, which goes by a fixed name for that.
+     */
+    private fun runTheMudsScript() {
+        val scriptable = client as? ScriptableClient ?: return
+        viewModelScope.launch(ioDispatcher) {
+            scriptable.mudScript.filterNotNull().collect { offer ->
+                val characterId = client.characterId.value ?: return@collect
+                when (val load = mudScriptStore.load(characterId, offer)) {
+                    is MudScriptLoad.Loaded -> {
+                        client.print(StyledString("The MUD sent a script (version ${offer.version}).", WarlockStyle.Echo))
+                        scriptManager.startScript(client, MUD_SCRIPT_NAME, load.script, ::commandHandler, extension = "lua")
+                    }
+
+                    is MudScriptLoad.Failed -> {
+                        client.print(StyledString(load.message, WarlockStyle.Error))
+                    }
+
+                    is MudScriptLoad.Skipped -> {
+                        client.debug(load.reason)
+                    }
+                }
+            }
+        }
     }
 
     private fun trackHistorySearchQuery() {

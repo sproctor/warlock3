@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import warlockfe.warlock3.core.client.DataDistance
+import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.compass.Direction
@@ -32,6 +33,11 @@ sealed interface GmcpUpdate {
         val left: String?,
         val right: String?,
     ) : GmcpUpdate
+
+    /** The MUD offered a script to run, by `Client.GUI`. */
+    data class Script(
+        val offer: MudScriptOffer,
+    ) : GmcpUpdate
 }
 
 /**
@@ -46,6 +52,11 @@ sealed interface GmcpUpdate {
  * The hands come from the inventory (`Char.Items`, the IRE package): the server lists it once when
  * asked and then sends each change, and an item's `attrib` string carries `l` or `L` for the hand
  * that wields it. (`W` is not a hand: it marks a wearable item that isn't worn.)
+ *
+ * `Client.GUI` is how a game offers Mudlet its interface package, and how it offers us a script:
+ * `{"version": "3", "url": "https://.../warlock.lua"}` (the version a number or a string, as the
+ * game's serializer has it), or the script itself in a `script` field in place of the URL, or
+ * Mudlet's older raw form, the version and the URL on two lines.
  */
 class GmcpHandler {
     private val json = Json { ignoreUnknownKeys = true }
@@ -68,6 +79,7 @@ class GmcpHandler {
     ): GmcpUpdate? {
         val element = if (data.isBlank()) null else runCatching { json.parseToJsonElement(data) }.getOrNull()
         return when (name.lowercase()) {
+            "client.gui" -> clientGui(element, data)
             "room.info" -> (element as? JsonObject)?.let { exits(it) }
             "char.vitals", "char.maxstats" -> (element as? JsonObject)?.let { vitals(it) }
             "char.items.list" -> (element as? JsonObject)?.let { itemsList(it) }
@@ -89,6 +101,23 @@ class GmcpHandler {
                 else -> emptyList()
             }
         return GmcpUpdate.Exits(names.mapNotNull { direction(it) }.toSet())
+    }
+
+    private fun clientGui(
+        element: JsonElement?,
+        data: String,
+    ): GmcpUpdate.Script? {
+        if (element is JsonObject) {
+            val version = element.string("version")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            val url = element.string("url")?.trim()?.takeIf { it.isNotEmpty() }
+            val script = element.string("script")?.takeIf { it.isNotBlank() }
+            if (url == null && script == null) return null
+            return GmcpUpdate.Script(MudScriptOffer(version = version, url = url, script = script))
+        }
+        // The raw form: "<version>\n<url>".
+        val lines = data.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        if (lines.size < 2) return null
+        return GmcpUpdate.Script(MudScriptOffer(version = lines[0], url = lines[1]))
     }
 
     private fun itemsList(message: JsonObject): GmcpUpdate.Hands? {

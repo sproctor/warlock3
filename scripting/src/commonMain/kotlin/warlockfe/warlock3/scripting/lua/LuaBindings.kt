@@ -1,16 +1,22 @@
 package warlockfe.warlock3.scripting.lua
 
 import co.touchlab.kermit.Logger
+import com.seanproctor.lua.LuaException
 import com.seanproctor.lua.LuaState
 import com.seanproctor.lua.LuaValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
@@ -26,6 +32,10 @@ import kotlin.time.Instant
  * Host functions run synchronously on the script's thread; anything that needs to wait is
  * bridged to the suspend world with [blocking], whose waits are parented to the instance's
  * scope so that stopping the script aborts them.
+ *
+ * A script may also register handlers (`onGmcp`, `onLine`) to be told things as they happen;
+ * [serveHandlers] then keeps the script alive after its last line, calling them on the script's
+ * thread for each event, until the script is stopped or the connection closes.
  */
 internal class LuaBindings(
     private val lua: LuaState,
@@ -37,6 +47,13 @@ internal class LuaBindings(
 
     // Same threshold the JS engine used: only log() calls at this level or above reach the client.
     private val loggingLevel = 30
+
+    // Set once the script registers a handler; the script then outlives its last line.
+    private var hasHandlers = false
+
+    // The bootstrap's dispatchers, taken as handles so the globals can be removed.
+    private lateinit var dispatchGmcp: LuaValue.Function
+    private lateinit var dispatchLine: LuaValue.Function
 
     fun install() {
         bind("echo") { args ->
@@ -62,12 +79,7 @@ internal class LuaBindings(
             emptyList()
         }
         bind("pause") { args ->
-            val seconds =
-                when (val value = args.firstOrNull()) {
-                    is LuaValue.Integer -> value.value.toDouble()
-                    is LuaValue.Number -> value.value
-                    else -> 1.0
-                }
+            val seconds = args.firstOrNull()?.asNumber() ?: 1.0
             blocking {
                 withTimeoutOrNull(seconds.seconds) {
                     // Waking on any status change lets stop() and suspend() cut the pause short.
@@ -83,12 +95,7 @@ internal class LuaBindings(
             throw StopException()
         }
         bind("log") { args ->
-            val level =
-                when (val value = args.firstOrNull()) {
-                    is LuaValue.Integer -> value.value.toInt()
-                    is LuaValue.Number -> value.value.toInt()
-                    else -> 0
-                }
+            val level = args.firstOrNull()?.asNumber()?.toInt() ?: 0
             val message = args.getOrNull(1)?.asString() ?: ""
             if (level >= loggingLevel) {
                 blocking { client.debug(message) }
@@ -108,6 +115,29 @@ internal class LuaBindings(
         }
         bind("waitForRoundTime") {
             blocking { doWaitForRoundTime() }
+            emptyList()
+        }
+        bind("setRoundTime") { args ->
+            scriptable("setRoundTime").setRoundTime(endOf(args.firstOrNull()))
+            emptyList()
+        }
+        bind("setCastTime") { args ->
+            scriptable("setCastTime").setCastTime(endOf(args.firstOrNull()))
+            emptyList()
+        }
+        bind("sendGmcp") { args ->
+            val name =
+                args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalArgumentException("sendGmcp needs the message name, like \"Core.Supports.Add\"")
+            // A string goes as it is; a table is sent as JSON.
+            val data =
+                when (val value = args.getOrNull(1) ?: LuaValue.Nil) {
+                    is LuaValue.Str -> value.value
+                    LuaValue.Nil -> ""
+                    else -> value.toJson().toString()
+                }
+            val target = scriptable("sendGmcp")
+            blocking { target.sendGmcp(name, data) }
             emptyList()
         }
         bind("__getVariable") { args ->
@@ -183,7 +213,72 @@ internal class LuaBindings(
             instance.checkStatus()
             emptyList()
         }
+        lua.register("__keepAlive") {
+            hasHandlers = true
+            emptyList()
+        }
         lua.eval(WARLOCK_BOOTSTRAP, "=(warlock)")
+        dispatchGmcp = lua.getGlobal("__dispatchGmcp") as LuaValue.Function
+        dispatchLine = lua.getGlobal("__dispatchLine") as LuaValue.Function
+        lua.setGlobal("__dispatchGmcp", LuaValue.Nil)
+        lua.setGlobal("__dispatchLine", LuaValue.Nil)
+    }
+
+    /**
+     * Keeps the script alive to serve the handlers it registered, if it registered any: each line
+     * of game text and each GMCP message is passed to the bootstrap's dispatchers on this thread.
+     * Returns when the connection closes; stopping the script unwinds out of here instead.
+     */
+    fun serveHandlers() {
+        if (!hasHandlers) return
+        logger.d { "serving handlers" }
+        // The script's thread may be busy in a handler while events arrive; the oldest go if it
+        // falls that far behind, since a line handler is reading a live stream, not a log.
+        val events = Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        val feeder =
+            instance.scope.launch {
+                launch {
+                    client.eventFlow.collect { event ->
+                        when (event) {
+                            is ClientTextEvent -> events.trySend(ScriptEvent.Line(event.text))
+                            is ClientGmcpEvent -> events.trySend(ScriptEvent.Gmcp(event.name, event.data))
+                            else -> Unit
+                        }
+                    }
+                }
+                // The script is about the connection: it ends when the connection does.
+                client.disconnected.first { it }
+                events.close()
+            }
+        try {
+            while (true) {
+                val event = blocking { events.receiveCatching() }.getOrNull() ?: break
+                instance.checkStatus()
+                dispatch(event)
+            }
+        } finally {
+            feeder.cancel()
+        }
+    }
+
+    private fun dispatch(event: ScriptEvent) {
+        try {
+            when (event) {
+                is ScriptEvent.Line -> {
+                    lua.call(dispatchLine, listOf(LuaValue.Str(event.text)))
+                }
+
+                is ScriptEvent.Gmcp -> {
+                    val literal = jsonToLuaLiteral(event.data)?.let { LuaValue.Str(it) } ?: LuaValue.Nil
+                    lua.call(dispatchGmcp, listOf(LuaValue.Str(event.name), literal))
+                }
+            }
+        } catch (e: LuaException) {
+            // A stop() or exit() inside a handler surfaces as a Lua error too; that one is not
+            // reported, and ends the script.
+            instance.checkStatus()
+            blocking { client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error)) }
+        }
     }
 
     /** Registers a host function that first surfaces any pending stop/suspend. */
@@ -205,6 +300,20 @@ internal class LuaBindings(
         val result = runBlocking(instance.scope.coroutineContext) { block() }
         instance.checkStatus()
         return result
+    }
+
+    private fun scriptable(function: String): ScriptableClient =
+        client as? ScriptableClient
+            ?: throw IllegalStateException("$function is only available on a telnet connection")
+
+    /**
+     * When something [seconds] long from now ends, in seconds since the epoch; null for nothing,
+     * so `setRoundTime(0)` clears the bar.
+     */
+    private fun endOf(seconds: LuaValue?): Long? {
+        val duration = seconds?.asNumber() ?: 0.0
+        if (duration <= 0.0) return null
+        return (client.getCurrentTime() + duration.seconds).epochSeconds
     }
 
     private suspend fun putCommand(command: String) {
@@ -240,6 +349,26 @@ internal class LuaBindings(
             is LuaValue.Bool -> value.toString()
             else -> null
         }
+
+    private fun LuaValue.asNumber(): Double? =
+        when (this) {
+            is LuaValue.Integer -> value.toDouble()
+            is LuaValue.Number -> value
+            is LuaValue.Str -> value.toDoubleOrNull()
+            else -> null
+        }
+}
+
+/** What the handler-serving loop passes to the script. */
+private sealed interface ScriptEvent {
+    data class Line(
+        val text: String,
+    ) : ScriptEvent
+
+    data class Gmcp(
+        val name: String,
+        val data: String,
+    ) : ScriptEvent
 }
 
 private sealed class Matcher(
@@ -265,7 +394,8 @@ private class RegexMatcher(
 /**
  * Lua-side layer of the script API. Runs after the host functions are registered and before the
  * script itself; it wraps the internal `__`-prefixed hooks and then removes them, along with the
- * parts of the stdlib scripts should not reach.
+ * parts of the stdlib scripts should not reach. The two `__dispatch` functions it defines are
+ * taken by the host, which removes those globals itself.
  */
 private val WARLOCK_BOOTSTRAP =
     """
@@ -273,10 +403,17 @@ private val WARLOCK_BOOTSTRAP =
     local setVariable = __setVariable
     local matchWait = __matchWait
     local checkStatus = __checkStatus
+    local keepAlive = __keepAlive
     __getVariable = nil
     __setVariable = nil
     __matchWait = nil
     __checkStatus = nil
+    __keepAlive = nil
+
+    -- Kept here so a script that reassigns these globals cannot break the dispatchers.
+    local load, ipairs, pcall, error = load, ipairs, pcall, error
+    local lower, sub, match = string.lower, string.sub, string.match
+    local pack, unpack = table.pack, table.unpack
 
     -- Reads and writes go straight to the character's stored variables.
     variables = setmetatable({}, {
@@ -321,6 +458,77 @@ private val WARLOCK_BOOTSTRAP =
             end
         end
         return list
+    end
+
+    -- Handlers a script registers to be told things as they happen. Registering one keeps the
+    -- script running after its last line, until it is stopped or the connection closes.
+    local gmcpHandlers = {}
+    local lineHandlers = {}
+
+    -- onGmcp("Char.Vitals", function(data, name) ... end): called with the message's JSON as a
+    -- table (nil when it had none) for every message with that name or under that package, so a
+    -- handler for "Char" hears Char.Vitals and Char.Items.List alike.
+    function onGmcp(name, handler)
+        gmcpHandlers[#gmcpHandlers + 1] = { name = lower(name), handler = handler }
+        keepAlive()
+    end
+
+    -- onLine(function(line) ... end): called with each line of game text.
+    -- onLine(pattern, function(...) ... end): called with the captures whenever a line matches
+    -- the Lua pattern (with the whole match, when the pattern has no captures).
+    function onLine(pattern, handler)
+        if handler == nil then
+            handler = pattern
+            pattern = nil
+        end
+        lineHandlers[#lineHandlers + 1] = { pattern = pattern, handler = handler }
+        keepAlive()
+    end
+
+    -- Every handler gets its turn even if an earlier one failed; the first failure is then
+    -- raised so the host reports it.
+    local function callAll(calls)
+        local failure = nil
+        for _, call in ipairs(calls) do
+            local ok, err = pcall(unpack(call, 1, call.n))
+            if not ok and failure == nil then
+                failure = err
+            end
+        end
+        if failure ~= nil then
+            error(failure, 0)
+        end
+    end
+
+    function __dispatchGmcp(name, literal)
+        local data = nil
+        if literal ~= nil then
+            -- The literal is a table constructor of constants, so it gets no environment.
+            data = load("return " .. literal, "=gmcp", "t", {})()
+        end
+        local lowered = lower(name)
+        local calls = {}
+        for _, entry in ipairs(gmcpHandlers) do
+            if lowered == entry.name or sub(lowered, 1, #entry.name + 1) == entry.name .. "." then
+                calls[#calls + 1] = pack(entry.handler, data, name)
+            end
+        end
+        callAll(calls)
+    end
+
+    function __dispatchLine(line)
+        local calls = {}
+        for _, entry in ipairs(lineHandlers) do
+            if entry.pattern == nil then
+                calls[#calls + 1] = pack(entry.handler, line)
+            else
+                local captures = pack(match(line, entry.pattern))
+                if captures[1] ~= nil then
+                    calls[#calls + 1] = pack(entry.handler, unpack(captures, 1, captures.n))
+                end
+            end
+        end
+        callAll(calls)
     end
 
     -- Watchdog: surface stop/suspend even in scripts that never call a binding (the same job

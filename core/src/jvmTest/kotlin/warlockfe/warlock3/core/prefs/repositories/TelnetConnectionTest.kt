@@ -19,6 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * A telnet connection is saved with where to dial and identified like a Simutronics character,
@@ -121,6 +122,18 @@ class TelnetConnectionTest {
             // They are the same character on the same MUD, so they share its settings.
             assertEquals(listOf("mud.example"), all.map { it.code }.distinct())
             assertEquals(listOf("Bob"), all.map { it.character }.distinct())
+        }
+
+    @Test
+    fun decliningTheMudsScriptIsRemembered() =
+        runBlocking {
+            val repository = repository()
+            val id = repository.saveTelnetConnection(null, "Aardwolf", "aardwolf.org", 4000, false, "Bob", null)
+            // On by default, as it is in Mudlet.
+            assertTrue(repository().getById(id)!!.acceptScripts)
+
+            repository.saveTelnetConnection(id, "Aardwolf", "aardwolf.org", 4000, false, "Bob", null, acceptScripts = false)
+            assertFalse(repository().getById(id)!!.acceptScripts)
         }
 
     @Test

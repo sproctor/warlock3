@@ -116,6 +116,7 @@ class ConnectionRepository(
         tls: Boolean,
         character: String,
         windowTitle: String?,
+        acceptScripts: Boolean = true,
     ): String {
         val gameCode = telnetGameCode(host)
         var id = existingId ?: "$gameCode:$character".lowercase()
@@ -132,6 +133,7 @@ class ConnectionRepository(
                     port = port,
                     tls = tls,
                     windowTitle = windowTitle,
+                    acceptScripts = acceptScripts,
                 )
             registry.copy(
                 connections =

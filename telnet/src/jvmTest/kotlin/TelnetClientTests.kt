@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,8 +28,10 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
+import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.compass.Direction
 import warlockfe.warlock3.core.prefs.SettingsProblems
@@ -59,6 +62,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
@@ -86,6 +90,12 @@ class TelnetClientTests {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             selector = SelectorManager(Dispatchers.IO)
             server = aSocket(selector).tcp().bind("127.0.0.1", 0)
+            connectClient(acceptScripts = true)
+        }
+
+    /** Makes a client, connects it to the server, and takes the server's end of the connection. */
+    private suspend fun connectClient(acceptScripts: Boolean) =
+        coroutineScope {
             val port = (server.localAddress as InetSocketAddress).port
 
             val configStore = ClientConfigStore(dir.toString(), SystemFileSystem).also { it.load() }
@@ -108,6 +118,7 @@ class TelnetClientTests {
                 TelnetClient(
                     gameCode = "mud.example",
                     character = "Bob",
+                    acceptScripts = acceptScripts,
                     characterRepository = CharacterRepository(configStore),
                     windowRegistry = registry,
                     fileLogging = LoggingRepository(clientSettings, scope),
@@ -296,6 +307,59 @@ class TelnetClientTests {
             )
             withTimeout(5.seconds) { client.rightHand.first { it == "a sword" } }
             assertEquals("a shield", client.leftHand.value)
+        }
+
+    /** Negotiates GMCP and reads the handshake off the stream, so what follows is clean. */
+    private suspend fun negotiateGmcp() {
+        send(byteArrayOf(0xFF.toByte(), 0xFB.toByte(), 201.toByte())) // IAC WILL GMCP
+        assertContentEquals(byteArrayOf(0xFF.toByte(), 0xFD.toByte(), 201.toByte()), receive(3)) // IAC DO GMCP
+        receive(TelnetDecoder.gmcpMessage("Core.Hello", """{"client":"Warlock","version":"3"}""").size)
+        receive(TelnetDecoder.gmcpMessage("Core.Supports.Set", """["Char 1","Char.Items 1","Room 1"]""").size)
+        receive(TelnetDecoder.gmcpMessage("Char.Items.Inv", "").size)
+    }
+
+    @Test
+    fun theMudsScriptIsOfferedAndScriptsCanDriveTheClient() =
+        runBlocking<Unit> {
+            negotiateGmcp()
+            send(TelnetDecoder.gmcpMessage("Client.GUI", """{"version": "3", "url": "https://mud.example/warlock.lua"}"""))
+            val offer = withTimeout(5.seconds) { client.mudScript.first { it != null } }
+            assertEquals(MudScriptOffer(version = "3", url = "https://mud.example/warlock.lua"), offer)
+            // Every GMCP message is passed on for scripts, this one included.
+            val passedOn = await("gmcp event") { eventsSnapshot().filterIsInstance<ClientGmcpEvent>().firstOrNull() }
+            assertEquals(ClientGmcpEvent("Client.GUI", """{"version": "3", "url": "https://mud.example/warlock.lua"}"""), passedOn)
+
+            // A script can talk GMCP back, and set the times nothing in the stream states.
+            val message = TelnetDecoder.gmcpMessage("Core.Supports.Add", """["Char.Status 1"]""")
+            client.sendGmcp("Core.Supports.Add", """["Char.Status 1"]""")
+            assertContentEquals(message, receive(message.size))
+            client.setRoundTime(1234L)
+            client.setCastTime(1235L)
+            assertEquals(1234L, client.roundTimeEnd.value)
+            assertEquals(1235L, client.castTimeEnd.value)
+        }
+
+    @Test
+    fun gmcpIsNotSentToAServerThatDidNotNegotiateIt() =
+        runBlocking<Unit> {
+            client.sendGmcp("Core.Supports.Add", """["Char.Status 1"]""")
+            client.sendCommandDirect("look")
+            // The command is the first thing the server sees.
+            assertContentEquals("look\r\n".encodeToByteArray(), receive(6))
+        }
+
+    @Test
+    fun aConnectionThatDeclinesScriptsIgnoresTheOffer() =
+        runBlocking<Unit> {
+            client.close()
+            peer.close()
+            connectClient(acceptScripts = false)
+            negotiateGmcp()
+            send(TelnetDecoder.gmcpMessage("Client.GUI", """{"version": "3", "url": "https://mud.example/warlock.lua"}"""))
+            send(TelnetDecoder.gmcpMessage("Core.Ping", ""))
+            // Once the ping has been seen, the offer before it has been too.
+            await("ping") { eventsSnapshot().filterIsInstance<ClientGmcpEvent>().firstOrNull { it.name == "Core.Ping" } }
+            assertNull(client.mudScript.value)
         }
 
     @Test

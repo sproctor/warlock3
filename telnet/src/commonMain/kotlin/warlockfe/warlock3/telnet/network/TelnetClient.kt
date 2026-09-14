@@ -21,11 +21,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import warlockfe.warlock3.core.client.ClientCompassEvent
 import warlockfe.warlock3.core.client.ClientEvent
+import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
+import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -57,7 +60,11 @@ import kotlin.time.Instant
  * game can open, just a stream of text with ANSI colour in it that all goes to the main window.
  * A server that speaks GMCP also gets the compass lit from its room exits, a vitals panel built
  * from `Char.Vitals` in the same status-bar slot GS4's minivitals occupy, and the hands filled
- * from what its inventory says is wielded.
+ * from what its inventory says is wielded. What it says beyond that, a script can act on: every
+ * GMCP message is passed on as a [ClientGmcpEvent], and a MUD may send the script itself, by
+ * `Client.GUI` as it would send Mudlet an interface package, which is offered up as [mudScript]
+ * unless the connection was made with [acceptScripts] off. As a [ScriptableClient] the client
+ * lets such a script set the roundtime and cast time, which nothing in a telnet stream states.
  *
  * What a MUD does not tell us, the saved connection does. Wrayth names the game and the character
  * in its `<app>` tag; here [gameCode] and [character] come from the connection the user made, and
@@ -72,12 +79,14 @@ import kotlin.time.Instant
 class TelnetClient(
     private val gameCode: String,
     private val character: String,
+    private val acceptScripts: Boolean,
     private val characterRepository: CharacterRepository,
     private val windowRegistry: WindowRegistry,
     private val fileLogging: LoggingRepository,
     private val ioDispatcher: CoroutineDispatcher,
     private val socket: TelnetSocket,
-) : WarlockClient {
+) : WarlockClient,
+    ScriptableClient {
     private val logger = Logger.withTag("TelnetClient")
 
     private val scope = CoroutineScope(ioDispatcher)
@@ -95,10 +104,12 @@ class TelnetClient(
     override val characterName: StateFlow<String?> = MutableStateFlow(character)
 
     // Nothing in a telnet stream says how long the roundtime is or what spell is readied; these
-    // stay empty and the UI shows nothing for them. The hands are filled from the GMCP inventory
-    // when the server has one.
-    override val roundTimeEnd: StateFlow<Long?> = MutableStateFlow(null)
-    override val castTimeEnd: StateFlow<Long?> = MutableStateFlow(null)
+    // stay empty, and the UI shows nothing for them, unless a script sets them. The hands are
+    // filled from the GMCP inventory when the server has one.
+    private val _roundTimeEnd = MutableStateFlow<Long?>(null)
+    override val roundTimeEnd: StateFlow<Long?> = _roundTimeEnd.asStateFlow()
+    private val _castTimeEnd = MutableStateFlow<Long?>(null)
+    override val castTimeEnd: StateFlow<Long?> = _castTimeEnd.asStateFlow()
     private val _leftHand = MutableStateFlow<String?>(null)
     override val leftHand: StateFlow<String?> = _leftHand.asStateFlow()
     private val _rightHand = MutableStateFlow<String?>(null)
@@ -112,6 +123,11 @@ class TelnetClient(
 
     private val _disconnected = MutableStateFlow(false)
     override val disconnected: StateFlow<Boolean> = _disconnected.asStateFlow()
+
+    private val _mudScript = MutableStateFlow<MudScriptOffer?>(null)
+    override val mudScript: StateFlow<MudScriptOffer?> = _mudScript.asStateFlow()
+
+    private val telnet = TelnetDecoder()
 
     // The line being assembled from the stream, guarded by [lineMutex] because the read loop
     // builds it and the command path finishes it (echoing the command onto the prompt line).
@@ -167,7 +183,6 @@ class TelnetClient(
 
     private suspend fun readLoop() {
         val buffer = ByteArray(8192)
-        val telnet = TelnetDecoder()
         val text = StreamingTextDecoder()
         val ansi = AnsiParser()
         try {
@@ -223,7 +238,43 @@ class TelnetClient(
                 _rightHand.value = update.right
             }
 
+            is GmcpUpdate.Script -> {
+                if (acceptScripts) {
+                    _mudScript.value = update.offer
+                } else {
+                    logger.d { "Declining the script the MUD offered (version ${update.offer.version})" }
+                }
+            }
+
             null -> {}
+        }
+        // Whatever the client made of it, a script may want it too.
+        notifyListeners(ClientGmcpEvent(event.name, event.data))
+    }
+
+    override fun setRoundTime(endSeconds: Long?) {
+        _roundTimeEnd.value = endSeconds
+    }
+
+    override fun setCastTime(endSeconds: Long?) {
+        _castTimeEnd.value = endSeconds
+    }
+
+    override suspend fun sendGmcp(
+        name: String,
+        data: String,
+    ) {
+        if (!telnet.gmcpNegotiated) {
+            logger.d { "Not sending GMCP $name: the server did not negotiate GMCP" }
+            return
+        }
+        withContext(writeContext) {
+            try {
+                logger.d { "Sending GMCP $name $data" }
+                socket.write(TelnetDecoder.gmcpMessage(name, data))
+            } catch (e: IOException) {
+                print(StyledString("Could not send GMCP message: ${e.message}", WarlockStyle.Error))
+            }
         }
     }
 

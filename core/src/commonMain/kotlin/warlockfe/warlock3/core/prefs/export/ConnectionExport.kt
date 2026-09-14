@@ -16,4 +16,5 @@ data class ConnectionExport(
     val host: String? = null,
     val port: Int? = null,
     val tls: Boolean = false,
+    val acceptScripts: Boolean = true,
 )

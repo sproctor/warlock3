@@ -13,4 +13,12 @@ interface WarlockScriptEngine {
         file: Path,
         scriptManager: ScriptManager,
     ): ScriptInstance
+
+    /** Build an instance that runs an in-memory [content] string (an action button's script, or a MUD's). */
+    fun createStringInstance(
+        id: Long,
+        name: String,
+        content: String,
+        scriptManager: ScriptManager,
+    ): ScriptInstance
 }

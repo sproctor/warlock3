@@ -101,6 +101,7 @@ class ExportRepository(
                         host = connection.host,
                         port = connection.port,
                         tls = connection.tls,
+                        acceptScripts = connection.acceptScripts,
                     )
                 },
             settings = exportClientSettings(),
@@ -343,6 +344,7 @@ class ExportRepository(
                         host = connection.host,
                         port = connection.port,
                         tls = connection.tls,
+                        acceptScripts = connection.acceptScripts,
                     )
                 registry.copy(connections = registry.connections.filterNot { it.id == connection.id } + updated)
             }

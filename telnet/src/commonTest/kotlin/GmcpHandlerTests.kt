@@ -1,4 +1,5 @@
 import warlockfe.warlock3.core.client.DataDistance
+import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
 import warlockfe.warlock3.core.compass.Direction
@@ -124,5 +125,40 @@ class GmcpHandlerTests {
         assertNull(handler.handle("Char.Vitals", "not json"))
         assertNull(handler.handle("Char.Vitals", """{"string":"H:10/20"}"""))
         assertNull(handler.handle("Room.Info", ""))
+    }
+
+    @Test
+    fun clientGuiOffersAScript() {
+        val handler = GmcpHandler()
+        assertEquals(
+            GmcpUpdate.Script(MudScriptOffer(version = "3", url = "https://mud.example/warlock.lua")),
+            handler.handle("Client.GUI", """{"version": "3", "url": "https://mud.example/warlock.lua"}"""),
+        )
+        // The version as a number, as some games' serializers spell it.
+        assertEquals(
+            GmcpUpdate.Script(MudScriptOffer(version = "39", url = "https://mud.example/warlock.lua")),
+            handler.handle("client.gui", """{"version": 39, "url": "https://mud.example/warlock.lua"}"""),
+        )
+        // The script itself, in place of a URL.
+        assertEquals(
+            GmcpUpdate.Script(MudScriptOffer(version = "1", script = "echo('hi')")),
+            handler.handle("Client.GUI", """{"version": "1", "script": "echo('hi')"}"""),
+        )
+        // Mudlet's older raw form.
+        assertEquals(
+            GmcpUpdate.Script(MudScriptOffer(version = "39", url = "https://mud.example/warlock.lua")),
+            handler.handle("Client.GUI", "39\nhttps://mud.example/warlock.lua"),
+        )
+    }
+
+    @Test
+    fun clientGuiWithoutAScriptOffersNothing() {
+        val handler = GmcpHandler()
+        assertNull(handler.handle("Client.GUI", """{"version": "3"}"""))
+        assertNull(handler.handle("Client.GUI", """{"url": "https://mud.example/warlock.lua"}"""))
+        // Mudlet's way of declining its starter interface.
+        assertNull(handler.handle("Client.GUI", """{"baseui": false}"""))
+        assertNull(handler.handle("Client.GUI", "39"))
+        assertNull(handler.handle("Client.GUI", ""))
     }
 }

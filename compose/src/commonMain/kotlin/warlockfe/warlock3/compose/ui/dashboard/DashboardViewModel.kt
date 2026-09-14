@@ -276,6 +276,7 @@ class DashboardViewModel(
             tls = form.tls,
             character = form.character,
             windowTitle = form.windowTitle,
+            acceptScripts = form.acceptScripts,
         )
 
     /**

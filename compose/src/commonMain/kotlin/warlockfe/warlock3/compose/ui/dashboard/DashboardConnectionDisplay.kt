@@ -50,6 +50,8 @@ data class TelnetConnectionForm(
     val tls: Boolean,
     val character: String,
     val windowTitle: String?,
+    // Whether to run the script the MUD offers over GMCP, if it offers one.
+    val acceptScripts: Boolean,
 )
 
 /**
@@ -63,6 +65,7 @@ internal fun validateTelnetForm(
     tls: Boolean,
     character: String,
     windowTitle: String,
+    acceptScripts: Boolean,
 ): Result<TelnetConnectionForm> {
     val trimmedHost = host.trim()
     if (trimmedHost.isEmpty()) return Result.failure(IllegalArgumentException("Enter the server's host name."))
@@ -81,6 +84,7 @@ internal fun validateTelnetForm(
             tls = tls,
             character = trimmedCharacter,
             windowTitle = windowTitle.trim().ifBlank { null },
+            acceptScripts = acceptScripts,
         ),
     )
 }

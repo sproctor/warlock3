@@ -59,6 +59,7 @@ class ConnectToTelnetUseCase(
                         socket = socket,
                         gameCode = connection.code,
                         character = connection.character,
+                        acceptScripts = connection.acceptScripts,
                     )
                 createdClient = client
                 client.connect("")

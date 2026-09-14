@@ -303,4 +303,5 @@ internal fun ConnectionConfig.toStoredConnection(password: String?): StoredConne
         host = host,
         port = port,
         tls = tls,
+        acceptScripts = acceptScripts,
     )
