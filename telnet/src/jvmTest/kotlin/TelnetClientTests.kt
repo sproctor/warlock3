@@ -149,7 +149,7 @@ class TelnetClientTests {
         var read = 0
         withTimeout(5.seconds) {
             while (read < count) {
-                val n = fromClient.readAvailable(buffer, read, count)
+                val n = fromClient.readAvailable(buffer, read, count - read)
                 check(n >= 0) { "peer closed" }
                 read += n
             }

@@ -104,6 +104,26 @@ class TelnetConnectionTest {
         }
 
     @Test
+    fun aNewConnectionNeverReplacesOneWithTheSameHostAndCharacter() =
+        runBlocking {
+            val repository = repository()
+            val plain = repository.saveTelnetConnection(null, "Plain", "mud.example", 4000, false, "Bob", null)
+            val tls = repository.saveTelnetConnection(null, "TLS", "mud.example", 4443, true, "Bob", null)
+            val again = repository.saveTelnetConnection(null, "Again", "mud.example", 4000, false, "Bob", null)
+            assertEquals("mud.example:bob", plain)
+            assertEquals("mud.example:bob-2", tls)
+            assertEquals("mud.example:bob-3", again)
+
+            val all = repository.observeAllConnections().first()
+            assertEquals(listOf("Plain", "TLS", "Again"), all.map { it.name })
+            assertEquals(TelnetAddress("mud.example", 4000, tls = false), all[0].telnetAddress)
+            assertEquals(TelnetAddress("mud.example", 4443, tls = true), all[1].telnetAddress)
+            // They are the same character on the same MUD, so they share its settings.
+            assertEquals(listOf("mud.example"), all.map { it.code }.distinct())
+            assertEquals(listOf("Bob"), all.map { it.character }.distinct())
+        }
+
+    @Test
     fun hostIsReducedToACharacterIdSafeGameCode() =
         runBlocking {
             val id = repository().saveTelnetConnection(null, "", "[::1]", 23, false, "Bob", null)

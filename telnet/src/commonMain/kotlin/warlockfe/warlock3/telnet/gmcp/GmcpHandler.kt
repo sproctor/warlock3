@@ -45,7 +45,7 @@ sealed interface GmcpUpdate {
  *
  * The hands come from the inventory (`Char.Items`, the IRE package): the server lists it once when
  * asked and then sends each change, and an item's `attrib` string carries `l` or `L` for the hand
- * that wields it, or `W` for a wielded item that names no hand.
+ * that wields it. (`W` is not a hand: it marks a wearable item that isn't worn.)
  */
 class GmcpHandler {
     private val json = Json { ignoreUnknownKeys = true }
@@ -122,15 +122,8 @@ class GmcpHandler {
 
     private fun hands(): GmcpUpdate.Hands {
         val items = inventory.values
-        var left = items.firstOrNull { 'l' in it.attrib }
-        var right = items.firstOrNull { 'L' in it.attrib }
-        // A wielded item with no hand named goes in whichever hand is free, the right one first.
-        items.filter { 'W' in it.attrib && it !== left && it !== right }.forEach { item ->
-            when {
-                right == null -> right = item
-                left == null -> left = item
-            }
-        }
+        val left = items.firstOrNull { 'l' in it.attrib }
+        val right = items.firstOrNull { 'L' in it.attrib }
         return GmcpUpdate.Hands(left = left?.name, right = right?.name)
     }
 

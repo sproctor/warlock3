@@ -100,13 +100,14 @@ class GmcpHandlerTests {
     }
 
     @Test
-    fun wieldedWithoutAHandGoesRightThenLeft() {
+    fun wearableAndWornItemsStayOutOfTheHands() {
+        // W is wearable (and not worn), w is worn: neither is a hand.
         val hands =
             GmcpHandler().handle(
                 "Char.Items.List",
-                """{"location":"inv","items":[{"id":"1","name":"a staff","attrib":"W"},{"id":"2","name":"a torch","attrib":"W"}]}""",
+                """{"location":"inv","items":[{"id":"1","name":"a cloak","attrib":"W"},{"id":"2","name":"a helm","attrib":"w"}]}""",
             )
-        assertEquals(GmcpUpdate.Hands(left = "a torch", right = "a staff"), hands)
+        assertEquals(GmcpUpdate.Hands(left = null, right = null), hands)
     }
 
     @Test

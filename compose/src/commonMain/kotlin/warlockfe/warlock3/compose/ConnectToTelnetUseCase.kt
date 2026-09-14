@@ -10,6 +10,7 @@ import warlockfe.warlock3.compose.ui.game.GameViewModelFactory
 import warlockfe.warlock3.compose.ui.window.WindowRegistryFactory
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.sge.StoredConnection
+import warlockfe.warlock3.core.window.WindowRegistry
 import warlockfe.warlock3.telnet.network.TelnetClientFactory
 import warlockfe.warlock3.telnet.network.TelnetSocket
 
@@ -42,15 +43,16 @@ class ConnectToTelnetUseCase(
             connection.telnetAddress
                 ?: return TelnetConnectResult.Failure("${connection.name} has no host and port to connect to.")
         return withContext(ioDispatcher) {
-            // Until the client is handed off to the GameViewModel, the socket (and the client, once
-            // there is one) is ours to close: if we're cancelled (the user gave up waiting) or fail
-            // before that handoff, the finally closes it so nothing is leaked.
+            // Until they are handed off to the GameViewModel, the socket (and the client and window
+            // registry, once there are any) are ours to close: if we're cancelled (the user gave up
+            // waiting) or fail before that handoff, the finally closes them so nothing is leaked.
             var createdClient: WarlockClient? = null
+            var createdRegistry: WindowRegistry? = null
             var handedOff = false
             val socket = TelnetSocket(ioDispatcher)
             try {
                 socket.connect(address.host, address.port, address.tls)
-                val windowRegistry = windowRegistryFactory.create()
+                val windowRegistry = windowRegistryFactory.create().also { createdRegistry = it }
                 val client =
                     telnetClientFactory.create(
                         windowRegistry = windowRegistry,
@@ -86,6 +88,7 @@ class ConnectToTelnetUseCase(
             } finally {
                 if (!handedOff) {
                     createdClient?.close() ?: socket.close()
+                    createdRegistry?.close()
                 }
             }
         }

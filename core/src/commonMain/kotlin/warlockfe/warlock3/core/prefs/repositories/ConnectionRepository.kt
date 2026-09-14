@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.core.mudmobile.MudMobileCharacter
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.config.ConnectionConfig
+import warlockfe.warlock3.core.prefs.config.ConnectionRegistryConfig
 import warlockfe.warlock3.core.prefs.config.toStoredConnection
 import warlockfe.warlock3.core.prefs.dao.AccountDao
 import warlockfe.warlock3.core.sge.ConnectionProtocol
@@ -101,8 +102,11 @@ class ConnectionRepository(
      * A new connection is identified the way a Simutronics character is, `game:character`, with the
      * host standing in for the game code, so a character's settings live under
      * `characters/<host>/<character>/` and two characters on the same MUD share nothing but the
-     * globals. Editing keeps the id (and so the settings) whatever changes; the host is only where
-     * the connection dials.
+     * globals. Should that id already be taken (the same character on the same host, dialled at
+     * another port, say), the new connection gets a numbered one, `game:character-2`, rather than
+     * replacing the one that has it; the two then share the character's settings but nothing else.
+     * Editing keeps the id (and so the settings) whatever changes; the host is only where the
+     * connection dials.
      */
     suspend fun saveTelnetConnection(
         existingId: String?,
@@ -114,8 +118,11 @@ class ConnectionRepository(
         windowTitle: String?,
     ): String {
         val gameCode = telnetGameCode(host)
-        val id = existingId ?: "$gameCode:$character".lowercase()
+        var id = existingId ?: "$gameCode:$character".lowercase()
         store.mutateConnections { registry ->
+            if (existingId == null) {
+                id = registry.unusedId(id)
+            }
             val existing = registry.connections.firstOrNull { it.id == id }
             val updated =
                 (existing ?: ConnectionConfig(id = id, gameCode = gameCode, character = character)).copy(
@@ -196,6 +203,13 @@ class ConnectionRepository(
         val connection = store.currentConnections().connections.firstOrNull { it.id == id } ?: return null
         return connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
     }
+}
+
+/** [wanted] if no connection has it, else the first of `wanted-2`, `wanted-3`, ... that none has. */
+private fun ConnectionRegistryConfig.unusedId(wanted: String): String {
+    val taken = connections.mapTo(mutableSetOf()) { it.id }
+    if (wanted !in taken) return wanted
+    return generateSequence(2) { it + 1 }.map { "$wanted-$it" }.first { it !in taken }
 }
 
 /**
