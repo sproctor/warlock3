@@ -13,6 +13,7 @@ import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
 import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientGmcpEvent
+import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
@@ -407,36 +408,27 @@ class LuaScriptInstanceTest {
     @Test
     fun anEventDuringTheRestOfTheScriptIsNotLost() {
         val client = FakeWarlockClient()
+        // The script holds at waitForPrompt() until the test lets it go, so there is no clock
+        // in this: the event is sent while the script is provably still short of its last line.
         val instance =
             createInlineInstance(
                 """
                 onLine(function(line) echo("got " .. line) end)
-                echo("registered")
-                pause(2)
+                waitForPrompt()
                 echo("done")
                 """.trimIndent(),
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            withTimeout(10.seconds) {
-                while (!client.printedText().contains("registered")) delay(20.milliseconds)
-            }
-            // Sent while the script is still in its pause, and no longer once it says the pause
-            // is over: gathered from the moment the handler was registered, the event is served
-            // once the script reaches its last line. (No wall-clock assumption: a slow machine
-            // only lengthens the pause.)
-            var sent = 0
-            withTimeout(10.seconds) {
-                while (!client.printedText().contains("done")) {
-                    client.emit(ClientTextEvent("early"))
-                    sent++
-                    delay(20.milliseconds)
-                }
-            }
-            assertTrue(sent > 0)
+            // Two subscribers: the handler's collector, taken on at registration, and the
+            // prompt wait. Both attached means the line cannot be missed and the prompt cannot.
+            withTimeout(10.seconds) { client.eventFlow.subscriptionCount.first { it == 2 } }
+            client.emit(ClientTextEvent("early"))
+            client.emit(ClientPromptEvent)
             withTimeout(10.seconds) {
                 while (!client.printedText().contains("got early")) delay(20.milliseconds)
             }
+            assertContains(client.printedText(), "done")
             instance.stop()
             instance.awaitStopped(10.seconds)
         }
