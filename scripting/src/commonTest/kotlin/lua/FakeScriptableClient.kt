@@ -14,14 +14,16 @@ class FakeScriptableClient :
     override val mudScript = MutableStateFlow<MudScriptOffer?>(null)
 
     val sentGmcp = mutableListOf<Pair<String, String>>()
-    val flashes = mutableListOf<Triple<String, WarlockColor, Duration>>()
+    val flashes = mutableListOf<List<Any>>()
 
     override fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     ) {
-        flashes += Triple(window, color, duration)
+        flashes += listOf(window, color, total, fadeIn, fadeOut)
     }
 
     override fun setRoundTime(endSeconds: Long?) {

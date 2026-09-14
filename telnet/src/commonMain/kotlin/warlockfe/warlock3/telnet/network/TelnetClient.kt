@@ -266,9 +266,11 @@ class TelnetClient(
     override fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     ) {
-        windowRegistry.flashBackground(window, color, duration)
+        windowRegistry.flashBackground(window, color, total, fadeIn, fadeOut)
     }
 
     override suspend fun sendGmcp(

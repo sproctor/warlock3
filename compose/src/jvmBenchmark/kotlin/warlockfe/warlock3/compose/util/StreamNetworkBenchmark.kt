@@ -339,7 +339,9 @@ private class BenchWindowRegistry(
     override fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     ) = Unit
 
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())

@@ -386,9 +386,11 @@ class WindowRegistryImpl(
     override fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     ) {
-        _backgroundFlashes.update { it + (window to BackgroundFlash(color, duration, ++flashSerial)) }
+        _backgroundFlashes.update { it + (window to BackgroundFlash(color, total, fadeIn, fadeOut, ++flashSerial)) }
     }
 
     override fun setCharacterId(characterId: String) {

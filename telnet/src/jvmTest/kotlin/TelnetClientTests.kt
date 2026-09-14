@@ -339,8 +339,11 @@ class TelnetClientTests {
             client.setCastTime(1235L)
             assertEquals(1234L, client.roundTimeEnd.value)
             assertEquals(1235L, client.castTimeEnd.value)
-            client.flashBackground("main", WarlockColor("#400000"), 1.5.seconds)
-            assertEquals(BackgroundFlash(WarlockColor("#400000"), 1.5.seconds, 0L), registry.backgroundFlashes.value["main"])
+            client.flashBackground("main", WarlockColor("#400000"), 1.5.seconds, 0.5.seconds, 0.25.seconds)
+            assertEquals(
+                BackgroundFlash(WarlockColor("#400000"), 1.5.seconds, 0.5.seconds, 0.25.seconds, 0L),
+                registry.backgroundFlashes.value["main"],
+            )
         }
 
     @Test
@@ -468,9 +471,11 @@ private class FakeWindowRegistry : WindowRegistry {
     override fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     ) {
-        backgroundFlashes.value += window to BackgroundFlash(color, duration, backgroundFlashes.value.size.toLong())
+        backgroundFlashes.value += window to BackgroundFlash(color, total, fadeIn, fadeOut, backgroundFlashes.value.size.toLong())
     }
 
     override fun getOrCreateStream(name: String): TextStream = synchronized(streams) { streams.getOrPut(name) { FakeTextStream(name) } }

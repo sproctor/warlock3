@@ -139,10 +139,33 @@ internal class LuaBindings(
             val color =
                 colorText.toWarlockColor()?.takeIf { it.isSpecified() }
                     ?: throw IllegalArgumentException("flashBackground: \"$colorText\" is not a colour; use \"#rrggbb\"")
-            val seconds = args.getOrNull(1)?.asNumber() ?: 1.0
-            val window = args.getOrNull(2)?.asString() ?: "main"
-            if (seconds > 0.0) {
-                scriptable("flashBackground").flashBackground(window, color, seconds.seconds)
+            val total =
+                args.getOrNull(1)?.asNumber()
+                    ?: throw IllegalArgumentException("flashBackground needs the time to show the colour for, in seconds")
+            val fadeIn = args.getOrNull(2)?.asNumber() ?: 0.0
+            val fadeOut = args.getOrNull(3)?.asNumber() ?: 0.0
+            val window = args.getOrNull(4)?.asString() ?: "main"
+            val target = scriptable("flashBackground")
+            when {
+                total <= 0.0 || fadeIn < 0.0 || fadeOut < 0.0 -> {
+                    Unit
+                }
+
+                fadeIn + fadeOut > total -> {
+                    // Reported, but not fatal: the script goes on without the flash.
+                    blocking {
+                        client.print(
+                            StyledString(
+                                "Script error: flashBackground: the fades ($fadeIn + $fadeOut seconds) are longer than the whole flash ($total seconds)",
+                                style = WarlockStyle.Error,
+                            ),
+                        )
+                    }
+                }
+
+                else -> {
+                    target.flashBackground(window, color, total.seconds, fadeIn.seconds, fadeOut.seconds)
+                }
             }
             emptyList()
         }

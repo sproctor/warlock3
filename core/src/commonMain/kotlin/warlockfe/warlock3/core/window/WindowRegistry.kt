@@ -38,13 +38,16 @@ interface WindowRegistry {
     suspend fun memoryUsage(): WindowMemoryUsage
 
     // The latest background flash asked of each window, by window name: the view of that window
-    // fades to the colour and back. A script asks for these (see ScriptableClient).
+    // shows the colour for the time, with the fades asked for. A script asks for these (see
+    // ScriptableClient). The fades are the caller's to keep within the total.
     val backgroundFlashes: StateFlow<Map<String, BackgroundFlash>>
 
     fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     )
 
     fun setCharacterId(characterId: String)

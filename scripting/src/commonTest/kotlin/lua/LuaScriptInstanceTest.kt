@@ -398,31 +398,35 @@ class LuaScriptInstanceTest {
     }
 
     @Test
-    fun flashBackgroundNamesTheColourTheTimeAndTheWindow() {
+    fun flashBackgroundTakesTheColourTheTimesAndTheWindow() {
         val client = FakeScriptableClient()
         val instance =
             createInlineInstance(
                 """
-                flashBackground("#400000")
-                flashBackground("#004000", 0.25, "combat")
+                flashBackground("#400000", 1)
+                flashBackground("#004000", 2, 0.5, 0.25, "combat")
+                flashBackground("#000040", 1, 0.75, 0.75)
                 flashBackground("#000040", 0)
-                flashBackground("red")
+                flashBackground("red", 1)
                 """.trimIndent(),
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
             instance.awaitStopped()
         }
-        // A second and the main window unless said otherwise; no time, no flash; and a colour is
-        // given as #rrggbb.
+        // The fades are cuts and the window is main unless said otherwise. Fades longer than the
+        // whole are reported and the flash dropped, but the script goes on; no time is no flash;
+        // and a colour that is not #rrggbb is an error.
         assertEquals(
             listOf(
-                Triple("main", WarlockColor("#400000"), 1.seconds),
-                Triple("combat", WarlockColor("#004000"), 0.25.seconds),
+                listOf<Any>("main", WarlockColor("#400000"), 1.seconds, Duration.ZERO, Duration.ZERO),
+                listOf<Any>("combat", WarlockColor("#004000"), 2.seconds, 0.5.seconds, 0.25.seconds),
             ),
             client.flashes,
         )
-        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("not a colour") }, client.printedText().toString())
+        val printed = client.printedText()
+        assertTrue(printed.any { it.contains("Script error") && it.contains("fades") && it.contains("longer") }, printed.toString())
+        assertTrue(printed.any { it.contains("Script error") && it.contains("not a colour") }, printed.toString())
     }
 
     @Test

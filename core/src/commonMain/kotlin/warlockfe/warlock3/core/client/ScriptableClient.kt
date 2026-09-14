@@ -24,11 +24,16 @@ interface ScriptableClient {
     /** Sets when the cast time ends, in seconds since the epoch, or clears it. */
     fun setCastTime(endSeconds: Long?)
 
-    /** Fades the background of the window named [window] to [color] and back over [duration]. */
+    /**
+     * Shows the background of the window named [window] as [color] for [total], fading to it over
+     * the first [fadeIn] of that and back over the last [fadeOut]. The fades must fit in the total.
+     */
     fun flashBackground(
         window: String,
         color: WarlockColor,
-        duration: Duration,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
     )
 
     /**

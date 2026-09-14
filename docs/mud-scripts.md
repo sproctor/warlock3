@@ -102,15 +102,18 @@ behave as they do on a Simutronics game.
 ### Flashing a window
 
 ```lua
-flashBackground("#400000")             -- fade the main window's background to dark red and back, over a second
-flashBackground("#002040", 0.5)        -- over half a second
-flashBackground("#400000", 1, "combat") -- another window, by name
+flashBackground("#400000", 0.3)                  -- the main window's background dark red for 0.3s, cut in and out
+flashBackground("#002040", 2, 0.5, 1)            -- fade in over 0.5s, hold, fade out over the last 1s of the 2s
+flashBackground("#400000", 1, 0, 0.5, "combat")  -- another window, by name
 ```
 
-The colour is `#rrggbb`; the fade goes to it over the first half of the time
-and back to the window's own background over the second half. A flash asked
-while one is playing starts from the colour on screen, so a run of hits does
-not jump.
+`flashBackground(colour, total, fadeIn, fadeOut, window)`: the colour is
+`#rrggbb`; `total` is how long the whole flash lasts, in seconds; `fadeIn`
+and `fadeOut` (both 0 unless given) are how long the fades to the colour and
+back to the window's own background take, within that total. Fades that add
+up to more than the total are reported as an error and the flash dropped; the
+script goes on. A flash asked while one is playing starts from the colour on
+screen, so a run of hits does not jump.
 
 ### Talking GMCP
 
@@ -165,6 +168,6 @@ onLine("^You are stunned for (%d+) seconds", function(seconds)
 end)
 
 onLine("^You are hit for (%d+) damage", function(damage)
-    flashBackground(tonumber(damage) > 50 and "#600000" or "#300000", 0.4)
+    flashBackground(tonumber(damage) > 50 and "#600000" or "#300000", 0.4, 0, 0.3)
 end)
 ```

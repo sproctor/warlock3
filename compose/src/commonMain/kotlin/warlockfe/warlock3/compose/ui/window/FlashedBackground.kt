@@ -11,17 +11,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.delay
 import warlockfe.warlock3.compose.util.toColor
 import warlockfe.warlock3.core.window.BackgroundFlash
+import kotlin.time.Duration
 
 /** The latest background flash asked of each window, by name; see [flashedBackground]. */
 val LocalBackgroundFlashes = staticCompositionLocalOf<Map<String, BackgroundFlash>> { emptyMap() }
 
 /**
  * The colour to paint the window named [windowName] with: its [base] background, except while a
- * flash asked of it (in [LocalBackgroundFlashes]) is playing, when it fades to the flash's colour
- * over the first half of the flash's duration and back to [base] over the second. A flash asked
- * mid-fade starts from wherever the colour is, so two in a row do not jump.
+ * flash asked of it (in [LocalBackgroundFlashes]) is playing, when it goes to the flash's colour
+ * over the fade-in, holds it, and comes back to [base] over the fade-out; a fade of zero is a
+ * cut. A flash asked mid-play starts from wherever the colour is, so two in a row do not jump.
  */
 @Composable
 internal fun flashedBackground(
@@ -36,12 +38,19 @@ internal fun flashedBackground(
         if (!playing) animated.snapTo(base)
         playing = true
         try {
-            val half = (flash.duration / 2).inWholeMilliseconds.toInt()
-            animated.animateTo(flash.color.toColor(), tween(half))
-            animated.animateTo(base, tween(half))
+            animated.go(flash.color.toColor(), flash.fadeIn)
+            delay(flash.hold)
+            animated.go(base, flash.fadeOut)
         } finally {
             playing = false
         }
     }
     return if (playing) animated.value else base
+}
+
+private suspend fun Animatable<Color, *>.go(
+    target: Color,
+    over: Duration,
+) {
+    if (over <= Duration.ZERO) snapTo(target) else animateTo(target, tween(over.inWholeMilliseconds.toInt()))
 }
