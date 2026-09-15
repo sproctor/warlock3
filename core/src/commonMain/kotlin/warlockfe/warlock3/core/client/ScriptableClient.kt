@@ -33,10 +33,39 @@ interface ScriptableClient {
     /** Sets the spell readied, or clears it. */
     fun setSpellHand(spell: String?)
 
-    /** Whether the hands (and spell) are shown at all; a MUD without them can hide the block. */
+    /** Whether the hands row is shown at all; a MUD without hands can take it off the screen. */
     val handsShown: StateFlow<Boolean>
 
     fun showHands(shown: Boolean)
+
+    /**
+     * The blocks of the hands row in order: the hands and the spell, and any a script added with
+     * [setBlock]. See [HandBlock].
+     */
+    val handBlocks: StateFlow<List<HandBlock>>
+
+    /** Shows or hides one block, a hand or a script's own. */
+    fun showBlock(
+        id: String,
+        shown: Boolean,
+    )
+
+    /**
+     * Adds a block of the script's own to the end of the row, or updates it: [label] is written
+     * before the [value], and kept as it was when null (the id, for a new block). Not for the
+     * hands, which have their own setters.
+     */
+    fun setBlock(
+        id: String,
+        label: String?,
+        value: String?,
+    )
+
+    /** Removes a block a script added; the hands stay, hidden or shown. */
+    fun removeBlock(id: String)
+
+    /** Puts the blocks named in [order] first, in that order; the rest follow as they were. */
+    fun arrangeBlocks(order: List<String>)
 
     /**
      * Sets a bar in the vitals panel, adding it after the others if it is new: [percent] is how

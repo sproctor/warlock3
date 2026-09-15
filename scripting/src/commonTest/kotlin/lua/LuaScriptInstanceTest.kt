@@ -465,6 +465,40 @@ class LuaScriptInstanceTest {
     }
 
     @Test
+    fun theBlocksOfTheHandsRowCanBeShownAddedAndArranged() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                showBlock("spell", false)
+                showBlock("spell")
+                setBlock("target", "Target", "a goblin")
+                setBlock("target", nil, "")
+                removeBlock("target")
+                arrangeBlocks("target", "left", "right")
+                setBlock("left", "Weapon", "a sword")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertEquals(
+            listOf(
+                listOf("show", "spell", "false"),
+                listOf("show", "spell", "true"),
+                listOf("set", "target", "Target", "a goblin"),
+                listOf("set", "target", null, null),
+                listOf("remove", "target"),
+                listOf("arrange", "target", "left", "right"),
+            ),
+            client.blockCalls,
+        )
+        // A hand is not a block to set this way.
+        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("is a hand") }, client.printedText().toString())
+    }
+
+    @Test
     fun theStatusFunctionsNeedATelnetConnection() {
         val client = runScript("""setRoundTime(3)""")
         assertTrue(

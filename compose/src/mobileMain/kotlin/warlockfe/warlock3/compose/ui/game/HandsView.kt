@@ -22,9 +22,12 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.front_hand
 import warlockfe.warlock3.compose.generated.resources.star_shine
 import warlockfe.warlock3.compose.util.mirror
+import warlockfe.warlock3.core.client.HandBlock
 
+/** The hands row: the [blocks] that are shown, in order, the hands with their icons and the rest with their labels. */
 @Composable
 fun HandsView(
+    blocks: List<HandBlock>,
     left: String?,
     right: String?,
     spell: String?,
@@ -34,35 +37,55 @@ fun HandsView(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        HandBox(
-            icon = {
-                Icon(
-                    modifier = Modifier.rotate(90f).mirror(),
-                    painter = painterResource(Res.drawable.front_hand),
-                    contentDescription = "Left hand",
-                )
-            },
-            value = left ?: "",
-        )
-        HandBox(
-            icon = {
-                Icon(
-                    modifier = Modifier.rotate(-90f),
-                    painter = painterResource(Res.drawable.front_hand),
-                    contentDescription = "Right hand",
-                )
-            },
-            value = right ?: "",
-        )
-        HandBox(
-            icon = {
-                Icon(
-                    painter = painterResource(Res.drawable.star_shine),
-                    contentDescription = "Spell",
-                )
-            },
-            value = spell ?: "",
-        )
+        for (block in blocks) {
+            if (!block.shown) continue
+            when (block.id) {
+                HandBlock.LEFT -> {
+                    HandBox(
+                        icon = {
+                            Icon(
+                                modifier = Modifier.rotate(90f).mirror(),
+                                painter = painterResource(Res.drawable.front_hand),
+                                contentDescription = "Left hand",
+                            )
+                        },
+                        value = left ?: "",
+                    )
+                }
+
+                HandBlock.RIGHT -> {
+                    HandBox(
+                        icon = {
+                            Icon(
+                                modifier = Modifier.rotate(-90f),
+                                painter = painterResource(Res.drawable.front_hand),
+                                contentDescription = "Right hand",
+                            )
+                        },
+                        value = right ?: "",
+                    )
+                }
+
+                HandBlock.SPELL -> {
+                    HandBox(
+                        icon = {
+                            Icon(
+                                painter = painterResource(Res.drawable.star_shine),
+                                contentDescription = "Spell",
+                            )
+                        },
+                        value = spell ?: "",
+                    )
+                }
+
+                else -> {
+                    HandBox(
+                        icon = { Text(text = block.label ?: block.id, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        value = block.value ?: "",
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -94,5 +117,5 @@ fun RowScope.HandBox(
 @Preview
 @Composable
 private fun HandsViewPreview() {
-    HandsView(left = "some item", right = "", spell = "a spell")
+    HandsView(blocks = HandBlock.HANDS, left = "some item", right = "", spell = "a spell")
 }

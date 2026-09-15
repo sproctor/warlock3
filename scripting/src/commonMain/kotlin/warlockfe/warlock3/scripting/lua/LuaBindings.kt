@@ -17,6 +17,7 @@ import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
@@ -151,6 +152,38 @@ internal class LuaBindings(
         }
         bind("showHands") { args ->
             scriptable("showHands").showHands((args.firstOrNull() as? LuaValue.Bool)?.value ?: true)
+            emptyList()
+        }
+        bind("showBlock") { args ->
+            val id =
+                args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalArgumentException("showBlock needs the block's id")
+            scriptable("showBlock").showBlock(id, (args.getOrNull(1) as? LuaValue.Bool)?.value ?: true)
+            emptyList()
+        }
+        bind("setBlock") { args ->
+            val id =
+                args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalArgumentException("setBlock needs the block's id")
+            if (id in
+                HandBlock.HAND_IDS
+            ) {
+                throw IllegalArgumentException("setBlock: $id is a hand; set it with setLeftHand, setRightHand or setSpellHand")
+            }
+            val label = args.getOrNull(1)?.asString()
+            val value = args.getOrNull(2)?.asString()?.takeIf { it.isNotEmpty() }
+            scriptable("setBlock").setBlock(id, label, value)
+            emptyList()
+        }
+        bind("removeBlock") { args ->
+            val id =
+                args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalArgumentException("removeBlock needs the block's id")
+            scriptable("removeBlock").removeBlock(id)
+            emptyList()
+        }
+        bind("arrangeBlocks") { args ->
+            scriptable("arrangeBlocks").arrangeBlocks(args.mapNotNull { it.asString() })
             emptyList()
         }
         bind("setVital") { args ->

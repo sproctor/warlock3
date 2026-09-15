@@ -26,6 +26,7 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.Percentage
@@ -136,6 +137,9 @@ class TelnetClient(
 
     private val _handsShown = MutableStateFlow(true)
     override val handsShown: StateFlow<Boolean> = _handsShown.asStateFlow()
+
+    private val _handBlocks = MutableStateFlow(HandBlock.HANDS)
+    override val handBlocks: StateFlow<List<HandBlock>> = _handBlocks.asStateFlow()
 
     // The bars a script has set, in the order it first set them. Guarded by [vitalsMutex] with
     // the panel they are drawn to, since a script and the GMCP handler may both be writing it.
@@ -289,6 +293,41 @@ class TelnetClient(
 
     override fun showHands(shown: Boolean) {
         _handsShown.value = shown
+    }
+
+    override fun showBlock(
+        id: String,
+        shown: Boolean,
+    ) {
+        _handBlocks.update { blocks -> blocks.map { if (it.id == id) it.copy(shown = shown) else it } }
+    }
+
+    override fun setBlock(
+        id: String,
+        label: String?,
+        value: String?,
+    ) {
+        require(id !in HandBlock.HAND_IDS) { "$id is a hand; set it with its own function" }
+        _handBlocks.update { blocks ->
+            val existing = blocks.firstOrNull { it.id == id }
+            if (existing == null) {
+                blocks + HandBlock(id = id, label = label ?: id, value = value)
+            } else {
+                blocks.map { if (it.id == id) it.copy(label = label ?: it.label, value = value) else it }
+            }
+        }
+    }
+
+    override fun removeBlock(id: String) {
+        _handBlocks.update { blocks -> blocks.filterNot { it.id == id && !it.isHand } }
+    }
+
+    override fun arrangeBlocks(order: List<String>) {
+        _handBlocks.update { blocks ->
+            val byId = blocks.associateBy { it.id }
+            val first = order.distinct().mapNotNull { byId[it] }
+            first + blocks.filterNot { it in first }
+        }
     }
 
     override suspend fun setVital(

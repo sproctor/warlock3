@@ -31,6 +31,7 @@ import warlockfe.warlock3.core.client.ClientEvent
 import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
+import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.compass.Direction
@@ -359,6 +360,25 @@ class TelnetClientTests {
             assertTrue(client.handsShown.value)
             client.showHands(false)
             assertTrue(!client.handsShown.value)
+
+            // The row's blocks: a hand hidden, a block of the script's added and changed, the
+            // order rearranged with the unnamed following, and a hand not removable.
+            client.showBlock("spell", false)
+            client.setBlock("target", "Target", "a goblin")
+            client.setBlock("target", null, "a troll")
+            client.setBlock("gold", "Gold", "12")
+            client.arrangeBlocks(listOf("gold", "left", "nonesuch"))
+            client.removeBlock("target")
+            client.removeBlock("right")
+            assertEquals(
+                listOf(
+                    HandBlock("gold", "Gold", "12"),
+                    HandBlock("left"),
+                    HandBlock("right"),
+                    HandBlock("spell", shown = false),
+                ),
+                client.handBlocks.value,
+            )
 
             client.setVital("health", 50, "HP 50/100")
             client.setVital("mana", 150, null)

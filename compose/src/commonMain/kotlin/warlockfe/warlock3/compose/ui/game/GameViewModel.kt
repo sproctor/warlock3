@@ -81,6 +81,7 @@ import warlockfe.warlock3.core.client.ClientOpenUrlEvent
 import warlockfe.warlock3.core.client.ClientOpenWindowEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.client.SendCommandType
@@ -221,8 +222,11 @@ class GameViewModel(
     val rightHand = client.rightHand
     val spellHand = client.spellHand
 
-    /** Whether to draw the hands at all: a MUD's script may hide them, a Simutronics game always has them. */
+    /** Whether to draw the hands row at all: a MUD's script may hide it, a Simutronics game always has it. */
     val handsShown: StateFlow<Boolean> = (client as? ScriptableClient)?.handsShown ?: MutableStateFlow(true)
+
+    /** The blocks of the hands row, in order: a MUD's script may hide, add to and rearrange them. */
+    val handBlocks: StateFlow<List<HandBlock>> = (client as? ScriptableClient)?.handBlocks ?: MutableStateFlow(HandBlock.HANDS)
 
     private val _macroError = MutableStateFlow<String?>(null)
     val macroError = _macroError.asStateFlow()

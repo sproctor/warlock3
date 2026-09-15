@@ -106,12 +106,23 @@ setLeftHand("a lantern")   -- nil or "" empties a hand
 setRightHand("a sword")
 setSpellHand("Fireball")   -- the spell readied
 local left, right, spell = getHands()
-showHands(false)           -- hide the hands block altogether; true shows it again
+showHands(false)           -- hide the whole hands row; true shows it again
 ```
 
 Warlock fills the hands itself from `Char.Items` when the game sends its
 inventory with `l`/`L` attributes; these are for a game that says it some
 other way, or has no hands to show.
+
+The row is made of blocks, `left`, `right` and `spell` to begin with, and a
+script can hide any of them, add blocks of its own, and put them in order:
+
+```lua
+showBlock("spell", false)                -- no spell on this MUD; true shows it again
+setBlock("target", "Target", "a goblin") -- a block of your own: id, the label before the value, the value
+setBlock("target", nil, "a troll")       -- a nil label keeps the old one; nil or "" empties the value
+removeBlock("target")                    -- only your own blocks; hide a hand with showBlock
+arrangeBlocks("target", "left", "right") -- these first, in this order; the rest follow as they were
+```
 
 ### The vitals bars
 

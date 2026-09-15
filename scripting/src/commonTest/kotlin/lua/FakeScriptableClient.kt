@@ -1,6 +1,7 @@
 package warlockfe.warlock3.scripting.lua
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.MudScriptOffer
 import warlockfe.warlock3.core.client.ScriptableClient
 import warlockfe.warlock3.core.text.WarlockColor
@@ -31,6 +32,34 @@ class FakeScriptableClient :
 
     override fun showHands(shown: Boolean) {
         handsShown.value = shown
+    }
+
+    override val handBlocks = MutableStateFlow(HandBlock.HANDS)
+
+    /** Every block call, in order, as the words of the call. */
+    val blockCalls = mutableListOf<List<String?>>()
+
+    override fun showBlock(
+        id: String,
+        shown: Boolean,
+    ) {
+        blockCalls += listOf("show", id, shown.toString())
+    }
+
+    override fun setBlock(
+        id: String,
+        label: String?,
+        value: String?,
+    ) {
+        blockCalls += listOf("set", id, label, value)
+    }
+
+    override fun removeBlock(id: String) {
+        blockCalls += listOf("remove", id)
+    }
+
+    override fun arrangeBlocks(order: List<String>) {
+        blockCalls += listOf("arrange") + order
     }
 
     override suspend fun setVital(
