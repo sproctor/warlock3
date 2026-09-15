@@ -27,9 +27,12 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.front_hand
 import warlockfe.warlock3.compose.generated.resources.star_shine
 import warlockfe.warlock3.compose.util.mirror
+import warlockfe.warlock3.core.client.HandBlock
 
+/** The hands row: the [blocks] that are shown, in order, the hands with their icons and the rest with their labels. */
 @Composable
 fun DesktopHandsView(
+    blocks: List<HandBlock>,
     left: String?,
     right: String?,
     spell: String?,
@@ -39,42 +42,70 @@ fun DesktopHandsView(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        DesktopHandBox(
-            icon = {
-                Image(
-                    modifier = Modifier.size(18.dp).rotate(90f).mirror(),
-                    painter = painterResource(Res.drawable.front_hand),
-                    colorFilter = ColorFilter.tint(gameChrome.textFaint),
-                    contentDescription = "Left hand",
-                )
-            },
-            value = left,
-            valueColor = gameChrome.textPrimary,
-        )
-        DesktopHandBox(
-            icon = {
-                Image(
-                    modifier = Modifier.size(18.dp).rotate(-90f),
-                    painter = painterResource(Res.drawable.front_hand),
-                    colorFilter = ColorFilter.tint(gameChrome.textFaint),
-                    contentDescription = "Right hand",
-                )
-            },
-            value = right,
-            valueColor = gameChrome.textPrimary,
-        )
-        DesktopHandBox(
-            icon = {
-                Image(
-                    modifier = Modifier.size(18.dp),
-                    painter = painterResource(Res.drawable.star_shine),
-                    colorFilter = ColorFilter.tint(gameChrome.spellIcon),
-                    contentDescription = "Spell",
-                )
-            },
-            value = spell,
-            valueColor = gameChrome.spellText,
-        )
+        for (block in blocks) {
+            if (!block.shown) continue
+            when (block.id) {
+                HandBlock.LEFT -> {
+                    DesktopHandBox(
+                        icon = {
+                            Image(
+                                modifier = Modifier.size(18.dp).rotate(90f).mirror(),
+                                painter = painterResource(Res.drawable.front_hand),
+                                colorFilter = ColorFilter.tint(gameChrome.textFaint),
+                                contentDescription = "Left hand",
+                            )
+                        },
+                        value = left,
+                        valueColor = gameChrome.textPrimary,
+                    )
+                }
+
+                HandBlock.RIGHT -> {
+                    DesktopHandBox(
+                        icon = {
+                            Image(
+                                modifier = Modifier.size(18.dp).rotate(-90f),
+                                painter = painterResource(Res.drawable.front_hand),
+                                colorFilter = ColorFilter.tint(gameChrome.textFaint),
+                                contentDescription = "Right hand",
+                            )
+                        },
+                        value = right,
+                        valueColor = gameChrome.textPrimary,
+                    )
+                }
+
+                HandBlock.SPELL -> {
+                    DesktopHandBox(
+                        icon = {
+                            Image(
+                                modifier = Modifier.size(18.dp),
+                                painter = painterResource(Res.drawable.star_shine),
+                                colorFilter = ColorFilter.tint(gameChrome.spellIcon),
+                                contentDescription = "Spell",
+                            )
+                        },
+                        value = spell,
+                        valueColor = gameChrome.spellText,
+                    )
+                }
+
+                else -> {
+                    DesktopHandBox(
+                        icon = {
+                            Text(
+                                text = block.label ?: block.id,
+                                color = gameChrome.textFaint,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                            )
+                        },
+                        value = block.value,
+                        valueColor = gameChrome.textPrimary,
+                    )
+                }
+            }
+        }
     }
 }
 

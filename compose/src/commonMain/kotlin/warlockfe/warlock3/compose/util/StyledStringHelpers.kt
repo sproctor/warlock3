@@ -69,7 +69,7 @@ fun ResolvedStyle.toSpanStyle(monoFont: FontConfig?): SpanStyle =
 fun StyleDefinition.toSpanStyle(monoFont: FontConfig?): SpanStyle = resolve(listOf(toLayer())).toSpanStyle(monoFont)
 
 /** The sparse [StyleLayer] for a named style, or an empty layer when the map has no such style. */
-fun WarlockStyle.toStyleLayer(styleMap: Map<String, StyleLayer>): StyleLayer = styleMap[name] ?: StyleLayer()
+fun WarlockStyle.toStyleLayer(styleMap: Map<String, StyleLayer>): StyleLayer = styleMap[name] ?: layer ?: StyleLayer()
 
 private fun AnnotatedString.Builder.appendStyledString(
     styledString: StyledString,
@@ -94,7 +94,7 @@ private fun AnnotatedString.Builder.appendStyledStringLeaf(
     // the leaf-level monospace flag. An empty stack means the leaf has no style and gets no span, exactly
     // as before.
     val layers =
-        leaf.styles.map { styleMap[it.name] ?: StyleLayer() } +
+        leaf.styles.map { it.toStyleLayer(styleMap) } +
             if (leaf.monospace) listOf(StyleLayer(monospace = true)) else emptyList()
     val stylePushed = layers.isNotEmpty()
     if (stylePushed) {

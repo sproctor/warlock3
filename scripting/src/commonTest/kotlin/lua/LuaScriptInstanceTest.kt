@@ -10,9 +10,14 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
+import kotlinx.serialization.json.Json
+import warlockfe.warlock3.core.client.ClientEvent
+import warlockfe.warlock3.core.client.ClientGmcpEvent
+import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
+import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.scripting.wsl.FakeScriptManager
 import warlockfe.warlock3.scripting.wsl.FakeWarlockClient
 import warlockfe.warlock3.scripting.wsl.newTestConfigStore
@@ -20,10 +25,12 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 private var luaTestSeq = 0
 
@@ -47,10 +54,36 @@ class LuaScriptInstanceTest {
             id = 1L,
             name = "test",
             file = writeScript(script),
+            content = null,
             variableRepository = variableRepository,
             scriptManager = FakeScriptManager(),
             fileSystem = SystemFileSystem,
         )
+
+    /** An instance run from the string itself, as an action button's script or the MUD's is. */
+    private fun createInlineInstance(script: String): LuaScriptInstance =
+        LuaScriptInstance(
+            id = 1L,
+            name = "inline",
+            file = null,
+            content = script,
+            variableRepository = VariableRepository(newTestConfigStore()),
+            scriptManager = FakeScriptManager(),
+            fileSystem = SystemFileSystem,
+        )
+
+    /** Emits [event] every 50ms until [done] holds, since the script subscribes asynchronously. */
+    private suspend fun FakeWarlockClient.emitUntil(
+        event: ClientEvent,
+        done: () -> Boolean,
+    ) {
+        withTimeout(10.seconds) {
+            while (!done()) {
+                emit(event)
+                delay(50.milliseconds)
+            }
+        }
+    }
 
     private suspend fun LuaScriptInstance.awaitStopped(timeout: Duration = 30.seconds) {
         withTimeout(timeout) { statusFlow.first { it == ScriptStatus.Stopped } }
@@ -224,5 +257,282 @@ class LuaScriptInstanceTest {
             emitter.cancel()
         }
         assertContains(client.printedText(), "got monster")
+    }
+
+    @Test
+    fun inlineScriptsRunFromTheString() {
+        val client = FakeWarlockClient()
+        val instance = createInlineInstance("""echo("from a string")""")
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertContains(client.printedText(), "from a string")
+    }
+
+    @Test
+    fun gmcpHandlersKeepTheScriptAliveAndGetTheMessageAsATable() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                onGmcp("Char.Vitals", function(data, name)
+                    echo(name .. " hp=" .. data.hp .. " tags=" .. #data.tags .. " none=" .. tostring(data.none))
+                end)
+                -- A package name hears every message under it.
+                onGmcp("char", function(data) echo("under char") end)
+                onGmcp("Core.Ping", function(data) echo("ping " .. tostring(data)) end)
+                echo("registered")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            client.emitUntil(ClientGmcpEvent("Char.Vitals", """{"hp":10,"tags":["a","b"],"none":null}""")) {
+                client.printedText().contains("Char.Vitals hp=10 tags=2 none=nil")
+            }
+            assertContains(client.printedText(), "under char")
+            // Still running, waiting for more.
+            assertEquals(ScriptStatus.Running, instance.status)
+            client.emitUntil(ClientGmcpEvent("Core.Ping", "")) { client.printedText().contains("ping nil") }
+            // The script is about the connection: it ends when the connection does.
+            client.disconnected.value = true
+            instance.awaitStopped(10.seconds)
+        }
+        assertFalse(client.printedText().any { it.contains("Script error") })
+    }
+
+    @Test
+    fun lineHandlersMatchPatternsAndSetTheRoundtime() {
+        val client = FakeScriptableClient()
+        client.setCurrentTime(Instant.fromEpochSeconds(1000))
+        val instance =
+            createInlineInstance(
+                """
+                onLine("^Roundtime: (%d+)", function(seconds) setRoundTime(tonumber(seconds)) end)
+                onLine("^Casting", function() setCastTime(2.5) end)
+                onLine("^Clear", function() setRoundTime(0) setCastTime(0) end)
+                onLine(function(line) echo("saw " .. line) end)
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            client.emitUntil(ClientTextEvent("Roundtime: 3 sec.")) { client.roundTimeEnd.value == 1003L }
+            assertContains(client.printedText(), "saw Roundtime: 3 sec.")
+            client.emitUntil(ClientTextEvent("Casting a spell")) { client.castTimeEnd.value == 1002L }
+            client.emitUntil(ClientTextEvent("Clear")) { client.roundTimeEnd.value == null }
+            assertNull(client.castTimeEnd.value)
+            instance.stop()
+            instance.awaitStopped(10.seconds)
+        }
+        assertFalse(client.printedText().any { it.contains("Script error") })
+    }
+
+    @Test
+    fun aFailingHandlerIsReportedAndTheOthersStillRun() {
+        val client = FakeWarlockClient()
+        val instance =
+            createInlineInstance(
+                """
+                onLine(function(line) error("bad " .. line) end)
+                onLine(function(line) echo("also " .. line) end)
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            client.emitUntil(ClientTextEvent("one")) { client.printedText().any { it.contains("bad one") } }
+            assertTrue(client.printedText().any { it.contains("Script error") && it.contains("bad one") })
+            assertContains(client.printedText(), "also one")
+            assertEquals(ScriptStatus.Running, instance.status)
+            instance.stop()
+            instance.awaitStopped(10.seconds)
+        }
+    }
+
+    @Test
+    fun exitInsideAHandlerEndsTheScriptQuietly() {
+        val client = FakeWarlockClient()
+        val instance =
+            createInlineInstance(
+                """
+                onLine(function(line)
+                    echo("bye")
+                    exit()
+                end)
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            client.emitUntil(ClientTextEvent("x")) { instance.status == ScriptStatus.Stopped }
+        }
+        assertContains(client.printedText(), "bye")
+        assertFalse(client.printedText().any { it.contains("Script error") })
+    }
+
+    @Test
+    fun sendGmcpSendsStringsAsTheyAreAndTablesAsJson() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                sendGmcp("Core.Supports.Add", {"Char.Status 1"})
+                sendGmcp("Core.Ping")
+                sendGmcp("Raw", '{"a":1}')
+                sendGmcp("Obj", { n = 1, ok = true })
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertEquals(
+            listOf(
+                "Core.Supports.Add" to """["Char.Status 1"]""",
+                "Core.Ping" to "",
+                "Raw" to """{"a":1}""",
+            ),
+            client.sentGmcp.take(3),
+        )
+        // A Lua table's keys come in no particular order.
+        assertEquals("Obj", client.sentGmcp[3].first)
+        assertEquals(Json.parseToJsonElement("""{"n":1,"ok":true}"""), Json.parseToJsonElement(client.sentGmcp[3].second))
+    }
+
+    @Test
+    fun flashBackgroundTakesTheColourTheTimesAndTheWindow() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                flashBackground("#400000", 1)
+                flashBackground("#004000", 2, 0.5, 0.25, "combat")
+                flashBackground("#000040", 1, 0.75, 0.75)
+                flashBackground("#000040", 0)
+                flashBackground("red", 1)
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        // The fades are cuts and the window is main unless said otherwise. Fades longer than the
+        // whole are reported and the flash dropped, but the script goes on; no time is no flash;
+        // and a colour that is not #rrggbb is an error.
+        assertEquals(
+            listOf(
+                listOf<Any>("main", WarlockColor("#400000"), 1.seconds, Duration.ZERO, Duration.ZERO),
+                listOf<Any>("combat", WarlockColor("#004000"), 2.seconds, 0.5.seconds, 0.25.seconds),
+            ),
+            client.flashes,
+        )
+        val printed = client.printedText()
+        assertTrue(printed.any { it.contains("Script error") && it.contains("fades") && it.contains("longer") }, printed.toString())
+        assertTrue(printed.any { it.contains("Script error") && it.contains("not a colour") }, printed.toString())
+    }
+
+    @Test
+    fun handsAndVitalsCanBeSetAndRead() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                setLeftHand("a lantern")
+                setRightHand("a sword")
+                setSpellHand("Fireball")
+                local left, right, spell = getHands()
+                echo(left .. "|" .. right .. "|" .. spell)
+                setRightHand(nil)
+                setSpellHand("")
+                local _, right2, spell2 = getHands()
+                echo(tostring(right2) .. "|" .. tostring(spell2))
+                showHands(false)
+                setVital("health", 49.6, "HP 50/100")
+                setVital("mana", 100)
+                clearVitals()
+                setVital("stamina", 10, "Moves 1/10")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertContains(client.printedText(), "a lantern|a sword|Fireball")
+        // nil and "" both empty a hand.
+        assertContains(client.printedText(), "nil|nil")
+        assertEquals("a lantern", client.leftHand.value)
+        assertFalse(client.handsShown.value)
+        assertEquals(mapOf<String, Pair<Int, String?>>("stamina" to (10 to "Moves 1/10")), client.vitals)
+        assertFalse(client.printedText().any { it.contains("Script error") }, client.printedText().toString())
+    }
+
+    @Test
+    fun theBlocksOfTheHandsRowCanBeShownAddedAndArranged() {
+        val client = FakeScriptableClient()
+        val instance =
+            createInlineInstance(
+                """
+                showBlock("spell", false)
+                showBlock("spell")
+                setBlock("target", "Target", "a goblin")
+                setBlock("target", nil, "")
+                removeBlock("target")
+                arrangeBlocks("target", "left", "right")
+                setBlock("left", "Weapon", "a sword")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertEquals(
+            listOf(
+                listOf("show", "spell", "false"),
+                listOf("show", "spell", "true"),
+                listOf("set", "target", "Target", "a goblin"),
+                listOf("set", "target", null, null),
+                listOf("remove", "target"),
+                listOf("arrange", "target", "left", "right"),
+            ),
+            client.blockCalls,
+        )
+        // A hand is not a block to set this way.
+        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("is a hand") }, client.printedText().toString())
+    }
+
+    @Test
+    fun theStatusFunctionsNeedATelnetConnection() {
+        val client = runScript("""setRoundTime(3)""")
+        assertTrue(
+            client.printedText().any { it.contains("Script error") && it.contains("only available on a telnet connection") },
+            client.printedText().toString(),
+        )
+    }
+
+    @Test
+    fun anEventDuringTheRestOfTheScriptIsNotLost() {
+        val client = FakeWarlockClient()
+        // The script holds at waitForPrompt() until the test lets it go, so there is no clock
+        // in this: the event is sent while the script is provably still short of its last line.
+        val instance =
+            createInlineInstance(
+                """
+                onLine(function(line) echo("got " .. line) end)
+                waitForPrompt()
+                echo("done")
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            // Two subscribers: the handler's collector, taken on at registration, and the
+            // prompt wait. Both attached means the line cannot be missed and the prompt cannot.
+            withTimeout(10.seconds) { client.eventFlow.subscriptionCount.first { it == 2 } }
+            client.emit(ClientTextEvent("early"))
+            client.emit(ClientPromptEvent)
+            withTimeout(10.seconds) {
+                while (!client.printedText().contains("got early")) delay(20.milliseconds)
+            }
+            assertContains(client.printedText(), "done")
+            instance.stop()
+            instance.awaitStopped(10.seconds)
+        }
     }
 }

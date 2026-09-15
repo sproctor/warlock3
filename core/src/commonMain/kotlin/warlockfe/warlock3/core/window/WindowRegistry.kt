@@ -5,6 +5,7 @@ import warlockfe.warlock3.core.text.ResolvedStyle
 import warlockfe.warlock3.core.text.StyleLayer
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockColor
+import kotlin.time.Duration
 
 interface WindowRegistry {
     // The named style presets as sparse layers (no "default" — the base style is separate, see
@@ -35,6 +36,19 @@ interface WindowRegistry {
     // What this connection's streams and panels are currently retaining, for the memory usage view.
     // Suspends because each stream reports from the work-queue coroutine that owns its buffers.
     suspend fun memoryUsage(): WindowMemoryUsage
+
+    // The latest background flash asked of each window, by window name: the view of that window
+    // shows the colour for the time, with the fades asked for. A script asks for these (see
+    // ScriptableClient). The fades are the caller's to keep within the total.
+    val backgroundFlashes: StateFlow<Map<String, BackgroundFlash>>
+
+    fun flashBackground(
+        window: String,
+        color: WarlockColor,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
+    )
 
     fun setCharacterId(characterId: String)
 

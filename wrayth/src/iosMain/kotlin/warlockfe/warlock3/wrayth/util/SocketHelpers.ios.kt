@@ -124,9 +124,14 @@ actual suspend fun openTLSSocket(
     selectorManager: SelectorManager,
     host: String,
     port: Int,
-    certificate: ByteArray,
+    certificate: ByteArray?,
     coroutineContext: CoroutineContext,
 ): TLSSocketConnection {
+    if (certificate == null) {
+        // No verify block: Network.framework evaluates the chain against the system anchors and
+        // checks it against the server name set in openNetworkSocket.
+        return openNetworkSocket(host, port, coroutineContext, useTls = true)
+    }
     val verifyQueue = dispatch_queue_create("warlockfe.warlock3.socket.verify", null)
     return openNetworkSocket(host, port, coroutineContext, useTls = true) { options ->
         val secOptions =

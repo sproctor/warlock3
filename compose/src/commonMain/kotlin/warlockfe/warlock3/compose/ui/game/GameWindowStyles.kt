@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import warlockfe.warlock3.compose.ui.window.LocalBackgroundFlashes
 import warlockfe.warlock3.compose.ui.window.LocalProgressBarSettings
 import warlockfe.warlock3.compose.ui.window.LocalWindowFindController
 import warlockfe.warlock3.compose.ui.window.LocalWindowSelectionController
@@ -36,7 +37,9 @@ fun GameWindowStyles(
     val panelScale by viewModel.panelScale.collectAsState()
     val panelDefaults = remember(panelFont, panelScale) { PanelDefaults(panelFont, panelScale) }
     val progressBarSettings by viewModel.progressBarSettings.collectAsState()
+    val backgroundFlashes by viewModel.backgroundFlashes.collectAsState()
     CompositionLocalProvider(
+        LocalBackgroundFlashes provides backgroundFlashes,
         LocalProgressBarSettings provides
             ProgressBarSettingsState(
                 settings = progressBarSettings,

@@ -20,6 +20,16 @@ data object ClientNavEvent : ClientEvent
 
 data object ClientPromptEvent : ClientEvent
 
+/**
+ * A GMCP message from the server, as sent: the package and message name (`Char.Vitals`) and the
+ * JSON, empty when the message carried none. Every message is passed on, whether or not the
+ * client made anything of it, so a script can act on the ones the client does not know.
+ */
+data class ClientGmcpEvent(
+    val name: String,
+    val data: String,
+) : ClientEvent
+
 data class ClientOpenUrlEvent(
     val url: Uri,
 ) : ClientEvent

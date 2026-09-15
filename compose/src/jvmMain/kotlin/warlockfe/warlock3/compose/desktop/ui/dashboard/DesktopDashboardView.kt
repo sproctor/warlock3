@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,6 +62,8 @@ import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModel
 import warlockfe.warlock3.compose.ui.dashboard.MUD_MOBILE_GAME_CODES
 import warlockfe.warlock3.compose.ui.dashboard.MudMobileAccent
 import warlockfe.warlock3.compose.ui.dashboard.connectionSubline
+import warlockfe.warlock3.compose.ui.dashboard.isTelnet
+import warlockfe.warlock3.compose.ui.dashboard.needsPasswordPrompt
 import warlockfe.warlock3.core.mudmobile.SyncStatus
 import warlockfe.warlock3.core.prefs.models.AccountEntity
 import warlockfe.warlock3.core.sge.StoredConnection
@@ -75,6 +78,7 @@ private val RAIL_BREAKPOINT = 720.dp
 private class DashboardUiState {
     var showTokenDialog by mutableStateOf(false)
     var showAddCharacterDialog by mutableStateOf(false)
+    var showNewTelnetDialog by mutableStateOf(false)
     var passwordPrompt: StoredConnection? by mutableStateOf(null)
     var editConnection: StoredConnection? by mutableStateOf(null)
     var deleteConnection: StoredConnection? by mutableStateOf(null)
@@ -102,6 +106,7 @@ fun DesktopDashboardView(
             connections.isEmpty() && !mudMobileConnected -> {
                 FirstRunPanel(
                     onCreate = connectToSGE,
+                    onCreateTelnet = { ui.showNewTelnetDialog = true },
                     onConnectMudMobile = { ui.showTokenDialog = true },
                 )
             }
@@ -147,6 +152,12 @@ private fun WideLayout(
                 enabled = !viewModel.busy,
                 modifier = Modifier.fillMaxWidth(),
             )
+            WarlockOutlinedButton(
+                onClick = { ui.showNewTelnetDialog = true },
+                text = "Add a telnet MUD",
+                enabled = !viewModel.busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
             viewModel.message?.takeIf { !viewModel.busy }?.let { Text(it) }
             MudMobileRailBlock(viewModel, mudMobileConnected, ui)
         }
@@ -174,6 +185,11 @@ private fun NarrowLayout(
             WarlockButton(
                 onClick = connectToSGE,
                 text = "Create a new connection",
+                enabled = !viewModel.busy,
+            )
+            WarlockOutlinedButton(
+                onClick = { ui.showNewTelnetDialog = true },
+                text = "Add a telnet MUD",
                 enabled = !viewModel.busy,
             )
             Spacer(Modifier.weight(1f))
@@ -383,9 +399,10 @@ private fun ConnectionRow(
     val stripeColor = if (connection.mudMobile) MudMobileAccent else JewelTheme.globalColors.borders.normal
 
     fun login() {
-        // A connection logs in with its account's saved password; prompt to set one when it's
-        // missing (both MUD Mobile and play.net logins need it) instead of attempting a doomed login.
-        if (connection.password.isNullOrBlank()) {
+        // A play.net connection logs in with its account's saved password; prompt to set one when
+        // it's missing (both MUD Mobile and play.net logins need it) instead of attempting a doomed
+        // login. A telnet MUD asks for its own.
+        if (connection.needsPasswordPrompt()) {
             ui.passwordPrompt = connection
         } else {
             viewModel.connect(connection)
@@ -466,6 +483,7 @@ private fun ConnectionRowMenu(
 @Composable
 private fun FirstRunPanel(
     onCreate: () -> Unit,
+    onCreateTelnet: () -> Unit,
     onConnectMudMobile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -475,9 +493,13 @@ private fun FirstRunPanel(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text("Welcome to Warlock", fontWeight = FontWeight.SemiBold)
-            Text("No connections yet. Get into a game one of two ways:")
+            Text("No connections yet. Get into a game one of three ways:")
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Three cards side by side, wrapping onto a second row in a window too narrow for them.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Column(
                     modifier =
                         Modifier
@@ -503,6 +525,19 @@ private fun FirstRunPanel(
                     Text("MUD Mobile")
                     Text("Already have an account? Bring your cloud characters in.")
                     WarlockOutlinedButton(onClick = onConnectMudMobile, text = "Connect to MUD Mobile")
+                }
+                Column(
+                    modifier =
+                        Modifier
+                            .width(220.dp)
+                            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(8.dp))
+                            .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Telnet MUD")
+                    Text("Any other MUD, by host and port.")
+                    WarlockOutlinedButton(onClick = onCreateTelnet, text = "Add a telnet MUD")
                 }
             }
         }
@@ -574,7 +609,29 @@ private fun DashboardDialogs(
         }
     }
 
+    if (ui.showNewTelnetDialog) {
+        DesktopTelnetConnectionDialog(
+            existing = null,
+            onSave = { form, connectNow ->
+                viewModel.createTelnetConnection(form, connectNow = connectNow)
+                ui.showNewTelnetDialog = false
+            },
+            onDismiss = { ui.showNewTelnetDialog = false },
+        )
+    }
+
     ui.editConnection?.let { connection ->
+        if (connection.isTelnet) {
+            DesktopTelnetConnectionDialog(
+                existing = connection,
+                onSave = { form, _ ->
+                    viewModel.updateTelnetConnection(connection.id, form)
+                    ui.editConnection = null
+                },
+                onDismiss = { ui.editConnection = null },
+            )
+            return@let
+        }
         DesktopConnectionSettingsDialog(
             name = connection.name,
             windowTitle = connection.windowTitle,

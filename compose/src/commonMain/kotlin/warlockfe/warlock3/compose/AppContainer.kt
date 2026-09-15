@@ -73,6 +73,8 @@ import warlockfe.warlock3.core.prefs.repositories.ScriptDirRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
 import warlockfe.warlock3.core.prefs.snapshot.openVersionedDatabase
+import warlockfe.warlock3.core.script.HttpMudScriptFetcher
+import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.sge.SgeClient
 import warlockfe.warlock3.core.sge.SgeClientFactory
@@ -84,6 +86,7 @@ import warlockfe.warlock3.scripting.ScriptManagerFactoryImpl
 import warlockfe.warlock3.scripting.WarlockScriptEngineRepositoryImpl
 import warlockfe.warlock3.scripting.lua.LuaEngine
 import warlockfe.warlock3.scripting.wsl.WslEngine
+import warlockfe.warlock3.telnet.network.TelnetClientFactory
 import warlockfe.warlock3.wrayth.network.SgeClientImpl
 import warlockfe.warlock3.wrayth.network.WraythClient
 import warlockfe.warlock3.wrayth.settings.WraythImporter
@@ -326,6 +329,7 @@ class AppContainer(
             clientSettingRepository = clientSettings,
             commandHistoryRepository = commandHistoryRepository,
             connectionRepository = connectionRepository,
+            mudScriptStore = mudScriptStore,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -350,6 +354,14 @@ class AppContainer(
                     commandListStore = commandListStore,
                 )
         }
+
+    val telnetClientFactory by lazy {
+        TelnetClientFactory(
+            characterRepository = characterRepository,
+            loggingRepository = loggingRepository,
+            ioDispatcher = ioDispatcher,
+        )
+    }
 
     val windowRegistryFactory by lazy {
         WindowRegistryFactory(
@@ -384,6 +396,24 @@ class AppContainer(
     }
 
     val mudMobileApi by lazy { MudMobileApi(mudMobileHttpClient) }
+
+    /**
+     * Keeps the scripts MUDs send. They are fetched by a client of their own, which does not
+     * follow redirects: the store checks where a script is fetched from (never this machine or
+     * its network), and a redirect would go somewhere it has not checked.
+     */
+    val mudScriptStore by lazy {
+        val httpClient =
+            HttpClient(CIO) {
+                followRedirects = false
+                install(HttpTimeout) { requestTimeoutMillis = 15_000 }
+            }
+        MudScriptStore(
+            characterConfigStore = characterConfigStore,
+            fileSystem = fileSystem,
+            fetcher = HttpMudScriptFetcher(httpClient),
+        )
+    }
 
     // Backs up / syncs the per-character TOML settings to the user's MUD Mobile account.
     val warlockSettingsSync by lazy {
@@ -427,6 +457,16 @@ class AppContainer(
             mudMobileConnectUseCase = mudMobileConnectUseCase,
             mudMobileDiscoverUseCase = mudMobileDiscoverUseCase,
             warlockSettingsSync = warlockSettingsSync,
+            connectToTelnetUseCase = connectToTelnetUseCase,
+        )
+    }
+
+    val connectToTelnetUseCase by lazy {
+        ConnectToTelnetUseCase(
+            windowRegistryFactory = windowRegistryFactory,
+            telnetClientFactory = telnetClientFactory,
+            gameViewModelFactory = gameViewModelFactory,
+            ioDispatcher = ioDispatcher,
         )
     }
 

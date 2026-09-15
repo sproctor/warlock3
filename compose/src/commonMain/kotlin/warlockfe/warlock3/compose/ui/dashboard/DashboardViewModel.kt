@@ -12,10 +12,12 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import warlockfe.warlock3.compose.ConnectToGameUseCase
+import warlockfe.warlock3.compose.ConnectToTelnetUseCase
 import warlockfe.warlock3.compose.MudMobileConnectResult
 import warlockfe.warlock3.compose.MudMobileConnectUseCase
 import warlockfe.warlock3.compose.MudMobileDiscoverResult
 import warlockfe.warlock3.compose.MudMobileDiscoverUseCase
+import warlockfe.warlock3.compose.TelnetConnectResult
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.model.GameState
 import warlockfe.warlock3.core.mudmobile.CharactersResult
@@ -28,6 +30,7 @@ import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionRepository
 import warlockfe.warlock3.core.prefs.repositories.ConnectionSettingsRepository
 import warlockfe.warlock3.core.sge.AutoConnectResult
+import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.ConnectionProxySettings
 import warlockfe.warlock3.core.sge.SgeClientFactory
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -46,6 +49,7 @@ class DashboardViewModel(
     private val mudMobileConnect: MudMobileConnectUseCase,
     private val mudMobileDiscover: MudMobileDiscoverUseCase,
     private val warlockSettingsSync: WarlockSettingsSync,
+    private val connectToTelnet: ConnectToTelnetUseCase,
 ) : ViewModel() {
     val connections = connectionRepository.observeAllConnections()
 
@@ -154,6 +158,11 @@ class DashboardViewModel(
     }
 
     fun connect(connection: StoredConnection) {
+        // A telnet MUD is dialed directly: no login server, no password of ours.
+        if (connection.protocol == ConnectionProtocol.TELNET) {
+            connectTelnet(connection)
+            return
+        }
         // MUD Mobile connections route through the hosted-Lich flow instead of a direct play.net login.
         if (connection.mudMobile) {
             connectMudMobile(connection, connection.password ?: "")
@@ -205,6 +214,70 @@ class DashboardViewModel(
         connectJob = null
         message = null
     }
+
+    private fun connectTelnet(connection: StoredConnection) {
+        if (busy) return
+        busy = true
+        connectError = null
+        connectJob?.cancel()
+        connectJob =
+            viewModelScope.launch {
+                try {
+                    // Remember this as the last launched connection (for auto-connect-on-startup).
+                    clientSettingRepository.putLastConnectionId(connection.id)
+                    val address = connection.telnetAddress
+                    message = if (address != null) "Connecting to ${address.host}:${address.port}..." else "Connecting..."
+                    val result = connectToTelnet(connection, gameState)
+                    if (result is TelnetConnectResult.Failure) {
+                        message = null
+                        connectError = result.message
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.e(e) { "Error connecting to telnet server" }
+                    connectError = "Error: ${e.message}"
+                } finally {
+                    connectJob = null
+                    busy = false
+                }
+            }
+    }
+
+    /** Save a new telnet connection and, when [connectNow], dial it straight away. */
+    fun createTelnetConnection(
+        form: TelnetConnectionForm,
+        connectNow: Boolean,
+    ) {
+        viewModelScope.launch {
+            val id = saveTelnetConnection(existingId = null, form = form)
+            if (connectNow) {
+                connectionRepository.getById(id)?.let { connect(it) }
+            }
+        }
+    }
+
+    fun updateTelnetConnection(
+        id: String,
+        form: TelnetConnectionForm,
+    ) {
+        viewModelScope.launch { saveTelnetConnection(existingId = id, form = form) }
+    }
+
+    private suspend fun saveTelnetConnection(
+        existingId: String?,
+        form: TelnetConnectionForm,
+    ): String =
+        connectionRepository.saveTelnetConnection(
+            existingId = existingId,
+            name = form.name,
+            host = form.host,
+            port = form.port,
+            tls = form.tls,
+            character = form.character,
+            windowTitle = form.windowTitle,
+            acceptScripts = form.acceptScripts,
+        )
 
     /**
      * Save a freshly-entered password onto the connection's play.net account, then connect. Used when

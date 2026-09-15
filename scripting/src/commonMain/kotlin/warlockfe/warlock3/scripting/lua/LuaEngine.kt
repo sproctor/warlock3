@@ -18,5 +18,12 @@ class LuaEngine(
         name: String,
         file: Path,
         scriptManager: ScriptManager,
-    ): ScriptInstance = LuaScriptInstance(id, name, file, variableRepository, scriptManager, fileSystem)
+    ): ScriptInstance = LuaScriptInstance(id, name, file, null, variableRepository, scriptManager, fileSystem)
+
+    override fun createStringInstance(
+        id: Long,
+        name: String,
+        content: String,
+        scriptManager: ScriptManager,
+    ): ScriptInstance = LuaScriptInstance(id, name, null, content, variableRepository, scriptManager, fileSystem)
 }

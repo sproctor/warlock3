@@ -5,6 +5,11 @@ import warlockfe.warlock3.core.client.WarlockAction
 data class WarlockStyle(
     val name: String,
     val action: WarlockAction? = null,
+    // An inline style for text whose look comes from the game rather than from a named preset: an
+    // ANSI color from a telnet MUD, say. The renderer still looks [name] up in the preset map first,
+    // so a skin or the user can override a named inline style; [layer] is what applies when nothing
+    // by that name is defined. Null for the ordinary preset-only styles.
+    val layer: StyleLayer? = null,
 ) {
     companion object {
         val Bold = WarlockStyle("bold")

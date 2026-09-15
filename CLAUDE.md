@@ -43,7 +43,7 @@ under JBR 25, configured via `javaHome` in `desktopApp/build.gradle.kts`, so
 
 ## Module Architecture
 
-The project is organized into 6 Gradle modules:
+The project is organized into 7 Gradle modules:
 
 - **`core/`** — Multiplatform business logic, broken into sub-modules:
   - `client/` — Game client, networking, character data
@@ -53,6 +53,7 @@ The project is organized into 6 Gradle modules:
   - `script/` — Script handling
   - `compass/`, `text/`, `window/`, `util/` — Supporting domain modules
 - **`wrayth/`** — SGE network protocol parsing (ANTLR grammars: `WraythParser.g4`, `WraythLexer.g4`)
+- **`telnet/`** — Client for plain telnet MUDs: option negotiation (`TelnetDecoder`), a UTF-8/Latin-1 text decoder, an ANSI SGR parser, GMCP (`Char.Vitals` → the status-bar vitals panel, `Room.Info` exits → the compass, `Char.Items` → the hands, `Client.GUI` → a Lua script the MUD sends, run by the scripting engine; see `docs/mud-scripts.md`), and `TelnetClient`, a second `WarlockClient` beside `WraythClient`. Depends on `wrayth/` only for its plain/TLS socket helpers
 - **`scripting/`** — Scripting engine (ANTLR-based WSL plus Lua via lua-kmp, all platforms)
 - **`compose/`** — Multiplatform Compose UI components (dashboard, game screen, settings, themes)
 - **`desktopApp/`** — JVM desktop entry point (`Main.kt`), uses Jewel for native look & feel

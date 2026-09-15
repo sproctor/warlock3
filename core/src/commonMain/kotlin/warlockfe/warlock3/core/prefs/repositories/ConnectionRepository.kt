@@ -6,8 +6,10 @@ import kotlinx.coroutines.flow.map
 import warlockfe.warlock3.core.mudmobile.MudMobileCharacter
 import warlockfe.warlock3.core.prefs.config.ClientConfigStore
 import warlockfe.warlock3.core.prefs.config.ConnectionConfig
+import warlockfe.warlock3.core.prefs.config.ConnectionRegistryConfig
 import warlockfe.warlock3.core.prefs.config.toStoredConnection
 import warlockfe.warlock3.core.prefs.dao.AccountDao
+import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.StoredConnection
 
 /**
@@ -94,6 +96,59 @@ class ConnectionRepository(
     }
 
     /**
+     * Save a telnet connection: a new one, or new details for the one with [existingId]. Returns
+     * the saved connection's id.
+     *
+     * A new connection is identified the way a Simutronics character is, `game:character`, with the
+     * host standing in for the game code, so a character's settings live under
+     * `characters/<host>/<character>/` and two characters on the same MUD share nothing but the
+     * globals. Should that id already be taken (the same character on the same host, dialled at
+     * another port, say), the new connection gets a numbered one, `game:character-2`, rather than
+     * replacing the one that has it; the two then share the character's settings but nothing else.
+     * Editing keeps the id (and so the settings) whatever changes; the host is only where the
+     * connection dials.
+     */
+    suspend fun saveTelnetConnection(
+        existingId: String?,
+        name: String,
+        host: String,
+        port: Int,
+        tls: Boolean,
+        character: String,
+        windowTitle: String?,
+        acceptScripts: Boolean = true,
+    ): String {
+        val gameCode = telnetGameCode(host)
+        var id = existingId ?: "$gameCode:$character".lowercase()
+        store.mutateConnections { registry ->
+            if (existingId == null) {
+                id = registry.unusedId(id)
+            }
+            val existing = registry.connections.firstOrNull { it.id == id }
+            val updated =
+                (existing ?: ConnectionConfig(id = id, gameCode = gameCode, character = character)).copy(
+                    name = name,
+                    protocol = ConnectionProtocol.TELNET.configValue,
+                    host = host,
+                    port = port,
+                    tls = tls,
+                    windowTitle = windowTitle,
+                    acceptScripts = acceptScripts,
+                )
+            registry.copy(
+                connections =
+                    if (existing != null) {
+                        // Update in place so the connection keeps its position in the list.
+                        registry.connections.map { if (it.id == id) updated else it }
+                    } else {
+                        registry.connections + updated
+                    },
+            )
+        }
+        return id
+    }
+
+    /**
      * Reconcile the MUD Mobile connections in the registry with the given set, **preserving the
      * existing order** (so a user's manual reordering survives a refresh): existing entries are
      * updated in place, MUD Mobile entries no longer present are dropped, and genuinely new ones are
@@ -151,6 +206,24 @@ class ConnectionRepository(
         return connection.toStoredConnection(accountDao.getByUsername(connection.username)?.password)
     }
 }
+
+/** [wanted] if no connection has it, else the first of `wanted-2`, `wanted-3`, ... that none has. */
+private fun ConnectionRegistryConfig.unusedId(wanted: String): String {
+    val taken = connections.mapTo(mutableSetOf()) { it.id }
+    if (wanted !in taken) return wanted
+    return generateSequence(2) { it + 1 }.map { "$wanted-$it" }.first { it !in taken }
+}
+
+/**
+ * The game code a telnet host stands in for: lowercased, and reduced to the characters a character
+ * id keeps (see CharacterConfigStore's directory naming), so the id it goes into is one that survives
+ * the trip to a directory name and back.
+ */
+private fun telnetGameCode(host: String): String =
+    host
+        .lowercase()
+        .map { c -> if (c.isLetterOrDigit() || c == '-' || c == '_' || c == '.') c else '_' }
+        .joinToString("")
 
 private fun MudMobileCharacter.toMudMobileConfig(): ConnectionConfig =
     ConnectionConfig(
