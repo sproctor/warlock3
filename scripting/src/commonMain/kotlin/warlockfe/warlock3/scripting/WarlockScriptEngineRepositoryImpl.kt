@@ -8,7 +8,6 @@ import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.WarlockScriptEngineRepository
 import warlockfe.warlock3.scripting.util.extension
 import warlockfe.warlock3.scripting.util.nameWithoutExtension
-import warlockfe.warlock3.scripting.wsl.WslEngine
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.fetchAndIncrement
 
@@ -75,12 +74,12 @@ class WarlockScriptEngineRepositoryImpl(
     override suspend fun getScriptFromContents(
         name: String,
         contents: String,
+        extension: String,
         scriptManager: ScriptManager,
     ): ScriptLaunchResult {
-        // Inline scripts are WSL only; the Lua engine has no string-backed instance.
         val engine =
-            engines.filterIsInstance<WslEngine>().firstOrNull()
-                ?: return ScriptLaunchResult.Failure("WSL scripting engine is unavailable")
+            getEngineForExtension(extension)
+                ?: return ScriptLaunchResult.Failure("Unsupported script language - $extension")
         return ScriptLaunchResult.Success(
             engine.createStringInstance(nextId.fetchAndIncrement(), name, contents, scriptManager),
         )

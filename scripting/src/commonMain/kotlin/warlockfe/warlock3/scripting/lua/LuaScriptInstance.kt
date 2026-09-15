@@ -30,10 +30,16 @@ import warlockfe.warlock3.core.util.parseArguments
 /** Thrown by the script bindings to unwind a script that has been stopped. */
 class StopException : Exception("Script stopped")
 
+/**
+ * A Lua script: read from [file], or given as [content] (an action button's script, or the one
+ * the MUD sent). It runs top to bottom, and then, if it registered handlers with `onGmcp` or
+ * `onLine`, keeps running to serve them until it is stopped or the connection closes.
+ */
 class LuaScriptInstance(
     override val id: Long,
     override val name: String,
-    private val file: Path,
+    private val file: Path?,
+    private val content: String?,
     private val variableRepository: VariableRepository,
     private val scriptManager: ScriptManager,
     private val fileSystem: FileSystem,
@@ -55,15 +61,18 @@ class LuaScriptInstance(
         val arguments = parseArguments(argumentString)
         scope.launch {
             try {
-                val code = fileSystem.source(file).buffered().use { it.readString() }
+                val code = content ?: fileSystem.source(checkNotNull(file)).buffered().use { it.readString() }
                 // The whole interpreter lifetime stays inside this one blocking block, so the
                 // state never leaves the thread it was created on (LuaState is thread-confined).
                 // DEBUG is opened only so the bindings can install their watchdog hook; the
                 // bootstrap removes the debug table before the script runs.
                 LuaState(LuaConfig(stdlibs = StdLib.SAFE_DEFAULT + StdLib.DEBUG)).use { lua ->
-                    LuaBindings(lua, client, this@LuaScriptInstance, variableRepository).install()
+                    val bindings = LuaBindings(lua, client, this@LuaScriptInstance, variableRepository)
+                    bindings.install()
                     val chunk = lua.load(code, "@$name")
                     lua.call(chunk, arguments.map { LuaValue.Str(it) })
+                    // Returns at once unless the script registered handlers.
+                    bindings.serveHandlers()
                 }
             } catch (e: LuaSyntaxError) {
                 client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))

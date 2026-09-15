@@ -88,6 +88,7 @@ import org.jetbrains.jewel.window.utils.DesktopPlatform
 import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.TelnetConnectResult
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
@@ -115,6 +116,7 @@ import warlockfe.warlock3.core.prefs.ThemeSetting
 import warlockfe.warlock3.core.prefs.repositories.ClientSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.MainWindowBounds
 import warlockfe.warlock3.core.sge.AutoConnectResult
+import warlockfe.warlock3.core.sge.ConnectionProtocol
 import warlockfe.warlock3.core.sge.SgeSettings
 import warlockfe.warlock3.core.sge.SimuGameCredentials
 import warlockfe.warlock3.core.sge.parseSalCredentials
@@ -741,6 +743,15 @@ private class WarlockCommand : CliktCommand() {
                 if (connection == null) {
                     println("Invalid connection name: $autoConnectName")
                     exitProcess(-1)
+                }
+                // A telnet MUD needs no login server: dial it and open the game screen.
+                if (connection.protocol == ConnectionProtocol.TELNET) {
+                    val result = appContainer.connectToTelnetUseCase(connection, this@apply)
+                    if (result is TelnetConnectResult.Failure) {
+                        println(result.message)
+                        exitProcess(-1)
+                    }
+                    return@runBlocking
                 }
                 val sgeClient = appContainer.sgeClientFactory.create()
                 val result = sgeClient.autoConnect(sgeSettings, connection)

@@ -97,6 +97,11 @@ class ExportRepository(
                         gameCode = connection.gameCode,
                         character = connection.character,
                         settings = connection.proxySettingsMap(),
+                        protocol = connection.protocol,
+                        host = connection.host,
+                        port = connection.port,
+                        tls = connection.tls,
+                        acceptScripts = connection.acceptScripts,
                     )
                 },
             settings = exportClientSettings(),
@@ -335,6 +340,11 @@ class ExportRepository(
                         proxyLaunchCommand = proxy["proxyLaunchCommand"],
                         proxyHost = proxy["proxyHost"],
                         proxyPort = proxy["proxyPort"],
+                        protocol = connection.protocol,
+                        host = connection.host,
+                        port = connection.port,
+                        tls = connection.tls,
+                        acceptScripts = connection.acceptScripts,
                     )
                 registry.copy(connections = registry.connections.filterNot { it.id == connection.id } + updated)
             }

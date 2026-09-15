@@ -13,6 +13,7 @@ import warlockfe.warlock3.core.prefs.repositories.PresetRepository
 import warlockfe.warlock3.core.prefs.repositories.ProgressBarSettingRepository
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.prefs.repositories.WindowSettingsRepository
+import warlockfe.warlock3.core.script.MudScriptStore
 import warlockfe.warlock3.core.script.ScriptManagerFactory
 import warlockfe.warlock3.core.window.WindowRegistry
 
@@ -29,6 +30,7 @@ class GameViewModelFactory(
     private val clientSettingRepository: ClientSettingRepository,
     private val commandHistoryRepository: CommandHistoryRepository,
     private val connectionRepository: ConnectionRepository,
+    private val mudScriptStore: MudScriptStore,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     fun create(
@@ -51,6 +53,7 @@ class GameViewModelFactory(
             clientSettingRepository = clientSettingRepository,
             commandHistoryRepository = commandHistoryRepository,
             connectionRepository = connectionRepository,
+            mudScriptStore = mudScriptStore,
             ioDispatcher = ioDispatcher,
             reconnectAction = reconnect,
         )

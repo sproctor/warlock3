@@ -15,7 +15,7 @@ import kotlin.time.Instant
  * In-memory [WarlockClient] test double. Emit [ClientEvent]s with [emit] and read what the
  * script sent back via [sentCommands]/[printed].
  */
-class FakeWarlockClient(
+open class FakeWarlockClient(
     characterId: String? = "testchar",
 ) : WarlockClient {
     override val eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 64)

@@ -72,8 +72,9 @@ class ScriptManagerImpl(
         name: String,
         contents: String,
         commandHandler: suspend (String) -> SendCommandType,
+        extension: String,
     ) {
-        when (val result = scriptEngineRepository.getScriptFromContents(name, contents, this)) {
+        when (val result = scriptEngineRepository.getScriptFromContents(name, contents, extension, this)) {
             is ScriptLaunchResult.Success -> {
                 startInstance(client, result.instance, null, commandHandler)
             }

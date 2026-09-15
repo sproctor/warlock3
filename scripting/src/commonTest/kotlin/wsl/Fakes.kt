@@ -40,6 +40,7 @@ class FakeScriptManager : ScriptManager {
         name: String,
         contents: String,
         commandHandler: suspend (String) -> SendCommandType,
+        extension: String,
     ) = Unit
 
     override fun findScriptInstance(description: String): ScriptInstance? = null

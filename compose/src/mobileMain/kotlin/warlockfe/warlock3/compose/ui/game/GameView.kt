@@ -217,11 +217,14 @@ fun GameBottomBar(
                 },
                 style = style,
             )
-            HandsView(
-                left = viewModel.leftHand.collectAsState(null).value,
-                right = viewModel.rightHand.collectAsState(null).value,
-                spell = viewModel.spellHand.collectAsState(null).value,
-            )
+            if (viewModel.handsShown.collectAsState().value) {
+                HandsView(
+                    blocks = viewModel.handBlocks.collectAsState().value,
+                    left = viewModel.leftHand.collectAsState(null).value,
+                    right = viewModel.rightHand.collectAsState(null).value,
+                    spell = viewModel.spellHand.collectAsState(null).value,
+                )
+            }
         }
         val indicators by viewModel.indicators.collectAsState(emptySet())
         // The indicators and compass share the control row's height.

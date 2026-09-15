@@ -82,6 +82,7 @@ kotlin {
             // The concrete client + scripting implementations that AppContainer wires up.
             // TODO: remove when abstracting DI
             implementation(project(":wrayth"))
+            implementation(project(":telnet"))
             implementation(project(":scripting"))
 
             implementation(libs.kotlinx.serialization.json)
@@ -230,15 +231,16 @@ tasks.register<JavaExec>("streamNetworkBenchmark") {
 // The default skin is authored as a directory (skin.json + referenced images) under skin/ and
 // packaged into a zip at build time, instead of committing a binary zip. Reproducible so it doesn't
 // churn between builds. The shared zip reader handles DEFLATE, so the archive is compressed.
-val packageDefaultSkin = tasks.register<Zip>("packageDefaultSkin") {
-    description = "Creates skin zip from skin files"
-    from(layout.projectDirectory.dir("skin"))
-    archiveFileName.set("skin.zip")
-    destinationDirectory.set(layout.buildDirectory.dir("generated/skin/files"))
-    entryCompression = ZipEntryCompression.DEFLATED
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-}
+val packageDefaultSkin =
+    tasks.register<Zip>("packageDefaultSkin") {
+        description = "Creates skin zip from skin files"
+        from(layout.projectDirectory.dir("skin"))
+        archiveFileName.set("skin.zip")
+        destinationDirectory.set(layout.buildDirectory.dir("generated/skin/files"))
+        entryCompression = ZipEntryCompression.DEFLATED
+        isPreserveFileTimestamps = false
+        isReproducibleFileOrder = true
+    }
 
 compose {
     resources {

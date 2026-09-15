@@ -10,4 +10,11 @@ data class ConnectionExport(
     val gameCode: String,
     val character: String,
     val settings: Map<String, String>,
+    // Telnet connections; absent (the defaults) in exports from before telnet support, which are
+    // all SGE connections.
+    val protocol: String? = null,
+    val host: String? = null,
+    val port: Int? = null,
+    val tls: Boolean = false,
+    val acceptScripts: Boolean = true,
 )

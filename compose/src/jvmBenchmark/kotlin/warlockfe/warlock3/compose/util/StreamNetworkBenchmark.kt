@@ -38,6 +38,7 @@ import warlockfe.warlock3.core.text.WarlockColor
 import warlockfe.warlock3.core.text.toLayer
 import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.WarlockDirs
+import warlockfe.warlock3.core.window.BackgroundFlash
 import warlockfe.warlock3.core.window.PanelState
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowMemoryUsage
@@ -53,6 +54,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.locks.LockSupport
+import kotlin.time.Duration
 import kotlin.time.TimeSource
 
 /**
@@ -332,6 +334,16 @@ private class BenchWindowRegistry(
     // No skin is loaded in the benchmark, so skin-referenced colors never resolve. Same rationale as
     // the constant [baseStyle]: the parse/render path being measured does not depend on the palette.
     override val colorPalette: StateFlow<Map<String, WarlockColor>> = MutableStateFlow(emptyMap())
+    override val backgroundFlashes: StateFlow<Map<String, BackgroundFlash>> = MutableStateFlow(emptyMap())
+
+    override fun flashBackground(
+        window: String,
+        color: WarlockColor,
+        total: Duration,
+        fadeIn: Duration,
+        fadeOut: Duration,
+    ) = Unit
+
     private val names = MutableStateFlow<List<ViewHighlight>>(emptyList())
     private val ignores = MutableStateFlow<List<warlockfe.warlock3.compose.model.ViewIgnore>>(emptyList())
     private val alterations = MutableStateFlow<List<warlockfe.warlock3.wrayth.util.CompiledAlteration>>(emptyList())

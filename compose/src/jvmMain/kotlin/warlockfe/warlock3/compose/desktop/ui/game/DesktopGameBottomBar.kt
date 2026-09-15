@@ -98,11 +98,14 @@ fun DesktopGameBottomBar(
                         },
                         style = style,
                     )
-                    DesktopHandsView(
-                        left = viewModel.leftHand.collectAsState(null).value,
-                        right = viewModel.rightHand.collectAsState(null).value,
-                        spell = viewModel.spellHand.collectAsState(null).value,
-                    )
+                    if (viewModel.handsShown.collectAsState().value) {
+                        DesktopHandsView(
+                            blocks = viewModel.handBlocks.collectAsState().value,
+                            left = viewModel.leftHand.collectAsState(null).value,
+                            right = viewModel.rightHand.collectAsState(null).value,
+                            spell = viewModel.spellHand.collectAsState(null).value,
+                        )
+                    }
                 }
                 val indicators by viewModel.indicators.collectAsState(emptySet())
                 val chrome = gameChrome

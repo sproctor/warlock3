@@ -1,6 +1,7 @@
 package warlockfe.warlock3.compose.ui.dashboard
 
 import warlockfe.warlock3.compose.ConnectToGameUseCase
+import warlockfe.warlock3.compose.ConnectToTelnetUseCase
 import warlockfe.warlock3.compose.MudMobileConnectUseCase
 import warlockfe.warlock3.compose.MudMobileDiscoverUseCase
 import warlockfe.warlock3.compose.model.GameState
@@ -24,6 +25,7 @@ class DashboardViewModelFactory(
     private val mudMobileConnectUseCase: MudMobileConnectUseCase,
     private val mudMobileDiscoverUseCase: MudMobileDiscoverUseCase,
     private val warlockSettingsSync: WarlockSettingsSync,
+    private val connectToTelnetUseCase: ConnectToTelnetUseCase,
 ) {
     fun create(
         gameState: GameState,
@@ -42,5 +44,6 @@ class DashboardViewModelFactory(
             mudMobileConnect = mudMobileConnectUseCase,
             mudMobileDiscover = mudMobileDiscoverUseCase,
             warlockSettingsSync = warlockSettingsSync,
+            connectToTelnet = connectToTelnetUseCase,
         )
 }

@@ -261,7 +261,7 @@ private fun WindowViewContent(
     actionContextMenu: @Composable (offset: Offset?, menuData: WarlockMenuData, onDismiss: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val backgroundColor = style.backgroundColor.toColor()
+    val backgroundColor = flashedBackground(windowName, style.backgroundColor.toColor())
     val textColor = style.textColor.toColor()
     // The window's base (normal) font: its per-window override if set, otherwise the character default.
     val effectiveFont = font ?: LocalBaseStyle.current.toFontConfig()
