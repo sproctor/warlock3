@@ -381,7 +381,6 @@ class WindowRegistryImpl(
 
     private val _backgroundFlashes = MutableStateFlow<Map<String, BackgroundFlash>>(emptyMap())
     override val backgroundFlashes: StateFlow<Map<String, BackgroundFlash>> = _backgroundFlashes.asStateFlow()
-    private var flashSerial = 0L
 
     override fun flashBackground(
         window: String,
@@ -390,7 +389,11 @@ class WindowRegistryImpl(
         fadeIn: Duration,
         fadeOut: Duration,
     ) {
-        _backgroundFlashes.update { it + (window to BackgroundFlash(color, total, fadeIn, fadeOut, ++flashSerial)) }
+        // The serial comes from the entry being replaced, inside the update, so two scripts
+        // flashing the same window at once cannot draw the same one and have a flash go unseen.
+        _backgroundFlashes.update { flashes ->
+            flashes + (window to BackgroundFlash(color, total, fadeIn, fadeOut, (flashes[window]?.serial ?: 0L) + 1))
+        }
     }
 
     override fun setCharacterId(characterId: String) {

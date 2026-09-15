@@ -37,13 +37,13 @@ internal fun flashedBackground(
         if (flash == null) return@LaunchedEffect
         if (!playing) animated.snapTo(base)
         playing = true
-        try {
-            animated.go(flash.color.toColor(), flash.fadeIn)
-            delay(flash.hold)
-            animated.go(base, flash.fadeOut)
-        } finally {
-            playing = false
-        }
+        animated.go(flash.color.toColor(), flash.fadeIn)
+        delay(flash.hold)
+        animated.go(base, flash.fadeOut)
+        // Only a flash that ran to its end gives the window back. A replacement cancels this
+        // effect before its own runs, so clearing on cancellation would have the replacement
+        // find nothing playing and snap to the base colour instead of going on from this one.
+        playing = false
     }
     return if (playing) animated.value else base
 }
@@ -52,5 +52,10 @@ private suspend fun Animatable<Color, *>.go(
     target: Color,
     over: Duration,
 ) {
-    if (over <= Duration.ZERO) snapTo(target) else animateTo(target, tween(over.inWholeMilliseconds.toInt()))
+    if (over <= Duration.ZERO) {
+        snapTo(target)
+    } else {
+        // A tween takes an Int of milliseconds; a script may ask for longer than one holds.
+        animateTo(target, tween(over.inWholeMilliseconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()))
+    }
 }
