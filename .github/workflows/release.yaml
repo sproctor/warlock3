@@ -185,7 +185,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # The action's default package list includes 'tools', which cmdline-tools 20.0 no longer
+      # has, so sdkmanager fails. AGP installs the platforms and build-tools it needs itself.
       - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       # cache-provider: basic keeps caching on the MIT implementation; the default 'enhanced' is
       # proprietary. See the longer note in ci.yaml.
