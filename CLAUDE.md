@@ -15,13 +15,9 @@ Warlock is a multi-platform front-end client for the Simutronics Game Engine (SG
 # Build everything
 ./gradlew build
 
-# What CI's main job runs (iOS targets, Android Lint and the Android host tests have their own jobs)
-./gradlew check -PiosSkip=true -PlintSkip=true -x testAndroidHostTest
-
-# What CI's Android job runs: Android lint on every module (the only check that knows which
-# Java APIs Android lacks) and the commonTest suites compiled against the Android target
-./gradlew lintAndroidMain :androidApp:lint -PiosSkip=true
-./gradlew testAndroidHostTest -PiosSkip=true
+# What CI runs: every check, including the Android host tests and Android lint (the only check
+# that knows which Java APIs Android lacks). CI does not build iOS.
+./gradlew check -PiosSkip=true --continue
 
 # Run all tests
 ./gradlew allTests

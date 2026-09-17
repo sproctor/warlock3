@@ -55,9 +55,9 @@ subprojects {
 val Project.libs: org.gradle.accessors.dm.LibrariesForLibs
     get() = extensions.getByType()
 
-// CI's main job passes -PlintSkip=true to drop Android Lint from the `check` graph — its model
-// generation + analyze tasks cost ~50s — and the `android` job in ci.yaml runs `lint` on its
-// own. Lint is the only check that knows which Java APIs Android lacks: Path.of shipped in
+// -PlintSkip=true drops Android Lint from the `check` graph — its model generation + analyze
+// tasks cost ~50s — for builds that do not need it, like the release bundle. CI keeps lint in
+// `check`: it is the only check that knows which Java APIs Android lacks. Path.of shipped in
 // v3.1.0 and crashed every device before Android 14 while ktlint, the compiler and every
 // test stayed green.
 if ((findProperty("lintSkip") as? String)?.toBoolean() == true) {
