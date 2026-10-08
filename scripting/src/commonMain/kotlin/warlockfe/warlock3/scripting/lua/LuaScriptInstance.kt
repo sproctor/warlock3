@@ -73,11 +73,15 @@ class LuaScriptInstance(
                 LuaState(LuaConfig(stdlibs = StdLib.SAFE_DEFAULT + StdLib.DEBUG)).use { lua ->
                     val host = LuaHost(scriptManager, commandHandler, scriptDirs, storageDir, fileSystem)
                     val bindings = LuaBindings(lua, client, this@LuaScriptInstance, variableRepository, host)
-                    bindings.install()
-                    val chunk = lua.load(code, "@$name")
-                    lua.call(chunk, arguments.map { LuaValue.Str(it) })
-                    // Returns at once unless the script registered handlers.
-                    bindings.serveHandlers()
+                    try {
+                        bindings.install()
+                        val chunk = lua.load(code, "@$name")
+                        lua.call(chunk, arguments.map { LuaValue.Str(it) })
+                        // Returns at once unless the script registered handlers.
+                        bindings.serveHandlers()
+                    } finally {
+                        bindings.close()
+                    }
                 }
             } catch (e: LuaSyntaxError) {
                 client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error))

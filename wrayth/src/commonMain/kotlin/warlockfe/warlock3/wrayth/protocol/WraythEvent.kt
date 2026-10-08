@@ -90,14 +90,10 @@ data class WraythDirectionEvent(
 
 data class WraythLeftEvent(
     val value: String,
-    val exist: String? = null,
-    val noun: String? = null,
 ) : WraythEvent
 
 data class WraythRightEvent(
     val value: String,
-    val exist: String? = null,
-    val noun: String? = null,
 ) : WraythEvent
 
 data class WraythSpellEvent(
@@ -134,16 +130,7 @@ data class WraythCloseDialogEvent(
     val id: String,
 ) : WraythEvent
 
-/** A move to another room; [roomId] is the `rm` attribute, the room's number. */
-data class WraythNavEvent(
-    val roomId: String?,
-) : WraythEvent
-
-/** A `crtrStatus` tag: the creature's exist id and the rest of the tag's attributes. */
-data class WraythCreatureStatusEvent(
-    val exist: String,
-    val attributes: Map<String, String>,
-) : WraythEvent
+data object WraythNavEvent : WraythEvent
 
 data class WraythBackgroundEvent(
     val windowName: String,

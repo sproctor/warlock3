@@ -28,7 +28,6 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.ScriptableClient
-import warlockfe.warlock3.core.client.TextLink
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
@@ -88,6 +87,14 @@ internal class LuaBindings(
     private var handlerEvents: Channel<ScriptEvent>? = null
     private var handlersClosed = false
     private var feeder: Job? = null
+
+    // The protocol lines for protocolLines(), tapped on its first call. Lines that do not fit are
+    // lost, and the next call says so.
+    private var protocol: Channel<String>? = null
+    private var removeTap: (() -> Unit)? = null
+
+    @Volatile
+    private var protocolLost = false
 
     // Set while a handler runs from inside one of the script's waits. A handler that waits then
     // would have the script waiting in two places at once, so it is refused.
@@ -163,6 +170,7 @@ internal class LuaBindings(
         bind("roundtime") { listOf(LuaValue.Number(secondsUntil(client.roundTimeEnd.value))) }
         bind("casttime") { listOf(LuaValue.Number(secondsUntil(client.castTimeEnd.value))) }
         bind("now") { listOf(LuaValue.Number(started.elapsedNow().inWholeMilliseconds / 1000.0)) }
+        bind("gameTime") { listOf(LuaValue.Number(client.getCurrentTime().toEpochMilliseconds() / 1000.0)) }
         bind("setRoundTime") { args ->
             scriptable("setRoundTime").setRoundTime(endOf(args.firstOrNull()))
             emptyList()
@@ -358,7 +366,7 @@ internal class LuaBindings(
             }
         }
         installLines()
-        installGameState()
+        installProtocol()
         installRegex()
         installScripts()
         installStorage()
@@ -389,7 +397,7 @@ internal class LuaBindings(
                     client.eventFlow.collect { event ->
                         when (event) {
                             is ClientTextEvent -> {
-                                val line = ScriptEvent.Line(event.text, event.links)
+                                val line = ScriptEvent.Line(event.text)
                                 lines.trySend(line)
                                 handlerEvents?.trySend(line)
                             }
@@ -439,11 +447,18 @@ internal class LuaBindings(
         }
     }
 
+    /** Lets go of the connection when the script ends. */
+    fun close() {
+        removeTap?.invoke()
+        removeTap = null
+        feeder?.cancel()
+    }
+
     private fun dispatch(event: ScriptEvent) {
         try {
             when (event) {
                 is ScriptEvent.Line -> {
-                    lua.call(dispatchLine, listOf(LuaValue.Str(event.text), LuaValue.Str(luaLiteral(LuaGameState.links(event.links)))))
+                    lua.call(dispatchLine, listOf(LuaValue.Str(event.text)))
                 }
 
                 is ScriptEvent.Gmcp -> {
@@ -523,7 +538,7 @@ internal class LuaBindings(
 
     private fun installLines() {
         // __waitLines(timeout, pattern1, flags1, pattern2, flags2, ...): the first buffered line
-        // matching any of the regexes (any line at all, given none) -> line, index, captures, links.
+        // matching any of the regexes (any line at all, given none) -> line, index, captures.
         bind("__waitLines") { args ->
             val timeout = timeoutArg(args.firstOrNull())
             val matchers =
@@ -548,7 +563,6 @@ internal class LuaBindings(
                         LuaValue.Str(found.line.text),
                         if (found.index > 0) LuaValue.Integer(found.index.toLong()) else LuaValue.Nil,
                         found.match?.let { LuaValue.Str(luaLiteral(regex.captures(it))) } ?: LuaValue.Nil,
-                        LuaValue.Str(luaLiteral(LuaGameState.links(found.line.links))),
                     )
                 }
 
@@ -583,24 +597,25 @@ internal class LuaBindings(
         }
     }
 
-    private fun installGameState() {
-        bind("__gameState") { args ->
-            val state = client.gameState.value
-            val value =
-                when (val what = args.firstOrNull()?.asString()) {
-                    "room" -> LuaGameState.room(state)
-                    "npcs" -> LuaGameState.npcs(state)
-                    "loot" -> LuaGameState.loot(state)
-                    "pcs" -> LuaGameState.pcs(state)
-                    "hands" -> LuaGameState.hands(state)
-                    "vitals" -> LuaGameState.vitals(state)
-                    "status" -> LuaGameState.status(client)
-                    "effects" -> LuaGameState.effects(state, args.getOrNull(1)?.asString(), client.getCurrentTime())
-                    "targets" -> LuaGameState.targets(state)
-                    "injuries" -> LuaGameState.injuries(state)
-                    else -> throw IllegalArgumentException("no game state called $what")
+    private fun installProtocol() {
+        bind("status") {
+            listOf(LuaValue.Str(luaLiteral(client.indicators.value.associateWith { true })))
+        }
+        // __protocolLines() -> the protocol lines that arrived since the last call (the first call
+        // starts with the connection's recent history), and whether any were lost meanwhile.
+        bind("__protocolLines") {
+            var history = emptyList<String>()
+            val buffer =
+                protocol ?: Channel<String>(capacity = PROTOCOL_BUFFER).also { channel ->
+                    protocol = channel
+                    val tap = client.tapProtocol { line -> if (channel.trySend(line).isFailure) protocolLost = true }
+                    history = tap.history
+                    removeTap = tap.remove
                 }
-            listOf(value?.let { LuaValue.Str(luaLiteral(it)) } ?: LuaValue.Nil)
+            val lines = history + generateSequence { buffer.tryReceive().getOrNull() }
+            val lost = protocolLost
+            protocolLost = false
+            listOf(LuaValue.Str(luaLiteral(lines)), LuaValue.Bool(lost))
         }
     }
 
@@ -881,6 +896,9 @@ internal class LuaBindings(
         }
 }
 
+// Lines of protocol kept for a script between its calls to protocolLines().
+private const val PROTOCOL_BUFFER = 20_000
+
 private val moduleName = Regex("""^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$""")
 
 private val prettyJson = Json { prettyPrint = true }
@@ -889,7 +907,6 @@ private val prettyJson = Json { prettyPrint = true }
 private sealed interface ScriptEvent {
     data class Line(
         val text: String,
-        val links: List<TextLink>,
     ) : ScriptEvent
 
     data class Gmcp(
@@ -955,7 +972,8 @@ private val WARLOCK_BOOTSTRAP =
     local matchWait = __matchWait
     local checkStatus = __checkStatus
     local keepAlive = __keepAlive
-    local gameState = __gameState
+    local protocolHost = __protocolLines
+    local statusHost = status
     local waitLines = __waitLines
     local clearLinesHost = __clearLines
     local captureHost = __capture
@@ -968,7 +986,7 @@ private val WARLOCK_BOOTSTRAP =
     __matchWait = nil
     __checkStatus = nil
     __keepAlive = nil
-    __gameState = nil
+    __protocolLines = nil
     __waitLines = nil
     __clearLines = nil
     __capture = nil
@@ -1034,37 +1052,16 @@ private val WARLOCK_BOOTSTRAP =
         return list
     end
 
-    -- Game state. Each call is a fresh snapshot.
-    function room() return literal(gameState("room")) end
-    function npcs() return literal(gameState("npcs")) end
-    function loot() return literal(gameState("loot")) end
-    function pcs() return literal(gameState("pcs")) end
-    function hands() return literal(gameState("hands")) end
-    function vitals() return literal(gameState("vitals")) end
-    function status() return literal(gameState("status")) end
-    function targets() return literal(gameState("targets")) end
-    function targetIds() return targets().ids end
-    function injuries() return literal(gameState("injuries")) end
-
-    function effects(panel)
-        local list = literal(gameState("effects", panel))
-        if list == nil then
-            error("effects: no panel called '" .. tostring(panel) .. "'; use spells, buffs, debuffs or cooldowns", 2)
-        end
-        return list
+    -- The protocol lines since the last call, markup and all, for libraries that keep track of
+    -- the game themselves; the first call starts with the connection's recent history. The second
+    -- value is true when lines were lost because the script left them unread too long.
+    function protocolLines()
+        local lines, lost = protocolHost()
+        return literal(lines), lost
     end
 
-    -- effectActive("buffs", "Sign of Warding") or effectActive("spells", 101): whether it is up,
-    -- and the effect when it is. Names are matched ignoring case.
-    function effectActive(panel, wanted)
-        local name = lower(tostring(wanted))
-        for _, effect in ipairs(effects(panel)) do
-            if effect.id == tostring(wanted) or lower(effect.name) == name then
-                return true, effect
-            end
-        end
-        return false
-    end
+    -- The status icons lit, each true: stunned, kneeling, hidden, webbed...
+    function status() return literal(statusHost()) end
 
     -- Patterns for the waits: a regex string, a compiled re object, or a list of either.
     local function patternArgs(patterns)
@@ -1082,19 +1079,17 @@ private val WARLOCK_BOOTSTRAP =
         return args
     end
 
-    -- waitFor(patterns [, timeout]) -> line, index, captures, links; nil when the time runs out.
+    -- waitFor(patterns [, timeout]) -> line, index, captures; nil when the time runs out.
     -- Reads the lines the game has sent since the script last read one (see clearLines).
     function waitFor(patterns, timeout)
-        local line, index, captures, links = waitLines(timeout or 0, unpack(patternArgs(patterns)))
+        local line, index, captures = waitLines(timeout or 0, unpack(patternArgs(patterns)))
         if line == nil then return nil end
-        return line, index, literal(captures), literal(links)
+        return line, index, literal(captures)
     end
 
-    -- nextLine([timeout]) -> line, links; nil when the time runs out.
+    -- nextLine([timeout]) -> the next line; nil when the time runs out.
     function nextLine(timeout)
-        local line, _, _, links = waitLines(timeout or 0)
-        if line == nil then return nil end
-        return line, literal(links)
+        return (waitLines(timeout or 0))
     end
 
     -- Forgets the lines read so far, so the next wait only sees what comes after.
@@ -1256,8 +1251,7 @@ private val WARLOCK_BOOTSTRAP =
         keepAlive()
     end
 
-    -- onLine(function(line, links) ... end): called with each line of game text and the objects
-    -- linked in it.
+    -- onLine(function(line) ... end): called with each line of game text.
     -- onLine(pattern, function(...) ... end): called with the captures whenever a line matches
     -- the Lua pattern (with the whole match, when the pattern has no captures).
     function onLine(pattern, handler)
@@ -1299,11 +1293,11 @@ private val WARLOCK_BOOTSTRAP =
         callAll(calls)
     end
 
-    function __dispatchLine(line, links)
+    function __dispatchLine(line)
         local calls = {}
         for _, entry in ipairs(lineHandlers) do
             if entry.pattern == nil then
-                calls[#calls + 1] = pack(entry.handler, line, literal(links))
+                calls[#calls + 1] = pack(entry.handler, line)
             else
                 local captures = pack(match(line, entry.pattern))
                 if captures[1] ~= nil then

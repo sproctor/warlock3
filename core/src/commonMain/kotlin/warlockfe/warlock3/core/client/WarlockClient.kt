@@ -1,9 +1,7 @@
 package warlockfe.warlock3.core.client
 
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
@@ -26,10 +24,6 @@ interface WarlockClient {
 
     val characterId: StateFlow<String?>
     val windowInfo: StateFlow<List<WindowInfo>>
-
-    /** The game's state in typed form, for scripts; [GameState.EMPTY] when the protocol has none. */
-    val gameState: StateFlow<GameState>
-        get() = emptyGameState
 
     fun getCurrentTime(): Instant
 
@@ -56,6 +50,16 @@ interface WarlockClient {
      * so they must be quick and must not block. A client that cannot intercept lines ignores this.
      */
     fun addLineInterceptor(interceptor: LineInterceptor): () -> Unit = {}
+
+    /**
+     * Hands each line of the game's protocol to [listener] as it arrives, markup and all, before
+     * the client parses it: for scripts that keep track of the game from the protocol themselves.
+     * The tap's [ProtocolTap.history] is the lines that came before, the most recent few thousand
+     * of the connection, and every line after them goes to the listener, exactly once and in order.
+     * The listener is called on the connection's read loop, so it must be quick and must not block.
+     * A client with no markup protocol has no lines to give.
+     */
+    fun tapProtocol(listener: (String) -> Unit): ProtocolTap = ProtocolTap(history = emptyList(), remove = {})
 
     // A panel widget's command: sends [command] to the server verbatim without the normal command
     // echo, showing [echo] as the echoed text when present (Wrayth semantics).
@@ -87,5 +91,3 @@ interface WarlockClient {
 
     fun close()
 }
-
-private val emptyGameState: StateFlow<GameState> = MutableStateFlow(GameState.EMPTY).asStateFlow()

@@ -37,8 +37,6 @@ sealed class PanelObject {
         override val tooltip: String?,
         val value: Percentage,
         val text: String?,
-        // How long an effect's bar has left, "HH:MM:SS", on the bars of the effect panels.
-        val time: String? = null,
     ) : PanelObject()
 
     data class Label(

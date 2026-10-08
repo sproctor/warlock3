@@ -16,16 +16,9 @@ import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.writeString
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
-import warlockfe.warlock3.core.client.Effect
-import warlockfe.warlock3.core.client.EffectPanel
-import warlockfe.warlock3.core.client.GameObject
-import warlockfe.warlock3.core.client.GameState
-import warlockfe.warlock3.core.client.Injury
 import warlockfe.warlock3.core.client.LineInterceptor
-import warlockfe.warlock3.core.client.RoomState
+import warlockfe.warlock3.core.client.ProtocolTap
 import warlockfe.warlock3.core.client.SendCommandType
-import warlockfe.warlock3.core.client.TextLink
-import warlockfe.warlock3.core.client.Vital
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptData
@@ -49,9 +42,21 @@ private var apiTestSeq = 0
 
 /** A fake connection with game state, line interception, and replies to commands. */
 private class GameClient : FakeWarlockClient() {
-    override val gameState = MutableStateFlow(GameState.EMPTY)
-
     private val interceptors = MutableStateFlow<List<LineInterceptor>>(emptyList())
+
+    private val history = mutableListOf<String>()
+    val taps = mutableListOf<(String) -> Unit>()
+
+    /** A line of protocol arriving: kept for later taps and given to the current ones. */
+    fun protocol(line: String) {
+        history += line
+        taps.toList().forEach { it(line) }
+    }
+
+    override fun tapProtocol(listener: (String) -> Unit): ProtocolTap {
+        taps += listener
+        return ProtocolTap(history.toList()) { taps -= listener }
+    }
 
     /** Called with each command sent, quietly or not, before the send returns. */
     var onCommand: suspend GameClient.(String) -> Unit = {}
@@ -63,11 +68,8 @@ private class GameClient : FakeWarlockClient() {
         return { interceptors.update { it - interceptor } }
     }
 
-    suspend fun line(
-        text: String,
-        links: List<TextLink> = emptyList(),
-    ) {
-        if (interceptors.value.none { it.intercept(text) }) emit(ClientTextEvent(text, links))
+    suspend fun line(text: String) {
+        if (interceptors.value.none { it.intercept(text) }) emit(ClientTextEvent(text))
     }
 
     suspend fun prompt() {
@@ -239,65 +241,44 @@ class LuaApiTest {
     }
 
     @Test
-    fun gameStateFunctions() {
+    fun statusAndTimers() {
         val client = GameClient()
-        val now = Instant.fromEpochSeconds(1000)
-        client.setCurrentTime(now)
+        client.setCurrentTime(Instant.fromEpochSeconds(1000))
         client.roundTimeEnd.value = 1006
         client.indicators.value = setOf("stunned", "kneeling")
-        client.gameState.value =
-            GameState(
-                room =
-                    RoomState(
-                        id = "228",
-                        title = "Town Square",
-                        exits = listOf("north", "out"),
-                        compass = setOf("n", "out"),
-                        npcs = listOf(GameObject("1", "kobold", "kobold", "stunned"), GameObject("2", "rat", "giant rat")),
-                        loot = listOf(GameObject("3", "coin", "silver coin")),
-                        pcs = listOf(GameObject("-4", "Bob", "Bob", "sitting")),
-                    ),
-                leftHand = GameObject("5", "shield", "reinforced shield"),
-                preparedSpell = "Minor Shock",
-                vitals = mapOf("mana" to Vital(50, "mana 20/40", 20, 40)),
-                effects =
-                    mapOf(
-                        EffectPanel.BUFFS to listOf(Effect("5006", "Sign of Warding", 47, now + 90.seconds)),
-                        EffectPanel.SPELLS to listOf(Effect("101", "Spirit Warding I", 80, null)),
-                    ),
-                targetIds = listOf("1", "2"),
-                currentTarget = "kobold",
-                injuries = mapOf("head" to Injury(Injury.Kind.SCAR, 1)),
-                creatureStatus = mapOf("1" to mapOf("hostile" to "1")),
-            )
         runOk(
             """
-            local r = room()
-            assert(r.id == "228" and r.title == "Town Square" and r.exits[2] == "out")
-            local n = npcs()
-            assert(#n == 2 and n[1].id == "1" and n[1].status == "stunned" and n[1].flags.hostile == "1")
-            assert(n[2].status == nil and n[2].flags == nil)
-            assert(loot()[1].name == "silver coin")
-            assert(pcs()[1].status == "sitting")
-            local h = hands()
-            assert(h.left.noun == "shield" and h.right == nil and h.spell == "Minor Shock")
-            assert(vitals().mana.current == 20 and vitals().mana.max == 40)
             assert(status().stunned and status().kneeling and not status().hidden)
-            local b = effects("buffs")
-            assert(b[1].name == "Sign of Warding" and b[1].remaining == 90)
-            assert(effects("spells")[1].remaining == nil)
-            assert(effectActive("buffs", "sign of warding"))
-            assert(effectActive("spells", 101))
-            assert(not effectActive("debuffs", "anything"))
-            assert(effects().buffs[1].id == "5006")
-            assert(not pcall(effects, "nonsense"))
-            assert(targetIds()[2] == "2" and targets().current == "kobold")
-            assert(injuries().head.kind == "scar" and injuries().head.severity == 1)
             assert(roundtime() == 6 and casttime() == 0)
             echo("ok")
             """.trimIndent(),
             client = client,
         )
+    }
+
+    @Test
+    fun protocolLinesStartWithTheHistoryAndFollowTheConnection() {
+        val client = GameClient()
+        client.protocol("<nav rm='1'/>")
+        client.protocol("<prompt time='1'>&gt;</prompt>")
+        runOk(
+            """
+            local lines, lost = protocolLines()
+            assert(#lines == 2 and lines[1] == "<nav rm='1'/>" and lost == false)
+            assert(#protocolLines() == 0)
+            echo("ready")
+            assert(waitFor("go", 5))
+            lines = protocolLines()
+            assert(#lines == 1 and lines[1] == "<pushBold/>go<popBold/>", lines[1])
+            echo("ok")
+            """.trimIndent(),
+            client = client,
+        ) {
+            awaitPrinted("ready")
+            protocol("<pushBold/>go<popBold/>")
+            line("go")
+        }
+        assertTrue(client.taps.isEmpty(), "the tap is removed when the script ends")
     }
 
     @Test
@@ -351,20 +332,18 @@ class LuaApiTest {
     }
 
     @Test
-    fun waitForGivesTheIndexCapturesAndLinks() {
+    fun waitForGivesTheIndexAndCaptures() {
         runOk(
             """
             echo("ready")
-            local line, index, captures, links = waitFor({ "miss", [[hit the (\w+) for (\d+)]] }, 5)
+            local line, index, captures = waitFor({ "miss", [[hit the (\w+) for (\d+)]] }, 5)
             assert(index == 2 and captures[1] == "kobold" and captures[2] == "12", tostring(line))
-            assert(links[1].id == "123" and links[1].noun == "kobold")
-            local next, nextLinks = nextLine(5)
-            assert(next == "after" and #nextLinks == 0)
+            assert(nextLine(5) == "after")
             echo("ok")
             """.trimIndent(),
         ) {
             awaitPrinted("ready")
-            line("You hit the kobold for 12 damage", listOf(TextLink("123", "kobold", "kobold")))
+            line("You hit the kobold for 12 damage")
             line("after")
         }
     }

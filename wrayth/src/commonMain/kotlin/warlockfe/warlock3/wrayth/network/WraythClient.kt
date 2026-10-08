@@ -3,6 +3,7 @@ package warlockfe.warlock3.wrayth.network
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.eygraber.uri.Uri
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,10 +42,9 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
-import warlockfe.warlock3.core.client.GameState
 import warlockfe.warlock3.core.client.LineInterceptor
+import warlockfe.warlock3.core.client.ProtocolTap
 import warlockfe.warlock3.core.client.SendCommandType
-import warlockfe.warlock3.core.client.TextLink
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -78,7 +79,6 @@ import warlockfe.warlock3.wrayth.protocol.WraythCompassEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentStartEvent
-import warlockfe.warlock3.wrayth.protocol.WraythCreatureStatusEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDataReceivedEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
@@ -248,8 +248,9 @@ class WraythClient(
 
     override fun getCurrentTime() = Clock.System.now() + delta
 
-    private val gameStateTracker = GameStateTracker(now = ::getCurrentTime)
-    override val gameState: StateFlow<GameState> = gameStateTracker.state
+    // The protocol lines kept for taps yet to be made, and the taps. One value, so that a line
+    // arriving while a tap is made reaches it once: in its history, or through its listener.
+    private val protocolTaps = MutableStateFlow(ProtocolTaps())
 
     private val lineInterceptors = MutableStateFlow(persistentListOf<LineInterceptor>())
 
@@ -334,12 +335,10 @@ class WraythClient(
                         logComplete { line }
                         debug(line)
                         val events = protocolHandler.parseLine(line)
-                        events.forEach {
-                            // The tracker first, so that what the client announces next (a nav, a
-                            // line of text) finds the state already up to date.
-                            gameStateTracker.handle(it)
-                            handleEvent(it)
-                        }
+                        // Taps first, so a script that hears of this line's events can already
+                        // read the line itself.
+                        protocolTaps.updateAndGet { it.withLine(line) }.listeners.forEach { it.listener(line) }
+                        events.forEach { handleEvent(it) }
                     } else {
                         // This is the strange mode to read books and create characters
                         // A mode tag can hand back partway through the buffer, and what is left
@@ -584,7 +583,7 @@ class WraythClient(
                 }
             }
 
-            is WraythNavEvent -> {
+            WraythNavEvent -> {
                 notifyListeners(ClientNavEvent)
             }
 
@@ -739,9 +738,6 @@ class WraythClient(
                 )
             }
 
-            // Game state only; the tracker has it.
-            is WraythCreatureStatusEvent -> {}
-
             is WraythResourceEvent -> {
                 flushBuffer(true)
                 gameCode?.filter { it.isLetter() }?.lowercase()?.let { code ->
@@ -869,7 +865,6 @@ class WraythClient(
         styledText: StyledString,
         stream: TextStream,
         ignoreWhenBlank: Boolean,
-        links: List<TextLink>,
     ) {
         if (stream.isMainStream || windows[stream.id]?.ifClosed == "main") {
             val text = styledText.toText()
@@ -878,11 +873,20 @@ class WraythClient(
                 // A line an interceptor takes is logged, and that is all.
                 if (lineInterceptors.value.any { it.intercept(text) }) return
                 doAppendToStream(styledText, stream, ignoreWhenBlank)
-                notifyListeners(ClientTextEvent(text, links))
+                notifyListeners(ClientTextEvent(text))
                 return
             }
         }
         doAppendToStream(styledText, stream, ignoreWhenBlank)
+    }
+
+    override fun tapProtocol(listener: (String) -> Unit): ProtocolTap {
+        val tap = ProtocolTaps.Listener(listener)
+        val taps = protocolTaps.updateAndGet { it.copy(listeners = it.listeners.add(tap)) }
+        return ProtocolTap(
+            history = taps.history.takeLast(PROTOCOL_HISTORY),
+            remove = { protocolTaps.update { it.copy(listeners = it.listeners.remove(tap)) } },
+        )
     }
 
     override fun addLineInterceptor(interceptor: LineInterceptor): () -> Unit {
@@ -922,7 +926,7 @@ class WraythClient(
         // Null while a component is still open: its content is not the line's, and the line is not
         // finished until the component that interrupted it closes.
         val styledText = lineBuffer.takeLine() ?: return
-        appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank, gameStateTracker.takeLineLinks())
+        appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank)
     }
 
     override suspend fun sendCommand(line: String): SendCommandType =
@@ -1139,6 +1143,28 @@ class WraythClient(
             .replace("@", cmdNoun ?: "")
             .replace("#", cmdId?.let { "#$it" } ?: "")
             .replace("%", eventNoun ?: "")
+}
+
+// How many protocol lines a new tap is given from before it was made.
+private const val PROTOCOL_HISTORY = 5000
+
+private data class ProtocolTaps(
+    val history: PersistentList<String> = persistentListOf(),
+    val listeners: PersistentList<Listener> = persistentListOf(),
+) {
+    // Compared by identity, so removing one tap never removes another with an equal lambda.
+    class Listener(
+        val listener: (String) -> Unit,
+    )
+
+    // Trimmed back to the last PROTOCOL_HISTORY lines once it holds twice that, so the copying is
+    // occasional rather than on every line.
+    fun withLine(line: String): ProtocolTaps {
+        val added = history.add(line)
+        return copy(
+            history = if (added.size >= 2 * PROTOCOL_HISTORY) added.takeLast(PROTOCOL_HISTORY).toPersistentList() else added,
+        )
+    }
 }
 
 val TextStream?.isMainStream

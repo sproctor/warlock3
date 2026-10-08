@@ -30,8 +30,8 @@ Without one, it waits for as long as it takes.
 | Function | |
 |---|---|
 | `pause([seconds])` | Waits, one second by default. |
-| `waitFor(patterns [, timeout])` | Waits for a line of game text that matches one of `patterns`. Returns the line, the number of the pattern that matched, its captures, and the [links](#links) in the line. |
-| `nextLine([timeout])` | The next line of game text, whatever it is, and its links. |
+| `waitFor(patterns [, timeout])` | Waits for a line of game text that matches one of `patterns`. Returns the line, the number of the pattern that matched, and its captures. |
+| `nextLine([timeout])` | The next line of game text, whatever it is. |
 | `clearLines()` | Forgets the lines not yet read, so the next wait only sees what comes after. |
 | `sendAndWait(command, patterns [, timeout])` | Waits out roundtime, clears the lines, sends the command, and waits as `waitFor` does. |
 | `capture(command [, start [, finish [, timeout]]])` | See [Capturing a command's output](#capturing-a-commands-output). |
@@ -40,6 +40,7 @@ Without one, it waits for as long as it takes.
 | `waitForRoundTime()`, `waitForCastTime()` | Wait until the roundtime or cast time is over. |
 | `roundtime()`, `casttime()` | The seconds of roundtime or cast time left, `0` when there is none. |
 | `now()` | Seconds since the script started, as a fraction, for timing things. |
+| `gameTime()` | The game's clock, in seconds since 1970, as the client keeps it in step with the server. |
 
 `patterns` is a [regular expression](#regular-expressions) string, a compiled `re` object, or a
 list of them.
@@ -69,17 +70,11 @@ local lines, complete = capture("spell active", "^You currently have", "^End of 
 Lines that are taken are not shown and are not passed to any script, including this one's own
 `waitFor`; they still go into the log.
 
-### Links
-
-A line of game text can have objects linked in it, the way the game marks a creature
-("A `kobold` leaps from hiding!"). The waits return them as a list of `{ id, noun, name }`, `id`
-being the exist id a command can use (`attack #1234`).
-
 ## Handlers
 
 | Function | |
 |---|---|
-| `onLine(function(line, links) ... end)` | Called with every line of game text. |
+| `onLine(function(line) ... end)` | Called with every line of game text. |
 | `onLine(pattern, function(...) ... end)` | Called with the captures whenever a line matches the **Lua** pattern. |
 | `onGmcp(name, function(data, name) ... end)` | See [mud-scripts.md](mud-scripts.md#handlers). |
 
@@ -102,30 +97,29 @@ already waiting; that is an error. Set a flag, as above, and do the waiting in t
 
 ## Game state
 
-These read what the game has told the client; each call is a fresh snapshot, so call it again
-rather than keeping one for long. They are filled in on Simutronics games (GemStone IV,
-DragonRealms); on a telnet MUD they are empty.
+Warlock itself tells a script only a little about the game:
 
-| Function | Returns |
+| Function | |
 |---|---|
-| `room()` | `{ id, uid, title, description, exits, compass, objects }`. `id` is the room number from the game's navigation tag; `uid` the number the window title shows, when it shows one; `exits` the "Obvious exits" (`{"north", "out"}`); `compass` the lit compass directions (`{"n", "out"}`); `objects` the objects linked in the description. |
-| `npcs()` | The creatures in the room: a list of `{ id, noun, name, status, flags }`. `status` is what the room text says ("stunned", "dead", "flying around"), or `nil`. `flags` are the game's own creature flags (`hostile`, `disengaged`...), where it sends them (DragonRealms), or `nil`. |
-| `loot()` | The other things in the room, as `{ id, noun, name, status }`. |
-| `pcs()` | The other characters in the room, as `{ id, noun, name, status }`. |
-| `hands()` | `{ left, right, spell }`: the objects held, `nil` for an empty hand, and the prepared spell, `nil` when there is none. |
-| `vitals()` | By name (`health`, `mana`, `stamina`, `spirit`, `concentration`, `stance`, `encumbrance`, `mind`): `{ percent, text, current, max }`. `current` and `max` are there when the bar says them ("mana 40/120"). |
 | `status()` | The status icons lit, each `true`: `stunned`, `kneeling`, `sitting`, `prone`, `hidden`, `invisible`, `webbed`, `dead`, `joined`... |
-| `effects([panel])` | One effects panel, `"spells"`, `"buffs"`, `"debuffs"` or `"cooldowns"`, as a list of `{ id, name, percent, remaining }`, `remaining` being seconds; or all four by name. |
-| `effectActive(panel, nameOrId)` | Whether the effect is up, by its id (a spell number) or name (ignoring case), and the effect when it is. |
-| `targets()` | `{ ids, current }`: the exist ids the game offers as targets, and the name of the one targeted. `targetIds()` is the ids alone. |
-| `injuries()` | By body part (`head`, `rightArm`, `nsys`...): `{ kind = "injury" or "scar", severity }`. Healthy parts are left out. |
-| `getHands()` | The hands and the spell as three strings, as before `hands()` existed. |
+| `getHands()` | What the hands hold and the spell prepared, as three strings. |
+| `roundtime()`, `casttime()` | See [Waiting](#waiting). |
+
+The rest (the room and what is in it, with exist ids; vitals; active spells and other effects;
+targets; injuries) a script reads from the game's protocol itself, through a library. The
+[`gamestate` library](https://github.com/WarlockFE/scripts/blob/main/lib/gamestate.lua) in the
+Warlock scripts repository does that:
 
 ```lua
-for _, npc in ipairs(npcs()) do
+local gamestate = require("gamestate")
+for _, npc in ipairs(gamestate.npcs()) do
     if npc.status ~= "dead" then put("attack #" .. npc.id) break end
 end
 ```
+
+| Function | |
+|---|---|
+| `protocolLines()` | The lines of the game's protocol (markup and all) that arrived since the last call, as a list. The first call returns the connection's recent history, its last few thousand lines, so a library starts out knowing what was sent before the script began. The second value is `true` when lines were lost because the script went too long without asking; a library can then treat what it knows as out of date until the game sends it again. On a telnet MUD there are none. |
 
 ## Regular expressions
 
