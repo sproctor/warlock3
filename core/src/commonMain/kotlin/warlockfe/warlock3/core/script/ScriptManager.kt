@@ -8,11 +8,15 @@ import warlockfe.warlock3.core.client.WarlockClient
 interface ScriptManager {
     val runningScripts: StateFlow<Map<Long, ScriptData>>
 
+    /**
+     * Starts the script [command] names, with the rest of [command] as its arguments. Returns the
+     * running instance, or null when there is no such script (the client is told why).
+     */
     suspend fun startScript(
         client: WarlockClient,
         command: String,
         commandHandler: suspend (String) -> SendCommandType,
-    )
+    ): ScriptInstance?
 
     suspend fun startScript(
         client: WarlockClient,

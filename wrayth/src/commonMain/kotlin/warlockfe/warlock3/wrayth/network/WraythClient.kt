@@ -41,7 +41,9 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
 import warlockfe.warlock3.core.client.GameState
+import warlockfe.warlock3.core.client.LineInterceptor
 import warlockfe.warlock3.core.client.SendCommandType
+import warlockfe.warlock3.core.client.TextLink
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -248,6 +250,8 @@ class WraythClient(
 
     private val gameStateTracker = GameStateTracker(now = ::getCurrentTime)
     override val gameState: StateFlow<GameState> = gameStateTracker.state
+
+    private val lineInterceptors = MutableStateFlow(persistentListOf<LineInterceptor>())
 
     init {
         scope.launch {
@@ -456,6 +460,7 @@ class WraythClient(
                     )
                     isPrompting = true
                 }
+                lineInterceptors.value.forEach { it.prompt() }
                 notifyListeners(ClientPromptEvent)
             }
 
@@ -864,15 +869,25 @@ class WraythClient(
         styledText: StyledString,
         stream: TextStream,
         ignoreWhenBlank: Boolean,
+        links: List<TextLink>,
     ) {
-        doAppendToStream(styledText, stream, ignoreWhenBlank)
         if (stream.isMainStream || windows[stream.id]?.ifClosed == "main") {
             val text = styledText.toText()
             if (text.isNotBlank()) {
                 logSimple { text }
-                notifyListeners(ClientTextEvent(text))
+                // A line an interceptor takes is logged, and that is all.
+                if (lineInterceptors.value.any { it.intercept(text) }) return
+                doAppendToStream(styledText, stream, ignoreWhenBlank)
+                notifyListeners(ClientTextEvent(text, links))
+                return
             }
         }
+        doAppendToStream(styledText, stream, ignoreWhenBlank)
+    }
+
+    override fun addLineInterceptor(interceptor: LineInterceptor): () -> Unit {
+        lineInterceptors.update { it.add(interceptor) }
+        return { lineInterceptors.update { it.remove(interceptor) } }
     }
 
     private suspend fun doAppendToStream(
@@ -907,12 +922,18 @@ class WraythClient(
         // Null while a component is still open: its content is not the line's, and the line is not
         // finished until the component that interrupted it closes.
         val styledText = lineBuffer.takeLine() ?: return
-        appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank)
+        appendToStream(styledText, currentStream ?: getMainStream(), ignoreWhenBlank, gameStateTracker.takeLineLinks())
     }
 
     override suspend fun sendCommand(line: String): SendCommandType =
         withContext(NonCancellable) {
             printCommand(line)
+            commandQueue.send(line)
+            SendCommandType.COMMAND
+        }
+
+    override suspend fun sendQuietCommand(line: String): SendCommandType =
+        withContext(NonCancellable) {
             commandQueue.send(line)
             SendCommandType.COMMAND
         }

@@ -34,17 +34,19 @@ class ScriptManagerImpl(
         client: WarlockClient,
         command: String,
         commandHandler: suspend (String) -> SendCommandType,
-    ) {
+    ): ScriptInstance? {
         val (name, argString) = command.splitFirstWord()
 
         val result = scriptEngineRepository.getScript(name, client.characterId.value ?: "", this)
-        when (result) {
+        return when (result) {
             is ScriptLaunchResult.Success -> {
                 startInstance(client, result.instance, argString, commandHandler)
+                result.instance
             }
 
             is ScriptLaunchResult.Failure -> {
                 client.print(StyledString(result.message, style = WarlockStyle.Error))
+                null
             }
         }
     }

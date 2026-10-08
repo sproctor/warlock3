@@ -8,9 +8,21 @@ import warlockfe.warlock3.core.window.WindowLocation
 
 sealed interface ClientEvent
 
+/**
+ * A line of game text bound for the main window. [links] are the objects linked in it, in order,
+ * when the protocol marks them ("a <a exist=..>kobold</a> leaps from hiding").
+ */
 data class ClientTextEvent(
     val text: String,
+    val links: List<TextLink> = emptyList(),
 ) : ClientEvent
+
+/** An object linked in a line of text: its exist id (without the `#`), its noun, and the linked text. */
+data class TextLink(
+    val id: String,
+    val noun: String?,
+    val text: String,
+)
 
 data class ClientCompassEvent(
     val directions: ImmutableSet<Direction>,

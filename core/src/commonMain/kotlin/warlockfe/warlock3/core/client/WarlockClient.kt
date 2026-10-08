@@ -43,6 +43,20 @@ interface WarlockClient {
 
     suspend fun sendCommandDirect(command: String)
 
+    /**
+     * Sends [line] as [sendCommand] does, queued behind the type-ahead limit, but without echoing it
+     * to the main window. A client that cannot leave the echo out sends it the ordinary way.
+     */
+    suspend fun sendQuietCommand(line: String): SendCommandType = sendCommand(line)
+
+    /**
+     * Has [interceptor] look at each line of game text bound for the main window before it is shown,
+     * and keep the ones it claims off the screen and away from [eventFlow]; logs still have them.
+     * Returns the function that removes it. Interceptors are called on the connection's read loop,
+     * so they must be quick and must not block. A client that cannot intercept lines ignores this.
+     */
+    fun addLineInterceptor(interceptor: LineInterceptor): () -> Unit = {}
+
     // A panel widget's command: sends [command] to the server verbatim without the normal command
     // echo, showing [echo] as the echoed text when present (Wrayth semantics).
     suspend fun sendWidgetCommand(

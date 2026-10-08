@@ -493,6 +493,12 @@ class TelnetClient(
             SendCommandType.COMMAND
         }
 
+    override suspend fun sendQuietCommand(line: String): SendCommandType =
+        withContext(NonCancellable) {
+            sendCommandDirect(line)
+            SendCommandType.COMMAND
+        }
+
     override suspend fun sendCommandDirect(command: String) {
         withContext(writeContext) {
             try {

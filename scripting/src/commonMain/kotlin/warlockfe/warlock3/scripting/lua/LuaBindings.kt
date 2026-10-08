@@ -5,67 +5,100 @@ import com.seanproctor.lua.LuaException
 import com.seanproctor.lua.LuaState
 import com.seanproctor.lua.LuaValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.readString
+import kotlinx.io.writeString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.HandBlock
 import warlockfe.warlock3.core.client.ScriptableClient
+import warlockfe.warlock3.core.client.TextLink
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
+import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isSpecified
 import warlockfe.warlock3.core.util.toWarlockColor
+import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
+import kotlin.time.TimeSource
 
 /**
  * Installs the Warlock script API into a [LuaState]: globals implemented as host functions
- * plus a small Lua bootstrap ([WARLOCK_BOOTSTRAP]) built on top of them.
+ * plus a small Lua bootstrap ([WARLOCK_BOOTSTRAP]) built on top of them. `docs/lua-api.md`
+ * describes the API from the script's side.
  *
  * Host functions run synchronously on the script's thread; anything that needs to wait is
  * bridged to the suspend world with [blocking], whose waits are parented to the instance's
  * scope so that stopping the script aborts them.
  *
- * A script may also register handlers (`onGmcp`, `onLine`) to be told things as they happen;
- * [serveHandlers] then keeps the script alive after its last line, calling them on the script's
- * thread for each event, until the script is stopped or the connection closes.
+ * From the moment the bindings are installed, every line of game text is kept for the script
+ * ([lines]), so that `waitFor` after a `put` cannot miss a reply that came back at once. A script
+ * may also register handlers (`onGmcp`, `onLine`) to be told things as they happen; they are
+ * called whenever the script is waiting in one of the API's waits, and [serveHandlers] keeps the
+ * script alive after its last line to go on calling them, until the script is stopped or the
+ * connection closes.
  */
 internal class LuaBindings(
     private val lua: LuaState,
     private val client: WarlockClient,
     private val instance: LuaScriptInstance,
     private val variableRepository: VariableRepository,
+    private val host: LuaHost,
 ) {
     private val logger = Logger.withTag("LuaScript")
 
     // Same threshold the JS engine used: only log() calls at this level or above reach the client.
     private val loggingLevel = 30
 
+    private val started = TimeSource.Monotonic.markNow()
+
+    private val regex = LuaRegex()
+
+    // Every line of game text since the script started, for waitFor and nextLine; the oldest go
+    // when a script leaves it unread for long.
+    private val lines = Channel<ScriptEvent.Line>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
     // Made when the script registers its first handler, from which moment events are gathered
-    // for it, so that nothing that arrives while the rest of the script runs is lost; the script
-    // then outlives its last line to serve them. The script's thread may be busy in a handler
-    // while events arrive; the oldest go if it falls that far behind, since a line handler is
-    // reading a live stream, not a log.
-    private var events: Channel<ScriptEvent>? = null
+    // for it, so that nothing that arrives while the rest of the script runs is lost. The script's
+    // thread may be busy while events arrive; the oldest go if it falls that far behind, since a
+    // line handler is reading a live stream, not a log.
+    @Volatile
+    private var handlerEvents: Channel<ScriptEvent>? = null
+    private var handlersClosed = false
     private var feeder: Job? = null
+
+    // Set while a handler runs from inside one of the script's waits. A handler that waits then
+    // would have the script waiting in two places at once, so it is refused.
+    private var dispatchingInWait = false
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
     private lateinit var dispatchLine: LuaValue.Function
 
     fun install() {
+        startFeeding()
         bind("echo") { args ->
             val text = args.firstOrNull()?.asString() ?: ""
             blocking { client.print(StyledString(text, style = WarlockStyle.Echo)) }
@@ -74,28 +107,27 @@ internal class LuaBindings(
         bind("put") { args ->
             val command = args.firstOrNull()?.asString()
             if (command != null) {
-                blocking { putCommand(command) }
+                waitServing(null) { doWaitForRoundTime() }
+                blocking { sendCommand(command) }
             }
             emptyList()
         }
         bind("move") { args ->
             val command = args.firstOrNull()?.asString()
             if (command != null) {
-                blocking {
-                    putCommand(command)
-                    doWaitForNav()
-                }
+                waitServing(null) { doWaitForRoundTime() }
+                // Listening for the move before sending, so a fast one is not missed.
+                val nav = instance.scope.async(start = CoroutineStart.UNDISPATCHED) { client.eventFlow.first { it is ClientNavEvent } }
+                blocking { sendCommand(command) }
+                waitServing(timeoutArg(args.getOrNull(1))) { nav.await() }.also { nav.cancel() }
+                    ?: return@bind listOf(LuaValue.Nil)
             }
-            emptyList()
+            listOf(LuaValue.Bool(true))
         }
         bind("pause") { args ->
             val seconds = args.firstOrNull()?.asNumber() ?: 1.0
-            blocking {
-                withTimeoutOrNull(seconds.seconds) {
-                    // Waking on any status change lets stop() and suspend() cut the pause short.
-                    instance.statusFlow.first { it != ScriptStatus.Running }
-                }
-            }
+            // Waking on any status change lets stop() and suspend() cut the pause short.
+            waitServing(seconds.seconds) { instance.statusFlow.first { it != ScriptStatus.Running } }
             emptyList()
         }
         lua.register("exit") {
@@ -112,21 +144,25 @@ internal class LuaBindings(
             }
             emptyList()
         }
-        bind("waitForNav") {
-            blocking { doWaitForNav() }
-            emptyList()
+        bind("waitForNav") { args ->
+            logger.d { "waiting for next room" }
+            found(waitServing(timeoutArg(args.firstOrNull())) { client.eventFlow.first { it is ClientNavEvent } })
         }
-        bind("waitForPrompt") {
-            blocking {
-                logger.d { "waiting for next prompt" }
-                client.eventFlow.first { it is ClientPromptEvent }
-            }
-            emptyList()
+        bind("waitForPrompt") { args ->
+            logger.d { "waiting for next prompt" }
+            found(waitServing(timeoutArg(args.firstOrNull())) { client.eventFlow.first { it is ClientPromptEvent } })
         }
         bind("waitForRoundTime") {
-            blocking { doWaitForRoundTime() }
+            waitServing(null) { doWaitForRoundTime() }
             emptyList()
         }
+        bind("waitForCastTime") {
+            waitServing(null) { doWaitForCastTime() }
+            emptyList()
+        }
+        bind("roundtime") { listOf(LuaValue.Number(secondsUntil(client.roundTimeEnd.value))) }
+        bind("casttime") { listOf(LuaValue.Number(secondsUntil(client.castTimeEnd.value))) }
+        bind("now") { listOf(LuaValue.Number(started.elapsedNow().inWholeMilliseconds / 1000.0)) }
         bind("setRoundTime") { args ->
             scriptable("setRoundTime").setRoundTime(endOf(args.firstOrNull()))
             emptyList()
@@ -305,7 +341,7 @@ internal class LuaBindings(
                 listOf(LuaValue.Nil)
             } else {
                 var matched: Int? = null
-                blocking {
+                waitServing(null) {
                     client.eventFlow.first { event ->
                         if (instance.status == ScriptStatus.Running && event is ClientTextEvent) {
                             val match = matchers.firstOrNull { it.matches(event.text) }
@@ -321,6 +357,12 @@ internal class LuaBindings(
                 listOf(matched?.let { LuaValue.Integer(it.toLong()) } ?: LuaValue.Nil)
             }
         }
+        installLines()
+        installGameState()
+        installRegex()
+        installScripts()
+        installStorage()
+        bind("__readModule") { args -> readModule(args.firstOrNull()?.asString()) }
         lua.register("__checkStatus") {
             instance.checkStatus()
             emptyList()
@@ -336,25 +378,44 @@ internal class LuaBindings(
         lua.setGlobal("__dispatchLine", LuaValue.Nil)
     }
 
-    private fun startGathering() {
-        if (events != null) return
-        val events = Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        this.events = events
+    /**
+     * Starts listening to the connection before the script's first line runs: the subscription is
+     * made on this thread, undispatched, so it is in place by the time this returns.
+     */
+    private fun startFeeding() {
         feeder =
-            instance.scope.launch {
-                launch {
+            instance.scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                launch(start = CoroutineStart.UNDISPATCHED) {
                     client.eventFlow.collect { event ->
                         when (event) {
-                            is ClientTextEvent -> events.trySend(ScriptEvent.Line(event.text))
-                            is ClientGmcpEvent -> events.trySend(ScriptEvent.Gmcp(event.name, event.data))
-                            else -> Unit
+                            is ClientTextEvent -> {
+                                val line = ScriptEvent.Line(event.text, event.links)
+                                lines.trySend(line)
+                                handlerEvents?.trySend(line)
+                            }
+
+                            is ClientGmcpEvent -> {
+                                handlerEvents?.trySend(ScriptEvent.Gmcp(event.name, event.data))
+                            }
+
+                            else -> {
+                                Unit
+                            }
                         }
                     }
                 }
                 // The script is about the connection: it ends when the connection does.
                 client.disconnected.first { it }
-                events.close()
+                lines.close()
+                handlerEvents?.close()
             }
+    }
+
+    private fun startGathering() {
+        if (handlerEvents != null) return
+        val events = Channel<ScriptEvent>(capacity = 1024, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        handlerEvents = events
+        if (client.disconnected.value) events.close()
     }
 
     /**
@@ -364,9 +425,10 @@ internal class LuaBindings(
      * script unwinds out of here instead.
      */
     fun serveHandlers() {
-        val events = events ?: return
-        logger.d { "serving handlers" }
+        val events = handlerEvents
         try {
+            if (events == null || handlersClosed) return
+            logger.d { "serving handlers" }
             while (true) {
                 val event = blocking { events.receiveCatching() }.getOrNull() ?: break
                 instance.checkStatus()
@@ -381,7 +443,7 @@ internal class LuaBindings(
         try {
             when (event) {
                 is ScriptEvent.Line -> {
-                    lua.call(dispatchLine, listOf(LuaValue.Str(event.text)))
+                    lua.call(dispatchLine, listOf(LuaValue.Str(event.text), LuaValue.Str(luaLiteral(LuaGameState.links(event.links)))))
                 }
 
                 is ScriptEvent.Gmcp -> {
@@ -395,6 +457,340 @@ internal class LuaBindings(
             instance.checkStatus()
             blocking { client.print(StyledString("Script error: ${e.message}", style = WarlockStyle.Error)) }
         }
+    }
+
+    /**
+     * Waits on the script's thread for [body], at most [timeout] (no limit when null), and returns
+     * what it produced, or null when the time ran out. Meanwhile the script's handlers are served
+     * here, on this thread, as their events arrive; [body] itself runs on the instance's scope.
+     */
+    private fun <T : Any> waitServing(
+        timeout: Duration?,
+        body: suspend () -> T,
+    ): T? {
+        if (dispatchingInWait) {
+            throw IllegalStateException("a handler cannot wait while the script is already waiting; do the waiting in the script")
+        }
+        val deadline = timeout?.let { TimeSource.Monotonic.markNow() + it }
+        val result = instance.scope.async { body() }
+        try {
+            while (true) {
+                val events = handlerEvents?.takeUnless { handlersClosed }
+                val outcome =
+                    blocking {
+                        val remaining = deadline?.let { -it.elapsedNow() }
+                        val choose: suspend () -> WaitOutcome<T> = {
+                            select {
+                                result.onAwait { WaitOutcome.Done(it) }
+                                events?.onReceiveCatching { received ->
+                                    received.getOrNull()?.let { WaitOutcome.Event(it) } ?: WaitOutcome.Closed
+                                }
+                            }
+                        }
+                        when {
+                            remaining == null -> choose()
+                            remaining <= Duration.ZERO -> WaitOutcome.TimedOut
+                            else -> withTimeoutOrNull(remaining) { choose() } ?: WaitOutcome.TimedOut
+                        }
+                    }
+                when (outcome) {
+                    is WaitOutcome.Done -> {
+                        return outcome.value
+                    }
+
+                    WaitOutcome.TimedOut -> {
+                        return null
+                    }
+
+                    WaitOutcome.Closed -> {
+                        handlersClosed = true
+                    }
+
+                    is WaitOutcome.Event -> {
+                        dispatchingInWait = true
+                        try {
+                            dispatch(outcome.event)
+                        } finally {
+                            dispatchingInWait = false
+                        }
+                    }
+                }
+            }
+        } finally {
+            result.cancel()
+        }
+    }
+
+    private fun installLines() {
+        // __waitLines(timeout, pattern1, flags1, pattern2, flags2, ...): the first buffered line
+        // matching any of the regexes (any line at all, given none) -> line, index, captures, links.
+        bind("__waitLines") { args ->
+            val timeout = timeoutArg(args.firstOrNull())
+            val matchers =
+                args.drop(1).chunked(2).map { pair ->
+                    regex.compile(pair[0].asString() ?: "", pair.getOrNull(1)?.asString())
+                }
+
+            suspend fun nextMatch(): LineMatch {
+                while (true) {
+                    instance.awaitRunning()
+                    val line = lines.receiveCatching().getOrNull() ?: return LineMatch.Closed
+                    if (matchers.isEmpty()) return LineMatch.Found(line, 0, null)
+                    matchers.forEachIndexed { index, matcher ->
+                        matcher.find(line.text)?.let { return LineMatch.Found(line, index + 1, it) }
+                    }
+                }
+            }
+            val found = waitServing(timeout) { nextMatch() }
+            when (found) {
+                is LineMatch.Found -> {
+                    listOf(
+                        LuaValue.Str(found.line.text),
+                        if (found.index > 0) LuaValue.Integer(found.index.toLong()) else LuaValue.Nil,
+                        found.match?.let { LuaValue.Str(luaLiteral(regex.captures(it))) } ?: LuaValue.Nil,
+                        LuaValue.Str(luaLiteral(LuaGameState.links(found.line.links))),
+                    )
+                }
+
+                else -> {
+                    listOf(LuaValue.Nil)
+                }
+            }
+        }
+        bind("__clearLines") {
+            while (lines.tryReceive().isSuccess) {
+                // Draining.
+            }
+            emptyList()
+        }
+        // __capture(command, timeout, startPattern, startFlags, endPattern, endFlags) -> lines, complete
+        bind("__capture") { args ->
+            val command = args.firstOrNull()?.asString() ?: throw IllegalArgumentException("capture needs a command")
+            val timeout = timeoutArg(args.getOrNull(1))
+            val start = args.getOrNull(2)?.asString()?.let { regex.compile(it, args.getOrNull(3)?.asString()) }
+            val end = args.getOrNull(4)?.asString()?.let { regex.compile(it, args.getOrNull(5)?.asString()) }
+            waitServing(null) { doWaitForRoundTime() }
+            val capture = CaptureInterceptor(start, end)
+            val remove = client.addLineInterceptor(capture)
+            val complete =
+                try {
+                    blocking { client.sendQuietCommand(command) }
+                    waitServing(timeout) { capture.done.await() } != null
+                } finally {
+                    remove()
+                }
+            listOf(LuaValue.Str(luaLiteral(capture.lines)), LuaValue.Bool(complete))
+        }
+    }
+
+    private fun installGameState() {
+        bind("__gameState") { args ->
+            val state = client.gameState.value
+            val value =
+                when (val what = args.firstOrNull()?.asString()) {
+                    "room" -> LuaGameState.room(state)
+                    "npcs" -> LuaGameState.npcs(state)
+                    "loot" -> LuaGameState.loot(state)
+                    "pcs" -> LuaGameState.pcs(state)
+                    "hands" -> LuaGameState.hands(state)
+                    "vitals" -> LuaGameState.vitals(state)
+                    "status" -> LuaGameState.status(client)
+                    "effects" -> LuaGameState.effects(state, args.getOrNull(1)?.asString(), client.getCurrentTime())
+                    "targets" -> LuaGameState.targets(state)
+                    "injuries" -> LuaGameState.injuries(state)
+                    else -> throw IllegalArgumentException("no game state called $what")
+                }
+            listOf(value?.let { LuaValue.Str(luaLiteral(it)) } ?: LuaValue.Nil)
+        }
+    }
+
+    // __re(operation, pattern, flags, text, extra)
+    private fun installRegex() {
+        bind("__re") { args ->
+            val operation = args.firstOrNull()?.asString()
+            val pattern = args.getOrNull(1)?.asString() ?: ""
+            val flags = args.getOrNull(2)?.asString()
+            val text = args.getOrNull(3)?.asString() ?: ""
+            if (operation == "escape") return@bind listOf(LuaValue.Str(Regex.escape(pattern)))
+            val compiled = regex.compile(pattern, flags)
+            when (operation) {
+                "check" -> {
+                    emptyList()
+                }
+
+                "test" -> {
+                    listOf(LuaValue.Bool(compiled.containsMatchIn(text)))
+                }
+
+                "match" -> {
+                    val match = compiled.find(text) ?: return@bind listOf(LuaValue.Nil)
+                    val captures = regex.captures(match)
+                    listOf(LuaValue.Str(luaLiteral(captures)), LuaValue.Integer(captures.size.toLong()))
+                }
+
+                "find" -> {
+                    val init = args.getOrNull(4)?.asNumber()?.toInt() ?: 1
+                    val from = regex.charIndex(text, init.coerceAtLeast(1))
+                    if (from > text.length) return@bind listOf(LuaValue.Nil)
+                    val match = compiled.find(text, from) ?: return@bind listOf(LuaValue.Nil)
+                    listOf(LuaValue.Str(luaLiteral(regex.describe(match, text))))
+                }
+
+                "all" -> {
+                    listOf(LuaValue.Str(luaLiteral(compiled.findAll(text).map { regex.describe(it, text) }.toList())))
+                }
+
+                "replace" -> {
+                    val replacement = args.getOrNull(4)?.asString() ?: ""
+                    val count = compiled.findAll(text).count()
+                    val replaced =
+                        try {
+                            compiled.replace(text, replacement)
+                        } catch (e: Exception) {
+                            throw IllegalArgumentException("bad replacement \"$replacement\": ${e.message}")
+                        }
+                    listOf(LuaValue.Str(replaced), LuaValue.Integer(count.toLong()))
+                }
+
+                "split" -> {
+                    listOf(LuaValue.Str(luaLiteral(compiled.split(text))))
+                }
+
+                else -> {
+                    throw IllegalArgumentException("no regex operation called $operation")
+                }
+            }
+        }
+    }
+
+    // __scripts(operation, argument): the other scripts on this connection.
+    private fun installScripts() {
+        bind("__scripts") { args ->
+            val operation = args.firstOrNull()?.asString()
+            val argument = args.getOrNull(1)?.asString()?.trim()
+
+            fun named(): ScriptInstance? {
+                val name = argument?.takeIf { it.isNotEmpty() } ?: throw IllegalArgumentException("scripts.$operation needs a script name")
+                return host.scriptManager.runningScripts.value.values
+                    .map { it.instance }
+                    .firstOrNull { it.name.equals(name, ignoreCase = true) && it.id != instance.id }
+            }
+            when (operation) {
+                "start", "run" -> {
+                    val command =
+                        argument?.takeIf { it.isNotEmpty() } ?: throw IllegalArgumentException("scripts.$operation needs a script to run")
+                    val started = blocking { host.scriptManager.startScript(client, command, host.commandHandler) }
+                    if (started == null) {
+                        listOf(LuaValue.Bool(false))
+                    } else {
+                        if (operation == "run") {
+                            waitServing(null) { host.scriptManager.runningScripts.first { started.id !in it } }
+                        }
+                        listOf(LuaValue.Bool(true))
+                    }
+                }
+
+                "running" -> {
+                    listOf(LuaValue.Bool(named() != null))
+                }
+
+                "stop" -> {
+                    val script = named()
+                    script?.stop()
+                    listOf(LuaValue.Bool(script != null))
+                }
+
+                "pause" -> {
+                    val script = named()
+                    script?.suspend()
+                    listOf(LuaValue.Bool(script != null))
+                }
+
+                "resume" -> {
+                    val script = named()
+                    script?.resume()
+                    listOf(LuaValue.Bool(script != null))
+                }
+
+                "list" -> {
+                    val names =
+                        host.scriptManager.runningScripts.value.values
+                            .map { it.instance.name }
+                    listOf(LuaValue.Str(luaLiteral(names)))
+                }
+
+                else -> {
+                    throw IllegalArgumentException("no scripts operation called $operation")
+                }
+            }
+        }
+    }
+
+    // __storage(operation, value): the script's own data, kept per character as JSON.
+    private fun installStorage() {
+        bind("__storage") { args ->
+            val file =
+                storageFile()
+                    ?: throw IllegalStateException("storage is not available here")
+            val fileSystem = host.fileSystem
+            when (val operation = args.firstOrNull()?.asString()) {
+                "load" -> {
+                    if (!fileSystem.exists(file)) return@bind listOf(LuaValue.Nil)
+                    val json = fileSystem.source(file).buffered().use { it.readString() }
+                    listOf(jsonToLuaLiteral(json)?.let { LuaValue.Str(it) } ?: LuaValue.Nil)
+                }
+
+                "save" -> {
+                    val value = args.getOrNull(1) ?: LuaValue.Nil
+                    val json = prettyJson.encodeToString(JsonElement.serializer(), value.toJson())
+                    file.parent?.let { fileSystem.createDirectories(it) }
+                    fileSystem.sink(file).buffered().use { it.writeString(json) }
+                    emptyList()
+                }
+
+                else -> {
+                    throw IllegalArgumentException("no storage operation called $operation")
+                }
+            }
+        }
+    }
+
+    // <storage dir>/<character>/<script>.json
+    private fun storageFile(): Path? {
+        val dir = host.storageDir ?: return null
+        val character = fileNamePart(client.characterId.value ?: "global")
+        val script = fileNamePart(instance.name.substringBeforeLast(".lua"))
+        return Path(dir, character, "$script.json")
+    }
+
+    private fun fileNamePart(text: String): String = text.lowercase().replace(Regex("[^a-z0-9_-]"), "_")
+
+    /**
+     * The source of the library [name] names, for `require`: `lib/<name>.lua` in the first script
+     * folder that has it, dots in the name standing for folders. The name is checked first, so a
+     * library cannot be read from outside a `lib` folder.
+     */
+    private fun readModule(name: String?): List<LuaValue> {
+        if (name == null || !moduleName.matches(name)) {
+            throw IllegalArgumentException(
+                "require: \"$name\" is not a library name; use letters, digits, _ and -, with dots between folders",
+            )
+        }
+        val relative = name.replace('.', '/') + ".lua"
+        val characterId = client.characterId.value ?: ""
+        val dirs = blocking { host.scriptDirs(characterId) }
+        for (dir in dirs) {
+            val file = Path(dir, "lib", relative)
+            if (host.fileSystem.exists(file)) {
+                val source =
+                    host.fileSystem
+                        .source(file)
+                        .buffered()
+                        .use { it.readString() }
+                return listOf(LuaValue.Str(source), LuaValue.Str("@lib/$relative"))
+            }
+        }
+        return listOf(LuaValue.Nil)
     }
 
     /** Registers a host function that first surfaces any pending stop/suspend. */
@@ -422,6 +818,11 @@ internal class LuaBindings(
         client as? ScriptableClient
             ?: throw IllegalStateException("$function is only available on a telnet connection")
 
+    /** A wait's timeout argument, in seconds; none (wait for ever) when absent or not positive. */
+    private fun timeoutArg(value: LuaValue?): Duration? = value?.asNumber()?.takeIf { it > 0.0 }?.seconds
+
+    private fun found(value: Any?): List<LuaValue> = listOf(if (value != null) LuaValue.Bool(true) else LuaValue.Nil)
+
     /**
      * When something [seconds] long from now ends, in seconds since the epoch; null for nothing,
      * so `setRoundTime(0)` clears the bar.
@@ -432,29 +833,34 @@ internal class LuaBindings(
         return (client.getCurrentTime() + duration.seconds).epochSeconds
     }
 
-    private suspend fun putCommand(command: String) {
-        doWaitForRoundTime()
+    /** Seconds from now until [endSeconds] (since the epoch), and none when that has passed. */
+    private fun secondsUntil(endSeconds: Long?): Double {
+        if (endSeconds == null) return 0.0
+        val left = Instant.fromEpochSeconds(endSeconds) - client.getCurrentTime()
+        return (left.inWholeMilliseconds / 1000.0).coerceAtLeast(0.0)
+    }
+
+    private suspend fun sendCommand(command: String) {
         logger.d { "sending command: $command" }
         client.sendCommand(command)
     }
 
-    private suspend fun doWaitForNav() {
-        logger.d { "waiting for next room" }
-        client.eventFlow.first { it is ClientNavEvent }
-    }
+    private suspend fun doWaitForRoundTime() = waitUntilPassed { client.roundTimeEnd.value }
 
-    private suspend fun doWaitForRoundTime() {
-        logger.d { "waiting for round time" }
+    private suspend fun doWaitForCastTime() = waitUntilPassed { client.castTimeEnd.value }
+
+    // Waits out a timer given in seconds since the epoch, with a second's margin, as the game's
+    // clock only counts whole seconds.
+    private suspend fun waitUntilPassed(end: () -> Long?) {
         while (true) {
             instance.awaitRunning()
-            val roundEnd = client.roundTimeEnd.value?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
+            val timerEnd = end()?.let { Instant.fromEpochSeconds(it) + 1.seconds } ?: break
             val currentTime = client.getCurrentTime()
-            if (roundEnd <= currentTime) {
+            if (timerEnd <= currentTime) {
                 break
             }
-            delay(roundEnd - currentTime)
+            delay(timerEnd - currentTime)
         }
-        logger.d { "done waiting for round time" }
     }
 
     private fun LuaValue.asString(): String? =
@@ -475,16 +881,45 @@ internal class LuaBindings(
         }
 }
 
+private val moduleName = Regex("""^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$""")
+
+private val prettyJson = Json { prettyPrint = true }
+
 /** What the handler-serving loop passes to the script. */
 private sealed interface ScriptEvent {
     data class Line(
         val text: String,
+        val links: List<TextLink>,
     ) : ScriptEvent
 
     data class Gmcp(
         val name: String,
         val data: String,
     ) : ScriptEvent
+}
+
+private sealed interface WaitOutcome<out T> {
+    data class Done<T>(
+        val value: T,
+    ) : WaitOutcome<T>
+
+    data class Event(
+        val event: ScriptEvent,
+    ) : WaitOutcome<Nothing>
+
+    data object TimedOut : WaitOutcome<Nothing>
+
+    data object Closed : WaitOutcome<Nothing>
+}
+
+private sealed interface LineMatch {
+    class Found(
+        val line: ScriptEvent.Line,
+        val index: Int,
+        val match: MatchResult?,
+    ) : LineMatch
+
+    data object Closed : LineMatch
 }
 
 private sealed class Matcher(
@@ -520,16 +955,39 @@ private val WARLOCK_BOOTSTRAP =
     local matchWait = __matchWait
     local checkStatus = __checkStatus
     local keepAlive = __keepAlive
+    local gameState = __gameState
+    local waitLines = __waitLines
+    local clearLinesHost = __clearLines
+    local captureHost = __capture
+    local reHost = __re
+    local readModule = __readModule
+    local scriptsHost = __scripts
+    local storageHost = __storage
     __getVariable = nil
     __setVariable = nil
     __matchWait = nil
     __checkStatus = nil
     __keepAlive = nil
+    __gameState = nil
+    __waitLines = nil
+    __clearLines = nil
+    __capture = nil
+    __re = nil
+    __readModule = nil
+    __scripts = nil
+    __storage = nil
 
-    -- Kept here so a script that reassigns these globals cannot break the dispatchers.
-    local load, ipairs, pcall, error = load, ipairs, pcall, error
+    -- Kept here so a script that reassigns these globals cannot break the API.
+    local load, ipairs, pcall, error, type, tostring, setmetatable = load, ipairs, pcall, error, type, tostring, setmetatable
     local lower, sub, match = string.lower, string.sub, string.match
-    local pack, unpack = table.pack, table.unpack
+    local pack, unpack, concat = table.pack, table.unpack, table.concat
+    local globals = _ENV
+
+    -- The host hands tables over as Lua constructors; this makes them tables again.
+    local function literal(text)
+        if text == nil then return nil end
+        return load("return " .. text, "=(warlock)", "t", {})()
+    end
 
     -- Reads and writes go straight to the character's stored variables.
     variables = setmetatable({}, {
@@ -547,7 +1005,7 @@ private val WARLOCK_BOOTSTRAP =
         for i = 1, select("#", ...) do
             parts[i] = tostring((select(i, ...)))
         end
-        echo(table.concat(parts, "\t"))
+        echo(concat(parts, "\t"))
     end
 
     -- Mirrors the old JS MatchList: collect matches, then wait for the first line that hits one.
@@ -576,8 +1034,217 @@ private val WARLOCK_BOOTSTRAP =
         return list
     end
 
-    -- Handlers a script registers to be told things as they happen. Registering one keeps the
-    -- script running after its last line, until it is stopped or the connection closes.
+    -- Game state. Each call is a fresh snapshot.
+    function room() return literal(gameState("room")) end
+    function npcs() return literal(gameState("npcs")) end
+    function loot() return literal(gameState("loot")) end
+    function pcs() return literal(gameState("pcs")) end
+    function hands() return literal(gameState("hands")) end
+    function vitals() return literal(gameState("vitals")) end
+    function status() return literal(gameState("status")) end
+    function targets() return literal(gameState("targets")) end
+    function targetIds() return targets().ids end
+    function injuries() return literal(gameState("injuries")) end
+
+    function effects(panel)
+        local list = literal(gameState("effects", panel))
+        if list == nil then
+            error("effects: no panel called '" .. tostring(panel) .. "'; use spells, buffs, debuffs or cooldowns", 2)
+        end
+        return list
+    end
+
+    -- effectActive("buffs", "Sign of Warding") or effectActive("spells", 101): whether it is up,
+    -- and the effect when it is. Names are matched ignoring case.
+    function effectActive(panel, wanted)
+        local name = lower(tostring(wanted))
+        for _, effect in ipairs(effects(panel)) do
+            if effect.id == tostring(wanted) or lower(effect.name) == name then
+                return true, effect
+            end
+        end
+        return false
+    end
+
+    -- Patterns for the waits: a regex string, a compiled re object, or a list of either.
+    local function patternArgs(patterns)
+        if type(patterns) ~= "table" or patterns.__regex then patterns = { patterns } end
+        local args = {}
+        for _, p in ipairs(patterns) do
+            if type(p) == "table" then
+                args[#args + 1] = p.pattern
+                args[#args + 1] = p.flags
+            else
+                args[#args + 1] = tostring(p)
+                args[#args + 1] = ""
+            end
+        end
+        return args
+    end
+
+    -- waitFor(patterns [, timeout]) -> line, index, captures, links; nil when the time runs out.
+    -- Reads the lines the game has sent since the script last read one (see clearLines).
+    function waitFor(patterns, timeout)
+        local line, index, captures, links = waitLines(timeout or 0, unpack(patternArgs(patterns)))
+        if line == nil then return nil end
+        return line, index, literal(captures), literal(links)
+    end
+
+    -- nextLine([timeout]) -> line, links; nil when the time runs out.
+    function nextLine(timeout)
+        local line, _, _, links = waitLines(timeout or 0)
+        if line == nil then return nil end
+        return line, literal(links)
+    end
+
+    -- Forgets the lines read so far, so the next wait only sees what comes after.
+    function clearLines() clearLinesHost() end
+
+    -- Sends a command and waits for the game's answer to it.
+    function sendAndWait(command, patterns, timeout)
+        waitForRoundTime()
+        clearLines()
+        put(command)
+        return waitFor(patterns, timeout)
+    end
+
+    -- capture(command [, startPattern [, endPattern [, timeout]]]) -> lines, complete
+    -- Sends the command without echoing it and takes the game's answer off the screen: from the
+    -- line matching startPattern (the first line, without one) to the one matching endPattern (the
+    -- next prompt, without one). complete is false when the time ran out first.
+    function capture(command, startPattern, endPattern, timeout)
+        local s = startPattern and patternArgs(startPattern) or {}
+        local e = endPattern and patternArgs(endPattern) or {}
+        local lines, complete = captureHost(command, timeout or 0, s[1], s[2], e[1], e[2])
+        return literal(lines), complete
+    end
+
+    -- Waits until condition() returns something other than nil or false, checking every interval
+    -- seconds (0.1 by default), and returns it; nil when the time runs out.
+    function waitUntil(condition, timeout, interval)
+        interval = interval or 0.1
+        local deadline = timeout and (now() + timeout)
+        while true do
+            local result = condition()
+            if result then return result end
+            local left = deadline and (deadline - now())
+            if left and left <= 0 then return nil end
+            pause(left and math.min(interval, left) or interval)
+        end
+    end
+
+    -- Regular expressions (Kotlin's flavour; flags "i" ignore case, "m" multiline). Positions are
+    -- Lua's, as string.find gives them.
+    re = {}
+    local compiled = {}
+    compiled.__index = compiled
+
+    function re.compile(pattern, flags)
+        reHost("check", pattern, flags or "")
+        return setmetatable({ pattern = pattern, flags = flags or "", __regex = true }, compiled)
+    end
+
+    function re.escape(text) return reHost("escape", text) end
+
+    function re.test(pattern, text, flags) return reHost("test", pattern, flags or "", text) end
+
+    -- The captures, or the whole match when the pattern has none; nil when it does not match.
+    function re.match(pattern, text, flags)
+        local captures, count = reHost("match", pattern, flags or "", text)
+        if captures == nil then return nil end
+        return unpack(literal(captures), 1, count)
+    end
+
+    -- start, finish, captures...; nil when it does not match.
+    function re.find(pattern, text, init, flags)
+        local found = reHost("find", pattern, flags or "", text, init or 1)
+        if found == nil then return nil end
+        local m = literal(found)
+        return m.start, m.finish, unpack(m.captures, 1, m.count)
+    end
+
+    function re.gmatch(pattern, text, flags)
+        local all = literal(reHost("all", pattern, flags or "", text))
+        local i = 0
+        return function()
+            i = i + 1
+            local m = all[i]
+            if m == nil then return nil end
+            return unpack(m.captures, 1, m.count)
+        end
+    end
+
+    -- The replacement is a string ($1 for a group), a function given the captures, or a table
+    -- keyed by the first capture. Returns the new text and how many matches there were.
+    function re.gsub(pattern, text, replacement, flags)
+        if type(replacement) == "string" then
+            return reHost("replace", pattern, flags or "", text, replacement)
+        end
+        local all = literal(reHost("all", pattern, flags or "", text))
+        local parts, last = {}, 1
+        for _, m in ipairs(all) do
+            parts[#parts + 1] = sub(text, last, m.start - 1)
+            local value
+            if type(replacement) == "table" then
+                value = replacement[m.captures[1]]
+            else
+                value = replacement(unpack(m.captures, 1, m.count))
+            end
+            if value == nil or value == false then value = m.match end
+            parts[#parts + 1] = tostring(value)
+            last = m.finish + 1
+        end
+        parts[#parts + 1] = sub(text, last)
+        return concat(parts), #all
+    end
+
+    function re.split(pattern, text, flags) return literal(reHost("split", pattern, flags or "", text)) end
+
+    function compiled:test(text) return re.test(self.pattern, text, self.flags) end
+    function compiled:match(text) return re.match(self.pattern, text, self.flags) end
+    function compiled:find(text, init) return re.find(self.pattern, text, init, self.flags) end
+    function compiled:gmatch(text) return re.gmatch(self.pattern, text, self.flags) end
+    function compiled:gsub(text, replacement) return re.gsub(self.pattern, text, replacement, self.flags) end
+    function compiled:split(text) return re.split(self.pattern, text, self.flags) end
+
+    -- require("name") loads lib/name.lua from the script folders (lib/a/b.lua for "a.b"), once.
+    local loaded, loading = {}, {}
+    function require(name)
+        if loaded[name] ~= nil then return loaded[name] end
+        if loading[name] then error("require: \"" .. tostring(name) .. "\" requires itself", 2) end
+        local source, chunkName = readModule(name)
+        if source == nil then
+            error("require: no library \"" .. tostring(name) .. "\" in the lib folder of any script folder", 2)
+        end
+        local chunk, err = load(source, chunkName, "t", globals)
+        if chunk == nil then error(err, 2) end
+        loading[name] = true
+        local ok, result = pcall(chunk, name)
+        loading[name] = nil
+        if not ok then error(result, 0) end
+        if result == nil then result = true end
+        loaded[name] = result
+        return result
+    end
+
+    -- The other scripts on this connection.
+    scripts = {}
+    function scripts.start(command) return scriptsHost("start", command) end
+    function scripts.run(command) return scriptsHost("run", command) end
+    function scripts.isRunning(name) return scriptsHost("running", name) end
+    function scripts.stop(name) return scriptsHost("stop", name) end
+    function scripts.pause(name) return scriptsHost("pause", name) end
+    function scripts.resume(name) return scriptsHost("resume", name) end
+    function scripts.list() return literal(scriptsHost("list")) end
+
+    -- The script's own data, kept per character between runs.
+    storage = {}
+    function storage.load() return literal(storageHost("load")) or {} end
+    function storage.save(data) storageHost("save", data) end
+
+    -- Handlers a script registers to be told things as they happen. They are called while the
+    -- script waits, and registering one keeps the script running after its last line, until it is
+    -- stopped or the connection closes.
     local gmcpHandlers = {}
     local lineHandlers = {}
 
@@ -589,7 +1256,8 @@ private val WARLOCK_BOOTSTRAP =
         keepAlive()
     end
 
-    -- onLine(function(line) ... end): called with each line of game text.
+    -- onLine(function(line, links) ... end): called with each line of game text and the objects
+    -- linked in it.
     -- onLine(pattern, function(...) ... end): called with the captures whenever a line matches
     -- the Lua pattern (with the whole match, when the pattern has no captures).
     function onLine(pattern, handler)
@@ -616,11 +1284,10 @@ private val WARLOCK_BOOTSTRAP =
         end
     end
 
-    function __dispatchGmcp(name, literal)
-        local data = nil
-        if literal ~= nil then
+    function __dispatchGmcp(name, data)
+        if data ~= nil then
             -- The literal is a table constructor of constants, so it gets no environment.
-            data = load("return " .. literal, "=gmcp", "t", {})()
+            data = literal(data)
         end
         local lowered = lower(name)
         local calls = {}
@@ -632,11 +1299,11 @@ private val WARLOCK_BOOTSTRAP =
         callAll(calls)
     end
 
-    function __dispatchLine(line)
+    function __dispatchLine(line, links)
         local calls = {}
         for _, entry in ipairs(lineHandlers) do
             if entry.pattern == nil then
-                calls[#calls + 1] = pack(entry.handler, line)
+                calls[#calls + 1] = pack(entry.handler, line, literal(links))
             else
                 local captures = pack(match(line, entry.pattern))
                 if captures[1] ~= nil then

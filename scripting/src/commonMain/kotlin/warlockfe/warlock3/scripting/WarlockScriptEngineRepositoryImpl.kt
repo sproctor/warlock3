@@ -24,8 +24,11 @@ class WarlockScriptEngineRepositoryImpl(
         scriptManager: ScriptManager,
     ): ScriptLaunchResult {
         val matchedFiles = mutableListOf<Pair<WarlockScriptEngine, Path>>()
+        // Each folder, then its scripts/ subfolder: a clone of a scripts repository keeps its
+        // runnable scripts there, beside the libraries in lib/.
+        val folders = scriptDirRepository.getMappedScriptDirs(characterId).flatMap { listOf(it, Path(it, "scripts")) }
         for (engine in engines) {
-            for (scriptDir in scriptDirRepository.getMappedScriptDirs(characterId)) {
+            for (scriptDir in folders) {
                 if (fileSystem.exists(scriptDir)) {
                     fileSystem
                         .list(scriptDir)

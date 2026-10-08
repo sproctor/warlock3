@@ -10,6 +10,7 @@ import warlockfe.warlock3.core.client.GameState
 import warlockfe.warlock3.core.client.Injury
 import warlockfe.warlock3.core.client.PanelObject
 import warlockfe.warlock3.core.client.RoomState
+import warlockfe.warlock3.core.client.TextLink
 import warlockfe.warlock3.core.client.Vital
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.wrayth.protocol.WraythActionEvent
@@ -66,6 +67,10 @@ class GameStateTracker(
     private var componentId: String? = null
     private val segments = mutableListOf<Segment>()
 
+    // The links in the text of the line being read, outside components, for [takeLineLinks].
+    private val lineLinks = mutableListOf<TextLink>()
+    private var lastLineLink: Mark.Link? = null
+
     private var dialogId: String? = null
     private val compass = mutableSetOf<String>()
 
@@ -87,6 +92,8 @@ class GameStateTracker(
                 // The client drops its styles and any open component here; so must we.
                 marks.clear()
                 discardComponent()
+                lineLinks.clear()
+                lastLineLink = null
             }
 
             is WraythStreamEvent -> {
@@ -106,7 +113,9 @@ class GameStateTracker(
             }
 
             is WraythDataReceivedEvent -> {
-                if (componentId != null) {
+                if (componentId == null) {
+                    addLineLink(event.text)
+                } else {
                     segments +=
                         Segment(
                             text = event.text,
@@ -188,6 +197,34 @@ class GameStateTracker(
             }
 
             else -> {}
+        }
+    }
+
+    /**
+     * The objects linked in the text read since the last call, outside the room components. The
+     * client takes them as it finishes each line of text, which is after this has seen all of it.
+     */
+    fun takeLineLinks(): List<TextLink> {
+        if (lineLinks.isEmpty()) return emptyList()
+        val links = lineLinks.toList()
+        lineLinks.clear()
+        lastLineLink = null
+        return links
+    }
+
+    private fun addLineLink(text: String) {
+        val link = marks.lastOrNull { it is Mark.Link } as Mark.Link?
+        val exist = link?.exist
+        if (link == null || exist == null) {
+            lastLineLink = null
+            return
+        }
+        if (link === lastLineLink) {
+            val last = lineLinks.lastIndex
+            lineLinks[last] = lineLinks[last].copy(text = lineLinks[last].text + text)
+        } else {
+            lineLinks += TextLink(id = exist, noun = link.noun, text = text)
+            lastLineLink = link
         }
     }
 

@@ -293,7 +293,12 @@ class AppContainer(
             engines =
                 listOf(
                     WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
-                    LuaEngine(variableRepository, fileSystem),
+                    LuaEngine(
+                        variableRepository = variableRepository,
+                        fileSystem = fileSystem,
+                        scriptDirs = { scriptDirRepository.getMappedScriptDirs(it) },
+                        storageDir = Path(warlockDirs.dataDir, "script-data"),
+                    ),
                 ),
             scriptDirRepository = scriptDirRepository,
             fileSystem = fileSystem,

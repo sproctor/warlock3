@@ -43,6 +43,10 @@ class LuaScriptInstance(
     private val variableRepository: VariableRepository,
     private val scriptManager: ScriptManager,
     private val fileSystem: FileSystem,
+    // The script folders, for require; the character's id is passed in.
+    private val scriptDirs: suspend (String) -> List<Path> = { emptyList() },
+    // Where storage keeps the scripts' data; without one, storage is unavailable.
+    private val storageDir: Path? = null,
 ) : ScriptInstance {
     internal val statusFlow = MutableStateFlow(ScriptStatus.NotStarted)
 
@@ -67,7 +71,8 @@ class LuaScriptInstance(
                 // DEBUG is opened only so the bindings can install their watchdog hook; the
                 // bootstrap removes the debug table before the script runs.
                 LuaState(LuaConfig(stdlibs = StdLib.SAFE_DEFAULT + StdLib.DEBUG)).use { lua ->
-                    val bindings = LuaBindings(lua, client, this@LuaScriptInstance, variableRepository)
+                    val host = LuaHost(scriptManager, commandHandler, scriptDirs, storageDir, fileSystem)
+                    val bindings = LuaBindings(lua, client, this@LuaScriptInstance, variableRepository, host)
                     bindings.install()
                     val chunk = lua.load(code, "@$name")
                     lua.call(chunk, arguments.map { LuaValue.Str(it) })

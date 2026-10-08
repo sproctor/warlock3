@@ -27,7 +27,12 @@ class FakeScriptManager : ScriptManager {
         client: WarlockClient,
         command: String,
         commandHandler: suspend (String) -> SendCommandType,
-    ) = Unit
+    ): ScriptInstance? {
+        startedCommands += command
+        return null
+    }
+
+    val startedCommands = mutableListOf<String>()
 
     override suspend fun startScript(
         client: WarlockClient,

@@ -3,6 +3,7 @@ import warlockfe.warlock3.core.client.EffectPanel
 import warlockfe.warlock3.core.client.GameObject
 import warlockfe.warlock3.core.client.GameState
 import warlockfe.warlock3.core.client.Injury
+import warlockfe.warlock3.core.client.TextLink
 import warlockfe.warlock3.core.client.Vital
 import warlockfe.warlock3.wrayth.network.GameStateTracker
 import warlockfe.warlock3.wrayth.network.parseRoomTitle
@@ -220,6 +221,30 @@ class GameStateTrackerTests {
 
         val moved = feed("""<crtrStatus exist="65662200" hostile="1"/>""", """<nav rm='1'/>""")
         assertEquals(emptyMap(), moved.creatureStatus)
+    }
+
+    @Test
+    fun linksInTheLinesOfText() {
+        val handler = WraythProtocolHandler()
+        val tracker = GameStateTracker(now = { now })
+
+        fun links(line: String): List<TextLink> {
+            handler.parseLine(line).forEach { tracker.handle(it) }
+            return tracker.takeLineLinks()
+        }
+
+        assertEquals(
+            listOf(TextLink(id = "254427867", noun = "dreadsteed", text = "skeletal dreadsteed")),
+            links("""<pushBold/>A <a exist="254427867" noun="dreadsteed">skeletal dreadsteed</a><popBold/> charges at you!"""),
+        )
+        // The room components' links are the room's, not the line's.
+        assertEquals(
+            listOf(TextLink(id = "1", noun = "orc", text = "orc")),
+            links(
+                """<component id='room objs'>You also see <a exist="2" noun="rat">rat</a>.</component>An <a exist="1" noun="orc">orc</a> arrives.""",
+            ),
+        )
+        assertEquals(emptyList(), links("Nothing linked here."))
     }
 
     @Test
