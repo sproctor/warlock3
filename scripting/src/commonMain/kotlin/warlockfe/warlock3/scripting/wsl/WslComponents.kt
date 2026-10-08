@@ -5,9 +5,9 @@ import warlockfe.warlock3.core.client.WarlockClient
 class WslComponents(
     private val client: WarlockClient,
 ) : WslValue {
-    override fun toText(): String = client.getComponents().toString()
+    override fun toText(): String = client.getComponents().mapValues { it.value.toText() }.toString()
 
-    override fun toString(): String = client.getComponents().toString()
+    override fun toString(): String = client.getComponents().mapValues { it.value.toText() }.toString()
 
     override fun toBoolean(): Boolean = false
 
@@ -17,7 +17,7 @@ class WslComponents(
 
     override fun isBoolean(): Boolean = false
 
-    override fun getProperty(key: String): WslValue = client.getComponent(key)?.let { WslString(it.toString()) } ?: WslNull
+    override fun getProperty(key: String): WslValue = client.getComponent(key)?.let { WslString(it.toText()) } ?: WslNull
 
     override fun setProperty(
         key: String,

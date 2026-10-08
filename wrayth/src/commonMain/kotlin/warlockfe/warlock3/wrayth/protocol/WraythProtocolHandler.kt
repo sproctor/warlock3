@@ -23,6 +23,7 @@ import warlockfe.warlock3.wrayth.protocol.elements.CompDefHandler
 import warlockfe.warlock3.wrayth.protocol.elements.CompassHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ComponentHandler
 import warlockfe.warlock3.wrayth.protocol.elements.ContainerHandler
+import warlockfe.warlock3.wrayth.protocol.elements.CrtrStatusHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DialogDataHandler
 import warlockfe.warlock3.wrayth.protocol.elements.DirHandler
@@ -137,6 +138,7 @@ class WraythProtocolHandler {
             "compDef" to CompDefHandler(),
             "component" to ComponentHandler(),
             "container" to ContainerHandler(),
+            "crtrStatus" to CrtrStatusHandler(),
             "d" to DHandler(),
             "dialogData" to DialogDataHandler(),
             "dir" to DirHandler(),

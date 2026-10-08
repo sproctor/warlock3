@@ -1,7 +1,9 @@
 package warlockfe.warlock3.core.client
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.window.TextStream
 import warlockfe.warlock3.core.window.WindowInfo
@@ -24,6 +26,10 @@ interface WarlockClient {
 
     val characterId: StateFlow<String?>
     val windowInfo: StateFlow<List<WindowInfo>>
+
+    /** The game's state in typed form, for scripts; [GameState.EMPTY] when the protocol has none. */
+    val gameState: StateFlow<GameState>
+        get() = emptyGameState
 
     fun getCurrentTime(): Instant
 
@@ -67,3 +73,5 @@ interface WarlockClient {
 
     fun close()
 }
+
+private val emptyGameState: StateFlow<GameState> = MutableStateFlow(GameState.EMPTY).asStateFlow()

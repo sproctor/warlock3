@@ -40,6 +40,7 @@ import warlockfe.warlock3.core.client.ClientPromptEvent
 import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.ClientWindowInfoEvent
 import warlockfe.warlock3.core.client.GameCharacter
+import warlockfe.warlock3.core.client.GameState
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockAction
 import warlockfe.warlock3.core.client.WarlockClient
@@ -75,6 +76,7 @@ import warlockfe.warlock3.wrayth.protocol.WraythCompassEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentDefinitionEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentEndEvent
 import warlockfe.warlock3.wrayth.protocol.WraythComponentStartEvent
+import warlockfe.warlock3.wrayth.protocol.WraythCreatureStatusEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDataReceivedEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogDataEvent
 import warlockfe.warlock3.wrayth.protocol.WraythDialogObjectEvent
@@ -244,6 +246,9 @@ class WraythClient(
 
     override fun getCurrentTime() = Clock.System.now() + delta
 
+    private val gameStateTracker = GameStateTracker(now = ::getCurrentTime)
+    override val gameState: StateFlow<GameState> = gameStateTracker.state
+
     init {
         scope.launch {
             listOf(
@@ -325,7 +330,12 @@ class WraythClient(
                         logComplete { line }
                         debug(line)
                         val events = protocolHandler.parseLine(line)
-                        events.forEach { handleEvent(it) }
+                        events.forEach {
+                            // The tracker first, so that what the client announces next (a nav, a
+                            // line of text) finds the state already up to date.
+                            gameStateTracker.handle(it)
+                            handleEvent(it)
+                        }
                     } else {
                         // This is the strange mode to read books and create characters
                         // A mode tag can hand back partway through the buffer, and what is left
@@ -569,7 +579,7 @@ class WraythClient(
                 }
             }
 
-            WraythNavEvent -> {
+            is WraythNavEvent -> {
                 notifyListeners(ClientNavEvent)
             }
 
@@ -723,6 +733,9 @@ class WraythClient(
                     ),
                 )
             }
+
+            // Game state only; the tracker has it.
+            is WraythCreatureStatusEvent -> {}
 
             is WraythResourceEvent -> {
                 flushBuffer(true)
@@ -983,7 +996,7 @@ class WraythClient(
     override suspend fun print(message: StyledString) {
         withContext(ioDispatcher) {
             getMainStream().appendLine(if (monospace) message.applyMonospace() else message)
-            notifyListeners(ClientTextEvent(message.toString()))
+            notifyListeners(ClientTextEvent(message.toText()))
         }
     }
 
