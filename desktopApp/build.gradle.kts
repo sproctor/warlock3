@@ -38,7 +38,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     // No logging dependency: Kermit comes from :core, which also carries the slf4j provider that
-    // routes slf4j-using libraries into it. Crash reporting comes from :compose (see SentryInit.kt).
+    // routes slf4j-using libraries into it. Crash reporting comes from :compose (see SentryCrashReporter.kt).
 
     // In-app updates
     implementation(libs.potassium.updater)

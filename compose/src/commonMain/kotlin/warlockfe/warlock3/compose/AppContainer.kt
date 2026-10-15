@@ -25,6 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.macros.KeyboardKeyMappings
 import warlockfe.warlock3.compose.model.SkinObject
 import warlockfe.warlock3.compose.ui.dashboard.DashboardViewModelFactory
@@ -103,6 +104,11 @@ class AppContainer(
     private val fileSystem: FileSystem,
     private val soundPlayer: SoundPlayer,
     private val warlockProxyFactory: WarlockProxy.Factory,
+    /**
+     * Built by the platform entry point before this container, so the user's crash-reporting choice
+     * is in effect before anything here can fail; held here so the UI can reach it.
+     */
+    val crashReporting: CrashReporting,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val externalScope = CoroutineScope(SupervisorJob() + ioDispatcher)

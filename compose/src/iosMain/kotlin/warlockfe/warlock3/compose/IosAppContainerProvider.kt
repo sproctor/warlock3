@@ -11,6 +11,8 @@ import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSLibraryDirectory
 import platform.Foundation.NSUserDomainMask
+import warlockfe.warlock3.compose.crash.CrashReporter
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
 import warlockfe.warlock3.core.sge.SgeSettings
@@ -19,7 +21,7 @@ import warlockfe.warlock3.core.util.WarlockDirs
 
 @OptIn(ExperimentalForeignApi::class)
 object IosAppContainerProvider {
-    val appContainer: AppContainer by lazy {
+    private val warlockDirs: WarlockDirs by lazy {
         val fileManager = NSFileManager.defaultManager
         val documentsUrl = fileManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask).first()
         val libraryUrl = fileManager.URLsForDirectory(NSLibraryDirectory, NSUserDomainMask).first()
@@ -30,15 +32,37 @@ object IosAppContainerProvider {
         @Suppress("CAST_NEVER_SUCCEEDS")
         val libraryPath = (libraryUrl as platform.Foundation.NSURL).path!!
 
-        val warlockDirs =
-            WarlockDirs(
-                homeDir = documentsPath,
-                configDir = "$libraryPath/Application Support/warlock",
-                dataDir = "$libraryPath/Application Support/warlock",
-                logDir = "$documentsPath/logs",
-            )
+        WarlockDirs(
+            homeDir = documentsPath,
+            configDir = "$libraryPath/Application Support/warlock",
+            dataDir = "$libraryPath/Application Support/warlock",
+            logDir = "$documentsPath/logs",
+        )
+    }
 
-        val dbDir = "$libraryPath/Application Support/warlock"
+    private var crashReporter: CrashReporter = NoCrashReporter
+
+    /**
+     * Called from `iOSApp.swift` before anything else, with the Cocoa SDK behind [reporter]: the
+     * Kotlin Sentry SDK can't be linked into the iOS build (see compose/build.gradle.kts), so the
+     * Swift side starts and stops it, and this side decides when.
+     */
+    fun startCrashReporting(reporter: CrashReporter) {
+        crashReporter = reporter
+        crashReporting.startIfConsented()
+    }
+
+    private val crashReporting: CrashReporting by lazy {
+        CrashReporting(
+            configDir = warlockDirs.configDir,
+            dataDir = warlockDirs.dataDir,
+            fileSystem = SystemFileSystem,
+            reporter = crashReporter,
+        )
+    }
+
+    val appContainer: AppContainer by lazy {
+        val dbDir = warlockDirs.configDir
         NSFileManager.defaultManager.createDirectoryAtPath(dbDir, true, null, null)
 
         // A database that cannot be opened throws SettingsUnreadableException, which is left to
@@ -60,6 +84,7 @@ object IosAppContainerProvider {
             fileSystem = SystemFileSystem,
             soundPlayer = IosSoundPlayer(),
             warlockProxyFactory = WarlockProxy.Factory { IosProxy(it) },
+            crashReporting = crashReporting,
         )
     }
 
@@ -76,6 +101,12 @@ object IosAppContainerProvider {
             secure = true,
         )
     }
+}
+
+private object NoCrashReporter : CrashReporter {
+    override fun start(onReport: (eventId: String, json: String) -> Unit) {}
+
+    override fun stop() {}
 }
 
 private class IosSoundPlayer : SoundPlayer {

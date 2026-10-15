@@ -89,6 +89,7 @@ import warlockfe.warlock3.app.updater.ChannelUpdater
 import warlockfe.warlock3.app.updater.channelsToCheck
 import warlockfe.warlock3.compose.AppContainer
 import warlockfe.warlock3.compose.TelnetConnectResult
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.shim.WarlockAlertDialog
 import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
@@ -97,6 +98,7 @@ import warlockfe.warlock3.compose.desktop.ui.game.DesktopDockHost
 import warlockfe.warlock3.compose.desktop.ui.game.DetachedGameWindows
 import warlockfe.warlock3.compose.desktop.ui.game.LocalDesktopDockHost
 import warlockfe.warlock3.compose.desktop.ui.game.RegisterGameDockWindow
+import warlockfe.warlock3.compose.desktop.ui.settings.DesktopCrashReportingNotice
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.model.GameScreen
@@ -105,7 +107,7 @@ import warlockfe.warlock3.compose.observeSkin
 import warlockfe.warlock3.compose.openPrefsDatabase
 import warlockfe.warlock3.compose.util.LocalSkin
 import warlockfe.warlock3.compose.util.LocalWindowComponent
-import warlockfe.warlock3.compose.util.initializeSentry
+import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.compose.util.rememberSafeClipboard
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockSocket
@@ -175,6 +177,7 @@ private class WarlockCommand : CliktCommand() {
         validateLoginOptions()
 
         val logger = configureLogging()
+        val crashReporting = startCrashReporting()
 
         FileKit.init("warlock")
 
@@ -186,7 +189,7 @@ private class WarlockCommand : CliktCommand() {
         // unreachable, not gone.
         val appContainer =
             try {
-                buildAppContainer(logger).also { container ->
+                buildAppContainer(logger, crashReporting).also { container ->
                     container.observeSkin(logger) { path ->
                         File(path).takeIf { it.exists() }?.readBytes()
                     }
@@ -303,6 +306,13 @@ private class WarlockCommand : CliktCommand() {
                     )
                 }
 
+                // Asked once, and until it is answered nothing is sent. Closing it without choosing
+                // leaves the question for next launch. Shown from inside the first game window
+                // below rather than out here: a dialog opened at the application level has no owner,
+                // so the main window, opened after it, comes up on top and hides it.
+                val crashReportingConsent by appContainer.crashReporting.consent.collectAsState()
+                var crashNoticeClosed by remember { mutableStateOf(false) }
+
                 // When running as an AppImage, offer to install its menu entry and icon: GNOME
                 // resolves an app's icon only through installed .desktop entries (it ignores the
                 // icon a window sets on itself), so without this the dock shows a generic icon.
@@ -414,6 +424,12 @@ private class WarlockCommand : CliktCommand() {
                                 LocalClipboard provides rememberSafeClipboard(),
                             ) {
                                 RegisterGameDockWindow(dockHost)
+                                if (crashReportingConsent == null && !crashNoticeClosed && gameState == games.first()) {
+                                    DesktopCrashReportingNotice(
+                                        crashReporting = appContainer.crashReporting,
+                                        onDismiss = { crashNoticeClosed = true },
+                                    )
+                                }
                                 WarlockApp(
                                     title = title,
                                     warlockVersion = version ?: "Development",
@@ -568,10 +584,31 @@ private class WarlockCommand : CliktCommand() {
         exitProcess(1)
     }
 
-    private fun configureLogging(): Logger {
-        if (!isDev) {
-            version?.let { initializeSentry(platform = "desktop", version = it) }
+    private val appDirs =
+        AppDirs {
+            appName = "warlock"
+            appAuthor = "WarlockFE"
         }
+
+    /**
+     * Before anything else that could fail, so a crash during startup still gets reported -- but only
+     * if the user has already said they want that. On a first launch nothing is sent until they have
+     * answered the notice the app shows.
+     */
+    private fun startCrashReporting(): CrashReporting =
+        CrashReporting(
+            configDir = appDirs.getUserConfigDir(),
+            dataDir = appDirs.getUserDataDir(),
+            fileSystem = SystemFileSystem,
+            reporter =
+                SentryCrashReporter(
+                    platform = "desktop",
+                    version = version ?: "unknown",
+                    isRelease = !isDev,
+                ),
+        ).also { it.startIfConsented() }
+
+    private fun configureLogging(): Logger {
         // This governs third-party logging too: libraries that log through slf4j (ktor, and
         // dbus-java behind the file dialogs on Linux) are routed into Kermit by KermitSlf4jProvider.
         if (debug || isDev) {
@@ -607,12 +644,10 @@ private class WarlockCommand : CliktCommand() {
             null
         }
 
-    private fun buildAppContainer(logger: Logger): AppContainer {
-        val appDirs =
-            AppDirs {
-                appName = "warlock"
-                appAuthor = "WarlockFE"
-            }
+    private fun buildAppContainer(
+        logger: Logger,
+        crashReporting: CrashReporting,
+    ): AppContainer {
         val configDir = appDirs.getUserConfigDir()
         File(configDir).mkdirs()
         val databaseDirectory = kotlinx.io.files.Path(configDir)
@@ -642,6 +677,7 @@ private class WarlockCommand : CliktCommand() {
             fileSystem = SystemFileSystem,
             soundPlayer = DesktopSoundPlayer(warlockDirs),
             warlockProxyFactory = { JavaProxy(it) },
+            crashReporting = crashReporting,
         )
     }
 

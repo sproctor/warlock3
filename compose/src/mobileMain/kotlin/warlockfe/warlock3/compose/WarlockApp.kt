@@ -33,6 +33,7 @@ import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.ui.dashboard.DashboardView
 import warlockfe.warlock3.compose.ui.game.GameView
+import warlockfe.warlock3.compose.ui.settings.CrashReportingNotice
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.SettingsScreen
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
@@ -107,6 +108,17 @@ fun WarlockApp(
                 confirmButton = {
                     TextButton(onClick = { appContainer.settingsProblems.dismiss() }) { Text("OK") }
                 },
+            )
+        }
+
+        // Asked once, and until it is answered nothing is sent. Dismissing it without choosing leaves
+        // the question for next launch.
+        val crashReportingConsent by appContainer.crashReporting.consent.collectAsState()
+        var crashNoticeClosed by remember { mutableStateOf(false) }
+        if (crashReportingConsent == null && !crashNoticeClosed) {
+            CrashReportingNotice(
+                crashReporting = appContainer.crashReporting,
+                onDismiss = { crashNoticeClosed = true },
             )
         }
 

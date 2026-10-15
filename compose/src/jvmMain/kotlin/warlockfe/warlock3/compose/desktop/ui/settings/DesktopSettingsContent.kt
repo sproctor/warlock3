@@ -3,6 +3,7 @@ package warlockfe.warlock3.compose.desktop.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
 import warlockfe.warlock3.core.client.GameCharacter
@@ -41,6 +42,7 @@ fun DesktopSettingsContent(
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
     windowSettingRepository: WindowSettingsRepository,
+    crashReporting: CrashReporting,
     initialWindowTarget: String? = null,
     windowLiveContext: WindowSettingsLiveContext? = null,
 ) {
@@ -55,6 +57,10 @@ fun DesktopSettingsContent(
                 scriptDirRepository = scriptDirRepository,
                 clientSettingRepository = clientSettingRepository,
             )
+        }
+
+        SettingsPage.CrashReports -> {
+            DesktopCrashReportsView(crashReporting = crashReporting)
         }
 
         SettingsPage.Variables -> {

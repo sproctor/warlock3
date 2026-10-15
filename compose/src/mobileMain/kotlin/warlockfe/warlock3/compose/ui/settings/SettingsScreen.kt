@@ -117,6 +117,7 @@ fun SettingsScreen(
                     accountRepository = appContainer.accountRepository,
                     wraythImporter = appContainer.wraythImporter,
                     windowSettingRepository = appContainer.windowSettingRepository,
+                    crashReporting = appContainer.crashReporting,
                     initialWindowTarget = initialWindowTarget,
                     windowLiveContext = windowLiveContext,
                 )

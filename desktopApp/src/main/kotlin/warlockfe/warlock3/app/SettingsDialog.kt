@@ -1,6 +1,7 @@
 package warlockfe.warlock3.app
 
 import androidx.compose.runtime.Composable
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.desktop.ui.settings.DesktopSettingsDialog
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
@@ -39,6 +40,7 @@ fun SettingsDialog(
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
     windowSettingRepository: WindowSettingsRepository,
+    crashReporting: CrashReporting,
     closeDialog: () -> Unit,
     initialPage: SettingsPage = SettingsPage.General,
     initialWindowTarget: String? = null,
@@ -61,6 +63,7 @@ fun SettingsDialog(
         clientSettingRepository = clientSettingRepository,
         accountRepository = accountRepository,
         windowSettingRepository = windowSettingRepository,
+        crashReporting = crashReporting,
         closeDialog = closeDialog,
         initialPage = initialPage,
         initialWindowTarget = initialWindowTarget,
