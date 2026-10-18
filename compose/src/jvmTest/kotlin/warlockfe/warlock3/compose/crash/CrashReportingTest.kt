@@ -89,6 +89,7 @@ class CrashReportingTest {
                 """{"type":"IOException","value":"inner"},""" +
                 """{"type":"IllegalStateException","value":"it broke"}]}}"""
         reporter.onReport!!("abc123", json)
+        crashReporting.refreshReports()
 
         val report = crashReporting.reports.value.single()
         assertEquals("abc123", report.id)

@@ -40,7 +40,7 @@ import warlockfe.warlock3.compose.desktop.shim.WarlockButton
 import warlockfe.warlock3.compose.desktop.shim.WarlockListItem
 import warlockfe.warlock3.compose.desktop.shim.WarlockOutlinedButton
 
-/** The crash-reporting choice, and the reports that were sent, each viewable as sent. */
+/** The crash-reporting choice, and the saved copy of each report. */
 @Composable
 fun DesktopCrashReportsView(
     crashReporting: CrashReporting,
@@ -68,7 +68,7 @@ fun DesktopCrashReportsView(
             text = CrashReportingText.SETTING_LABEL,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Sent reports", modifier = Modifier.weight(1f))
+            Text("Saved reports", modifier = Modifier.weight(1f))
             WarlockOutlinedButton(
                 onClick = { confirmDelete = true },
                 text = CrashReportingText.DELETE_ALL,
@@ -108,7 +108,7 @@ fun DesktopCrashReportsView(
                             .verticalScroll(rememberScrollState()),
                 ) {
                     if (selected == null) {
-                        Text("Select a report to see exactly what was sent.")
+                        Text("Select a report to see its full contents.")
                     } else {
                         SelectionContainer {
                             Text(selectedText, fontFamily = FontFamily.Monospace)

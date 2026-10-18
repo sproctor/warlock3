@@ -38,7 +38,7 @@ import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.crash.CrashReportingText
 import warlockfe.warlock3.compose.crash.displayTime
 
-/** The crash-reporting choice, and the reports that were sent, each viewable as sent. */
+/** The crash-reporting choice, and the saved copy of each report. */
 @Composable
 fun CrashReportsView(
     crashReporting: CrashReporting,
@@ -68,7 +68,7 @@ fun CrashReportsView(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                "Sent reports",
+                "Saved reports",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )

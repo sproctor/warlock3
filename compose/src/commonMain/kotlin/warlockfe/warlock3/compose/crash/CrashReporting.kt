@@ -29,14 +29,14 @@ import kotlin.time.Instant
 interface CrashReporter {
     /**
      * Start reporting. Each report is passed to [onReport] as the JSON the SDK is about to send, just
-     * before it is sent, so the user can see exactly what left their machine.
+     * before it is sent, so the user can see exactly what Warlock reports.
      */
     fun start(onReport: (eventId: String, json: String) -> Unit)
 
     fun stop()
 }
 
-/** A crash report the app sent, as kept on disk for the user to look at. */
+/** A crash report the app handed to the SDK for sending, as kept on disk for the user to look at. */
 data class CrashReport(
     val id: String,
     val time: Instant,
@@ -44,7 +44,7 @@ data class CrashReport(
     val path: Path,
 )
 
-/** When the report was sent, in local time, to the minute. */
+/** When the report was saved, in local time, to the minute. */
 fun CrashReport.displayTime(): String {
     val local = time.toLocalDateTime(TimeZone.currentSystemDefault())
 
@@ -53,7 +53,8 @@ fun CrashReport.displayTime(): String {
 }
 
 /**
- * Whether the user has agreed to send crash reports, and the local copies of the ones that were sent.
+ * Whether the user has agreed to send crash reports, and the local copies of the reports handed over for
+ * sending. A copy is saved before the SDK sends it, so it does not prove the report arrived.
  *
  * The answer lives in its own small file rather than with the rest of the settings: it has to be
  * read before anything else starts, so that a crash while loading the settings can still be
@@ -152,8 +153,8 @@ class CrashReporting(
     }
 
     /**
-     * Keep a copy of a report as it is sent. Called from the crash handler itself, possibly on a
-     * thread that is about to die, so it does as little as it can and never throws.
+     * Keep a copy of a report as it is handed over for sending. Called from the crash handler itself,
+     * possibly on a thread that is about to die, so it does as little as it can and never throws.
      */
     fun saveReport(
         eventId: String,
@@ -176,7 +177,8 @@ class CrashReporting(
         } catch (_: Throwable) {
             // A crash report that fails to save locally must not get in the way of it being sent.
         }
-        refreshReports()
+        // Deliberately no refreshReports() here: on the crashing thread, re-reading every saved report
+        // is work the report doesn't need. The settings views refresh when they open.
     }
 
     private fun prune() {
