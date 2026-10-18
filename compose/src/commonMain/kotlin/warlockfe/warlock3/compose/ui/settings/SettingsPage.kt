@@ -5,6 +5,7 @@ import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.arrow_right_alt
 import warlockfe.warlock3.compose.generated.resources.circle_filled
 import warlockfe.warlock3.compose.generated.resources.edit
+import warlockfe.warlock3.compose.generated.resources.error_filled
 import warlockfe.warlock3.compose.generated.resources.front_hand
 import warlockfe.warlock3.compose.generated.resources.group
 import warlockfe.warlock3.compose.generated.resources.login
@@ -33,6 +34,7 @@ enum class SettingsPage(
     val icon: DrawableResource,
 ) {
     General("General", SettingsGroup.General, Res.drawable.settings_filled),
+    CrashReports("Crash reports", SettingsGroup.General, Res.drawable.error_filled),
     TextStyles("Text styles", SettingsGroup.Appearance, Res.drawable.palette),
     Windows("Windows", SettingsGroup.Appearance, Res.drawable.space_dashboard_filled),
     Highlights("Highlights", SettingsGroup.Appearance, Res.drawable.star_shine),

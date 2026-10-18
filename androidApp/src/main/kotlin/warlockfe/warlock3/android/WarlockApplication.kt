@@ -7,8 +7,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import warlockfe.warlock3.compose.AppContainer
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.openPrefsDatabase
-import warlockfe.warlock3.compose.util.initializeSentry
+import warlockfe.warlock3.compose.util.SentryCrashReporter
 import warlockfe.warlock3.core.client.JavaProxy
 import warlockfe.warlock3.core.client.WarlockProxy
 import warlockfe.warlock3.core.prefs.PrefsDatabase
@@ -22,11 +23,23 @@ class WarlockApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Before anything else, so a crash during startup still gets reported. Debug builds are
-        // skipped: reports from someone's working tree are noise.
-        if (!BuildConfig.DEBUG) {
-            initializeSentry(platform = "android", version = BuildConfig.VERSION_NAME)
-        }
+        // Before anything else, so a crash during startup still gets reported -- but only if the
+        // user has already said they want that; on a first launch nothing is sent until they answer
+        // the notice the app shows. Debug builds never report: reports from someone's working tree
+        // are noise.
+        val crashReporting =
+            CrashReporting(
+                configDir = filesDir.path,
+                dataDir = dataDir.path,
+                fileSystem = SystemFileSystem,
+                reporter =
+                    SentryCrashReporter(
+                        platform = "android",
+                        version = BuildConfig.VERSION_NAME,
+                        isRelease = !BuildConfig.DEBUG,
+                    ),
+            )
+        crashReporting.startIfConsented()
 
         val configDir = filesDir
         val warlockDirs =
@@ -59,6 +72,7 @@ class WarlockApplication : Application() {
                 fileSystem = SystemFileSystem,
                 soundPlayer = AndroidSoundPlayer(),
                 warlockProxyFactory = WarlockProxy.Factory { JavaProxy(it) },
+                crashReporting = crashReporting,
             )
     }
 

@@ -289,6 +289,7 @@ fun DecoratedWindowScope.WarlockApp(
             clientSettingRepository = appContainer.clientSettings,
             accountRepository = appContainer.accountRepository,
             windowSettingRepository = appContainer.windowSettingRepository,
+            crashReporting = appContainer.crashReporting,
             initialPage = settingsInitialPage,
             initialWindowTarget = settingsWindowTarget,
             windowLiveContext = windowLiveContext,

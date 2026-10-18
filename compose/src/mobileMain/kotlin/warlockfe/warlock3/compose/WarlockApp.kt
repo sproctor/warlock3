@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ import warlockfe.warlock3.compose.generated.resources.settings_filled
 import warlockfe.warlock3.compose.model.GameScreen
 import warlockfe.warlock3.compose.ui.dashboard.DashboardView
 import warlockfe.warlock3.compose.ui.game.GameView
+import warlockfe.warlock3.compose.ui.settings.CrashReportingNotice
 import warlockfe.warlock3.compose.ui.settings.SettingsPage
 import warlockfe.warlock3.compose.ui.settings.SettingsScreen
 import warlockfe.warlock3.compose.ui.settings.WindowSettingsLiveContext
@@ -107,6 +109,18 @@ fun WarlockApp(
                 confirmButton = {
                     TextButton(onClick = { appContainer.settingsProblems.dismiss() }) { Text("OK") }
                 },
+            )
+        }
+
+        // Asked once, and until it is answered nothing is sent. Dismissing it without choosing leaves
+        // the question for next launch.
+        val crashReportingConsent by appContainer.crashReporting.consent.collectAsState()
+        // Saveable, so a rotation doesn't bring back a notice the user just dismissed.
+        var crashNoticeClosed by rememberSaveable { mutableStateOf(false) }
+        if (crashReportingConsent == null && !crashNoticeClosed) {
+            CrashReportingNotice(
+                crashReporting = appContainer.crashReporting,
+                onDismiss = { crashNoticeClosed = true },
             )
         }
 

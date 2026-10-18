@@ -32,6 +32,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.crash.CrashReporting
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.ui.settings.SettingsGroup
@@ -74,6 +75,7 @@ fun DesktopSettingsDialog(
     clientSettingRepository: ClientSettingRepository,
     accountRepository: AccountRepository,
     windowSettingRepository: WindowSettingsRepository,
+    crashReporting: CrashReporting,
     closeDialog: () -> Unit,
     initialPage: SettingsPage = SettingsPage.General,
     initialWindowTarget: String? = null,
@@ -149,6 +151,7 @@ fun DesktopSettingsDialog(
                             clientSettingRepository = clientSettingRepository,
                             accountRepository = accountRepository,
                             windowSettingRepository = windowSettingRepository,
+                            crashReporting = crashReporting,
                             initialWindowTarget = initialWindowTarget,
                             windowLiveContext = windowLiveContext,
                         )
