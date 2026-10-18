@@ -1,5 +1,6 @@
 package warlockfe.warlock3.compose.crash
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.io.files.SystemFileSystem
 import java.nio.file.Files
 import java.nio.file.Path
@@ -46,6 +47,7 @@ class CrashReportingTest {
             dataDir = dir.resolve("data").toString(),
             fileSystem = SystemFileSystem,
             reporter = reporter,
+            background = Dispatchers.Unconfined,
         )
 
     @Test

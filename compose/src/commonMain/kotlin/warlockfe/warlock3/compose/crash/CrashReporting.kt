@@ -1,9 +1,15 @@
 package warlockfe.warlock3.compose.crash
 
 import co.touchlab.kermit.Logger
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -68,7 +74,14 @@ class CrashReporting(
     dataDir: String,
     private val fileSystem: FileSystem,
     private val reporter: CrashReporter,
+    /**
+     * Where consent changes and deletes run, one at a time and in order. Off the UI thread because
+     * starting the SDK does file I/O and stopping it waits for queued reports to go out.
+     */
+    background: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
 ) {
+    private val worker = CoroutineScope(SupervisorJob() + background)
+
     private val logger = Logger.withTag("CrashReporting")
     private val consentFile = Path(configDir, CONSENT_FILE)
     private val reportsDir = Path(dataDir, REPORTS_DIR)
@@ -90,8 +103,13 @@ class CrashReporting(
         if (_consent.value == true) start()
     }
 
+    /** Records the choice and starts or stops the reporter to match. Returns immediately. */
     fun setConsent(enabled: Boolean) {
         _consent.value = enabled
+        worker.launch { applyConsent(enabled) }
+    }
+
+    private fun applyConsent(enabled: Boolean) {
         try {
             consentFile.parent?.let { fileSystem.createDirectories(it) }
             fileSystem.sink(consentFile).buffered().use {
@@ -129,7 +147,12 @@ class CrashReporting(
             "Could not read this report: ${e.message}"
         }
 
+    /** Deletes the saved copies in the background, then reloads [reports]. Returns immediately. */
     fun deleteReports() {
+        worker.launch { deleteReportFiles() }
+    }
+
+    private fun deleteReportFiles() {
         try {
             if (fileSystem.exists(reportsDir)) {
                 fileSystem.list(reportsDir).forEach { fileSystem.delete(it, mustExist = false) }

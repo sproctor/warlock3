@@ -311,7 +311,9 @@ private class WarlockCommand : CliktCommand() {
                 // below rather than out here: a dialog opened at the application level has no owner,
                 // so the main window, opened after it, comes up on top and hides it.
                 val crashReportingConsent by appContainer.crashReporting.consent.collectAsState()
-                var crashNoticeClosed by remember { mutableStateOf(false) }
+                // Not in the scripted modes (replays, benchmarks), where nobody is there to answer
+                // and a modal dialog would cover the window being watched.
+                var crashNoticeClosed by remember { mutableStateOf(stdin || inputFiles.isNotEmpty() || exitOnDisconnect) }
 
                 // When running as an AppImage, offer to install its menu entry and icon: GNOME
                 // resolves an app's icon only through installed .desktop entries (it ignores the

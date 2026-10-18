@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,7 +115,8 @@ fun WarlockApp(
         // Asked once, and until it is answered nothing is sent. Dismissing it without choosing leaves
         // the question for next launch.
         val crashReportingConsent by appContainer.crashReporting.consent.collectAsState()
-        var crashNoticeClosed by remember { mutableStateOf(false) }
+        // Saveable, so a rotation doesn't bring back a notice the user just dismissed.
+        var crashNoticeClosed by rememberSaveable { mutableStateOf(false) }
         if (crashReportingConsent == null && !crashNoticeClosed) {
             CrashReportingNotice(
                 crashReporting = appContainer.crashReporting,
