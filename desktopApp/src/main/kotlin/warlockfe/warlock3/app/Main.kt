@@ -55,13 +55,14 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
-import com.seanproctor.potassium.updater.AppImageIntegration
-import com.seanproctor.potassium.updater.AppImageIntegrationResult
-import com.seanproctor.potassium.updater.AppImageIntegrationStatus
-import com.seanproctor.potassium.updater.PotassiumUpdater
-import com.seanproctor.potassium.updater.UpdateInfo
-import com.seanproctor.potassium.updater.UpdateResult
-import com.seanproctor.potassium.updater.provider.GitHubProvider
+import dev.nucleusframework.core.runtime.AppImageIntegration
+import dev.nucleusframework.core.runtime.AppImageIntegrationResult
+import dev.nucleusframework.core.runtime.AppImageIntegrationStatus
+import dev.nucleusframework.core.runtime.NucleusApp
+import dev.nucleusframework.updater.NucleusUpdater
+import dev.nucleusframework.updater.UpdateInfo
+import dev.nucleusframework.updater.UpdateResult
+import dev.nucleusframework.updater.provider.GitHubProvider
 import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -131,10 +132,11 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private val version = System.getProperty("app.version")?.takeIf { it.isNotBlank() }
+private val version = NucleusApp.version?.takeIf { it.isNotBlank() }
 
-// Potassium always bakes in -Dapp.version, including for `./gradlew run`, where it defaults to
-// "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real release behind it.
+// Nucleus bakes the version into the app's generated properties, including for `./gradlew run`,
+// where it is "0.0.0-dev". Treat any 0.0.0.x (or absent) version as a dev build with no real
+// release behind it.
 private val isDev = version?.startsWith("0.0.0") ?: true
 
 private class WarlockCommand : CliktCommand() {
@@ -266,7 +268,7 @@ private class WarlockCommand : CliktCommand() {
                     }
                 }
 
-                // Dev builds (version "0.0.0-dev", injected by Potassium for `./gradlew run`) have no
+                // Dev builds (version "0.0.0-dev", injected by Nucleus for `./gradlew run`) have no
                 // real release to update to, so skip the network update check.
                 if (!isDev) {
                     LaunchedEffect(Unit) {
@@ -823,7 +825,7 @@ private class WarlockCommand : CliktCommand() {
         val channelSetting = runBlocking { clientSettings.getReleaseChannel() }
         return ChannelUpdater(
             channelSetting.channelsToCheck(resolvedVersion).map { channelName ->
-                PotassiumUpdater {
+                NucleusUpdater {
                     provider = GitHubProvider(owner = "sproctor", repo = "warlock3")
                     channel = channelName
                     currentVersion = resolvedVersion
@@ -836,7 +838,7 @@ private class WarlockCommand : CliktCommand() {
 fun main(args: Array<String>) =
     WarlockCommand()
         .versionOption(version ?: "Development")
-        // Potassium packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
+        // Nucleus packs the Linux AppImage via electron-builder, whose AppRun injects --no-sandbox
         // when the kernel blocks unprivileged user namespaces (Ubuntu 24.04+ default), assuming an
         // Electron binary. We're a JVM app with no sandbox to disable, so drop the flag rather than
         // abort startup on an unknown option.

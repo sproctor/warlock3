@@ -1,22 +1,22 @@
 package warlockfe.warlock3.app.updater
 
-import com.seanproctor.potassium.updater.DownloadProgress
-import com.seanproctor.potassium.updater.PotassiumUpdater
-import com.seanproctor.potassium.updater.UpdateInfo
-import com.seanproctor.potassium.updater.UpdateResult
-import com.seanproctor.potassium.updater.Version
+import dev.nucleusframework.updater.DownloadProgress
+import dev.nucleusframework.updater.NucleusUpdater
+import dev.nucleusframework.updater.UpdateInfo
+import dev.nucleusframework.updater.UpdateResult
+import dev.nucleusframework.updater.Version
 import kotlinx.coroutines.flow.Flow
 import warlockfe.warlock3.core.prefs.ReleaseChannelSetting
 import java.io.File
 
-/** Potassium/electron-updater channel names. Stable is spelled "latest" in the manifest files. */
+/** Nucleus/electron-updater channel names. Stable is spelled "latest" in the manifest files. */
 internal const val ALPHA_CHANNEL = "alpha"
 internal const val BETA_CHANNEL = "beta"
 internal const val STABLE_CHANNEL = "latest"
 
 /**
  * The channel a version string belongs to: its first semver pre-release identifier, which is how
- * both potassium and electron-updater classify a tag (`3.1.0-beta.8` -> `beta`). Anything we don't
+ * both Nucleus and electron-updater classify a tag (`3.1.0-beta.8` -> `beta`). Anything we don't
  * publish under counts as stable.
  *
  * Build metadata is dropped first. Our tags never carry any, but semver puts it after the
@@ -59,14 +59,14 @@ private fun channelsUpFrom(channel: String): List<String> =
 /**
  * Offers the highest version across several release channels.
  *
- * A [PotassiumUpdater] resolves exactly one channel: `beta` finds the newest beta tag in the GitHub
+ * A [NucleusUpdater] resolves exactly one channel: `beta` finds the newest beta tag in the GitHub
  * releases feed and never looks at stable releases, and `latest` follows GitHub's latest-release
  * redirect, which skips prereleases. Our channel setting is cumulative instead (see
  * [channelsToCheck]), so this runs one updater per channel and keeps whichever offers the greatest
  * version.
  */
 internal class ChannelUpdater(
-    private val updaters: List<PotassiumUpdater>,
+    private val updaters: List<NucleusUpdater>,
 ) {
     /**
      * Downloading and installing run against a single updater. Neither depends on the channel - the
