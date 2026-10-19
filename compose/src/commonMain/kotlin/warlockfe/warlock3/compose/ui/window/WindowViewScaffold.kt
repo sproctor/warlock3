@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.text.selection.rememberSelectionState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -307,7 +306,7 @@ private fun WindowViewContent(
     Box(modifier.fillMaxSize()) {
         // Keyed because the phone runs every tab through this one call site: a shared state would
         // carry a selection into the next window, anchored in rows that are already gone.
-        val state = key(windowName) { rememberSelectionState() }
+        val state = key(windowName) { rememberWindowSelectionState() }
         // Keeps the rows a selection may be anchored in composed while it lives, and drops the
         // selection when one of them goes anyway; see [SelectionRowPins] for why Compose's own
         // pinning is not enough. The indices line up because this lambda is replaced on every
