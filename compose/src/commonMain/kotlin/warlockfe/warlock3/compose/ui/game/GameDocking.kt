@@ -44,7 +44,6 @@ import com.seanproctor.docking.state.DockableSpec
 import com.seanproctor.docking.state.DockingEvent
 import com.seanproctor.docking.state.DockingSettings
 import com.seanproctor.docking.state.EmptyAnchorVisibility
-import com.seanproctor.docking.ui.platformDockCapabilities as dockingLibraryCapabilities
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
@@ -73,6 +72,7 @@ import warlockfe.warlock3.compose.util.LocalBaseStyle
 import warlockfe.warlock3.core.text.toStyleDefinition
 import warlockfe.warlock3.core.window.WindowLocation
 import kotlin.time.Duration.Companion.seconds
+import com.seanproctor.docking.ui.platformDockCapabilities as dockingLibraryCapabilities
 
 const val MAIN_WINDOW_NAME = "main"
 

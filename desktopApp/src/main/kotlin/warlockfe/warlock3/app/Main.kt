@@ -51,11 +51,11 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
+import dev.nucleusframework.application.DecoratedWindow
+import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.AppImageIntegration
 import dev.nucleusframework.core.runtime.AppImageIntegrationResult
 import dev.nucleusframework.core.runtime.AppImageIntegrationStatus
-import dev.nucleusframework.application.DecoratedWindow
-import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.NucleusApp
 import dev.nucleusframework.updater.NucleusUpdater
 import dev.nucleusframework.updater.UpdateInfo

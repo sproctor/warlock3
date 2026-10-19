@@ -286,7 +286,6 @@ nucleus.application {
     }
 }
 
-
 // Two fixes to Nucleus's static metadata analysis, until the analyzer handles these itself.
 //
 // It reads the base classes of a multi-release jar and ignores
@@ -297,6 +296,7 @@ tasks.matching { it.name == "analyzeGraalvmStaticMetadata" }.configureEach {
     val metadata = layout.buildDirectory.file("compose/tmp/main/graalvm/staticAnalysis/reachability-metadata.json")
     doLast {
         val file = metadata.get().asFile
+
         @Suppress("UNCHECKED_CAST")
         val root = groovy.json.JsonSlurper().parse(file) as MutableMap<String, Any?>
         // Mordant's terminal interface for native images is GraalVM C interop (@CStruct, @CField,
@@ -305,7 +305,10 @@ tasks.matching { it.name == "analyzeGraalvmStaticMetadata" }.configureEach {
         // analysis ("Should not reach here").
         root["jni"] =
             (root["jni"] as? List<Map<String, Any?>>)
-                ?.filterNot { (it["type"] as? String)?.startsWith("com.github.ajalt.mordant.terminal.terminalinterface.nativeimage.") == true }
+                ?.filterNot {
+                    (it["type"] as? String)?.startsWith("com.github.ajalt.mordant.terminal.terminalinterface.nativeimage.") ==
+                        true
+                }
         @Suppress("UNCHECKED_CAST")
         (root["jni"] as? List<MutableMap<String, Any?>>)
             ?.filter { it["type"] == "org.lwjgl.system.Upcalls" }

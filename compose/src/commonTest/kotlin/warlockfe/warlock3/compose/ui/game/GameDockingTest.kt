@@ -13,7 +13,6 @@ import com.seanproctor.docking.persistence.restoreLayout
 import com.seanproctor.docking.state.DockState
 import com.seanproctor.docking.state.DockTarget
 import com.seanproctor.docking.state.DockableSpec
-
 import warlockfe.warlock3.compose.ui.window.WindowUiState
 import warlockfe.warlock3.core.window.WindowInfo
 import warlockfe.warlock3.core.window.WindowLocation

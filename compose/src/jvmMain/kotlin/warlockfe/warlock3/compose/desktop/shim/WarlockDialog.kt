@@ -15,12 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.rememberDialogState
-import dev.nucleusframework.application.LocalNucleusApplicationScope
 import dev.nucleusframework.application.DecoratedDialog
+import dev.nucleusframework.application.LocalNucleusApplicationScope
 import org.jetbrains.compose.resources.painterResource
-import warlockfe.warlock3.compose.desktop.theme.WarlockDialogTitleBar
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import warlockfe.warlock3.compose.desktop.theme.WarlockDialogTitleBar
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.app_icon
 import warlockfe.warlock3.compose.util.ProvideSafeClipboard

@@ -26,11 +26,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.nucleusframework.window.DecoratedWindowScope
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
-import dev.nucleusframework.window.DecoratedWindowScope
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import kotlinx.io.files.Path
 import org.jetbrains.compose.resources.painterResource
