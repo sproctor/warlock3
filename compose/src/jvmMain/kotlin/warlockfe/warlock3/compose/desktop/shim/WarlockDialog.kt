@@ -14,9 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
+import dev.nucleusframework.application.LocalNucleusApplicationScope
+import dev.nucleusframework.application.DecoratedDialog
 import org.jetbrains.compose.resources.painterResource
+import warlockfe.warlock3.compose.desktop.theme.WarlockDialogTitleBar
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import warlockfe.warlock3.compose.generated.resources.Res
@@ -32,24 +34,28 @@ fun WarlockDialog(
     height: Dp = 300.dp,
     content: @Composable () -> Unit,
 ) {
-    DialogWindow(
+    // A Tao dialog, opened through the application scope so any composable can show one.
+    LocalNucleusApplicationScope.current.DecoratedDialog(
         title = title,
         onCloseRequest = onCloseRequest,
-        // Without an explicit icon the title bar falls back to the JBR default (Windows shows it).
+        // Compose's DialogWindow, which this replaces, was resizable by default.
+        resizable = true,
         icon = painterResource(Res.drawable.app_icon),
         state = rememberDialogState(width = width, height = height),
     ) {
         // A dialog is its own Compose scene, so it provides its own clipboard and does not inherit
         // the safe one the app window is running under; see [SafeClipboard].
         ProvideSafeClipboard {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(JewelTheme.globalColors.panelBackground)
-                        .padding(16.dp),
-            ) {
-                content()
+            Column(Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground)) {
+                WarlockDialogTitleBar { Text(title) }
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                ) {
+                    content()
+                }
             }
         }
     }

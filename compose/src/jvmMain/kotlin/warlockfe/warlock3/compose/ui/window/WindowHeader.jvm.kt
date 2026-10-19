@@ -28,9 +28,9 @@ import warlockfe.warlock3.compose.desktop.ui.game.WindowMenuButton
 import warlockfe.warlock3.compose.desktop.ui.game.gameChrome
 import warlockfe.warlock3.compose.generated.resources.Res
 import warlockfe.warlock3.compose.generated.resources.drag_indicator
-import java.awt.Cursor
+import dev.nucleusframework.window.tao.TaoPointerIcons
 
-private val moveCursor = PointerIcon(Cursor(Cursor.MOVE_CURSOR))
+private val moveCursor = TaoPointerIcons.Move
 
 @Composable
 actual fun WindowHeader(

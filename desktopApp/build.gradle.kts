@@ -19,7 +19,8 @@ dependencies {
 
     implementation(compose.desktop.currentOs)
 
-    implementation(libs.jewel.decorated.window)
+    implementation(libs.nucleus.application)
+    implementation(libs.nucleus.decorated.window.tao)
 
     implementation(libs.jewel.standalone)
 
@@ -32,7 +33,6 @@ dependencies {
     implementation(libs.appdirs)
     implementation(libs.filekit.dialogs)
 
-    implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
 
     // No logging dependency: Kermit comes from :core, which also carries the slf4j provider that
@@ -155,6 +155,20 @@ nucleus.application {
         jvmArgs += "-XX:+UseZGC"
     }
 
+    // Experimental native image of the desktop app (Tao windows, no AWT). The tracing agent's
+    // metadata (`runWithNativeAgent`) is merged into src/main/resources/META-INF/native-image.
+    graalvm {
+        isEnabled = true
+        javaLanguageVersion = 25
+        imageName = "warlock"
+        // The game protocol is decoded as windows-1252, which native-image leaves out by default.
+        allCharsets = true
+        nativeImageConfigBaseDir.set(layout.projectDirectory.dir("src/main/resources/META-INF/native-image/warlock"))
+        // Built and measured on the 25.0 LTS line (GraalVM CE 25.0.2). The default innovation
+        // channel (25.4) has not been tried since the analyzer fix below.
+        toolchain { channel.set(dev.nucleusframework.desktop.application.dsl.GraalvmChannel.LTS) }
+    }
+
     nativeDistributions {
         // Nucleus takes one format list and builds the current OS's share of it. Zip and Tar are
         // current-OS archive formats, so each is added only on the OS that ships it: Zip alongside Dmg
@@ -269,5 +283,36 @@ nucleus.application {
     // maintenance and the JDK-version lag it introduced.)
     buildTypes.release.proguard {
         isEnabled.set(false)
+    }
+}
+
+
+// Two fixes to Nucleus's static metadata analysis, until the analyzer handles these itself.
+//
+// It reads the base classes of a multi-release jar and ignores
+// META-INF/versions, so it registers LWJGL's base-only native Upcalls.shutdown() for JNI. The JDK 25
+// copy of that class, which native-image compiles, has no such method, and native-image rejects a
+// JNI entry for a method that does not exist. Drop it until the analyzer honours versioned classes.
+tasks.matching { it.name == "analyzeGraalvmStaticMetadata" }.configureEach {
+    val metadata = layout.buildDirectory.file("compose/tmp/main/graalvm/staticAnalysis/reachability-metadata.json")
+    doLast {
+        val file = metadata.get().asFile
+        @Suppress("UNCHECKED_CAST")
+        val root = groovy.json.JsonSlurper().parse(file) as MutableMap<String, Any?>
+        // Mordant's terminal interface for native images is GraalVM C interop (@CStruct, @CField,
+        // @CFunction), whose `native` methods native-image binds itself. The analyzer registers
+        // them for JNI anyway, and those word-typed accessors crash native-image's points-to
+        // analysis ("Should not reach here").
+        root["jni"] =
+            (root["jni"] as? List<Map<String, Any?>>)
+                ?.filterNot { (it["type"] as? String)?.startsWith("com.github.ajalt.mordant.terminal.terminalinterface.nativeimage.") == true }
+        @Suppress("UNCHECKED_CAST")
+        (root["jni"] as? List<MutableMap<String, Any?>>)
+            ?.filter { it["type"] == "org.lwjgl.system.Upcalls" }
+            ?.forEach { entry ->
+                @Suppress("UNCHECKED_CAST")
+                entry["methods"] = (entry["methods"] as List<Map<String, Any?>>).filterNot { it["name"] == "shutdown" }
+            }
+        file.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(root)))
     }
 }
