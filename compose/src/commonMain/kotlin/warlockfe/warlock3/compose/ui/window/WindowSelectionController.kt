@@ -1,5 +1,8 @@
 package warlockfe.warlock3.compose.ui.window
 
+import androidx.compose.foundation.text.selection.SelectionState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.text.AnnotatedString
@@ -53,3 +56,13 @@ class WindowSelectionController {
  * unattached controller: nothing registers with it, so the macros find no window and do nothing.
  */
 val LocalWindowSelectionController = staticCompositionLocalOf { WindowSelectionController() }
+
+/**
+ * A window's selection, kept for as long as the window is composed and no longer. Not
+ * `rememberSelectionState()`: that one is saveable, and docking saves a panel's state whenever the
+ * panel moves or its tab is switched. A selection restored from there is anchored in rows that have
+ * changed since, and when it spans rows `SelectionContainer` reads the container's coordinates in
+ * its first composition, before it has any - `IllegalArgumentException: null coordinates`.
+ */
+@Composable
+internal fun rememberWindowSelectionState(): SelectionState = remember { SelectionState() }
