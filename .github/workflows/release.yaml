@@ -53,7 +53,7 @@ jobs:
       # JDK 25 to run Gradle, Linux packaging tools + Xvfb, and Gradle. The Nucleus plugin
       # downloads the Node.js that electron-builder runs under.
       - name: Set up build environment
-        uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v3.0.0-dev-202610191841
+        uses: NucleusFramework/Nucleus/.github/actions/setup-nucleus@v3.0.0-dev-202610200221
         with:
           java-version: '25'
           packaging-tools: 'true'
@@ -74,7 +74,7 @@ jobs:
       - name: Set up macOS signing
         id: signing
         if: runner.os == 'macOS'
-        uses: NucleusFramework/Nucleus/.github/actions/setup-macos-signing@v3.0.0-dev-202610191841
+        uses: NucleusFramework/Nucleus/.github/actions/setup-macos-signing@v3.0.0-dev-202610200221
         with:
           certificate-base64: ${{ secrets.MAC_CERTIFICATES_P12 }}
           certificate-password: ${{ secrets.MAC_CERTIFICATES_PASSWORD }}
@@ -269,7 +269,7 @@ jobs:
       # One manifest per OS into artifacts/update-yml/, unioning every arch's installers (Linux
       # x64 and arm64 share <channel>-linux.yml, as do the two macOS arches in <channel>-mac.yml).
       - name: Generate update manifests
-        uses: NucleusFramework/Nucleus/.github/actions/generate-update-yml@v3.0.0-dev-202610191841
+        uses: NucleusFramework/Nucleus/.github/actions/generate-update-yml@v3.0.0-dev-202610200221
         with:
           artifacts-path: artifacts
           version: ${{ env.VERSION }}
@@ -287,7 +287,7 @@ jobs:
       # Uploads installers plus the manifests in artifacts/update-yml/; per-runner manifests in
       # the build artifacts are skipped in favor of those.
       - name: Publish release
-        uses: NucleusFramework/Nucleus/.github/actions/publish-release@v3.0.0-dev-202610191841
+        uses: NucleusFramework/Nucleus/.github/actions/publish-release@v3.0.0-dev-202610200221
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}
