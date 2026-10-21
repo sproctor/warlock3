@@ -3,6 +3,7 @@ package warlockfe.warlock3.scripting.wsl
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import warlockfe.warlock3.core.client.ClientEvent
+import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.client.SendCommandType
 import warlockfe.warlock3.core.client.WarlockClient
 import warlockfe.warlock3.core.client.WarlockMenuData
@@ -19,6 +20,7 @@ open class FakeWarlockClient(
     characterId: String? = "testchar",
 ) : WarlockClient {
     override val eventFlow = MutableSharedFlow<ClientEvent>(extraBufferCapacity = 64)
+    override val streamLines = MutableSharedFlow<ClientTextEvent>(extraBufferCapacity = 64)
 
     override val roundTimeEnd = MutableStateFlow<Long?>(null)
     override val castTimeEnd = MutableStateFlow<Long?>(null)
@@ -45,6 +47,15 @@ open class FakeWarlockClient(
 
     suspend fun emit(event: ClientEvent) {
         eventFlow.emit(event)
+    }
+
+    /** A line of [line]'s stream, sent to main as well when [inMain], as the real clients do. */
+    suspend fun emitStreamLine(
+        line: ClientTextEvent,
+        inMain: Boolean,
+    ) {
+        streamLines.emit(line)
+        if (inMain) eventFlow.emit(line)
     }
 
     override fun getCurrentTime(): Instant = currentTime

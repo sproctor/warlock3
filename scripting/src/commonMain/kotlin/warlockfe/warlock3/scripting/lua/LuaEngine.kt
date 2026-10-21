@@ -5,10 +5,12 @@ import kotlinx.io.files.Path
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptInstance
 import warlockfe.warlock3.core.script.ScriptManager
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.scripting.WarlockScriptEngine
 
 class LuaEngine(
     private val variableRepository: VariableRepository,
+    private val soundPlayer: SoundPlayer,
     private val fileSystem: FileSystem,
 ) : WarlockScriptEngine {
     override val extensions: List<String> = listOf("lua")
@@ -18,12 +20,12 @@ class LuaEngine(
         name: String,
         file: Path,
         scriptManager: ScriptManager,
-    ): ScriptInstance = LuaScriptInstance(id, name, file, null, variableRepository, scriptManager, fileSystem)
+    ): ScriptInstance = LuaScriptInstance(id, name, file, null, variableRepository, soundPlayer, scriptManager, fileSystem)
 
     override fun createStringInstance(
         id: Long,
         name: String,
         content: String,
         scriptManager: ScriptManager,
-    ): ScriptInstance = LuaScriptInstance(id, name, null, content, variableRepository, scriptManager, fileSystem)
+    ): ScriptInstance = LuaScriptInstance(id, name, null, content, variableRepository, soundPlayer, scriptManager, fileSystem)
 }

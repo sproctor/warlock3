@@ -299,7 +299,7 @@ class AppContainer(
             engines =
                 listOf(
                     WslEngine(highlightRepository, nameRepository, variableRepository, soundPlayer, fileSystem),
-                    LuaEngine(variableRepository, fileSystem),
+                    LuaEngine(variableRepository, soundPlayer, fileSystem),
                 ),
             scriptDirRepository = scriptDirRepository,
             fileSystem = fileSystem,

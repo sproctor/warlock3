@@ -18,7 +18,9 @@ import warlockfe.warlock3.core.client.ClientTextEvent
 import warlockfe.warlock3.core.prefs.repositories.VariableRepository
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.WarlockColor
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.scripting.wsl.FakeScriptManager
+import warlockfe.warlock3.scripting.wsl.FakeSoundPlayer
 import warlockfe.warlock3.scripting.wsl.FakeWarlockClient
 import warlockfe.warlock3.scripting.wsl.newTestConfigStore
 import kotlin.test.Test
@@ -49,6 +51,7 @@ class LuaScriptInstanceTest {
     private fun createInstance(
         script: String,
         variableRepository: VariableRepository = VariableRepository(newTestConfigStore()),
+        soundPlayer: SoundPlayer = FakeSoundPlayer(),
     ): LuaScriptInstance =
         LuaScriptInstance(
             id = 1L,
@@ -56,6 +59,7 @@ class LuaScriptInstanceTest {
             file = writeScript(script),
             content = null,
             variableRepository = variableRepository,
+            soundPlayer = soundPlayer,
             scriptManager = FakeScriptManager(),
             fileSystem = SystemFileSystem,
         )
@@ -68,6 +72,7 @@ class LuaScriptInstanceTest {
             file = null,
             content = script,
             variableRepository = VariableRepository(newTestConfigStore()),
+            soundPlayer = FakeSoundPlayer(),
             scriptManager = FakeScriptManager(),
             fileSystem = SystemFileSystem,
         )
@@ -80,6 +85,20 @@ class LuaScriptInstanceTest {
         withTimeout(10.seconds) {
             while (!done()) {
                 emit(event)
+                delay(50.milliseconds)
+            }
+        }
+    }
+
+    /** [emitUntil] for a stream's line, sent to main as well when [inMain]. */
+    private suspend fun FakeWarlockClient.emitStreamLineUntil(
+        line: ClientTextEvent,
+        inMain: Boolean,
+        done: () -> Boolean,
+    ) {
+        withTimeout(10.seconds) {
+            while (!done()) {
+                emitStreamLine(line, inMain)
                 delay(50.milliseconds)
             }
         }
@@ -249,7 +268,7 @@ class LuaScriptInstanceTest {
             val emitter =
                 launch {
                     while (true) {
-                        client.emit(ClientTextEvent("a goblin arrives"))
+                        client.emit(ClientTextEvent("a goblin arrives", "main"))
                         delay(50.milliseconds)
                     }
                 }
@@ -316,15 +335,82 @@ class LuaScriptInstanceTest {
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            client.emitUntil(ClientTextEvent("Roundtime: 3 sec.")) { client.roundTimeEnd.value == 1003L }
+            client.emitUntil(ClientTextEvent("Roundtime: 3 sec.", "main")) { client.roundTimeEnd.value == 1003L }
             assertContains(client.printedText(), "saw Roundtime: 3 sec.")
-            client.emitUntil(ClientTextEvent("Casting a spell")) { client.castTimeEnd.value == 1002L }
-            client.emitUntil(ClientTextEvent("Clear")) { client.roundTimeEnd.value == null }
+            client.emitUntil(ClientTextEvent("Casting a spell", "main")) { client.castTimeEnd.value == 1002L }
+            client.emitUntil(ClientTextEvent("Clear", "main")) { client.roundTimeEnd.value == null }
             assertNull(client.castTimeEnd.value)
             instance.stop()
             instance.awaitStopped(10.seconds)
         }
         assertFalse(client.printedText().any { it.contains("Script error") })
+    }
+
+    @Test
+    fun streamLineHandlersHearTheirStreamAndOnLineOnlyMainText() {
+        val client = FakeWarlockClient()
+        val soundPlayer = FakeSoundPlayer()
+        val instance =
+            createInstance(
+                """
+                onStreamLine("Thoughts", function(line) playSound("ping.wav") echo("thought " .. line) end)
+                onStreamLine("thoughts", "^(%a+) says", function(who) echo("from " .. who) end)
+                onLine(function(line) echo("main " .. line) end)
+                """.trimIndent(),
+                soundPlayer = soundPlayer,
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            client.emitStreamLineUntil(ClientTextEvent("Bob says hi", "thoughts"), inMain = false) {
+                client.printedText().any { it.contains("from Bob") }
+            }
+            assertContains(client.printedText(), "thought Bob says hi")
+            assertTrue(soundPlayer.playedSounds.isNotEmpty())
+            assertTrue(soundPlayer.playedSounds.all { it == "ping.wav" })
+            assertFalse(client.printedText().any { it.startsWith("main ") })
+            // A stream that falls back to main is heard by both.
+            client.emitStreamLineUntil(ClientTextEvent("Al says yo", "thoughts"), inMain = true) {
+                client.printedText().any { it == "main Al says yo" }
+            }
+            assertContains(client.printedText(), "from Al")
+            instance.stop()
+            instance.awaitStopped(10.seconds)
+        }
+        assertFalse(client.printedText().any { it.contains("Script error") })
+    }
+
+    @Test
+    fun onStreamLineWithoutAStreamNameSaysSo() {
+        val client = FakeWarlockClient()
+        val instance = createInlineInstance("""onStreamLine(function(line) echo(line) end)""")
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            instance.awaitStopped()
+        }
+        assertTrue(client.printedText().any { it.contains("Script error") && it.contains("onStreamLine needs the stream's name") })
+    }
+
+    @Test
+    fun matchWaitIgnoresStreamsThatDoNotFallBackToMain() {
+        val client = FakeWarlockClient()
+        val instance =
+            createInlineInstance(
+                """
+                local m = MatchList()
+                m:addMatch("goblin", "matched")
+                echo(m:wait())
+                """.trimIndent(),
+            )
+        runBlocking {
+            instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
+            repeat(10) {
+                client.emitStreamLine(ClientTextEvent("a goblin thinks", "thoughts"), inMain = false)
+                delay(50.milliseconds)
+            }
+            assertFalse(client.printedText().contains("matched"))
+            client.emitUntil(ClientTextEvent("a goblin arrives", "main")) { instance.status == ScriptStatus.Stopped }
+        }
+        assertContains(client.printedText(), "matched")
     }
 
     @Test
@@ -339,7 +425,7 @@ class LuaScriptInstanceTest {
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            client.emitUntil(ClientTextEvent("one")) { client.printedText().any { it.contains("bad one") } }
+            client.emitUntil(ClientTextEvent("one", "main")) { client.printedText().any { it.contains("bad one") } }
             assertTrue(client.printedText().any { it.contains("Script error") && it.contains("bad one") })
             assertContains(client.printedText(), "also one")
             assertEquals(ScriptStatus.Running, instance.status)
@@ -362,7 +448,7 @@ class LuaScriptInstanceTest {
             )
         runBlocking {
             instance.start(client, "", onStop = {}, commandHandler = { client.sendCommand(it) })
-            client.emitUntil(ClientTextEvent("x")) { instance.status == ScriptStatus.Stopped }
+            client.emitUntil(ClientTextEvent("x", "main")) { instance.status == ScriptStatus.Stopped }
         }
         assertContains(client.printedText(), "bye")
         assertFalse(client.printedText().any { it.contains("Script error") })
@@ -525,7 +611,7 @@ class LuaScriptInstanceTest {
             // Two subscribers: the handler's collector, taken on at registration, and the
             // prompt wait. Both attached means the line cannot be missed and the prompt cannot.
             withTimeout(10.seconds) { client.eventFlow.subscriptionCount.first { it == 2 } }
-            client.emit(ClientTextEvent("early"))
+            client.emit(ClientTextEvent("early", "main"))
             client.emit(ClientPromptEvent)
             withTimeout(10.seconds) {
                 while (!client.printedText().contains("got early")) delay(20.milliseconds)
