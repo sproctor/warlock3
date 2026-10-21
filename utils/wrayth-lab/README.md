@@ -158,6 +158,20 @@ These are the non-obvious bits, kept here because they cost real time to find:
   do not render at all - so one bad name takes the whole group with it. Handy as an
   oracle: it says plainly whether a name matched, which is what makes a
   deliberately-wrong name a usable control when testing what Wrayth accepts.
+- **Script matches hear a stream by its `ifClosed`, not by what is on screen.** With a
+  user script waiting on `match found goblin` / `matchwait`, a goblin line pushed to
+  `thoughts` (declared with no `ifClosed`, which means main) matched both while the Thoughts
+  window was closed, when the line also lands in Story, and while it was open, when the line
+  shows only in Thoughts. One pushed to `inv` (`ifClosed=''`, window open) did not match,
+  nor did one pushed to a fresh `lab` stream declared with `ifClosed=''` and opened, while the
+  same text sent to main straight after matched at once. Restarted with `thoughts` itself
+  declared `ifClosed=''`, its lines matched neither closed (when they show nowhere) nor open,
+  so it is the attribute that decides, not the stream. A `<pushStream>` naming a stream no
+  `<streamWindow>` declared is rejected (`_error <pushStream id='nowhere'/> window with
+  id=nowhere not found` comes back), and the text that follows stays in Story and matches.
+  So a match sees main-stream text plus every stream that falls back to main. Scripts live in
+  the settings Wrayth uploads (`<scripts prefix=".">`), so making one means Options -> Scripts
+  by hand; `<exposeStream id='thoughts'/>` opens a stream's window from the server side.
 - **`wine explorer /desktop=NAME,WxH` mangles arguments** when the program path
   contains spaces, and at least under GNOME/mutter the virtual desktop ignores
   the requested size and fills the screen. So `launch` runs Wrayth as a plain

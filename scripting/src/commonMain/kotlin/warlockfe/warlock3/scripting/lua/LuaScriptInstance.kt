@@ -25,6 +25,7 @@ import warlockfe.warlock3.core.script.ScriptManager
 import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.parseArguments
 
 /** Thrown by the script bindings to unwind a script that has been stopped. */
@@ -32,8 +33,8 @@ class StopException : Exception("Script stopped")
 
 /**
  * A Lua script: read from [file], or given as [content] (an action button's script, or the one
- * the MUD sent). It runs top to bottom, and then, if it registered handlers with `onGmcp` or
- * `onLine`, keeps running to serve them until it is stopped or the connection closes.
+ * the MUD sent). It runs top to bottom, and then, if it registered handlers with `onGmcp`,
+ * `onLine` or `onStreamLine`, keeps running to serve them until it is stopped or the connection closes.
  */
 class LuaScriptInstance(
     override val id: Long,
@@ -41,6 +42,7 @@ class LuaScriptInstance(
     private val file: Path?,
     private val content: String?,
     private val variableRepository: VariableRepository,
+    private val soundPlayer: SoundPlayer,
     private val scriptManager: ScriptManager,
     private val fileSystem: FileSystem,
 ) : ScriptInstance {
@@ -67,7 +69,16 @@ class LuaScriptInstance(
                 // DEBUG is opened only so the bindings can install their watchdog hook; the
                 // bootstrap removes the debug table before the script runs.
                 LuaState(LuaConfig(stdlibs = StdLib.SAFE_DEFAULT + StdLib.DEBUG)).use { lua ->
-                    val bindings = LuaBindings(lua, client, this@LuaScriptInstance, variableRepository)
+                    val bindings =
+                        LuaBindings(
+                            lua = lua,
+                            client = client,
+                            instance = this@LuaScriptInstance,
+                            variableRepository = variableRepository,
+                            soundPlayer = soundPlayer,
+                            fileSystem = fileSystem,
+                            scriptDir = file?.parent,
+                        )
                     bindings.install()
                     val chunk = lua.load(code, "@$name")
                     lua.call(chunk, arguments.map { LuaValue.Str(it) })

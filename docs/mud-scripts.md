@@ -73,7 +73,7 @@ onGmcp("Char.Status", function(data, name)
     if data.roundtime then setRoundTime(data.roundtime) end
 end)
 
--- Every line of game text.
+-- Every line of game text in the main window.
 onLine(function(line)
     if line == "You feel the spell take hold." then setCastTime(0) end
 end)
@@ -82,6 +82,14 @@ end)
 -- when the pattern has none).
 onLine("^Roundtime: (%d+) sec", function(seconds)
     setRoundTime(tonumber(seconds))
+end)
+
+-- Every line of one stream (one window's text), with or without a pattern as
+-- for onLine. A telnet game has only the one stream, "main"; on a Simutronics
+-- game this hears "thoughts", "death" and the rest, even the ones onLine does
+-- not because they never reach the main window.
+onStreamLine("thoughts", function(line)
+    playSound("ping.wav")
 end)
 ```
 
@@ -181,6 +189,7 @@ The rest of the Lua API is available too:
 | `echo(text)`, `print(...)` | Show text in the game window. |
 | `put(command)` | Send a command as the player, once the roundtime has passed. |
 | `move(command)` | `put`, then wait for the next room. |
+| `playSound(file)` | Play a sound: a file beside the script, or a path. A sound that cannot be played is reported and the script goes on. |
 | `pause(seconds)` | Wait. Inside a handler this holds up the other handlers too. |
 | `waitForPrompt()`, `waitForNav()`, `waitForRoundTime()` | Wait for the next prompt, room, or the end of the roundtime. |
 | `MatchList()` | Wait for the first of several lines; see the player scripting docs. |

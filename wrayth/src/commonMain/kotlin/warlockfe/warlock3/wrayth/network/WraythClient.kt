@@ -190,6 +190,9 @@ class WraythClient(
 
     private val windows = mutableMapOf<String, WraythStreamWindow>()
 
+    // Streams the game pushed to without declaring a window for them, already reported.
+    private val undeclaredStreams = mutableSetOf<String>()
+
     private val _windowInfo = MutableStateFlow<List<WindowInfo>>(emptyList())
     override val windowInfo = _windowInfo.asStateFlow()
 
@@ -376,7 +379,22 @@ class WraythClient(
             is WraythStreamEvent -> {
                 lineBuffer.discardComponent()
                 flushBuffer(true)
-                currentStream = getStream(event.id ?: "main")
+                val id = event.id ?: "main"
+                if (event.needsWindow && id != "main" && id !in windows) {
+                    // Wrayth reports this back to the server as an error and leaves the text where
+                    // it was, so it shows, and scripts match it, as if the push had not been sent.
+                    // Said once per stream, since a game that does it will do it on every line.
+                    if (undeclaredStreams.add(id)) {
+                        getMainStream().appendLine(
+                            StyledString(
+                                "The game sent text to a window it never declared (\"$id\"); showing it here instead",
+                                WarlockStyle.Error,
+                            ),
+                        )
+                    }
+                } else {
+                    currentStream = getStream(id)
+                }
             }
 
             is WraythClearStreamEvent -> {
@@ -853,12 +871,13 @@ class WraythClient(
         ignoreWhenBlank: Boolean,
     ) {
         doAppendToStream(styledText, stream, ignoreWhenBlank)
-        if (stream.isMainStream || windows[stream.id]?.ifClosed == "main") {
-            val text = styledText.toText()
-            if (text.isNotBlank()) {
+        val text = styledText.toText()
+        if (text.isNotBlank()) {
+            val inMain = stream.isMainStream || windows[stream.id]?.ifClosed == "main"
+            if (inMain) {
                 logSimple { text }
-                notifyListeners(ClientTextEvent(text))
             }
+            notifyListeners(ClientTextEvent(text, stream.id, inMain))
         }
     }
 
@@ -982,16 +1001,18 @@ class WraythClient(
 
     override suspend fun print(message: StyledString) {
         withContext(ioDispatcher) {
-            getMainStream().appendLine(if (monospace) message.applyMonospace() else message)
-            notifyListeners(ClientTextEvent(message.toString()))
+            val stream = getMainStream()
+            stream.appendLine(if (monospace) message.applyMonospace() else message)
+            notifyListeners(ClientTextEvent(message.toString(), stream.id))
         }
     }
 
     suspend fun printCommand(command: String) {
         withContext(ioDispatcher) {
             val styled = StyledString(command, WarlockStyle.Command)
-            getMainStream().appendPartialAndEol(if (monospace) styled.applyMonospace() else styled)
-            notifyListeners(ClientTextEvent(command))
+            val stream = getMainStream()
+            stream.appendPartialAndEol(if (monospace) styled.applyMonospace() else styled)
+            notifyListeners(ClientTextEvent(command, stream.id))
         }
     }
 

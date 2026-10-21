@@ -482,7 +482,7 @@ class TelnetClient(
         logSimple { plain }
         logComplete { plain }
         if (plain.isNotBlank()) {
-            notifyListeners(ClientTextEvent(plain))
+            notifyListeners(ClientTextEvent(plain, null))
         }
     }
 
@@ -540,7 +540,7 @@ class TelnetClient(
                 }
             }
             if (!serverEcho) {
-                notifyListeners(ClientTextEvent(command))
+                notifyListeners(ClientTextEvent(command, null))
             }
         }
     }
@@ -551,7 +551,7 @@ class TelnetClient(
                 finishLineIfShown()
                 getMainStream().appendLine(message)
             }
-            notifyListeners(ClientTextEvent(message.toText()))
+            notifyListeners(ClientTextEvent(message.toText(), null))
         }
     }
 

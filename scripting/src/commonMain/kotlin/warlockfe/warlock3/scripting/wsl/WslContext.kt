@@ -97,8 +97,10 @@ class WslContext(
                     }
 
                     is ClientTextEvent -> {
-                        listeners.forEach { (_, action) ->
-                            action(event.text)
+                        if (event.inMain) {
+                            listeners.forEach { (_, action) ->
+                                action(event.text)
+                            }
                         }
                     }
 
@@ -322,14 +324,14 @@ class WslContext(
     ) {
         log(ScriptLoggingLevel.DEBUG, "waiting for text: $text")
         client.eventFlow.first {
-            it is ClientTextEvent && it.text.contains(other = text, ignoreCase = ignoreCase)
+            it is ClientTextEvent && it.inMain && it.text.contains(other = text, ignoreCase = ignoreCase)
         }
     }
 
     suspend fun waitForRegex(regex: Regex) {
         log(ScriptLoggingLevel.DEBUG, "waiting for regex: ${regex.pattern}")
         client.eventFlow.first {
-            it is ClientTextEvent && regex.containsMatchIn(it.text)
+            it is ClientTextEvent && it.inMain && regex.containsMatchIn(it.text)
         }
     }
 
@@ -353,7 +355,7 @@ class WslContext(
                         it
                     }
                 }.first { event ->
-                    if (event is ClientTextEvent && scriptInstance.status == ScriptStatus.Running) {
+                    if (event is ClientTextEvent && event.inMain && scriptInstance.status == ScriptStatus.Running) {
                         matches.firstOrNull { match ->
                             match.match(event.text, currentFrame)?.let { text ->
                                 log(ScriptLoggingLevel.DEBUG, "matched \"${match.label}\": $text")

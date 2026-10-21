@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.files.FileSystem
+import kotlinx.io.files.Path
 import warlockfe.warlock3.core.client.ClientGmcpEvent
 import warlockfe.warlock3.core.client.ClientNavEvent
 import warlockfe.warlock3.core.client.ClientPromptEvent
@@ -25,7 +27,9 @@ import warlockfe.warlock3.core.script.ScriptStatus
 import warlockfe.warlock3.core.text.StyledString
 import warlockfe.warlock3.core.text.WarlockStyle
 import warlockfe.warlock3.core.text.isSpecified
+import warlockfe.warlock3.core.util.SoundPlayer
 import warlockfe.warlock3.core.util.toWarlockColor
+import kotlin.concurrent.Volatile
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -38,7 +42,7 @@ import kotlin.time.Instant
  * bridged to the suspend world with [blocking], whose waits are parented to the instance's
  * scope so that stopping the script aborts them.
  *
- * A script may also register handlers (`onGmcp`, `onLine`) to be told things as they happen;
+ * A script may also register handlers (`onGmcp`, `onLine`, `onStreamLine`) to be told things as they happen;
  * [serveHandlers] then keeps the script alive after its last line, calling them on the script's
  * thread for each event, until the script is stopped or the connection closes.
  */
@@ -47,6 +51,11 @@ internal class LuaBindings(
     private val client: WarlockClient,
     private val instance: LuaScriptInstance,
     private val variableRepository: VariableRepository,
+    private val soundPlayer: SoundPlayer,
+    private val fileSystem: FileSystem,
+    // Where the script was read from, to find sounds named relative to it; null for a script run
+    // from a string.
+    private val scriptDir: Path?,
 ) {
     private val logger = Logger.withTag("LuaScript")
 
@@ -60,6 +69,12 @@ internal class LuaBindings(
     // reading a live stream, not a log.
     private var events: Channel<ScriptEvent>? = null
     private var feeder: Job? = null
+
+    // Lines that do not belong to the main window are only gathered once a handler wants them:
+    // most scripts would only pass them over, and they would crowd out the lines they do want.
+    // Volatile: set on the script's thread, read by the gatherer.
+    @Volatile
+    private var gatherAllStreams = false
 
     // The bootstrap's dispatchers, taken as handles so the globals can be removed.
     private lateinit var dispatchGmcp: LuaValue.Function
@@ -237,6 +252,25 @@ internal class LuaBindings(
             }
             emptyList()
         }
+        bind("playSound") { args ->
+            val name =
+                args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalArgumentException("playSound needs the sound file to play")
+            // A name relative to the script's directory is found there; anything else goes to
+            // the player as given.
+            val file = scriptDir?.let { Path(it, name) }?.takeIf { fileSystem.exists(it) }
+            blocking {
+                val error = soundPlayer.playSound(file?.toString() ?: name)
+                // Reported, but not fatal: a missing sound should not end a script that is
+                // otherwise doing its job.
+                if (error != null) {
+                    client.print(
+                        StyledString("Script error: playSound: could not play \"$name\": $error", style = WarlockStyle.Error),
+                    )
+                }
+            }
+            emptyList()
+        }
         bind("sendGmcp") { args ->
             val name =
                 args.firstOrNull()?.asString()?.takeIf { it.isNotBlank() }
@@ -307,7 +341,7 @@ internal class LuaBindings(
                 var matched: Int? = null
                 blocking {
                     client.eventFlow.first { event ->
-                        if (instance.status == ScriptStatus.Running && event is ClientTextEvent) {
+                        if (instance.status == ScriptStatus.Running && event is ClientTextEvent && event.inMain) {
                             val match = matchers.firstOrNull { it.matches(event.text) }
                             if (match != null) {
                                 matched = match.index
@@ -325,7 +359,10 @@ internal class LuaBindings(
             instance.checkStatus()
             emptyList()
         }
-        lua.register("__keepAlive") {
+        lua.register("__keepAlive") { args ->
+            if ((args.firstOrNull() as? LuaValue.Bool)?.value == true) {
+                gatherAllStreams = true
+            }
             startGathering()
             emptyList()
         }
@@ -345,9 +382,19 @@ internal class LuaBindings(
                 launch {
                     client.eventFlow.collect { event ->
                         when (event) {
-                            is ClientTextEvent -> events.trySend(ScriptEvent.Line(event.text))
-                            is ClientGmcpEvent -> events.trySend(ScriptEvent.Gmcp(event.name, event.data))
-                            else -> Unit
+                            is ClientTextEvent -> {
+                                if (event.inMain || gatherAllStreams) {
+                                    events.trySend(ScriptEvent.Line(event.text, event.streamId ?: "main", event.inMain))
+                                }
+                            }
+
+                            is ClientGmcpEvent -> {
+                                events.trySend(ScriptEvent.Gmcp(event.name, event.data))
+                            }
+
+                            else -> {
+                                Unit
+                            }
                         }
                     }
                 }
@@ -381,7 +428,10 @@ internal class LuaBindings(
         try {
             when (event) {
                 is ScriptEvent.Line -> {
-                    lua.call(dispatchLine, listOf(LuaValue.Str(event.text)))
+                    lua.call(
+                        dispatchLine,
+                        listOf(LuaValue.Str(event.text), LuaValue.Str(event.stream), LuaValue.Bool(event.inMain)),
+                    )
                 }
 
                 is ScriptEvent.Gmcp -> {
@@ -479,6 +529,8 @@ internal class LuaBindings(
 private sealed interface ScriptEvent {
     data class Line(
         val text: String,
+        val stream: String,
+        val inMain: Boolean,
     ) : ScriptEvent
 
     data class Gmcp(
@@ -589,7 +641,8 @@ private val WARLOCK_BOOTSTRAP =
         keepAlive()
     end
 
-    -- onLine(function(line) ... end): called with each line of game text.
+    -- onLine(function(line) ... end): called with each line of game text a match would see: the
+    -- main window's, and that of streams that fall back to it when their window is closed.
     -- onLine(pattern, function(...) ... end): called with the captures whenever a line matches
     -- the Lua pattern (with the whole match, when the pattern has no captures).
     function onLine(pattern, handler)
@@ -599,6 +652,18 @@ private val WARLOCK_BOOTSTRAP =
         end
         lineHandlers[#lineHandlers + 1] = { pattern = pattern, handler = handler }
         keepAlive()
+    end
+
+    -- onStreamLine("thoughts", function(line) ... end), or with a pattern as for onLine: called
+    -- for each line of one stream (the text of one window), whether or not onLine hears it too.
+    -- "main" is the main window's own stream.
+    function onStreamLine(stream, pattern, handler)
+        if handler == nil then
+            handler = pattern
+            pattern = nil
+        end
+        lineHandlers[#lineHandlers + 1] = { stream = lower(stream), pattern = pattern, handler = handler }
+        keepAlive(true)
     end
 
     -- Every handler gets its turn even if an earlier one failed; the first failure is then
@@ -632,9 +697,18 @@ private val WARLOCK_BOOTSTRAP =
         callAll(calls)
     end
 
-    function __dispatchLine(line)
+    function __dispatchLine(line, stream, inMain)
         local calls = {}
+        stream = lower(stream)
         for _, entry in ipairs(lineHandlers) do
+            -- onLine hears the main window; onStreamLine, its one stream.
+            local wanted = inMain
+            if entry.stream ~= nil then
+                wanted = entry.stream == stream
+            end
+            if not wanted then
+                goto continue
+            end
             if entry.pattern == nil then
                 calls[#calls + 1] = pack(entry.handler, line)
             else
@@ -643,6 +717,7 @@ private val WARLOCK_BOOTSTRAP =
                     calls[#calls + 1] = pack(entry.handler, unpack(captures, 1, captures.n))
                 end
             end
+            ::continue::
         end
         callAll(calls)
     end
